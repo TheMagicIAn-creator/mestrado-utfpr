@@ -1,0 +1,33 @@
+# Credenciais e segredos
+.env
+credentials_drive.json
+token_drive.json
+
+# Dados brutos (ficam no Drive ou local)
+dados/
+
+# Modelos treinados (arquivos grandes)
+resultados/modelos_salvos/
+*.pkl
+*.joblib
+*.h5
+*.pt
+
+# Python
+__pycache__/
+*.py[cod]
+venv_mestrado/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ChromaDB (memória local do agente)
+base_conhecimento/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
