@@ -5,10 +5,14 @@ para que o agente possa buscar informações por similaridade.
 
 Autor: Rodolfo Torres (UTFPR)
 """
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
 
 import os
 from pathlib import Path
 from pypdf import PdfReader
+from utils import parsear_nome_arquivo
 from sentence_transformers import SentenceTransformer
 import chromadb
 
@@ -159,13 +163,19 @@ def indexar_literatura():
         # Cria IDs únicos para cada chunk
         ids = [f"{nome_arquivo}__chunk_{j}" for j in range(len(chunks))]
 
-        # Cria metadados para cada chunk
+
+        # Cria metadados para cada chunk (com citação acadêmica)
+        info_arquivo = parsear_nome_arquivo(nome_arquivo)
         metadados = [
             {
-                "arquivo"     : nome_arquivo,
-                "pasta"       : caminho_pdf.parent.name,
-                "chunk_index" : j,
-                "total_chunks": len(chunks)
+                "arquivo": nome_arquivo,
+                "pasta": caminho_pdf.parent.name,
+                "chunk_index": j,
+                "total_chunks": len(chunks),
+                "autor": info_arquivo["autor"],
+                "titulo": info_arquivo["titulo"],
+                "ano": info_arquivo["ano"],
+                "citacao": info_arquivo["citacao"]
             }
             for j in range(len(chunks))
         ]

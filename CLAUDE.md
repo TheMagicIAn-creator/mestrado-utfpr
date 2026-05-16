@@ -148,7 +148,7 @@ Nunca inventar referências.
 - Embeddings  : sentence-transformers (local, gratuito)
 
 ## Decisões Já Tomadas
-- Linguagem    : Python 3.12.3
+- Linguagem    : Python 3.13.3
 - IDE          : PyCharm
 - Versionamento: GitHub (mestrado-utfpr)
 - Interface    : Streamlit

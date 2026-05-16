@@ -10,6 +10,9 @@ Fluxo:
 
 Autor: Rodolfo Torres (UTFPR)
 """
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
 
 import os
 from pathlib import Path
@@ -17,6 +20,7 @@ from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 import chromadb
 from langchain_google_genai import ChatGoogleGenerativeAI
+from utils import parsear_nome_arquivo
 from langchain_core.messages import HumanMessage
 
 
@@ -138,17 +142,8 @@ def buscar_contexto(
     colecao
 ) -> tuple:
     """
-    Etapa de RETRIEVAL do RAG:
-    1. Transforma a pergunta em vetor numérico
-    2. Busca os chunks mais similares no ChromaDB
-    3. Retorna o contexto formatado e lista de fontes
-
-    Por que busca vetorial?
-    Porque ela encontra trechos semanticamente similares,
-    não apenas por palavras-chave exatas. Exemplo:
-    "degradação do capacitor" encontra trechos que falam
-    em "falha do componente de filtragem CA" mesmo sem
-    usar as mesmas palavras.
+    Transforma a pergunta em vetor e busca chunks similares no ChromaDB.
+    Retorna o contexto formatado e as citações acadêmicas das fontes.
     """
 
     # Transforma pergunta em vetor
@@ -160,9 +155,8 @@ def buscar_contexto(
         n_results=N_RESULTADOS
     )
 
-    # Formata contexto e coleta fontes
-    contexto = ""
-    fontes   = []
+    contexto   = ""
+    citacoes   = {}  # arquivo → citação formatada
 
     documentos = resultados.get("documents", [[]])[0]
     metadados  = resultados.get("metadatas",  [[]])[0]
@@ -170,15 +164,24 @@ def buscar_contexto(
     for i, (doc, meta) in enumerate(zip(documentos, metadados), 1):
         arquivo = meta.get("arquivo", "fonte desconhecida")
         pasta   = meta.get("pasta",   "")
+
+        # Usa citação do metadado se disponível,
+        # senão parseia o nome do arquivo na hora
+        if "citacao" in meta:
+            citacao = meta["citacao"]
+        else:
+            citacao = parsear_nome_arquivo(arquivo)["citacao"]
+
         contexto += (
             f"\n--- Trecho {i} ---\n"
-            f"Fonte: {arquivo} (tema: {pasta})\n"
+            f"Fonte: {citacao} (tema: {pasta})\n"
             f"{doc}\n"
         )
-        if arquivo not in fontes:
-            fontes.append(arquivo)
 
-    return contexto, fontes
+        if arquivo not in citacoes:
+            citacoes[arquivo] = citacao
+
+    return contexto, citacoes
 
 def listar_documentos(colecao) -> str:
     """
@@ -282,8 +285,8 @@ INSTRUÇÕES:
     texto     = resposta.content
 
     if fontes:
-        texto += "\n\n---\n📚 **Fontes consultadas nesta resposta:**\n"
-        for fonte in fontes:
-            texto += f"  → {fonte}\n"
+        texto += "\n\n---\n📚 *Fontes consultadas nesta resposta:*\n"
+        for arquivo, citacao in fontes.items():
+            texto += f"  → {citacao}\n"
 
     return texto
