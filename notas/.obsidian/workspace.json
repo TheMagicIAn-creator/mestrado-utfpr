@@ -1,0 +1,234 @@
+{
+  "main": {
+    "id": "28dbae01de932efa",
+    "type": "split",
+    "children": [
+      {
+        "id": "19544025d491f275",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "8f7346258fe5e3d5",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Literatura/inversores-pv/academic-editor_energy-research-laboratory-reneral-british_2025.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "academic-editor_energy-research-laboratory-reneral-british_2025"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "2661b73d35fc1287",
+    "type": "split",
+    "children": [
+      {
+        "id": "d9f0280c15417796",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "ccf58489bd6f1a90",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "34e899608753eb7d",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "9150e54e648b61ad",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "fee269bcb0d0b5c6",
+    "type": "split",
+    "children": [
+      {
+        "id": "6520c9fbbd92c36d",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "feb822a6ed1f339d",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Literatura/inversores-pv/academic-editor_energy-research-laboratory-reneral-british_2025.md",
+                "collapseAll": false,
+                "extraContext": true,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for academic-editor_energy-research-laboratory-reneral-british_2025"
+            }
+          },
+          {
+            "id": "577532926687092c",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Literatura/inversores-pv/academic-editor_energy-research-laboratory-reneral-british_2025.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from academic-editor_energy-research-laboratory-reneral-british_2025"
+            }
+          },
+          {
+            "id": "2675d389316f85a1",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "1f91eeb3d866ada3",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "bc08d2f2e624a7e8",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Literatura/inversores-pv/academic-editor_energy-research-laboratory-reneral-british_2025.md",
+                "followCursor": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of academic-editor_energy-research-laboratory-reneral-british_2025"
+            }
+          },
+          {
+            "id": "2c6d193e09798c7c",
+            "type": "leaf",
+            "state": {
+              "type": "calendar",
+              "state": {},
+              "icon": "calendar-with-checkmark",
+              "title": "Calendar"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 408.5
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false,
+      "smart-connections:Smart Connections: Open connections view": false,
+      "smart-connections:Toggle Footer Connections": false,
+      "smart-connections:Smart Connections: Open random connection": false,
+      "smart-connections:Smart Lookup: Open lookup view": false
+    }
+  },
+  "active": "feb822a6ed1f339d",
+  "lastOpenFiles": [
+    "Literatura/inversores-pv/autor-desconhecido_steve-voss-tassos-golnas-steve_2009.md",
+    "Literatura/sinais-ca/digital-twin_therefore-distinct-between-digital-model_2018.md",
+    "Literatura/ml-preditivo/with-ua_reem-majid-ali-risi-fatma_2023.md",
+    "Literatura/ml-preditivo/reliability-prediction_reliability-prediction-ofpv-inverters-mil_2015.md",
+    "Literatura/ml-preditivo/open-eng_gineering-education-virtual-learning-environment_2020.md",
+    "Literatura/ml-preditivo/loredana-cristaldi_citation-loredana-cristaldi-mohamed-khalil_2017.md",
+    "Literatura/ml-preditivo/intelligent-maintenance_cutting-edge-technologies-such-internet_2025.md",
+    "Literatura/ml-preditivo/jan-francisti_cesk-bud-ejovice-czech-republic_2025.md",
+    "Literatura/ml-preditivo/forest-framework_isolation-forest-algorithm-usually-set_2026.md",
+    "Literatura/ml-preditivo/for-facilities_national-aeronautics-space-administration_2008.md",
+    "Literatura/ml-preditivo/awaysheh-fm_citation-ibrahim-alsheikh_2022.md",
+    "Literatura/ml-preditivo/digital-twin_therefore-distinct-between-digital-model_2018.md",
+    "Literatura/ml-preditivo/branco-p_filipe-monteiro-eduardo-sarquis-paulo_2024.md",
+    "Literatura/ml-preditivo/bhandari-s_case-study-sustainability-2024_2024.md",
+    "Literatura/ml-preditivo/autor-desconhecido_processes-these-disturbances-impede-ability_2025.md",
+    "Literatura/ml-preditivo/ajay-narayanan_reliance-industries-limited_2023.md",
+    "Literatura/ml-preditivo/academic-editor_energy-research-laboratory-reneral-british_2025.md",
+    "Literatura/manutencao/carpinetti-l_fmea-ingles-failure-mode-effect_2016.md",
+    "Literatura/manutencao/muhammad-fakhrul_maintenance-method-maintain-reliability-fan_2020.md",
+    "Literatura/manutencao/for-facilities_national-aeronautics-space-administration_2008.md",
+    "Literatura/manutencao/criticality-analysis_sakurada-eduardo-yuji-tecnicas-analise_1998.md",
+    "Literatura/manutencao/autor-desconhecido_nos-capitulos-apresentamos-alguns-metodos_0000.md",
+    "Literatura/inversores-pv/reliability_according-national-renewable-energy-laboratory_2011.md",
+    "Literatura/inversores-pv/reliability-probability_generally-used-systems-therefore-can_1996.md",
+    "Literatura/inversores-pv/design_design-estimation-reliability-off-grid_2017.md",
+    "Literatura/inversores-pv/data-set_marius-stender-oliver-wallscheid-joachim_0000.md",
+    "Literatura/sinais-ca",
+    "Literatura/ml-preditivo",
+    "Literatura/manutencao",
+    "Literatura/inversores-pv",
+    "Literatura/confiabilidade",
+    "Literatura"
+  ]
+}
