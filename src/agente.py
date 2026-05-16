@@ -1,0 +1,240 @@
+"""
+agente.py — Al IAdo PV
+Conecta o Gemini (LLM) ao ChromaDB (memória) usando RAG.
+
+RAG = Retrieval Augmented Generation
+      = Geração Aumentada por Recuperação
+
+Fluxo:
+  Pergunta → Vetor → ChromaDB → Contexto → Gemini → Resposta
+
+Autor: Rodolfo Torres (UTFPR)
+"""
+
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+from sentence_transformers import SentenceTransformer
+import chromadb
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage
+
+
+# ============================================================
+# CONFIGURAÇÕES
+# ============================================================
+
+PASTA_CHROMADB    = Path(__file__).parent.parent / "base_conhecimento"
+CAMINHO_CLAUDE_MD = Path(__file__).parent.parent / "CLAUDE.md"
+NOME_COLECAO      = "literatura_pv"
+MODELO_EMBEDDINGS = "all-MiniLM-L6-v2"
+MODELO_GEMINI = "gemini-2.5-flash"
+N_RESULTADOS      = 5  # chunks recuperados por busca
+
+
+# ============================================================
+# FUNÇÕES
+# ============================================================
+
+def carregar_perfil() -> str:
+    """
+    Lê o CLAUDE.md e retorna o conteúdo como string.
+    Este é o 'sistema de instruções' do agente — quem ele é
+    e como deve se comportar.
+    """
+    if CAMINHO_CLAUDE_MD.exists():
+        perfil = CAMINHO_CLAUDE_MD.read_text(encoding="utf-8")
+        print("   ✅ Perfil CLAUDE.md carregado!")
+        return perfil
+    else:
+        print("   ⚠️  CLAUDE.md não encontrado — usando perfil padrão")
+        return (
+            "Você é o Al IAdo PV, assistente especialista em "
+            "inversores fotovoltaicos e manutenção preditiva com ML."
+        )
+
+
+def inicializar_agente():
+    """
+    Inicializa todos os componentes do agente:
+      1. Variáveis de ambiente (.env)
+      2. Perfil do agente (CLAUDE.md)
+      3. Modelo de embeddings (sentence-transformers)
+      4. Banco vetorial (ChromaDB)
+      5. LLM (Gemini)
+
+    Retorna: (perfil, modelo_embeddings, colecao, llm)
+    """
+
+    print("=" * 60)
+    print("  AL IADO PV — INICIALIZANDO AGENTE")
+    print("=" * 60)
+
+    # ----------------------------------------------------------
+    # 1. Carrega variáveis do .env
+    # ----------------------------------------------------------
+    load_dotenv()
+    api_key = os.getenv("GOOGLE_API_KEY")
+
+    if not api_key:
+        raise ValueError(
+            "\n❌ GOOGLE_API_KEY não encontrada!\n"
+            "   Verifique se o arquivo .env existe e contém:\n"
+            "   GOOGLE_API_KEY=sua_chave_aqui"
+        )
+    print("\n✅ Chave de API carregada do .env")
+
+    # ----------------------------------------------------------
+    # 2. Carrega perfil do CLAUDE.md
+    # ----------------------------------------------------------
+    print("\n📋 Carregando perfil do agente...")
+    perfil = carregar_perfil()
+
+    # ----------------------------------------------------------
+    # 3. Carrega modelo de embeddings
+    # ----------------------------------------------------------
+    print("\n🔄 Carregando modelo de embeddings...")
+    print("   (Segunda vez em diante: carrega do cache — rápido)")
+    modelo_embeddings = SentenceTransformer(MODELO_EMBEDDINGS)
+    print("   ✅ Modelo de embeddings pronto!")
+
+    # ----------------------------------------------------------
+    # 4. Conecta ao ChromaDB
+    # ----------------------------------------------------------
+    print("\n🗄️  Conectando ao ChromaDB...")
+    if not PASTA_CHROMADB.exists():
+        raise FileNotFoundError(
+            "\n❌ Base de conhecimento não encontrada!\n"
+            "   Execute primeiro: python src/indexador.py"
+        )
+
+    client  = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
+    colecao = client.get_or_create_collection(name=NOME_COLECAO)
+
+    total = colecao.count()
+    print(f"   ✅ ChromaDB conectado! ({total} chunks indexados)")
+
+    # ----------------------------------------------------------
+    # 5. Inicializa o Gemini
+    # ----------------------------------------------------------
+    print("\n🤖 Inicializando Gemini...")
+    llm = ChatGoogleGenerativeAI(
+        model=MODELO_GEMINI,
+        google_api_key=api_key,
+        temperature=0.3,  # 0 = determinístico, 1 = criativo
+    )
+    print("   ✅ Gemini pronto!")
+
+    print("\n" + "=" * 60)
+    print("  AL IADO PV ESTÁ ONLINE! 🤖")
+    print("=" * 60 + "\n")
+
+    return perfil, modelo_embeddings, colecao, llm
+
+
+def buscar_contexto(
+    pergunta: str,
+    modelo_embeddings,
+    colecao
+) -> tuple:
+    """
+    Etapa de RETRIEVAL do RAG:
+    1. Transforma a pergunta em vetor numérico
+    2. Busca os chunks mais similares no ChromaDB
+    3. Retorna o contexto formatado e lista de fontes
+
+    Por que busca vetorial?
+    Porque ela encontra trechos semanticamente similares,
+    não apenas por palavras-chave exatas. Exemplo:
+    "degradação do capacitor" encontra trechos que falam
+    em "falha do componente de filtragem CA" mesmo sem
+    usar as mesmas palavras.
+    """
+
+    # Transforma pergunta em vetor
+    vetor_pergunta = modelo_embeddings.encode([pergunta]).tolist()
+
+    # Busca os N chunks mais similares
+    resultados = colecao.query(
+        query_embeddings=vetor_pergunta,
+        n_results=N_RESULTADOS
+    )
+
+    # Formata contexto e coleta fontes
+    contexto = ""
+    fontes   = []
+
+    documentos = resultados.get("documents", [[]])[0]
+    metadados  = resultados.get("metadatas",  [[]])[0]
+
+    for i, (doc, meta) in enumerate(zip(documentos, metadados), 1):
+        arquivo = meta.get("arquivo", "fonte desconhecida")
+        pasta   = meta.get("pasta",   "")
+        contexto += (
+            f"\n--- Trecho {i} ---\n"
+            f"Fonte: {arquivo} (tema: {pasta})\n"
+            f"{doc}\n"
+        )
+        if arquivo not in fontes:
+            fontes.append(arquivo)
+
+    return contexto, fontes
+
+
+def perguntar(
+    pergunta: str,
+    perfil: str,
+    modelo_embeddings,
+    colecao,
+    llm
+) -> str:
+    """
+    Pipeline RAG completo — etapa de GENERATION:
+    1. Busca contexto relevante no ChromaDB (Retrieval)
+    2. Monta prompt: perfil + contexto + pergunta
+    3. Envia ao Gemini (Generation)
+    4. Retorna resposta com fontes citadas
+    """
+
+    # Busca contexto
+    contexto, fontes = buscar_contexto(pergunta, modelo_embeddings, colecao)
+
+    # Monta o prompt completo
+    prompt = f"""
+{perfil}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTEXTO RECUPERADO DA LITERATURA CIENTÍFICA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{contexto}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PERGUNTA DO PESQUISADOR:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{pergunta}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INSTRUÇÕES:
+- Responda em português brasileiro
+- Use o contexto acima como base principal da resposta
+- Cite os artigos pelos nomes dos arquivos
+- Se o contexto for insuficiente, diga claramente e
+  complemente com seu conhecimento geral, sinalizando
+- Seja técnico, preciso e didático
+- Profundidade compatível com pós-graduação
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+
+    # Envia ao Gemini
+    mensagens = [HumanMessage(content=prompt)]
+    resposta  = llm.invoke(mensagens)
+
+    # Formata resposta com fontes
+    texto = resposta.content
+
+    if fontes:
+        texto += "\n\n---\n📚 **Fontes consultadas nesta resposta:**\n"
+        for fonte in fontes:
+            texto += f"  → {fonte}\n"
+
+    return texto
