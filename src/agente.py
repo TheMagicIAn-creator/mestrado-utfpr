@@ -27,9 +27,9 @@ from langchain_core.messages import HumanMessage
 PASTA_CHROMADB    = Path(__file__).parent.parent / "base_conhecimento"
 CAMINHO_CLAUDE_MD = Path(__file__).parent.parent / "CLAUDE.md"
 NOME_COLECAO      = "literatura_pv"
-MODELO_EMBEDDINGS = "all-MiniLM-L6-v2"
+MODELO_EMBEDDINGS = "paraphrase-multilingual-MiniLM-L12-v2"
 MODELO_GEMINI = "gemini-2.5-flash"
-N_RESULTADOS      = 5  # chunks recuperados por busca
+N_RESULTADOS      = 15  # chunks recuperados por busca
 
 
 # ============================================================
@@ -180,26 +180,76 @@ def buscar_contexto(
 
     return contexto, fontes
 
+def listar_documentos(colecao) -> str:
+    """
+    Lista todos os documentos únicos indexados no ChromaDB.
+    Usa os metadados — não depende de busca vetorial.
+    """
+    resultados = colecao.get(include=["metadatas"])
+    metadados  = resultados.get("metadatas", [])
+
+    arquivos_vistos = set()
+    documentos      = []
+
+    for meta in metadados:
+        arquivo = meta.get("arquivo", "desconhecido")
+        pasta   = meta.get("pasta",   "desconhecida")
+        if arquivo not in arquivos_vistos:
+            arquivos_vistos.add(arquivo)
+            documentos.append((pasta, arquivo))
+
+    # Ordena por pasta temática
+    documentos.sort(key=lambda x: x[0])
+
+    # Formata a saída
+    texto  = f"📚 Total de documentos indexados: {len(documentos)}\n\n"
+    pasta_atual = ""
+
+    for pasta, arquivo in documentos:
+        if pasta != pasta_atual:
+            texto      += f"\n📁 {pasta}/\n"
+            pasta_atual = pasta
+        texto += f"   → {arquivo}\n"
+
+    return texto
 
 def perguntar(
     pergunta: str,
     perfil: str,
     modelo_embeddings,
     colecao,
-    llm
+    llm,
+    historico: list = None
 ) -> str:
     """
-    Pipeline RAG completo — etapa de GENERATION:
-    1. Busca contexto relevante no ChromaDB (Retrieval)
-    2. Monta prompt: perfil + contexto + pergunta
-    3. Envia ao Gemini (Generation)
-    4. Retorna resposta com fontes citadas
+    Pipeline RAG completo com memória de conversa.
+
+    O histórico é uma lista de dicionários:
+    [
+        {"role": "user",      "content": "pergunta anterior"},
+        {"role": "assistant", "content": "resposta anterior"},
+        ...
+    ]
     """
+
+    if historico is None:
+        historico = []
 
     # Busca contexto
     contexto, fontes = buscar_contexto(pergunta, modelo_embeddings, colecao)
 
-    # Monta o prompt completo
+    # Formata histórico da conversa
+    historico_formatado = ""
+    if historico:
+        historico_formatado = "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        historico_formatado += "HISTÓRICO DA CONVERSA ATUAL:\n"
+        historico_formatado += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        for turno in historico[-6:]:  # últimos 3 pares de perguntas/respostas
+            role    = "Rodolfo" if turno["role"] == "user" else "Al IAdo PV"
+            content = turno["content"][:500]  # limita para não estourar quota
+            historico_formatado += f"\n{role}:\n{content}\n"
+
+    # Monta prompt com histórico
     prompt = f"""
 {perfil}
 
@@ -207,19 +257,20 @@ def perguntar(
 CONTEXTO RECUPERADO DA LITERATURA CIENTÍFICA:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {contexto}
-
+{historico_formatado}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PERGUNTA DO PESQUISADOR:
+PERGUNTA ATUAL DO PESQUISADOR:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {pergunta}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 INSTRUÇÕES:
 - Responda em português brasileiro
-- Use o contexto acima como base principal da resposta
+- Use o contexto da literatura como base principal
+- Considere o histórico da conversa para dar continuidade
 - Cite os artigos pelos nomes dos arquivos
 - Se o contexto for insuficiente, diga claramente e
-  complemente com seu conhecimento geral, sinalizando
+  complemente com conhecimento geral, sinalizando
 - Seja técnico, preciso e didático
 - Profundidade compatível com pós-graduação
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -228,9 +279,7 @@ INSTRUÇÕES:
     # Envia ao Gemini
     mensagens = [HumanMessage(content=prompt)]
     resposta  = llm.invoke(mensagens)
-
-    # Formata resposta com fontes
-    texto = resposta.content
+    texto     = resposta.content
 
     if fontes:
         texto += "\n\n---\n📚 **Fontes consultadas nesta resposta:**\n"

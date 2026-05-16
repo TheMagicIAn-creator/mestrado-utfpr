@@ -19,8 +19,7 @@ from pathlib import Path
 # Garante que Python encontra a pasta src/
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.agente import inicializar_agente, perguntar
-
+from src.agente import inicializar_agente, perguntar, listar_documentos
 
 # ============================================================
 # FUNÇÃO PRINCIPAL
@@ -54,22 +53,21 @@ def main():
     print("-" * 60)
 
     # ----------------------------------------------------------
-    # Loop de conversa
+    # Loop de conversa com memória
     # ----------------------------------------------------------
+    historico = []  # guarda toda a conversa da sessão
+
     while True:
 
-        # Recebe pergunta do usuário
         try:
             pergunta = input("\n🔬 Você: ").strip()
         except KeyboardInterrupt:
             print("\n\nEncerrando... Até logo, Rodolfo! 👋")
             break
 
-        # Ignora perguntas vazias
         if not pergunta:
             continue
 
-        # Comandos especiais
         if pergunta.lower() == "sair":
             print("\nAté logo, Rodolfo! Bons estudos! 👋")
             break
@@ -77,6 +75,8 @@ def main():
         if pergunta.lower() == "limpar":
             import os
             os.system("cls" if os.name == "nt" else "clear")
+            historico = []  # limpa memória também
+            print("🧹 Tela e memória limpas!")
             continue
 
         if pergunta.lower() == "fontes":
@@ -84,23 +84,43 @@ def main():
             print(f"\n📚 Total de chunks indexados: {total}")
             continue
 
+        if pergunta.lower() in ["listar", "listar artigos", "listar documentos"]:
+            print("\n" + listar_documentos(colecao))
+            continue
+
+        if pergunta.lower() == "memoria":
+            if not historico:
+                print("\n🧠 Nenhuma conversa registrada ainda.")
+            else:
+                print(f"\n🧠 Turnos na memória: {len(historico)}")
+                for i, turno in enumerate(historico, 1):
+                    role = "Você" if turno["role"] == "user" else "Al IAdo PV"
+                    print(f"  {i}. {role}: {turno['content'][:80]}...")
+            continue
+
         # Processa a pergunta
         print("\n🤖 Al IAdo PV: Buscando na literatura...\n")
 
         try:
             resposta = perguntar(
-                pergunta        = pergunta,
-                perfil          = perfil,
-                modelo_embeddings = modelo_embeddings,
-                colecao         = colecao,
-                llm             = llm
+                pergunta=pergunta,
+                perfil=perfil,
+                modelo_embeddings=modelo_embeddings,
+                colecao=colecao,
+                llm=llm,
+                historico=historico
             )
+
             print(resposta)
             print("\n" + "-" * 60)
 
+            # Salva na memória da sessão
+            historico.append({"role": "user", "content": pergunta})
+            historico.append({"role": "assistant", "content": resposta})
+
         except Exception as e:
             print(f"❌ Erro ao processar a pergunta: {e}")
-            print("   Tente reformular a pergunta ou verifique sua conexão.")
+            print("   Tente reformular ou verifique sua conexão.")
 
 
 # ============================================================

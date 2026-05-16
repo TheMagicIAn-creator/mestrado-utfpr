@@ -27,7 +27,7 @@ NOME_COLECAO = "literatura_pv"
 
 # Modelo de embeddings (transforma texto em vetores numéricos)
 # all-MiniLM-L6-v2 é leve, rápido e funciona bem em português técnico
-MODELO_EMBEDDINGS = "all-MiniLM-L6-v2"
+MODELO_EMBEDDINGS = "paraphrase-multilingual-MiniLM-L12-v2"
 
 # Tamanho dos chunks (pedaços de texto que serão indexados)
 TAMANHO_CHUNK = 500   # caracteres por chunk
@@ -83,7 +83,7 @@ def indexar_literatura():
     """
 
     print("=" * 60)
-    print("  AL IADO PV — INDEXADOR DE LITERATURA")
+    print("  AL IADO — INDEXADOR DE LITERATURA")
     print("=" * 60)
 
     # ----------------------------------------------------------
@@ -195,7 +195,7 @@ def indexar_literatura():
     print(f"  Coleção ChromaDB           : {NOME_COLECAO}")
     print(f"  Local do banco             : {PASTA_CHROMADB}")
     print("=" * 60)
-    print("\n✅ Al IAdo PV está pronto para buscar na literatura!")
+    print("\n✅ Al IAdo está pronto para buscar na literatura!")
 
 
 # ============================================================
