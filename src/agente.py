@@ -58,76 +58,58 @@ def carregar_perfil() -> str:
         )
 
 
-def inicializar_agente():
+def inicializar_agente(llm_externo=None):
     """
-    Inicializa todos os componentes do agente:
-      1. Variáveis de ambiente (.env)
-      2. Perfil do agente (CLAUDE.md)
-      3. Modelo de embeddings (sentence-transformers)
-      4. Banco vetorial (ChromaDB)
-      5. LLM (Gemini)
-
-    Retorna: (perfil, modelo_embeddings, colecao, llm)
+    Inicializa todos os componentes do agente.
+    Se llm_externo for fornecido, usa ele.
+    Caso contrário, usa Gemini por padrão.
     """
 
     print("=" * 60)
     print("  AL IADO PV — INICIALIZANDO AGENTE")
     print("=" * 60)
 
-    # ----------------------------------------------------------
-    # 1. Carrega variáveis do .env
-    # ----------------------------------------------------------
+    # Carrega variáveis do .env
     load_dotenv()
-    api_key = os.getenv("GOOGLE_API_KEY")
+    print("\n✅ Variáveis de ambiente carregadas")
 
-    if not api_key:
-        raise ValueError(
-            "\n❌ GOOGLE_API_KEY não encontrada!\n"
-            "   Verifique se o arquivo .env existe e contém:\n"
-            "   GOOGLE_API_KEY=sua_chave_aqui"
-        )
-    print("\n✅ Chave de API carregada do .env")
-
-    # ----------------------------------------------------------
-    # 2. Carrega perfil do CLAUDE.md
-    # ----------------------------------------------------------
+    # Perfil
     print("\n📋 Carregando perfil do agente...")
     perfil = carregar_perfil()
 
-    # ----------------------------------------------------------
-    # 3. Carrega modelo de embeddings
-    # ----------------------------------------------------------
+    # Embeddings
     print("\n🔄 Carregando modelo de embeddings...")
-    print("   (Segunda vez em diante: carrega do cache — rápido)")
     modelo_embeddings = SentenceTransformer(MODELO_EMBEDDINGS)
     print("   ✅ Modelo de embeddings pronto!")
 
-    # ----------------------------------------------------------
-    # 4. Conecta ao ChromaDB
-    # ----------------------------------------------------------
+    # ChromaDB
     print("\n🗄️  Conectando ao ChromaDB...")
     if not PASTA_CHROMADB.exists():
         raise FileNotFoundError(
             "\n❌ Base de conhecimento não encontrada!\n"
             "   Execute primeiro: python src/indexador.py"
         )
-
     client  = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
     colecao = client.get_or_create_collection(name=NOME_COLECAO)
-
-    total = colecao.count()
+    total   = colecao.count()
     print(f"   ✅ ChromaDB conectado! ({total} chunks indexados)")
 
-    # ----------------------------------------------------------
-    # 5. Inicializa o Gemini
-    # ----------------------------------------------------------
-    print("\n🤖 Inicializando Gemini...")
-    llm = ChatGoogleGenerativeAI(
-        model=MODELO_GEMINI,
-        google_api_key=api_key,
-        temperature=0.3,  # 0 = determinístico, 1 = criativo
-    )
-    print("   ✅ Gemini pronto!")
+    # LLM — usa externo se fornecido, senão inicializa Gemini
+    if llm_externo is not None:
+        llm = llm_externo
+        print("\n🤖 LLM externo recebido!")
+    else:
+        print("\n🤖 Inicializando Gemini (padrão)...")
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            raise ValueError("GOOGLE_API_KEY não encontrada no .env")
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        llm = ChatGoogleGenerativeAI(
+            model          = MODELO_GEMINI,
+            google_api_key = api_key,
+            temperature    = 0.3
+        )
+        print("   ✅ Gemini pronto!")
 
     print("\n" + "=" * 60)
     print("  AL IADO PV ESTÁ ONLINE! 🤖")
@@ -222,37 +204,31 @@ def perguntar(
     modelo_embeddings,
     colecao,
     llm,
-    historico: list = None
+    historico: list = None,
+    streaming: bool = True
 ) -> str:
     """
-    Pipeline RAG completo com memória de conversa.
-
-    O histórico é uma lista de dicionários:
-    [
-        {"role": "user",      "content": "pergunta anterior"},
-        {"role": "assistant", "content": "resposta anterior"},
-        ...
-    ]
+    Pipeline RAG completo com memória e streaming.
     """
 
     if historico is None:
         historico = []
 
     # Busca contexto
-    contexto, fontes = buscar_contexto(pergunta, modelo_embeddings, colecao)
+    contexto, citacoes = buscar_contexto(pergunta, modelo_embeddings, colecao)
 
-    # Formata histórico da conversa
+    # Formata histórico
     historico_formatado = ""
     if historico:
-        historico_formatado = "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        historico_formatado  = "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         historico_formatado += "HISTÓRICO DA CONVERSA ATUAL:\n"
         historico_formatado += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        for turno in historico[-6:]:  # últimos 3 pares de perguntas/respostas
+        for turno in historico[-6:]:
             role    = "Rodolfo" if turno["role"] == "user" else "Al IAdo PV"
-            content = turno["content"][:500]  # limita para não estourar quota
+            content = turno["content"][:500]
             historico_formatado += f"\n{role}:\n{content}\n"
 
-    # Monta prompt com histórico
+    # Monta prompt
     prompt = f"""
 {perfil}
 
@@ -279,14 +255,57 @@ INSTRUÇÕES:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
-    # Envia ao Gemini
     mensagens = [HumanMessage(content=prompt)]
-    resposta  = llm.invoke(mensagens)
-    texto     = resposta.content
+    texto_completo = ""
 
-    if fontes:
-        texto += "\n\n---\n📚 *Fontes consultadas nesta resposta:*\n"
-        for arquivo, citacao in fontes.items():
-            texto += f"  → {citacao}\n"
+    import time
 
-    return texto
+    if streaming:
+        # ── MODO STREAMING ──────────────────────────────────────
+        max_tentativas = 3
+        for tentativa in range(1, max_tentativas + 1):
+            try:
+                for chunk in llm.stream(mensagens):
+                    pedaco = chunk.content
+                    print(pedaco, end="", flush=True)
+                    texto_completo += pedaco
+                print()  # quebra de linha ao terminar
+                break
+            except Exception as e:
+                erro = str(e)
+                if "429" in erro and tentativa < max_tentativas:
+                    import re
+                    match  = re.search(r"retry in (\d+)", erro)
+                    espera = int(match.group(1)) + 5 if match else 30
+                    print(f"\n  ⏳ Limite atingido. Aguardando {espera}s... ({tentativa}/{max_tentativas-1})")
+                    time.sleep(espera)
+                else:
+                    raise
+    else:
+        # ── MODO NORMAL (sem streaming) ──────────────────────────
+        max_tentativas = 3
+        for tentativa in range(1, max_tentativas + 1):
+            try:
+                resposta       = llm.invoke(mensagens)
+                texto_completo = resposta.content
+                break
+            except Exception as e:
+                erro = str(e)
+                if "429" in erro and tentativa < max_tentativas:
+                    import re
+                    match  = re.search(r"retry in (\d+)", erro)
+                    espera = int(match.group(1)) + 5 if match else 30
+                    print(f"\n  ⏳ Limite atingido. Aguardando {espera}s... ({tentativa}/{max_tentativas-1})")
+                    time.sleep(espera)
+                else:
+                    raise
+
+    # Adiciona fontes ao final
+    if citacoes:
+        rodape  = "\n\n---\n📚 **Fontes consultadas nesta resposta:**\n"
+        for arquivo, citacao in citacoes.items():
+            rodape += f"  → {citacao}\n"
+        print(rodape)
+        texto_completo += rodape
+
+    return texto_completo
