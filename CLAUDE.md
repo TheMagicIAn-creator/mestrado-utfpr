@@ -83,16 +83,9 @@ mestrado-utfpr/
 
 ## Status das Fases do Projeto
 FASE 1 — FUNDAÇÃO             : ✅ CONCLUÍDA
-FASE 2 — AGENTE BÁSICO        : 🔄 EM ANDAMENTO
-  ✅ Chave Gemini criada
-  ✅ .env configurado
-  ⬜ Bibliotecas instaladas
-  ⬜ src/indexador.py criado
-  ⬜ src/agente.py criado
-  ⬜ main.py criado
-  ⬜ Agente testado no terminal
-FASE 3 — INTERFACE STREAMLIT  : ⬜ A INICIAR
-FASE 4 — AUTOMAÇÃO N8N        : ⬜ A INICIAR
+FASE 2 — AGENTE BÁSICO        : ✅ CONCLUÍDA
+FASE 3 — INTERFACE STREAMLIT  : ✅ CONCLUÍDA
+FASE 4 — AUTOMAÇÃO N8N        : 🔄 EM ANDAMENTO
 FASE 5 — PIPELINE DE ML       : ⬜ A INICIAR
 
 ## Fluxo RAG (Como Buscar Conhecimento)
