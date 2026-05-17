@@ -59,6 +59,19 @@ def ler_pdf(caminho_pdf: Path) -> str:
         print(f"  ⚠️  Erro ao ler {caminho_pdf.name}: {e}")
         return ""
 
+def upsert_em_lotes(colecao, ids, embeddings, documents, metadados, tamanho_lote=500):
+    """
+    Divide o upsert em lotes para evitar o limite do ChromaDB.
+    """
+    total = len(ids)
+    for inicio in range(0, total, tamanho_lote):
+        fim = min(inicio + tamanho_lote, total)
+        colecao.upsert(
+            ids        = ids[inicio:fim],
+            embeddings = embeddings[inicio:fim],
+            documents  = documents[inicio:fim],
+            metadatas  = metadados[inicio:fim]
+        )
 
 def dividir_em_chunks(texto: str, tamanho: int, sobreposicao: int) -> list:
     """
@@ -145,12 +158,7 @@ def indexar_sessao(caminho_md: Path, modelo_embeddings, pasta_chromadb: Path) ->
     ]
 
     # Indexa (upsert evita duplicatas)
-    colecao_sessoes.upsert(
-        ids        = ids,
-        embeddings = embeddings,
-        documents  = chunks,
-        metadatas  = metadados
-    )
+    upsert_em_lotes(colecao, ids, embeddings, chunks, metadados)
 
     return len(chunks)
 
@@ -255,12 +263,7 @@ def indexar_literatura():
 
         # Adiciona ao ChromaDB
         # upsert = insert + update: evita duplicatas se rodar de novo
-        colecao.upsert(
-            ids       = ids,
-            embeddings= embeddings,
-            documents = chunks,
-            metadatas = metadados
-        )
+        upsert_em_lotes(colecao, ids, embeddings, chunks, metadados)
 
         total_chunks   += len(chunks)
         pdfs_indexados += 1
