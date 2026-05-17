@@ -142,11 +142,11 @@ def renderizar_sidebar(perfil, modelo, colecao, colecao_sessoes):
             from src.agente import listar_documentos
             st.session_state.mostrar_artigos = True
 
-        if st.button("💾 Salvar sessão", use_container_width=True):
-            salvar_sessao_streamlit(
-                st.session_state.get("mensagens", []),
-                modelo
-            )
+        #if st.button("💾 Salvar sessão", use_container_width=True):
+        #    salvar_sessao_streamlit(
+        #        st.session_state.get("mensagens", []),
+        #        modelo
+        #    )
 
         if st.button("🗑️ Limpar conversa", use_container_width=True):
             st.session_state.mensagens = []
@@ -163,50 +163,53 @@ def renderizar_sidebar(perfil, modelo, colecao, colecao_sessoes):
 # SALVAR SESSÃO
 # ============================================================
 
-def salvar_sessao_streamlit(mensagens: list, modelo_embeddings):
-    """Salva a sessão atual em .md e indexa no ChromaDB."""
-
-    if not mensagens:
-        st.warning("Nenhuma conversa para salvar.")
-        return
+def salvar_sessao_streamlit(pergunta: str, resposta: str, n: int, modelo_embeddings):
+    """
+    Cria o arquivo de sessão na primeira interação
+    e ADICIONA ao mesmo arquivo nas seguintes.
+    """
+    from datetime import datetime
+    from src.agente import PASTA_CHROMADB
 
     pasta_sessoes = Path(__file__).parent / "notas" / "sessoes"
     pasta_sessoes.mkdir(parents=True, exist_ok=True)
 
-    agora        = datetime.now()
-    nome_arquivo = agora.strftime("%Y-%m-%d_%H-%M") + "_sessao_web.md"
-    caminho      = pasta_sessoes / nome_arquivo
+    # ── Primeira interação — cria o arquivo ─────────────────
+    if st.session_state.caminho_sessao is None:
+        agora        = datetime.now()
+        nome_arquivo = agora.strftime("%Y-%m-%d_%H-%M") + "_sessao_web.md"
+        caminho      = pasta_sessoes / nome_arquivo
+        data_fmt     = agora.strftime("%d/%m/%Y às %H:%M")
 
-    data_formatada = agora.strftime("%d/%m/%Y às %H:%M")
-    conteudo  = f"---\n"
-    conteudo += f"data: {agora.strftime('%Y-%m-%d')}\n"
-    conteudo += f"hora: {agora.strftime('%H:%M')}\n"
-    conteudo += f"tipo: sessao-web\n"
-    conteudo += f"tags: [al-iado-pv, sessao, streamlit, mestrado]\n"
-    conteudo += f"---\n\n"
-    conteudo += f"# Sessão Web Al IAdo PV — {data_formatada}\n\n"
+        cabecalho  = f"---\n"
+        cabecalho += f"data: {agora.strftime('%Y-%m-%d')}\n"
+        cabecalho += f"hora: {agora.strftime('%H:%M')}\n"
+        cabecalho += f"tipo: sessao-web\n"
+        cabecalho += f"tags: [al-iado-pv, sessao, streamlit, mestrado]\n"
+        cabecalho += f"---\n\n"
+        cabecalho += f"# Sessão Web Al IAdo PV — {data_fmt}\n\n"
 
-    n_pergunta = 0
-    for msg in mensagens:
-        if msg["role"] == "user":
-            n_pergunta += 1
-            conteudo += f"---\n\n## Pergunta {n_pergunta}\n\n"
-            conteudo += f"**🔬 Você:** {msg['content']}\n\n"
-        else:
-            conteudo += f"**🤖 Al IAdo PV:**\n\n{msg['content']}\n\n"
+        caminho.write_text(cabecalho, encoding="utf-8")
+        st.session_state.caminho_sessao = caminho
 
-    conteudo += f"\n---\n*Sessão web gerada pelo Al IAdo PV*\n"
-    caminho.write_text(conteudo, encoding="utf-8")
+    # ── Todas as interações — adiciona ao mesmo arquivo ─────
+    caminho = st.session_state.caminho_sessao
 
-    # Indexa no ChromaDB
-    try:
-        from src.indexador import indexar_sessao
-        from src.agente import PASTA_CHROMADB
-        n = indexar_sessao(caminho, modelo_embeddings, PASTA_CHROMADB)
-        st.success(f"✅ Sessão salva e indexada! ({n} chunks)\n📁 {nome_arquivo}")
-    except Exception as e:
-        st.success(f"✅ Sessão salva em: {nome_arquivo}")
-        st.warning(f"⚠️ Erro ao indexar: {e}")
+    bloco  = f"---\n\n"
+    bloco += f"## Interação {n}\n\n"
+    bloco += f"**🔬 Você:** {pergunta}\n\n"
+    bloco += f"**🤖 Al IAdo PV:**\n\n{resposta}\n\n"
+
+    with open(caminho, "a", encoding="utf-8") as f:
+        f.write(bloco)
+
+    # ── Indexa no ChromaDB a cada interação ───────────────
+    if n >= 1:
+        try:
+            from src.indexador import indexar_sessao
+            indexar_sessao(caminho, modelo_embeddings, PASTA_CHROMADB)
+        except Exception:
+            pass  # silencioso — não interrompe o chat
 
 
 # ============================================================
@@ -224,6 +227,8 @@ def main():
         st.session_state.nome_provedor  = "Nenhum"
     if "mostrar_artigos" not in st.session_state:
         st.session_state.mostrar_artigos = False
+    if "caminho_sessao" not in st.session_state:   # Salva a sessão de forma
+        st.session_state.caminho_sessao = None      # simultânea
 
     # Carrega componentes base
     try:
@@ -312,6 +317,9 @@ def main():
         st.session_state.mensagens.append({"role": "user",      "content": pergunta})
         st.session_state.mensagens.append({"role": "assistant",  "content": resposta_completa})
 
+        # Auto-salvamento após cada interação
+        n_interacoes = len(st.session_state.mensagens) // 2
+        salvar_sessao_streamlit(pergunta, resposta_completa, n_interacoes, modelo)
 
 # ============================================================
 # PONTO DE ENTRADA
