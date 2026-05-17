@@ -81,6 +81,41 @@ def stream_resposta(prompt: str, llm):
 # ============================================================
 # SIDEBAR
 # ============================================================
+def _processar_upload(arquivo_pdf, tema_pasta: str, modelo_embeddings, colecao):
+    """
+    Salva o PDF na pasta correta e indexa no ChromaDB.
+    """
+    from src.indexador import indexar_pdf_unico
+    from src.agente import PASTA_CHROMADB
+
+    # Pasta de destino
+    pasta_destino = Path(__file__).parent / "literatura" / tema_pasta
+    pasta_destino.mkdir(parents=True, exist_ok=True)
+    caminho_pdf   = pasta_destino / arquivo_pdf.name
+
+    # Verifica se já existe
+    ja_existe = caminho_pdf.exists()
+
+    # Salva o arquivo
+    with open(caminho_pdf, "wb") as f:
+        f.write(arquivo_pdf.getbuffer())
+
+    # Indexa
+    with st.spinner(f"📥 Indexando {arquivo_pdf.name}..."):
+        resultado = indexar_pdf_unico(caminho_pdf, modelo_embeddings, PASTA_CHROMADB)
+
+    if resultado["sucesso"]:
+        acao = "Atualizado" if ja_existe else "Adicionado"
+        st.success(
+            f"✅ {acao} com sucesso!\n\n"
+            f"**Arquivo:** {resultado['nome_arquivo']}\n\n"
+            f"**Chunks:** {resultado['n_chunks']}\n\n"
+            f"**Pasta:** literatura/{tema_pasta}/"
+        )
+        # Atualiza contagem na tela
+        st.rerun()
+    else:
+        st.error(f"❌ Erro: {resultado['erro']}")
 
 def renderizar_sidebar(perfil, modelo, colecao, colecao_sessoes):
     """Renderiza o painel lateral com controles e estatísticas."""
@@ -151,6 +186,43 @@ def renderizar_sidebar(perfil, modelo, colecao, colecao_sessoes):
         if st.button("🗑️ Limpar conversa", use_container_width=True):
             st.session_state.mensagens = []
             st.rerun()
+
+        st.divider()
+
+        # ── Upload de PDF ───────────────────────────────────────
+        st.subheader("📄 Adicionar PDF")
+
+        temas = {
+            "ml-preditivo": "ML e Predição de Falhas",
+            "inversores-pv": "Inversores Fotovoltaicos",
+            "manutencao": "Manutenção e RCM",
+            "confiabilidade": "Confiabilidade e FMEA",
+            "sinais-eletricos": "Sinais Elétricos"
+        }
+
+        tema_label = st.selectbox(
+            "Tema do artigo:",
+            options=list(temas.values()),
+            key="tema_upload"
+        )
+        tema_pasta = [k for k, v in temas.items() if v == tema_label][0]
+
+        arquivo_pdf = st.file_uploader(
+            "Selecione o PDF:",
+            type=["pdf"],
+            key="pdf_uploader",
+            help="Use o padrão: autor_titulo_ano.pdf"
+        )
+
+        if arquivo_pdf is not None:
+            if st.button("📥 Indexar PDF", use_container_width=True):
+                _processar_upload(arquivo_pdf, tema_pasta, modelo, colecao)
+
+        st.divider()
+
+        # ── Provedor ativo ──────────────────────────────────────
+        nome_ativo = st.session_state.get("nome_provedor", "Nenhum")
+        st.caption(f"Provedor ativo: **{nome_ativo}**")
 
         st.divider()
 

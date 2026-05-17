@@ -280,6 +280,75 @@ def indexar_literatura():
     print("=" * 60)
     print("\n✅ Al IAdo está pronto para buscar na literatura!")
 
+def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path) -> dict:
+    """
+    Indexa um único PDF no ChromaDB.
+    Usado pelo upload manual da interface Streamlit.
+    Retorna um dicionário com o resultado da operação.
+    """
+
+    NOME_COLECAO = "literatura_pv"
+
+    resultado = {
+        "sucesso"     : False,
+        "nome_arquivo": caminho_pdf.name,
+        "n_chunks"    : 0,
+        "erro"        : None
+    }
+
+    # Lê o PDF
+    texto = ler_pdf(caminho_pdf)
+    if not texto:
+        resultado["erro"] = "Não foi possível extrair texto do PDF."
+        return resultado
+
+    # Divide em chunks
+    chunks = dividir_em_chunks(texto, TAMANHO_CHUNK, SOBREPOSICAO)
+    if not chunks:
+        resultado["erro"] = "Nenhum chunk gerado."
+        return resultado
+
+    # Conecta ao ChromaDB
+    client  = chromadb.PersistentClient(path=str(pasta_chromadb))
+    colecao = client.get_or_create_collection(
+        name     = NOME_COLECAO,
+        metadata = {"hnsw:space": "cosine"}
+    )
+
+    # Gera embeddings
+    embeddings = modelo_embeddings.encode(chunks).tolist()
+
+    # Metadados com citação acadêmica
+    info_arquivo = parsear_nome_arquivo(caminho_pdf.name)
+    nome_pasta   = caminho_pdf.parent.name
+
+    ids = [f"{caminho_pdf.name}__chunk_{j}" for j in range(len(chunks))]
+
+    metadados = [
+        {
+            "arquivo"     : caminho_pdf.name,
+            "pasta"       : nome_pasta,
+            "chunk_index" : j,
+            "total_chunks": len(chunks),
+            "autor"       : info_arquivo["autor"],
+            "titulo"      : info_arquivo["titulo"],
+            "ano"         : info_arquivo["ano"],
+            "citacao"     : info_arquivo["citacao"]
+        }
+        for j in range(len(chunks))
+    ]
+
+    # Indexa
+    colecao.upsert(
+        ids        = ids,
+        embeddings = embeddings,
+        documents  = chunks,
+        metadatas  = metadados
+    )
+
+    resultado["sucesso"]  = True
+    resultado["n_chunks"] = len(chunks)
+    return resultado
 
 # ============================================================
 # PONTO DE ENTRADA
