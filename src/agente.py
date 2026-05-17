@@ -220,6 +220,64 @@ def listar_documentos(colecao) -> str:
 
     return texto
 
+def preparar_prompt(
+    pergunta: str,
+    perfil: str,
+    modelo_embeddings,
+    colecao,
+    historico: list    = None,
+    colecao_sessoes    = None
+) -> tuple:
+    """
+    Prepara o prompt completo sem invocar o LLM.
+    Retorna (prompt_str, citacoes_dict).
+    Usado pelo Streamlit para fazer streaming separado.
+    """
+
+    if historico is None:
+        historico = []
+
+    contexto, citacoes = buscar_contexto(
+        pergunta, modelo_embeddings, colecao, colecao_sessoes
+    )
+
+    historico_formatado = ""
+    if historico:
+        historico_formatado  = "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        historico_formatado += "HISTÓRICO DA CONVERSA ATUAL:\n"
+        historico_formatado += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        for turno in historico[-6:]:
+            role    = "Rodolfo" if turno["role"] == "user" else "Al IAdo PV"
+            content = turno["content"][:500]
+            historico_formatado += f"\n{role}:\n{content}\n"
+
+    prompt = f"""
+{perfil}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTEXTO RECUPERADO DA LITERATURA CIENTÍFICA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{contexto}
+{historico_formatado}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PERGUNTA ATUAL DO PESQUISADOR:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{pergunta}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INSTRUÇÕES:
+- Responda em português brasileiro
+- Use o contexto da literatura como base principal
+- Considere o histórico da conversa para dar continuidade
+- Cite os artigos pelos nomes dos arquivos
+- Se o contexto for insuficiente, diga claramente e
+  complemente com conhecimento geral, sinalizando
+- Seja técnico, preciso e didático
+- Profundidade compatível com pós-graduação
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+    return prompt, citacoes
+
 def perguntar(
     pergunta: str,
     perfil: str,
@@ -239,7 +297,7 @@ def perguntar(
 
     # Busca contexto
     contexto, citacoes = buscar_contexto(pergunta, modelo_embeddings, colecao, colecao_sessoes)
-    
+
     # Formata histórico
     historico_formatado = ""
     if historico:
