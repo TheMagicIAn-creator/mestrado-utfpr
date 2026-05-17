@@ -50,3 +50,5 @@ desktop.ini
 # PYCHARM
 # ========================
 .idea/
+
+novos_pdfs/*.pdf

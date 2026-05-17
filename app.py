@@ -81,42 +81,48 @@ def stream_resposta(prompt: str, llm):
 # ============================================================
 # SIDEBAR
 # ============================================================
-def _processar_upload(arquivo_pdf, tema_pasta: str, modelo_embeddings, colecao):
+def _processar_upload(arquivo_pdf, modelo_embeddings):
     """
-    Salva o PDF na pasta correta e indexa no ChromaDB.
+    Salva temporariamente e processa o PDF com o pipeline completo.
     """
-    from src.indexador import indexar_pdf_unico
+    from src.processador_pdf import processar_pdf_unico
     from src.agente import PASTA_CHROMADB
+    import tempfile
 
-    # Pasta de destino
-    pasta_destino = Path(__file__).parent / "literatura" / tema_pasta
-    pasta_destino.mkdir(parents=True, exist_ok=True)
-    caminho_pdf   = pasta_destino / arquivo_pdf.name
+    # Salva em arquivo temporário
+    with tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".pdf",
+        prefix=arquivo_pdf.name.replace(".pdf", "_")
+    ) as tmp:
+        tmp.write(arquivo_pdf.getbuffer())
+        caminho_tmp = Path(tmp.name)
 
-    # Verifica se já existe
-    ja_existe = caminho_pdf.exists()
+    with st.spinner("⚙️ Processando PDF..."):
+        resultado = processar_pdf_unico(
+            caminho_pdf      = caminho_tmp,
+            modelo_embeddings= modelo_embeddings,
+            pasta_chromadb   = PASTA_CHROMADB,
+            gerar_obsidian   = True
+        )
 
-    # Salva o arquivo
-    with open(caminho_pdf, "wb") as f:
-        f.write(arquivo_pdf.getbuffer())
-
-    # Indexa
-    with st.spinner(f"📥 Indexando {arquivo_pdf.name}..."):
-        resultado = indexar_pdf_unico(caminho_pdf, modelo_embeddings, PASTA_CHROMADB)
+    # Remove arquivo temporário
+    caminho_tmp.unlink(missing_ok=True)
 
     if resultado["sucesso"]:
-        acao = "Atualizado" if ja_existe else "Adicionado"
         st.success(
-            f"✅ {acao} com sucesso!\n\n"
-            f"**Arquivo:** {resultado['nome_arquivo']}\n\n"
+            f"✅ **Processado com sucesso!**\n\n"
+            f"**Autor:** {resultado['autor']}\n\n"
+            f"**Título:** {resultado['titulo'][:60]}\n\n"
+            f"**Ano:** {resultado['ano']}\n\n"
+            f"**Tema:** {resultado['tema']}\n\n"
+            f"**Arquivo:** `{resultado['arquivo_final']}`\n\n"
             f"**Chunks:** {resultado['n_chunks']}\n\n"
-            f"**Pasta:** literatura/{tema_pasta}/"
+            f"**Nota Obsidian:** ✅ gerada"
         )
-        # Atualiza contagem na tela
         st.rerun()
     else:
         st.error(f"❌ Erro: {resultado['erro']}")
-
 def renderizar_sidebar(perfil, modelo, colecao, colecao_sessoes):
     """Renderiza o painel lateral com controles e estatísticas."""
 
@@ -191,34 +197,18 @@ def renderizar_sidebar(perfil, modelo, colecao, colecao_sessoes):
 
         # ── Upload de PDF ───────────────────────────────────────
         st.subheader("📄 Adicionar PDF")
-
-        temas = {
-            "ml-preditivo": "ML e Predição de Falhas",
-            "inversores-pv": "Inversores Fotovoltaicos",
-            "manutencao": "Manutenção e RCM",
-            "confiabilidade": "Confiabilidade e FMEA",
-            "sinais-eletricos": "Sinais Elétricos"
-        }
-
-        tema_label = st.selectbox(
-            "Tema do artigo:",
-            options=list(temas.values()),
-            key="tema_upload"
-        )
-        tema_pasta = [k for k, v in temas.items() if v == tema_label][0]
+        st.caption("Tema detectado automaticamente")
 
         arquivo_pdf = st.file_uploader(
             "Selecione o PDF:",
             type=["pdf"],
             key="pdf_uploader",
-            help="Use o padrão: autor_titulo_ano.pdf"
+            help="O sistema detecta autor, título, ano e tema automaticamente."
         )
 
         if arquivo_pdf is not None:
-            if st.button("📥 Indexar PDF", use_container_width=True):
-                _processar_upload(arquivo_pdf, tema_pasta, modelo, colecao)
-
-        st.divider()
+            if st.button("📥 Processar PDF", use_container_width=True):
+                _processar_upload(arquivo_pdf, modelo)
 
         # ── Provedor ativo ──────────────────────────────────────
         nome_ativo = st.session_state.get("nome_provedor", "Nenhum")
