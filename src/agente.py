@@ -252,30 +252,44 @@ def preparar_prompt(
             historico_formatado += f"\n{role}:\n{content}\n"
 
     prompt = f"""
-{perfil}
+    {perfil}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CONTEXTO RECUPERADO DA LITERATURA CIENTÍFICA:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{contexto}
-{historico_formatado}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PERGUNTA ATUAL DO PESQUISADOR:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{pergunta}
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    CONTEXTO RECUPERADO DA LITERATURA CIENTÍFICA:
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {contexto}
+    {historico_formatado}
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    PERGUNTA ATUAL DO PESQUISADOR:
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {pergunta}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-INSTRUÇÕES:
-- Responda em português brasileiro
-- Use o contexto da literatura como base principal
-- Considere o histórico da conversa para dar continuidade
-- Cite os artigos pelos nomes dos arquivos
-- Se o contexto for insuficiente, diga claramente e
-  complemente com conhecimento geral, sinalizando
-- Seja técnico, preciso e didático
-- Profundidade compatível com pós-graduação
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"""
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    INSTRUÇÕES DE CONTEÚDO:
+    - Responda em português brasileiro
+    - Use o contexto da literatura como base principal
+    - Considere o histórico da conversa para dar continuidade
+    - Quando o contexto for insuficiente, sinalize claramente e
+      complemente com conhecimento geral
+    - Profundidade compatível com pós-graduação
+    - Seja direto e denso — sem enrolação, sem repetição
+    - Aja como co-orientador técnico: quando pertinente,
+      faça perguntas de volta ou sugira próximos passos
+    - Cite sempre as fontes pelo nome do autor e ano
+
+    INSTRUÇÕES DE FORMATAÇÃO (obrigatório seguir):
+    - Use **negrito** para termos técnicos na primeira menção
+    - Use ## e ### para organizar respostas longas em seções
+    - Use tabelas markdown quando comparar modelos, técnicas
+      ou resultados (ex: | Modelo | Vantagem | Limitação |)
+    - Use listas numeradas para processos sequenciais
+    - Use listas com marcadores para itens sem ordem fixa
+    - Use > para citações diretas dos artigos
+    - Use `código` para nomes de funções, bibliotecas e parâmetros
+    - Use blocos ```python para pseudocódigo e exemplos
+    - Destaque conclusões importantes em **negrito**
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    """
     return prompt, citacoes
 
 def perguntar(
@@ -311,30 +325,44 @@ def perguntar(
 
     # Monta prompt
     prompt = f"""
-{perfil}
+    {perfil}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CONTEXTO RECUPERADO DA LITERATURA CIENTÍFICA:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{contexto}
-{historico_formatado}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PERGUNTA ATUAL DO PESQUISADOR:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{pergunta}
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    CONTEXTO RECUPERADO DA LITERATURA CIENTÍFICA:
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {contexto}
+    {historico_formatado}
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    PERGUNTA ATUAL DO PESQUISADOR:
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {pergunta}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-INSTRUÇÕES:
-- Responda em português brasileiro
-- Use o contexto da literatura como base principal
-- Considere o histórico da conversa para dar continuidade
-- Cite os artigos pelos nomes dos arquivos
-- Se o contexto for insuficiente, diga claramente e
-  complemente com conhecimento geral, sinalizando
-- Seja técnico, preciso e didático
-- Profundidade compatível com pós-graduação
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"""
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    INSTRUÇÕES DE CONTEÚDO:
+    - Responda em português brasileiro
+    - Use o contexto da literatura como base principal
+    - Considere o histórico da conversa para dar continuidade
+    - Quando o contexto for insuficiente, sinalize claramente e
+      complemente com conhecimento geral
+    - Profundidade compatível com pós-graduação
+    - Seja direto e denso — sem enrolação, sem repetição
+    - Aja como co-orientador técnico: quando pertinente,
+      faça perguntas de volta ou sugira próximos passos
+    - Cite sempre as fontes pelo nome do autor e ano
+
+    INSTRUÇÕES DE FORMATAÇÃO (obrigatório seguir):
+    - Use **negrito** para termos técnicos na primeira menção
+    - Use ## e ### para organizar respostas longas em seções
+    - Use tabelas markdown quando comparar modelos, técnicas
+      ou resultados (ex: | Modelo | Vantagem | Limitação |)
+    - Use listas numeradas para processos sequenciais
+    - Use listas com marcadores para itens sem ordem fixa
+    - Use > para citações diretas dos artigos
+    - Use `código` para nomes de funções, bibliotecas e parâmetros
+    - Use blocos ```python para pseudocódigo e exemplos
+    - Destaque conclusões importantes em **negrito**
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    """
 
     mensagens = [HumanMessage(content=prompt)]
     texto_completo = ""
