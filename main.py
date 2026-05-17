@@ -1,17 +1,11 @@
 """
 main.py — Al IAdo PV
-Ponto de entrada do agente. Executa o chat no terminal
-e salva a sessão automaticamente no Obsidian.
+Chat no terminal com auto-salvamento de sessão.
 
 Como usar:
   python main.py
 
-Comandos especiais durante o chat:
-  'sair'    → salva sessão e encerra
-  'limpar'  → limpa tela e memória
-  'fontes'  → mostra total de chunks indexados
-  'listar'  → lista todos os documentos indexados
-  'memoria' → mostra resumo do histórico da sessão
+Para encerrar: Ctrl+C
 
 Autor: Rodolfo Torres (UTFPR)
 """
@@ -21,12 +15,12 @@ import os
 from pathlib import Path
 from datetime import datetime
 
-# Garante que Python encontra a pasta src/
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.agente import inicializar_agente, perguntar, listar_documentos
-from src.provedores import selecionar_provedor, listar_provedores, inicializar_provedor
+from src.provedores import selecionar_provedor
 from src.indexador import indexar_sessao
+
 
 # ============================================================
 # CONFIGURAÇÃO
@@ -36,72 +30,69 @@ PASTA_SESSOES = Path(__file__).parent / "notas" / "sessoes"
 
 
 # ============================================================
-# FUNÇÃO PARA SALVAR SESSÃO NO OBSIDIAN
+# AUTO-SALVAMENTO
 # ============================================================
 
-def salvar_sessao(historico: list, modelo_embeddings=None):
+def iniciar_sessao() -> tuple:
     """
-    Salva o histórico da conversa como nota .md no Obsidian.
-    Cria a pasta notas/sessoes/ se não existir.
+    Cria o arquivo .md da sessão no início da conversa.
+    Retorna (caminho_arquivo, data_formatada).
     """
-
-    if not historico:
-        print("\n  ⚠️  Nenhuma conversa para salvar.")
-        return
-
-    # Cria a pasta se não existir
     PASTA_SESSOES.mkdir(parents=True, exist_ok=True)
-
-    # Nome do arquivo com data e hora
-    agora      = datetime.now()
+    agora        = datetime.now()
     nome_arquivo = agora.strftime("%Y-%m-%d_%H-%M") + "_sessao.md"
-    caminho    = PASTA_SESSOES / nome_arquivo
+    caminho      = PASTA_SESSOES / nome_arquivo
+    data_fmt     = agora.strftime("%d/%m/%Y às %H:%M")
 
-    # Monta o conteúdo da nota
-    data_formatada = agora.strftime("%d/%m/%Y às %H:%M")
+    # Cabeçalho inicial da nota
+    cabecalho  = f"---\n"
+    cabecalho += f"data: {agora.strftime('%Y-%m-%d')}\n"
+    cabecalho += f"hora: {agora.strftime('%H:%M')}\n"
+    cabecalho += f"tipo: sessao-terminal\n"
+    cabecalho += f"tags: [al-iado-pv, sessao, mestrado]\n"
+    cabecalho += f"---\n\n"
+    cabecalho += f"# Sessão Al IAdo PV — {data_fmt}\n\n"
 
-    conteudo  = f"---\n"
-    conteudo += f"data: {agora.strftime('%Y-%m-%d')}\n"
-    conteudo += f"hora: {agora.strftime('%H:%M')}\n"
-    conteudo += f"tipo: sessao-agente\n"
-    conteudo += f"tags: [al-iado-pv, sessao, mestrado]\n"
-    conteudo += f"---\n\n"
-    conteudo += f"# Sessão Al IAdo PV — {data_formatada}\n\n"
+    caminho.write_text(cabecalho, encoding="utf-8")
+    return caminho, data_fmt
 
-    # Processa os pares de pergunta/resposta
-    pares = []
-    for i in range(0, len(historico) - 1, 2):
-        if historico[i]["role"] == "user":
-            pergunta  = historico[i]["content"]
-            resposta  = historico[i + 1]["content"] if i + 1 < len(historico) else ""
-            pares.append((pergunta, resposta))
 
-    for n, (pergunta, resposta) in enumerate(pares, 1):
-        conteudo += f"---\n\n"
-        conteudo += f"## Pergunta {n}\n\n"
-        conteudo += f"**🔬 Você:** {pergunta}\n\n"
-        conteudo += f"**🤖 Al IAdo PV:**\n\n{resposta}\n\n"
+def salvar_interacao(caminho: Path, pergunta: str, resposta: str, n: int):
+    """
+    Adiciona um par pergunta/resposta ao arquivo .md da sessão.
+    Chamado automaticamente após cada interação.
+    """
+    bloco  = f"---\n\n"
+    bloco += f"## Interação {n}\n\n"
+    bloco += f"**🔬 Você:** {pergunta}\n\n"
+    bloco += f"**🤖 Al IAdo PV:**\n\n{resposta}\n\n"
 
-    conteudo += f"\n---\n"
-    conteudo += f"*Sessão gerada automaticamente pelo Al IAdo PV*\n"
-    conteudo += f"*Total de interações: {len(pares)}*\n"
+    with open(caminho, "a", encoding="utf-8") as f:
+        f.write(bloco)
 
-    # Salva o arquivo
-    caminho.write_text(conteudo, encoding="utf-8")
 
-    # Indexa a sessão no ChromaDB para memória persistente
-    try:
-        n_chunks = indexar_sessao(
-            caminho_md=caminho,
-            modelo_embeddings=modelo_embeddings,
-            pasta_chromadb=Path(__file__).parent / "base_conhecimento"
-        )
-        print(f"   🧠 Sessão indexada na memória persistente: {n_chunks} chunks")
-    except Exception as e:
-        print(f"   ⚠️  Erro ao indexar sessão: {e}")
+def finalizar_sessao(caminho: Path, historico: list, modelo_embeddings, n_interacoes: int):
+    """
+    Adiciona rodapé e indexa a sessão no ChromaDB ao encerrar.
+    """
+    from src.agente import PASTA_CHROMADB
 
-    print(f"\n📓 Sessão salva no Obsidian:")
-    print(f"   {caminho}")
+    rodape  = f"\n---\n"
+    rodape += f"*Sessão encerrada — {n_interacoes} interações*\n"
+    rodape += f"*Gerado automaticamente pelo Al IAdo PV*\n"
+
+    with open(caminho, "a", encoding="utf-8") as f:
+        f.write(rodape)
+
+    # Indexa no ChromaDB para memória persistente
+    if n_interacoes > 0:
+        try:
+            n_chunks = indexar_sessao(caminho, modelo_embeddings, PASTA_CHROMADB)
+            print(f"\n🧠 Sessão indexada na memória: {n_chunks} chunks")
+        except Exception as e:
+            print(f"\n⚠️  Erro ao indexar sessão: {e}")
+
+    print(f"📓 Sessão salva em: {caminho.name}")
 
 
 # ============================================================
@@ -110,91 +101,51 @@ def salvar_sessao(historico: list, modelo_embeddings=None):
 
 def main():
 
-    # Seleção do provedor de LLM
+    # Seleção do provedor
     try:
-        llm, nome_provedor, escolha_provedor = selecionar_provedor()
+        llm, nome_provedor, _ = selecionar_provedor()
     except KeyboardInterrupt:
         print("\n\nAté logo! 👋")
         return
 
-    # Inicializa agente com o LLM escolhido
+    # Inicializa agente
     try:
-        perfil, modelo_embeddings, colecao, colecao_sessoes, _ = inicializar_agente(llm_externo=llm)
+        perfil, modelo_embeddings, colecao, colecao_sessoes, _ = inicializar_agente(
+            llm_externo=llm
+        )
     except Exception as e:
-        print(f"\n❌ Erro ao inicializar o agente:\n   {e}")
+        print(f"\n❌ Erro ao inicializar: {e}")
         return
 
-    #Boas vindas
+    # Inicia arquivo de sessão
+    caminho_sessao, data_fmt = iniciar_sessao()
+
+    # Boas-vindas
     print(f"\nOlá, Rodolfo! Sou o Al IAdo PV. 🤖")
-    print(f"Provedor ativo: {nome_provedor}")
-    print()
-    print("Comandos disponíveis:")
-    print("  'sair'    → salva sessão no Obsidian e encerra")
-    print("  'limpar'  → limpa tela e memória")
-    print("  'fontes'  → total de chunks indexados")
-    print("  'listar'  → lista todos os documentos")
-    print("  'memoria' → resumo do histórico")
-    print("  'trocar'  → troca o provedor de LLM")
+    print(f"Provedor: {nome_provedor}")
+    print(f"Sessão iniciada às {data_fmt}")
+    print(f"Auto-salvamento ativo — cada resposta é salva automaticamente.")
+    print(f"Para encerrar: Ctrl+C")
     print("-" * 60)
 
-    # Loop de conversa com memória
-    historico = []
+    historico    = []
+    n_interacoes = 0
 
     while True:
 
         try:
             pergunta = input("\n🔬 Você: ").strip()
         except KeyboardInterrupt:
-            print("\n\nSalvando sessão antes de sair...")
-            salvar_sessao(historico,modelo_embeddings)
+            print("\n\nEncerrando sessão...")
+            finalizar_sessao(caminho_sessao, historico, modelo_embeddings, n_interacoes)
             print("Até logo, Rodolfo! 👋")
             break
 
         if not pergunta:
             continue
 
-        # Comandos especiais
-        if pergunta.lower() == "sair":
-            salvar_sessao(historico,modelo_embeddings)
-            print("\nAté logo, Rodolfo! Bons estudos! 👋")
-            break
-
-        if pergunta.lower() == "limpar":
-            os.system("cls" if os.name == "nt" else "clear")
-            historico = []
-            print("🧹 Tela e memória limpas!")
-            continue
-
-        if pergunta.lower() == "fontes":
-            total = colecao.count()
-            print(f"\n📚 Total de chunks indexados: {total}")
-            continue
-
-        if pergunta.lower() in ["listar", "listar artigos", "listar documentos"]:
-            print("\n" + listar_documentos(colecao))
-            continue
-
-        if pergunta.lower() == "memoria":
-            if not historico:
-                print("\n🧠 Nenhuma conversa registrada ainda.")
-            else:
-                print(f"\n🧠 Turnos na memória: {len(historico)}")
-                for i, turno in enumerate(historico, 1):
-                    role = "Você" if turno["role"] == "user" else "Al IAdo PV"
-                    print(f"  {i}. {role}: {turno['content'][:80]}...")
-            continue
-
-        if pergunta.lower() == "trocar":
-            print(f"\n  Provedor atual: {nome_provedor}")
-            try:
-                llm, nome_provedor, escolha_provedor = selecionar_provedor()
-                print(f"\n  ✅ Trocado para: {nome_provedor}")
-            except Exception as e:
-                print(f"  ❌ Erro ao trocar: {e}")
-            continue
-
-        # Processa pergunta
-        print("\n🤖 Al IAdo PV: Buscando na literatura...\n")
+        # Processa a pergunta
+        print("\n🤖 Al IAdo PV:\n")
 
         try:
             resposta = perguntar(
@@ -204,19 +155,27 @@ def main():
                 colecao           = colecao,
                 llm               = llm,
                 historico         = historico,
-                streaming = True,
-                colecao_sessoes=colecao_sessoes
+                streaming         = True,
+                colecao_sessoes   = colecao_sessoes
             )
 
             print("\n" + "-" * 60)
 
-            # Salva na memória
+            # Salva automaticamente
+            n_interacoes += 1
+            salvar_interacao(caminho_sessao, pergunta, resposta, n_interacoes)
+
+            # Atualiza histórico
             historico.append({"role": "user",      "content": pergunta})
             historico.append({"role": "assistant",  "content": resposta})
 
         except Exception as e:
-            print(f"❌ Erro ao processar a pergunta: {e}")
-            print("   Tente reformular ou verifique sua conexão.")
+            erro = str(e)
+            if "429" in erro:
+                print(f"\n⏳ Limite da API atingido.")
+                print(f"   Encerre com Ctrl+C e reinicie escolhendo outro provedor.")
+            else:
+                print(f"\n❌ Erro: {e}")
 
 
 # ============================================================
