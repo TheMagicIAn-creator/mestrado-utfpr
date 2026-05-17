@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from src.agente import inicializar_agente, perguntar, listar_documentos
 from src.provedores import selecionar_provedor, listar_provedores, inicializar_provedor
-
+from src.indexador import indexar_sessao
 
 # ============================================================
 # CONFIGURAÇÃO
@@ -39,7 +39,7 @@ PASTA_SESSOES = Path(__file__).parent / "notas" / "sessoes"
 # FUNÇÃO PARA SALVAR SESSÃO NO OBSIDIAN
 # ============================================================
 
-def salvar_sessao(historico: list):
+def salvar_sessao(historico: list, modelo_embeddings=None):
     """
     Salva o histórico da conversa como nota .md no Obsidian.
     Cria a pasta notas/sessoes/ se não existir.
@@ -89,6 +89,17 @@ def salvar_sessao(historico: list):
     # Salva o arquivo
     caminho.write_text(conteudo, encoding="utf-8")
 
+    # Indexa a sessão no ChromaDB para memória persistente
+    try:
+        n_chunks = indexar_sessao(
+            caminho_md=caminho,
+            modelo_embeddings=modelo_embeddings,
+            pasta_chromadb=Path(__file__).parent / "base_conhecimento"
+        )
+        print(f"   🧠 Sessão indexada na memória persistente: {n_chunks} chunks")
+    except Exception as e:
+        print(f"   ⚠️  Erro ao indexar sessão: {e}")
+
     print(f"\n📓 Sessão salva no Obsidian:")
     print(f"   {caminho}")
 
@@ -108,7 +119,7 @@ def main():
 
     # Inicializa agente com o LLM escolhido
     try:
-        perfil, modelo_embeddings, colecao, _ = inicializar_agente(llm_externo=llm)
+        perfil, modelo_embeddings, colecao, colecao_sessoes, _ = inicializar_agente(llm_externo=llm)
     except Exception as e:
         print(f"\n❌ Erro ao inicializar o agente:\n   {e}")
         return
@@ -135,7 +146,7 @@ def main():
             pergunta = input("\n🔬 Você: ").strip()
         except KeyboardInterrupt:
             print("\n\nSalvando sessão antes de sair...")
-            salvar_sessao(historico)
+            salvar_sessao(historico,modelo_embeddings)
             print("Até logo, Rodolfo! 👋")
             break
 
@@ -144,7 +155,7 @@ def main():
 
         # Comandos especiais
         if pergunta.lower() == "sair":
-            salvar_sessao(historico)
+            salvar_sessao(historico,modelo_embeddings)
             print("\nAté logo, Rodolfo! Bons estudos! 👋")
             break
 
@@ -193,7 +204,8 @@ def main():
                 colecao           = colecao,
                 llm               = llm,
                 historico         = historico,
-                streaming = True
+                streaming = True,
+                colecao_sessoes=colecao_sessoes
             )
 
             print("\n" + "-" * 60)

@@ -31,6 +31,7 @@ from langchain_core.messages import HumanMessage
 PASTA_CHROMADB    = Path(__file__).parent.parent / "base_conhecimento"
 CAMINHO_CLAUDE_MD = Path(__file__).parent.parent / "CLAUDE.md"
 NOME_COLECAO      = "literatura_pv"
+NOME_COLECAO_SESSOES = "sessoes_pv"
 MODELO_EMBEDDINGS = "paraphrase-multilingual-MiniLM-L12-v2"
 MODELO_GEMINI = "gemini-2.5-flash"
 N_RESULTADOS      = 15  # chunks recuperados por busca
@@ -61,40 +62,47 @@ def carregar_perfil() -> str:
 def inicializar_agente(llm_externo=None):
     """
     Inicializa todos os componentes do agente.
-    Se llm_externo for fornecido, usa ele.
-    Caso contrário, usa Gemini por padrão.
+    Retorna: perfil, modelo_embeddings, colecao, colecao_sessoes, llm
     """
 
     print("=" * 60)
     print("  AL IADO PV — INICIALIZANDO AGENTE")
     print("=" * 60)
 
-    # Carrega variáveis do .env
     load_dotenv()
     print("\n✅ Variáveis de ambiente carregadas")
 
-    # Perfil
     print("\n📋 Carregando perfil do agente...")
     perfil = carregar_perfil()
 
-    # Embeddings
     print("\n🔄 Carregando modelo de embeddings...")
     modelo_embeddings = SentenceTransformer(MODELO_EMBEDDINGS)
     print("   ✅ Modelo de embeddings pronto!")
 
-    # ChromaDB
     print("\n🗄️  Conectando ao ChromaDB...")
     if not PASTA_CHROMADB.exists():
         raise FileNotFoundError(
             "\n❌ Base de conhecimento não encontrada!\n"
             "   Execute primeiro: python src/indexador.py"
         )
-    client  = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
-    colecao = client.get_or_create_collection(name=NOME_COLECAO)
-    total   = colecao.count()
-    print(f"   ✅ ChromaDB conectado! ({total} chunks indexados)")
 
-    # LLM — usa externo se fornecido, senão inicializa Gemini
+    client = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
+
+    # Coleção da literatura
+    colecao = client.get_or_create_collection(name=NOME_COLECAO)
+    print(f"   ✅ Literatura: {colecao.count()} chunks indexados")
+
+    # Coleção de sessões anteriores
+    colecao_sessoes = client.get_or_create_collection(
+        name     = NOME_COLECAO_SESSOES,
+        metadata = {"hnsw:space": "cosine"}
+    )
+    total_sessoes = colecao_sessoes.count()
+    if total_sessoes > 0:
+        print(f"   ✅ Sessões anteriores: {total_sessoes} chunks na memória")
+    else:
+        print(f"   ℹ️  Sessões anteriores: nenhuma ainda (primeira sessão)")
+
     if llm_externo is not None:
         llm = llm_externo
         print("\n🤖 LLM externo recebido!")
@@ -115,53 +123,67 @@ def inicializar_agente(llm_externo=None):
     print("  AL IADO PV ESTÁ ONLINE! 🤖")
     print("=" * 60 + "\n")
 
-    return perfil, modelo_embeddings, colecao, llm
+    return perfil, modelo_embeddings, colecao, colecao_sessoes, llm
 
 
 def buscar_contexto(
     pergunta: str,
     modelo_embeddings,
-    colecao
+    colecao,
+    colecao_sessoes=None
 ) -> tuple:
     """
-    Transforma a pergunta em vetor e busca chunks similares no ChromaDB.
-    Retorna o contexto formatado e as citações acadêmicas das fontes.
+    Busca contexto relevante em DUAS fontes:
+    1. literatura_pv  — artigos científicos indexados
+    2. sessoes_pv     — conversas anteriores (memória persistente)
     """
 
-    # Transforma pergunta em vetor
     vetor_pergunta = modelo_embeddings.encode([pergunta]).tolist()
 
-    # Busca os N chunks mais similares
-    resultados = colecao.query(
-        query_embeddings=vetor_pergunta,
-        n_results=N_RESULTADOS
+    contexto = ""
+    citacoes = {}
+
+    # ── 1. Busca na literatura ───────────────────────────────────
+    resultados_lit = colecao.query(
+        query_embeddings = vetor_pergunta,
+        n_results        = N_RESULTADOS
     )
 
-    contexto   = ""
-    citacoes   = {}  # arquivo → citação formatada
+    documentos = resultados_lit.get("documents", [[]])[0]
+    metadados  = resultados_lit.get("metadatas",  [[]])[0]
 
-    documentos = resultados.get("documents", [[]])[0]
-    metadados  = resultados.get("metadatas",  [[]])[0]
+    if documentos:
+        contexto += "\n📚 DA LITERATURA CIENTÍFICA:\n"
+        for i, (doc, meta) in enumerate(zip(documentos, metadados), 1):
+            arquivo = meta.get("arquivo", "fonte desconhecida")
+            pasta   = meta.get("pasta",   "")
+            citacao = meta.get("citacao") or parsear_nome_arquivo(arquivo)["citacao"]
+            contexto += (
+                f"\n--- Trecho {i} ---\n"
+                f"Fonte: {citacao} (tema: {pasta})\n"
+                f"{doc}\n"
+            )
+            if arquivo not in citacoes:
+                citacoes[arquivo] = citacao
 
-    for i, (doc, meta) in enumerate(zip(documentos, metadados), 1):
-        arquivo = meta.get("arquivo", "fonte desconhecida")
-        pasta   = meta.get("pasta",   "")
-
-        # Usa citação do metadado se disponível,
-        # senão parseia o nome do arquivo na hora
-        if "citacao" in meta:
-            citacao = meta["citacao"]
-        else:
-            citacao = parsear_nome_arquivo(arquivo)["citacao"]
-
-        contexto += (
-            f"\n--- Trecho {i} ---\n"
-            f"Fonte: {citacao} (tema: {pasta})\n"
-            f"{doc}\n"
+    # ── 2. Busca nas sessões anteriores ─────────────────────────
+    if colecao_sessoes and colecao_sessoes.count() > 0:
+        resultados_ses = colecao_sessoes.query(
+            query_embeddings = vetor_pergunta,
+            n_results        = 3  # menos chunks de sessão que de literatura
         )
 
-        if arquivo not in citacoes:
-            citacoes[arquivo] = citacao
+        docs_ses = resultados_ses.get("documents", [[]])[0]
+        mets_ses = resultados_ses.get("metadatas",  [[]])[0]
+
+        if docs_ses:
+            contexto += "\n\n🧠 DE SESSÕES ANTERIORES (memória persistente):\n"
+            for i, (doc, meta) in enumerate(zip(docs_ses, mets_ses), 1):
+                data = meta.get("data", "data desconhecida")
+                contexto += (
+                    f"\n--- Memória {i} (sessão de {data}) ---\n"
+                    f"{doc}\n"
+                )
 
     return contexto, citacoes
 
@@ -205,7 +227,8 @@ def perguntar(
     colecao,
     llm,
     historico: list = None,
-    streaming: bool = True
+    streaming: bool = True,
+    colecao_sessoes = None
 ) -> str:
     """
     Pipeline RAG completo com memória e streaming.
@@ -215,8 +238,8 @@ def perguntar(
         historico = []
 
     # Busca contexto
-    contexto, citacoes = buscar_contexto(pergunta, modelo_embeddings, colecao)
-
+    contexto, citacoes = buscar_contexto(pergunta, modelo_embeddings, colecao, colecao_sessoes)
+    
     # Formata histórico
     historico_formatado = ""
     if historico:

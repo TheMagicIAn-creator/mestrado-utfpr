@@ -80,6 +80,67 @@ def dividir_em_chunks(texto: str, tamanho: int, sobreposicao: int) -> list:
 
     return chunks
 
+def indexar_sessao(caminho_md: Path, modelo_embeddings, pasta_chromadb: Path) -> int:
+    """
+    Indexa uma sessão salva (.md) na coleção de sessões do ChromaDB.
+    Chamada automaticamente após cada sessão encerrada.
+    Retorna o número de chunks indexados.
+    """
+
+    NOME_COLECAO_SESSOES = "sessoes_pv"
+
+    # Lê o arquivo .md
+    if not caminho_md.exists():
+        print(f"  ⚠️  Arquivo não encontrado: {caminho_md}")
+        return 0
+
+    texto = caminho_md.read_text(encoding="utf-8")
+
+    if not texto.strip():
+        return 0
+
+    # Divide em chunks
+    chunks = dividir_em_chunks(texto, TAMANHO_CHUNK, SOBREPOSICAO)
+
+    if not chunks:
+        return 0
+
+    # Conecta ao ChromaDB na coleção de sessões
+    client = chromadb.PersistentClient(path=str(pasta_chromadb))
+    colecao_sessoes = client.get_or_create_collection(
+        name     = NOME_COLECAO_SESSOES,
+        metadata = {"hnsw:space": "cosine"}
+    )
+
+    # Gera embeddings
+    embeddings = modelo_embeddings.encode(chunks).tolist()
+
+    # IDs únicos por sessão + chunk
+    nome_arquivo = caminho_md.name
+    ids = [f"{nome_arquivo}__chunk_{j}" for j in range(len(chunks))]
+
+    # Metadados
+    data_sessao = caminho_md.stem[:10]  # YYYY-MM-DD do nome do arquivo
+    metadados = [
+        {
+            "arquivo"     : nome_arquivo,
+            "tipo"        : "sessao",
+            "data"        : data_sessao,
+            "chunk_index" : j,
+            "total_chunks": len(chunks)
+        }
+        for j in range(len(chunks))
+    ]
+
+    # Indexa (upsert evita duplicatas)
+    colecao_sessoes.upsert(
+        ids        = ids,
+        embeddings = embeddings,
+        documents  = chunks,
+        metadatas  = metadados
+    )
+
+    return len(chunks)
 
 def indexar_literatura():
     """
