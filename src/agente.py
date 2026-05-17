@@ -276,6 +276,10 @@ def preparar_prompt(
     - Aja como co-orientador técnico: quando pertinente,
       faça perguntas de volta ou sugira próximos passos
     - Cite sempre as fontes pelo nome do autor e ano
+    - Sobre memória de sessões anteriores: use-a como referência,
+    mas nunca afirme com certeza absoluta o que foi ou não dito.
+    Se não tiver certeza, diga "não tenho memória clara disso"
+    em vez de negar categoricamente.
 
     INSTRUÇÕES DE FORMATAÇÃO (obrigatório seguir):
     - Use **negrito** para termos técnicos na primeira menção
@@ -349,6 +353,10 @@ def perguntar(
     - Aja como co-orientador técnico: quando pertinente,
       faça perguntas de volta ou sugira próximos passos
     - Cite sempre as fontes pelo nome do autor e ano
+    - Sobre memória de sessões anteriores: use-a como referência,
+    mas nunca afirme com certeza absoluta o que foi ou não dito.
+    Se não tiver certeza, diga "não tenho memória clara disso"
+    em vez de negar categoricamente.
 
     INSTRUÇÕES DE FORMATAÇÃO (obrigatório seguir):
     - Use **negrito** para termos técnicos na primeira menção

@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import os
+import re
 from pathlib import Path
 from pypdf import PdfReader
 from utils import parsear_nome_arquivo
@@ -98,6 +99,17 @@ def indexar_sessao(caminho_md: Path, modelo_embeddings, pasta_chromadb: Path) ->
 
     if not texto.strip():
         return 0
+
+    # Remove linhas de erro antes de indexar
+    linhas_filtradas = []
+    for linha in texto.split("\n"):
+        if any(termo in linha.lower() for termo in [
+            "rate limit", "429", "resource_exhausted",
+            "quota", "error code", "❌ erro"
+        ]):
+            continue
+        linhas_filtradas.append(linha)
+    texto = "\n".join(linhas_filtradas)
 
     # Divide em chunks
     chunks = dividir_em_chunks(texto, TAMANHO_CHUNK, SOBREPOSICAO)
