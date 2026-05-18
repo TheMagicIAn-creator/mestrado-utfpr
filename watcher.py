@@ -162,17 +162,42 @@ def main():
 
 def iniciar_em_background(modelo_embeddings) -> Observer:
     """
-    Inicia o watcher em uma thread de background.
-    Usado pelo Streamlit para não precisar de terminal separado.
-    Retorna o observer para controle posterior.
+    Inicia o watcher de arquivos E o agendador de consolidação
+    em threads de background.
     """
+    import schedule
+    import threading
+
     PASTA_MONITORADA.mkdir(exist_ok=True)
 
+    # ── Watcher de arquivos ──────────────────────────────────
     handler  = HandlerPDF(modelo_embeddings)
     observer = Observer()
     observer.schedule(handler, str(PASTA_MONITORADA), recursive=False)
-    observer.daemon = True  # encerra junto com o processo principal
+    observer.daemon = True
     observer.start()
+
+    # ── Agendador de consolidação ────────────────────────────
+    def job_consolidacao():
+        """Roda toda segunda-feira às 8h."""
+        try:
+            from src.consolidar_memoria import consolidar
+            print("\n⏰ Agendador: iniciando consolidação de memória...")
+            consolidar()
+        except Exception as e:
+            print(f"\n⚠️  Erro na consolidação agendada: {e}")
+
+    # Agenda para toda segunda-feira às 08:00
+    schedule.every().monday.at("08:00").do(job_consolidacao)
+
+    def loop_agendador():
+        while True:
+            schedule.run_pending()
+            time.sleep(60)  # verifica a cada minuto
+
+    thread_agendador        = threading.Thread(target=loop_agendador)
+    thread_agendador.daemon = True
+    thread_agendador.start()
 
     return observer
 
