@@ -83,46 +83,27 @@ def stream_resposta(prompt: str, llm):
 # ============================================================
 def _processar_upload(arquivo_pdf, modelo_embeddings):
     """
-    Salva temporariamente e processa o PDF com o pipeline completo.
+    Salva o PDF em novos_pdfs/ para ser processado pelo watcher.
     """
-    from src.processador_pdf import processar_pdf_unico
-    from src.agente import PASTA_CHROMADB
-    import tempfile
+    pasta_entrada = Path(__file__).parent / "novos_pdfs"
+    pasta_entrada.mkdir(exist_ok=True)
 
-    # Salva em arquivo temporário
-    with tempfile.NamedTemporaryFile(
-        delete=False,
-        suffix=".pdf",
-        prefix=arquivo_pdf.name.replace(".pdf", "_")
-    ) as tmp:
-        tmp.write(arquivo_pdf.getbuffer())
-        caminho_tmp = Path(tmp.name)
+    caminho_destino = pasta_entrada / arquivo_pdf.name
 
-    with st.spinner("⚙️ Processando PDF..."):
-        resultado = processar_pdf_unico(
-            caminho_pdf      = caminho_tmp,
-            modelo_embeddings= modelo_embeddings,
-            pasta_chromadb   = PASTA_CHROMADB,
-            gerar_obsidian   = True
-        )
+    with open(caminho_destino, "wb") as f:
+        f.write(arquivo_pdf.getbuffer())
 
-    # Remove arquivo temporário
-    caminho_tmp.unlink(missing_ok=True)
+    st.success(
+        f"✅ **PDF enviado para processamento!**\n\n"
+        f"**Arquivo:** `{arquivo_pdf.name}`\n\n"
+        f"📂 Salvo em `novos_pdfs/`\n\n"
+        f"⚙️ O watcher irá processar automaticamente:\n"
+        f"renomear → classificar → indexar → nota Obsidian"
+    )
 
-    if resultado["sucesso"]:
-        st.success(
-            f"✅ **Processado com sucesso!**\n\n"
-            f"**Autor:** {resultado['autor']}\n\n"
-            f"**Título:** {resultado['titulo'][:60]}\n\n"
-            f"**Ano:** {resultado['ano']}\n\n"
-            f"**Tema:** {resultado['tema']}\n\n"
-            f"**Arquivo:** `{resultado['arquivo_final']}`\n\n"
-            f"**Chunks:** {resultado['n_chunks']}\n\n"
-            f"**Nota Obsidian:** ✅ gerada"
-        )
-        st.rerun()
-    else:
-        st.error(f"❌ Erro: {resultado['erro']}")
+    if caminho_destino.exists():
+        st.info("💡 Certifique-se que o `watcher.py` está rodando em outro terminal.")
+        
 def renderizar_sidebar(perfil, modelo, colecao, colecao_sessoes):
     """Renderiza o painel lateral com controles e estatísticas."""
 
