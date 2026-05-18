@@ -79,10 +79,10 @@ def consolidar_com_llm(sessoes: list) -> str:
         texto_sessoes += f"\n\n{'='*50}\n"
         texto_sessoes += f"SESSÃO: {s['data']}\n"
         texto_sessoes += f"{'='*50}\n"
-        texto_sessoes += s["conteudo"][:3000]  # limita por sessão
+        texto_sessoes += s["conteudo"][:10000]  # limita por sessão
 
     # Limita o total para não estourar quota
-    texto_sessoes = texto_sessoes[:15000]
+    texto_sessoes = texto_sessoes[:60000]
 
     prompt = f"""
 Você é um assistente de pesquisa acadêmica. Abaixo estão transcrições de sessões de 
@@ -109,8 +109,10 @@ O que ainda precisa ser feito ou investigado.
 ## 5. Referências Citadas
 Quais artigos da literatura foram mais mencionados.
 
-Seja conciso mas completo. Este resumo substituirá as sessões individuais na 
-memória do agente — deve capturar tudo que é relevante para continuidade da pesquisa.
+Seja DETALHADO e COMPLETO — preserve todos os detalhes técnicos importantes.
+Não resuma demais. É melhor ter mais informação do que perder insights relevantes.
+Mantenha equações, nomes de modelos, parâmetros e referências específicas. Este resumo substituirá as sessões 
+individuais na memória do agente — deve capturar tudo que é relevante para continuidade da pesquisa.
 Responda em português brasileiro.
 """
 
