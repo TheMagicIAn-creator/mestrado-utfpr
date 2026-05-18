@@ -8,6 +8,7 @@ Como executar:
 Autor: Rodolfo Torres (UTFPR)
 """
 
+from watcher import iniciar_em_background
 import sys
 import os
 from pathlib import Path
@@ -53,6 +54,12 @@ def carregar_base():
 
     with st.spinner("🔄 Carregando modelo de embeddings..."):
         modelo = SentenceTransformer(MODELO_EMBEDDINGS)
+
+        # ── Inicia watcher em background ────────────────────────
+        try:
+            iniciar_em_background(modelo)
+        except Exception as e:
+            pass  # silencioso — não bloqueia o Streamlit
 
     with st.spinner("🗄️ Conectando ao ChromaDB..."):
         client          = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
@@ -103,7 +110,7 @@ def _processar_upload(arquivo_pdf, modelo_embeddings):
 
     if caminho_destino.exists():
         st.info("💡 Certifique-se que o `watcher.py` está rodando em outro terminal.")
-        
+
 def renderizar_sidebar(perfil, modelo, colecao, colecao_sessoes):
     """Renderiza o painel lateral com controles e estatísticas."""
 
