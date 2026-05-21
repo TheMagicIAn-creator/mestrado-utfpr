@@ -190,33 +190,51 @@ def buscar_contexto(
 def listar_documentos(colecao) -> str:
     """
     Lista todos os documentos únicos indexados no ChromaDB.
-    Usa os metadados — não depende de busca vetorial.
+    Usa paginação para evitar o limite de variáveis SQL.
     """
-    resultados = colecao.get(include=["metadatas"])
-    metadados  = resultados.get("metadatas", [])
 
     arquivos_vistos = set()
     documentos      = []
+    offset          = 0
+    lote            = 200  # busca 200 por vez
 
-    for meta in metadados:
-        arquivo = meta.get("arquivo", "desconhecido")
-        pasta   = meta.get("pasta",   "desconhecida")
-        if arquivo not in arquivos_vistos:
-            arquivos_vistos.add(arquivo)
-            documentos.append((pasta, arquivo))
+    while True:
+        try:
+            resultados = colecao.get(
+                limit   = lote,
+                offset  = offset,
+                include = ["metadatas"]
+            )
+        except Exception:
+            break
+
+        metadados = resultados.get("metadatas", [])
+        if not metadados:
+            break
+
+        for meta in metadados:
+            arquivo = meta.get("arquivo", "desconhecido")
+            pasta   = meta.get("pasta",   "desconhecida")
+            citacao = meta.get("citacao", arquivo)
+            if arquivo not in arquivos_vistos:
+                arquivos_vistos.add(arquivo)
+                documentos.append((pasta, citacao))
+
+        offset += lote
+        if len(metadados) < lote:
+            break
 
     # Ordena por pasta temática
     documentos.sort(key=lambda x: x[0])
 
-    # Formata a saída
-    texto  = f"📚 Total de documentos indexados: {len(documentos)}\n\n"
+    texto       = f"📚 Total de documentos: {len(documentos)}\n\n"
     pasta_atual = ""
 
-    for pasta, arquivo in documentos:
+    for pasta, citacao in documentos:
         if pasta != pasta_atual:
             texto      += f"\n📁 {pasta}/\n"
             pasta_atual = pasta
-        texto += f"   → {arquivo}\n"
+        texto += f"   → {citacao}\n"
 
     return texto
 

@@ -1,0 +1,47 @@
+============================================================
+  RELATÓRIO — CLASSIFICAÇÃO DE FALHAS PV
+  Al IAdo PV — Mestrado UTFPR
+============================================================
+
+COMPARAÇÃO DE MODELOS:
+------------------------------------------------------------
+
+Random Forest
+  Validação Cruzada : 1.0000 (±0.0000)
+  Acurácia          : 0.8700
+  Precisão (macro)  : 0.8869
+  Recall (macro)    : 0.8700
+  F1-Score (macro)  : 0.8683
+
+LightGBM
+  Validação Cruzada : 0.9950 (±0.0067)
+  Acurácia          : 0.8700
+  Precisão (macro)  : 0.8861
+  Recall (macro)    : 0.8700
+  F1-Score (macro)  : 0.8629
+
+XGBoost
+  Validação Cruzada : 0.9950 (±0.0067)
+  Acurácia          : 0.7900
+  Precisão (macro)  : 0.8224
+  Recall (macro)    : 0.7900
+  F1-Score (macro)  : 0.7726
+
+Gradient Boosting
+  Validação Cruzada : 0.9950 (±0.0067)
+  Acurácia          : 0.7900
+  Precisão (macro)  : 0.8208
+  Recall (macro)    : 0.7900
+  F1-Score (macro)  : 0.7720
+
+SVM
+  Validação Cruzada : 0.4867 (±0.0403)
+  Acurácia          : 0.5100
+  Precisão (macro)  : 0.6464
+  Recall (macro)    : 0.5100
+  F1-Score (macro)  : 0.4599
+
+============================================================
+MELHOR MODELO: Random Forest
+F1-Score: 0.8683
+============================================================
