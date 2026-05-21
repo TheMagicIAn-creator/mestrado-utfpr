@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "memorias/2026-05-18_consolidado.md",
+                "file": "sessoes_arquivadas/2026-05-20_22-03_sessao_web.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "2026-05-18_consolidado"
+              "title": "2026-05-20_22-03_sessao_web"
             }
           }
         ]
@@ -202,7 +202,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 408.5
+    "width": 200
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -221,17 +221,17 @@
   },
   "active": "ccf58489bd6f1a90",
   "lastOpenFiles": [
-    "sessoes_arquivadas/2026-05-20_22-03_sessao_web.md",
     "sessoes_arquivadas/2026-05-20_21-40_sessao_web.md",
+    "sessoes_arquivadas/2026-05-20_22-03_sessao_web.md",
+    "memorias/2026-05-18_consolidado.md",
+    "memorias/2026-05-20_consolidado.md",
     "sessoes_arquivadas/2026-05-18_22-53_sessao_web.md",
     "sessoes_arquivadas/2026-05-18_20-11_sessao_web.md",
-    "memorias/2026-05-20_consolidado.md",
     "sessoes/2026-05-20_22-03_sessao_web.md",
     "sessoes/2026-05-20_21-40_sessao_web.md",
     "Literatura/inversores-pv/autor-desconhecido_universidade-federal-do-par-a_2024.md",
     "Literatura/ml-preditivo/ghoneim_fault-detection-algorithms-for-achieving-service-continuity-_2021.md",
     "sessoes_arquivadas/2026-05-16_16-25_sessao.md",
-    "memorias/2026-05-18_consolidado.md",
     "sessoes/2026-05-18_19-28_sessao_web.md",
     "sessoes/2026-05-17_17-07_sessao_web.md",
     "sessoes/2026-05-17_16-29_sessao_web.md",
