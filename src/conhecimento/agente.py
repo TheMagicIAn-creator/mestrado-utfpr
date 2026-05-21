@@ -20,9 +20,8 @@ from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 import chromadb
 from langchain_google_genai import ChatGoogleGenerativeAI
-from utils import parsear_nome_arquivo
+from src.core.utils import parsear_nome_arquivo
 from langchain_core.messages import HumanMessage
-
 
 # ============================================================
 # CONFIGURAÇÕES

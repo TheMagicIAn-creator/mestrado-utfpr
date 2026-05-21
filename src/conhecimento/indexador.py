@@ -13,7 +13,7 @@ import os
 import re
 from pathlib import Path
 from pypdf import PdfReader
-from utils import parsear_nome_arquivo
+from src.core.utils import parsear_nome_arquivo
 from sentence_transformers import SentenceTransformer
 import chromadb
 
