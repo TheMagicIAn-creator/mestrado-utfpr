@@ -26,8 +26,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from watchdog.observers import Observer
 from watchdog.events    import FileSystemEventHandler
 from sentence_transformers import SentenceTransformer
-from src.agente    import MODELO_EMBEDDINGS, PASTA_CHROMADB
-from src.processador_pdf import processar_pdf_unico
+from src.core.config    import MODELO_EMBEDDINGS, PASTA_CHROMADB
+from src.conhecimento.processador_pdf import processar_pdf_unico
 
 
 # ============================================================

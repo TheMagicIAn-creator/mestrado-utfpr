@@ -21,20 +21,16 @@ from sentence_transformers import SentenceTransformer
 import chromadb
 from langchain_google_genai import ChatGoogleGenerativeAI
 from src.core.utils import parsear_nome_arquivo
+from src.core.config import (
+    PASTA_CHROMADB, ARQUIVO_PERFIL, NOME_COLECAO,
+    NOME_COLECAO_SESSOES, MODELO_EMBEDDINGS, MODELO_GEMINI,
+    N_RESULTADOS,
+)
 from langchain_core.messages import HumanMessage
 
 # ============================================================
 # CONFIGURAÇÕES
 # ============================================================
-
-PASTA_CHROMADB    = Path(__file__).parent.parent / "base_conhecimento"
-CAMINHO_CLAUDE_MD = Path(__file__).parent.parent / "CLAUDE.md"
-NOME_COLECAO      = "literatura_pv"
-NOME_COLECAO_SESSOES = "sessoes_pv"
-MODELO_EMBEDDINGS = "paraphrase-multilingual-MiniLM-L12-v2"
-MODELO_GEMINI = "gemini-2.5-flash"
-N_RESULTADOS      = 15  # chunks recuperados por busca
-
 
 # ============================================================
 # FUNÇÕES
@@ -46,8 +42,8 @@ def carregar_perfil() -> str:
     Este é o 'sistema de instruções' do agente — quem ele é
     e como deve se comportar.
     """
-    if CAMINHO_CLAUDE_MD.exists():
-        perfil = CAMINHO_CLAUDE_MD.read_text(encoding="utf-8")
+    if ARQUIVO_PERFIL.exists():
+        perfil = ARQUIVO_PERFIL.read_text(encoding="utf-8")
         print("   ✅ Perfil CLAUDE.md carregado!")
         return perfil
     else:

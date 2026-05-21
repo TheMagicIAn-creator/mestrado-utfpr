@@ -17,9 +17,9 @@ from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.agente import inicializar_agente, perguntar, listar_documentos
-from src.provedores import selecionar_provedor
-from src.indexador import indexar_sessao
+from src.conhecimento.agente import inicializar_agente, perguntar, listar_documentos
+from src.conhecimento.provedores import selecionar_provedor
+from src.conhecimento.indexador import indexar_sessao
 
 
 # ============================================================
