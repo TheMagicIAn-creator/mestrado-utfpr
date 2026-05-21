@@ -1,6 +1,6 @@
 """
 app.py — Al IAdo PV
-Interface web com Streamlit.
+Interface web com Streamlit e orquestração de backend.
 
 Como executar:
   streamlit run app.py
@@ -40,12 +40,13 @@ st.set_page_config(
 def carregar_base():
     """
     Carrega embeddings e ChromaDB uma única vez.
+    Executa também o orquestrador de backend.
     O @st.cache_resource evita recarregar a cada interação.
     """
     from sentence_transformers import SentenceTransformer
     import chromadb
-    from src.agente import (
-        carregar_perfil,
+    from src.conhecimento.agente import carregar_perfil
+    from src.core.config import (
         MODELO_EMBEDDINGS,
         PASTA_CHROMADB,
         NOME_COLECAO,
@@ -58,8 +59,24 @@ def carregar_base():
         # ── Inicia watcher em background ────────────────────────
         try:
             iniciar_em_background(modelo)
-        except Exception as e:
+        except Exception:
             pass  # silencioso — não bloqueia o Streamlit
+
+    # ── Orquestrador de backend ─────────────────────────────────
+    relatorio_orquestrador = []
+    with st.spinner("⚙️ Verificando estado do projeto..."):
+        try:
+            from src.orquestrador import executar_pipeline
+            relatorio_orquestrador = executar_pipeline(modelo)
+            # Registra o relatório completo no terminal
+            print("=" * 60)
+            print("  ORQUESTRADOR — RELATÓRIO DE INICIALIZAÇÃO")
+            print("=" * 60)
+            for linha in relatorio_orquestrador:
+                print(f"  {linha}")
+            print("=" * 60)
+        except Exception as e:
+            print(f"[Orquestrador] Erro: {e}")
 
     with st.spinner("🗄️ Conectando ao ChromaDB..."):
         client          = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
@@ -68,7 +85,33 @@ def carregar_base():
 
     perfil = carregar_perfil()
 
-    return perfil, modelo, colecao, colecao_sessoes
+    return perfil, modelo, colecao, colecao_sessoes, relatorio_orquestrador
+
+
+# ============================================================
+# FEEDBACK DO ORQUESTRADOR
+# ============================================================
+
+def mostrar_novidades_orquestrador(relatorio: list):
+    """
+    Exibe aviso apenas quando o orquestrador processou algo novo.
+    Mensagens de 'nada pendente' / 'já realizada' são silenciadas.
+    """
+    # Palavras que indicam que NADA novo aconteceu
+    termos_inertes = ["nenhum", "sem acúmulo", "já realizada"]
+
+    novidades = [
+        linha for linha in relatorio
+        if not any(termo in linha for termo in termos_inertes)
+    ]
+
+    if novidades:
+        with st.expander("⚙️ O sistema processou novidades", expanded=True):
+            for linha in novidades:
+                if "erro" in linha.lower():
+                    st.warning(f"⚠️ {linha}")
+                else:
+                    st.success(f"✅ {linha}")
 
 
 # ============================================================
@@ -123,7 +166,7 @@ def renderizar_sidebar(perfil, modelo, colecao, colecao_sessoes):
         # ── Seleção de provedor ─────────────────────────────────
         st.subheader("🤖 Provedor de LLM")
 
-        from src.provedores import PROVEDORES
+        from src.conhecimento.provedores import PROVEDORES
         opcoes = {
             f"{info['emoji']} {info['nome']}": chave
             for chave, info in PROVEDORES.items()
@@ -142,7 +185,7 @@ def renderizar_sidebar(perfil, modelo, colecao, colecao_sessoes):
 
         if st.button("🔄 Conectar provedor", use_container_width=True):
             try:
-                from src.provedores import inicializar_provedor
+                from src.conhecimento.provedores import inicializar_provedor
                 with st.spinner(f"Conectando ao {info['nome']}..."):
                     llm, nome = inicializar_provedor(escolha)
                 st.session_state.llm          = llm
@@ -168,14 +211,7 @@ def renderizar_sidebar(perfil, modelo, colecao, colecao_sessoes):
         st.subheader("⚙️ Ações")
 
         if st.button("📋 Listar artigos", use_container_width=True):
-            from src.agente import listar_documentos
             st.session_state.mostrar_artigos = True
-
-        #if st.button("💾 Salvar sessão", use_container_width=True):
-        #    salvar_sessao_streamlit(
-        #        st.session_state.get("mensagens", []),
-        #        modelo
-        #    )
 
         if st.button("🗑️ Limpar conversa", use_container_width=True):
             st.session_state.mensagens = []
@@ -202,12 +238,6 @@ def renderizar_sidebar(perfil, modelo, colecao, colecao_sessoes):
         nome_ativo = st.session_state.get("nome_provedor", "Nenhum")
         st.caption(f"Provedor ativo: **{nome_ativo}**")
 
-        st.divider()
-
-        # ── Provedor ativo ──────────────────────────────────────
-        nome_ativo = st.session_state.get("nome_provedor", "Nenhum")
-        st.caption(f"Provedor ativo: **{nome_ativo}**")
-
 
 # ============================================================
 # SALVAR SESSÃO
@@ -219,7 +249,7 @@ def salvar_sessao_streamlit(pergunta: str, resposta: str, n: int, modelo_embeddi
     e ADICIONA ao mesmo arquivo nas seguintes.
     """
     from datetime import datetime
-    from src.agente import PASTA_CHROMADB
+    from src.core.config import PASTA_CHROMADB
 
     pasta_sessoes = Path(__file__).parent / "notas" / "sessoes"
     pasta_sessoes.mkdir(parents=True, exist_ok=True)
@@ -256,7 +286,7 @@ def salvar_sessao_streamlit(pergunta: str, resposta: str, n: int, modelo_embeddi
     # ── Indexa no ChromaDB a cada interação ───────────────
     if n >= 1:
         try:
-            from src.indexador import indexar_sessao
+            from src.conhecimento.indexador import indexar_sessao
             indexar_sessao(caminho, modelo_embeddings, PASTA_CHROMADB)
         except Exception:
             pass  # silencioso — não interrompe o chat
@@ -277,15 +307,15 @@ def main():
         st.session_state.nome_provedor  = "Nenhum"
     if "mostrar_artigos" not in st.session_state:
         st.session_state.mostrar_artigos = False
-    if "caminho_sessao" not in st.session_state:   # Salva a sessão de forma
-        st.session_state.caminho_sessao = None      # simultânea
+    if "caminho_sessao" not in st.session_state:
+        st.session_state.caminho_sessao = None
 
-    # Carrega componentes base
+    # Carrega componentes base + orquestrador
     try:
-        perfil, modelo, colecao, colecao_sessoes = carregar_base()
+        perfil, modelo, colecao, colecao_sessoes, relatorio = carregar_base()
     except Exception as e:
         st.error(f"❌ Erro ao carregar o agente: {e}")
-        st.info("Execute `python src/indexador.py` antes de iniciar o Streamlit.")
+        st.info("Verifique a indexação da base de conhecimento.")
         return
 
     # Sidebar
@@ -295,9 +325,12 @@ def main():
     st.title("⚡ Al IAdo PV")
     st.caption("Assistente especialista em inversores fotovoltaicos — UTFPR")
 
+    # Feedback do orquestrador — só aparece se houve novidade
+    mostrar_novidades_orquestrador(relatorio)
+
     # Listagem de artigos (se solicitada)
     if st.session_state.mostrar_artigos:
-        from src.agente import listar_documentos
+        from src.conhecimento.agente import listar_documentos
         with st.expander("📚 Artigos indexados", expanded=True):
             st.text(listar_documentos(colecao))
         st.session_state.mostrar_artigos = False
@@ -320,7 +353,7 @@ def main():
             st.markdown(pergunta)
 
         # Prepara o prompt
-        from src.agente import preparar_prompt
+        from src.conhecimento.agente import preparar_prompt
 
         historico_para_prompt = [
             {"role": m["role"], "content": m["content"]}
@@ -370,6 +403,7 @@ def main():
         # Auto-salvamento após cada interação
         n_interacoes = len(st.session_state.mensagens) // 2
         salvar_sessao_streamlit(pergunta, resposta_completa, n_interacoes, modelo)
+
 
 # ============================================================
 # PONTO DE ENTRADA
