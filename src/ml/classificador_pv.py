@@ -365,7 +365,7 @@ def gerar_relatorio(resultados: dict, melhor_modelo: str, y_teste):
 # PIPELINE PRINCIPAL
 # ============================================================
 
-def main():
+def executar_classificacao() -> bool:
     print("=" * 60)
     print("  AL IADO PV — CLASSIFICAÇÃO DE FALHAS FOTOVOLTAICAS")
     print("=" * 60)
@@ -411,6 +411,7 @@ def main():
     print(f"  Resultados em: resultados/classificacao_pv/")
     print("=" * 60)
 
+    return True
 
 if __name__ == "__main__":
-    main()
+    executar_classificacao()

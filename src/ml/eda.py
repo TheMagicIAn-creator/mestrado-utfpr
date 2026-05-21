@@ -264,7 +264,7 @@ def plotar_desequilibrio(df: pd.DataFrame):
 # PIPELINE PRINCIPAL
 # ============================================================
 
-def main():
+def executar_eda() -> bool:
     print("=" * 60)
     print("  AL IADO PV — ANÁLISE EXPLORATÓRIA (EDA)")
     print("=" * 60)
@@ -291,6 +291,8 @@ def main():
     print("  Abra os arquivos .html no navegador")
     print("=" * 60)
 
+    return True
+
 
 if __name__ == "__main__":
-    main()
+    executar_eda()
