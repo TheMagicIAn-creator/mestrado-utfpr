@@ -14,7 +14,7 @@ from pathlib import Path
 
 from src.core.config import (
     PASTA_NOVOS_PDFS, PASTA_SESSOES, PASTA_RESULTADOS,
-    PASTA_CHROMADB,
+    PASTA_CHROMADB,RAIZ_PROJETO,
 )
 
 
@@ -108,6 +108,18 @@ def etapa_classificacao() -> str:
     except Exception as e:
         return f"Classificação: erro — {e}"
 
+
+def ha_metadados_pendentes() -> bool:
+    """Verifica se há PDFs com metadados não resolvidos."""
+    import json as _json
+    arquivo = RAIZ_PROJETO / "metadados_pendentes.json"
+    if not arquivo.exists():
+        return False
+    try:
+        pendencias = _json.loads(arquivo.read_text(encoding="utf-8"))
+        return any(not p.get("resolvido", False) for p in pendencias.values())
+    except Exception:
+        return False
 
 # ============================================================
 # ORQUESTRAÇÃO PRINCIPAL

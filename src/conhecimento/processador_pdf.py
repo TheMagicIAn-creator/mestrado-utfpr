@@ -2,15 +2,8 @@
 processador_pdf.py — Al IAdo PV
 Pipeline completo para processamento de novos PDFs.
 
-Uso via linha de comando:
-  python src/processador_pdf.py
-  → Processa todos os PDFs da pasta novos_pdfs/
-
-Uso via import (Streamlit):
-  from src.processador_pdf import processar_pdf_unico
-
 Etapas:
-  1. Extrai metadados (autor, título, ano)
+  1. Extrai metadados (autor, título, ano) via LLM + regex + metadados internos
   2. Gera nome padronizado
   3. Classifica tema automaticamente
   4. Copia para literatura/<tema>/
@@ -26,18 +19,17 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from pypdf import PdfReader
+from src.core.config import (
+    PASTA_LITERATURA, PASTA_NOTAS, PASTA_NOVOS_PDFS,
+    PASTA_CHROMADB, RAIZ_PROJETO,
+    GROQ_API_KEY, GOOGLE_API_KEY,
+)
 
-
-# ============================================================
-# CONFIGURAÇÕES
-# ============================================================
-
-PASTA_LITERATURA = Path(__file__).parent.parent / "literatura"
-PASTA_NOTAS      = Path(__file__).parent.parent / "notas" / "literatura"
-PASTA_ENTRADA    = Path(__file__).parent.parent / "novos_pdfs"
+# Pasta de notas de literatura dentro do vault Obsidian
+PASTA_NOTAS_LIT = PASTA_NOTAS / "literatura"
 
 
 # ============================================================
@@ -98,86 +90,231 @@ TEMA_PADRAO = "ml-preditivo"
 # ============================================================
 
 def extrair_texto_pdf(caminho_pdf: Path, n_paginas: int = 3) -> str:
-    """Extrai texto das primeiras N páginas do PDF."""
+    """
+    Extrai texto das primeiras n páginas do PDF.
+    Se o texto for selecionável no PDF, esta função o captura.
+    """
     try:
-        reader = PdfReader(str(caminho_pdf))
-        texto  = ""
-        for i in range(min(n_paginas, len(reader.pages))):
-            texto += reader.pages[i].extract_text() or ""
-        return texto
+        reader  = PdfReader(str(caminho_pdf))
+        paginas = reader.pages[:n_paginas]
+        texto   = "\n".join(
+            pagina.extract_text() or "" for pagina in paginas
+        )
+        return texto.strip()
     except Exception:
         return ""
 
 
 # ============================================================
-# EXTRAÇÃO DE METADADOS
+# EXTRAÇÃO DE METADADOS — AUXILIARES
 # ============================================================
 
-def extrair_metadados_pdf(caminho_pdf: Path) -> dict:
+def _extrair_via_llm(texto: str, nome_arquivo: str) -> dict:
     """
-    Extrai autor, título e ano em cascata:
-    1. Metadados internos do PDF
-    2. Análise do texto
-    3. Fallback para valores padrão
+    Usa LLM para extrair autor, título e ano do texto do PDF.
+    Método principal — mais confiável que regex.
     """
+    import json as _json
 
+    prompt = f"""Analise o texto abaixo — são as primeiras páginas de um documento acadêmico.
+Extraia autor, título e ano de publicação e retorne APENAS um JSON válido, sem explicações, sem markdown.
+
+Regras:
+- autor: sobrenome e nome do(s) autor(es). Se for documento institucional, use o nome da instituição.
+- titulo: título completo do artigo, livro ou documento.
+- ano: ano de publicação em 4 dígitos. Se não encontrar, use "0000".
+- Se um campo não for identificável, use string vazia "".
+
+Formato exato de retorno:
+{{"autor": "...", "titulo": "...", "ano": "..."}}
+
+Nome do arquivo (pode ajudar): {nome_arquivo}
+
+Texto das primeiras páginas:
+{texto[:2000]}"""
+
+    resposta = None
+
+    # Groq primeiro — mais rápido
+    if GROQ_API_KEY:
+        try:
+            from langchain_groq import ChatGroq
+            from langchain_core.messages import HumanMessage
+            llm      = ChatGroq(
+                model        = "llama-3.3-70b-versatile",
+                groq_api_key = GROQ_API_KEY,
+                temperature  = 0
+            )
+            resposta = llm.invoke([HumanMessage(content=prompt)]).content
+        except Exception:
+            pass
+
+    # Gemini como fallback
+    if not resposta and GOOGLE_API_KEY:
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            from langchain_core.messages import HumanMessage
+            llm      = ChatGoogleGenerativeAI(
+                model          = "gemini-2.5-flash",
+                google_api_key = GOOGLE_API_KEY,
+                temperature    = 0
+            )
+            resposta = llm.invoke([HumanMessage(content=prompt)]).content
+        except Exception:
+            pass
+
+    if resposta:
+        try:
+            limpo = re.sub(r"```json?\n?", "", resposta.strip()).replace("```", "").strip()
+            return _json.loads(limpo)
+        except Exception:
+            pass
+
+    return {}
+
+
+def _extrair_via_regex(texto: str) -> dict:
+    """Fallback: extrai metadados por padrões regex."""
+    autor  = ""
+    titulo = ""
+    ano    = "0000"
+
+    if not texto:
+        return {"autor": autor, "titulo": titulo, "ano": ano}
+
+    anos = re.findall(r"\b(199\d|20[0-3]\d)\b", texto)
+    if anos:
+        ano = anos[0]
+
+    padroes_autor = [
+        r"(?:Authors?|Autores?|By)[:\s]+([A-ZÀ-Ú][a-zà-ú]+(?:[\s,]+[A-ZÀ-Ú]\.?[a-zà-ú]*){0,5})",
+        r"^([A-ZÀ-Ú][a-zà-ú]+(?:\s[A-ZÀ-Ú]\.?\s?[A-ZÀ-Ú][a-zà-ú]+){1,4})\s*$",
+    ]
+    for padrao in padroes_autor:
+        m = re.search(padrao, texto[:3000], re.MULTILINE)
+        if m:
+            autor = m.group(1).strip()
+            break
+
+    linhas = [l.strip() for l in texto.split("\n") if len(l.strip()) > 20]
+    if linhas:
+        titulo = linhas[0][:120]
+
+    return {"autor": autor, "titulo": titulo, "ano": ano}
+
+
+def _extrair_via_metadados_internos(caminho_pdf: Path) -> dict:
+    """Último recurso: metadados internos do arquivo PDF."""
     autor  = ""
     titulo = ""
     ano    = "0000"
 
     try:
-        reader = PdfReader(str(caminho_pdf))
-        meta   = reader.metadata or {}
+        reader    = PdfReader(str(caminho_pdf))
+        meta      = reader.metadata or {}
 
-        # Autor
-        autor_raw = str(meta.get("/Author") or meta.get("Author") or "")
-        if autor_raw.strip():
+        autor_raw = str(meta.get("/Author") or meta.get("Author") or "").strip()
+        if autor_raw:
             autor = autor_raw.split(";")[0].split(",")[0].strip()
 
-        # Título
-        titulo_raw = str(meta.get("/Title") or meta.get("Title") or "")
-        if titulo_raw.strip():
-            titulo = titulo_raw.strip()
+        titulo_raw = str(meta.get("/Title") or meta.get("Title") or "").strip()
+        if titulo_raw:
+            titulo = titulo_raw
 
-        # Ano a partir da data de criação
         data_raw  = str(meta.get("/CreationDate") or meta.get("/ModDate") or "")
         match_ano = re.search(r"(\d{4})", data_raw)
         if match_ano:
             ano_cand = int(match_ano.group(1))
             if 1990 <= ano_cand <= datetime.now().year:
                 ano = str(ano_cand)
-
     except Exception:
         pass
 
-    # Fallback via texto do PDF
-    texto = extrair_texto_pdf(caminho_pdf, n_paginas=2)
+    return {"autor": autor, "titulo": titulo, "ano": ano}
 
-    if ano == "0000" and texto:
-        anos = re.findall(r"\b(199\d|20[0-3]\d)\b", texto)
-        if anos:
-            ano = anos[0]
 
-    if not autor and texto:
-        padroes = [
-            r"(?:Authors?|Autores?)[:\s]+([A-Z][a-záàãâéêíóõôú]+(?:\s[A-Z]\.?\s?[A-Z][a-z]+)*)",
-            r"^([A-Z][a-z]+(?:\s[A-Z]\.?\s?[A-Z][a-z]+){1,3})",
-        ]
-        for p in padroes:
-            m = re.search(p, texto[:3000], re.MULTILINE)
-            if m:
-                autor = m.group(1).strip()
-                break
+def _registrar_pendencia(caminho_pdf: Path, autor: str, titulo: str, ano: str):
+    """Registra documentos com metadados não resolvidos para revisão manual."""
+    import json as _json
 
-    if not titulo and texto:
-        linhas = [l.strip() for l in texto.split("\n") if len(l.strip()) > 20]
-        if linhas:
-            titulo = linhas[0][:100]
+    arquivo_pendencias = RAIZ_PROJETO / "metadados_pendentes.json"
+
+    pendencias = {}
+    if arquivo_pendencias.exists():
+        try:
+            pendencias = _json.loads(arquivo_pendencias.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    nome = caminho_pdf.name
+    if nome not in pendencias:
+        pendencias[nome] = {
+            "arquivo"     : str(caminho_pdf),
+            "autor_atual" : autor,
+            "titulo_atual": titulo,
+            "ano_atual"   : ano,
+            "registrado"  : datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "resolvido"   : False
+        }
+        arquivo_pendencias.write_text(
+            _json.dumps(pendencias, ensure_ascii=False, indent=2),
+            encoding="utf-8"
+        )
+        print(f"   ⚠️  Metadados pendentes registrados: {nome}")
+
+
+# ============================================================
+# EXTRAÇÃO DE METADADOS — PRINCIPAL
+# ============================================================
+
+def extrair_metadados_pdf(caminho_pdf: Path) -> dict:
+    """
+    Extrai autor, título e ano do PDF em cascata:
+    1. LLM analisa o texto das primeiras páginas  ← mais confiável
+    2. Padrões regex sobre o texto                ← fallback
+    3. Metadados internos do arquivo PDF          ← último recurso
+    4. Registra pendência se ainda não resolvido
+    """
+    texto  = extrair_texto_pdf(caminho_pdf, n_paginas=3)
+    autor  = ""
+    titulo = ""
+    ano    = "0000"
+
+    # 1. LLM
+    if texto:
+        resultado = _extrair_via_llm(texto, caminho_pdf.name)
+        autor     = resultado.get("autor",  "").strip()
+        titulo    = resultado.get("titulo", "").strip()
+        ano       = resultado.get("ano",    "0000").strip()
+
+    # 2. Regex — completa o que LLM não resolveu
+    if not autor or not titulo or ano == "0000":
+        resultado = _extrair_via_regex(texto or "")
+        if not autor:
+            autor  = resultado.get("autor",  "")
+        if not titulo:
+            titulo = resultado.get("titulo", "")
+        if ano == "0000":
+            ano    = resultado.get("ano",    "0000")
+
+    # 3. Metadados internos
+    if not autor or not titulo or ano == "0000":
+        resultado = _extrair_via_metadados_internos(caminho_pdf)
+        if not autor:
+            autor  = resultado.get("autor",  "")
+        if not titulo:
+            titulo = resultado.get("titulo", "")
+        if ano == "0000":
+            ano    = resultado.get("ano",    "0000")
+
+    # 4. Registra pendência se ainda incompleto
+    if not autor or not titulo or ano == "0000":
+        _registrar_pendencia(caminho_pdf, autor, titulo, ano)
 
     return {
         "autor" : autor  or "autor-desconhecido",
         "titulo": titulo or caminho_pdf.stem,
-        "ano"   : ano
+        "ano"   : ano    or "0000"
     }
 
 
@@ -214,7 +351,6 @@ def gerar_nome_padronizado(autor: str, titulo: str, ano: str) -> str:
 
 def classificar_tema(nome_arquivo: str, texto: str) -> str:
     """Classifica por pontuação de palavras-chave."""
-
     conteudo = (nome_arquivo + " " + texto).lower()
     pontos   = {tema: 0 for tema in TEMAS}
 
@@ -232,16 +368,15 @@ def classificar_tema(nome_arquivo: str, texto: str) -> str:
 # ============================================================
 
 def gerar_nota_obsidian(
-    nome_final: str,
-    autor: str,
-    titulo: str,
-    ano: str,
-    tema: str,
-    texto_pdf: str
+    nome_final  : str,
+    autor       : str,
+    titulo      : str,
+    ano         : str,
+    tema        : str,
+    texto_pdf   : str
 ) -> Path:
     """Gera nota .md no vault do Obsidian."""
-
-    pasta = PASTA_NOTAS / tema
+    pasta   = PASTA_NOTAS_LIT / tema
     pasta.mkdir(parents=True, exist_ok=True)
     caminho = pasta / nome_final.replace(".pdf", ".md")
 
@@ -274,16 +409,12 @@ def gerar_nota_obsidian(
 # ============================================================
 
 def processar_pdf_unico(
-    caminho_pdf     : Path,
+    caminho_pdf    : Path,
     modelo_embeddings,
-    pasta_chromadb  : Path,
-    gerar_obsidian  : bool = True
+    pasta_chromadb : Path,
+    gerar_obsidian : bool = True
 ) -> dict:
-    """
-    Pipeline completo para um único PDF.
-    Retorna dicionário com resultado detalhado.
-    """
-
+    """Pipeline completo para um único PDF."""
     resultado = {
         "sucesso"      : False,
         "arquivo_orig" : caminho_pdf.name,
@@ -303,11 +434,10 @@ def processar_pdf_unico(
         autor  = meta["autor"]
         titulo = meta["titulo"]
         ano    = meta["ano"]
-
         resultado.update({"autor": autor, "titulo": titulo, "ano": ano})
 
         # 2. Nome padronizado
-        nome_final             = gerar_nome_padronizado(autor, titulo, ano)
+        nome_final = gerar_nome_padronizado(autor, titulo, ano)
         resultado["arquivo_final"] = nome_final
 
         # 3. Tema
@@ -322,7 +452,7 @@ def processar_pdf_unico(
         shutil.copy2(str(caminho_pdf), str(caminho_final))
 
         # 5. Indexa no ChromaDB
-        from src.indexador import indexar_pdf_unico
+        from src.conhecimento.indexador import indexar_pdf_unico
         res = indexar_pdf_unico(caminho_final, modelo_embeddings, pasta_chromadb)
 
         if not res["sucesso"]:
@@ -349,21 +479,16 @@ def processar_pdf_unico(
 # ============================================================
 
 def processar_pasta(
-    pasta_entrada   : Path,
+    pasta_entrada  : Path,
     modelo_embeddings,
-    pasta_chromadb  : Path,
-    gerar_obsidian  : bool = True
+    pasta_chromadb : Path,
+    gerar_obsidian : bool = True
 ) -> list:
-    """
-    Processa todos os PDFs de uma pasta.
-    Use via linha de comando para inserção em lote.
-    """
-
+    """Processa todos os PDFs de uma pasta."""
     pdfs = list(pasta_entrada.glob("*.pdf"))
 
     if not pdfs:
         print(f"\n⚠️  Nenhum PDF em: {pasta_entrada}")
-        print(f"   Coloque os PDFs lá e rode novamente.")
         return []
 
     print("=" * 60)
@@ -377,7 +502,6 @@ def processar_pasta(
 
     for i, pdf in enumerate(pdfs, 1):
         print(f"  [{i}/{len(pdfs)}] {pdf.name}")
-
         r = processar_pdf_unico(pdf, modelo_embeddings, pasta_chromadb, gerar_obsidian)
 
         if r["sucesso"]:
@@ -385,7 +509,6 @@ def processar_pasta(
             print(f"         Título : {r['titulo'][:50]}")
             print(f"         Ano    : {r['ano']}")
             print(f"         Tema   : {r['tema']}")
-            print(f"         Arquivo: {r['arquivo_final']}")
             print(f"         Chunks : {r['n_chunks']}")
             print(f"         ✅ OK!\n")
             sucesso += 1
@@ -403,20 +526,19 @@ def processar_pasta(
 
 
 # ============================================================
-# LINHA DE COMANDO
+# PONTO DE ENTRADA
 # ============================================================
 
 if __name__ == "__main__":
     from sentence_transformers import SentenceTransformer
-    from src.agente import MODELO_EMBEDDINGS, PASTA_CHROMADB
+    from src.core.config import MODELO_EMBEDDINGS, PASTA_CHROMADB
 
-    PASTA_ENTRADA.mkdir(exist_ok=True)
+    PASTA_NOVOS_PDFS.mkdir(exist_ok=True)
 
-    if not list(PASTA_ENTRADA.glob("*.pdf")):
-        print(f"\n📂 Pasta de entrada criada: {PASTA_ENTRADA}")
-        print(f"   Coloque os PDFs lá e rode novamente:")
-        print(f"   python src/processador_pdf.py")
+    if not list(PASTA_NOVOS_PDFS.glob("*.pdf")):
+        print(f"\n📂 Pasta de entrada: {PASTA_NOVOS_PDFS}")
+        print(f"   Coloque os PDFs lá e rode novamente.")
     else:
         print("\n🔄 Carregando modelo de embeddings...")
         modelo = SentenceTransformer(MODELO_EMBEDDINGS)
-        processar_pasta(PASTA_ENTRADA, modelo, PASTA_CHROMADB)
+        processar_pasta(PASTA_NOVOS_PDFS, modelo, PASTA_CHROMADB)
