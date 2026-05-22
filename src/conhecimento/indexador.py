@@ -6,38 +6,27 @@ para que o agente possa buscar informações por similaridade.
 Autor: Rodolfo Torres (UTFPR)
 """
 import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent))
-
 import os
 import re
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 from pypdf import PdfReader
-from src.core.utils import parsear_nome_arquivo
 from sentence_transformers import SentenceTransformer
 import chromadb
 
-# ============================================================
-# CONFIGURAÇÕES
-# ============================================================
-
-# Caminho para a pasta com os PDFs
-PASTA_LITERATURA = Path(__file__).parent.parent / "literatura"
-
-# Caminho para o banco vetorial ChromaDB
-PASTA_CHROMADB = Path(__file__).parent.parent / "base_conhecimento"
-
-# Nome da coleção no ChromaDB
-NOME_COLECAO = "literatura_pv"
-
-# Modelo de embeddings (transforma texto em vetores numéricos)
-# all-MiniLM-L6-v2 é leve, rápido e funciona bem em português técnico
-MODELO_EMBEDDINGS = "paraphrase-multilingual-MiniLM-L12-v2"
-
-# Tamanho dos chunks (pedaços de texto que serão indexados)
-TAMANHO_CHUNK = 500   # caracteres por chunk
-SOBREPOSICAO  = 50    # sobreposição entre chunks para não perder contexto
-
+from src.core.utils import parsear_nome_arquivo
+from src.core.config import (
+    PASTA_LITERATURA,
+    PASTA_CHROMADB,
+    NOME_COLECAO,
+    NOME_COLECAO_SESSOES,
+    MODELO_EMBEDDINGS,
+    TAMANHO_CHUNK,
+    SOBREPOSICAO,
+    TAMANHO_LOTE,
+)
 
 # ============================================================
 # FUNÇÕES
