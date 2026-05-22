@@ -108,6 +108,10 @@ def etapa_classificacao() -> str:
     except Exception as e:
         return f"Classificação: erro — {e}"
 
+def ha_arquivos_com_nome_ruim() -> bool:
+    """Verifica se há PDFs com autor-desconhecido no nome em literatura/."""
+    from src.core.config import PASTA_LITERATURA
+    return any(PASTA_LITERATURA.rglob("autor-desconhecido_*.pdf"))
 
 def ha_metadados_pendentes() -> bool:
     """Verifica se há PDFs com metadados não resolvidos."""
@@ -120,6 +124,86 @@ def ha_metadados_pendentes() -> bool:
         return any(not p.get("resolvido", False) for p in pendencias.values())
     except Exception:
         return False
+
+def reprocessar_metadados_ruins() -> str:
+    """
+    Detecta PDFs com 'autor-desconhecido' no nome dentro de literatura/,
+    extrai metadados corretos via LLM, renomeia o arquivo e reindexa.
+    Totalmente automático — sem curadoria manual.
+    """
+    from src.core.config import PASTA_LITERATURA, PASTA_CHROMADB, MODELO_EMBEDDINGS
+
+    # Encontra arquivos com nome ruim
+    ruins = list(PASTA_LITERATURA.rglob("autor-desconhecido_*.pdf"))
+
+    if not ruins:
+        return "Metadados: todos os arquivos estão com nome correto"
+
+    print(f"\n🔧 Reprocessando {len(ruins)} arquivo(s) com metadados ruins...")
+
+    try:
+        from sentence_transformers import SentenceTransformer
+        from src.conhecimento.processador_pdf import (
+            extrair_metadados_pdf,
+            gerar_nome_padronizado,
+        )
+        from src.conhecimento.indexador import indexar_pdf_unico
+        import chromadb
+
+        modelo  = SentenceTransformer(MODELO_EMBEDDINGS)
+        client  = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
+        colecao = client.get_or_create_collection("literatura_pv")
+
+        corrigidos = 0
+
+        for pdf in ruins:
+            print(f"   📄 {pdf.name}")
+
+            # 1. Extrai metadados corretos via LLM
+            meta   = extrair_metadados_pdf(pdf)
+            autor  = meta["autor"]
+            titulo = meta["titulo"]
+            ano    = meta["ano"]
+
+            # Se ainda ficou desconhecido, pula — LLM não conseguiu
+            if autor == "autor-desconhecido":
+                print(f"      ⚠️  LLM não resolveu — mantendo para revisão manual")
+                continue
+
+            # 2. Gera nome correto
+            nome_novo   = gerar_nome_padronizado(autor, titulo, ano)
+            pasta       = pdf.parent
+            caminho_novo = pasta / nome_novo
+
+            # Evita sobrescrever arquivo existente com nome diferente
+            if caminho_novo.exists() and caminho_novo != pdf:
+                print(f"      ⚠️  Arquivo destino já existe: {nome_novo} — pulando")
+                continue
+
+            # 3. Remove chunks antigos do ChromaDB
+            resultado = colecao.get(
+                where   = {"arquivo": pdf.name},
+                include = ["metadatas"]
+            )
+            ids_antigos = resultado.get("ids", [])
+            if ids_antigos:
+                colecao.delete(ids=ids_antigos)
+
+            # 4. Renomeia o arquivo
+            pdf.rename(caminho_novo)
+            print(f"      → {nome_novo}")
+
+            # 5. Reindexa com nome e metadados corretos
+            res = indexar_pdf_unico(caminho_novo, modelo, PASTA_CHROMADB)
+            chunks = res.get("n_chunks", 0)
+            print(f"      ✅ {chunks} chunks reindexados")
+
+            corrigidos += 1
+
+        return f"Metadados: {corrigidos} arquivo(s) corrigido(s) automaticamente"
+
+    except Exception as e:
+        return f"Metadados: erro no reprocessamento — {e}"
 
 # ============================================================
 # ORQUESTRAÇÃO PRINCIPAL
@@ -138,6 +222,17 @@ def executar_pipeline(modelo_embeddings) -> list:
     relatorio.append(etapa_indexar_pdfs(modelo_embeddings))
     relatorio.append(etapa_consolidar_memoria())
 
+    def executar_pipeline(modelo_embeddings) -> list:
+        relatorio = []
+
+        relatorio.append(etapa_indexar_pdfs(modelo_embeddings))
+        relatorio.append(etapa_consolidar_memoria())
+        relatorio.append(reprocessar_metadados_ruins())  # ← linha nova
+        relatorio.append(etapa_eda())
+        relatorio.append(etapa_classificacao())
+
+        return relatorio
+
     # Etapas de ML — rodam só na primeira vez (verificação de estado)
     relatorio.append(etapa_eda())
     relatorio.append(etapa_classificacao())
@@ -146,12 +241,12 @@ def executar_pipeline(modelo_embeddings) -> list:
 
 
 if __name__ == "__main__":
-    # Execução de teste pelo terminal — sem modelo de embeddings real
     print("=" * 60)
     print("  AL IADO PV — ORQUESTRADOR (teste de estado)")
     print("=" * 60)
     print(f"\nPDFs novos pendentes      : {ha_pdfs_novos()}")
     print(f"Sessões para consolidar   : {ha_sessoes_para_consolidar()}")
+    print(f"Arquivos com nome ruim    : {ha_arquivos_com_nome_ruim()}")
     print(f"EDA pendente              : {eda_pendente()}")
     print(f"Classificação pendente    : {classificacao_pendente()}")
     print("=" * 60)
