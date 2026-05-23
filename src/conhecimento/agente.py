@@ -133,16 +133,21 @@ def _expandir_query(pergunta: str) -> dict:
     import json as _json
     from src.core.config import GROQ_API_KEY, GOOGLE_API_KEY
 
-    prompt = f"""Você é um sistema de busca especializado em inversores fotovoltaicos e manutenção preditiva.
+    prompt = f"""Você é um sistema de busca especializado em engenharia de manutenção,
+    confiabilidade de sistemas fotovoltaicos e Machine Learning aplicado a inversores.
+    Contexto: FMEA (Failure Mode and Effects Analysis), FMECA, NPR (Número de Prioridade
+    de Risco = Severidade × Ocorrência × Detecção), RCM (Reliability Centered Maintenance),
+    inversores fotovoltaicos on-grid, detecção de anomalias, filtro LCL, IGBTs.
 
-Dada a pergunta abaixo, gere:
-1. Quatro variações usando sinônimos, reformulações e perspectivas diferentes
-2. Cinco termos-chave específicos para busca literal (siglas, números, termos técnicos, nomes próprios)
+    Dada a pergunta abaixo, gere:
+    1. Quatro variações usando sinônimos técnicos corretos do domínio de manutenção/confiabilidade
+    2. Cinco termos-chave específicos para busca literal no texto (siglas, valores numéricos,
+       nomes técnicos, termos em português E inglês se aplicável)
 
-Retorne APENAS um JSON válido neste formato exato, sem explicações:
-{{"variacoes": ["...", "...", "...", "..."], "termos": ["...", "...", "...", "...", "..."]}}
+    Retorne APENAS um JSON válido neste formato, sem explicações:
+    {{"variacoes": ["...", "...", "...", "..."], "termos": ["...", "...", "...", "...", "..."]}}
 
-Pergunta: {pergunta}"""
+    Pergunta: {pergunta}"""
 
     resposta = None
 
@@ -151,7 +156,7 @@ Pergunta: {pergunta}"""
             from langchain_groq import ChatGroq
             from langchain_core.messages import HumanMessage
             llm      = ChatGroq(
-                model        = "llama-3.1-8b-instant",
+                model        = "llama-3.3-70b-versatile",
                 groq_api_key = GROQ_API_KEY,
                 temperature  = 0
             )
@@ -289,7 +294,7 @@ Trechos:
             from langchain_groq import ChatGroq
             from langchain_core.messages import HumanMessage
             llm      = ChatGroq(
-                model        = "llama-3.1-8b-instant",
+                model        = "llama-3.3-70b-versatile",
                 groq_api_key = GROQ_API_KEY,
                 temperature  = 0
             )
