@@ -120,65 +120,281 @@ def inicializar_agente(llm_externo=None):
 
     return perfil, modelo_embeddings, colecao, colecao_sessoes, llm
 
+# ============================================================
+# RAG AVANÇADO — 3 CAMADAS
+# ============================================================
+
+def _expandir_query(pergunta: str) -> dict:
+    """
+    CAMADA 1 — Expansão de query.
+    Usa Groq LLaMA 3.1 8B para gerar variações da pergunta
+    e extrair termos-chave para busca por palavras.
+    """
+    import json as _json
+    from src.core.config import GROQ_API_KEY, GOOGLE_API_KEY
+
+    prompt = f"""Você é um sistema de busca especializado em inversores fotovoltaicos e manutenção preditiva.
+
+Dada a pergunta abaixo, gere:
+1. Quatro variações usando sinônimos, reformulações e perspectivas diferentes
+2. Cinco termos-chave específicos para busca literal (siglas, números, termos técnicos, nomes próprios)
+
+Retorne APENAS um JSON válido neste formato exato, sem explicações:
+{{"variacoes": ["...", "...", "...", "..."], "termos": ["...", "...", "...", "...", "..."]}}
+
+Pergunta: {pergunta}"""
+
+    resposta = None
+
+    if GROQ_API_KEY:
+        try:
+            from langchain_groq import ChatGroq
+            from langchain_core.messages import HumanMessage
+            llm      = ChatGroq(
+                model        = "llama-3.1-8b-instant",
+                groq_api_key = GROQ_API_KEY,
+                temperature  = 0
+            )
+            resposta = llm.invoke([HumanMessage(content=prompt)]).content
+        except Exception:
+            pass
+
+    if not resposta and GOOGLE_API_KEY:
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            from langchain_core.messages import HumanMessage
+            llm      = ChatGoogleGenerativeAI(
+                model          = "gemini-2.5-flash",
+                google_api_key = GOOGLE_API_KEY,
+                temperature    = 0
+            )
+            resposta = llm.invoke([HumanMessage(content=prompt)]).content
+        except Exception:
+            pass
+
+    if resposta:
+        try:
+            import re as _re
+            limpo    = _re.sub(r"```json?\n?", "", resposta.strip()).replace("```", "").strip()
+            return _json.loads(limpo)
+        except Exception:
+            pass
+
+    return {"variacoes": [pergunta], "termos": []}
+
+
+def _busca_hibrida(
+    variacoes       : list,
+    termos          : list,
+    colecao,
+    modelo_embeddings,
+    n_pool          : int = 60
+) -> list:
+    """
+    CAMADA 2 — Busca híbrida.
+    Combina busca semântica (embeddings) com busca por palavras-chave.
+    Retorna pool deduplicado de candidatos como lista de (doc, meta).
+    """
+    pool = {}  # chunk_id → (documento, metadado)
+
+    # Busca semântica para cada variação da query
+    n_por_variacao = max(10, n_pool // max(len(variacoes), 1))
+
+    for variacao in variacoes:
+        try:
+            vetor      = modelo_embeddings.encode([variacao]).tolist()
+            resultados = colecao.query(
+                query_embeddings = vetor,
+                n_results        = min(n_por_variacao, 50)
+            )
+            docs  = resultados.get("documents", [[]])[0]
+            metas = resultados.get("metadatas",  [[]])[0]
+            ids   = resultados.get("ids",        [[]])[0]
+
+            for id_, doc, meta in zip(ids, docs, metas):
+                if id_ not in pool:
+                    pool[id_] = (doc, meta)
+        except Exception:
+            continue
+
+    # Busca por palavras-chave (keyword search)
+    for termo in termos:
+        if not termo or len(termo) < 2:
+            continue
+        try:
+            resultados = colecao.get(
+                where_document = {"$contains": termo},
+                include        = ["documents", "metadatas"],
+                limit          = 10
+            )
+            docs  = resultados.get("documents", [])
+            metas = resultados.get("metadatas", [])
+            ids   = resultados.get("ids",       [])
+
+            for id_, doc, meta in zip(ids, docs, metas):
+                if id_ not in pool:
+                    pool[id_] = (doc, meta)
+        except Exception:
+            continue
+
+    return list(pool.values())
+
+
+def _rerankar(candidatos: list, pergunta: str, n_final: int) -> list:
+    """
+    CAMADA 3 — Reranking.
+    Usa Groq LLaMA 3.1 8B para avaliar cada chunk candidato
+    e selecionar os n_final mais relevantes para a pergunta.
+    """
+    import json as _json
+    from src.core.config import GROQ_API_KEY, GOOGLE_API_KEY
+
+    if not candidatos:
+        return []
+
+    if len(candidatos) <= n_final:
+        return candidatos
+
+    # Monta lista numerada dos candidatos (limitada para caber no contexto)
+    lista_chunks = ""
+    for i, (doc, meta) in enumerate(candidatos):
+        autor = meta.get("autor", "")
+        ano   = meta.get("ano",   "")
+        fonte = f"{autor} ({ano})" if autor else "Fonte desconhecida"
+        lista_chunks += f"\n[{i}] {fonte}\n{doc[:400]}\n"
+
+    prompt = f"""Você é um sistema de reranking para pesquisa acadêmica sobre inversores fotovoltaicos.
+
+Pergunta do pesquisador: {pergunta}
+
+Abaixo há {len(candidatos)} trechos de documentos científicos numerados de 0 a {len(candidatos)-1}.
+Selecione os {n_final} trechos MAIS relevantes para responder a pergunta.
+
+Critérios de relevância:
+- Responde direta ou indiretamente à pergunta
+- Contém dados, valores, tabelas ou fórmulas mencionadas
+- Apresenta definições, métodos ou resultados pertinentes
+- É específico, não genérico
+
+Retorne APENAS um JSON com os índices em ordem de relevância (mais relevante primeiro):
+{{"selecionados": [índice1, índice2, ...]}}
+
+Trechos:
+{lista_chunks}"""
+
+    resposta = None
+
+    if GROQ_API_KEY:
+        try:
+            from langchain_groq import ChatGroq
+            from langchain_core.messages import HumanMessage
+            llm      = ChatGroq(
+                model        = "llama-3.1-8b-instant",
+                groq_api_key = GROQ_API_KEY,
+                temperature  = 0
+            )
+            resposta = llm.invoke([HumanMessage(content=prompt)]).content
+        except Exception:
+            pass
+
+    if not resposta and GOOGLE_API_KEY:
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            from langchain_core.messages import HumanMessage
+            llm      = ChatGoogleGenerativeAI(
+                model          = "gemini-2.5-flash",
+                google_api_key = GOOGLE_API_KEY,
+                temperature    = 0
+            )
+            resposta = llm.invoke([HumanMessage(content=prompt)]).content
+        except Exception:
+            pass
+
+    if resposta:
+        try:
+            import re as _re
+            limpo    = _re.sub(r"```json?\n?", "", resposta.strip()).replace("```", "").strip()
+            resultado = _json.loads(limpo)
+            indices   = resultado.get("selecionados", [])
+
+            selecionados = [
+                candidatos[i]
+                for i in indices
+                if isinstance(i, int) and 0 <= i < len(candidatos)
+            ]
+
+            if selecionados:
+                return selecionados[:n_final]
+        except Exception:
+            pass
+
+    # Fallback: retorna os primeiros n_final sem reranking
+    return candidatos[:n_final]
+
+
+# ============================================================
+# BUSCA DE CONTEXTO — PIPELINE RAG 3 CAMADAS
+# ============================================================
 
 def buscar_contexto(
-    pergunta: str,
+    pergunta        : str,
     modelo_embeddings,
     colecao,
-    colecao_sessoes=None
+    colecao_sessoes = None
 ) -> tuple:
     """
-    Busca contexto relevante em DUAS fontes:
-    1. literatura_pv  — artigos científicos indexados
-    2. sessoes_pv     — conversas anteriores (memória persistente)
+    Pipeline RAG de 3 camadas:
+    1. Expansão: LLM gera variações da query + termos-chave
+    2. Busca híbrida: semântica + keyword → pool ~60 chunks
+    3. Reranking: LLM seleciona os N mais relevantes do pool
     """
-
-    vetor_pergunta = modelo_embeddings.encode([pergunta]).tolist()
-
     contexto = ""
     citacoes = {}
 
-    # ── 1. Busca na literatura ───────────────────────────────────
-    resultados_lit = colecao.query(
-        query_embeddings = vetor_pergunta,
-        n_results        = N_RESULTADOS
+    # ── CAMADA 1 — Expansão ──────────────────────────────────
+    expansao  = _expandir_query(pergunta)
+    variacoes = expansao.get("variacoes", [pergunta])
+    termos    = expansao.get("termos",    [])
+
+    if pergunta not in variacoes:
+        variacoes.insert(0, pergunta)
+
+    # ── CAMADA 2 — Busca híbrida ─────────────────────────────
+    candidatos = _busca_hibrida(
+        variacoes, termos, colecao, modelo_embeddings, n_pool=60
     )
 
-    documentos = resultados_lit.get("documents", [[]])[0]
-    metadados  = resultados_lit.get("metadatas",  [[]])[0]
+    # ── CAMADA 3 — Reranking ─────────────────────────────────
+    melhores = _rerankar(candidatos, pergunta, N_RESULTADOS)
 
-    if documentos:
+    # Monta contexto da literatura
+    if melhores:
         contexto += "\n📚 DA LITERATURA CIENTÍFICA:\n"
-        for i, (doc, meta) in enumerate(zip(documentos, metadados), 1):
-            arquivo = meta.get("arquivo", "fonte desconhecida")
-            pasta   = meta.get("pasta",   "")
-            citacao = meta.get("citacao") or parsear_nome_arquivo(arquivo)["citacao"]
-            contexto += (
-                f"\n--- Trecho {i} ---\n"
-                f"Fonte: {citacao} (tema: {pasta})\n"
-                f"{doc}\n"
-            )
-            if arquivo not in citacoes:
+        for doc, meta in melhores:
+            arquivo = meta.get("arquivo", "")
+            citacao = meta.get("citacao", arquivo)
+            if arquivo and arquivo not in citacoes:
                 citacoes[arquivo] = citacao
+            contexto += f"\n[Fonte: {citacao}]\n{doc}\n"
 
-    # ── 2. Busca nas sessões anteriores ─────────────────────────
-    if colecao_sessoes and colecao_sessoes.count() > 0:
-        resultados_ses = colecao_sessoes.query(
-            query_embeddings = vetor_pergunta,
-            n_results        = 3  # menos chunks de sessão que de literatura
-        )
+    # ── Sessões — busca direta (sem reranking) ───────────────
+    if colecao_sessoes:
+        try:
+            vetor_pergunta = modelo_embeddings.encode([pergunta]).tolist()
+            resultados_ses = colecao_sessoes.query(
+                query_embeddings = vetor_pergunta,
+                n_results        = max(3, N_RESULTADOS // 4)
+            )
+            docs_ses  = resultados_ses.get("documents", [[]])[0]
+            metas_ses = resultados_ses.get("metadatas",  [[]])[0]
 
-        docs_ses = resultados_ses.get("documents", [[]])[0]
-        mets_ses = resultados_ses.get("metadatas",  [[]])[0]
-
-        if docs_ses:
-            contexto += "\n\n🧠 DE SESSÕES ANTERIORES (memória persistente):\n"
-            for i, (doc, meta) in enumerate(zip(docs_ses, mets_ses), 1):
-                data = meta.get("data", "data desconhecida")
-                contexto += (
-                    f"\n--- Memória {i} (sessão de {data}) ---\n"
-                    f"{doc}\n"
-                )
+            if docs_ses:
+                contexto += "\n💭 DA MEMÓRIA DE SESSÕES ANTERIORES:\n"
+                for doc, meta in zip(docs_ses, metas_ses):
+                    arquivo = meta.get("arquivo", "")
+                    contexto += f"\n[Memória: {arquivo}]\n{doc}\n"
+        except Exception:
+            pass
 
     return contexto, citacoes
 
