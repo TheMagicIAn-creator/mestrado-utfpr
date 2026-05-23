@@ -135,18 +135,28 @@ def _expandir_query(pergunta: str) -> dict:
 
     prompt = f"""Você é um sistema de busca especializado em engenharia de manutenção,
     confiabilidade de sistemas fotovoltaicos e Machine Learning aplicado a inversores.
-    Contexto: FMEA, FMECA, NPR (Número de Prioridade de Risco = Severidade × Ocorrência × Detecção),
-    RCM, inversores fotovoltaicos on-grid, detecção de anomalias, filtro LCL, IGBTs.
+
+    Domínio técnico: FMEA, FMECA, NPR/RPN, RCM/MCC, inversores fotovoltaicos on-grid,
+    detecção de anomalias, filtro LCL, IGBTs, Autoencoder, Isolation Forest, Weibull,
+    sinais elétricos CA, THD, FFT, RMS, manutenção preditiva, confiabilidade.
 
     Dada a pergunta abaixo, gere:
-    1. Quatro variações usando sinônimos técnicos corretos do domínio de manutenção/confiabilidade
-    2. Cinco termos-chave para busca literal — inclua siglas, termos técnicos E possíveis
-       valores numéricos ou identificadores mencionados ou implícitos na pergunta
-       (ex: se a pergunta é sobre NPR de um componente, inclua "NPR", o nome do componente,
-       e possíveis valores como "210", "150", "alto", "crítico")
+    1. Seis variações da pergunta cobrindo:
+       - Reformulação em português técnico formal
+       - Reformulação em inglês técnico (obrigatório)
+       - Versão com siglas expandidas (ex: NPR → Número de Prioridade de Risco)
+       - Versão com siglas contraídas (ex: Failure Mode → FMEA)
+       - Versão focada em resultados numéricos ou dados quantitativos se aplicável
+       - Versão com sinônimos do domínio (ex: inversor → conversor CC-CA, power inverter)
+
+    2. Oito termos-chave para busca literal, incluindo:
+       - Termos em português
+       - Termos equivalentes em inglês
+       - Siglas e abreviações relevantes
+       - Possíveis valores numéricos ou identificadores implícitos na pergunta
 
     Retorne APENAS um JSON válido neste formato, sem explicações:
-    {{"variacoes": ["...", "...", "...", "..."], "termos": ["...", "...", "...", "...", "..."]}}
+    {{"variacoes": ["...", "...", "...", "...", "...", "..."], "termos": ["...", "...", "...", "...", "...", "...", "...", "..."]}}
 
     Pergunta: {pergunta}"""
 
