@@ -38,7 +38,7 @@ def ler_pdf(caminho_pdf: Path) -> str:
     """
     try:
         reader = PdfReader(str(caminho_pdf))
-        texto = ""
+        texto  = ""
         for pagina in reader.pages:
             texto_pagina = pagina.extract_text()
             if texto_pagina:
@@ -47,6 +47,124 @@ def ler_pdf(caminho_pdf: Path) -> str:
     except Exception as e:
         print(f"  ⚠️  Erro ao ler {caminho_pdf.name}: {e}")
         return ""
+
+def extrair_tabelas_pdf(caminho_pdf: Path, metadados_doc: dict) -> list:
+    """
+    Extrai tabelas do PDF como chunks Markdown estruturados.
+    Cada tabela vira um chunk único com cabeçalho identificador.
+    Usa pdfplumber para preservar a estrutura de linhas e colunas.
+    """
+    chunks_tabelas = []
+    citacao = metadados_doc.get("citacao", caminho_pdf.name)
+
+    try:
+        import pdfplumber
+
+        with pdfplumber.open(str(caminho_pdf)) as pdf:
+            for num_pag, pagina in enumerate(pdf.pages, 1):
+                tabelas = pagina.extract_tables()
+                if not tabelas:
+                    continue
+
+                for num_tab, tabela in enumerate(tabelas, 1):
+                    if not tabela or len(tabela) < 2:
+                        continue
+
+                    # Filtra linhas completamente vazias
+                    linhas_validas = [
+                        linha for linha in tabela
+                        if any(cel and str(cel).strip() for cel in linha)
+                    ]
+                    if len(linhas_validas) < 2:
+                        continue
+
+                    # Converte para Markdown
+                    def limpar_cel(cel):
+                        if cel is None:
+                            return ""
+                        return str(cel).replace("\n", " ").strip()
+
+                    header   = linhas_validas[0]
+                    corpo    = linhas_validas[1:]
+                    n_cols   = len(header)
+
+                    md  = f"[TABELA — {citacao} — Página {num_pag}, Tabela {num_tab}]\n"
+                    md += "| " + " | ".join(limpar_cel(c) for c in header) + " |\n"
+                    md += "| " + " | ".join("---" for _ in header) + " |\n"
+
+                    for linha in corpo:
+                        # Garante que a linha tem o mesmo número de colunas
+                        linha_pad = list(linha) + [""] * (n_cols - len(linha))
+                        md += "| " + " | ".join(limpar_cel(c) for c in linha_pad[:n_cols]) + " |\n"
+
+                    # Só indexa tabelas com conteúdo mínimo significativo
+                    if len(md) > 100:
+                        chunks_tabelas.append(md)
+
+    except ImportError:
+        pass  # pdfplumber não instalado — pula extração de tabelas
+    except Exception:
+        pass
+
+    return chunks_tabelas
+
+
+def dividir_em_secoes(texto: str, tamanho_max: int = 1500) -> list:
+    """
+    Divide o texto por seções semânticas detectando títulos e subtítulos.
+    Seções maiores que tamanho_max são subdivididas com sobreposição.
+    Preserva contexto estrutural que o chunking por tamanho fixo destrói.
+    """
+    import re
+
+    # Padrões de título comuns em documentos acadêmicos
+    padrao_titulo = re.compile(
+        r"^(?:"
+        r"\d+[\.\s]|"           # 1. ou 1 
+        r"[A-ZÁÀÃÂÉÊÍÓÕÔÚ]{3,}|"  # TÍTULOS EM MAIÚSCULAS
+        r"(?:Cap[íi]tulo|Seção|Apêndice|Anexo|Abstract|Resumo|Introdução|"
+        r"Conclus[ãa]o|Referências|Metodologia|Resultados)\b"
+        r")",
+        re.MULTILINE | re.IGNORECASE
+    )
+
+    linhas   = texto.split("\n")
+    secoes   = []
+    secao_atual = []
+
+    for linha in linhas:
+        if padrao_titulo.match(linha.strip()) and secao_atual:
+            # Início de nova seção — salva a anterior
+            conteudo = "\n".join(secao_atual).strip()
+            if conteudo:
+                secoes.append(conteudo)
+            secao_atual = [linha]
+        else:
+            secao_atual.append(linha)
+
+    # Última seção
+    if secao_atual:
+        conteudo = "\n".join(secao_atual).strip()
+        if conteudo:
+            secoes.append(conteudo)
+
+    # Subdivide seções muito grandes mantendo sobreposição
+    chunks = []
+    for secao in secoes:
+        if len(secao) <= tamanho_max:
+            if secao.strip():
+                chunks.append(secao)
+        else:
+            # Subdivide com sobreposição de 100 chars
+            inicio = 0
+            while inicio < len(secao):
+                fim   = inicio + tamanho_max
+                chunk = secao[inicio:fim]
+                if chunk.strip():
+                    chunks.append(chunk)
+                inicio = fim - 100
+
+    return chunks if chunks else dividir_em_chunks(texto, 500, 50)
 
 def upsert_em_lotes(colecao, ids, embeddings, documents, metadados, tamanho_lote=500):
     """
@@ -295,7 +413,25 @@ def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path
         return resultado
 
     # Divide em chunks
-    chunks = dividir_em_chunks(texto, TAMANHO_CHUNK, SOBREPOSICAO)
+    # Pipeline de chunking inteligente
+    # Tipo 1: chunks de texto por tamanho fixo (conteúdo narrativo)
+    chunks_texto = dividir_em_chunks(texto, TAMANHO_CHUNK, SOBREPOSICAO)
+
+    # Tipo 2: seções semânticas (preserva estrutura do documento)
+    chunks_secoes = dividir_em_secoes(texto)
+
+    # Tipo 3: tabelas estruturadas (valores numéricos, FMEA, etc.)
+    info_arquivo = parsear_nome_arquivo(caminho_pdf.name)
+    chunks_tabelas = extrair_tabelas_pdf(caminho_pdf, info_arquivo)
+
+    # Une todos os tipos, deduplicando conteúdo idêntico
+    vistos = set()
+    chunks = []
+    for chunk in chunks_texto + chunks_secoes + chunks_tabelas:
+        chave = chunk[:100]  # usa os primeiros 100 chars como chave
+        if chave not in vistos and chunk.strip():
+            vistos.add(chave)
+            chunks.append(chunk)
     if not chunks:
         resultado["erro"] = "Nenhum chunk gerado."
         return resultado
