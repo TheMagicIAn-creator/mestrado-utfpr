@@ -331,12 +331,7 @@ def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path
     ]
 
     # Indexa
-    colecao.upsert(
-        ids        = ids,
-        embeddings = embeddings,
-        documents  = chunks,
-        metadatas  = metadados
-    )
+    upsert_em_lotes(colecao, ids, embeddings, chunks, metadados)
 
     resultado["sucesso"]  = True
     resultado["n_chunks"] = len(chunks)

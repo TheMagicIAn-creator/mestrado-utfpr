@@ -205,6 +205,111 @@ def reprocessar_metadados_ruins() -> str:
     except Exception as e:
         return f"Metadados: erro no reprocessamento — {e}"
 
+def ha_sinal_reprocessamento() -> bool:
+    """Verifica se existe o arquivo REPROCESSAR na raiz do projeto."""
+    return (RAIZ_PROJETO / "REPROCESSAR").exists()
+
+
+def reprocessar_literatura() -> str:
+    """
+    Reprocessa todos os PDFs da literatura com extração de metadados
+    via LLM, renomeia arquivos com nomes corretos e reindexa no ChromaDB.
+    Disparado pela presença do arquivo REPROCESSAR na raiz do projeto.
+    """
+    from tqdm import tqdm
+    from sentence_transformers import SentenceTransformer
+    from src.core.config import MODELO_EMBEDDINGS, PASTA_LITERATURA
+    from src.conhecimento.processador_pdf import (
+        extrair_metadados_pdf,
+        gerar_nome_padronizado,
+        classificar_tema,
+        gerar_nota_obsidian,
+        extrair_texto_pdf,
+    )
+    from src.conhecimento.indexador import indexar_pdf_unico
+    import chromadb
+
+    sinal = RAIZ_PROJETO / "REPROCESSAR"
+
+    print("\n🔄 Sinal REPROCESSAR detectado — iniciando reprocessamento completo...")
+
+    try:
+        modelo  = SentenceTransformer(MODELO_EMBEDDINGS)
+        client  = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
+        colecao = client.get_or_create_collection("literatura_pv")
+
+        pdfs      = sorted(PASTA_LITERATURA.rglob("*.pdf"))
+        sucesso   = 0
+        renomeados = 0
+        falha     = 0
+
+        relatorio = ["REPROCESSAMENTO COMPLETO — Al IAdo PV", "=" * 60, ""]
+
+        for pdf in tqdm(pdfs, desc="Reprocessando", unit="PDF"):
+            try:
+                # 1. Extrai metadados via LLM
+                meta   = extrair_metadados_pdf(pdf)
+                autor  = meta["autor"]
+                titulo = meta["titulo"]
+                ano    = meta["ano"]
+
+                # 2. Gera nome correto
+                nome_novo    = gerar_nome_padronizado(autor, titulo, ano)
+                pasta_atual  = pdf.parent
+                caminho_novo = pasta_atual / nome_novo
+
+                # 3. Remove chunks antigos
+                res = colecao.get(
+                    where   = {"arquivo": pdf.name},
+                    include = ["metadatas"]
+                )
+                ids_antigos = res.get("ids", [])
+                if ids_antigos:
+                    colecao.delete(ids=ids_antigos)
+
+                # 4. Renomeia se necessário
+                if nome_novo != pdf.name:
+                    if caminho_novo.exists():
+                        caminho_novo = pasta_atual / nome_novo.replace(".pdf", "_v2.pdf")
+                    pdf.rename(caminho_novo)
+                    renomeados += 1
+
+                # 5. Reindexa
+                res    = indexar_pdf_unico(caminho_novo, modelo, PASTA_CHROMADB)
+                chunks = res.get("n_chunks", 0)
+
+                # 6. Atualiza nota Obsidian
+                texto = extrair_texto_pdf(caminho_novo)
+                tema  = classificar_tema(nome_novo, texto)
+                gerar_nota_obsidian(nome_novo, autor, titulo, ano, tema, texto)
+
+                relatorio.append(f"✅ {pdf.name[:50]} → {nome_novo[:50]} ({chunks} chunks)")
+                sucesso += 1
+
+            except Exception as e:
+                relatorio.append(f"❌ {pdf.name[:50]} — {e}")
+                falha += 1
+
+        # Salva relatório
+        relatorio += [
+            "", "=" * 60,
+            f"Sucesso   : {sucesso}",
+            f"Renomeados: {renomeados}",
+            f"Falha     : {falha}",
+        ]
+        arquivo_rel = PASTA_RESULTADOS / "reprocessamento.txt"
+        arquivo_rel.parent.mkdir(parents=True, exist_ok=True)
+        arquivo_rel.write_text("\n".join(relatorio), encoding="utf-8")
+
+        # Remove o sinal
+        sinal.unlink()
+        print("✅ Arquivo REPROCESSAR removido — sinal consumido.")
+
+        return f"Reprocessamento: {sucesso} OK | {renomeados} renomeados | {falha} falhas"
+
+    except Exception as e:
+        return f"Reprocessamento: erro — {e}"
+
 # ============================================================
 # ORQUESTRAÇÃO PRINCIPAL
 # ============================================================
@@ -225,9 +330,13 @@ def executar_pipeline(modelo_embeddings) -> list:
     def executar_pipeline(modelo_embeddings) -> list:
         relatorio = []
 
+        # Reprocessamento completo — disparado pelo arquivo REPROCESSAR
+        if ha_sinal_reprocessamento():
+            relatorio.append(reprocessar_literatura())
+
         relatorio.append(etapa_indexar_pdfs(modelo_embeddings))
         relatorio.append(etapa_consolidar_memoria())
-        relatorio.append(reprocessar_metadados_ruins())  # ← linha nova
+        relatorio.append(reprocessar_metadados_ruins())
         relatorio.append(etapa_eda())
         relatorio.append(etapa_classificacao())
 
@@ -244,7 +353,8 @@ if __name__ == "__main__":
     print("=" * 60)
     print("  AL IADO PV — ORQUESTRADOR (teste de estado)")
     print("=" * 60)
-    print(f"\nPDFs novos pendentes      : {ha_pdfs_novos()}")
+    print(f"\nSinal REPROCESSAR         : {ha_sinal_reprocessamento()}")
+    print(f"PDFs novos pendentes      : {ha_pdfs_novos()}")
     print(f"Sessões para consolidar   : {ha_sessoes_para_consolidar()}")
     print(f"Arquivos com nome ruim    : {ha_arquivos_com_nome_ruim()}")
     print(f"EDA pendente              : {eda_pendente()}")

@@ -1,16 +1,16 @@
 ---
 titulo: "Fault Detection Algorithms for Achieving Service Continuity in Photovoltaic Farms"
-autor: "Sherif S. M. Ghoneim"
+autor: "Sherif S. M. Ghoneim, Amr E. Rashed e Nagy I. Elkalashy"
 ano: 2021
 tema: ml-preditivo
 arquivo: ghoneim_fault-detection-algorithms-for-achieving-service-continuity-_2021.pdf
 tags: [literatura, ml-preditivo, mestrado-utfpr]
-data_insercao: 2026-05-20
+data_insercao: 2026-05-22
 ---
 
 # Fault Detection Algorithms for Achieving Service Continuity in Photovoltaic Farms
 
-**Autor:** Sherif S. M. Ghoneim  
+**Autor:** Sherif S. M. Ghoneim, Amr E. Rashed e Nagy I. Elkalashy  
 **Ano:** 2021  
 **Tema:** ml-preditivo  
 **Arquivo:** `ghoneim_fault-detection-algorithms-for-achieving-service-continuity-_2021.pdf`

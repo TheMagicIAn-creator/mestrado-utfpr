@@ -1,0 +1,159 @@
+"""
+reprocessar_literatura.py — Al IAdo PV
+Reprocessa todos os PDFs da literatura com extração de metadados
+via LLM, renomeia arquivos com nomes corretos e reindexa no ChromaDB.
+
+Uso:
+  python reprocessar_literatura.py
+
+Autor: Rodolfo Torres (UTFPR)
+"""
+
+import sys
+import shutil
+import chromadb
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+
+from sentence_transformers import SentenceTransformer
+from src.core.config import (
+    PASTA_LITERATURA, PASTA_CHROMADB, NOME_COLECAO,
+    MODELO_EMBEDDINGS, RAIZ_PROJETO,
+)
+from src.conhecimento.processador_pdf import (
+    extrair_metadados_pdf,
+    gerar_nome_padronizado,
+    classificar_tema,
+    gerar_nota_obsidian,
+    extrair_texto_pdf,
+)
+from src.conhecimento.indexador import indexar_pdf_unico
+
+
+# ============================================================
+# RELATÓRIO
+# ============================================================
+
+ARQUIVO_RELATORIO = RAIZ_PROJETO / "resultados" / "reprocessamento.txt"
+
+
+def salvar_relatorio(linhas: list):
+    ARQUIVO_RELATORIO.parent.mkdir(parents=True, exist_ok=True)
+    ARQUIVO_RELATORIO.write_text("\n".join(linhas), encoding="utf-8")
+    print(f"\n📄 Relatório salvo em: {ARQUIVO_RELATORIO}")
+
+
+# ============================================================
+# REPROCESSAMENTO
+# ============================================================
+
+def reprocessar_todos():
+    print("=" * 65)
+    print("  AL IADO PV — REPROCESSAMENTO COMPLETO DA LITERATURA")
+    print("=" * 65)
+
+    # Carrega modelo de embeddings
+    print("\n🔄 Carregando modelo de embeddings...")
+    modelo = SentenceTransformer(MODELO_EMBEDDINGS)
+
+    # Conecta ao ChromaDB
+    client  = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
+    colecao = client.get_or_create_collection(NOME_COLECAO)
+
+    # Busca todos os PDFs em literatura/
+    pdfs = sorted(PASTA_LITERATURA.rglob("*.pdf"))
+    print(f"📚 PDFs encontrados: {len(pdfs)}\n")
+
+    relatorio = [
+        "RELATÓRIO DE REPROCESSAMENTO — Al IAdo PV",
+        "=" * 65,
+        f"Total de PDFs: {len(pdfs)}",
+        "",
+    ]
+
+    sucesso    = 0
+    falha      = 0
+    renomeados = 0
+
+    for i, pdf in enumerate(pdfs, 1):
+        print(f"[{i:02d}/{len(pdfs)}] {pdf.name[:60]}")
+
+        try:
+            # 1. Extrai metadados via LLM
+            meta   = extrair_metadados_pdf(pdf)
+            autor  = meta["autor"]
+            titulo = meta["titulo"]
+            ano    = meta["ano"]
+
+            # 2. Gera nome correto
+            nome_novo    = gerar_nome_padronizado(autor, titulo, ano)
+            pasta_atual  = pdf.parent
+            caminho_novo = pasta_atual / nome_novo
+
+            # 3. Remove chunks antigos do ChromaDB
+            resultado   = colecao.get(
+                where   = {"arquivo": pdf.name},
+                include = ["metadatas"]
+            )
+            ids_antigos = resultado.get("ids", [])
+            if ids_antigos:
+                colecao.delete(ids=ids_antigos)
+
+            # 4. Renomeia o arquivo se o nome mudou
+            if nome_novo != pdf.name:
+                # Garante que não sobrescreve outro arquivo existente
+                if caminho_novo.exists():
+                    caminho_novo = pasta_atual / nome_novo.replace(".pdf", "_v2.pdf")
+                pdf.rename(caminho_novo)
+                print(f"        → {nome_novo[:60]}")
+                renomeados += 1
+            else:
+                caminho_novo = pdf
+                print(f"        → nome já correto")
+
+            # 5. Reindexa com metadados corretos
+            res    = indexar_pdf_unico(caminho_novo, modelo, PASTA_CHROMADB)
+            chunks = res.get("n_chunks", 0)
+
+            # 6. Atualiza nota Obsidian
+            texto = extrair_texto_pdf(caminho_novo)
+            tema  = classificar_tema(nome_novo, texto)
+            gerar_nota_obsidian(nome_novo, autor, titulo, ano, tema, texto)
+
+            print(f"        ✅ {chunks} chunks | {autor[:30]} ({ano})")
+
+            relatorio.append(
+                f"✅ [{i:02d}] {pdf.name[:50]}"
+                f"\n      → {nome_novo[:50]}"
+                f"\n      Autor: {autor} | Ano: {ano} | Chunks: {chunks}"
+            )
+            sucesso += 1
+
+        except Exception as e:
+            print(f"        ❌ Erro: {e}")
+            relatorio.append(f"❌ [{i:02d}] {pdf.name[:50]} — Erro: {e}")
+            falha += 1
+
+    # Relatório final
+    relatorio += [
+        "",
+        "=" * 65,
+        f"Sucesso   : {sucesso}",
+        f"Renomeados: {renomeados}",
+        f"Falha     : {falha}",
+        f"Total     : {len(pdfs)}",
+    ]
+
+    print(f"\n{'=' * 65}")
+    print(f"  REPROCESSAMENTO CONCLUÍDO")
+    print(f"  Sucesso   : {sucesso}")
+    print(f"  Renomeados: {renomeados}")
+    print(f"  Falha     : {falha}")
+    print(f"{'=' * 65}")
+
+    salvar_relatorio(relatorio)
+
+
+if __name__ == "__main__":
+    reprocessar_todos()

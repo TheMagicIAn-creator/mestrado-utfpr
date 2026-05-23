@@ -5,7 +5,7 @@ ano: 1999
 tema: sinais-eletricos
 arquivo: smith_the-scientist-and-engineer-s-guide-to-digital-signal-process_1999.pdf
 tags: [literatura, sinais-eletricos, mestrado-utfpr]
-data_insercao: 2026-05-17
+data_insercao: 2026-05-22
 ---
 
 # The Scientist and Engineer's Guide to Digital Signal Processing
@@ -17,7 +17,7 @@ data_insercao: 2026-05-17
 
 ## Abstract
 
-The Scientist and Engineer's Guide to Digital Signal Processing Second EditionBe sure to visit the book’s website at: www.DSPguide.comThe Scientist and Engineer's Guide to Digital Signal Processing Second Edition by Steven W. Smith California Technical Publishing San Diego, California
+The Scientist and Engineer's Guide to Digital Signal Processing Second Edition Be sure to visit the book’s website at: www.DSPguide.com The Scientist and Engineer's Guide to Digital Signal Processing Second Edition by Steven W. Smith California Technical Publishing San Diego, California
 
 ## Anotações
 
