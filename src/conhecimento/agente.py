@@ -135,14 +135,15 @@ def _expandir_query(pergunta: str) -> dict:
 
     prompt = f"""Você é um sistema de busca especializado em engenharia de manutenção,
     confiabilidade de sistemas fotovoltaicos e Machine Learning aplicado a inversores.
-    Contexto: FMEA (Failure Mode and Effects Analysis), FMECA, NPR (Número de Prioridade
-    de Risco = Severidade × Ocorrência × Detecção), RCM (Reliability Centered Maintenance),
-    inversores fotovoltaicos on-grid, detecção de anomalias, filtro LCL, IGBTs.
+    Contexto: FMEA, FMECA, NPR (Número de Prioridade de Risco = Severidade × Ocorrência × Detecção),
+    RCM, inversores fotovoltaicos on-grid, detecção de anomalias, filtro LCL, IGBTs.
 
     Dada a pergunta abaixo, gere:
     1. Quatro variações usando sinônimos técnicos corretos do domínio de manutenção/confiabilidade
-    2. Cinco termos-chave específicos para busca literal no texto (siglas, valores numéricos,
-       nomes técnicos, termos em português E inglês se aplicável)
+    2. Cinco termos-chave para busca literal — inclua siglas, termos técnicos E possíveis
+       valores numéricos ou identificadores mencionados ou implícitos na pergunta
+       (ex: se a pergunta é sobre NPR de um componente, inclua "NPR", o nome do componente,
+       e possíveis valores como "210", "150", "alto", "crítico")
 
     Retorne APENAS um JSON válido neste formato, sem explicações:
     {{"variacoes": ["...", "...", "...", "..."], "termos": ["...", "...", "...", "...", "..."]}}
@@ -230,7 +231,7 @@ def _busca_hibrida(
             resultados = colecao.get(
                 where_document = {"$contains": termo},
                 include        = ["documents", "metadatas"],
-                limit          = 10
+                limit          = 60
             )
             docs  = resultados.get("documents", [])
             metas = resultados.get("metadatas", [])
@@ -266,8 +267,12 @@ def _rerankar(candidatos: list, pergunta: str, n_final: int) -> list:
         autor = meta.get("autor", "")
         ano   = meta.get("ano",   "")
         fonte = f"{autor} ({ano})" if autor else "Fonte desconhecida"
-        lista_chunks += f"\n[{i}] {fonte}\n{doc[:400]}\n"
-
+        # Janela inteligente: início + fim do chunk
+        # Garante que tanto contexto (início) quanto valores numéricos (fim) chegam ao reranker
+        inicio = doc[:400]
+        fim = doc[-300:] if len(doc) > 700 else ""
+        sep = "\n...\n" if fim else ""
+        lista_chunks += f"\n[{i}] {fonte}\n{inicio}{sep}{fim}\n"
     prompt = f"""Você é um sistema de reranking para pesquisa acadêmica sobre inversores fotovoltaicos.
 
 Pergunta do pesquisador: {pergunta}

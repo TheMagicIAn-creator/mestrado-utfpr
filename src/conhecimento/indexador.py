@@ -51,10 +51,12 @@ def ler_pdf(caminho_pdf: Path) -> str:
 def extrair_tabelas_pdf(caminho_pdf: Path, metadados_doc: dict) -> list:
     """
     Extrai tabelas do PDF como chunks Markdown estruturados.
-    Cada tabela vira um chunk único com cabeçalho identificador.
-    Usa pdfplumber para preservar a estrutura de linhas e colunas.
+    Cria dois tipos de chunks por página:
+    - Individual: uma tabela por chunk
+    - Combinado: todas as tabelas da página juntas (preserva contexto)
     """
-    chunks_tabelas = []
+    chunks_tabelas    = []
+    tabelas_por_pagina = {}
     citacao = metadados_doc.get("citacao", caminho_pdf.name)
 
     try:
@@ -66,11 +68,12 @@ def extrair_tabelas_pdf(caminho_pdf: Path, metadados_doc: dict) -> list:
                 if not tabelas:
                     continue
 
+                tabelas_por_pagina[num_pag] = []
+
                 for num_tab, tabela in enumerate(tabelas, 1):
                     if not tabela or len(tabela) < 2:
                         continue
 
-                    # Filtra linhas completamente vazias
                     linhas_validas = [
                         linha for linha in tabela
                         if any(cel and str(cel).strip() for cel in linha)
@@ -78,36 +81,45 @@ def extrair_tabelas_pdf(caminho_pdf: Path, metadados_doc: dict) -> list:
                     if len(linhas_validas) < 2:
                         continue
 
-                    # Converte para Markdown
                     def limpar_cel(cel):
                         if cel is None:
                             return ""
                         return str(cel).replace("\n", " ").strip()
 
-                    header   = linhas_validas[0]
-                    corpo    = linhas_validas[1:]
-                    n_cols   = len(header)
+                    header = linhas_validas[0]
+                    corpo  = linhas_validas[1:]
+                    n_cols = len(header)
 
                     md  = f"[TABELA — {citacao} — Página {num_pag}, Tabela {num_tab}]\n"
                     md += "| " + " | ".join(limpar_cel(c) for c in header) + " |\n"
                     md += "| " + " | ".join("---" for _ in header) + " |\n"
 
                     for linha in corpo:
-                        # Garante que a linha tem o mesmo número de colunas
                         linha_pad = list(linha) + [""] * (n_cols - len(linha))
-                        md += "| " + " | ".join(limpar_cel(c) for c in linha_pad[:n_cols]) + " |\n"
+                        md += "| " + " | ".join(
+                            limpar_cel(c) for c in linha_pad[:n_cols]
+                        ) + " |\n"
 
-                    # Só indexa tabelas com conteúdo mínimo significativo
                     if len(md) > 100:
                         chunks_tabelas.append(md)
+                        tabelas_por_pagina[num_pag].append(md)
+
+        # ── Chunks de página combinada ───────────────────────
+        # Páginas com múltiplas tabelas ganham um chunk extra
+        # que as une, preservando contexto entre tabelas relacionadas
+        for num_pag, tabelas_pag in tabelas_por_pagina.items():
+            if len(tabelas_pag) > 1:
+                chunk_pag  = f"[PÁGINA {num_pag} — {citacao} — Tabelas combinadas]\n\n"
+                chunk_pag += "\n\n".join(tabelas_pag)
+                if len(chunk_pag) > 150:
+                    chunks_tabelas.append(chunk_pag)
 
     except ImportError:
-        pass  # pdfplumber não instalado — pula extração de tabelas
+        pass
     except Exception:
         pass
 
     return chunks_tabelas
-
 
 def dividir_em_secoes(texto: str, tamanho_max: int = 1500) -> list:
     """
