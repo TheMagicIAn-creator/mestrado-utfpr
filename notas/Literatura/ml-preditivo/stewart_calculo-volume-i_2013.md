@@ -5,7 +5,7 @@ ano: 2013
 tema: ml-preditivo
 arquivo: stewart_calculo-volume-i_2013.pdf
 tags: [literatura, ml-preditivo, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Cálculo, volume I

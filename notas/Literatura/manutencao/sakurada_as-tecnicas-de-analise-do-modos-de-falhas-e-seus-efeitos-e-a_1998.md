@@ -5,7 +5,7 @@ ano: 1998
 tema: manutencao
 arquivo: sakurada_as-tecnicas-de-analise-do-modos-de-falhas-e-seus-efeitos-e-a_1998.pdf
 tags: [literatura, manutencao, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # As técnicas de Análise do Modos de Falhas e seus Efeitos e Análise da Árvore de Falhas no desenvolvi

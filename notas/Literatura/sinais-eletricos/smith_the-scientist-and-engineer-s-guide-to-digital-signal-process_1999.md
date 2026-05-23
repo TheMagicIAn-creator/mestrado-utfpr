@@ -1,16 +1,16 @@
 ---
 titulo: "The Scientist and Engineer's Guide to Digital Signal Processing"
-autor: "Steven W. Smith"
+autor: "Smith, Steven W"
 ano: 1999
 tema: sinais-eletricos
 arquivo: smith_the-scientist-and-engineer-s-guide-to-digital-signal-process_1999.pdf
 tags: [literatura, sinais-eletricos, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # The Scientist and Engineer's Guide to Digital Signal Processing
 
-**Autor:** Steven W. Smith  
+**Autor:** Smith, Steven W  
 **Ano:** 1999  
 **Tema:** sinais-eletricos  
 **Arquivo:** `smith_the-scientist-and-engineer-s-guide-to-digital-signal-process_1999.pdf`

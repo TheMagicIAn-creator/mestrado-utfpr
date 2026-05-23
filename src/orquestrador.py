@@ -267,12 +267,28 @@ def reprocessar_literatura() -> str:
                 if ids_antigos:
                     colecao.delete(ids=ids_antigos)
 
-                # 4. Renomeia se necessário
-                if nome_novo != pdf.name:
-                    if caminho_novo.exists():
-                        caminho_novo = pasta_atual / nome_novo.replace(".pdf", "_v2.pdf")
-                    pdf.rename(caminho_novo)
-                    renomeados += 1
+                    # 4. Renomeia apenas se o nome atual indica problema
+                    # Arquivos já bem nomeados são preservados — só reindexados
+                    nome_tem_problema = (
+                            "autor-desconhecido" in pdf.name or
+                            pdf.name.startswith("p_") or
+                            pdf.name.startswith("empresa_") or
+                            pdf.name.startswith("data-set_") or
+                            pdf.name.startswith("design_") or
+                            pdf.name.startswith("for-facilities_") or
+                            pdf.name.startswith("with-ua_") or
+                            pdf.name.startswith("academic-editor_")
+                    )
+
+                    if nome_tem_problema and nome_novo != pdf.name:
+                        if caminho_novo.exists():
+                            caminho_novo = pasta_atual / nome_novo.replace(".pdf", "_v2.pdf")
+                        pdf.rename(caminho_novo)
+                        renomeados += 1
+                    else:
+                        caminho_novo = pdf
+                        if not nome_tem_problema:
+                            print(f"        → nome preservado (já correto)")
 
                 # 5. Reindexa
                 res    = indexar_pdf_unico(caminho_novo, modelo, PASTA_CHROMADB)

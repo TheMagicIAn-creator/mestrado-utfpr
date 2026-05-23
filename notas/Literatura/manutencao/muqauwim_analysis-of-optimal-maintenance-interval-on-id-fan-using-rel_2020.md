@@ -5,7 +5,7 @@ ano: 2020
 tema: manutencao
 arquivo: muqauwim_analysis-of-optimal-maintenance-interval-on-id-fan-using-rel_2020.pdf
 tags: [literatura, manutencao, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # ANALYSIS OF OPTIMAL MAINTENANCE INTERVAL ON ID FAN USING RELIABILITY CENTERED MAINTENANCE

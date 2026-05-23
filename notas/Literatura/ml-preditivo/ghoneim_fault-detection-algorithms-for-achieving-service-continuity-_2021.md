@@ -5,7 +5,7 @@ ano: 2021
 tema: ml-preditivo
 arquivo: ghoneim_fault-detection-algorithms-for-achieving-service-continuity-_2021.pdf
 tags: [literatura, ml-preditivo, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Fault Detection Algorithms for Achieving Service Continuity in Photovoltaic Farms

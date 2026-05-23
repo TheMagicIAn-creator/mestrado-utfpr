@@ -5,7 +5,7 @@ ano: 2021
 tema: sinais-eletricos
 arquivo: diniz_digital-signal-processing-system-analysis-and-design_2021.pdf
 tags: [literatura, sinais-eletricos, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Digital Signal Processing System Analysis and Design

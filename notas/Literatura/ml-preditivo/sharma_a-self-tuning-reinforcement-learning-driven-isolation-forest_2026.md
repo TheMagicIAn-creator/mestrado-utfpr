@@ -5,7 +5,7 @@ ano: 2026
 tema: ml-preditivo
 arquivo: sharma_a-self-tuning-reinforcement-learning-driven-isolation-forest_2026.pdf
 tags: [literatura, ml-preditivo, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # A Self-Tuning Reinforcement Learning–Driven Isolation Forest Framework for Scalable and Efficient An

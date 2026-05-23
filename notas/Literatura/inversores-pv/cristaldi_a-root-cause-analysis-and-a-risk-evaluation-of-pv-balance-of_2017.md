@@ -5,7 +5,7 @@ ano: 2017
 tema: inversores-pv
 arquivo: cristaldi_a-root-cause-analysis-and-a-risk-evaluation-of-pv-balance-of_2017.pdf
 tags: [literatura, inversores-pv, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # A root cause analysis and a risk evaluation of PV balance of systems failures

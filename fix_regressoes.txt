@@ -1,0 +1,72 @@
+import chromadb
+from pathlib import Path
+from src.core.config import PASTA_CHROMADB, NOME_COLECAO, PASTA_LITERATURA
+
+client  = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
+colecao = client.get_or_create_collection(NOME_COLECAO)
+
+correcoes = [
+    {
+        "arquivo_antigo": "p_engenharia-de-sistemas-de-potencia-transmissao-de-energia-el_2019.pdf",
+        "arquivo_novo"  : "moura_engenharia-de-sistemas-de-potencia-transmissao-de-energia-el_2019.pdf",
+        "meta": {
+            "autor"  : "Moura, A. P., Moura, A. A. F., Rocha, E. P.",
+            "titulo" : "Engenharia de Sistemas de Potência",
+            "ano"    : "2019",
+            "citacao": "Moura et al. (2019) — Engenharia de Sistemas de Potência"
+        }
+    },
+    {
+        "arquivo_antigo": "empresa_analise-da-confiabilidade-em-sistemas-de-potencia_2003.pdf",
+        "arquivo_novo"  : "puc-rio_analise-da-confiabilidade-em-sistemas-de-potencia_2003.pdf",
+        "meta": {
+            "autor"  : "PUC-Rio",
+            "titulo" : "Análise de Confiabilidade em Sistemas de Potência",
+            "ano"    : "2003",
+            "citacao": "PUC-Rio (2003) — Análise de Confiabilidade em Sistemas de Potência"
+        }
+    },
+    {
+        "arquivo_antigo": "autor-desconhecido_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_0000.pdf",
+        "arquivo_novo"  : "lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade-cap4_0000.pdf",
+        "meta": {
+            "autor"  : "Lafraia, J. R. B.",
+            "titulo" : "Manual de Confiabilidade, Mantenabilidade e Disponibilidade — Cap. 4",
+            "ano"    : "s.d.",
+            "citacao": "Lafraia (s.d.) — Manual de Confiabilidade (Cap. 4)"
+        }
+    },
+]
+
+for c in correcoes:
+    arq_antigo = c["arquivo_antigo"]
+    arq_novo   = c["arquivo_novo"]
+    meta_nova  = c["meta"]
+
+    res   = colecao.get(where={"arquivo": arq_antigo}, include=["metadatas"])
+    ids   = res.get("ids", [])
+    metas = res.get("metadatas", [])
+
+    if not ids:
+        print(f"Não encontrado: {arq_antigo[:55]}")
+        continue
+
+    metas_corrigidas = []
+    for m in metas:
+        m_nova = {**m}
+        m_nova.update(meta_nova)
+        m_nova["arquivo"] = arq_novo
+        metas_corrigidas.append(m_nova)
+
+    colecao.update(ids=ids, metadatas=metas_corrigidas)
+    print(f"Corrigido: {arq_antigo[:50]} ({len(ids)} chunks)")
+
+    # Renomeia o arquivo na pasta
+    if arq_antigo != arq_novo:
+        arquivos = list(PASTA_LITERATURA.rglob(arq_antigo))
+        for f in arquivos:
+            destino = f.parent / arq_novo
+            f.rename(destino)
+            print(f"Renomeado: {arq_novo[:55]}")
+
+print("\nConcluído.")

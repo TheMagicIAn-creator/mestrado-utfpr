@@ -1,141 +1,47 @@
-RELATÓRIO DE REPROCESSAMENTO — Al IAdo PV
-=================================================================
-Total de PDFs: 45
+REPROCESSAMENTO COMPLETO — Al IAdo PV
+============================================================
 
-✅ [01] autor-desconhecido_431-uso-papel-weibull_0000.pdf
-      → lafraia_manual-de-confiabilidade-mantenabilidade-e
-      Autor: Joâo Ricardo Barusso Lafraia | Ano: 0000 | Chunks: 20
-✅ [02] for-facilities_national-aeronautics-space-administ
-      → administration_nasa-reliability-centered-maintenan
-      Autor: National Aeronautics and Space Administration | Ano: 2008 | Chunks: 1805
-✅ [03] academic-editor_energy-research-laboratory-reneral
-      → karim_a-review-on-risk-and-reliability-analysis-in
-      Autor: Karim, A.Z.A.; Osman, M.S.; Rahmat, M.K. | Ano: 2025 | Chunks: 172
-✅ [04] autor-desconhecido_steve-voss-tassos-golnas-steve_
-      → voss_service-service-architecture-yield-monitoring
-      Autor: Steve Voss, Dr. Tassos Golnas, Steve Hester & Mark Culpepper, Sun Edison LLC | Ano: 2009 | Chunks: 71
-✅ [05] autor-desconhecido_universidade-federal-do-par-a_2
-      → torres_aplicacao-da-metodologia-reliability-centre
-      Autor: Rodolfo Fernandes Ramalho de Oliveira Torres | Ano: 2024 | Chunks: 357
-❌ [06] autor-desconhecido_utfpr-universidade-tecnologica- — Erro: [WinError 32] O arquivo já está sendo usado por outro processo: 'C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\literatura\\inversores-pv\\autor-desconhecido_utfpr-universidade-tecnologica-federal-do-parana_2024.pdf' -> 'C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\literatura\\inversores-pv\\torres_aplicacao-da-metodologia-manutencao-centrada-em-confiabilida_2024.pdf'
-✅ [07] bhandari-s_case-study-sustainability-2024_2024.pdf
-      → patil_a-reliability-and-risk-assessment-of-solar-p
-      Autor: Patil, R.B.; Khalkar, A.; Al-Dahidi, S.; Pimpalkar, R.S.; Bhandari, S.; Pecht, M. | Ano: 2024 | Chunks: 241
-✅ [08] branco-p_filipe-monteiro-eduardo-sarquis-paulo_202
-      → branco_identifying-critical-failures-in-pv-systems
-      Autor: Branco, P.; Monteiro, F.; Sarquis, E. | Ano: 2024 | Chunks: 183
-✅ [09] data-set_marius-stender-oliver-wallscheid-joachim_
-      → stender_data-set-description-three-phase-igbt-two-
-      Autor: Marius Stender, Oliver Wallscheid, Joachim Böcker | Ano: 2020 | Chunks: 29
-✅ [10] design_design-estimation-reliability-off-grid_2017
-      → pahwa_design-and-estimation-of-reliability-of-an-o
-      Autor: Mandeep Singh Pahwa, Anisur Rahman | Ano: 2017 | Chunks: 55
-✅ [11] loredana-cristaldi_citation-loredana-cristaldi-moh
-      → cristaldi_a-root-cause-analysis-and-a-risk-evaluat
-      Autor: Loredana Cristaldi, Mohamed Khalil, Payam Soulatiantork | Ano: 2017 | Chunks: 88
-✅ [12] neto_power-electronics-daniel-w-hart-pdf_2016.pdf
-      → hart_power-electronics_2016.pdf
-      Autor: Daniel W. Hart | Ano: 2016 | Chunks: 221
-✅ [13] reliability-prediction_reliability-prediction-ofpv
-      → shuttleworth_reliability-prediction-of-pv-inverter
-      Autor: Firas Obeidat and Roger Shuttleworth | Ano: 2015 | Chunks: 59
-✅ [14] reliability-probability_generally-used-systems-the
-      → joshi_reliability-estimation-for-components-of-pho
-      Autor: P. R. MISHRA e J. C. JOSHI | Ano: 1996 | Chunks: 74
-✅ [15] reliability_according-national-renewable-energy-la
-      → dhople_estimation-of-photovoltaic-system-reliabili
-      Autor: Sairaj V. Dhople, Alejandro D. Domínguez-García | Ano: 2012 | Chunks: 104
-✅ [16] autor-desconhecido_nos-capitulos-apresentamos-algu
-      → autor-desconhecido_autor-desconhecido-nos-capitulo
-      Autor: autor-desconhecido | Ano: 0000 | Chunks: 42
-✅ [17] carpinetti-l_fmea-ingles-failure-mode-effect_2016.
-      → carpinetti_gestao-da-qualidade-cap-6_2016.pdf
-      Autor: Carpinetti, L. C. R. | Ano: 2016 | Chunks: 54
-✅ [18] criticality-analysis_sakurada-eduardo-yuji-tecnica
-      → sakurada_as-tecnicas-de-analise-do-modos-de-falhas
-      Autor: SAKURADA, Eduardo Yuji | Ano: 1998 | Chunks: 127
-✅ [19] muhammad-fakhrul_maintenance-method-maintain-relia
-      → muqauwim_analysis-of-optimal-maintenance-interval-
-      Autor: Muhammad Fakhrul Muqauwim, Hendrik Elvian Gayuh Prasetya, Radina Anggun Nurisma | Ano: 2020 | Chunks: 62
-✅ [20] ajay-narayanan_reliance-industries-limited_2023.pd
-      → narayanan_machine-learning-based-explainable-fault
-      Autor: Ajay Narayanan, Dr. Kedar Kulkarni, Fery Riswan, Muhammad Azzrul Bin Salehan | Ano: 2023 | Chunks: 52
-✅ [21] autor-desconhecido_analise-confiabilidade-sistemas
-      → empresa_analise-da-confiabilidade-em-sistemas-de-p
-      Autor: Empresa | Ano: 2003 | Chunks: 45
-✅ [22] autor-desconhecido_analise-confiabilidade-sistemas
-      → xavier_analise-de-confiabilidade-em-sistemas-de-po
-      Autor: xavier | Ano: 2005 | Chunks: 56
-✅ [23] autor-desconhecido_processes-these-disturbances-im
-      → ahirwar_enhanced-anomaly-detection-in-solar-power-
-      Autor: Abhishek Ahirwar, Sonali R Nandanwar | Ano: 2025 | Chunks: 65
-✅ [24] autor-desconhecido_zoelzer-pdf_2005.pdf
-      → autor-desconhecido_zoelzer-pdf_2005.pdf
-      Autor: autor-desconhecido | Ano: 2005 | Chunks: 0
-✅ [25] awaysheh-fm_citation-ibrahim-alsheikh_2022.pdf
-      → ibrahim_machine-learning-schemes-for-anomaly-detec
-      Autor: Ibrahim, Mariam; Alsheikh, Ahmad; Awaysheh, Feras M.; Alshehri, Mohammad Dahman | Ano: 2022 | Chunks: 107
-✅ [26] forest-framework_isolation-forest-algorithm-usuall
-      → sharma_a-self-tuning-reinforcement-learning-driven
-      Autor: Gaurav Sharma · Savita Khurana · Bhawna Sharma · Geetanjali Sharma | Ano: 2026 | Chunks: 161
-✅ [27] ghoneim_fault-detection-algorithms-for-achieving-s
-      → ghoneim_fault-detection-algorithms-for-achieving-s
-      Autor: Sherif S. M. Ghoneim, Amr E. Rashed e Nagy I. Elkalashy | Ano: 2021 | Chunks: 70
-✅ [28] gonzalez_0136095577-pdf_2007.pdf
-      → gonzalez_digital-image-processing_2008.pdf
-      Autor: Rafael C. Gonzalez, Richard E. Woods | Ano: 2008 | Chunks: 4804
-❌ [29] grewal_509fmelectronic-1-13_2002.pdf — Erro: ValueError: Batch size of 5877 is greater than max batch size of 5461
-✅ [30] intelligent-maintenance_cutting-edge-technologies-
-      → marangis_intelligent-maintenance-approaches-for-im
-      Autor: Demetris Marangis, Georgios Tziolis, Andreas Livera, George Makrides, Andreas Kyprianou, George E. Georghiou | Ano: 2025 | Chunks: 308
-✅ [31] jan-francisti_cesk-bud-ejovice-czech-republic_2025
-      → francisti_predictive-modeling-and-anomaly-detectio
-      Autor: Jan Francisti, Kristián Fodor, Zoltán Balogh, Martin Magdin | Ano: 2025 | Chunks: 164
-✅ [32] stewart_calculo-volume-1_2018.pdf
-      → stewart_calculo-volume-i_2013.pdf
-      Autor: James Stewart | Ano: 2013 | Chunks: 4488
-✅ [33] tekalp_digital-video-processing_2015.pdf
-      → tekalp_digital-video-processing_2015.pdf
-      Autor: A. Murat Tekalp | Ano: 2015 | Chunks: 548
-✅ [34] torres_ghoneim-fault-detection-algorithms-for-achi
-      → torres_ghoneim-fault-detection-algorithms-for-achi
-      Autor: Rodolfo Torres | Ano: 2026 | Chunks: 0
-✅ [35] universidade-federal_prof-benjamim-rodrigues-menez
-      → silva_avaliacao-da-confiabilidade-em-sistemas-elet
-      Autor: João Luis Reis e Silva | Ano: 2008 | Chunks: 215
-✅ [36] with-ua_reem-majid-ali-risi-fatma_2023.pdf
-      → risi_advancing-solar-pv-component-inspection-early
-      Autor: Al Reem Majid Ali Al Risi, Fatma Hassan Khamis Al-Zaabi, Azza Marwan Salim Al Washahi, Raqiya Khalid Mohammed Al-Maaini, Murali Krishna Boddu | Ano: 2023 | Chunks: 30
-✅ [37] digital-twin_therefore-distinct-between-digital-mo
-      → kritzinger_digital-twin-in-manufacturing-a-categor
-      Autor: Werner Kritzinger, Matthias Karner, Georg Traar, Jan Henjes, Wilfried Sihn | Ano: 2018 | Chunks: 228
-✅ [38] open-eng_gineering-education-virtual-learning-envi
-      → liljaniemi_using-digital-twin-technology-in-engine
-      Autor: Liljaniemi, Antti and Paavilainen, Heikki | Ano: 2020 | Chunks: 60
-✅ [39] autor-desconhecido_engenharia-de-sistemas-de-poten
-      → moura_engenharia-de-sistemas-de-potencia-transmiss
-      Autor: MOURA, AILSON P.; MOURA, ADRIANO ARON F.; ROCHA, EDNARDO P. | Ano: 2019 | Chunks: 839
-✅ [40] autor-desconhecido_subestacoesde-energia_0000.pdf
-      → eletrica_subestacoes-de-energia-definicoes-conceit
-      Autor: APRENDER ELÉTRICA | Ano: 0000 | Chunks: 392
-✅ [41] diniz_digital-signal-processing-system-analysis-an
-      → diniz_digital-signal-processing-system-analysis-an
-      Autor: Diniz, Paulo S. R. e Silva, Eduardo A. B. da e Netto, Sergio L. | Ano: 2021 | Chunks: 326
-✅ [42] frontin_equipam-entos-d-e-alta-te-nsao_2013.pdf
-      → frontin_equipam-entos-d-e-alta-te-nsao-prospeccao-
-      Autor: Sergio O. Frontin | Ano: 2013 | Chunks: 4543
-✅ [43] neto_power-electronics-daniel-w-hart-pdf_2016.pdf
-      → hart_power-electronics_2016.pdf
-      Autor: Daniel W. Hart | Ano: 2016 | Chunks: 205
-✅ [44] oppenheim_discrete-time-signal-processing_2020.pdf
-      → oppenheim_discrete-time-signal-processing_2014.pdf
-      Autor: Alan V. Oppenheim, Ronald W. Schafer | Ano: 2014 | Chunks: 4402
-✅ [45] smith_the-scientist-and-engineer-s-guide-to-digita
-      → smith_the-scientist-and-engineer-s-guide-to-digita
-      Autor: Steven W. Smith | Ano: 1999 | Chunks: 3525
+✅ administration_nasa-reliability-centered-maintenan → administration_nasa-reliability-centered-maintenan (11956 chunks)
+✅ lafraia_manual-de-confiabilidade-mantenabilidade-e → lafraia_manual-de-confiabilidade-mantenabilidade-e (98 chunks)
+✅ branco_identifying-critical-failures-in-pv-systems → monteiro_identifying-critical-failures-in-pv-syste (1189 chunks)
+✅ cristaldi_a-root-cause-analysis-and-a-risk-evaluat → cristaldi_a-root-cause-analysis-and-a-risk-evaluat (743 chunks)
+✅ dhople_estimation-of-photovoltaic-system-reliabili → dhople_estimation-of-photovoltaic-system-reliabili (767 chunks)
+✅ joshi_reliability-estimation-for-components-of-pho → joshi_reliability-estimation-for-components-of-pho (450 chunks)
+✅ karim_a-review-on-risk-and-reliability-analysis-in → karim_a-review-on-risk-and-reliability-analysis-in (998 chunks)
+✅ pahwa_design-and-estimation-of-reliability-of-an-o → pahwa_design-and-estimation-of-reliability-of-an-o (445 chunks)
+✅ patil_a-reliability-and-risk-assessment-of-solar-p → patil_a-reliability-and-risk-assessment-of-solar-p (1485 chunks)
+✅ shuttleworth_reliability-prediction-of-pv-inverter → shuttleworth_reliability-prediction-of-pv-inverter (451 chunks)
+✅ stender_data-set-description-three-phase-igbt-two- → stender_data-set-description-three-phase-igbt-two- (220 chunks)
+✅ torres_aplicacao-da-metodologia-reliability-centre → torres_aplicacao-da-metodologia-reliability-centre (2188 chunks)
+✅ voss_service-service-architecture-yield-monitoring → voss_service-service-architecture-yield-monitoring (713 chunks)
+✅ carpinetti_gestao-da-qualidade-cap-6_2016.pdf → carpinetti_gestao-da-qualidade-cap-6_2016.pdf (406 chunks)
+✅ lafraia_manual-de-confiabilidade-mantenabilidade-e → autor-desconhecido_manual-de-confiabilidade-manten (174 chunks)
+✅ muqauwim_analysis-of-optimal-maintenance-interval- → muqauwim_analysis-of-optimal-maintenance-interval- (478 chunks)
+✅ sakurada_as-tecnicas-de-analise-do-modos-de-falhas → sakurada_as-tecnicas-de-analise-do-modos-de-falhas (881 chunks)
+✅ ahirwar_enhanced-anomaly-detection-in-solar-power- → ahirwar_enhanced-anomaly-detection-in-solar-power- (471 chunks)
+✅ andrews_kalman-ltering-theory-and-practice-using-m → grewal_kalman-filtering-theory-and-practice-using- (7839 chunks)
+✅ francisti_predictive-modeling-and-anomaly-detectio → francisti_predictive-modeling-and-anomaly-detectio (1075 chunks)
+✅ ghoneim_fault-detection-algorithms-for-achieving-s → ghoneim_fault-detection-algorithms-for-achieving-s (399 chunks)
+✅ gonzalez_digital-image-processing_2008.pdf → gonzalez_digital-image-processing_2008.pdf (36797 chunks)
+✅ ibrahim_machine-learning-schemes-for-anomaly-detec → ibrahim_machine-learning-schemes-for-anomaly-detec (640 chunks)
+✅ marangis_intelligent-maintenance-approaches-for-im → marangis_intelligent-maintenance-approaches-for-im (2220 chunks)
+✅ narayanan_machine-learning-based-explainable-fault → narayanan_machine-learning-based-explainable-fault (366 chunks)
+✅ puc-rio_analise-da-confiabilidade-em-sistemas-de-p → empresa_analise-da-confiabilidade-em-sistemas-de-p (225 chunks)
+✅ risi_advancing-solar-pv-component-inspection-early → risi_advancing-solar-pv-component-inspection-early (223 chunks)
+✅ sharma_a-self-tuning-reinforcement-learning-driven → sharma_a-self-tuning-reinforcement-learning-driven (806 chunks)
+✅ silva_avaliacao-da-confiabilidade-em-sistemas-elet → silva_avaliacao-da-confiabilidade-em-sistemas-elet (1246 chunks)
+✅ stewart_calculo-volume-i_2013.pdf → stewart_calculo-volume-i_2013.pdf (28163 chunks)
+✅ tekalp_digital-video-processing_2015.pdf → tekalp_digital-video-processing_2015.pdf (4934 chunks)
+✅ xavier_analise-de-confiabilidade-em-sistemas-de-po → xavier_analise-de-confiabilidade-em-sistemas-de-po (384 chunks)
+✅ diniz_digital-signal-processing-system-analysis-an → diniz_digital-signal-processing-system-analysis-an (2193 chunks)
+✅ eletrica_subestacoes-de-energia-definicoes-conceit → eletrica_subestacoes-de-energia-definicoes-conceit (2151 chunks)
+✅ frontin_equipamentos-de-alta-tensao-prospeccao-e-h → frontin_equipamentos-de-alta-tensao-prospeccao-e-h (23358 chunks)
+✅ grewal_power-electronics-chapter-8_2002.pdf → grewal_power-electronics-chapter-8_2002.pdf (1458 chunks)
+✅ moura_engenharia-de-sistemas-de-potencia-transmiss → p_engenharia-de-sistemas-de-potencia-transmissao-d (5312 chunks)
+✅ oppenheim_discrete-time-signal-processing_2014.pdf → oppenheim_discrete-time-signal-processing_2014.pdf (25323 chunks)
+✅ smith_the-scientist-and-engineer-s-guide-to-digita → smith_the-scientist-and-engineer-s-guide-to-digita (26080 chunks)
 
-=================================================================
-Sucesso   : 43
-Renomeados: 39
-Falha     : 2
-Total     : 45
+============================================================
+Sucesso   : 39
+Renomeados: 5
+Falha     : 0

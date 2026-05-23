@@ -1,0 +1,28 @@
+# inspecionar_metadados.py
+import chromadb
+from src.core.config import PASTA_CHROMADB, NOME_COLECAO
+
+client  = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
+colecao = client.get_or_create_collection(NOME_COLECAO)
+
+arquivos_vistos = {}
+offset = 0
+
+while True:
+    resultado = colecao.get(limit=200, offset=offset, include=["metadatas"])
+    metas = resultado.get("metadatas", [])
+    if not metas:
+        break
+    for m in metas:
+        arquivo = m.get("arquivo", "")
+        if arquivo not in arquivos_vistos:
+            arquivos_vistos[arquivo] = m.get("citacao", "")
+    offset += 200
+    if len(metas) < 200:
+        break
+
+print(f"Total de documentos: {len(arquivos_vistos)}\n")
+print(f"{'ARQUIVO':<60} | {'CITAÇÃO'}")
+print("-" * 120)
+for arquivo, citacao in sorted(arquivos_vistos.items()):
+    print(f"{arquivo[:60]:<60} | {citacao[:55]}")

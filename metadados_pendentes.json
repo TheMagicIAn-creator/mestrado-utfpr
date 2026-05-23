@@ -30,5 +30,29 @@
     "ano_atual": "0000",
     "registrado": "2026-05-22 19:00",
     "resolvido": false
+  },
+  "lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_0000.pdf": {
+    "arquivo": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\literatura\\confiabilidade\\lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_0000.pdf",
+    "autor_atual": "Joâo Ricardo Barusso Lafraia",
+    "titulo_atual": "Manual de Confiabilidade, Mantenabilidade e Disponibilidade",
+    "ano_atual": "0000",
+    "registrado": "2026-05-23 12:27",
+    "resolvido": false
+  },
+  "lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade-cap-7_0000.pdf": {
+    "arquivo": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\literatura\\manutencao\\lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade-cap-7_0000.pdf",
+    "autor_atual": "",
+    "titulo_atual": "Manual de Confiabilidade, Mantenabilidade e Disponibilidade",
+    "ano_atual": "0000",
+    "registrado": "2026-05-23 12:30",
+    "resolvido": false
+  },
+  "eletrica_subestacoes-de-energia-definicoes-conceitos-e-aplicacoes_0000.pdf": {
+    "arquivo": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\literatura\\sinais-eletricos\\eletrica_subestacoes-de-energia-definicoes-conceitos-e-aplicacoes_0000.pdf",
+    "autor_atual": "APRENDER ELÉTRICA",
+    "titulo_atual": "SUBESTAÇÕES DE ENERGIA DEFINIÇÕES, CONCEITOS E APLICAÇÕES",
+    "ano_atual": "0000",
+    "registrado": "2026-05-23 12:47",
+    "resolvido": false
   }
 }

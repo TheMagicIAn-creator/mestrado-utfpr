@@ -5,7 +5,7 @@ ano: 2015
 tema: ml-preditivo
 arquivo: tekalp_digital-video-processing_2015.pdf
 tags: [literatura, ml-preditivo, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Digital Video Processing

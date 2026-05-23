@@ -5,7 +5,7 @@ ano: 2012
 tema: inversores-pv
 arquivo: dhople_estimation-of-photovoltaic-system-reliability-and-performanc_2012.pdf
 tags: [literatura, inversores-pv, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Estimation of Photovoltaic System Reliability and Performance Metrics

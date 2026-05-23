@@ -5,7 +5,7 @@ ano: 2009
 tema: manutencao
 arquivo: voss_service-service-architecture-yield-monitoring-optimization-a_2009.pdf
 tags: [literatura, manutencao, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Service & service architecture – yield monitoring, optimization and reporting for commercial-scale s

@@ -5,7 +5,7 @@ ano: 2015
 tema: inversores-pv
 arquivo: shuttleworth_reliability-prediction-of-pv-inverters-based-on-mil-hdbk-217_2015.pdf
 tags: [literatura, inversores-pv, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Reliability Prediction of PV Inverters Based on MIL-HDBK-217F N2

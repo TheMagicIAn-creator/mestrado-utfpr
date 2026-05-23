@@ -1,16 +1,16 @@
 ---
 titulo: "Design and Estimation of Reliability of an Off Grid Solar Photovoltaic (PV) Power System in South Ea"
-autor: "Mandeep Singh Pahwa, Anisur Rahman"
+autor: "Pahwa, Mandeep Singh; Rahman, Anisur"
 ano: 2017
 tema: inversores-pv
 arquivo: pahwa_design-and-estimation-of-reliability-of-an-off-grid-solar-ph_2017.pdf
 tags: [literatura, inversores-pv, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Design and Estimation of Reliability of an Off Grid Solar Photovoltaic (PV) Power System in South Ea
 
-**Autor:** Mandeep Singh Pahwa, Anisur Rahman  
+**Autor:** Pahwa, Mandeep Singh; Rahman, Anisur  
 **Ano:** 2017  
 **Tema:** inversores-pv  
 **Arquivo:** `pahwa_design-and-estimation-of-reliability-of-an-off-grid-solar-ph_2017.pdf`

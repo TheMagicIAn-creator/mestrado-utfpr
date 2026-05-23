@@ -5,7 +5,7 @@ ano: 2022
 tema: ml-preditivo
 arquivo: ibrahim_machine-learning-schemes-for-anomaly-detection-in-solar-powe_2022.pdf
 tags: [literatura, ml-preditivo, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Machine Learning Schemes for Anomaly Detection in Solar Power Plants

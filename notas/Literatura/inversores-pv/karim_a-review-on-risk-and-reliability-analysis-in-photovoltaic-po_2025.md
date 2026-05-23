@@ -5,7 +5,7 @@ ano: 2025
 tema: inversores-pv
 arquivo: karim_a-review-on-risk-and-reliability-analysis-in-photovoltaic-po_2025.pdf
 tags: [literatura, inversores-pv, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # A Review on Risk and Reliability Analysis in Photovoltaic Power Generation

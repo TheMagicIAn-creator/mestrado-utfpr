@@ -5,7 +5,7 @@ ano: 2008
 tema: ml-preditivo
 arquivo: gonzalez_digital-image-processing_2008.pdf
 tags: [literatura, ml-preditivo, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Digital Image Processing

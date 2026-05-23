@@ -1,16 +1,16 @@
 ---
 titulo: "Análise de Confiabilidade em Sistemas de Potência"
-autor: "xavier"
+autor: "Xavier"
 ano: 2005
 tema: confiabilidade
 arquivo: xavier_analise-de-confiabilidade-em-sistemas-de-potencia_2005.pdf
 tags: [literatura, confiabilidade, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Análise de Confiabilidade em Sistemas de Potência
 
-**Autor:** xavier  
+**Autor:** Xavier  
 **Ano:** 2005  
 **Tema:** confiabilidade  
 **Arquivo:** `xavier_analise-de-confiabilidade-em-sistemas-de-potencia_2005.pdf`

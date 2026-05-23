@@ -5,7 +5,7 @@ ano: 2023
 tema: ml-preditivo
 arquivo: narayanan_machine-learning-based-explainable-fault-detection-of-vacuum_2023.pdf
 tags: [literatura, ml-preditivo, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Machine learning based explainable fault detection of vacuum pumps in PV solar cell manufacturing

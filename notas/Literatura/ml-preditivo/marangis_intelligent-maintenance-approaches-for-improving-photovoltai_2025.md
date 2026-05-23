@@ -5,7 +5,7 @@ ano: 2025
 tema: ml-preditivo
 arquivo: marangis_intelligent-maintenance-approaches-for-improving-photovoltai_2025.pdf
 tags: [literatura, ml-preditivo, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Intelligent Maintenance Approaches for Improving Photovoltaic System Performance and Reliability

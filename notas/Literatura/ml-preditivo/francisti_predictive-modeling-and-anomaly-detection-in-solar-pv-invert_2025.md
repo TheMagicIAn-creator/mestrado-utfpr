@@ -5,7 +5,7 @@ ano: 2025
 tema: ml-preditivo
 arquivo: francisti_predictive-modeling-and-anomaly-detection-in-solar-pv-invert_2025.pdf
 tags: [literatura, ml-preditivo, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Predictive modeling and anomaly detection in solar PV inverters using machine learning

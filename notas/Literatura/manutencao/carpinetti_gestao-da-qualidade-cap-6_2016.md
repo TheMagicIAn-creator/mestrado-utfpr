@@ -5,7 +5,7 @@ ano: 2016
 tema: manutencao
 arquivo: carpinetti_gestao-da-qualidade-cap-6_2016.pdf
 tags: [literatura, manutencao, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Gestão da qualidade (Cap. 6)

@@ -5,7 +5,7 @@ ano: 2024
 tema: manutencao
 arquivo: patil_a-reliability-and-risk-assessment-of-solar-photovoltaic-pane_2024.pdf
 tags: [literatura, manutencao, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # A Reliability and Risk Assessment of Solar Photovoltaic Panels Using a Failure Mode and Effects Anal

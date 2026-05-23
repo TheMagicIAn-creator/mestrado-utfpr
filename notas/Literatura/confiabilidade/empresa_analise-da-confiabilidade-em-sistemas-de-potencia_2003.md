@@ -5,7 +5,7 @@ ano: 2003
 tema: confiabilidade
 arquivo: empresa_analise-da-confiabilidade-em-sistemas-de-potencia_2003.pdf
 tags: [literatura, confiabilidade, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Análise da Confiabilidade em Sistemas de Potência

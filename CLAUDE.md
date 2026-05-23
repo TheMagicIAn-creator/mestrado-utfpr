@@ -36,20 +36,34 @@ A pesquisa apoia-se no TCC de graduação de Rodolfo
 Centred Maintenance a Sistemas Fotovoltaicos". O TCC
 aplicou RCM com FMEA e FMECA ao sistema fotovoltaico
 do CEAMAZON, identificando o inversor como o componente
-mais crítico. O mestrado estende esse trabalho: onde o
-TCC fez análise de confiabilidade estática baseada em
-literatura, a dissertação adiciona detecção preditiva
+mais crítico (NPR=210) e o subsistema CA como segundo
+mais crítico (NPR=150). O mestrado estende esse trabalho:
+onde o TCC fez análise de confiabilidade estática baseada
+em literatura, a dissertação adiciona detecção preditiva
 dinâmica a partir de sinais elétricos reais via ML.
 
 O TCC está indexado na base de conhecimento e deve ser
-usado como fonte de fundamentação metodológica.
+usado como fonte primária de fundamentação metodológica.
+
+## Resultados FMECA do TCC — Apêndice E (Torres, 2024)
+Análise aplicada ao sistema fotovoltaico do CEAMAZON:
+
+| Id | Componente    | Modo de Falha                    | S | O  | D  | NPR | NPR pós-manutenção |
+|----|---------------|----------------------------------|---|----|----|-----|--------------------|
+| 1  | Inversor      | Problema de conexão com a rede   | 3 | 7  | 10 | 210 | 18                 |
+| 2  | Subsistema CA | Curto-circuito em proteção       | 5 | 3  | 10 | 150 | 10                 |
+
+A redução expressiva do NPR após manutenção (210→18 e
+150→10) demonstra a eficácia do plano de manutenção.
+O inversor responde por 43% dos tickets de falha e 36%
+da perda de energia em SFVs (Golnas, 2012 apud Torres).
 
 ## Metodologia da Dissertação
 Detecção de anomalias por modelagem de normalidade:
 1. FMEA do lado CA — mapeia modos de falha de cada
    componente e a assinatura elétrica de cada falha
 2. Treinar modelo do inversor saudável (Autoencoder)
-   no dataset de operação normal
+   no dataset de operação normal (Paderborn)
 3. Injeção de falhas sintéticas fundamentada no FMEA
 4. Validar se o detector identifica as falhas injetadas
 5. Estimativa de RUL (Weibull) e decisão de manutenção
@@ -105,7 +119,7 @@ Em uso:
   (Random Forest é o melhor até agora: F1 0,87)
 
 Planejados para detecção de anomalias no lado CA:
-- Autoencoder (modelagem de normalidade)
+- Autoencoder (modelagem de normalidade — principal)
 - Isolation Forest (anomalias não supervisionadas)
 - Processo Gaussiano (prognóstico com incerteza)
 - LSTM / GRU (séries temporais)
@@ -119,41 +133,89 @@ orquestrador no backend.
 mestrado-utfpr/
 ├── src/                      → pacote principal
 │   ├── core/                 → infraestrutura compartilhada
-│   │   ├── config.py         → configuração central (fonte
-│   │   │                       única de caminhos e constantes)
+│   │   ├── config.py         → configuração central
 │   │   └── utils.py          → funções utilitárias
 │   ├── conhecimento/         → cérebro do agente (RAG)
-│   │   ├── agente.py         → pipeline RAG (Gemini + ChromaDB)
-│   │   ├── indexador.py      → indexa PDFs no ChromaDB
+│   │   ├── agente.py         → pipeline RAG 3 camadas
+│   │   ├── indexador.py      → indexa PDFs + tabelas
 │   │   ├── provedores.py     → multi-provedor de LLM
-│   │   ├── processador_pdf.py→ pipeline de processamento de PDF
+│   │   ├── processador_pdf.py→ processa PDFs novos
 │   │   └── consolidar_memoria.py → consolida sessões
-│   ├── ml/                   → pipeline de Machine Learning
+│   ├── ml/                   → pipeline de ML
 │   │   ├── eda.py            → análise exploratória
-│   │   └── classificador_pv.py → classificação de falhas PV
-│   └── orquestrador.py       → coordena o fluxo no backend
+│   │   └── classificador_pv.py → classificação de falhas
+│   └── orquestrador.py       → coordena o fluxo
 ├── literatura/               → PDFs em 5 subpastas temáticas
 ├── dados/brutos/             → datasets originais
-├── dados/processados/        → dados após pré-processamento
-├── resultados/               → gráficos e relatórios gerados
+├── dados/processados/        → dados pré-processados
+├── resultados/               → gráficos e relatórios
 ├── notas/                    → vault do Obsidian
 ├── novos_pdfs/               → PDFs aguardando indexação
-├── base_conhecimento/        → ChromaDB local (ignorado pelo Git)
+├── base_conhecimento/        → ChromaDB local (ignorado Git)
 ├── app.py                    → ponto de entrada (Streamlit)
-├── main.py                   → chat do agente via terminal
-├── watcher.py                → monitora novos_pdfs/ + agendador
-├── CLAUDE.md                 → este arquivo — perfil do agente
-├── .env                      → chaves de API (NUNCA vai ao Git)
+├── main.py                   → chat via terminal
+├── watcher.py                → monitora novos_pdfs/
+├── reprocessar_literatura.py → reprocessamento em lote
+├── CLAUDE.md                 → este arquivo
+├── metadados_pendentes.json  → PDFs com metadados pendentes
+├── .env                      → chaves de API (NUNCA no Git)
 └── .env.example              → modelo público das variáveis
 
 ## O Orquestrador
-Ao abrir o app.py, o orquestrador verifica o estado do
-projeto e executa apenas o que está pendente:
-- Indexa PDFs novos da pasta novos_pdfs/, se houver
-- Consolida memória de sessões, se houver acúmulo
-- Roda EDA e classificação de ML apenas se ainda não
-  foram geradas (verificação de estado)
-Etapas já concluídas são puladas, evitando reprocessamento.
+Ao abrir o app.py, o orquestrador verifica o estado e
+executa apenas o que está pendente:
+
+- Sinal REPROCESSAR na raiz → reprocessa toda a literatura
+  (renomeia arquivos, extrai tabelas, reindexa ChromaDB)
+- PDFs novos em novos_pdfs/ → indexa automaticamente
+- Acúmulo de sessões → consolida memória
+- Arquivos com "autor-desconhecido" no nome → corrige
+  metadados via LLM e reindexa automaticamente
+- Metadados pendentes → notifica discretamente no app
+- EDA pendente → gera análise exploratória
+- Classificação pendente → treina e avalia modelos
+
+Para reprocessar toda a literatura manualmente:
+  New-Item REPROCESSAR -ItemType File
+  (abrir o app → orquestrador detecta e executa)
+
+## Pipeline RAG — 3 Camadas
+Quando Rodolfo faz uma pergunta, o sistema executa:
+
+CAMADA 1 — Expansão de query (Groq LLaMA 3.3 70B)
+  Gera 6 variações da pergunta cobrindo:
+  → Reformulação em português técnico formal
+  → Reformulação em inglês técnico (obrigatório)
+  → Versão com siglas expandidas (NPR → Número de...)
+  → Versão com siglas contraídas (Failure Mode → FMEA)
+  → Versão focada em dados quantitativos se aplicável
+  → Versão com sinônimos do domínio
+  Extrai 8 termos-chave em português E inglês
+
+CAMADA 2 — Busca híbrida
+  → Busca semântica: embeddings para cada variação
+  → Busca keyword: ChromaDB where_document para cada termo
+  → Pool deduplicado de ~150 candidatos
+
+CAMADA 3 — Reranking (Groq LLaMA 3.1 8B)
+  → Avalia cada candidato com janela início+fim do chunk
+  → Seleciona os 25 mais relevantes para o contexto
+  → Garante que tabelas numéricas cheguem ao LLM principal
+
+Sempre citar: autor, título e ano do artigo consultado.
+Nunca inventar referências.
+
+## Indexação Inteligente
+Cada PDF é indexado com 3 tipos de chunks:
+1. Texto corrido: chunks de 500 chars com sobreposição
+2. Seções semânticas: detecta títulos e agrupa por seção
+3. Tabelas estruturadas: pdfplumber extrai tabelas como
+   Markdown — preserva valores numéricos (NPR, THD, etc.)
+4. Chunks de página combinada: une tabelas relacionadas
+   da mesma página — preserva contexto entre tabelas
+
+Extração de metadados em cascata:
+  LLM (Groq) → regex → metadados internos → pendência
 
 ## Status das Fases do Projeto
 FASE 1 — FUNDAÇÃO             : ✅ CONCLUÍDA
@@ -162,22 +224,15 @@ FASE 3 — INTERFACE STREAMLIT  : ✅ CONCLUÍDA
 FASE 4 — AUTOMAÇÃO            : ✅ CONCLUÍDA
 FASE 5 — PIPELINE DE ML       : 🔄 EM ANDAMENTO
 
-Fase 5 — progresso: EDA e classificação supervisionada
-das falhas PV concluídas (5 modelos comparados).
-Próximas etapas: matriz FMEA do lado CA, engenharia de
-features CA, detecção de anomalias, análise de RUL.
-
-## Fluxo RAG (Como Buscar Conhecimento)
-Quando Rodolfo fizer uma pergunta:
-1. Transformar a pergunta em vetor (embedding)
-2. Buscar os trechos mais relevantes no ChromaDB
-   (literatura + memória de sessões)
-3. Montar contexto com os trechos encontrados
-4. Enviar contexto + pergunta ao LLM
-5. Retornar resposta citando a fonte (nome do PDF)
-
-Sempre citar: autor, título e ano do artigo consultado.
-Nunca inventar referências.
+Fase 5 — progresso:
+✅ EDA dos datasets concluída
+✅ Classificação supervisionada (5 modelos, RF F1=0,87)
+⬜ FMEA do lado CA com assinaturas elétricas
+⬜ Engenharia de features CA (FFT, THD, RMS, kurtosis)
+⬜ Autoencoder para modelagem de normalidade
+⬜ Injeção de falhas sintéticas baseada em FMEA
+⬜ Detecção de anomalias e validação
+⬜ Análise de RUL com Weibull
 
 ## Como Devo Me Comportar
 - Responder sempre em português brasileiro
@@ -199,6 +254,8 @@ Nunca inventar referências.
     → estratégias de validação experimental
 - Sou capaz de elaborar tabelas FMEA e FMECA a partir
   da literatura indexada quando solicitado
+- Busco na literatura em português E inglês — a base
+  contém artigos em ambos os idiomas
 
 ## Como Rodolfo Prefere Aprender
 - Explicar conceitos novos com analogias práticas
@@ -216,21 +273,25 @@ Nunca inventar referências.
 - Interface    : Streamlit (aplicação web local)
 - Memória      : ChromaDB (banco vetorial local)
 - LLM          : multi-provedor — Google Gemini e Groq
-                 (LLaMA 3.3 70B, LLaMA 3.1 8B, Gemma 2 9B)
-- Embeddings   : sentence-transformers, modelo multilíngue
-                 paraphrase-multilingual-MiniLM-L12-v2
-- Monitoramento: watchdog (watcher de PDFs)
-- Agendamento  : schedule (consolidação de memória)
+                 (LLaMA 3.3 70B expansão/reranking,
+                  LLaMA 3.1 8B reranking rápido,
+                  Gemini 2.5 Flash resposta principal)
+- Embeddings   : paraphrase-multilingual-MiniLM-L12-v2
+- Extração PDF : pypdf (texto) + pdfplumber (tabelas)
+- Monitoramento: watchdog + schedule
 
 ## Fontes de Conhecimento Disponíveis
-- Literatura indexada em 5 temas:
+- 39 artigos científicos indexados em 5 temas:
     → ML e predição de falhas em inversores
     → Componentes CA e modos de falha
     → Manutenção preditiva e RCM
     → Confiabilidade e FMEA
     → Sinais elétricos e processamento
-- TCC de graduação de Rodolfo (RCM em sistemas PV)
+- TCC de graduação de Rodolfo Torres (UFPA, 2024)
+  com FMECA do CEAMAZON (NPR=210 inversor, NPR=150 CA)
 - Artigo de descrição do dataset de Paderborn
+  (Stender, Wallscheid & Böcker, 2020)
 - Datasets: Paderborn (inversor saudável) e PV Farms
 - Notas e resumos do Obsidian
 - Memória consolidada das sessões de desenvolvimento
+- Tabelas estruturadas extraídas dos PDFs (pdfplumber)

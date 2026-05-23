@@ -5,7 +5,7 @@ ano: 2025
 tema: ml-preditivo
 arquivo: ahirwar_enhanced-anomaly-detection-in-solar-power-plants-using-hybri_2025.pdf
 tags: [literatura, ml-preditivo, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Enhanced Anomaly Detection in Solar Power Plants Using Hybrid Machine Learning Techniques

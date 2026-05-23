@@ -5,7 +5,7 @@ ano: 2023
 tema: ml-preditivo
 arquivo: risi_advancing-solar-pv-component-inspection-early-defect-detecti_2023.pdf
 tags: [literatura, ml-preditivo, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Advancing Solar PV Component Inspection: Early Defect Detection with UA V Based Thermal Imaging and 

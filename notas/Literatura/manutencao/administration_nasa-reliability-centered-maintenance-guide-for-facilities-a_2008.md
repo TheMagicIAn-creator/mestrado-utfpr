@@ -5,7 +5,7 @@ ano: 2008
 tema: manutencao
 arquivo: administration_nasa-reliability-centered-maintenance-guide-for-facilities-a_2008.pdf
 tags: [literatura, manutencao, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # NASA RELIABILITY-CENTERED MAINTENANCE GUIDE FOR FACILITIES AND COLLATERAL EQUIPMENT

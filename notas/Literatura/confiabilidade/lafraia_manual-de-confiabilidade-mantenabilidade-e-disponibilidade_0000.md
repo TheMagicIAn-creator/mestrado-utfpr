@@ -5,7 +5,7 @@ ano: 0000
 tema: confiabilidade
 arquivo: lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_0000.pdf
 tags: [literatura, confiabilidade, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Manual de Confiabilidade, Mantenabilidade e Disponibilidade

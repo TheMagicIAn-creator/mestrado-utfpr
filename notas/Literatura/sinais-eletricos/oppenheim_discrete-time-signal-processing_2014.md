@@ -5,7 +5,7 @@ ano: 2014
 tema: sinais-eletricos
 arquivo: oppenheim_discrete-time-signal-processing_2014.pdf
 tags: [literatura, sinais-eletricos, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # Discrete-Time Signal Processing

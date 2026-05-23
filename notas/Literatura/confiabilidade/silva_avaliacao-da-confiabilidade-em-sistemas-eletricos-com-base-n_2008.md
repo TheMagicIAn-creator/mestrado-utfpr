@@ -5,7 +5,7 @@ ano: 2008
 tema: confiabilidade
 arquivo: silva_avaliacao-da-confiabilidade-em-sistemas-eletricos-com-base-n_2008.pdf
 tags: [literatura, confiabilidade, mestrado-utfpr]
-data_insercao: 2026-05-22
+data_insercao: 2026-05-23
 ---
 
 # AVALIAÇÃO DA CONFIABILIDADE EM SISTEMAS ELÉTRICOS COM BASE NOS PARÂMETROS DE QUALIDADE DA ENERGIA
