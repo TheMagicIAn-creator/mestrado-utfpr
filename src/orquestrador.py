@@ -335,40 +335,136 @@ def reprocessar_literatura() -> str:
 # ORQUESTRAÇÃO PRINCIPAL
 # ============================================================
 
+# ============================================================
+# VERIFICAÇÕES DE ESTADO — FASE 5
+# ============================================================
+
+def features_ca_pendente() -> bool:
+    return not (RAIZ_PROJETO / "dados" / "processados" /
+                "features_paderborn.parquet").exists()
+
+def autoencoder_pendente() -> bool:
+    return not (RAIZ_PROJETO / "resultados" / "autoencoder" /
+                "modelo_autoencoder.pt").exists()
+
+def injecao_falhas_pendente() -> bool:
+    return not (RAIZ_PROJETO / "resultados" / "autoencoder" /
+                "injecao_falhas_report.json").exists()
+
+def validacao_pendente() -> bool:
+    return not (RAIZ_PROJETO / "resultados" / "autoencoder" /
+                "validacao_report.json").exists()
+
+def rul_weibull_pendente() -> bool:
+    return not (RAIZ_PROJETO / "resultados" / "autoencoder" /
+                "weibull_results.json").exists()
+
+
+# ============================================================
+# ETAPAS — FASE 5
+# ============================================================
+
+def etapa_features_ca() -> str:
+    """Extrai 109 features CA do dataset de Paderborn."""
+    if not features_ca_pendente():
+        return "Features CA: já extraídas"
+    try:
+        from src.ml.features_ca import executar_features_ca
+        sucesso = executar_features_ca()
+        return "✅ Features CA extraídas" if sucesso else "⚠️  Features CA: falhou"
+    except Exception as e:
+        return f"⚠️  Features CA: {e}"
+
+
+def etapa_autoencoder() -> str:
+    """Treina o Autoencoder de detecção de anomalias."""
+    if not autoencoder_pendente():
+        return "Autoencoder: já treinado"
+    if features_ca_pendente():
+        return "Autoencoder: aguardando features CA"
+    try:
+        from src.ml.autoencoder import executar_autoencoder
+        sucesso = executar_autoencoder()
+        return "✅ Autoencoder treinado" if sucesso else "⚠️  Autoencoder: falhou"
+    except Exception as e:
+        return f"⚠️  Autoencoder: {e}"
+
+
+def etapa_injecao_falhas() -> str:
+    """Injeta falhas sintéticas fundamentadas no FMEA."""
+    if not injecao_falhas_pendente():
+        return "Injeção de falhas: já realizada"
+    if autoencoder_pendente():
+        return "Injeção de falhas: aguardando Autoencoder"
+    try:
+        from src.ml.injecao_falhas import executar_injecao_falhas
+        sucesso = executar_injecao_falhas()
+        return "✅ Injeção de falhas concluída" if sucesso else "⚠️  Injeção de falhas: falhou"
+    except Exception as e:
+        return f"⚠️  Injeção de falhas: {e}"
+
+
+def etapa_validacao_ml() -> str:
+    """Validação formal: AUC, F1, Recall por tipo de falha."""
+    if not validacao_pendente():
+        return "Validação ML: já realizada"
+    if injecao_falhas_pendente():
+        return "Validação ML: aguardando injeção de falhas"
+    try:
+        from src.ml.validacao import executar_validacao
+        sucesso = executar_validacao()
+        return "✅ Validação ML concluída" if sucesso else "⚠️  Validação ML: falhou"
+    except Exception as e:
+        return f"⚠️  Validação ML: {e}"
+
+
+def etapa_rul_weibull() -> str:
+    """Estimativa de RUL com Análise de Weibull."""
+    if not rul_weibull_pendente():
+        return "RUL/Weibull: já calculado"
+    if validacao_pendente():
+        return "RUL/Weibull: aguardando validação ML"
+    try:
+        from src.ml.rul_weibull import executar_rul_weibull
+        sucesso = executar_rul_weibull()
+        return "✅ RUL/Weibull calculado" if sucesso else "⚠️  RUL/Weibull: falhou"
+    except Exception as e:
+        return f"⚠️  RUL/Weibull: {e}"
+
+
+# ============================================================
+# ORQUESTRAÇÃO PRINCIPAL
+# ============================================================
+
 def executar_pipeline(modelo_embeddings) -> list:
     """
-    Executa o fluxo completo, na ordem de dependência.
+    Executa o fluxo completo na ordem de dependência.
     Cada etapa decide internamente se precisa rodar.
-
-    Retorna uma lista de mensagens de status para o app exibir.
+    Retorna lista de mensagens de status para o app exibir.
     """
     relatorio = []
 
-    # Etapas leves e incrementais
+    # ── Sinal de reprocessamento completo ────────────────────
+    if ha_sinal_reprocessamento():
+        relatorio.append(reprocessar_literatura())
+
+    # ── Conhecimento e memória ────────────────────────────────
     relatorio.append(etapa_indexar_pdfs(modelo_embeddings))
     relatorio.append(etapa_consolidar_memoria())
+    relatorio.append(reprocessar_metadados_ruins())
 
-    def executar_pipeline(modelo_embeddings) -> list:
-        relatorio = []
-
-        # Reprocessamento completo — disparado pelo arquivo REPROCESSAR
-        if ha_sinal_reprocessamento():
-            relatorio.append(reprocessar_literatura())
-
-        relatorio.append(etapa_indexar_pdfs(modelo_embeddings))
-        relatorio.append(etapa_consolidar_memoria())
-        relatorio.append(reprocessar_metadados_ruins())
-        relatorio.append(etapa_eda())
-        relatorio.append(etapa_classificacao())
-
-        return relatorio
-
-    # Etapas de ML — rodam só na primeira vez (verificação de estado)
+    # ── Fase 5 — ML básico ────────────────────────────────────
     relatorio.append(etapa_eda())
     relatorio.append(etapa_classificacao())
 
-    return relatorio
+    # ── Fase 5 — ML avançado (detecção de anomalias + RUL) ────
+    relatorio.append(etapa_features_ca())
+    relatorio.append(etapa_autoencoder())
+    relatorio.append(etapa_injecao_falhas())
+    relatorio.append(etapa_validacao_ml())
+    relatorio.append(etapa_rul_weibull())
 
+    return relatorio
 
 if __name__ == "__main__":
     print("=" * 60)
@@ -380,4 +476,9 @@ if __name__ == "__main__":
     print(f"Arquivos com nome ruim    : {ha_arquivos_com_nome_ruim()}")
     print(f"EDA pendente              : {eda_pendente()}")
     print(f"Classificação pendente    : {classificacao_pendente()}")
+    print(f"Features CA pendente      : {features_ca_pendente()}")
+    print(f"Autoencoder pendente      : {autoencoder_pendente()}")
+    print(f"Injeção de falhas pendente: {injecao_falhas_pendente()}")
+    print(f"Validação ML pendente     : {validacao_pendente()}")
+    print(f"RUL/Weibull pendente      : {rul_weibull_pendente()}")
     print("=" * 60)

@@ -277,7 +277,7 @@ def indexar_sessao(caminho_md: Path, modelo_embeddings, pasta_chromadb: Path) ->
     ]
 
     # Indexa (upsert evita duplicatas)
-    upsert_em_lotes(colecao, ids, embeddings, chunks, metadados)
+    upsert_em_lotes(colecao_sessoes, ids, embeddings, chunks, metadados)
 
     return len(chunks)
 
