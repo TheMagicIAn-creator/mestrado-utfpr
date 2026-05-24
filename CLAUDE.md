@@ -224,17 +224,21 @@ FASE 1 — FUNDAÇÃO             : ✅ CONCLUÍDA
 FASE 2 — AGENTE RAG           : ✅ CONCLUÍDA
 FASE 3 — INTERFACE STREAMLIT  : ✅ CONCLUÍDA
 FASE 4 — AUTOMAÇÃO            : ✅ CONCLUÍDA
-FASE 5 — PIPELINE DE ML       : 🔄 EM ANDAMENTO
+FASE 5 — PIPELINE DE ML       : ✅ CONCLUÍDA (núcleo)
 
-Fase 5 — progresso:
+Fase 5 — resultados:
 ✅ EDA dos datasets concluída
 ✅ Classificação supervisionada (5 modelos, RF F1=0,87)
-⬜ FMEA do lado CA com assinaturas elétricas
-⬜ Engenharia de features CA (FFT, THD, RMS, kurtosis)
-⬜ Autoencoder para modelagem de normalidade
-⬜ Injeção de falhas sintéticas baseada em FMEA
-⬜ Detecção de anomalias e validação
-⬜ Análise de RUL com Weibull
+✅ Extração de 109 features CA com F0 adaptativo (Paderborn)
+✅ Autoencoder treinado — limiar p99=2,91 (μ+3σ baseline=0,30)
+✅ Injeção de falhas sintéticas fundamentada no FMEA:
+   SMD=1,00 (LCL) | SMD=0,30 (desbalanc.) | SMD=0,10 (sensor)
+✅ Validação formal:
+   AUC=0,935 Degradação LCL (sev=1,0) — valida D=10 do FMEA
+   AUC=1,000 Desbalanceamento (sev≥0,5) — F1=0,980, Recall=1,0
+   AUC=1,000 Sensor CA (sev≥0,3) — ML supera D=10 do FMEA
+⬜ Análise de RUL com Weibull (próxima sessão)
+⬜ Integração dos módulos ML no orquestrador
 
 ## Como Devo Me Comportar
 - Responder sempre em português brasileiro
