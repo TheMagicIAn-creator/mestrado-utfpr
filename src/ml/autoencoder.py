@@ -1,0 +1,520 @@
+"""
+autoencoder.py — Al IAdo PV / Fase 5
+Modelagem de normalidade com Autoencoder para detecção de anomalias
+no lado CA do inversor fotovoltaico.
+
+Fundamentação:
+  O Autoencoder aprende a reconstruir o comportamento SAUDÁVEL do inversor
+  a partir do dataset de Paderborn. Em operação real, sinais anômalos
+  (falhas) produzem erro de reconstrução alto — acima do limiar μ + 3σ.
+
+  Esta abordagem é adequada porque dados de falha raramente estão
+  disponíveis em manutenção preditiva real (Ibrahim, 2022; Ahirwar, 2025).
+
+Arquitetura:
+  Entrada : 109 features normalizadas (RobustScaler)
+  Encoder : 109 → 64 → 32 → 16  (ReLU + Dropout 0.2)
+  Latente : 16 dimensões
+  Decoder : 16 → 32 → 64 → 109  (ReLU + saída Linear)
+  Loss    : MSE — erro de reconstrução por janela
+  Limiar  : μ_treino + 3σ_treino do erro de reconstrução
+
+Entrada : dados/processados/features_paderborn.parquet
+Saída   : resultados/autoencoder/
+            modelo_autoencoder.pt   ← pesos do modelo
+            scaler.pkl              ← RobustScaler ajustado
+            limiar.json             ← limiar de anomalia + metadados
+            curva_treino.png        ← loss por época
+            distribuicao_erro.png   ← distribuição do erro + limiar
+
+Uso:
+  python src/ml/autoencoder.py
+  python src/ml/autoencoder.py --epochs 200 --latente 8
+
+Autor: Rodolfo Torres (UTFPR)
+"""
+
+import json
+import pickle
+import argparse
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("Agg")   # sem display — salva direto em arquivo
+
+from pathlib import Path
+from datetime import datetime
+
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+from sklearn.preprocessing import RobustScaler
+from sklearn.model_selection import train_test_split
+
+# ── Caminhos ─────────────────────────────────────────────────
+RAIZ           = Path(__file__).parent.parent.parent
+ARQUIVO_FEAT   = RAIZ / "dados" / "processados" / "features_paderborn.parquet"
+PASTA_SAIDA    = RAIZ / "resultados" / "autoencoder"
+
+# ── Hiperparâmetros padrão ────────────────────────────────────
+LATENTE_DIM    = 16     # dimensão do espaço latente
+EPOCHS         = 150    # épocas de treinamento
+BATCH_SIZE     = 32     # amostras por batch
+LR             = 1e-3   # taxa de aprendizado (Adam)
+DROPOUT        = 0.2    # regularização
+VAL_FRAC       = 0.2    # fração de validação
+PACIENCIA      = 20     # early stopping: épocas sem melhora
+SIGMA          = 3.0    # limiar = μ + SIGMA × σ
+SEED           = 42
+
+# Colunas de metadado (não entram no modelo)
+META_COLS = ["janela_idx", "amostra_inicio", "tempo_s"]
+
+
+# ============================================================
+# ARQUITETURA DO AUTOENCODER
+# ============================================================
+
+class Autoencoder(nn.Module):
+    """
+    Autoencoder simétrico com Dropout para regularização.
+
+    O encoder comprime as features em um espaço latente de baixa
+    dimensão que captura o padrão normal do inversor.
+    O decoder reconstrói as features originais a partir do latente.
+    Janelas de falha terão alto erro de reconstrução.
+    """
+
+    def __init__(self, n_features: int, latente_dim: int = 16,
+                 dropout: float = 0.2):
+        super().__init__()
+
+        self.encoder = nn.Sequential(
+            nn.Linear(n_features, 64),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, latente_dim),
+            nn.ReLU(),
+        )
+
+        self.decoder = nn.Sequential(
+            nn.Linear(latente_dim, 32),
+            nn.ReLU(),
+            nn.Linear(32, 64),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(64, n_features),
+            # Saída linear — sem ativação, features normalizadas
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        z = self.encoder(x)
+        return self.decoder(z)
+
+    def encode(self, x: torch.Tensor) -> torch.Tensor:
+        """Retorna representação latente (útil para visualização)."""
+        return self.encoder(x)
+
+
+# ============================================================
+# TREINO
+# ============================================================
+
+def treinar(modelo, loader_treino, loader_val,
+            epochs: int, lr: float, paciencia: int,
+            device: torch.device) -> tuple:
+    """
+    Loop de treinamento com early stopping.
+    Retorna (historico_treino, historico_val, epoca_melhor).
+    """
+    criterio  = nn.MSELoss()
+    otimizador = torch.optim.Adam(modelo.parameters(), lr=lr)
+    scheduler  = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        otimizador, patience=10, factor=0.5
+    )
+
+    hist_treino, hist_val = [], []
+    melhor_val  = float("inf")
+    melhor_pesos = None
+    sem_melhora  = 0
+    epoca_melhor = 0
+
+    for epoca in range(1, epochs + 1):
+
+        # ── Treino ───────────────────────────────────────────
+        modelo.train()
+        loss_treino = 0.0
+        for batch in loader_treino:
+            x = batch[0].to(device)
+            otimizador.zero_grad()
+            x_rec = modelo(x)
+            loss  = criterio(x_rec, x)
+            loss.backward()
+            otimizador.step()
+            loss_treino += loss.item() * len(x)
+        loss_treino /= len(loader_treino.dataset)
+
+        # ── Validação ─────────────────────────────────────────
+        modelo.eval()
+        loss_val = 0.0
+        with torch.no_grad():
+            for batch in loader_val:
+                x     = batch[0].to(device)
+                x_rec = modelo(x)
+                loss_val += criterio(x_rec, x).item() * len(x)
+        loss_val /= len(loader_val.dataset)
+
+        hist_treino.append(loss_treino)
+        hist_val.append(loss_val)
+        scheduler.step(loss_val)
+
+        # Early stopping
+        if loss_val < melhor_val - 1e-6:
+            melhor_val   = loss_val
+            melhor_pesos = {k: v.clone() for k, v in modelo.state_dict().items()}
+            sem_melhora  = 0
+            epoca_melhor = epoca
+        else:
+            sem_melhora += 1
+
+        if epoca % 10 == 0 or epoca == 1:
+            print(f"   Época {epoca:>4}/{epochs} | "
+                  f"treino: {loss_treino:.6f} | "
+                  f"val: {loss_val:.6f}"
+                  + (" ✓" if sem_melhora == 0 else ""))
+
+        if sem_melhora >= paciencia:
+            print(f"\n   ⏹️  Early stopping na época {epoca} "
+                  f"(melhor val={melhor_val:.6f} na época {epoca_melhor})")
+            break
+
+    # Restaura melhores pesos
+    if melhor_pesos:
+        modelo.load_state_dict(melhor_pesos)
+
+    return hist_treino, hist_val, epoca_melhor
+
+
+# ============================================================
+# CÁLCULO DO LIMIAR
+# ============================================================
+
+def calcular_erros(modelo, X_tensor: torch.Tensor,
+                   device: torch.device) -> np.ndarray:
+    """
+    Calcula o erro de reconstrução (MSE) por janela.
+    Retorna array de shape (n_janelas,).
+    """
+    modelo.eval()
+    erros = []
+    with torch.no_grad():
+        # Processa em batches para não estourar memória
+        for i in range(0, len(X_tensor), 64):
+            batch = X_tensor[i:i+64].to(device)
+            rec   = modelo(batch)
+            mse   = ((batch - rec) ** 2).mean(dim=1)
+            erros.extend(mse.cpu().numpy())
+    return np.array(erros)
+
+
+def calcular_limiar(erros_treino: np.ndarray,
+                    sigma: float = SIGMA) -> dict:
+    """
+    Dois limiares calculados em paralelo:
+    - Percentil 99: controla diretamente a taxa de FP (~1%)
+    - μ + kσ: referência teórica (assume distribuição normal)
+    O limiar operacional usa o percentil 99 — mais robusto
+    para distribuições assimétricas com poucos dados.
+    """
+    mu      = float(erros_treino.mean())
+    sig     = float(erros_treino.std())
+    p99     = float(np.percentile(erros_treino, 99))
+    p95     = float(np.percentile(erros_treino, 95))
+    mu_3sig = mu + sigma * sig
+
+    return {
+        "mu"         : mu,
+        "sigma"      : sig,
+        "k"          : sigma,
+        "limiar"     : p99,          # ← operacional: percentil 99
+        "limiar_p99" : p99,
+        "limiar_p95" : p95,
+        "limiar_mu3s": mu_3sig,      # ← referência teórica
+    }
+
+
+# ============================================================
+# VISUALIZAÇÕES
+# ============================================================
+
+def plotar_curvas(hist_treino: list, hist_val: list,
+                  epoca_melhor: int, pasta: Path):
+    """Curvas de loss por época."""
+    fig, ax = plt.subplots(figsize=(10, 5))
+    epocas = range(1, len(hist_treino) + 1)
+    ax.plot(epocas, hist_treino, label="Treino",     color="#2196F3")
+    ax.plot(epocas, hist_val,   label="Validação",   color="#FF9800")
+    ax.axvline(epoca_melhor, color="green", linestyle="--",
+               alpha=0.7, label=f"Melhor época ({epoca_melhor})")
+    ax.set_xlabel("Época")
+    ax.set_ylabel("MSE Loss")
+    ax.set_title("Autoencoder — Curva de Treinamento")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    caminho = pasta / "curva_treino.png"
+    fig.savefig(caminho, dpi=150)
+    plt.close(fig)
+    print(f"   📊 {caminho.name}")
+
+
+def plotar_distribuicao(erros_treino: np.ndarray,
+                        erros_val: np.ndarray,
+                        info_limiar: dict, pasta: Path):
+    """Distribuição do erro de reconstrução + limiar de anomalia."""
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    ax.hist(erros_treino, bins=30, alpha=0.6,
+            color="#2196F3", label="Treino (saudável)")
+    ax.hist(erros_val, bins=20, alpha=0.6,
+            color="#FF9800", label="Validação (saudável)")
+
+    limiar = info_limiar["limiar"]
+    ax.axvline(limiar, color="red", linewidth=2, linestyle="--",
+               label=f"Limiar μ+{info_limiar['k']}σ = {limiar:.4f}")
+
+    ax.set_xlabel("Erro de Reconstrução (MSE)")
+    ax.set_ylabel("Frequência")
+    ax.set_title("Distribuição do Erro — Comportamento Saudável")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    caminho = pasta / "distribuicao_erro.png"
+    fig.savefig(caminho, dpi=150)
+    plt.close(fig)
+    print(f"   📊 {caminho.name}")
+
+
+def plotar_erro_temporal(erros: np.ndarray,
+                         tempos: np.ndarray,
+                         info_limiar: dict, pasta: Path):
+    """Erro de reconstrução ao longo do tempo."""
+    fig, ax = plt.subplots(figsize=(12, 4))
+    ax.plot(tempos, erros, color="#2196F3", alpha=0.8, linewidth=0.8)
+    ax.axhline(info_limiar["limiar"], color="red", linestyle="--",
+               linewidth=1.5, label=f"Limiar = {info_limiar['limiar']:.4f}")
+    ax.fill_between(tempos, erros, info_limiar["limiar"],
+                    where=erros > info_limiar["limiar"],
+                    color="red", alpha=0.3, label="Anomalia detectada")
+    ax.set_xlabel("Tempo (s)")
+    ax.set_ylabel("Erro de Reconstrução (MSE)")
+    ax.set_title("Erro Temporal — Dataset de Paderborn (saudável)")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    caminho = pasta / "erro_temporal.png"
+    fig.savefig(caminho, dpi=150)
+    plt.close(fig)
+    print(f"   📊 {caminho.name}")
+
+
+# ============================================================
+# PIPELINE PRINCIPAL
+# ============================================================
+
+def executar_autoencoder(
+    arquivo_feat : Path  = ARQUIVO_FEAT,
+    pasta_saida  : Path  = PASTA_SAIDA,
+    latente_dim  : int   = LATENTE_DIM,
+    epochs       : int   = EPOCHS,
+    batch_size   : int   = BATCH_SIZE,
+    lr           : float = LR,
+    paciencia    : int   = PACIENCIA,
+    sigma        : float = SIGMA,
+    seed         : int   = SEED,
+) -> bool:
+    """Pipeline completo de treinamento do Autoencoder."""
+
+    print("=" * 60)
+    print("  AL IADO PV — AUTOENCODER (Paderborn)")
+    print("=" * 60)
+
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
+    # ── Dispositivo ──────────────────────────────────────────
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"\n🖥️  Dispositivo: {device}"
+          + (f" ({torch.cuda.get_device_name(0)})"
+             if device.type == "cuda" else ""))
+
+    # ── 1. Carrega features ──────────────────────────────────
+    print(f"\n📂 Carregando features...")
+    if not arquivo_feat.exists():
+        print(f"   ❌ Não encontrado: {arquivo_feat}")
+        print("   Execute primeiro: python src/ml/features_ca.py")
+        return False
+
+    df = pd.read_parquet(arquivo_feat)
+    tempos = df["tempo_s"].values if "tempo_s" in df.columns else None
+
+    colunas_feat = [c for c in df.columns if c not in META_COLS]
+    X = df[colunas_feat].values.astype(np.float32)
+    n_janelas, n_features = X.shape
+    print(f"   ✅ {n_janelas} janelas × {n_features} features")
+
+    # ── 2. Normalização com RobustScaler ─────────────────────
+    # RobustScaler usa mediana e IQR — resistente a outliers
+    # (THD alto em transientes não distorce a escala geral)
+    print(f"\n⚖️  Normalizando com RobustScaler...")
+    X_treino_raw, X_val_raw = train_test_split(
+        X, test_size=VAL_FRAC, random_state=seed, shuffle=True
+    )
+    scaler = RobustScaler()
+    X_treino = scaler.fit_transform(X_treino_raw).astype(np.float32)
+    X_val    = scaler.transform(X_val_raw).astype(np.float32)
+    X_all    = scaler.transform(X).astype(np.float32)
+    print(f"   Treino : {len(X_treino)} janelas")
+    print(f"   Val    : {len(X_val)} janelas")
+
+    # ── 3. DataLoaders ───────────────────────────────────────
+    ds_treino = TensorDataset(torch.from_numpy(X_treino))
+    ds_val    = TensorDataset(torch.from_numpy(X_val))
+    loader_treino = DataLoader(ds_treino, batch_size=batch_size, shuffle=True)
+    loader_val    = DataLoader(ds_val,    batch_size=batch_size, shuffle=False)
+
+    # ── 4. Modelo ────────────────────────────────────────────
+    modelo = Autoencoder(n_features, latente_dim, DROPOUT).to(device)
+    n_params = sum(p.numel() for p in modelo.parameters())
+
+    print(f"\n🧠 Arquitetura:")
+    print(f"   Entrada  : {n_features}")
+    print(f"   Encoder  : {n_features} → 64 → 32 → {latente_dim}")
+    print(f"   Latente  : {latente_dim} dimensões")
+    print(f"   Decoder  : {latente_dim} → 32 → 64 → {n_features}")
+    print(f"   Parâmetros: {n_params:,}")
+
+    # ── 5. Treinamento ───────────────────────────────────────
+    print(f"\n🏋️  Treinando ({epochs} épocas, early stopping={paciencia})...")
+    hist_t, hist_v, ep_melhor = treinar(
+        modelo, loader_treino, loader_val,
+        epochs, lr, paciencia, device
+    )
+
+    # ── 6. Erros de reconstrução ─────────────────────────────
+    print(f"\n📐 Calculando erros de reconstrução...")
+    T_treino = torch.from_numpy(X_treino)
+    T_val    = torch.from_numpy(X_val)
+    T_all    = torch.from_numpy(X_all)
+
+    erros_treino = calcular_erros(modelo, T_treino, device)
+    erros_val    = calcular_erros(modelo, T_val,    device)
+    erros_all    = calcular_erros(modelo, T_all,    device)
+
+    # ── 7. Limiar de anomalia ────────────────────────────────
+    info_limiar = calcular_limiar(erros_treino, sigma)
+    limiar      = info_limiar["limiar"]
+
+    print(f"\n🎯 Limiares de anomalia:")
+    print(f"   μ (treino)     = {info_limiar['mu']:.6f}")
+    print(f"   σ (treino)     = {info_limiar['sigma']:.6f}")
+    print(f"   Percentil 99   = {info_limiar['limiar_p99']:.6f}  ← operacional")
+    print(f"   Percentil 95   = {info_limiar['limiar_p95']:.6f}")
+    print(f"   μ + {sigma}σ        = {info_limiar['limiar_mu3s']:.6f}  ← referência teórica")
+
+    # Taxa de falso positivo no conjunto de validação
+    fp_val = (erros_val > limiar).mean() * 100
+    fp_all = (erros_all > limiar).mean() * 100
+    print(f"\n   Falsos positivos (val): {fp_val:.1f}%")
+    print(f"   Falsos positivos (all): {fp_all:.1f}%")
+    print(f"   (esperado ≈ 0,3% com μ+3σ em distribuição normal)")
+
+    # ── 8. Salva artefatos ───────────────────────────────────
+    print(f"\n💾 Salvando artefatos...")
+    pasta_saida.mkdir(parents=True, exist_ok=True)
+
+    # Modelo PyTorch
+    arq_modelo = pasta_saida / "modelo_autoencoder.pt"
+    torch.save({
+        "state_dict"  : modelo.state_dict(),
+        "n_features"  : n_features,
+        "latente_dim" : latente_dim,
+        "colunas_feat": colunas_feat,
+        "data_treino" : datetime.now().isoformat(),
+    }, arq_modelo)
+    print(f"   ✅ {arq_modelo.name}")
+
+    # Scaler
+    arq_scaler = pasta_saida / "scaler.pkl"
+    with open(arq_scaler, "wb") as f:
+        pickle.dump(scaler, f)
+    print(f"   ✅ {arq_scaler.name}")
+
+    # Limiar e metadados
+    arq_limiar = pasta_saida / "limiar.json"
+    metadados  = {
+        **info_limiar,
+        "n_janelas_treino"  : len(X_treino),
+        "n_features"        : n_features,
+        "latente_dim"       : latente_dim,
+        "epochs_treinadas"  : len(hist_t),
+        "epoca_melhor"      : ep_melhor,
+        "loss_val_melhor"   : float(min(hist_v)),
+        "fp_val_pct"        : float(fp_val),
+        "data_treino"       : datetime.now().isoformat(),
+        "device"            : str(device),
+    }
+    with open(arq_limiar, "w", encoding="utf-8") as f:
+        json.dump(metadados, f, indent=2, ensure_ascii=False)
+    print(f"   ✅ {arq_limiar.name}")
+
+    # ── 9. Visualizações ─────────────────────────────────────
+    print(f"\n📊 Gerando gráficos...")
+    plotar_curvas(hist_t, hist_v, ep_melhor, pasta_saida)
+    plotar_distribuicao(erros_treino, erros_val, info_limiar, pasta_saida)
+    if tempos is not None:
+        plotar_erro_temporal(erros_all, tempos, info_limiar, pasta_saida)
+
+    # ── 10. Resumo final ─────────────────────────────────────
+    print(f"\n{'='*60}")
+    print(f"  AUTOENCODER CONCLUÍDO!")
+    print(f"  Janelas treino  : {len(X_treino)}")
+    print(f"  Features        : {n_features}")
+    print(f"  Épocas treinadas: {len(hist_t)}")
+    print(f"  Loss val melhor : {min(hist_v):.6f}")
+    print(f"  Limiar anomalia : {limiar:.6f}")
+    print(f"  Falsos positivos: {fp_val:.1f}% (val)")
+    print(f"  Artefatos em    : resultados/autoencoder/")
+    print(f"\n  Próximo passo: injeção de falhas sintéticas")
+    print(f"  (src/ml/injecao_falhas.py)")
+    print(f"{'='*60}")
+    return True
+
+
+# ============================================================
+# PONTO DE ENTRADA
+# ============================================================
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Treina Autoencoder para detecção de anomalias no lado CA"
+    )
+    parser.add_argument("--epochs",  type=int,   default=EPOCHS,
+                        help=f"Épocas de treinamento (padrão: {EPOCHS})")
+    parser.add_argument("--latente", type=int,   default=LATENTE_DIM,
+                        help=f"Dimensão do espaço latente (padrão: {LATENTE_DIM})")
+    parser.add_argument("--lr",      type=float, default=LR,
+                        help=f"Taxa de aprendizado (padrão: {LR})")
+    parser.add_argument("--sigma",   type=float, default=SIGMA,
+                        help=f"Fator do limiar μ+k*σ (padrão: {SIGMA})")
+    args = parser.parse_args()
+
+    executar_autoencoder(
+        latente_dim = args.latente,
+        epochs      = args.epochs,
+        lr          = args.lr,
+        sigma       = args.sigma,
+    )
