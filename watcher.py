@@ -178,28 +178,29 @@ def iniciar_em_background(modelo_embeddings) -> Observer:
     observer.start()
 
     # ── Agendador de consolidação ────────────────────────────
-    def job_consolidacao():
-        """Roda toda segunda-feira às 8h."""
+    def job_consolidacao(forcar: bool = False):
+        """Consolida memória quando gatilho ativo ou forçado."""
         try:
-            from src.consolidar_memoria import consolidar
-            print("\n⏰ Agendador: iniciando consolidação de memória...")
-            consolidar()
+            from src.conhecimento.consolidar_memoria import consolidar
+            print("\n⏰ Agendador: verificando gatilhos de consolidação...")
+            consolidar(forcar=forcar)
         except Exception as e:
             print(f"\n⚠️  Erro na consolidação agendada: {e}")
 
-    # Agenda para toda segunda-feira às 08:00
-    schedule.every().monday.at("08:00").do(job_consolidacao)
+    # Sexta-feira às 23h — consolida independente dos gatilhos
+    schedule.every().friday.at("23:00").do(job_consolidacao, forcar=True)
+
+    # T odo dia às 22h — verifica gatilhos (X interações, 3 dias acumulados)
+    schedule.every().day.at("22:00").do(job_consolidacao, forcar=False)
 
     def loop_agendador():
         while True:
             schedule.run_pending()
-            time.sleep(60)  # verifica a cada minuto
+            time.sleep(60)
 
-    thread_agendador        = threading.Thread(target=loop_agendador)
+    thread_agendador = threading.Thread(target=loop_agendador)
     thread_agendador.daemon = True
     thread_agendador.start()
-
-    return observer
 
 if __name__ == "__main__":
     main()

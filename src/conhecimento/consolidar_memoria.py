@@ -1,41 +1,92 @@
 """
 consolidar_memoria.py — Al IAdo PV
-Consolida todas as sessões em um único resumo.
+Consolida sessões em memória estruturada e acionável.
 
-Fluxo:
-  1. Lê todos os arquivos .md de notas/sessoes/
-  2. Envia ao LLM para resumir os principais insights
-  3. Salva o resumo em notas/memorias/
-  4. Remove chunks antigos de sessoes_pv no ChromaDB
-  5. Indexa o resumo consolidado
-  6. Arquiva as sessões originais
-
-Pode ser chamado pelo N8N (agendado) ou manualmente:
-  python src/consolidar_memoria.py
+Gatilhos:
+  - Sexta-feira semanal (agendado no watcher.py)
+  - Sessão com mais de LIMITE_INTERACOES interações
+  - Sessões acumuladas há mais de DIAS_ACUMULACAO dias
+  - Manual: python -m src.conhecimento.consolidar_memoria
 
 Autor: Rodolfo Torres (UTFPR)
 """
 
 import sys
 import os
+import re
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from dotenv import load_dotenv
 load_dotenv()
 
+from src.core.config import (
+    PASTA_SESSOES, PASTA_MEMORIAS, PASTA_ARQUIVO,
+    NOME_COLECAO_SESSOES
+)
+
+# ─── Parâmetros (sobrescrevíveis via .env) ───────────────────
+MINIMO_SESSOES        = 2
+LIMITE_INTERACOES     = int(os.getenv("CONSOLIDAR_LIMITE_INTERACOES", 15))
+DIAS_ACUMULACAO       = int(os.getenv("CONSOLIDAR_DIAS_ACUMULACAO",   3))
+
 
 # ============================================================
-# CONFIGURAÇÕES
+# CONTAGEM DE INTERAÇÕES
 # ============================================================
 
-from src.core.config import PASTA_NOTAS, PASTA_SESSOES
+def contar_interacoes(conteudo: str) -> int:
+    """Conta pares pergunta-resposta numa sessão."""
+    return len(re.findall(r'##\s*Interação|🔬\s*Você:', conteudo))
 
-PASTA_MEMORIAS = PASTA_NOTAS / "memorias"
-PASTA_ARQUIVO  = PASTA_NOTAS / "sessoes_arquivadas"
-MINIMO_SESSOES = 2
+
+def data_da_sessao(nome_arquivo: str) -> date:
+    """Extrai a data do nome do arquivo (YYYY-MM-DD_...)."""
+    try:
+        return datetime.strptime(nome_arquivo[:10], "%Y-%m-%d").date()
+    except ValueError:
+        return date.today()
+
+
+# ============================================================
+# GATILHOS — DEVE CONSOLIDAR?
+# ============================================================
+
+def deve_consolidar() -> tuple[bool, str]:
+    """
+    Retorna (True, motivo) se deve consolidar, (False, '') caso contrário.
+    Verifica três gatilhos independentes.
+    """
+    arquivos = sorted(PASTA_SESSOES.glob("*.md"))
+    sessoes_validas = [
+        f for f in arquivos
+        if len(f.read_text(encoding="utf-8", errors="ignore")) > 200
+    ]
+
+    if len(sessoes_validas) < MINIMO_SESSOES:
+        return False, ""
+
+    # Gatilho 1 — Sexta-feira
+    if date.today().weekday() == 4:  # 4 = sexta
+        return True, "sexta-feira semanal"
+
+    # Gatilho 2 — Sessão com muitas interações
+    for f in sessoes_validas:
+        conteudo = f.read_text(encoding="utf-8", errors="ignore")
+        n = contar_interacoes(conteudo)
+        if n >= LIMITE_INTERACOES:
+            return True, f"sessão {f.name} tem {n} interações (limite: {LIMITE_INTERACOES})"
+
+    # Gatilho 3 — Sessões acumuladas há mais de N dias
+    hoje = date.today()
+    for f in sessoes_validas:
+        data = data_da_sessao(f.name)
+        if (hoje - data).days >= DIAS_ACUMULACAO:
+            return True, f"sessão {f.name} acumulada há {(hoje - data).days} dias"
+
+    return False, ""
 
 
 # ============================================================
@@ -43,81 +94,117 @@ MINIMO_SESSOES = 2
 # ============================================================
 
 def ler_sessoes() -> list:
-    """Lê todos os arquivos .md da pasta de sessões."""
-
+    """Lê todos os .md válidos da pasta de sessões."""
     arquivos = sorted(PASTA_SESSOES.glob("*.md"))
-
-    if not arquivos:
-        return []
-
-    sessoes = []
+    sessoes  = []
     for arquivo in arquivos:
-        conteudo = arquivo.read_text(encoding="utf-8")
-        # Ignora arquivos muito pequenos (menos de 200 chars = sem conteúdo real)
+        conteudo = arquivo.read_text(encoding="utf-8", errors="ignore")
         if len(conteudo) > 200:
             sessoes.append({
-                "arquivo" : arquivo,
-                "conteudo": conteudo,
-                "data"    : arquivo.stem[:10]
+                "arquivo"     : arquivo,
+                "conteudo"    : conteudo,
+                "data"        : arquivo.stem[:10],
+                "interacoes"  : contar_interacoes(conteudo)
             })
-
     return sessoes
 
 
 # ============================================================
-# CONSOLIDA COM LLM
+# LÊ MEMÓRIA ANTERIOR (para consolidação delta)
 # ============================================================
 
-def consolidar_com_llm(sessoes: list) -> str:
-    """
-    Envia todas as sessões ao LLM e pede um resumo consolidado
-    com os principais tópicos, conclusões e insights.
-    """
+def ler_memoria_anterior() -> str:
+    """Lê a consolidação mais recente para consolidação delta."""
+    memorias = sorted(PASTA_MEMORIAS.glob("*_consolidado.md"))
+    if not memorias:
+        return ""
+    ultima = memorias[-1]
+    conteudo = ultima.read_text(encoding="utf-8", errors="ignore")
+    # Limita para não estourar o contexto
+    return conteudo[:8000]
 
-    # Monta o texto de todas as sessões
+
+# ============================================================
+# CONSOLIDA COM LLM — PROMPT RICO
+# ============================================================
+
+def consolidar_com_llm(sessoes: list, memoria_anterior: str) -> str:
+    """
+    Gera resumo consolidado rico — foco em AÇÕES, não só conceitos.
+    """
     texto_sessoes = ""
     for s in sessoes:
         texto_sessoes += f"\n\n{'='*50}\n"
-        texto_sessoes += f"SESSÃO: {s['data']}\n"
+        texto_sessoes += f"SESSÃO: {s['data']} — {s['interacoes']} interações\n"
         texto_sessoes += f"{'='*50}\n"
-        texto_sessoes += s["conteudo"][:10000]  # limita por sessão
+        texto_sessoes += s["conteudo"][:12000]
 
-    # Limita o total para não estourar quota
-    texto_sessoes = texto_sessoes[:60000]
+    texto_sessoes = texto_sessoes[:70000]
 
-    prompt = f"""
-Você é um assistente de pesquisa acadêmica. Abaixo estão transcrições de sessões de 
-pesquisa do mestrado de Rodolfo Torres (UTFPR) sobre análise preditiva de falhas em 
-inversores fotovoltaicos com Machine Learning.
-
-SESSÕES DE PESQUISA:
-{texto_sessoes}
-
-Sua tarefa é criar um RESUMO CONSOLIDADO com:
-
-## 1. Principais Tópicos Discutidos
-Liste os temas técnicos abordados nas sessões.
-
-## 2. Conclusões e Decisões Tomadas
-O que foi decidido ou concluído sobre modelos, metodologias, dados.
-
-## 3. Insights Técnicos Relevantes
-Os pontos mais importantes para a dissertação.
-
-## 4. Próximos Passos Identificados
-O que ainda precisa ser feito ou investigado.
-
-## 5. Referências Citadas
-Quais artigos da literatura foram mais mencionados.
-
-Seja DETALHADO e COMPLETO — preserve todos os detalhes técnicos importantes.
-Não resuma demais. É melhor ter mais informação do que perder insights relevantes.
-Mantenha equações, nomes de modelos, parâmetros e referências específicas. Este resumo substituirá as sessões 
-individuais na memória do agente — deve capturar tudo que é relevante para continuidade da pesquisa.
-Responda em português brasileiro.
+    secao_delta = ""
+    if memoria_anterior:
+        secao_delta = f"""
+MEMÓRIA CONSOLIDADA ANTERIOR (não repita o que já está aqui — só acrescente):
+{memoria_anterior}
+---
 """
 
-    # Tenta Groq primeiro, depois Gemini
+    prompt = f"""Você é o sistema de memória do agente Al IAdo PV, assistente de pesquisa 
+do mestrado de Rodolfo Torres (UTFPR) sobre análise preditiva de falhas em inversores 
+fotovoltaicos com Machine Learning.
+
+{secao_delta}
+
+NOVAS SESSÕES A CONSOLIDAR:
+{texto_sessoes}
+
+Gere um RESUMO CONSOLIDADO COMPLETO com as seções abaixo.
+Seja EXTREMAMENTE DETALHADO — preserve equações, nomes de variáveis, 
+parâmetros, trechos de código relevantes e números específicos.
+Este resumo É a memória do agente — deve permitir que ele responda 
+"o que fizemos quando você me pediu X" com precisão.
+Responda em português brasileiro.
+
+---
+
+## 1. AÇÕES CONCRETAS REALIZADAS
+Liste cada ação executada: scripts criados ou modificados, bugs corrigidos,
+configurações feitas, arquivos gerados. Para cada ação, descreva:
+- O que foi pedido
+- O que foi feito (com nomes de arquivos e funções)
+- Por que foi feito assim (decisão técnica)
+Exemplo: "Rodolfo pediu para corrigir o consolidar_memoria.py que retornava
+0 sessões. Causa: PASTA_SESSOES usava Path(__file__).parent.parent apontando
+para src/ em vez da raiz. Correção: importar PASTA_SESSOES do src.core.config."
+
+## 2. DECISÕES ARQUITETURAIS TOMADAS
+Decisões de design do sistema que afetam o projeto a longo prazo.
+Por que cada alternativa foi escolhida em detrimento de outras.
+
+## 3. PROBLEMAS ENCONTRADOS E SOLUÇÕES
+Erros, bugs, limitações encontradas. Como foram diagnosticados e resolvidos.
+Inclua mensagens de erro relevantes e a causa raiz identificada.
+
+## 4. RESULTADOS E MÉTRICAS OBTIDOS
+Resultados de experimentos, testes, avaliações de ML.
+Valores numéricos, métricas, comparações entre abordagens.
+
+## 5. INSIGHTS TÉCNICOS E ACADÊMICOS
+Descobertas relevantes para a dissertação.
+Conexões entre literatura e implementação.
+Inconsistências ou lacunas identificadas.
+
+## 6. ESTADO ATUAL DO PIPELINE
+Descreva o estado de cada componente do sistema ao final das sessões.
+O que está funcionando, o que está pendente, o que foi parcialmente implementado.
+
+## 7. PRÓXIMOS PASSOS IDENTIFICADOS
+O que foi planejado ou ficou pendente — com nível de prioridade.
+
+## 8. REFERÊNCIAS E FONTES CITADAS
+Artigos e documentos mais relevantes mencionados, com contexto de uso.
+"""
+
     resposta = None
 
     groq_key = os.getenv("GROQ_API_KEY")
@@ -125,7 +212,11 @@ Responda em português brasileiro.
         try:
             from langchain_groq import ChatGroq
             from langchain_core.messages import HumanMessage
-            llm      = ChatGroq(model="llama-3.3-70b-versatile", groq_api_key=groq_key, temperature=0.3)
+            llm = ChatGroq(
+                model       = "llama-3.3-70b-versatile",
+                api_key     = groq_key,
+                temperature = 0.2
+            )
             resposta = llm.invoke([HumanMessage(content=prompt)]).content
             print("   ✅ Resumo gerado pelo Groq")
         except Exception as e:
@@ -137,7 +228,11 @@ Responda em português brasileiro.
             try:
                 from langchain_google_genai import ChatGoogleGenerativeAI
                 from langchain_core.messages import HumanMessage
-                llm      = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=gemini_key, temperature=0.3)
+                llm = ChatGoogleGenerativeAI(
+                    model        = "gemini-2.5-flash",
+                    google_api_key = gemini_key,
+                    temperature  = 0.2
+                )
                 resposta = llm.invoke([HumanMessage(content=prompt)]).content
                 print("   ✅ Resumo gerado pelo Gemini")
             except Exception as e:
@@ -152,11 +247,11 @@ Responda em português brasileiro.
 
 def salvar_consolidado(resumo: str, sessoes: list) -> Path:
     """Salva o resumo consolidado como nota .md."""
-
     PASTA_MEMORIAS.mkdir(parents=True, exist_ok=True)
 
     agora        = datetime.now()
     datas        = [s["data"] for s in sessoes]
+    total_int    = sum(s["interacoes"] for s in sessoes)
     nome_arquivo = f"{agora.strftime('%Y-%m-%d')}_consolidado.md"
     caminho      = PASTA_MEMORIAS / nome_arquivo
 
@@ -164,12 +259,12 @@ def salvar_consolidado(resumo: str, sessoes: list) -> Path:
     conteudo += f"data: {agora.strftime('%Y-%m-%d')}\n"
     conteudo += f"tipo: memoria-consolidada\n"
     conteudo += f"sessoes_incluidas: {len(sessoes)}\n"
+    conteudo += f"interacoes_totais: {total_int}\n"
     conteudo += f"periodo: {datas[0]} a {datas[-1]}\n"
     conteudo += f"tags: [al-iado-pv, memoria, consolidado, mestrado]\n"
     conteudo += f"---\n\n"
     conteudo += f"# Memória Consolidada — {agora.strftime('%d/%m/%Y')}\n\n"
-    conteudo += f"> Gerado automaticamente a partir de {len(sessoes)} sessões "
-    conteudo += f"({datas[0]} a {datas[-1]})\n\n"
+    conteudo += f"> {len(sessoes)} sessões | {total_int} interações | {datas[0]} a {datas[-1]}\n\n"
     conteudo += f"---\n\n"
     conteudo += resumo
 
@@ -182,19 +277,14 @@ def salvar_consolidado(resumo: str, sessoes: list) -> Path:
 # ============================================================
 
 def atualizar_chromadb(caminho_consolidado: Path, sessoes: list):
-    """
-    Remove chunks antigos das sessões e indexa o consolidado.
-    """
+    """Remove chunks antigos e indexa o novo consolidado."""
     import chromadb
     from sentence_transformers import SentenceTransformer
-    from src.core.config import MODELO_EMBEDDINGS, PASTA_CHROMADB
+    from src.core.config            import MODELO_EMBEDDINGS, PASTA_CHROMADB
     from src.conhecimento.indexador import dividir_em_chunks, upsert_em_lotes
 
-    NOME_COLECAO_SESSOES = "sessoes_pv"
-
     print("   🔄 Carregando modelo de embeddings...")
-    modelo = SentenceTransformer(MODELO_EMBEDDINGS)
-
+    modelo  = SentenceTransformer(MODELO_EMBEDDINGS)
     client  = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
     colecao = client.get_or_create_collection(name=NOME_COLECAO_SESSOES)
 
@@ -203,8 +293,7 @@ def atualizar_chromadb(caminho_consolidado: Path, sessoes: list):
     for sessao in sessoes:
         nome = sessao["arquivo"].name
         try:
-            # Busca IDs que pertencem a essa sessão
-            resultados = colecao.get(where={"arquivo": nome})
+            resultados  = colecao.get(where={"arquivo": nome})
             ids_remover = resultados.get("ids", [])
             if ids_remover:
                 colecao.delete(ids=ids_remover)
@@ -215,7 +304,7 @@ def atualizar_chromadb(caminho_consolidado: Path, sessoes: list):
     # Indexa o consolidado
     print("   📥 Indexando memória consolidada...")
     texto  = caminho_consolidado.read_text(encoding="utf-8")
-    chunks = dividir_em_chunks(texto, 500, 50)
+    chunks = dividir_em_chunks(texto, 600, 80)  # chunks maiores para memória
 
     if chunks:
         embeddings = modelo.encode(chunks).tolist()
@@ -223,17 +312,16 @@ def atualizar_chromadb(caminho_consolidado: Path, sessoes: list):
         ids        = [f"{nome_final}__chunk_{j}" for j in range(len(chunks))]
         metadados  = [
             {
-                "arquivo": nome_final,
-                "tipo"   : "memoria-consolidada",
-                "data"   : datetime.now().strftime("%Y-%m-%d"),
+                "arquivo"      : nome_final,
+                "tipo"         : "memoria-consolidada",
+                "data"         : datetime.now().strftime("%Y-%m-%d"),
                 "chunk_index"  : j,
                 "total_chunks" : len(chunks)
             }
             for j in range(len(chunks))
         ]
-
         upsert_em_lotes(colecao, ids, embeddings, chunks, metadados)
-        print(f"      ✅ {len(chunks)} chunks do consolidado indexados")
+        print(f"      ✅ {len(chunks)} chunks indexados")
 
 
 # ============================================================
@@ -241,12 +329,12 @@ def atualizar_chromadb(caminho_consolidado: Path, sessoes: list):
 # ============================================================
 
 def arquivar_sessoes(sessoes: list):
-    """Move sessões processadas para pasta de arquivo."""
-
+    """Move sessões processadas para sessoes_arquivadas/."""
     PASTA_ARQUIVO.mkdir(parents=True, exist_ok=True)
-
     for sessao in sessoes:
         destino = PASTA_ARQUIVO / sessao["arquivo"].name
+        if destino.exists():
+            destino.unlink()  # remove a versão antiga antes de mover
         sessao["arquivo"].rename(destino)
         print(f"   📦 Arquivado: {sessao['arquivo'].name}")
 
@@ -255,50 +343,67 @@ def arquivar_sessoes(sessoes: list):
 # PIPELINE PRINCIPAL
 # ============================================================
 
-def consolidar():
-    """Pipeline completo de consolidação de memória."""
-
+def consolidar(forcar: bool = False) -> bool:
+    """
+    Pipeline completo. Retorna True se consolidou, False se pulou.
+    forcar=True ignora os gatilhos e consolida sempre.
+    """
     print("=" * 60)
     print("  AL IADO PV — CONSOLIDAÇÃO DE MEMÓRIA")
     print("=" * 60)
+
+    # Verifica gatilhos (a menos que forçado)
+    if not forcar:
+        deve, motivo = deve_consolidar()
+        if not deve:
+            print(f"\n⏭️  Consolidação adiada — nenhum gatilho ativo.")
+            return False
+        print(f"\n⚡ Gatilho: {motivo}")
 
     # 1. Lê sessões
     print("\n📂 Lendo sessões...")
     sessoes = ler_sessoes()
 
     if len(sessoes) < MINIMO_SESSOES:
-        print(f"\n⚠️  Apenas {len(sessoes)} sessão(ões) encontrada(s).")
-        print(f"   Mínimo para consolidar: {MINIMO_SESSOES}")
-        print(f"   Continue usando o agente e rode novamente depois.")
-        return
+        print(f"\n⚠️  Apenas {len(sessoes)} sessão(ões). Mínimo: {MINIMO_SESSOES}")
+        return False
 
-    print(f"   ✅ {len(sessoes)} sessões encontradas")
+    print(f"   ✅ {len(sessoes)} sessões | "
+          f"{sum(s['interacoes'] for s in sessoes)} interações totais")
     for s in sessoes:
-        print(f"      → {s['arquivo'].name}")
+        print(f"      → {s['arquivo'].name} ({s['interacoes']} interações)")
 
-    # 2. Consolida com LLM
+    # 2. Lê memória anterior para delta
+    print(f"\n📖 Lendo memória anterior (consolidação delta)...")
+    memoria_anterior = ler_memoria_anterior()
+    if memoria_anterior:
+        print(f"   ✅ Memória anterior carregada ({len(memoria_anterior)} chars)")
+    else:
+        print(f"   ℹ️  Nenhuma memória anterior — consolidação completa")
+
+    # 3. Gera resumo
     print(f"\n🤖 Gerando resumo consolidado com LLM...")
-    resumo = consolidar_com_llm(sessoes)
+    resumo = consolidar_com_llm(sessoes, memoria_anterior)
 
-    # 3. Salva o consolidado
+    # 4. Salva
     print(f"\n💾 Salvando memória consolidada...")
     caminho = salvar_consolidado(resumo, sessoes)
-    print(f"   ✅ Salvo em: {caminho.name}")
+    print(f"   ✅ Salvo: {caminho.name}")
 
-    # 4. Atualiza ChromaDB
+    # 5. Atualiza ChromaDB
     print(f"\n🗄️  Atualizando ChromaDB...")
     atualizar_chromadb(caminho, sessoes)
 
-    # 5. Arquiva sessões
+    # 6. Arquiva sessões
     print(f"\n📦 Arquivando sessões originais...")
     arquivar_sessoes(sessoes)
 
     print(f"\n{'='*60}")
     print(f"  CONSOLIDAÇÃO CONCLUÍDA!")
     print(f"  Sessões processadas : {len(sessoes)}")
-    print(f"  Resumo salvo em     : notas/memorias/")
-    print(f"  Sessões arquivadas  : notas/sessoes_arquivadas/")
+    print(f"  Salvo em            : notas/memorias/{caminho.name}")
     print(f"{'='*60}")
+    return True
 
 
 # ============================================================
@@ -306,4 +411,9 @@ def consolidar():
 # ============================================================
 
 if __name__ == "__main__":
-    consolidar()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--forcar", action="store_true",
+                        help="Consolida agora, ignorando gatilhos")
+    args = parser.parse_args()
+    consolidar(forcar=args.forcar)

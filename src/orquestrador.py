@@ -70,17 +70,22 @@ def etapa_indexar_pdfs(modelo_embeddings) -> str:
         return f"PDFs novos: erro — {e}"
 
 
-def etapa_consolidar_memoria() -> str:
-    """Consolida sessões acumuladas, se houver."""
-    if not ha_sessoes_para_consolidar():
-        return "Memória: sem acúmulo para consolidar"
+def etapa_consolidar_memoria() -> dict:
+    """Consolida memória se algum gatilho estiver ativo."""
+    from src.conhecimento.consolidar_memoria import consolidar, deve_consolidar
+
+    deve, motivo = deve_consolidar()
+    if not deve:
+        return {"executou": False, "motivo": "nenhum gatilho ativo"}
 
     try:
-        from src.conhecimento.consolidar_memoria import consolidar
-        consolidar()
-        return "Memória: sessões consolidadas"
+        sucesso = consolidar()
+        if sucesso:
+            return {"executou": True, "motivo": motivo}
+        else:
+            return {"executou": False, "motivo": "sessões insuficientes"}
     except Exception as e:
-        return f"Memória: erro — {e}"
+        return {"executou": False, "erro": str(e)}
 
 
 def etapa_eda() -> str:
