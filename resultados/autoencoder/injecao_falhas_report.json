@@ -1,0 +1,138 @@
+{
+  "limiar": 2.9103293418884277,
+  "baseline_mean": 0.30452318079769614,
+  "baseline_std": 0.38212929166149473,
+  "smd": {
+    "lcl": 1.0,
+    "desbalanceamento": 0.3,
+    "sensor": 0.1
+  },
+  "falhas": {
+    "lcl": {
+      "nome": "Degradação Filtro LCL",
+      "npr": 210,
+      "descricao": "Injeção de harmônicos 5°, 7° e 11° nas correntes CA",
+      "resultados": {
+        "0.05": {
+          "erro": 0.1411486327648163,
+          "detectado": false,
+          "margem": 0.0484991958584416
+        },
+        "0.1": {
+          "erro": 0.1564335435628891,
+          "detectado": false,
+          "margem": 0.05375114812998585
+        },
+        "0.2": {
+          "erro": 0.24415986239910126,
+          "detectado": false,
+          "margem": 0.08389423797674839
+        },
+        "0.3": {
+          "erro": 0.3996890664100647,
+          "detectado": false,
+          "margem": 0.13733465166891323
+        },
+        "0.5": {
+          "erro": 0.9033968806266784,
+          "detectado": false,
+          "margem": 0.31041053245214184
+        },
+        "0.7": {
+          "erro": 1.6427244186401366,
+          "detectado": false,
+          "margem": 0.5644462277847292
+        },
+        "1.0": {
+          "erro": 3.282199478149414,
+          "detectado": true,
+          "margem": 1.1277759636714142
+        }
+      }
+    },
+    "desbalanceamento": {
+      "nome": "Desbalanceamento de Fase",
+      "npr": 150,
+      "descricao": "Redução de amplitude da fase A",
+      "resultados": {
+        "0.05": {
+          "erro": 0.18357245922088622,
+          "detectado": false,
+          "margem": 0.06307618061596129
+        },
+        "0.1": {
+          "erro": 0.36480270624160765,
+          "detectado": false,
+          "margem": 0.1253475683974989
+        },
+        "0.2": {
+          "erro": 1.2826109170913695,
+          "detectado": false,
+          "margem": 0.4407098875823864
+        },
+        "0.3": {
+          "erro": 3.023709440231323,
+          "detectado": true,
+          "margem": 1.0389578240204687
+        },
+        "0.5": {
+          "erro": 9.473496437072754,
+          "detectado": true,
+          "margem": 3.2551286552764087
+        },
+        "0.7": {
+          "erro": 20.952753448486327,
+          "detectado": true,
+          "margem": 7.199444113390513
+        },
+        "1.0": {
+          "erro": 51.40432281494141,
+          "detectado": true,
+          "margem": 17.662716749983577
+        }
+      }
+    },
+    "sensor": {
+      "nome": "Falha de Sensor CA",
+      "npr": null,
+      "descricao": "Ruído gaussiano na corrente da fase A",
+      "resultados": {
+        "0.05": {
+          "erro": 2.755300521850586,
+          "detectado": false,
+          "margem": 0.9467315201044401
+        },
+        "0.1": {
+          "erro": 31.980539321899414,
+          "detectado": true,
+          "margem": 10.988632407199722
+        },
+        "0.2": {
+          "erro": 521.4827819824219,
+          "detectado": true,
+          "margem": 179.1834259019108
+        },
+        "0.3": {
+          "erro": 2671.526025390625,
+          "detectado": true,
+          "margem": 917.9462911428263
+        },
+        "0.5": {
+          "erro": 20783.254296875,
+          "detectado": true,
+          "margem": 7141.2035736784865
+        },
+        "0.7": {
+          "erro": 80075.4453125,
+          "detectado": true,
+          "margem": 27514.22121200255
+        },
+        "1.0": {
+          "erro": 334036.6125,
+          "detectado": true,
+          "margem": 114776.22401430809
+        }
+      }
+    }
+  }
+}

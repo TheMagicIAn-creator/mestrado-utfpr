@@ -1,0 +1,542 @@
+"""
+injecao_falhas.py — Al IAdo PV / Fase 5
+Injeção de falhas sintéticas fundamentada no FMEA do TCC (Torres, 2024).
+
+Fundamentação metodológica:
+  O FMEA aplicado ao sistema fotovoltaico do CEAMAZON identificou:
+    NPR=210 → Inversor: "Problema de conexão com a rede" (S=3, O=7, D=10)
+    NPR=150 → Subsistema CA: "Curto-circuito em dispositivos de proteção"
+                              (S=5, O=3, D=10)
+
+  A prioridade NPR define a ordem de injeção: primeiro as falhas de maior
+  criticidade. Cada falha é modelada pela sua assinatura elétrica esperada
+  nos sinais de corrente e tensão CA (Francisti, 2025; Ibrahim, 2022).
+
+Falhas implementadas (em ordem de NPR):
+  FALHA 1 — Degradação do Filtro LCL (NPR=210, relacionada ao inversor)
+    Assinatura: aumento de THD, elevação dos harmônicos 5° e 7°
+    Modelagem: injeção aditiva de componentes harmônicas nas correntes CA
+    Física: redução da indutância ou capacitância do filtro LCL diminui
+            a atenuação dos harmônicos de chaveamento
+
+  FALHA 2 — Desbalanceamento de Fase (NPR=150, subsistema CA)
+    Assinatura: assimetria de corrente entre fases (desbalanceamento > 5%)
+    Modelagem: redução proporcional da amplitude de uma fase
+    Física: curto-circuito em proteção ou falha de IGBT em uma fase
+
+  FALHA 3 — Ruído de Sensor de Corrente (D=10 — alta dificuldade de detecção)
+    Assinatura: ruído gaussiano elevado em uma fase
+    Modelagem: sobreposição de ruído branco com std proporcional ao sinal
+    Física: degradação do sensor Hall ou circuito de condicionamento
+
+Estratégia de severidade:
+  Cada falha é injetada em 7 níveis de severidade [0.05→1.0] para
+  identificar a severidade mínima detectável (SMD) — ponto onde o erro
+  de reconstrução cruza o limiar do Autoencoder.
+  Isso conecta diretamente com o índice D (detecção) do FMEA:
+  D=10 → falha muito difícil de detectar → SMD esperada mais alta.
+
+Entrada:
+  dados/brutos/Inverter_Data_Set.csv
+  resultados/autoencoder/modelo_autoencoder.pt
+  resultados/autoencoder/scaler.pkl
+  resultados/autoencoder/limiar.json
+
+Saída:
+  resultados/autoencoder/injecao_falhas_resultados.png
+  resultados/autoencoder/injecao_falhas_severidade.png
+  resultados/autoencoder/injecao_falhas_report.json
+
+Uso:
+  python src/ml/injecao_falhas.py
+
+Autor: Rodolfo Torres (UTFPR)
+"""
+
+import json
+import pickle
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("Agg")
+from pathlib import Path
+
+import torch
+from src.ml.features_ca import (
+    extrair_janela, JANELA, FS, F0,
+    COLUNAS_CORRENTE, COLUNAS_TENSAO, COLUNA_DC, FASES
+)
+from src.ml.autoencoder import Autoencoder
+
+# ── Caminhos ─────────────────────────────────────────────────
+RAIZ          = Path(__file__).parent.parent.parent
+ARQUIVO_CSV   = RAIZ / "dados" / "brutos" / "Inverter_Data_Set.csv"
+PASTA_AE      = RAIZ / "resultados" / "autoencoder"
+
+# ── Parâmetros de injeção ────────────────────────────────────
+# Janela de análise: t=10-20s (período estável do Paderborn, pós-transiente)
+T_INICIO_ESTAVEL = 10.0   # segundos
+T_FIM_ESTAVEL    = 20.0   # segundos
+
+# Severidades: de muito leve a severa
+SEVERIDADES = [0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0]
+
+# Definição das falhas (nome, descrição, cor para gráfico)
+FALHAS = [
+    {
+        "id"      : "lcl",
+        "nome"    : "Degradação Filtro LCL",
+        "npr"     : 210,
+        "s"       : 3, "o": 7, "d": 10,
+        "cor"     : "#E53935",
+        "descricao": "Injeção de harmônicos 5°, 7° e 11° nas correntes CA"
+    },
+    {
+        "id"      : "desbalanceamento",
+        "nome"    : "Desbalanceamento de Fase",
+        "npr"     : 150,
+        "s"       : 5, "o": 3, "d": 10,
+        "cor"     : "#FB8C00",
+        "descricao": "Redução de amplitude da fase A"
+    },
+    {
+        "id"      : "sensor",
+        "nome"    : "Falha de Sensor CA",
+        "npr"     : None,
+        "s"       : None, "o": None, "d": 10,
+        "cor"     : "#8E24AA",
+        "descricao": "Ruído gaussiano na corrente da fase A"
+    },
+]
+
+
+# ============================================================
+# MODELOS DE FALHA (assinaturas elétricas)
+# ============================================================
+
+def falha_degradacao_lcl(janela_df: pd.DataFrame,
+                          severidade: float,
+                          f0: float = F0,
+                          fs: int   = FS) -> pd.DataFrame:
+    """
+    FALHA 1 — Degradação do Filtro LCL (NPR=210)
+
+    Um filtro LCL degradado (capacitor com ESR elevado ou indutor
+    com indutância reduzida) atenua menos os harmônicos de chaveamento.
+    O resultado é um aumento do THD e elevação específica dos harmônicos
+    de ordem 5, 7 e 11 (dominantes em inversores VSI trifásicos).
+
+    Modelagem aditiva: sinal_falha = sinal_saudável + Σ Ak·sin(k·ω₀·t + φk)
+
+    Parâmetro severidade:
+      0.05 → leve: THD aumenta ~2%
+      0.30 → moderada: THD aumenta ~15%
+      1.00 → severa: THD aumenta ~50%
+    """
+    janela_falha = janela_df.copy()
+    n = JANELA
+    t = np.arange(n) / fs
+
+    for col in COLUNAS_CORRENTE:
+        sinal     = janela_falha[col].values
+        amplitude = np.std(sinal)  # referência de amplitude do sinal
+
+        # Harmônicos característicos de inversores VSI com filtro LCL degradado
+        # Amplitudes relativas baseadas em Francisti (2025) e Smith (1999)
+        h5  = severidade * 0.30 * amplitude * np.sin(2 * np.pi * 5  * f0 * t)
+        h7  = severidade * 0.20 * amplitude * np.sin(2 * np.pi * 7  * f0 * t)
+        h11 = severidade * 0.10 * amplitude * np.sin(2 * np.pi * 11 * f0 * t)
+        h13 = severidade * 0.05 * amplitude * np.sin(2 * np.pi * 13 * f0 * t)
+
+        janela_falha[col] = sinal + h5 + h7 + h11 + h13
+
+    return janela_falha
+
+
+def falha_desbalanceamento_fase(janela_df: pd.DataFrame,
+                                 severidade: float) -> pd.DataFrame:
+    """
+    FALHA 2 — Desbalanceamento de Fase (NPR=150)
+
+    Curto-circuito em dispositivo de proteção ou falha de IGBT em uma fase
+    causa assimetria nas correntes trifásicas. A fase afetada tem amplitude
+    reduzida. O desbalanceamento é medido pela feature inter-fase:
+      desbalanceamento = (max_rms - min_rms) / media_rms
+
+    Fator de redução: fator = 1 - severidade × 0.7
+      severidade=0.1 → fase A com 93% da amplitude normal (7% de redução)
+      severidade=0.5 → fase A com 65% (35% de redução)
+      severidade=1.0 → fase A com 30% (70% de redução — falha severa)
+
+    A fase A é escolhida por ser a referência do FMEA (Id.1 do Apêndice E).
+    """
+    janela_falha = janela_df.copy()
+    fator        = 1.0 - severidade * 0.7
+    fator        = max(0.1, fator)  # mínimo de 10% de amplitude
+
+    # Afeta corrente e tensão da fase A
+    janela_falha["i_a_k"] = janela_df["i_a_k"].values * fator
+    if "u_a_k-1" in janela_falha.columns:
+        janela_falha["u_a_k-1"] = janela_df["u_a_k-1"].values * fator
+
+    return janela_falha
+
+
+def falha_sensor_corrente(janela_df: pd.DataFrame,
+                           severidade: float,
+                           seed: int = 0) -> pd.DataFrame:
+    """
+    FALHA 3 — Falha de Sensor de Corrente (D=10)
+
+    Degradação do sensor Hall ou do circuito de condicionamento
+    introduz ruído gaussiano no sinal medido. É a falha com maior
+    índice D (dificuldade de detecção = 10) — o ruído se confunde
+    com variações normais do sinal.
+
+    Modelagem: sinal_falha = sinal + N(0, σ_ruído)
+    onde σ_ruído = severidade × std(sinal) × 3
+
+    severidade=0.05 → SNR alto (~26 dB) — muito difícil de detectar
+    severidade=0.30 → SNR médio (~10 dB) — detectável
+    severidade=1.00 → SNR baixo — claramente anômalo
+    """
+    rng          = np.random.default_rng(seed)
+    janela_falha = janela_df.copy()
+
+    sinal   = janela_df["i_a_k"].values
+    std_sig = np.std(sinal)
+    ruido   = rng.normal(0, severidade * std_sig * 3, size=len(sinal))
+
+    janela_falha["i_a_k"] = sinal + ruido
+    return janela_falha
+
+
+# Mapa de funções de falha
+FUNCOES_FALHA = {
+    "lcl"             : falha_degradacao_lcl,
+    "desbalanceamento": falha_desbalanceamento_fase,
+    "sensor"          : falha_sensor_corrente,
+}
+
+
+# ============================================================
+# INFERÊNCIA COM O AUTOENCODER
+# ============================================================
+
+def calcular_erro_reconstrucao(janela_df: pd.DataFrame,
+                                modelo: Autoencoder,
+                                scaler,
+                                device: torch.device,
+                                colunas_feat: list) -> float:
+    """
+    Extrai features de uma janela, normaliza e calcula o erro
+    de reconstrução do Autoencoder.
+    """
+    # Extrai features
+    feats = extrair_janela(janela_df)
+
+    # Monta vetor na ordem correta (igual ao treino)
+    vetor = np.array([feats.get(c, 0.0) for c in colunas_feat],
+                     dtype=np.float32)
+
+    # Normaliza com o scaler ajustado no treino
+    vetor_norm = scaler.transform(vetor.reshape(1, -1)).astype(np.float32)
+
+    # Inferência
+    modelo.eval()
+    with torch.no_grad():
+        x     = torch.from_numpy(vetor_norm).to(device)
+        x_rec = modelo(x)
+        erro  = float(((x - x_rec) ** 2).mean().cpu())
+
+    return erro
+
+
+# ============================================================
+# PIPELINE PRINCIPAL
+# ============================================================
+
+def executar_injecao_falhas() -> bool:
+    """
+    Pipeline completo de injeção de falhas sintéticas.
+    """
+    print("=" * 60)
+    print("  AL IADO PV — INJEÇÃO DE FALHAS SINTÉTICAS")
+    print("=" * 60)
+    print("\n  Fundamentação: FMEA Torres (2024)")
+    print("  NPR=210 → Degradação Filtro LCL")
+    print("  NPR=150 → Desbalanceamento de Fase")
+    print("  D=10    → Falha de Sensor CA")
+
+    # ── 1. Carrega artefatos do Autoencoder ──────────────────
+    print(f"\n📂 Carregando Autoencoder...")
+
+    arq_modelo = PASTA_AE / "modelo_autoencoder.pt"
+    arq_scaler = PASTA_AE / "scaler.pkl"
+    arq_limiar = PASTA_AE / "limiar.json"
+
+    for arq in [arq_modelo, arq_scaler, arq_limiar]:
+        if not arq.exists():
+            print(f"   ❌ Não encontrado: {arq.name}")
+            print("   Execute primeiro: python src/ml/autoencoder.py")
+            return False
+
+    checkpoint = torch.load(arq_modelo, map_location="cpu",
+                            weights_only=False)
+    with open(arq_scaler, "rb") as f:
+        scaler = pickle.load(f)
+    with open(arq_limiar, "r") as f:
+        info_limiar = json.load(f)
+
+    n_features   = checkpoint["n_features"]
+    latente_dim  = checkpoint["latente_dim"]
+    colunas_feat = checkpoint["colunas_feat"]
+    limiar       = info_limiar["limiar"]
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    modelo = Autoencoder(n_features, latente_dim).to(device)
+    modelo.load_state_dict(checkpoint["state_dict"])
+    modelo.eval()
+
+    print(f"   ✅ Modelo: {n_features} features → latente {latente_dim}")
+    print(f"   ✅ Limiar de anomalia: {limiar:.4f}")
+
+    # ── 2. Carrega dataset e seleciona janelas estáveis ──────
+    print(f"\n📂 Carregando dataset de Paderborn...")
+    df = pd.read_csv(ARQUIVO_CSV)
+
+    # Período estável: t=10-20s (pós-transiente de velocidade)
+    idx_inicio = int(T_INICIO_ESTAVEL * FS)
+    idx_fim    = int(T_FIM_ESTAVEL * FS)
+    df_estavel = df.iloc[idx_inicio:idx_fim].reset_index(drop=True)
+    print(f"   ✅ Período estável: t={T_INICIO_ESTAVEL}-{T_FIM_ESTAVEL}s "
+          f"({len(df_estavel):,} amostras)")
+
+    # ── 3. Erro baseline (comportamento saudável) ─────────────
+    print(f"\n⚕️  Calculando erro baseline (saudável)...")
+    n_janelas_baseline = 20
+    erros_baseline = []
+    for i in range(n_janelas_baseline):
+        inicio = i * (JANELA // 2)
+        if inicio + JANELA > len(df_estavel):
+            break
+        janela = df_estavel.iloc[inicio:inicio + JANELA]
+        erro   = calcular_erro_reconstrucao(
+            janela, modelo, scaler, device, colunas_feat
+        )
+        erros_baseline.append(erro)
+
+    baseline_mean = np.mean(erros_baseline)
+    baseline_std  = np.std(erros_baseline)
+    print(f"   Baseline: μ={baseline_mean:.4f} ± {baseline_std:.4f}")
+    print(f"   Limiar  : {limiar:.4f} "
+          f"({limiar/baseline_mean:.1f}× acima do baseline)")
+
+    # ── 4. Injeção de falhas por severidade ──────────────────
+    print(f"\n💉 Injetando falhas (3 tipos × {len(SEVERIDADES)} severidades)...")
+
+    resultados = {}   # {id_falha: {severidade: erro_medio}}
+
+    # Janela de referência para injeção
+    janela_ref = df_estavel.iloc[0:JANELA].copy()
+
+    for falha in FALHAS:
+        fid  = falha["id"]
+        fn   = FUNCOES_FALHA[fid]
+        erros_por_sev = {}
+
+        print(f"\n   🔴 {falha['nome']} (NPR={falha['npr']})")
+
+        for sev in SEVERIDADES:
+            # Injeta falha em 5 janelas diferentes e faz média
+            erros_sev = []
+            for j in range(5):
+                inicio  = j * (JANELA // 4)
+                if inicio + JANELA > len(df_estavel):
+                    inicio = 0
+                janela_base  = df_estavel.iloc[inicio:inicio + JANELA].copy()
+                janela_falha = fn(janela_base, sev)
+                erro = calcular_erro_reconstrucao(
+                    janela_falha, modelo, scaler, device, colunas_feat
+                )
+                erros_sev.append(erro)
+
+            erro_medio    = np.mean(erros_sev)
+            detectado     = erro_medio > limiar
+            margem        = erro_medio / limiar
+
+            erros_por_sev[sev] = {
+                "erro"      : erro_medio,
+                "detectado" : detectado,
+                "margem"    : margem,
+            }
+
+            status = "✅ DETECTADA" if detectado else "⬜ não detectada"
+            print(f"      sev={sev:.2f} | erro={erro_medio:.4f} | "
+                  f"margem={margem:.2f}× | {status}")
+
+        resultados[fid] = erros_por_sev
+
+    # ── 5. Severidade mínima detectável (SMD) ────────────────
+    print(f"\n🎯 Severidade Mínima Detectável (SMD):")
+    smd_report = {}
+    for falha in FALHAS:
+        fid = falha["id"]
+        smd = None
+        for sev in SEVERIDADES:
+            if resultados[fid][sev]["detectado"]:
+                smd = sev
+                break
+        smd_report[fid] = smd
+        if smd:
+            print(f"   {falha['nome']:<30}: SMD = {smd:.2f} "
+                  f"(erro = {resultados[fid][smd]['erro']:.4f})")
+        else:
+            print(f"   {falha['nome']:<30}: não detectada em nenhuma severidade")
+
+    # ── 6. Visualizações ─────────────────────────────────────
+    print(f"\n📊 Gerando gráficos...")
+    PASTA_AE.mkdir(parents=True, exist_ok=True)
+
+    # Gráfico 1: Erro vs Severidade por tipo de falha
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5), sharey=False)
+    fig.suptitle("Injeção de Falhas Sintéticas — Erro de Reconstrução vs Severidade",
+                 fontsize=13, fontweight="bold")
+
+    for ax, falha in zip(axes, FALHAS):
+        fid   = falha["id"]
+        sevs  = SEVERIDADES
+        erros = [resultados[fid][s]["erro"] for s in sevs]
+
+        cores = [falha["cor"] if resultados[fid][s]["detectado"]
+                 else "#BDBDBD" for s in sevs]
+
+        ax.bar([str(s) for s in sevs], erros, color=cores, alpha=0.85,
+               edgecolor="white", linewidth=0.5)
+        ax.axhline(limiar, color="red", linestyle="--", linewidth=1.5,
+                   label=f"Limiar = {limiar:.2f}")
+        ax.axhline(baseline_mean, color="green", linestyle=":",
+                   linewidth=1.2, label=f"Baseline = {baseline_mean:.4f}")
+
+        npm_str = f"NPR={falha['npr']}" if falha['npr'] else "D=10"
+        ax.set_title(f"{falha['nome']}\n({npm_str})", fontsize=10)
+        ax.set_xlabel("Severidade")
+        ax.set_ylabel("Erro de Reconstrução (MSE)")
+        ax.legend(fontsize=8)
+        ax.grid(True, alpha=0.3, axis="y")
+
+        # Marca SMD
+        smd = smd_report[fid]
+        if smd:
+            idx_smd = sevs.index(smd)
+            ax.bar([str(smd)], [resultados[fid][smd]["erro"]],
+                   color=falha["cor"], edgecolor="black", linewidth=2,
+                   alpha=1.0)
+            ax.annotate(f"SMD={smd}",
+                        xy=(idx_smd, resultados[fid][smd]["erro"]),
+                        xytext=(idx_smd, resultados[fid][smd]["erro"] * 1.05),
+                        fontsize=8, ha="center", fontweight="bold")
+
+    plt.tight_layout()
+    arq_g1 = PASTA_AE / "injecao_falhas_resultados.png"
+    fig.savefig(arq_g1, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"   📊 {arq_g1.name}")
+
+    # Gráfico 2: Comparação consolidada em escala log
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    x      = np.arange(len(SEVERIDADES))
+    largura = 0.25
+    offsets = [-largura, 0, largura]
+
+    for i, falha in enumerate(FALHAS):
+        fid   = falha["id"]
+        erros = [resultados[fid][s]["erro"] for s in SEVERIDADES]
+        ax.bar(x + offsets[i], erros, largura, label=falha["nome"],
+               color=falha["cor"], alpha=0.85, edgecolor="white")
+
+    ax.axhline(limiar, color="red", linestyle="--", linewidth=2,
+               label=f"Limiar anomalia = {limiar:.4f}")
+    ax.axhline(baseline_mean, color="green", linestyle=":",
+               linewidth=1.5, label=f"Baseline saudável = {baseline_mean:.4f}")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([str(s) for s in SEVERIDADES])
+    ax.set_xlabel("Severidade da Falha")
+    ax.set_ylabel("Erro de Reconstrução (MSE)")
+    ax.set_title("Comparação das Falhas Sintéticas\n"
+                 "(barras acima da linha vermelha = anomalia detectada)",
+                 fontsize=12)
+    ax.legend(loc="upper left")
+    ax.set_yscale("log")
+    ax.grid(True, alpha=0.3, axis="y")
+    plt.tight_layout()
+
+    arq_g2 = PASTA_AE / "injecao_falhas_comparacao.png"
+    fig.savefig(arq_g2, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"   📊 {arq_g2.name}")
+
+    # ── 7. Salva relatório JSON ───────────────────────────────
+    relatorio = {
+        "limiar": float(limiar),
+        "baseline_mean": float(baseline_mean),
+        "baseline_std": float(baseline_std),
+        "smd": {k: float(v) if v is not None else None
+                for k, v in smd_report.items()},
+        "falhas": {}
+    }
+    for falha in FALHAS:
+        fid = falha["id"]
+        relatorio["falhas"][fid] = {
+            "nome": falha["nome"],
+            "npr": falha["npr"],
+            "descricao": falha["descricao"],
+            "resultados": {
+                str(s): {
+                    "erro": float(resultados[fid][s]["erro"]),
+                    "detectado": bool(resultados[fid][s]["detectado"]),
+                    "margem": float(resultados[fid][s]["margem"]),
+                }
+                for s in SEVERIDADES
+            }
+        }
+
+    arq_report = PASTA_AE / "injecao_falhas_report.json"
+    with open(arq_report, "w", encoding="utf-8") as f:
+        json.dump(relatorio, f, indent=2, ensure_ascii=False)
+    print(f"   ✅ {arq_report.name}")
+
+    # ── 8. Resumo final ───────────────────────────────────────
+    print(f"\n{'='*60}")
+    print(f"  INJEÇÃO DE FALHAS CONCLUÍDA!")
+    print(f"  Baseline saudável : {baseline_mean:.4f} ± {baseline_std:.4f}")
+    print(f"  Limiar de anomalia: {limiar:.4f}")
+    print()
+    for falha in FALHAS:
+        fid = falha["id"]
+        smd = smd_report[fid]
+        if smd:
+            erro_smd = resultados[fid][smd]["erro"]
+            margem   = erro_smd / limiar
+            print(f"  {falha['nome']:<30}")
+            print(f"    SMD = {smd:.2f} | erro = {erro_smd:.4f} | "
+                  f"margem = {margem:.1f}× acima do limiar")
+        else:
+            print(f"  {falha['nome']:<30}")
+            print(f"    Não detectada — severidade insuficiente")
+    print()
+    print(f"  Próximo passo: validação cruzada + métricas finais")
+    print(f"{'='*60}")
+
+    return True
+
+
+# ============================================================
+# PONTO DE ENTRADA
+# ============================================================
+
+if __name__ == "__main__":
+    executar_injecao_falhas()
