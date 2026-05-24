@@ -31,10 +31,11 @@ load_dotenv()
 # CONFIGURAÇÕES
 # ============================================================
 
-PASTA_SESSOES  = Path(__file__).parent.parent / "notas" / "sessoes"
-PASTA_MEMORIAS = Path(__file__).parent.parent / "notas" / "memorias"
-PASTA_ARQUIVO  = Path(__file__).parent.parent / "notas" / "sessoes_arquivadas"
-MINIMO_SESSOES = 2   # só consolida se houver pelo menos N sessões
+from src.core.config import PASTA_NOTAS, PASTA_SESSOES
+
+PASTA_MEMORIAS = PASTA_NOTAS / "memorias"
+PASTA_ARQUIVO  = PASTA_NOTAS / "sessoes_arquivadas"
+MINIMO_SESSOES = 2
 
 
 # ============================================================
@@ -186,8 +187,8 @@ def atualizar_chromadb(caminho_consolidado: Path, sessoes: list):
     """
     import chromadb
     from sentence_transformers import SentenceTransformer
-    from src.agente    import MODELO_EMBEDDINGS, PASTA_CHROMADB
-    from src.indexador import dividir_em_chunks, upsert_em_lotes
+    from src.core.config import MODELO_EMBEDDINGS, PASTA_CHROMADB
+    from src.conhecimento.indexador import dividir_em_chunks, upsert_em_lotes
 
     NOME_COLECAO_SESSOES = "sessoes_pv"
 
