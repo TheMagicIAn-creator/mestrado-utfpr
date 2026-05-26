@@ -13,4 +13,5 @@ from src.conhecimento.ferramentas import (  # noqa: F401
     rodar_pipeline_completo,
     consultar_resultados,
     consultar_status_pipeline,
+    limpar_resultados_ml,
 )

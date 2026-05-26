@@ -35,73 +35,140 @@ st.set_page_config(
 
 
 def aplicar_estilo() -> None:
+    escuro = st.session_state.get("tema_visual", "Claro") == "Escuro"
+    cores = {
+        "app": "#0f1117" if escuro else "#f6f7fb",
+        "sidebar": "#171b24" if escuro else "#eef2f7",
+        "panel": "#151a23" if escuro else "#ffffff",
+        "panel_soft": "#111827" if escuro else "#ffffff",
+        "text": "#e5e7eb" if escuro else "#111827",
+        "muted": "#a6adbb" if escuro else "#4b5563",
+        "border": "#2a3344" if escuro else "#d7dde8",
+        "primary": "#60a5fa" if escuro else "#2563eb",
+        "shadow": "rgba(0, 0, 0, 0.24)" if escuro else "rgba(15, 23, 42, 0.04)",
+        "input": "#1f2430" if escuro else "#ffffff",
+    }
     st.markdown(
-        """
+        f"""
 <style>
-#MainMenu, footer, .stDeployButton { display: none; }
-.stApp {
-    background: #f6f7fb;
-}
-.block-container {
+:root {{ color-scheme: {"dark" if escuro else "light"}; }}
+#MainMenu, footer, .stDeployButton {{ display: none; }}
+.stApp {{
+    background: {cores["app"]};
+    color: {cores["text"]};
+}}
+.block-container {{
     max-width: 1180px;
     padding-top: 1.1rem;
     padding-bottom: 1.4rem;
-}
-[data-testid="stSidebar"] {
-    background: #eef2f7;
-}
-[data-testid="stSidebar"] > div:first-child {
+}}
+[data-testid="stSidebar"] {{
+    background: {cores["sidebar"]};
+    color: {cores["text"]};
+}}
+[data-testid="stSidebar"] > div:first-child {{
     padding-top: 1rem;
-}
-.topbar {
-    border-bottom: 1px solid #d7dde8;
+}}
+[data-testid="stWidgetLabel"] p,
+[data-testid="stSidebar"] [data-testid="stRadio"] p {{
+    color: {cores["text"]} !important;
+}}
+[data-testid="stHeader"] {{
+    background: transparent;
+}}
+[data-testid="stMarkdownContainer"], [data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] li, [data-testid="stMarkdownContainer"] strong {{
+    color: inherit;
+}}
+.topbar {{
+    border-bottom: 1px solid {cores["border"]};
     padding: 10px 0 14px 0;
     margin-bottom: 18px;
-}
-.topbar h1 {
+}}
+.topbar h1 {{
     margin: 0;
     font-size: 1.7rem;
     line-height: 1.15;
-    color: #111827;
-}
-.topbar p {
+    color: {cores["text"]};
+}}
+.topbar p {{
     margin: 6px 0 0 0;
-    color: #4b5563;
-}
-.quiet-panel {
-    border-left: 3px solid #2563eb;
-    background: #ffffff;
+    color: {cores["muted"]};
+}}
+.quiet-panel {{
+    border-left: 3px solid {cores["primary"]};
+    background: {cores["panel"]};
     border-radius: 8px;
     padding: 13px 16px;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-}
-.prompt-example {
-    border-left: 3px solid #2563eb;
+    box-shadow: 0 1px 2px {cores["shadow"]};
+}}
+.prompt-example {{
+    border-left: 3px solid {cores["primary"]};
     padding: 8px 0 8px 12px;
     margin: 6px 0;
-    color: #1f2937;
-}
-.status-dot {
+    color: {cores["text"]};
+}}
+.status-dot {{
     display: inline-block;
     width: 8px;
     height: 8px;
     border-radius: 50%;
     margin-right: 6px;
-}
-.ok-dot { background: #22c55e; }
-.pending-dot { background: #f59e0b; }
-[data-testid="stChatMessage"] {
+}}
+.ok-dot {{ background: #22c55e; }}
+.pending-dot {{ background: #f59e0b; }}
+[data-testid="stChatMessage"] {{
     border-radius: 8px;
-}
-[data-testid="metric-container"] {
-    border: 1px solid #d7dde8;
+    background: {cores["panel_soft"]};
+    border: 1px solid {cores["border"]};
+}}
+[data-testid="metric-container"] {{
+    border: 1px solid {cores["border"]};
     border-radius: 8px;
     padding: 10px 12px;
-    background: #ffffff;
-}
-div[data-testid="stChatInput"] {
+    background: {cores["panel"]};
+}}
+div[data-testid="stChatInput"] {{
     max-width: 1180px;
-}
+}}
+[data-testid="stBottom"],
+[data-testid="stBottom"] > div,
+[data-testid="stBottom"] > div > div,
+[data-testid="stBottomBlockContainer"] {{
+    background: {cores["app"]} !important;
+}}
+div[data-testid="stChatInput"] > div {{
+    background: {cores["input"]} !important;
+    border-color: {cores["border"]} !important;
+}}
+div[data-testid="stChatInput"] textarea {{
+    background: {cores["input"]} !important;
+    color: {cores["text"]} !important;
+}}
+div[data-baseweb="select"] > div,
+div[data-testid="stTextInput"] input {{
+    background: {cores["input"]};
+    color: {cores["text"]};
+    border-color: {cores["border"]};
+}}
+[data-testid="stBaseButton-secondary"],
+[data-testid="stFileUploaderDropzone"] {{
+    background: {cores["panel"]} !important;
+    color: {cores["text"]} !important;
+    border-color: {cores["border"]} !important;
+}}
+[data-testid="stExpander"],
+[data-testid="stExpander"] details,
+[data-testid="stExpander"] summary,
+[data-testid="stExpander"] summary *,
+[data-testid="stExpanderDetails"] {{
+    background: {cores["panel"]} !important;
+    color: {cores["text"]} !important;
+    border-color: {cores["border"]} !important;
+}}
+button[kind="primary"] {{
+    background: {cores["primary"]};
+}}
 </style>
 """,
         unsafe_allow_html=True,
@@ -150,6 +217,7 @@ def inicializar_estado() -> None:
         "nome_provedor": "Nenhum",
         "caminho_sessao": None,
         "pergunta_pendente": None,
+        "tema_visual": "Claro",
     }
     for chave, valor in defaults.items():
         if chave not in st.session_state:
@@ -174,6 +242,13 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
     with st.sidebar:
         st.markdown("## Al IAdo PV")
         st.caption("Mestrado UTFPR - agente de pesquisa")
+
+        st.radio(
+            "Tela",
+            options=["Claro", "Escuro"],
+            horizontal=True,
+            key="tema_visual",
+        )
 
         provedor = st.session_state.get("nome_provedor", "Nenhum")
         if provedor == "Nenhum":
@@ -213,6 +288,44 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
         st.markdown("**Pipeline ML**")
         st.markdown(pipeline_status_html(), unsafe_allow_html=True)
         st.caption("Para rodar, refazer ou consultar resultados, use o chat.")
+        feedback_limpeza = st.session_state.pop("feedback_limpeza_ml", None)
+        if feedback_limpeza:
+            st.success(feedback_limpeza)
+
+        with st.expander("Resultados e recálculo"):
+            from src.ml.pipeline import (
+                NOMES_ETAPAS,
+                ORDEM_ETAPAS_ML,
+                artefatos_a_partir,
+                limpar_artefatos,
+            )
+
+            labels = {NOMES_ETAPAS[key]: key for key in ORDEM_ETAPAS_ML}
+            etapa_label = st.selectbox(
+                "Apagar a partir de",
+                options=list(labels.keys()),
+                help=(
+                    "Apaga os artefatos da etapa escolhida e de todas as etapas "
+                    "seguintes. Use quando mudar modelo, parâmetros ou dados."
+                ),
+            )
+            etapa = labels[etapa_label]
+            existentes = [p for p in artefatos_a_partir(etapa) if p.exists()]
+            st.caption(f"{len(existentes)} arquivo(s) existente(s) serão removidos.")
+            confirmar = st.checkbox(
+                "Confirmo que quero apagar esses resultados",
+                key="confirmar_limpeza_ml",
+            )
+            if st.button(
+                "Apagar resultados selecionados",
+                use_container_width=True,
+                disabled=not confirmar,
+            ):
+                removidos = limpar_artefatos(etapa)
+                st.session_state.feedback_limpeza_ml = (
+                    f"{len(removidos)} arquivo(s) removido(s) a partir de {etapa_label}."
+                )
+                st.rerun()
 
         st.divider()
         st.markdown("**PDFs**")
@@ -499,8 +612,8 @@ def renderizar_chat(perfil, modelo, colecao, colecao_sessoes) -> None:
 
 
 def main() -> None:
-    aplicar_estilo()
     inicializar_estado()
+    aplicar_estilo()
 
     try:
         perfil, modelo, colecao, colecao_sessoes, relatorio = carregar_base()

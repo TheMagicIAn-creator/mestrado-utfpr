@@ -154,13 +154,23 @@ def status_markdown() -> str:
     return "\n".join(linhas)
 
 
-def limpar_artefatos(etapa_inicial: str) -> None:
-    """Apaga artefatos da etapa e de todas as que dependem dela."""
+def artefatos_a_partir(etapa_inicial: str) -> list[Path]:
+    """Lista artefatos da etapa e de todas as que dependem dela."""
     idx = ORDEM_ETAPAS_ML.index(etapa_inicial)
+    artefatos = []
     for key in ORDEM_ETAPAS_ML[idx:]:
-        for path in STAGES[key].paths():
-            if path.exists():
-                path.unlink()
+        artefatos.extend(STAGES[key].paths())
+    return artefatos
+
+
+def limpar_artefatos(etapa_inicial: str) -> list[Path]:
+    """Apaga artefatos da etapa e de todas as que dependem dela."""
+    removidos = []
+    for path in artefatos_a_partir(etapa_inicial):
+        if path.exists():
+            path.unlink()
+            removidos.append(path)
+    return removidos
 
 
 def dependencias_pendentes(etapa: str) -> list[str]:

@@ -13,10 +13,14 @@ import json
 import re
 import unicodedata
 
+from src.core.config import RAIZ_PROJETO
 from src.ml.pipeline import (
     NOMES_ETAPAS,
+    ORDEM_ETAPAS_ML,
+    artefatos_a_partir,
     executar_etapa,
     executar_pipeline_ml,
+    limpar_artefatos,
     pipeline_status,
 )
 from src.ml.resultados import resumir_resultados
@@ -79,6 +83,14 @@ ESPEC_FERRAMENTAS = [
             "estao pendentes."
         ),
     },
+    {
+        "name": "limpar_resultados_ml",
+        "description": (
+            "Apaga artefatos/resultados de uma etapa do pipeline e de todas as "
+            "etapas posteriores, para permitir recalculo com outro modelo ou "
+            "parametrizacao."
+        ),
+    },
 ]
 
 
@@ -112,20 +124,32 @@ def _quer_status(pergunta: str) -> bool:
     return "status" in txt or "pendente" in txt or "falt" in txt
 
 
+def _quer_limpar(pergunta: str) -> bool:
+    txt = _normalizar(pergunta)
+    termos = (
+        "apagar", "apague", "limpar", "limpe", "zerar", "zere",
+        "remover", "remova", "excluir", "exclua", "deletar", "delete",
+    )
+    return any(t in txt for t in termos)
+
+
 def _parece_pedido_de_ferramenta(pergunta: str) -> bool:
     txt = _normalizar(pergunta)
     termos_ml = (
         "pipeline", "feature", "features", "autoencoder", "falha", "falhas",
         "validacao", "weibull", "rul", "mttf", "auc", "f1", "recall",
         "precision", "limiar", "anomalia", "confiabilidade", "grafico",
-        "graficos", "resultado", "resultados", "smd", "b10",
+        "graficos", "resultado", "resultados", "artefato", "artefatos",
+        "modelo", "modelos", "smd", "b10",
     )
     termos_acao = (
         "rodar", "rode", "executar", "execute", "treinar", "treine",
         "gerar", "gere", "refazer", "regerar", "calcular", "calcule",
         "validar", "valide", "injetar", "injete", "estimar", "estime",
         "mostrar", "mostre", "consultar", "consulte", "ver", "status",
-        "quais", "qual", "quanto",
+        "quais", "qual", "quanto", "apagar", "apague", "limpar", "limpe",
+        "zerar", "zere", "remover", "remova", "excluir", "exclua",
+        "deletar", "delete",
     )
     return any(t in txt for t in termos_ml) and any(t in txt for t in termos_acao)
 
@@ -153,6 +177,68 @@ def consultar_resultados(progresso=None, pergunta: str = "") -> dict:
     if progresso:
         progresso("Lendo artefatos de resultado...")
     return resumir_resultados(pergunta)
+
+
+def _etapa_por_pergunta(pergunta: str) -> str | None:
+    txt = _normalizar(pergunta)
+    if "pipeline" in txt or "tudo" in txt or "todos" in txt or "do zero" in txt:
+        return "features_ca"
+    if "feature" in txt or "sinais" in txt or "dados processados" in txt:
+        return "features_ca"
+    if "autoencoder" in txt or "detector" in txt or "limiar" in txt:
+        return "autoencoder"
+    if "injec" in txt or "falha" in txt or "smd" in txt:
+        return "injecao_falhas"
+    if "valid" in txt or "auc" in txt or "f1" in txt or "recall" in txt:
+        return "validacao"
+    if "weibull" in txt or "rul" in txt or "mttf" in txt or "b10" in txt:
+        return "rul_weibull"
+    return None
+
+
+def limpar_resultados_ml(progresso=None, pergunta: str = "") -> dict:
+    etapa = _etapa_por_pergunta(pergunta)
+    if etapa is None:
+        opcoes = ", ".join(NOMES_ETAPAS[key] for key in ORDEM_ETAPAS_ML)
+        return {
+            "ok": False,
+            "etapa": "Limpeza de resultados",
+            "mensagem": (
+                "Diga a partir de qual etapa devo apagar os artefatos. "
+                f"Opcoes: {opcoes}."
+            ),
+            "imagens": [],
+            "resposta_pronta": True,
+        }
+
+    if progresso:
+        progresso(f"Apagando artefatos a partir de: {NOMES_ETAPAS[etapa]}...")
+
+    alvos = artefatos_a_partir(etapa)
+    removidos = limpar_artefatos(etapa)
+    if removidos:
+        linhas = "\n".join(
+            f"- {path.relative_to(RAIZ_PROJETO)}"
+            for path in removidos
+        )
+        detalhe = f"\n\nArquivos removidos:\n{linhas}"
+    else:
+        detalhe = "\n\nNao havia arquivos existentes para remover nessa selecao."
+
+    return {
+        "ok": True,
+        "etapa": "Limpeza de resultados",
+        "mensagem": (
+            f"Resultados apagados a partir de **{NOMES_ETAPAS[etapa]}**. "
+            f"As etapas seguintes tambem foram invalidadas para recalculo. "
+            f"Artefatos verificados: {len(alvos)}."
+            f"{detalhe}\n\n"
+            "Quando quiser recalcular, peca pelo chat: "
+            f"\"rode {NOMES_ETAPAS[etapa]}\" ou \"rode o pipeline completo\"."
+        ),
+        "imagens": [],
+        "resposta_pronta": True,
+    }
 
 
 def _resultado_pos_execucao(stage_key: str, pergunta: str) -> dict:
@@ -243,6 +329,7 @@ _DESPACHO = {
     "rodar_pipeline_completo": rodar_pipeline_completo,
     "consultar_resultados": consultar_resultados,
     "consultar_status_pipeline": consultar_status_pipeline,
+    "limpar_resultados_ml": limpar_resultados_ml,
 }
 
 
@@ -263,6 +350,8 @@ def _decisao_rapida(pergunta: str) -> dict | None:
     txt = _normalizar(pergunta)
     if not _parece_pedido_de_ferramenta(pergunta):
         return {"usar_ferramenta": False, "ferramenta": None}
+    if _quer_limpar(pergunta):
+        return {"usar_ferramenta": True, "ferramenta": "limpar_resultados_ml"}
     if _quer_status(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "consultar_status_pipeline"}
     if any(t in txt for t in ("rodar", "rode", "execut", "trein", "treine", "gerar", "calcular", "calcule", "validar", "valide", "injetar", "injete", "refazer", "regerar", "estimar", "estime")):
