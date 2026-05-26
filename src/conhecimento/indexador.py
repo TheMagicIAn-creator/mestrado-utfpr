@@ -1,20 +1,32 @@
 """
 indexador.py — Al IAdo PV
-Lê os PDFs da pasta /literatura e indexa no ChromaDB
-para que o agente possa buscar informações por similaridade.
 
-Autor: Rodolfo Torres (UTFPR)
+Indexador seguro para literatura e sessões.
+
+Correções principais desta versão:
+- controle de duplicidade por SHA256 do PDF;
+- IDs determinísticos por hash + chunk;
+- uso de upsert em lotes;
+- chunking de literatura menos granular;
+- remoção da combinação problemática:
+    chunking fixo + chunking por seções + tabelas;
+- extração de tabelas opcional via variável de ambiente.
+
+Execute pela raiz do projeto:
+    python src/conhecimento/indexador.py
 """
-import sys
+
+import hashlib
 import os
 import re
+import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
+import chromadb
 from pypdf import PdfReader
 from sentence_transformers import SentenceTransformer
-import chromadb
 
 from src.core.utils import parsear_nome_arquivo
 from src.core.config import (
@@ -29,34 +41,229 @@ from src.core.config import (
 )
 
 # ============================================================
-# FUNÇÕES
+# PARÂMETROS ESPECÍFICOS PARA LITERATURA
+# ============================================================
+
+# O valor antigo de 500 caracteres gerava uma coleção excessivamente granular.
+# Para RAG acadêmico, 1600–2200 caracteres costuma ser mais equilibrado.
+TAMANHO_CHUNK_LITERATURA = int(os.getenv("TAMANHO_CHUNK_LITERATURA", "1800"))
+SOBREPOSICAO_LITERATURA = int(os.getenv("SOBREPOSICAO_LITERATURA", "200"))
+
+# A extração de tabelas com pdfplumber é útil, mas cara e pode aumentar a base.
+# Por padrão fica desligada. Para ativar:
+# PowerShell:
+#   $env:EXTRAIR_TABELAS_LITERATURA="1"
+# CMD:
+#   set EXTRAIR_TABELAS_LITERATURA=1
+EXTRAIR_TABELAS_LITERATURA = os.getenv("EXTRAIR_TABELAS_LITERATURA", "0") == "1"
+
+
+# ============================================================
+# UTILITÁRIOS
+# ============================================================
+
+def calcular_hash_arquivo(caminho: Path) -> str:
+    """Calcula SHA256 do arquivo, usado como identidade estável do PDF."""
+    sha = hashlib.sha256()
+    with open(caminho, "rb") as f:
+        for bloco in iter(lambda: f.read(1024 * 1024), b""):
+            sha.update(bloco)
+    return sha.hexdigest()
+
+
+def documento_ja_indexado(colecao, arquivo_hash: str) -> bool:
+    """Retorna True se o conteúdo exato do PDF já estiver indexado."""
+    try:
+        res = colecao.get(where={"arquivo_hash": arquivo_hash}, limit=1)
+        return bool(res.get("ids"))
+    except Exception:
+        return False
+
+
+def remover_documento_antigo(colecao, nome_arquivo: str | None = None, arquivo_hash: str | None = None) -> int:
+    """
+    Remove chunks antigos por nome e/ou hash.
+
+    Observação:
+    - por nome: remove resíduos de versões antigas sem hash;
+    - por hash: remove resíduos do mesmo conteúdo.
+    """
+    removidos = 0
+    filtros = []
+
+    if nome_arquivo:
+        filtros.append({"arquivo": nome_arquivo})
+
+    if arquivo_hash:
+        filtros.append({"arquivo_hash": arquivo_hash})
+
+    for where in filtros:
+        try:
+            res = colecao.get(where=where)
+            ids = res.get("ids", []) or []
+            if ids:
+                for inicio in range(0, len(ids), TAMANHO_LOTE):
+                    fim = inicio + TAMANHO_LOTE
+                    colecao.delete(ids=ids[inicio:fim])
+                removidos += len(ids)
+        except Exception:
+            # Não interrompe indexação por resíduo antigo problemático.
+            pass
+
+    return removidos
+
+
+def upsert_em_lotes(colecao, ids, embeddings, documents, metadados, tamanho_lote: int = 500) -> None:
+    """Executa upsert em lotes para evitar limites internos do ChromaDB/SQLite."""
+    total = len(ids)
+
+    for inicio in range(0, total, tamanho_lote):
+        fim = min(inicio + tamanho_lote, total)
+        colecao.upsert(
+            ids=ids[inicio:fim],
+            embeddings=embeddings[inicio:fim],
+            documents=documents[inicio:fim],
+            metadatas=metadados[inicio:fim],
+        )
+
+
+# ============================================================
+# EXTRAÇÃO E CHUNKING DE PDF
 # ============================================================
 
 def ler_pdf(caminho_pdf: Path) -> str:
-    """
-    Lê um arquivo PDF e retorna todo o texto como string.
-    """
+    """Extrai texto do PDF usando pypdf."""
     try:
         reader = PdfReader(str(caminho_pdf))
-        texto  = ""
+        partes = []
+
         for pagina in reader.pages:
             texto_pagina = pagina.extract_text()
             if texto_pagina:
-                texto += texto_pagina + "\n"
-        return texto.strip()
+                partes.append(texto_pagina)
+
+        return "\n\n".join(partes).strip()
+
     except Exception as e:
         print(f"  ⚠️  Erro ao ler {caminho_pdf.name}: {e}")
         return ""
 
-def extrair_tabelas_pdf(caminho_pdf: Path, metadados_doc: dict) -> list:
+
+def normalizar_texto_pdf(texto: str) -> str:
+    """
+    Normaliza texto extraído de PDF.
+
+    A intenção é reduzir ruído sem destruir fórmulas, siglas ou símbolos técnicos.
+    """
+    if not texto:
+        return ""
+
+    texto = texto.replace("\x00", " ")
+
+    # Une palavras quebradas por hifenização no fim da linha:
+    # confiabili-\ndade -> confiabilidade
+    texto = re.sub(r"(\w)-\s*\n\s*(\w)", r"\1\2", texto)
+
+    # Normaliza quebras excessivas de linha.
+    texto = re.sub(r"[ \t]+", " ", texto)
+    texto = re.sub(r"\n{3,}", "\n\n", texto)
+
+    # Remove espaços antes de pontuação comum.
+    texto = re.sub(r"\s+([,.;:!?])", r"\1", texto)
+
+    return texto.strip()
+
+
+def _melhor_ponto_de_corte(texto: str, inicio: int, limite: int, tamanho_minimo: int) -> int:
+    """
+    Escolhe um corte próximo do limite, preferindo fim de frase/parágrafo.
+    Evita gerar chunks cortados no meio de sentenças quando possível.
+    """
+    n = len(texto)
+
+    if limite >= n:
+        return n
+
+    janela_inicio = max(inicio + tamanho_minimo, limite - 500)
+    trecho = texto[janela_inicio:limite]
+
+    # Preferência 1: fim de parágrafo.
+    pos = trecho.rfind("\n\n")
+    if pos != -1:
+        return janela_inicio + pos
+
+    # Preferência 2: fim de frase.
+    candidatos = [trecho.rfind("."), trecho.rfind(";"), trecho.rfind(":"), trecho.rfind("?"), trecho.rfind("!")]
+    pos = max(candidatos)
+    if pos != -1:
+        return janela_inicio + pos + 1
+
+    # Preferência 3: último espaço.
+    pos = trecho.rfind(" ")
+    if pos != -1:
+        return janela_inicio + pos
+
+    return limite
+
+
+def dividir_em_chunks(texto: str, tamanho: int, sobreposicao: int) -> list[str]:
+    """
+    Divide texto em chunks por caracteres, com corte em ponto semântico quando possível.
+
+    Esta função continua existindo com a mesma assinatura para preservar compatibilidade
+    com indexação de sessões e outros módulos.
+    """
+    texto = normalizar_texto_pdf(texto)
+
+    if not texto:
+        return []
+
+    tamanho = max(int(tamanho), 300)
+    sobreposicao = max(0, min(int(sobreposicao), tamanho // 3))
+    tamanho_minimo = max(250, tamanho // 2)
+
+    chunks = []
+    inicio = 0
+    n = len(texto)
+
+    while inicio < n:
+        limite = min(inicio + tamanho, n)
+        corte = _melhor_ponto_de_corte(texto, inicio, limite, tamanho_minimo)
+
+        if corte <= inicio:
+            corte = limite
+
+        chunk = texto[inicio:corte].strip()
+
+        if len(chunk) >= 80:
+            chunks.append(chunk)
+
+        if corte >= n:
+            break
+
+        novo_inicio = max(corte - sobreposicao, inicio + 1)
+
+        # Evita começar no meio de espaço/quebra.
+        while novo_inicio < n and texto[novo_inicio].isspace():
+            novo_inicio += 1
+
+        inicio = novo_inicio
+
+    return chunks
+
+
+def extrair_tabelas_pdf(caminho_pdf: Path, metadados_doc: dict) -> list[str]:
     """
     Extrai tabelas do PDF como chunks Markdown estruturados.
-    Cria dois tipos de chunks por página:
-    - Individual: uma tabela por chunk
-    - Combinado: todas as tabelas da página juntas (preserva contexto)
+
+    Esta rotina é opcional porque aumenta tempo de indexação e tamanho da base.
+    Ative apenas quando tabelas forem essenciais para a busca.
     """
-    chunks_tabelas    = []
-    tabelas_por_pagina = {}
+    chunks_tabelas = []
+
+    if not EXTRAIR_TABELAS_LITERATURA:
+        return chunks_tabelas
+
     citacao = metadados_doc.get("citacao", caminho_pdf.name)
 
     try:
@@ -68,426 +275,311 @@ def extrair_tabelas_pdf(caminho_pdf: Path, metadados_doc: dict) -> list:
                 if not tabelas:
                     continue
 
-                tabelas_por_pagina[num_pag] = []
-
                 for num_tab, tabela in enumerate(tabelas, 1):
                     if not tabela or len(tabela) < 2:
                         continue
 
                     linhas_validas = [
                         linha for linha in tabela
-                        if any(cel and str(cel).strip() for cel in linha)
+                        if linha and any(cel and str(cel).strip() for cel in linha)
                     ]
+
                     if len(linhas_validas) < 2:
                         continue
 
-                    def limpar_cel(cel):
+                    def limpar_celula(cel):
                         if cel is None:
                             return ""
                         return str(cel).replace("\n", " ").strip()
 
-                    header = linhas_validas[0]
-                    corpo  = linhas_validas[1:]
-                    n_cols = len(header)
+                    cabecalho = linhas_validas[0]
+                    corpo = linhas_validas[1:]
+                    n_cols = len(cabecalho)
 
-                    md  = f"[TABELA — {citacao} — Página {num_pag}, Tabela {num_tab}]\n"
-                    md += "| " + " | ".join(limpar_cel(c) for c in header) + " |\n"
-                    md += "| " + " | ".join("---" for _ in header) + " |\n"
+                    md = f"[TABELA — {citacao} — Página {num_pag}, Tabela {num_tab}]\n"
+                    md += "| " + " | ".join(limpar_celula(c) for c in cabecalho) + " |\n"
+                    md += "| " + " | ".join("---" for _ in cabecalho) + " |\n"
 
                     for linha in corpo:
-                        linha_pad = list(linha) + [""] * (n_cols - len(linha))
-                        md += "| " + " | ".join(
-                            limpar_cel(c) for c in linha_pad[:n_cols]
-                        ) + " |\n"
+                        linha_pad = list(linha) + [""] * max(0, n_cols - len(linha))
+                        md += "| " + " | ".join(limpar_celula(c) for c in linha_pad[:n_cols]) + " |\n"
 
-                    if len(md) > 100:
-                        chunks_tabelas.append(md)
-                        tabelas_por_pagina[num_pag].append(md)
-
-        # ── Chunks de página combinada ───────────────────────
-        # Páginas com múltiplas tabelas ganham um chunk extra
-        # que as une, preservando contexto entre tabelas relacionadas
-        for num_pag, tabelas_pag in tabelas_por_pagina.items():
-            if len(tabelas_pag) > 1:
-                chunk_pag  = f"[PÁGINA {num_pag} — {citacao} — Tabelas combinadas]\n\n"
-                chunk_pag += "\n\n".join(tabelas_pag)
-                if len(chunk_pag) > 150:
-                    chunks_tabelas.append(chunk_pag)
+                    if len(md) >= 150:
+                        chunks_tabelas.append(md.strip())
 
     except ImportError:
-        pass
-    except Exception:
-        pass
+        print("  ⚠️  pdfplumber não instalado; tabelas ignoradas.")
+    except Exception as e:
+        print(f"  ⚠️  Erro ao extrair tabelas de {caminho_pdf.name}: {e}")
 
     return chunks_tabelas
 
-def dividir_em_secoes(texto: str, tamanho_max: int = 1500) -> list:
+
+def remover_chunks_duplicados(chunks: list[str]) -> list[str]:
     """
-    Divide o texto por seções semânticas detectando títulos e subtítulos.
-    Seções maiores que tamanho_max são subdivididas com sobreposição.
-    Preserva contexto estrutural que o chunking por tamanho fixo destrói.
+    Remove chunks textual ou quase textualmente idênticos.
     """
-    import re
+    vistos = set()
+    unicos = []
 
-    # Padrões de título comuns em documentos acadêmicos
-    padrao_titulo = re.compile(
-        r"^(?:"
-        r"\d+[\.\s]|"           # 1. ou 1 
-        r"[A-ZÁÀÃÂÉÊÍÓÕÔÚ]{3,}|"  # TÍTULOS EM MAIÚSCULAS
-        r"(?:Cap[íi]tulo|Seção|Apêndice|Anexo|Abstract|Resumo|Introdução|"
-        r"Conclus[ãa]o|Referências|Metodologia|Resultados)\b"
-        r")",
-        re.MULTILINE | re.IGNORECASE
-    )
+    for chunk in chunks:
+        normalizado = " ".join(chunk.split()).strip()
+        if not normalizado:
+            continue
 
-    linhas   = texto.split("\n")
-    secoes   = []
-    secao_atual = []
+        chave = hashlib.sha1(normalizado.lower().encode("utf-8", errors="ignore")).hexdigest()
 
-    for linha in linhas:
-        if padrao_titulo.match(linha.strip()) and secao_atual:
-            # Início de nova seção — salva a anterior
-            conteudo = "\n".join(secao_atual).strip()
-            if conteudo:
-                secoes.append(conteudo)
-            secao_atual = [linha]
-        else:
-            secao_atual.append(linha)
+        if chave in vistos:
+            continue
 
-    # Última seção
-    if secao_atual:
-        conteudo = "\n".join(secao_atual).strip()
-        if conteudo:
-            secoes.append(conteudo)
+        vistos.add(chave)
+        unicos.append(chunk.strip())
 
-    # Subdivide seções muito grandes mantendo sobreposição
-    chunks = []
-    for secao in secoes:
-        if len(secao) <= tamanho_max:
-            if secao.strip():
-                chunks.append(secao)
-        else:
-            # Subdivide com sobreposição de 100 chars
-            inicio = 0
-            while inicio < len(secao):
-                fim   = inicio + tamanho_max
-                chunk = secao[inicio:fim]
-                if chunk.strip():
-                    chunks.append(chunk)
-                inicio = fim - 100
+    return unicos
 
-    return chunks if chunks else dividir_em_chunks(texto, 500, 50)
 
-def upsert_em_lotes(colecao, ids, embeddings, documents, metadados, tamanho_lote=500):
+# ============================================================
+# INDEXAÇÃO DE LITERATURA
+# ============================================================
+
+def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path) -> dict:
     """
-    Divide o upsert em lotes para evitar o limite do ChromaDB.
+    Indexa um único PDF no ChromaDB com proteção contra duplicidade.
+
+    Estratégia:
+    1. calcula SHA256 do arquivo;
+    2. se o mesmo conteúdo já estiver indexado, pula;
+    3. remove resíduos antigos por nome/hash;
+    4. gera chunks apenas por uma estratégia principal;
+    5. opcionalmente adiciona chunks de tabelas;
+    6. usa IDs determinísticos e upsert.
     """
-    total = len(ids)
-    for inicio in range(0, total, tamanho_lote):
-        fim = min(inicio + tamanho_lote, total)
-        colecao.upsert(
-            ids        = ids[inicio:fim],
-            embeddings = embeddings[inicio:fim],
-            documents  = documents[inicio:fim],
-            metadatas  = metadados[inicio:fim]
+    resultado = {
+        "sucesso": False,
+        "nome_arquivo": caminho_pdf.name,
+        "n_chunks": 0,
+        "pulou": False,
+        "motivo": "",
+        "erro": None,
+    }
+
+    try:
+        arquivo_hash = calcular_hash_arquivo(caminho_pdf)
+
+        client = chromadb.PersistentClient(path=str(pasta_chromadb))
+        colecao = client.get_or_create_collection(
+            name=NOME_COLECAO,
+            metadata={"hnsw:space": "cosine"},
         )
 
-def dividir_em_chunks(texto: str, tamanho: int, sobreposicao: int) -> list:
-    """
-    Divide um texto longo em pedaços menores (chunks).
+        if documento_ja_indexado(colecao, arquivo_hash):
+            resultado["sucesso"] = True
+            resultado["pulou"] = True
+            resultado["motivo"] = "PDF já indexado pelo mesmo hash SHA256."
+            try:
+                resultado["n_chunks"] = len(colecao.get(where={"arquivo_hash": arquivo_hash}).get("ids", []))
+            except Exception:
+                resultado["n_chunks"] = 0
+            return resultado
 
-    Por que dividir?
-    - O modelo de embeddings tem limite de tamanho de entrada
-    - Chunks menores permitem buscas muito mais precisas
-    - A sobreposição garante que nenhum contexto seja cortado
-    """
-    chunks = []
-    inicio = 0
+        texto = ler_pdf(caminho_pdf)
 
-    while inicio < len(texto):
-        fim = inicio + tamanho
-        chunk = texto[inicio:fim]
-        if chunk.strip():           # ignora chunks vazios
-            chunks.append(chunk)
-        inicio = fim - sobreposicao # sobreposição entre chunks
+        if not texto:
+            resultado["erro"] = "Não foi possível extrair texto do PDF."
+            return resultado
 
-    return chunks
+        info_arquivo = parsear_nome_arquivo(caminho_pdf.name)
+
+        # Estratégia principal: um único pipeline de chunking.
+        chunks = dividir_em_chunks(
+            texto,
+            TAMANHO_CHUNK_LITERATURA,
+            SOBREPOSICAO_LITERATURA,
+        )
+
+        # Tabelas são opcionais.
+        chunks_tabelas = extrair_tabelas_pdf(caminho_pdf, info_arquivo)
+
+        chunks = remover_chunks_duplicados(chunks + chunks_tabelas)
+
+        if not chunks:
+            resultado["erro"] = "Nenhum chunk gerado."
+            return resultado
+
+        removidos = remover_documento_antigo(
+            colecao,
+            nome_arquivo=caminho_pdf.name,
+            arquivo_hash=arquivo_hash,
+        )
+
+        if removidos:
+            print(f"  Removidos {removidos} chunks antigos de {caminho_pdf.name}")
+
+        embeddings = modelo_embeddings.encode(chunks).tolist()
+
+        nome_pasta = caminho_pdf.parent.name
+        ids = [f"{arquivo_hash}__chunk_{j:05d}" for j in range(len(chunks))]
+
+        metadados = [
+            {
+                "arquivo": caminho_pdf.name,
+                "arquivo_hash": arquivo_hash,
+                "pasta": nome_pasta,
+                "chunk_index": j,
+                "total_chunks": len(chunks),
+                "autor": info_arquivo.get("autor", ""),
+                "titulo": info_arquivo.get("titulo", ""),
+                "ano": info_arquivo.get("ano", ""),
+                "citacao": info_arquivo.get("citacao", caminho_pdf.name),
+            }
+            for j in range(len(chunks))
+        ]
+
+        upsert_em_lotes(
+            colecao=colecao,
+            ids=ids,
+            embeddings=embeddings,
+            documents=chunks,
+            metadados=metadados,
+            tamanho_lote=TAMANHO_LOTE,
+        )
+
+        resultado["sucesso"] = True
+        resultado["n_chunks"] = len(chunks)
+        return resultado
+
+    except Exception as e:
+        resultado["erro"] = str(e)
+        return resultado
+
+
+def indexar_literatura() -> None:
+    """Indexa todos os PDFs da pasta de literatura."""
+    print("=" * 72)
+    print("AL IADO PV — INDEXADOR SEGURO DE LITERATURA")
+    print("=" * 72)
+
+    if not PASTA_LITERATURA.exists():
+        print(f"Pasta não encontrada: {PASTA_LITERATURA}")
+        return
+
+    pdfs = sorted(PASTA_LITERATURA.rglob("*.pdf"))
+
+    if not pdfs:
+        print(f"Nenhum PDF encontrado em: {PASTA_LITERATURA}")
+        return
+
+    print(f"PDFs encontrados: {len(pdfs)}")
+    print(f"Modelo de embeddings: {MODELO_EMBEDDINGS}")
+    print(f"Chunk literatura: {TAMANHO_CHUNK_LITERATURA}")
+    print(f"Sobreposição literatura: {SOBREPOSICAO_LITERATURA}")
+    print(f"Extração de tabelas: {'ativada' if EXTRAIR_TABELAS_LITERATURA else 'desativada'}")
+
+    modelo = SentenceTransformer(MODELO_EMBEDDINGS)
+
+    total_chunks = 0
+    pdfs_indexados = 0
+    pdfs_pulados = 0
+    pdfs_com_erro = 0
+
+    for i, caminho_pdf in enumerate(pdfs, 1):
+        print(f"[{i}/{len(pdfs)}] {caminho_pdf.name}")
+        resultado = indexar_pdf_unico(caminho_pdf, modelo, PASTA_CHROMADB)
+
+        if not resultado.get("sucesso"):
+            pdfs_com_erro += 1
+            print(f"  ERRO: {resultado.get('erro')}")
+            continue
+
+        if resultado.get("pulou"):
+            pdfs_pulados += 1
+            print(f"  SKIP: {resultado.get('motivo')}")
+            continue
+
+        n_chunks = int(resultado.get("n_chunks", 0))
+        total_chunks += n_chunks
+        pdfs_indexados += 1
+        print(f"  OK: {n_chunks} chunks")
+
+    print("=" * 72)
+    print("INDEXAÇÃO CONCLUÍDA")
+    print(f"PDFs indexados : {pdfs_indexados}")
+    print(f"PDFs pulados   : {pdfs_pulados}")
+    print(f"PDFs com erro  : {pdfs_com_erro}")
+    print(f"Chunks novos   : {total_chunks}")
+    print("=" * 72)
+
+
+# ============================================================
+# INDEXAÇÃO DE SESSÕES
+# ============================================================
 
 def indexar_sessao(caminho_md: Path, modelo_embeddings, pasta_chromadb: Path) -> int:
     """
     Indexa uma sessão salva (.md) na coleção de sessões do ChromaDB.
-    Chamada automaticamente após cada sessão encerrada.
-    Retorna o número de chunks indexados.
+
+    Mantém a assinatura original para compatibilidade com o restante do sistema.
     """
-
-    NOME_COLECAO_SESSOES = "sessoes_pv"
-
-    # Lê o arquivo .md
     if not caminho_md.exists():
         print(f"  ⚠️  Arquivo não encontrado: {caminho_md}")
         return 0
 
-    texto = caminho_md.read_text(encoding="utf-8")
+    texto = caminho_md.read_text(encoding="utf-8", errors="ignore")
 
     if not texto.strip():
         return 0
 
-    # Remove linhas de erro antes de indexar
     linhas_filtradas = []
     for linha in texto.split("\n"):
         if any(termo in linha.lower() for termo in [
             "rate limit", "429", "resource_exhausted",
-            "quota", "error code", "❌ erro"
+            "quota", "error code", "❌ erro",
         ]):
             continue
         linhas_filtradas.append(linha)
+
     texto = "\n".join(linhas_filtradas)
 
-    # Divide em chunks
     chunks = dividir_em_chunks(texto, TAMANHO_CHUNK, SOBREPOSICAO)
 
     if not chunks:
         return 0
 
-    # Conecta ao ChromaDB na coleção de sessões
     client = chromadb.PersistentClient(path=str(pasta_chromadb))
     colecao_sessoes = client.get_or_create_collection(
-        name     = NOME_COLECAO_SESSOES,
-        metadata = {"hnsw:space": "cosine"}
+        name=NOME_COLECAO_SESSOES,
+        metadata={"hnsw:space": "cosine"},
     )
 
-    # Gera embeddings
     embeddings = modelo_embeddings.encode(chunks).tolist()
 
-    # IDs únicos por sessão + chunk
     nome_arquivo = caminho_md.name
-    ids = [f"{nome_arquivo}__chunk_{j}" for j in range(len(chunks))]
+    ids = [f"{nome_arquivo}__chunk_{j:05d}" for j in range(len(chunks))]
 
-    # Metadados
-    data_sessao = caminho_md.stem[:10]  # YYYY-MM-DD do nome do arquivo
+    data_sessao = caminho_md.stem[:10]
+
     metadados = [
         {
-            "arquivo"     : nome_arquivo,
-            "tipo"        : "sessao",
-            "data"        : data_sessao,
-            "chunk_index" : j,
-            "total_chunks": len(chunks)
+            "arquivo": nome_arquivo,
+            "tipo": "sessao",
+            "data": data_sessao,
+            "chunk_index": j,
+            "total_chunks": len(chunks),
         }
         for j in range(len(chunks))
     ]
 
-    # Indexa (upsert evita duplicatas)
-    upsert_em_lotes(colecao_sessoes, ids, embeddings, chunks, metadados)
+    upsert_em_lotes(
+        colecao=colecao_sessoes,
+        ids=ids,
+        embeddings=embeddings,
+        documents=chunks,
+        metadados=metadados,
+        tamanho_lote=TAMANHO_LOTE,
+    )
 
     return len(chunks)
 
-def indexar_literatura():
-    """
-    Função principal: lê todos os PDFs e indexa no ChromaDB.
-    """
-
-    print("=" * 60)
-    print("  AL IADO — INDEXADOR DE LITERATURA")
-    print("=" * 60)
-
-    # ----------------------------------------------------------
-    # PASSO 1 — Verifica se a pasta de literatura existe
-    # ----------------------------------------------------------
-    if not PASTA_LITERATURA.exists():
-        print(f"\n❌ Pasta não encontrada: {PASTA_LITERATURA}")
-        print("   Verifique se o caminho está correto.")
-        return
-
-    # ----------------------------------------------------------
-    # PASSO 2 — Encontra todos os PDFs recursivamente
-    # ----------------------------------------------------------
-    pdfs = list(PASTA_LITERATURA.rglob("*.pdf"))
-
-    if not pdfs:
-        print(f"\n❌ Nenhum PDF encontrado em: {PASTA_LITERATURA}")
-        return
-
-    print(f"\n📚 PDFs encontrados: {len(pdfs)}")
-    for pdf in pdfs:
-        print(f"   → {pdf.name}")
-
-    # ----------------------------------------------------------
-    # PASSO 3 — Carrega o modelo de embeddings
-    # ----------------------------------------------------------
-    print(f"\n🔄 Carregando modelo de embeddings: {MODELO_EMBEDDINGS}")
-    print("   (Na primeira vez baixa o modelo — pode demorar)")
-    modelo = SentenceTransformer(MODELO_EMBEDDINGS)
-    print("   ✅ Modelo carregado!")
-
-    # ----------------------------------------------------------
-    # PASSO 4 — Conecta ao ChromaDB
-    # ----------------------------------------------------------
-    print(f"\n🗄️  Conectando ao ChromaDB...")
-    PASTA_CHROMADB.mkdir(exist_ok=True)
-
-    client  = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
-    colecao = client.get_or_create_collection(
-        name=NOME_COLECAO,
-        metadata={"hnsw:space": "cosine"}  # busca por similaridade de cosseno
-    )
-    print("   ✅ ChromaDB conectado!")
-
-    # ----------------------------------------------------------
-    # PASSO 5 — Indexa cada PDF
-    # ----------------------------------------------------------
-    total_chunks   = 0
-    pdfs_indexados = 0
-    pdfs_com_erro  = 0
-
-    print(f"\n📥 Iniciando indexação...\n")
-
-    for i, caminho_pdf in enumerate(pdfs, 1):
-        nome_arquivo = caminho_pdf.name
-        print(f"  [{i}/{len(pdfs)}] {nome_arquivo}")
-
-        # Lê o texto do PDF
-        texto = ler_pdf(caminho_pdf)
-
-        if not texto:
-            print(f"         ⚠️  Sem texto extraível — pulando")
-            pdfs_com_erro += 1
-            continue
-
-        # Divide em chunks
-        chunks = dividir_em_chunks(texto, TAMANHO_CHUNK, SOBREPOSICAO)
-        print(f"         → {len(chunks)} chunks gerados")
-
-        # Gera embeddings (transforma cada chunk em vetor numérico)
-        embeddings = modelo.encode(chunks).tolist()
-
-        # Cria IDs únicos para cada chunk
-        ids = [f"{nome_arquivo}__chunk_{j}" for j in range(len(chunks))]
-
-
-        # Cria metadados para cada chunk (com citação acadêmica)
-        info_arquivo = parsear_nome_arquivo(nome_arquivo)
-        metadados = [
-            {
-                "arquivo": nome_arquivo,
-                "pasta": caminho_pdf.parent.name,
-                "chunk_index": j,
-                "total_chunks": len(chunks),
-                "autor": info_arquivo["autor"],
-                "titulo": info_arquivo["titulo"],
-                "ano": info_arquivo["ano"],
-                "citacao": info_arquivo["citacao"]
-            }
-            for j in range(len(chunks))
-        ]
-
-        # Adiciona ao ChromaDB
-        # upsert = insert + update: evita duplicatas se rodar de novo
-        upsert_em_lotes(colecao, ids, embeddings, chunks, metadados)
-
-        total_chunks   += len(chunks)
-        pdfs_indexados += 1
-        print(f"         ✅ Indexado com sucesso!")
-
-    # ----------------------------------------------------------
-    # PASSO 6 — Relatório final
-    # ----------------------------------------------------------
-    print("\n" + "=" * 60)
-    print("  INDEXAÇÃO CONCLUÍDA!")
-    print("=" * 60)
-    print(f"  PDFs indexados com sucesso : {pdfs_indexados}")
-    print(f"  PDFs com erro              : {pdfs_com_erro}")
-    print(f"  Total de chunks no banco   : {total_chunks}")
-    print(f"  Coleção ChromaDB           : {NOME_COLECAO}")
-    print(f"  Local do banco             : {PASTA_CHROMADB}")
-    print("=" * 60)
-    print("\n✅ Al IAdo está pronto para buscar na literatura!")
-
-def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path) -> dict:
-    """
-    Indexa um único PDF no ChromaDB.
-    Usado pelo upload manual da interface Streamlit.
-    Retorna um dicionário com o resultado da operação.
-    """
-
-    NOME_COLECAO = "literatura_pv"
-
-    resultado = {
-        "sucesso"     : False,
-        "nome_arquivo": caminho_pdf.name,
-        "n_chunks"    : 0,
-        "erro"        : None
-    }
-
-    # Lê o PDF
-    texto = ler_pdf(caminho_pdf)
-    if not texto:
-        resultado["erro"] = "Não foi possível extrair texto do PDF."
-        return resultado
-
-    # Divide em chunks
-    # Pipeline de chunking inteligente
-    # Tipo 1: chunks de texto por tamanho fixo (conteúdo narrativo)
-    chunks_texto = dividir_em_chunks(texto, TAMANHO_CHUNK, SOBREPOSICAO)
-
-    # Tipo 2: seções semânticas (preserva estrutura do documento)
-    chunks_secoes = dividir_em_secoes(texto)
-
-    # Tipo 3: tabelas estruturadas (valores numéricos, FMEA, etc.)
-    info_arquivo = parsear_nome_arquivo(caminho_pdf.name)
-    chunks_tabelas = extrair_tabelas_pdf(caminho_pdf, info_arquivo)
-
-    # Une todos os tipos, deduplicando conteúdo idêntico
-    vistos = set()
-    chunks = []
-    for chunk in chunks_texto + chunks_secoes + chunks_tabelas:
-        chave = chunk[:100]  # usa os primeiros 100 chars como chave
-        if chave not in vistos and chunk.strip():
-            vistos.add(chave)
-            chunks.append(chunk)
-    if not chunks:
-        resultado["erro"] = "Nenhum chunk gerado."
-        return resultado
-
-    # Conecta ao ChromaDB
-    client  = chromadb.PersistentClient(path=str(pasta_chromadb))
-    colecao = client.get_or_create_collection(
-        name     = NOME_COLECAO,
-        metadata = {"hnsw:space": "cosine"}
-    )
-
-    # Gera embeddings
-    embeddings = modelo_embeddings.encode(chunks).tolist()
-
-    # Metadados com citação acadêmica
-    info_arquivo = parsear_nome_arquivo(caminho_pdf.name)
-    nome_pasta   = caminho_pdf.parent.name
-
-    ids = [f"{caminho_pdf.name}__chunk_{j}" for j in range(len(chunks))]
-
-    metadados = [
-        {
-            "arquivo"     : caminho_pdf.name,
-            "pasta"       : nome_pasta,
-            "chunk_index" : j,
-            "total_chunks": len(chunks),
-            "autor"       : info_arquivo["autor"],
-            "titulo"      : info_arquivo["titulo"],
-            "ano"         : info_arquivo["ano"],
-            "citacao"     : info_arquivo["citacao"]
-        }
-        for j in range(len(chunks))
-    ]
-
-    # Indexa
-    upsert_em_lotes(colecao, ids, embeddings, chunks, metadados)
-
-    resultado["sucesso"]  = True
-    resultado["n_chunks"] = len(chunks)
-    return resultado
-
-# ============================================================
-# PONTO DE ENTRADA
-# ============================================================
 
 if __name__ == "__main__":
     indexar_literatura()

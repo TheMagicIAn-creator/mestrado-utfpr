@@ -82,6 +82,24 @@ COLUNAS_TENSAO   = ["u_a_k-1", "u_b_k-1", "u_c_k-1"]
 COLUNA_DC        = "u_dc_k"
 FASES            = ["a", "b", "c"]
 
+# Caches pequenos e determinísticos para evitar recriar os mesmos vetores
+# em cada janela analisada.
+_CACHE_HANN = {}
+_CACHE_FREQS = {}
+
+
+def _janela_hann(n: int) -> np.ndarray:
+    if n not in _CACHE_HANN:
+        _CACHE_HANN[n] = windows.hann(n)
+    return _CACHE_HANN[n]
+
+
+def _freqs_rfft(n: int, fs: int) -> np.ndarray:
+    chave = (n, fs)
+    if chave not in _CACHE_FREQS:
+        _CACHE_FREQS[chave] = np.fft.rfftfreq(n, d=1.0 / fs)
+    return _CACHE_FREQS[chave]
+
 
 # ============================================================
 # ESPECTRO
@@ -94,9 +112,9 @@ def calcular_espectro(sinal: np.ndarray, fs: int) -> tuple:
     Janela de Hann reduz vazamento espectral (Smith, 1999).
     """
     n         = len(sinal)
-    jan       = windows.hann(n)
+    jan       = _janela_hann(n)
     espectro  = np.fft.rfft(sinal * jan)
-    freqs     = np.fft.rfftfreq(n, d=1.0 / fs)
+    freqs     = _freqs_rfft(n, fs)
     amps      = (2.0 / n) * np.abs(espectro)  # fator 2 compensa espelho
     return freqs, amps
 

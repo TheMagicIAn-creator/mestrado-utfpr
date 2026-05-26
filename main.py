@@ -75,7 +75,7 @@ def finalizar_sessao(caminho: Path, historico: list, modelo_embeddings, n_intera
     """
     Adiciona rodapé e indexa a sessão no ChromaDB ao encerrar.
     """
-    from src.agente import PASTA_CHROMADB
+    from src.core.config import PASTA_CHROMADB
 
     rodape  = f"\n---\n"
     rodape += f"*Sessão encerrada — {n_interacoes} interações*\n"
@@ -156,7 +156,8 @@ def main():
                 llm               = llm,
                 historico         = historico,
                 streaming         = True,
-                colecao_sessoes   = colecao_sessoes
+                colecao_sessoes   = colecao_sessoes,
+                nome_provedor     = nome_provedor,
             )
 
             print("\n" + "-" * 60)
@@ -171,7 +172,10 @@ def main():
 
         except Exception as e:
             erro = str(e)
-            if "429" in erro:
+            if "413" in erro or "Request too large" in erro:
+                print("\nPedido grande demais para o limite do provedor.")
+                print("Tente uma pergunta mais focada ou escolha Gemini.")
+            elif "429" in erro:
                 print(f"\n⏳ Limite da API atingido.")
                 print(f"   Encerre com Ctrl+C e reinicie escolhendo outro provedor.")
             else:

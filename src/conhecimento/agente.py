@@ -14,6 +14,12 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -27,6 +33,51 @@ from src.core.config import (
     N_RESULTADOS,
 )
 from langchain_core.messages import HumanMessage
+
+ORCAMENTOS_RAG = {
+    "groq": {
+        "n_pool": 24,
+        "n_resultados": 6,
+        "contexto_chars": 8_000,
+        "sessao_chars": 900,
+        "historico_turnos": 4,
+        "historico_chars": 280,
+        "max_prompt_chars": 28_000,
+    },
+    "gemini": {
+        "n_pool": 36,
+        "n_resultados": 10,
+        "contexto_chars": 14_000,
+        "sessao_chars": 1_500,
+        "historico_turnos": 6,
+        "historico_chars": 420,
+        "max_prompt_chars": 48_000,
+    },
+    "padrao": {
+        "n_pool": 30,
+        "n_resultados": 8,
+        "contexto_chars": 10_000,
+        "sessao_chars": 1_200,
+        "historico_turnos": 4,
+        "historico_chars": 320,
+        "max_prompt_chars": 34_000,
+    },
+}
+
+PERFIL_COMPACTO = """
+Voce e o Al IAdo PV, assistente de pesquisa do Rodolfo Torres no mestrado da UTFPR.
+Atue como coorientador tecnico em manutencao preditiva de inversores fotovoltaicos,
+FMEA/FMECA, RCM, confiabilidade, sinais eletricos CA e Machine Learning.
+
+Voz: portugues brasileiro, natural, tecnicamente preciso e sem formato engessado.
+Use a literatura recuperada como evidencia quando ela existir; cite autor/ano.
+Quando o contexto recuperado for insuficiente, diga isso e separe conhecimento geral
+de evidencia documental. Ajuste o tamanho da resposta ao pedido.
+
+Contexto do projeto: o pipeline de ML trabalha com features CA, Autoencoder de
+normalidade, injecao de falhas sinteticas orientada por FMEA, validacao formal
+por AUC/F1/Recall/Precision e estimativa de confiabilidade/RUL com Weibull.
+""".strip()
 
 # ============================================================
 # CONFIGURAÇÕES
@@ -120,83 +171,186 @@ def inicializar_agente(llm_externo=None):
 
     return perfil, modelo_embeddings, colecao, colecao_sessoes, llm
 
+
+def _normalizar_texto(texto: str) -> str:
+    import re
+    import unicodedata
+
+    texto = texto.lower()
+    texto = "".join(
+        c for c in unicodedata.normalize("NFD", texto)
+        if unicodedata.category(c) != "Mn"
+    )
+    return re.sub(r"[^a-z0-9\s]", " ", texto)
+
+
+def resposta_interacao_simples(pergunta: str) -> str | None:
+    """Responde localmente a cumprimentos simples sem acionar RAG/LLM."""
+    txt = _normalizar_texto(pergunta)
+    termos = [t for t in txt.split() if t]
+    if len(termos) > 6:
+        return None
+
+    saudacoes = {
+        "oi", "ola", "opa", "bom", "dia", "boa", "tarde", "noite",
+        "salve", "eai", "eae",
+    }
+    agradecimentos = {"obrigado", "obrigada", "valeu", "thanks"}
+
+    if any(t in saudacoes for t in termos):
+        return (
+            "Bom dia, Rodolfo. Estou por aqui. Pode me pedir para discutir "
+            "literatura, revisar metodologia, interpretar resultados do pipeline "
+            "ou simplesmente pensar junto sobre o mestrado."
+        )
+
+    if any(t in agradecimentos for t in termos):
+        return "Disponha, Rodolfo. Seguimos lapidando isso com calma e rigor."
+
+    if txt.strip() in {"tudo bem", "como vai", "voce esta ai"}:
+        return "Estou aqui, sim. Pronto para continuar do ponto que fizer mais sentido."
+
+    return None
+
+
+def _orcamento_rag(nome_provedor: str | None = None) -> dict:
+    nome = (nome_provedor or "").lower()
+    if "groq" in nome or "llama" in nome:
+        return ORCAMENTOS_RAG["groq"].copy()
+    if "gemini" in nome or "google" in nome:
+        return ORCAMENTOS_RAG["gemini"].copy()
+    return ORCAMENTOS_RAG["padrao"].copy()
+
+
+def _limitar_texto(texto: str, limite: int) -> str:
+    if limite <= 0 or len(texto) <= limite:
+        return texto
+    corte = texto[:limite].rsplit(" ", 1)[0].strip()
+    return corte + "\n[trecho encurtado para caber no limite do provedor]"
+
+
+def _tokens_busca(pergunta: str) -> list[str]:
+    stopwords = {
+        "a", "as", "o", "os", "de", "da", "do", "das", "dos", "e", "em",
+        "no", "na", "nos", "nas", "um", "uma", "para", "por", "sobre",
+        "fale", "explique", "quais", "qual", "como", "que", "com",
+    }
+    termos = [
+        t for t in _normalizar_texto(pergunta).split()
+        if len(t) > 2 and t not in stopwords
+    ]
+    extras = []
+    mapa = {
+        "fmea": ["failure", "mode", "effects", "analysis", "fmeca", "npr", "rpn"],
+        "fmeca": ["fmea", "criticidade", "criticality", "npr", "rpn"],
+        "npr": ["rpn", "fmea", "criticidade"],
+        "rpn": ["npr", "fmea", "risk", "priority"],
+        "weibull": ["confiabilidade", "rul", "mttf", "b10"],
+        "autoencoder": ["anomalia", "reconstrucao", "detector"],
+        "inversor": ["fotovoltaico", "pv", "converter", "inverter"],
+    }
+    for termo in termos:
+        extras.extend(mapa.get(termo, []))
+    return list(dict.fromkeys(termos + extras))
+
+
+def _formatar_historico(historico: list, orcamento: dict) -> str:
+    if not historico:
+        return ""
+
+    linhas = ["\nHISTORICO RECENTE DA CONVERSA:"]
+    turnos = historico[-orcamento["historico_turnos"]:]
+    for turno in turnos:
+        role = "Rodolfo" if turno.get("role") == "user" else "Al IAdo PV"
+        content = _limitar_texto(
+            str(turno.get("content", "")),
+            orcamento["historico_chars"],
+        )
+        linhas.append(f"\n{role}:\n{content}")
+    return "\n".join(linhas)
+
+
+def _montar_prompt(pergunta: str,
+                   contexto: str,
+                   historico_formatado: str,
+                   orcamento: dict) -> str:
+    contexto = _limitar_texto(contexto, orcamento["contexto_chars"])
+    prompt = f"""
+{PERFIL_COMPACTO}
+
+CONTEXTO RECUPERADO:
+{contexto if contexto.strip() else "Nenhum trecho relevante recuperado."}
+{historico_formatado}
+
+PERGUNTA ATUAL DO PESQUISADOR:
+{pergunta}
+
+INSTRUCOES DE RESPOSTA:
+- Responda em portugues brasileiro, com naturalidade e precisao tecnica.
+- Use o contexto recuperado como evidencia principal e cite autor/ano quando houver fonte.
+- Se a pergunta for conceitual, explique de forma clara e conecte ao mestrado.
+- Se a evidencia recuperada for fraca, diga isso e complemente como conhecimento geral.
+- Ajuste o tamanho ao pedido; nao transforme perguntas simples em relatorios longos.
+- Nao invente numeros, autores ou resultados.
+""".strip()
+
+    if len(prompt) > orcamento["max_prompt_chars"]:
+        excesso = len(prompt) - orcamento["max_prompt_chars"]
+        novo_limite = max(2_000, len(contexto) - excesso - 500)
+        contexto = _limitar_texto(contexto, novo_limite)
+        prompt = f"""
+{PERFIL_COMPACTO}
+
+CONTEXTO RECUPERADO:
+{contexto if contexto.strip() else "Nenhum trecho relevante recuperado."}
+{historico_formatado}
+
+PERGUNTA ATUAL DO PESQUISADOR:
+{pergunta}
+
+INSTRUCOES DE RESPOSTA:
+- Responda em portugues brasileiro, com naturalidade e precisao tecnica.
+- Cite autor/ano quando usar fontes recuperadas.
+- Se faltar contexto, diga isso e complemente como conhecimento geral.
+- Seja objetivo e nao invente numeros.
+""".strip()
+
+    return prompt
+
 # ============================================================
 # RAG AVANÇADO — 3 CAMADAS
 # ============================================================
 
 def _expandir_query(pergunta: str) -> dict:
     """
-    CAMADA 1 — Expansão de query.
-    Usa Groq LLaMA 3.1 8B para gerar variações da pergunta
-    e extrair termos-chave para busca por palavras.
+    CAMADA 1 — Expansão de query local.
+    Evita chamadas auxiliares ao LLM para nao consumir TPM antes da resposta.
     """
-    import json as _json
-    from src.core.config import GROQ_API_KEY, GOOGLE_API_KEY
+    termos = _tokens_busca(pergunta)
+    variacoes = [pergunta]
 
-    prompt = f"""Você é um sistema de busca especializado em engenharia de manutenção,
-    confiabilidade de sistemas fotovoltaicos e Machine Learning aplicado a inversores.
+    txt = _normalizar_texto(pergunta)
+    if "fmea" in txt or "fmeca" in txt:
+        variacoes.extend([
+            "analise de modos e efeitos de falha",
+            "failure mode and effects analysis",
+            "risk priority number rpn npr criticality",
+        ])
+    if "weibull" in txt or "rul" in txt:
+        variacoes.extend([
+            "confiabilidade weibull vida util remanescente",
+            "reliability weibull remaining useful life mttf b10",
+        ])
+    if "autoencoder" in txt or "anomalia" in txt:
+        variacoes.extend([
+            "detector de anomalias por erro de reconstrucao",
+            "autoencoder anomaly detection reconstruction error",
+        ])
 
-    Domínio técnico: FMEA, FMECA, NPR/RPN, RCM/MCC, inversores fotovoltaicos on-grid,
-    detecção de anomalias, filtro LCL, IGBTs, Autoencoder, Isolation Forest, Weibull,
-    sinais elétricos CA, THD, FFT, RMS, manutenção preditiva, confiabilidade.
-
-    Dada a pergunta abaixo, gere:
-    1. Seis variações da pergunta cobrindo:
-       - Reformulação em português técnico formal
-       - Reformulação em inglês técnico (obrigatório)
-       - Versão com siglas expandidas (ex: NPR → Número de Prioridade de Risco)
-       - Versão com siglas contraídas (ex: Failure Mode → FMEA)
-       - Versão focada em resultados numéricos ou dados quantitativos se aplicável
-       - Versão com sinônimos do domínio (ex: inversor → conversor CC-CA, power inverter)
-
-    2. Oito termos-chave para busca literal, incluindo:
-       - Termos em português
-       - Termos equivalentes em inglês
-       - Siglas e abreviações relevantes
-       - Possíveis valores numéricos ou identificadores implícitos na pergunta
-
-    Retorne APENAS um JSON válido neste formato, sem explicações:
-    {{"variacoes": ["...", "...", "...", "...", "...", "..."], "termos": ["...", "...", "...", "...", "...", "...", "...", "..."]}}
-
-    Pergunta: {pergunta}"""
-
-    resposta = None
-
-    if GROQ_API_KEY:
-        try:
-            from langchain_groq import ChatGroq
-            from langchain_core.messages import HumanMessage
-            llm      = ChatGroq(
-                model        = "llama-3.3-70b-versatile",
-                groq_api_key = GROQ_API_KEY,
-                temperature  = 0
-            )
-            resposta = llm.invoke([HumanMessage(content=prompt)]).content
-        except Exception:
-            pass
-
-    if not resposta and GOOGLE_API_KEY:
-        try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            from langchain_core.messages import HumanMessage
-            llm      = ChatGoogleGenerativeAI(
-                model          = "gemini-2.5-flash",
-                google_api_key = GOOGLE_API_KEY,
-                temperature    = 0
-            )
-            resposta = llm.invoke([HumanMessage(content=prompt)]).content
-        except Exception:
-            pass
-
-    if resposta:
-        try:
-            import re as _re
-            limpo    = _re.sub(r"```json?\n?", "", resposta.strip()).replace("```", "").strip()
-            return _json.loads(limpo)
-        except Exception:
-            pass
-
-    return {"variacoes": [pergunta], "termos": []}
+    return {
+        "variacoes": list(dict.fromkeys(variacoes)),
+        "termos": termos[:12],
+    }
 
 
 def _busca_hibrida(
@@ -258,98 +412,53 @@ def _busca_hibrida(
 
 def _rerankar(candidatos: list, pergunta: str, n_final: int) -> list:
     """
-    CAMADA 3 — Reranking.
-    Usa Groq LLaMA 3.1 8B para avaliar cada chunk candidato
-    e selecionar os n_final mais relevantes para a pergunta.
+    CAMADA 3 — Reranking local.
+    Pontua os chunks por sobreposicao lexical e sinais de dominio.
+    Isso reduz latencia e evita gastar TPM com chamadas intermediarias.
     """
-    import json as _json
-    from src.core.config import GROQ_API_KEY, GOOGLE_API_KEY
-
     if not candidatos:
         return []
 
     if len(candidatos) <= n_final:
         return candidatos
 
-    # Monta lista numerada dos candidatos (limitada para caber no contexto)
-    lista_chunks = ""
-    for i, (doc, meta) in enumerate(candidatos):
-        autor = meta.get("autor", "")
-        ano   = meta.get("ano",   "")
-        fonte = f"{autor} ({ano})" if autor else "Fonte desconhecida"
-        # Janela inteligente: início + fim do chunk
-        # Garante que tanto contexto (início) quanto valores numéricos (fim) chegam ao reranker
-        inicio = doc[:400]
-        fim = doc[-300:] if len(doc) > 700 else ""
-        sep = "\n...\n" if fim else ""
-        lista_chunks += f"\n[{i}] {fonte}\n{inicio}{sep}{fim}\n"
-    prompt = f"""Você é um sistema de reranking para pesquisa acadêmica sobre inversores fotovoltaicos.
+    termos = _tokens_busca(pergunta)
+    pergunta_norm = _normalizar_texto(pergunta)
+    numeros = {t for t in pergunta_norm.split() if any(ch.isdigit() for ch in t)}
 
-Pergunta do pesquisador: {pergunta}
+    pontuados = []
+    for ordem, (doc, meta) in enumerate(candidatos):
+        texto = " ".join([
+            str(meta.get("citacao", "")),
+            str(meta.get("titulo", "")),
+            str(meta.get("arquivo", "")),
+            doc,
+        ])
+        texto_norm = _normalizar_texto(texto)
+        score = 0.0
 
-Abaixo há {len(candidatos)} trechos de documentos científicos numerados de 0 a {len(candidatos)-1}.
-Selecione os {n_final} trechos MAIS relevantes para responder a pergunta.
+        for termo in termos:
+            if termo in texto_norm:
+                score += 2.0 if len(termo) > 4 else 1.0
+                if termo in _normalizar_texto(str(meta.get("citacao", ""))):
+                    score += 1.5
 
-Critérios de relevância:
-- Responde direta ou indiretamente à pergunta
-- Contém dados, valores, tabelas ou fórmulas mencionadas
-- Apresenta definições, métodos ou resultados pertinentes
-- É específico, não genérico
+        for numero in numeros:
+            if numero in texto_norm:
+                score += 2.0
 
-Retorne APENAS um JSON com os índices em ordem de relevância (mais relevante primeiro):
-{{"selecionados": [índice1, índice2, ...]}}
+        if "tabela" in texto_norm or "table" in texto_norm:
+            score += 0.4
+        if any(x in texto_norm for x in ("resultado", "metodo", "method", "equacao", "equation")):
+            score += 0.3
 
-Trechos:
-{lista_chunks}"""
+        pontuados.append((score, -ordem, doc, meta))
 
-    resposta = None
-
-    if GROQ_API_KEY:
-        try:
-            from langchain_groq import ChatGroq
-            from langchain_core.messages import HumanMessage
-            llm      = ChatGroq(
-                model        = "llama-3.3-70b-versatile",
-                groq_api_key = GROQ_API_KEY,
-                temperature  = 0
-            )
-            resposta = llm.invoke([HumanMessage(content=prompt)]).content
-        except Exception:
-            pass
-
-    if not resposta and GOOGLE_API_KEY:
-        try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            from langchain_core.messages import HumanMessage
-            llm      = ChatGoogleGenerativeAI(
-                model          = "gemini-2.5-flash",
-                google_api_key = GOOGLE_API_KEY,
-                temperature    = 0
-            )
-            resposta = llm.invoke([HumanMessage(content=prompt)]).content
-        except Exception:
-            pass
-
-    if resposta:
-        try:
-            import re as _re
-            limpo    = _re.sub(r"```json?\n?", "", resposta.strip()).replace("```", "").strip()
-            resultado = _json.loads(limpo)
-            indices   = resultado.get("selecionados", [])
-
-            selecionados = [
-                candidatos[i]
-                for i in indices
-                if isinstance(i, int) and 0 <= i < len(candidatos)
-            ]
-
-            if selecionados:
-                return selecionados[:n_final]
-        except Exception:
-            pass
-
-    # Fallback: retorna os primeiros n_final sem reranking
-    return candidatos[:n_final]
+    pontuados.sort(reverse=True)
+    selecionados = [(doc, meta) for score, _, doc, meta in pontuados if score > 0]
+    if not selecionados:
+        selecionados = [(doc, meta) for _, _, doc, meta in pontuados]
+    return selecionados[:n_final]
 
 
 # ============================================================
@@ -360,7 +469,11 @@ def buscar_contexto(
     pergunta        : str,
     modelo_embeddings,
     colecao,
-    colecao_sessoes = None
+    colecao_sessoes = None,
+    n_pool          : int | None = None,
+    n_resultados    : int | None = None,
+    contexto_chars  : int | None = None,
+    sessao_chars    : int | None = None,
 ) -> tuple:
     """
     Pipeline RAG de 3 camadas:
@@ -381,21 +494,36 @@ def buscar_contexto(
 
     # ── CAMADA 2 — Busca híbrida ─────────────────────────────
     candidatos = _busca_hibrida(
-        variacoes, termos, colecao, modelo_embeddings, n_pool=60
+        variacoes,
+        termos,
+        colecao,
+        modelo_embeddings,
+        n_pool=n_pool or 30,
     )
 
     # ── CAMADA 3 — Reranking ─────────────────────────────────
-    melhores = _rerankar(candidatos, pergunta, N_RESULTADOS)
+    melhores = _rerankar(candidatos, pergunta, n_resultados or min(N_RESULTADOS, 8))
 
     # Monta contexto da literatura
     if melhores:
         contexto += "\n📚 DA LITERATURA CIENTÍFICA:\n"
+        usados = len(contexto)
+        limite = contexto_chars or 10_000
         for doc, meta in melhores:
             arquivo = meta.get("arquivo", "")
             citacao = meta.get("citacao", arquivo)
+            bloco = f"\n[Fonte: {citacao}]\n{doc}\n"
+            if usados + len(bloco) > limite:
+                restante = limite - usados - len(f"\n[Fonte: {citacao}]\n")
+                if restante <= 300:
+                    break
+                bloco = f"\n[Fonte: {citacao}]\n{_limitar_texto(doc, restante)}\n"
             if arquivo and arquivo not in citacoes:
                 citacoes[arquivo] = citacao
-            contexto += f"\n[Fonte: {citacao}]\n{doc}\n"
+            contexto += bloco
+            usados += len(bloco)
+            if usados >= limite:
+                break
 
     # ── Sessões — busca direta (sem reranking) ───────────────
     if colecao_sessoes:
@@ -403,16 +531,27 @@ def buscar_contexto(
             vetor_pergunta = modelo_embeddings.encode([pergunta]).tolist()
             resultados_ses = colecao_sessoes.query(
                 query_embeddings = vetor_pergunta,
-                n_results        = max(3, N_RESULTADOS // 4)
+                n_results        = max(2, min(4, (n_resultados or 8) // 2))
             )
             docs_ses  = resultados_ses.get("documents", [[]])[0]
             metas_ses = resultados_ses.get("metadatas",  [[]])[0]
 
             if docs_ses:
                 contexto += "\n💭 DA MEMÓRIA DE SESSÕES ANTERIORES:\n"
+                usados_ses = 0
+                limite_ses = sessao_chars or 1_200
                 for doc, meta in zip(docs_ses, metas_ses):
                     arquivo = meta.get("arquivo", "")
-                    contexto += f"\n[Memória: {arquivo}]\n{doc}\n"
+                    bloco = f"\n[Memória: {arquivo}]\n{doc}\n"
+                    if usados_ses + len(bloco) > limite_ses:
+                        restante = limite_ses - usados_ses - len(f"\n[Memória: {arquivo}]\n")
+                        if restante <= 200:
+                            break
+                        bloco = f"\n[Memória: {arquivo}]\n{_limitar_texto(doc, restante)}\n"
+                    contexto += bloco
+                    usados_ses += len(bloco)
+                    if usados_ses >= limite_ses:
+                        break
         except Exception:
             pass
 
@@ -475,7 +614,8 @@ def preparar_prompt(
     modelo_embeddings,
     colecao,
     historico: list    = None,
-    colecao_sessoes    = None
+    colecao_sessoes    = None,
+    nome_provedor: str | None = None,
 ) -> tuple:
     """
     Prepara o prompt completo sem invocar o LLM.
@@ -486,63 +626,20 @@ def preparar_prompt(
     if historico is None:
         historico = []
 
+    orcamento = _orcamento_rag(nome_provedor)
     contexto, citacoes = buscar_contexto(
-        pergunta, modelo_embeddings, colecao, colecao_sessoes
+        pergunta,
+        modelo_embeddings,
+        colecao,
+        colecao_sessoes,
+        n_pool=orcamento["n_pool"],
+        n_resultados=orcamento["n_resultados"],
+        contexto_chars=orcamento["contexto_chars"],
+        sessao_chars=orcamento["sessao_chars"],
     )
 
-    historico_formatado = ""
-    if historico:
-        historico_formatado  = "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        historico_formatado += "HISTÓRICO DA CONVERSA ATUAL:\n"
-        historico_formatado += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        for turno in historico[-6:]:
-            role    = "Rodolfo" if turno["role"] == "user" else "Al IAdo PV"
-            content = turno["content"][:500]
-            historico_formatado += f"\n{role}:\n{content}\n"
-
-    prompt = f"""
-    {perfil}
-
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    CONTEXTO RECUPERADO DA LITERATURA CIENTÍFICA:
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    {contexto}
-    {historico_formatado}
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    PERGUNTA ATUAL DO PESQUISADOR:
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    {pergunta}
-
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    INSTRUÇÕES DE CONTEÚDO:
-    - Responda em português brasileiro
-    - Use o contexto da literatura como base principal
-    - Considere o histórico da conversa para dar continuidade
-    - Quando o contexto for insuficiente, sinalize claramente e
-      complemente com conhecimento geral
-    - Profundidade compatível com pós-graduação
-    - Seja direto e denso — sem enrolação, sem repetição
-    - Aja como co-orientador técnico: quando pertinente,
-      faça perguntas de volta ou sugira próximos passos
-    - Cite sempre as fontes pelo nome do autor e ano
-    - Sobre memória de sessões anteriores: use-a como referência,
-    mas nunca afirme com certeza absoluta o que foi ou não dito.
-    Se não tiver certeza, diga "não tenho memória clara disso"
-    em vez de negar categoricamente.
-
-    INSTRUÇÕES DE FORMATAÇÃO (obrigatório seguir):
-    - Use **negrito** para termos técnicos na primeira menção
-    - Use ## e ### para organizar respostas longas em seções
-    - Use tabelas markdown quando comparar modelos, técnicas
-      ou resultados (ex: | Modelo | Vantagem | Limitação |)
-    - Use listas numeradas para processos sequenciais
-    - Use listas com marcadores para itens sem ordem fixa
-    - Use > para citações diretas dos artigos
-    - Use `código` para nomes de funções, bibliotecas e parâmetros
-    - Use blocos ```python para pseudocódigo e exemplos
-    - Destaque conclusões importantes em **negrito**
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    """
+    historico_formatado = _formatar_historico(historico, orcamento)
+    prompt = _montar_prompt(pergunta, contexto, historico_formatado, orcamento)
     return prompt, citacoes
 
 def perguntar(
@@ -553,7 +650,8 @@ def perguntar(
     llm,
     historico: list = None,
     streaming: bool = True,
-    colecao_sessoes = None
+    colecao_sessoes = None,
+    nome_provedor: str | None = None,
 ) -> str:
     """
     Pipeline RAG completo com memória e streaming.
@@ -562,64 +660,20 @@ def perguntar(
     if historico is None:
         historico = []
 
-    # Busca contexto
-    contexto, citacoes = buscar_contexto(pergunta, modelo_embeddings, colecao, colecao_sessoes)
+    resposta_simples = resposta_interacao_simples(pergunta)
+    if resposta_simples:
+        print(resposta_simples)
+        return resposta_simples
 
-    # Formata histórico
-    historico_formatado = ""
-    if historico:
-        historico_formatado  = "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        historico_formatado += "HISTÓRICO DA CONVERSA ATUAL:\n"
-        historico_formatado += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        for turno in historico[-6:]:
-            role    = "Rodolfo" if turno["role"] == "user" else "Al IAdo PV"
-            content = turno["content"][:500]
-            historico_formatado += f"\n{role}:\n{content}\n"
-
-    # Monta prompt
-    prompt = f"""
-    {perfil}
-
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    CONTEXTO RECUPERADO DA LITERATURA CIENTÍFICA:
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    {contexto}
-    {historico_formatado}
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    PERGUNTA ATUAL DO PESQUISADOR:
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    {pergunta}
-
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    INSTRUÇÕES DE CONTEÚDO:
-    - Responda em português brasileiro
-    - Use o contexto da literatura como base principal
-    - Considere o histórico da conversa para dar continuidade
-    - Quando o contexto for insuficiente, sinalize claramente e
-      complemente com conhecimento geral
-    - Profundidade compatível com pós-graduação
-    - Seja direto e denso — sem enrolação, sem repetição
-    - Aja como co-orientador técnico: quando pertinente,
-      faça perguntas de volta ou sugira próximos passos
-    - Cite sempre as fontes pelo nome do autor e ano
-    - Sobre memória de sessões anteriores: use-a como referência,
-    mas nunca afirme com certeza absoluta o que foi ou não dito.
-    Se não tiver certeza, diga "não tenho memória clara disso"
-    em vez de negar categoricamente.
-
-    INSTRUÇÕES DE FORMATAÇÃO (obrigatório seguir):
-    - Use **negrito** para termos técnicos na primeira menção
-    - Use ## e ### para organizar respostas longas em seções
-    - Use tabelas markdown quando comparar modelos, técnicas
-      ou resultados (ex: | Modelo | Vantagem | Limitação |)
-    - Use listas numeradas para processos sequenciais
-    - Use listas com marcadores para itens sem ordem fixa
-    - Use > para citações diretas dos artigos
-    - Use `código` para nomes de funções, bibliotecas e parâmetros
-    - Use blocos ```python para pseudocódigo e exemplos
-    - Destaque conclusões importantes em **negrito**
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    """
+    prompt, citacoes = preparar_prompt(
+        pergunta=pergunta,
+        perfil=perfil,
+        modelo_embeddings=modelo_embeddings,
+        colecao=colecao,
+        historico=historico,
+        colecao_sessoes=colecao_sessoes,
+        nome_provedor=nome_provedor,
+    )
 
     mensagens = [HumanMessage(content=prompt)]
     texto_completo = ""

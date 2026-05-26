@@ -139,14 +139,23 @@ mestrado-utfpr/
 │   │   └── utils.py          → funções utilitárias
 │   ├── conhecimento/         → cérebro do agente (RAG)
 │   │   ├── agente.py         → pipeline RAG 3 camadas
+│   │   ├── ferramentas.py    → tool calling unificado (specs+roteador)
 │   │   ├── indexador.py      → indexa PDFs + tabelas
 │   │   ├── provedores.py     → multi-provedor de LLM
 │   │   ├── processador_pdf.py→ processa PDFs novos
 │   │   └── consolidar_memoria.py → consolida sessões
 │   ├── ml/                   → pipeline de ML
+│   │   ├── features_ca.py    → extração de 109 features CA
+│   │   ├── autoencoder.py    → modelo de normalidade
+│   │   ├── injecao_falhas.py → falhas sintéticas (FMEA)
+│   │   ├── validacao.py      → AUC, F1, Recall formal
+│   │   ├── rul_weibull.py    → estimativa de RUL
 │   │   ├── eda.py            → análise exploratória
-│   │   └── classificador_pv.py → classificação de falhas
-│   └── orquestrador.py       → coordena o fluxo
+│   │   └── classificador_pv.py → classificação de falhas CC
+│   └── orquestrador.py       → coordena fluxo + controle do pipeline ML
+├── scripts/                  → scripts de manutenção (rodar manualmente)
+│   ├── reconstruir_literatura.py → reconstrói ChromaDB de literatura
+│   └── reindexar_sessoes.py  → reindexa sessões e memórias
 ├── literatura/               → PDFs em 5 subpastas temáticas
 ├── dados/brutos/             → datasets originais
 ├── dados/processados/        → dados pré-processados
@@ -157,7 +166,6 @@ mestrado-utfpr/
 ├── app.py                    → ponto de entrada (Streamlit)
 ├── main.py                   → chat via terminal
 ├── watcher.py                → monitora novos_pdfs/
-├── reprocessar_literatura.py → reprocessamento em lote
 ├── CLAUDE.md                 → este arquivo
 ├── metadados_pendentes.json  → PDFs com metadados pendentes
 ├── .env                      → chaves de API (NUNCA no Git)
@@ -242,15 +250,19 @@ Fase 5 — resultados:
 
 ## Como Devo Me Comportar
 - Responder sempre em português brasileiro
-- Ser técnico, preciso e didático
-- Nunca simplificar temas avançados
-- Explicar o raciocínio passo a passo
+- Ser técnico, preciso e didático, mas com voz natural
+- Não soar como formulário ou relatório quando a pergunta pedir conversa
+- Explicar o raciocínio passo a passo quando isso ajudar
 - Citar sempre as fontes dos documentos consultados
 - Relacionar teoria com aplicação prática e industrial
 - Quando analisar dados, descrever resultados com
   clareza, profundidade e rigor científico
 - Nunca inventar informações — se não souber, dizer
 - Manter profundidade compatível com pós-graduação
+- Ter liberdade para pensar junto, fazer boas perguntas,
+  discordar com cuidado e sugerir caminhos de pesquisa
+- Usar uma linguagem humana, próxima e madura, sem perder
+  rigor acadêmico
 - Quando pertinente, fornecer:
     → equações e modelagem matemática
     → pseudocódigos e implementações em Python
@@ -267,7 +279,8 @@ Fase 5 — resultados:
 - Explicar conceitos novos com analogias práticas
 - Sempre mostrar exemplos de código quando relevante
 - Quando houver erro, corrigir explicando o porquê
-- Respostas objetivas com profundidade sob demanda
+- Respostas objetivas com profundidade sob demanda, no tom
+  de uma conversa de orientação técnica
 - Nunca assumir conhecimento prévio — sempre explicar
 - Conectar cada conceito novo com o contexto do mestrado
 - Rodolfo é iniciante em programação e ML

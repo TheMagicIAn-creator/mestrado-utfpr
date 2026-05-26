@@ -60,7 +60,7 @@ import matplotlib
 matplotlib.use("Agg")
 from pathlib import Path
 from scipy.stats import weibull_min
-from scipy.special import gamma as gamma_func
+from scipy.special import gamma as gamma_func, gammaincc
 
 import torch
 from src.ml.features_ca   import extrair_janela, JANELA, FS
@@ -80,6 +80,20 @@ N_TRAJ  = 100    # trajetórias de degradação por tipo de falha
 N_STEPS = 120    # passos de degradação por trajetória (sev 0→1,0)
 # Cada passo representa um intervalo de monitoramento
 # Em deployment real: ajustar conforme a frequência de aquisição
+BATCH_INFERENCIA = 16
+
+
+def calcular_erros_batch(vetores: np.ndarray,
+                         modelo: Autoencoder,
+                         scaler,
+                         device: torch.device) -> np.ndarray:
+    """Normaliza um lote de features e retorna o MSE por amostra."""
+    vnorm = scaler.transform(vetores).astype(np.float32)
+    with torch.inference_mode():
+        x     = torch.from_numpy(vnorm).to(device)
+        x_rec = modelo(x)
+        erros = ((x - x_rec) ** 2).mean(dim=1).detach().cpu().numpy()
+    return erros
 
 
 # ============================================================
@@ -94,7 +108,8 @@ def gerar_ttf(df_estavel: pd.DataFrame,
               limiar: float,
               tipo_falha: str,
               n_steps: int,
-              seed: int) -> int:
+              seed: int,
+              batch_size: int = BATCH_INFERENCIA) -> int:
     """
     Simula uma trajetória de degradação progressiva e retorna o TTF.
 
@@ -110,29 +125,35 @@ def gerar_ttf(df_estavel: pd.DataFrame,
     rng         = np.random.default_rng(seed)
     severidades = np.linspace(0.0, 1.0, n_steps)
     n_disp      = len(df_estavel) - JANELA
+    if n_disp <= 0:
+        raise ValueError("Periodo estavel menor que a janela de extracao.")
 
-    for step, sev in enumerate(severidades):
-        # Seleciona janela aleatória do período estável
-        inicio = int(rng.integers(0, n_disp))
-        janela = df_estavel.iloc[inicio:inicio + JANELA].copy()
+    modelo.eval()
 
-        if sev > 0.01:
-            janela = fn(janela, float(sev))
+    for inicio_batch in range(0, n_steps, batch_size):
+        fim_batch = min(inicio_batch + batch_size, n_steps)
+        vetores = []
 
-        # Extrai features e calcula erro
-        feats  = extrair_janela(janela)
-        vetor  = np.array([feats.get(c, 0.0) for c in colunas_feat],
-                          dtype=np.float32)
-        vnorm  = scaler.transform(vetor.reshape(1, -1)).astype(np.float32)
+        for step in range(inicio_batch, fim_batch):
+            sev = severidades[step]
 
-        modelo.eval()
-        with torch.no_grad():
-            x     = torch.from_numpy(vnorm).to(device)
-            x_rec = modelo(x)
-            erro  = float(((x - x_rec) ** 2).mean().cpu())
+            # Seleciona janela aleatória do período estável
+            inicio = int(rng.integers(0, n_disp))
+            janela = df_estavel.iloc[inicio:inicio + JANELA]
 
-        if erro > limiar:
-            return step  # TTF em passos de degradação
+            if sev > 0.01:
+                janela = fn(janela, float(sev))
+
+            feats = extrair_janela(janela)
+            vetores.append([feats.get(c, 0.0) for c in colunas_feat])
+
+        erros = calcular_erros_batch(
+            np.asarray(vetores, dtype=np.float32),
+            modelo, scaler, device
+        )
+        cruzamentos = np.flatnonzero(erros > limiar)
+        if len(cruzamentos) > 0:
+            return inicio_batch + int(cruzamentos[0])
 
     return n_steps  # censurado: não detectado no horizonte
 
@@ -190,25 +211,25 @@ def rul_condicional(t_atual: float, beta: float, eta: float) -> float:
 
     Pela propriedade de memória da Weibull:
       E[T - t | T > t] = integral_t^∞ R(s)/R(t) ds
-                       ≈ MTTF_residual
-
-    Aproximação numérica via integração de Monte Carlo.
+                       = eta * exp(z) * Γ(1 + 1/beta, z) - t
+      onde z = (t/eta)^beta e Γ(.,.) é a gama incompleta superior.
     """
+    if beta <= 0 or eta <= 0:
+        return float("nan")
+
     if t_atual <= 0:
         return eta * gamma_func(1 + 1 / beta)  # MTTF completo
 
-    # Amostra condicional: T | T > t_atual
-    n_mc    = 10_000
-    rng     = np.random.default_rng(42)
-    amostras = []
-    while len(amostras) < n_mc:
-        u   = rng.uniform(0, 1, n_mc * 2)
-        t   = eta * (-np.log(1 - u)) ** (1 / beta)
-        t_c = t[t > t_atual]
-        amostras.extend(t_c[:n_mc - len(amostras)])
+    z = (t_atual / eta) ** beta
+    s = 1 + 1 / beta
 
-    amostras = np.array(amostras[:n_mc])
-    return float(np.mean(amostras) - t_atual)
+    if z > 700:
+        # Aproximação assintótica evita overflow numérico para tempos extremos.
+        return float((eta / beta) * (t_atual / eta) ** (1 - beta))
+
+    gama_sup = gamma_func(s) * gammaincc(s, z)
+    media_condicional = eta * np.exp(z) * gama_sup
+    return float(max(media_condicional - t_atual, 0.0))
 
 
 # ============================================================
@@ -376,6 +397,7 @@ def executar_rul_weibull() -> bool:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     modelo = Autoencoder(n_features, latente_dim).to(device)
     modelo.load_state_dict(checkpoint["state_dict"])
+    modelo.eval()
     print(f"   ✅ Limiar={limiar:.4f} | device={device}")
 
     # ── 2. Dataset estável ───────────────────────────────────

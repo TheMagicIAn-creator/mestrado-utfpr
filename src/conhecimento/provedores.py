@@ -5,7 +5,7 @@ Permite escolher e trocar de provedor durante a sessão.
 
 Provedores suportados:
   1. Google Gemini (gemini-2.5-flash) — 20 req/dia grátis
-  2. Groq (llama-3.3-70b)            — 14.400 req/dia grátis
+  2. Groq (llama-3.3-70b)            — 12k tokens/min no tier on-demand
 
 Autor: Rodolfo Torres (UTFPR)
 """
@@ -32,7 +32,7 @@ PROVEDORES = {
         "nome"   : "Groq (LLaMA 3.3)",
         "modelo" : "llama-3.3-70b-versatile",
         "env_key": "GROQ_API_KEY",
-        "limite" : "14.400 req/dia",
+        "limite" : "12k tokens/min no tier on-demand",
         "emoji"  : "🟢"
     }
 }
