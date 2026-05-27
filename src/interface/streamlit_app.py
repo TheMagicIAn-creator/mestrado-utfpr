@@ -3,7 +3,8 @@ streamlit_app.py - Al IAdo PV
 Interface conversacional do agente.
 
 Resultados e execucoes do pipeline de ML aparecem pelo chat, conforme
-solicitacao em prompt. A interface nao possui aba separada de resultados.
+solicitacao em prompt. A interface usa componentes nativos do Streamlit
+para preservar a estetica original — sem overrides de CSS pesados.
 """
 
 from __future__ import annotations
@@ -29,150 +30,20 @@ sys.path.insert(0, str(RAIZ_PROJETO))
 
 st.set_page_config(
     page_title="Al IAdo PV",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 
-def aplicar_estilo() -> None:
-    escuro = st.session_state.get("tema_visual", "Claro") == "Escuro"
-    cores = {
-        "app": "#0f1117" if escuro else "#f6f7fb",
-        "sidebar": "#171b24" if escuro else "#eef2f7",
-        "panel": "#151a23" if escuro else "#ffffff",
-        "panel_soft": "#111827" if escuro else "#ffffff",
-        "text": "#e5e7eb" if escuro else "#111827",
-        "muted": "#a6adbb" if escuro else "#4b5563",
-        "border": "#2a3344" if escuro else "#d7dde8",
-        "primary": "#60a5fa" if escuro else "#2563eb",
-        "shadow": "rgba(0, 0, 0, 0.24)" if escuro else "rgba(15, 23, 42, 0.04)",
-        "input": "#1f2430" if escuro else "#ffffff",
-    }
-    st.markdown(
-        f"""
+# CSS mínimo — apenas oculta deploy button e o menu do Streamlit Cloud.
+# O tema claro/escuro é gerenciado nativamente pelo Streamlit via Settings (⋮).
+_CSS_MINIMO = """
 <style>
-:root {{ color-scheme: {"dark" if escuro else "light"}; }}
-#MainMenu, footer, .stDeployButton {{ display: none; }}
-.stApp {{
-    background: {cores["app"]};
-    color: {cores["text"]};
-}}
-.block-container {{
-    max-width: 1180px;
-    padding-top: 1.1rem;
-    padding-bottom: 1.4rem;
-}}
-[data-testid="stSidebar"] {{
-    background: {cores["sidebar"]};
-    color: {cores["text"]};
-}}
-[data-testid="stSidebar"] > div:first-child {{
-    padding-top: 1rem;
-}}
-[data-testid="stWidgetLabel"] p,
-[data-testid="stSidebar"] [data-testid="stRadio"] p {{
-    color: {cores["text"]} !important;
-}}
-[data-testid="stHeader"] {{
-    background: transparent;
-}}
-[data-testid="stMarkdownContainer"], [data-testid="stMarkdownContainer"] p,
-[data-testid="stMarkdownContainer"] li, [data-testid="stMarkdownContainer"] strong {{
-    color: inherit;
-}}
-.topbar {{
-    border-bottom: 1px solid {cores["border"]};
-    padding: 10px 0 14px 0;
-    margin-bottom: 18px;
-}}
-.topbar h1 {{
-    margin: 0;
-    font-size: 1.7rem;
-    line-height: 1.15;
-    color: {cores["text"]};
-}}
-.topbar p {{
-    margin: 6px 0 0 0;
-    color: {cores["muted"]};
-}}
-.quiet-panel {{
-    border-left: 3px solid {cores["primary"]};
-    background: {cores["panel"]};
-    border-radius: 8px;
-    padding: 13px 16px;
-    box-shadow: 0 1px 2px {cores["shadow"]};
-}}
-.prompt-example {{
-    border-left: 3px solid {cores["primary"]};
-    padding: 8px 0 8px 12px;
-    margin: 6px 0;
-    color: {cores["text"]};
-}}
-.status-dot {{
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-right: 6px;
-}}
-.ok-dot {{ background: #22c55e; }}
-.pending-dot {{ background: #f59e0b; }}
-[data-testid="stChatMessage"] {{
-    border-radius: 8px;
-    background: {cores["panel_soft"]};
-    border: 1px solid {cores["border"]};
-}}
-[data-testid="metric-container"] {{
-    border: 1px solid {cores["border"]};
-    border-radius: 8px;
-    padding: 10px 12px;
-    background: {cores["panel"]};
-}}
-div[data-testid="stChatInput"] {{
-    max-width: 1180px;
-}}
-[data-testid="stBottom"],
-[data-testid="stBottom"] > div,
-[data-testid="stBottom"] > div > div,
-[data-testid="stBottomBlockContainer"] {{
-    background: {cores["app"]} !important;
-}}
-div[data-testid="stChatInput"] > div {{
-    background: {cores["input"]} !important;
-    border-color: {cores["border"]} !important;
-}}
-div[data-testid="stChatInput"] textarea {{
-    background: {cores["input"]} !important;
-    color: {cores["text"]} !important;
-}}
-div[data-baseweb="select"] > div,
-div[data-testid="stTextInput"] input {{
-    background: {cores["input"]};
-    color: {cores["text"]};
-    border-color: {cores["border"]};
-}}
-[data-testid="stBaseButton-secondary"],
-[data-testid="stFileUploaderDropzone"] {{
-    background: {cores["panel"]} !important;
-    color: {cores["text"]} !important;
-    border-color: {cores["border"]} !important;
-}}
-[data-testid="stExpander"],
-[data-testid="stExpander"] details,
-[data-testid="stExpander"] summary,
-[data-testid="stExpander"] summary *,
-[data-testid="stExpanderDetails"] {{
-    background: {cores["panel"]} !important;
-    color: {cores["text"]} !important;
-    border-color: {cores["border"]} !important;
-}}
-button[kind="primary"] {{
-    background: {cores["primary"]};
-}}
+#MainMenu        { visibility: hidden; }
+.stDeployButton  { display: none; }
 </style>
-""",
-        unsafe_allow_html=True,
-    )
+"""
 
 
 @st.cache_resource
@@ -197,7 +68,6 @@ def carregar_base():
         relatorio = []
         try:
             from src.orquestrador import executar_pipeline
-
             relatorio = executar_pipeline(modelo)
         except Exception as exc:
             print(f"[Orquestrador] Erro: {exc}")
@@ -217,47 +87,38 @@ def inicializar_estado() -> None:
         "nome_provedor": "Nenhum",
         "caminho_sessao": None,
         "pergunta_pendente": None,
-        "tema_visual": "Claro",
     }
     for chave, valor in defaults.items():
         if chave not in st.session_state:
             st.session_state[chave] = valor
 
 
-def pipeline_status_html() -> str:
+def renderizar_pipeline_status() -> None:
+    """Mostra status do pipeline no sidebar com elementos nativos do Streamlit."""
     from src.ml.pipeline import NOMES_ETAPAS, pipeline_status
 
-    linhas = []
     for key, pronto in pipeline_status().items():
-        cls = "ok-dot" if pronto else "pending-dot"
-        estado = "pronto" if pronto else "pendente"
-        linhas.append(
-            f'<div><span class="status-dot {cls}"></span>'
-            f'{NOMES_ETAPAS[key]} <span style="opacity:.65">({estado})</span></div>'
-        )
-    return "\n".join(linhas)
+        nome = NOMES_ETAPAS[key]
+        if pronto:
+            st.markdown(f"✅ {nome}")
+        else:
+            st.markdown(f"⚪ {nome} _(pendente)_")
 
 
 def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
     with st.sidebar:
-        st.markdown("## Al IAdo PV")
-        st.caption("Mestrado UTFPR - agente de pesquisa")
-
-        st.radio(
-            "Tela",
-            options=["Claro", "Escuro"],
-            horizontal=True,
-            key="tema_visual",
-        )
+        st.markdown("## ⚡ Al IAdo PV")
+        st.caption("Mestrado UTFPR — agente de pesquisa")
+        st.caption("💡 Tema claro/escuro: menu ⋮ → Settings → Theme")
 
         provedor = st.session_state.get("nome_provedor", "Nenhum")
         if provedor == "Nenhum":
-            st.warning("LLM desconectado")
+            st.warning("LLM desconectado", icon="⚠️")
         else:
-            st.success(f"LLM ativo: {provedor}")
+            st.success(f"LLM ativo: {provedor}", icon="🟢")
 
         st.divider()
-        st.markdown("**Provedor**")
+        st.markdown("**🤖 Provedor**")
         from src.conhecimento.provedores import PROVEDORES, inicializar_provedor
 
         opcoes = {info["nome"]: chave for chave, info in PROVEDORES.items()}
@@ -279,15 +140,16 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
                 st.error(f"Erro ao conectar: {exc}")
 
         st.divider()
-        st.markdown("**Conhecimento**")
+        st.markdown("**📚 Conhecimento**")
         c1, c2 = st.columns(2)
         c1.metric("Literatura", colecao.count())
         c2.metric("Sessões", colecao_sessoes.count())
 
         st.divider()
-        st.markdown("**Pipeline ML**")
-        st.markdown(pipeline_status_html(), unsafe_allow_html=True)
+        st.markdown("**🤖 Pipeline ML**")
+        renderizar_pipeline_status()
         st.caption("Para rodar, refazer ou consultar resultados, use o chat.")
+
         feedback_limpeza = st.session_state.pop("feedback_limpeza_ml", None)
         if feedback_limpeza:
             st.success(feedback_limpeza)
@@ -328,7 +190,7 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
                 st.rerun()
 
         st.divider()
-        st.markdown("**PDFs**")
+        st.markdown("**📄 PDFs**")
         arquivo_pdf = st.file_uploader(
             "Adicionar PDF",
             type=["pdf"],
@@ -339,15 +201,15 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
                 destino = RAIZ_PROJETO / "novos_pdfs" / arquivo_pdf.name
                 destino.parent.mkdir(exist_ok=True)
                 destino.write_bytes(arquivo_pdf.getbuffer())
-                st.success("PDF enviado. O watcher processara automaticamente.")
+                st.success("PDF enviado. O watcher processará automaticamente.")
 
         st.divider()
-        if st.button("Limpar conversa", use_container_width=True):
+        if st.button("🗑️ Limpar conversa", use_container_width=True):
             st.session_state.mensagens = []
             st.session_state.caminho_sessao = None
             st.rerun()
 
-        with st.expander("Manutenção"):
+        with st.expander("⚙️ Manutenção"):
             if st.button("Consolidar memória", use_container_width=True):
                 try:
                     from src.conhecimento.consolidar_memoria import consolidar
@@ -368,16 +230,19 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
 
 def renderizar_topo(relatorio: list) -> None:
     provedor = st.session_state.get("nome_provedor", "Nenhum")
-    status = "Conectado" if provedor != "Nenhum" else "Aguardando conexão"
-    st.markdown(
-        f"""
-<div class="topbar">
-  <h1>Al IAdo PV</h1>
-  <p>Pesquisa, literatura e Machine Learning para falhas CA em inversores fotovoltaicos. Estado: <strong>{status}</strong>.</p>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
+
+    col_titulo, col_status = st.columns([4, 1])
+    with col_titulo:
+        st.title("⚡ Al IAdo PV")
+        st.caption(
+            "Pesquisa, literatura e Machine Learning para falhas CA em inversores "
+            "fotovoltaicos — Mestrado UTFPR"
+        )
+    with col_status:
+        if provedor != "Nenhum":
+            st.success(f"🟢 {provedor}")
+        else:
+            st.warning("Conecte um LLM →")
 
     novidades = [
         str(item)
@@ -385,32 +250,32 @@ def renderizar_topo(relatorio: list) -> None:
         if item and "nenhum pendente" not in str(item).lower()
     ]
     if novidades:
-        with st.expander("Novidades processadas na inicialização", expanded=False):
+        with st.expander("📬 Novidades processadas na inicialização", expanded=False):
             for item in novidades:
                 st.write(item)
 
 
 def renderizar_boas_vindas() -> None:
-    st.markdown(
-        """
-<div class="quiet-panel">
-  <strong>Como quer trabalhar agora?</strong><br>
-  Peça em linguagem natural. Eu posso consultar a literatura, rodar etapas do pipeline,
-  explicar métricas, mostrar gráficos ou discutir a dissertação com você.
-</div>
-""",
-        unsafe_allow_html=True,
+    from src.conhecimento.agente import _saudacao_pelo_horario
+
+    saudacao = _saudacao_pelo_horario()
+    st.info(
+        f"**{saudacao}, Rodolfo!** 👋\n\n"
+        "Como quer trabalhar agora? Peça em linguagem natural — eu consulto a "
+        "literatura, rodo etapas do pipeline, explico métricas, mostro gráficos "
+        "ou discuto a dissertação com você."
     )
 
-    st.markdown("#### Exemplos de prompt")
+    st.markdown("##### Exemplos de prompt")
     exemplos = [
-        "Explique os resultados de validação e mostre as curvas ROC.",
-        "Rode a análise de Weibull e depois interprete MTTF e B10.",
-        "Quais falhas tiveram menor severidade mínima detectável?",
-        "Compare o papel do FMEA com o Autoencoder na metodologia.",
+        "🔬 Explique os resultados de validação e mostre as curvas ROC.",
+        "📈 Rode a análise de Weibull e depois interprete MTTF e B10.",
+        "🎯 Quais falhas tiveram menor severidade mínima detectável?",
+        "📚 Compare o papel do FMEA com o Autoencoder na metodologia.",
+        "♻️ Faça o recálculo do pipeline completo.",
     ]
     for exemplo in exemplos:
-        st.markdown(f'<div class="prompt-example">{exemplo}</div>', unsafe_allow_html=True)
+        st.markdown(f"- _{exemplo}_")
 
 
 def stream_resposta(prompt: str, llm):
@@ -419,16 +284,45 @@ def stream_resposta(prompt: str, llm):
 
 
 def renderizar_imagens(imagens: list[dict]) -> None:
+    """
+    Renderiza imagens, ignorando paths que não existem mais no disco.
+    Cenário comum: o usuário apagou artefatos via 'Resultados e recálculo'
+    no sidebar e ainda há mensagens antigas com paths inválidos no histórico.
+    """
     if not imagens:
         return
-    cols = st.columns(min(2, len(imagens)))
-    for idx, img in enumerate(imagens):
+
+    validas = []
+    invalidas = 0
+    for img in imagens:
+        caminho = img.get("path", "")
+        if caminho and Path(caminho).is_file():
+            validas.append(img)
+        else:
+            invalidas += 1
+
+    if not validas:
+        if invalidas:
+            st.caption(
+                f"_({invalidas} imagem(ns) referenciada(s) já não existe(m) no disco — "
+                "rode o pipeline novamente para regenerá-las.)_"
+            )
+        return
+
+    cols = st.columns(min(2, len(validas)))
+    for idx, img in enumerate(validas):
         col = cols[idx % len(cols)]
         col.image(img["path"], caption=img.get("caption", ""), use_container_width=True)
 
+    if invalidas:
+        st.caption(
+            f"_({invalidas} imagem(ns) adicional(is) referenciada(s) não está(ão) "
+            "mais no disco.)_"
+        )
+
 
 def renderizar_mensagem(msg: dict) -> None:
-    avatar = "user" if msg["role"] == "user" else "assistant"
+    avatar = "🔬" if msg["role"] == "user" else "⚡"
     with st.chat_message(msg["role"], avatar=avatar):
         st.markdown(msg["content"])
         renderizar_imagens(msg.get("imagens", []))
@@ -481,13 +375,16 @@ def salvar_sessao(pergunta: str, resposta: str, imagens: list[dict], n: int, mod
 def responder_com_ferramenta(pergunta: str, perfil: str, llm) -> tuple[str, list[dict]]:
     from src.conhecimento.ferramentas import decidir_acao, processar_com_ferramentas
 
+    if llm is None:
+        return "", []
+
     with st.spinner("Interpretando o pedido..."):
         decisao = decidir_acao(pergunta, llm)
 
     if not decisao["usar_ferramenta"]:
         return "", []
 
-    with st.chat_message("assistant", avatar="assistant"):
+    with st.chat_message("assistant", avatar="⚡"):
         with st.status("Executando solicitação...", expanded=True) as status:
             saida = processar_com_ferramentas(
                 pergunta=pergunta,
@@ -508,6 +405,18 @@ def responder_com_ferramenta(pergunta: str, perfil: str, llm) -> tuple[str, list
     return resposta, imagens
 
 
+def _filtrar_citacoes(citacoes: dict) -> list[str]:
+    """Remove citações vazias/None e deduplica preservando ordem."""
+    vistos = []
+    for v in (citacoes or {}).values():
+        if not v:
+            continue
+        s = str(v).strip()
+        if s and s not in vistos:
+            vistos.append(s)
+    return vistos
+
+
 def responder_com_rag(pergunta: str,
                       perfil: str,
                       modelo,
@@ -515,18 +424,19 @@ def responder_com_rag(pergunta: str,
                       colecao_sessoes) -> str:
     from src.conhecimento.agente import preparar_prompt, resposta_interacao_simples
 
+    # ── Atalho: cumprimento/casual responde local sem RAG ────
     resposta_simples = resposta_interacao_simples(pergunta)
     if resposta_simples:
-        with st.chat_message("assistant", avatar="assistant"):
+        with st.chat_message("assistant", avatar="⚡"):
             st.markdown(resposta_simples)
         return resposta_simples
 
     if st.session_state.llm is None:
-        with st.chat_message("assistant", avatar="assistant"):
+        with st.chat_message("assistant", avatar="⚡"):
             resposta = (
                 "Consigo consultar status e resultados do pipeline por aqui, "
                 "mas para conversar com a literatura ou interpretar perguntas "
-                "abertas preciso que voce conecte um LLM no painel lateral."
+                "abertas preciso que você conecte um LLM no painel lateral."
             )
             st.info(resposta)
         return resposta
@@ -546,17 +456,18 @@ def responder_com_rag(pergunta: str,
             nome_provedor=st.session_state.get("nome_provedor", ""),
         )
 
-    with st.chat_message("assistant", avatar="assistant"):
+    with st.chat_message("assistant", avatar="⚡"):
         try:
             resposta = st.write_stream(stream_resposta(prompt, st.session_state.llm))
-            if citacoes:
-                st.caption("Fontes consultadas: " + "; ".join(citacoes.values()))
-                resposta += "\n\n**Fontes:** " + "; ".join(citacoes.values())
+            fontes = _filtrar_citacoes(citacoes)
+            if fontes:
+                st.caption("📚 Fontes consultadas: " + " · ".join(fontes))
+                resposta = f"{resposta}\n\n---\n📚 **Fontes:** {' · '.join(fontes)}"
         except Exception as exc:
             erro = str(exc)
             if "413" in erro or "Request too large" in erro:
                 st.error(
-                    "A solicitação ainda ficou grande demais para o limite do provedor. "
+                    "A solicitação ficou grande demais para o limite do provedor. "
                     "Tente pedir uma resposta mais focada ou troque para Gemini."
                 )
             elif "429" in erro:
@@ -580,7 +491,7 @@ def renderizar_chat(perfil, modelo, colecao, colecao_sessoes) -> None:
     pergunta = st.session_state.pergunta_pendente
     st.session_state.pergunta_pendente = None
 
-    with st.chat_message("user", avatar="user"):
+    with st.chat_message("user", avatar="🔬"):
         st.markdown(pergunta)
 
     resposta, imagens = responder_com_ferramenta(
@@ -613,7 +524,7 @@ def renderizar_chat(perfil, modelo, colecao, colecao_sessoes) -> None:
 
 def main() -> None:
     inicializar_estado()
-    aplicar_estilo()
+    st.markdown(_CSS_MINIMO, unsafe_allow_html=True)
 
     try:
         perfil, modelo, colecao, colecao_sessoes, relatorio = carregar_base()

@@ -181,10 +181,14 @@ def dependencias_pendentes(etapa: str) -> list[str]:
 def executar_etapa(etapa: str,
                    *,
                    force: bool = False,
+                   auto_deps: bool = True,
                    progresso=None) -> dict:
     """
     Executa uma unica etapa, respeitando dependencias.
     Se force=True, limpa os artefatos da etapa antes de executar.
+    Se auto_deps=True (default), roda dependencias pendentes automaticamente
+    em vez de retornar erro — comportamento que o usuario espera ao pedir
+    "rode a validacao" mesmo sem ter rodado features e autoencoder antes.
     """
     stage = get_stage(etapa)
 
@@ -200,13 +204,47 @@ def executar_etapa(etapa: str,
 
     pendentes = dependencias_pendentes(etapa)
     if pendentes:
-        nomes = ", ".join(NOMES_ETAPAS[p] for p in pendentes)
-        return {
-            "ok": False,
-            "etapa": stage.label,
-            "executou": False,
-            "mensagem": f"{stage.label} depende de: {nomes}.",
-        }
+        if not auto_deps:
+            nomes = ", ".join(NOMES_ETAPAS[p] for p in pendentes)
+            return {
+                "ok": False,
+                "etapa": stage.label,
+                "executou": False,
+                "mensagem": f"{stage.label} depende de: {nomes}.",
+            }
+
+        # Roda dependencias pendentes em ordem antes da etapa alvo.
+        executadas_extra = []
+        for dep_key in ORDEM_ETAPAS_ML:
+            if dep_key == etapa:
+                break
+            if etapa_pendente(dep_key):
+                if progresso:
+                    progresso(f"Pré-requisito: rodando {NOMES_ETAPAS[dep_key]}...")
+                dep_stage = get_stage(dep_key)
+                try:
+                    ok_dep = bool(dep_stage.load_runner()())
+                except Exception as exc:
+                    return {
+                        "ok": False,
+                        "etapa": dep_stage.label,
+                        "executou": True,
+                        "mensagem": (
+                            f"Falha ao preparar pré-requisito '{dep_stage.label}' "
+                            f"para {stage.label}: {exc}"
+                        ),
+                    }
+                if not ok_dep:
+                    return {
+                        "ok": False,
+                        "etapa": dep_stage.label,
+                        "executou": True,
+                        "mensagem": (
+                            f"Pré-requisito '{dep_stage.label}' falhou — "
+                            f"não consegui chegar até {stage.label}."
+                        ),
+                    }
+                executadas_extra.append(dep_stage.label)
 
     if progresso:
         progresso(f"Executando: {stage.label}...")
@@ -221,14 +259,21 @@ def executar_etapa(etapa: str,
             "mensagem": f"Erro ao executar {stage.label}: {exc}",
         }
 
+    msg_base = (
+        f"{stage.label} concluido com sucesso."
+        if ok else f"{stage.label} retornou falha."
+    )
+    if 'executadas_extra' in locals() and executadas_extra:
+        msg_base = (
+            f"Pré-requisitos executados: {', '.join(executadas_extra)}. "
+            + msg_base
+        )
+
     return {
         "ok": ok,
         "etapa": stage.label,
         "executou": True,
-        "mensagem": (
-            f"{stage.label} concluido com sucesso."
-            if ok else f"{stage.label} retornou falha."
-        ),
+        "mensagem": msg_base,
     }
 
 

@@ -323,9 +323,14 @@ def extrair_metadados_pdf(caminho_pdf: Path) -> dict:
 # ============================================================
 
 def gerar_nome_padronizado(autor: str, titulo: str, ano: str) -> str:
-    """Gera nome no padrão autor_titulo_ano.pdf"""
+    """Gera nome no padrão autor_titulo_ano.pdf.
 
-    def limpar(texto: str, limite: int = 50) -> str:
+    Limites pensados para Windows (path total ~255 chars). O título antes era
+    cortado em 60 chars e quebrava no meio da palavra — agora vai até 110 e
+    o corte é por palavra completa, evitando "Com Base N" no final da citação.
+    """
+
+    def limpar(texto: str, limite: int) -> str:
         subs = {
             "á":"a","à":"a","ã":"a","â":"a","ä":"a",
             "é":"e","è":"e","ê":"e","ë":"e",
@@ -337,12 +342,19 @@ def gerar_nome_padronizado(autor: str, titulo: str, ano: str) -> str:
         for orig, rep in subs.items():
             texto = texto.replace(orig, rep).replace(orig.upper(), rep)
         texto = re.sub(r"[^a-zA-Z0-9\s]", " ", texto)
-        texto = re.sub(r"\s+", "-", texto.strip())
-        texto = re.sub(r"-+", "-", texto)
-        return texto.lower()[:limite]
+        texto = re.sub(r"\s+", " ", texto.strip()).lower()
+
+        if len(texto) <= limite:
+            return texto.replace(" ", "-")
+
+        # Trunca no espaço mais próximo antes do limite (preserva palavra inteira).
+        corte = texto[:limite].rsplit(" ", 1)[0].strip()
+        if not corte:
+            corte = texto[:limite].strip()
+        return corte.replace(" ", "-")
 
     sobrenome = autor.split(",")[0].split(" ")[-1]
-    return f"{limpar(sobrenome, 30)}_{limpar(titulo, 60)}_{ano}.pdf"
+    return f"{limpar(sobrenome, 30)}_{limpar(titulo, 110)}_{ano}.pdf"
 
 
 # ============================================================

@@ -58,7 +58,9 @@ def _quer_imagens(pergunta: str) -> bool:
     txt = _normalizar(pergunta)
     return any(t in txt for t in (
         "grafico", "graficos", "imagem", "imagens", "figura", "figuras",
-        "curva", "plot", "roc", "matriz", "heatmap", "visual", "mostre",
+        "curva", "curvas", "plot", "plots", "roc", "matriz", "matrizes",
+        "heatmap", "visual", "visualiza", "mostre", "mostra", "mostrar",
+        "cade", "exibe", "exibir", "veja", "ver",
     ))
 
 

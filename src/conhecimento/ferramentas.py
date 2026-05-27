@@ -91,6 +91,15 @@ ESPEC_FERRAMENTAS = [
             "parametrizacao."
         ),
     },
+    {
+        "name": "buscar_web",
+        "description": (
+            "Busca rapida na Wikipedia/DuckDuckGo para lookups factuais que "
+            "estao FORA da literatura indexada (datas, biografias, definicoes "
+            "amplas, eventos, normas tecnicas, padroes). Use quando o usuario "
+            "perguntar algo factual sobre o mundo que a base local nao cobre."
+        ),
+    },
 ]
 
 
@@ -114,8 +123,9 @@ def _normalizar(texto: str) -> str:
 def _deve_forcar(pergunta: str) -> bool:
     txt = _normalizar(pergunta)
     return any(t in txt for t in (
-        "refazer", "regerar", "regenerar", "rodar de novo",
-        "executar de novo", "do zero", "apagar", "recalcular",
+        "refazer", "refaca", "refaça", "regerar", "regere", "regenerar",
+        "rodar de novo", "executar de novo", "do zero", "apagar",
+        "recalcular", "recalculo", "recalcule", "recalcula",
     ))
 
 
@@ -133,23 +143,44 @@ def _quer_limpar(pergunta: str) -> bool:
     return any(t in txt for t in termos)
 
 
+# Termos que SOZINHOS já implicam a intenção de mexer com o pipeline,
+# mesmo sem aparecer "pipeline" ou outro termo de ML explicitamente.
+_TERMOS_PIPELINE_IMPLICITO = (
+    "recalcular", "recalculo", "recalcule", "recalcula",
+    "refazer", "refaca", "refaça", "regerar", "regere", "regenerar",
+    "rodar de novo", "executar de novo", "do zero", "rode tudo",
+    "rodar tudo", "executar tudo", "pipeline completo",
+)
+
+
 def _parece_pedido_de_ferramenta(pergunta: str) -> bool:
     txt = _normalizar(pergunta)
+
+    # Atalho: "recalcule", "refaça", "do zero" etc. → sempre é pipeline.
+    if any(t in txt for t in _TERMOS_PIPELINE_IMPLICITO):
+        return True
+
     termos_ml = (
         "pipeline", "feature", "features", "autoencoder", "falha", "falhas",
         "validacao", "weibull", "rul", "mttf", "auc", "f1", "recall",
         "precision", "limiar", "anomalia", "confiabilidade", "grafico",
         "graficos", "resultado", "resultados", "artefato", "artefatos",
-        "modelo", "modelos", "smd", "b10",
+        "modelo", "modelos", "smd", "b10", "detector", "deteccao",
+        "treinamento", "metricas", "roc", "imagem", "imagens", "figura",
+        "figuras", "curva", "curvas", "plot", "plots", "visualizacao",
+        "visualizacoes", "matriz", "matrizes", "heatmap", "tabela",
     )
     termos_acao = (
-        "rodar", "rode", "executar", "execute", "treinar", "treine",
-        "gerar", "gere", "refazer", "regerar", "calcular", "calcule",
-        "validar", "valide", "injetar", "injete", "estimar", "estime",
-        "mostrar", "mostre", "consultar", "consulte", "ver", "status",
-        "quais", "qual", "quanto", "apagar", "apague", "limpar", "limpe",
-        "zerar", "zere", "remover", "remova", "excluir", "exclua",
-        "deletar", "delete",
+        "rodar", "rode", "roda", "executar", "execute", "executa",
+        "treinar", "treine", "treina", "gerar", "gere", "gera",
+        "refazer", "refaca", "regerar", "regere", "calcular", "calcule",
+        "calcula", "validar", "valide", "valida", "injetar", "injete",
+        "injeta", "estimar", "estime", "estima", "mostrar", "mostre",
+        "mostra", "consultar", "consulte", "consulta", "ver", "vejo",
+        "status", "quais", "qual", "quanto", "apagar", "apague", "limpar",
+        "limpe", "zerar", "zere", "remover", "remova", "excluir", "exclua",
+        "deletar", "delete", "fazer", "faca", "faça", "cade", "onde",
+        "tem", "existe", "existem", "ha", "há",
     )
     return any(t in txt for t in termos_ml) and any(t in txt for t in termos_acao)
 
@@ -320,6 +351,43 @@ def rodar_pipeline_completo(progresso=None, pergunta: str = "") -> dict:
     }
 
 
+def buscar_na_web(progresso=None, pergunta: str = "") -> dict:
+    """Adapta src.conhecimento.web_search.buscar_web para o formato de ferramenta."""
+    from src.conhecimento.web_search import buscar_web
+
+    if progresso:
+        progresso(f"Pesquisando na web: '{pergunta[:60]}'...")
+
+    termo = (pergunta or "").strip()
+    # Remove gatilhos de comando para deixar só o termo
+    for gat in (
+        "buscar na web", "pesquisar na web", "pesquise na web", "busque na web",
+        "buscar online", "pesquisar online", "procure na internet",
+        "procure online", "na internet", "na web", "buscar", "pesquisar",
+        "procurar", "google", "googlar",
+    ):
+        termo = re.sub(rf"\b{gat}\b", "", termo, flags=re.IGNORECASE)
+    termo = termo.strip(" ,.;?!:")
+
+    if not termo:
+        return {
+            "ok": False,
+            "etapa": "Busca na web",
+            "mensagem": "Me diga o que quer pesquisar (ex.: 'pesquise na web sobre IEC 61724').",
+            "imagens": [],
+            "resposta_pronta": True,
+        }
+
+    out = buscar_web(termo)
+    return {
+        "ok": bool(out["ok"]),
+        "etapa": "Busca na web",
+        "mensagem": out["mensagem"],
+        "imagens": [],
+        "resposta_pronta": False,  # passa pelo LLM para integrar com o contexto
+    }
+
+
 _DESPACHO = {
     "rodar_features_ca": rodar_features_ca,
     "rodar_autoencoder": rodar_autoencoder,
@@ -330,6 +398,7 @@ _DESPACHO = {
     "consultar_resultados": consultar_resultados,
     "consultar_status_pipeline": consultar_status_pipeline,
     "limpar_resultados_ml": limpar_resultados_ml,
+    "buscar_web": buscar_na_web,
 }
 
 
@@ -346,30 +415,115 @@ def executar_ferramenta(nome: str, progresso=None, pergunta: str = "") -> dict:
     return funcao(progresso=progresso, pergunta=pergunta)
 
 
+# Mapeamento "ordem cronológica" do pipeline → nome da ferramenta.
+# Quando o usuário menciona várias etapas, pegamos a MAIS AVANÇADA — assim
+# 'auto_deps=True' garante que tudo até ela rode em ordem.
+_ETAPA_ORDEM = [
+    ("feature", "rodar_features_ca"),
+    ("sinais", "rodar_features_ca"),
+    ("autoencoder", "rodar_autoencoder"),
+    ("detector", "rodar_autoencoder"),
+    ("limiar", "rodar_autoencoder"),
+    ("injec", "rodar_injecao_falhas"),
+    ("injet", "rodar_injecao_falhas"),
+    ("falha sint", "rodar_injecao_falhas"),
+    ("smd", "rodar_injecao_falhas"),
+    ("valid", "rodar_validacao"),
+    ("auc", "rodar_validacao"),
+    ("f1", "rodar_validacao"),
+    ("recall", "rodar_validacao"),
+    ("precision", "rodar_validacao"),
+    ("roc", "rodar_validacao"),
+    ("weibull", "rodar_weibull"),
+    ("rul", "rodar_weibull"),
+    ("mttf", "rodar_weibull"),
+    ("b10", "rodar_weibull"),
+    ("confiabilidade", "rodar_weibull"),
+]
+
+
+def _etapa_mais_avancada_mencionada(txt_normalizado: str) -> str | None:
+    """
+    Retorna o nome da ferramenta correspondente à etapa MAIS AVANÇADA
+    mencionada no texto, ou None se nenhuma for mencionada.
+    """
+    mais_avancada = None
+    for chave, ferramenta in _ETAPA_ORDEM:
+        if chave in txt_normalizado:
+            mais_avancada = ferramenta
+    return mais_avancada
+
+
+_GATILHOS_WEB = (
+    "buscar na web", "pesquisar na web", "pesquise na web", "busque na web",
+    "buscar online", "pesquisar online", "procure na internet",
+    "procure online", "googlar", "no google", "na internet",
+    "consulte a wikipedia", "consultar a wikipedia", "wikipedia",
+    "qual a definicao oficial", "norma iec", "norma iso", "norma abnt",
+)
+
+
 def _decisao_rapida(pergunta: str) -> dict | None:
     txt = _normalizar(pergunta)
+
+    # Busca na web — atalho prioritário quando gatilho explícito aparece
+    if any(g in txt for g in _GATILHOS_WEB):
+        return {"usar_ferramenta": True, "ferramenta": "buscar_web"}
+
     if not _parece_pedido_de_ferramenta(pergunta):
         return {"usar_ferramenta": False, "ferramenta": None}
+
+    # Limpeza explícita ("apague", "limpe...") tem prioridade sobre tudo.
     if _quer_limpar(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "limpar_resultados_ml"}
+
+    # Status do pipeline ("o que está pendente?")
     if _quer_status(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "consultar_status_pipeline"}
-    if any(t in txt for t in ("rodar", "rode", "execut", "trein", "treine", "gerar", "calcular", "calcule", "validar", "valide", "injetar", "injete", "refazer", "regerar", "estimar", "estime")):
-        if "pipeline" in txt or "tudo" in txt:
+
+    # "Recalcule", "refaça", "rode tudo de novo", "do zero" → pipeline completo.
+    if any(t in txt for t in _TERMOS_PIPELINE_IMPLICITO):
+        # Quando há ETAPAS específicas mencionadas, roteia para a mais AVANÇADA
+        # (com auto_deps=True a etapa puxa todas anteriores que faltarem).
+        etapa_mais_avancada = _etapa_mais_avancada_mencionada(txt)
+        if etapa_mais_avancada:
+            return {"usar_ferramenta": True, "ferramenta": etapa_mais_avancada}
+        # Sem etapa específica, recalcular = pipeline inteiro.
+        return {"usar_ferramenta": True, "ferramenta": "rodar_pipeline_completo"}
+
+    termos_executar = (
+        "rodar", "rode", "roda", "execut", "trein", "treine", "treina",
+        "gerar", "gere", "gera", "calcular", "calcule", "calcula",
+        "validar", "valide", "valida", "injetar", "injete", "injeta",
+        "estimar", "estime", "estima", "fazer", "faca", "faça",
+    )
+    if any(t in txt for t in termos_executar):
+        if "pipeline" in txt or "tudo" in txt or "todos" in txt:
             return {"usar_ferramenta": True, "ferramenta": "rodar_pipeline_completo"}
-        if "autoencoder" in txt or "detector" in txt:
-            return {"usar_ferramenta": True, "ferramenta": "rodar_autoencoder"}
-        if "weibull" in txt or "rul" in txt or "mttf" in txt or "b10" in txt:
-            return {"usar_ferramenta": True, "ferramenta": "rodar_weibull"}
-        if "valid" in txt or "auc" in txt or "f1" in txt or "recall" in txt:
-            return {"usar_ferramenta": True, "ferramenta": "rodar_validacao"}
-        if "injet" in txt or "falha" in txt or "smd" in txt:
-            return {"usar_ferramenta": True, "ferramenta": "rodar_injecao_falhas"}
-        if "feature" in txt or "sinais" in txt:
-            return {"usar_ferramenta": True, "ferramenta": "rodar_features_ca"}
-    if any(t in txt for t in ("resultado", "resultados", "mostrar", "mostre", "grafico", "graficos", "auc", "f1", "mttf", "b10", "smd", "limiar")):
-        if not any(t in txt for t in ("rodar", "execut", "trein", "gerar", "calcular", "validar", "injetar", "refazer", "regerar")):
+        # Roteia para a etapa mais avançada mencionada (auto_deps roda o resto)
+        etapa_mais_avancada = _etapa_mais_avancada_mencionada(txt)
+        if etapa_mais_avancada:
+            return {"usar_ferramenta": True, "ferramenta": etapa_mais_avancada}
+        # Pedido genérico de "gere os resultados" — interpreta como pipeline.
+        if "resultado" in txt:
+            return {"usar_ferramenta": True, "ferramenta": "rodar_pipeline_completo"}
+
+    # Consulta passiva ("mostre", "quais foram...", "cadê as imagens?")
+    termos_consulta = (
+        "resultado", "resultados", "mostrar", "mostre", "mostra", "grafico",
+        "graficos", "auc", "f1", "mttf", "b10", "smd", "limiar",
+        "metrica", "metricas", "imagem", "imagens", "figura", "figuras",
+        "curva", "curvas", "plot", "plots", "visualizacao", "matriz",
+        "heatmap", "roc", "tabela",
+    )
+    termos_acao_ativa = (
+        "rodar", "execut", "trein", "gerar", "gere", "calcular",
+        "validar", "injetar", "refazer", "regerar", "recalc",
+    )
+    if any(t in txt for t in termos_consulta):
+        if not any(t in txt for t in termos_acao_ativa):
             return {"usar_ferramenta": True, "ferramenta": "consultar_resultados"}
+
     return None
 
 

@@ -14,4 +14,5 @@ from src.conhecimento.ferramentas import (  # noqa: F401
     consultar_resultados,
     consultar_status_pipeline,
     limpar_resultados_ml,
+    buscar_na_web,
 )

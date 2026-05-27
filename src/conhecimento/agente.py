@@ -38,45 +38,99 @@ ORCAMENTOS_RAG = {
     "groq": {
         "n_pool": 24,
         "n_resultados": 6,
-        "contexto_chars": 8_000,
-        "sessao_chars": 900,
-        "historico_turnos": 4,
-        "historico_chars": 280,
+        "contexto_chars": 7_000,
+        "sessao_chars": 800,
+        "historico_turnos": 10,
+        "historico_chars": 900,
         "max_prompt_chars": 28_000,
     },
     "gemini": {
         "n_pool": 36,
         "n_resultados": 10,
-        "contexto_chars": 14_000,
+        "contexto_chars": 12_000,
         "sessao_chars": 1_500,
-        "historico_turnos": 6,
-        "historico_chars": 420,
+        "historico_turnos": 14,
+        "historico_chars": 1_400,
         "max_prompt_chars": 48_000,
     },
     "padrao": {
         "n_pool": 30,
         "n_resultados": 8,
-        "contexto_chars": 10_000,
-        "sessao_chars": 1_200,
-        "historico_turnos": 4,
-        "historico_chars": 320,
+        "contexto_chars": 9_000,
+        "sessao_chars": 1_100,
+        "historico_turnos": 10,
+        "historico_chars": 900,
         "max_prompt_chars": 34_000,
     },
 }
 
 PERFIL_COMPACTO = """
-Voce e o Al IAdo PV, assistente de pesquisa do Rodolfo Torres no mestrado da UTFPR.
-Atue como coorientador tecnico em manutencao preditiva de inversores fotovoltaicos,
-FMEA/FMECA, RCM, confiabilidade, sinais eletricos CA e Machine Learning.
+Você é o Al IAdo PV — pesquisador sênior e coorientador técnico do Rodolfo
+Torres no mestrado da UTFPR. Especialista em manutenção preditiva de inversores
+fotovoltaicos on-grid, FMEA/FMECA, RCM, confiabilidade, sinais elétricos CA e
+Machine Learning aplicado a detecção de anomalias.
 
-Voz: portugues brasileiro, natural, tecnicamente preciso e sem formato engessado.
-Use a literatura recuperada como evidencia quando ela existir; cite autor/ano.
-Quando o contexto recuperado for insuficiente, diga isso e separe conhecimento geral
-de evidencia documental. Ajuste o tamanho da resposta ao pedido.
+══════════════════════════════════════════════════════════════
+REGRAS DE CONVERSA (LEIA ANTES DE RESPONDER)
+══════════════════════════════════════════════════════════════
 
-Contexto do projeto: o pipeline de ML trabalha com features CA, Autoencoder de
-normalidade, injecao de falhas sinteticas orientada por FMEA, validacao formal
-por AUC/F1/Recall/Precision e estimativa de confiabilidade/RUL com Weibull.
+1. CUMPRIMENTO — REGRA RÍGIDA
+   - Cumprimente APENAS na PRIMEIRA mensagem da conversa (quando não houver
+     histórico) ou quando o Rodolfo te cumprimentar primeiro.
+   - Se já existe histórico, NÃO comece com "Bom dia/Boa tarde/Boa noite".
+     Vá direto ao ponto. Você é um colega numa conversa em andamento, não um
+     atendente que toda hora se reapresenta.
+
+2. HISTÓRICO — USE ATIVAMENTE
+   - LEIA o histórico antes de responder. Você é responsável pela continuidade
+     da conversa.
+   - Se você fez uma pergunta no turno anterior e o Rodolfo respondeu "sim",
+     "pode seguir", "continue", "ok", "vamos lá", "podemos" — isso é
+     CONSENTIMENTO PARA EXECUTAR o que VOCÊ propôs. Execute, não repergunte.
+   - Não repita perguntas que já fez. Não gire em círculos. Avance.
+   - Quando o Rodolfo for vago, recupere o contexto do histórico e proponha
+     o passo concreto que está faltando.
+
+3. INICIATIVA TÉCNICA
+   - Você tem capacidade OPERACIONAL de executar etapas do pipeline. Quando o
+     Rodolfo pedir para rodar, treinar, recalcular, refazer ou consultar
+     resultados, a ferramenta correspondente é acionada automaticamente.
+   - NUNCA diga "não tenho capacidade de executar" — você tem.
+   - Se a ferramenta acionou e voltou com erro, explique e proponha correção.
+
+4. RIGOR E EVIDÊNCIA
+   - Cite autor/ano APENAS quando usar evidência DIRETAMENTE relevante.
+   - Se o contexto recuperado for irrelevante para a pergunta, IGNORE-O em
+     silêncio. NÃO diga "o contexto trata de X" — só polui a resposta.
+   - Se faltar evidência, diga: "isso não está coberto pela base que tenho
+     aqui" e siga com conhecimento geral, separando bem os dois.
+   - NUNCA invente números, autores, equações ou resultados.
+
+5. VOZ E FORMA
+   - Português brasileiro natural, técnico-acadêmico mas humano.
+   - Trate o Rodolfo como colega de pesquisa — não como "usuário".
+   - Emojis com moderação e propósito (🔬 ⚡ 📊 ✅ 💡 🎯 📈) — complementam,
+     nunca substituem o conteúdo. NÃO use 🌃 nem outros emojis "de greeting"
+     em mensagens que não são o início da conversa.
+   - Pergunta simples → resposta curta. Pergunta profunda → resposta densa
+     com tabelas, equações, comparações.
+   - Reaja com naturalidade: "Boa pergunta!", "Excelente resultado!",
+     "Aqui tem uma sutileza importante...", "Discordo um pouco — veja...".
+
+══════════════════════════════════════════════════════════════
+CONTEXTO DO PROJETO (memorize)
+══════════════════════════════════════════════════════════════
+- Tema: detecção preditiva de falhas em componentes CA de inversor fotovoltaico
+  on-grid trifásico via ML, fundamentada em RCM/FMEA.
+- TCC base (UFPA, 2024): FMECA do CEAMAZON. Inversor NPR=210 (mais crítico),
+  subsistema CA NPR=150 (segundo mais crítico).
+- Datasets: Paderborn (inversor SAUDÁVEL, 235k amostras, 10 kHz) para treinar
+  o modelo de normalidade; PV Farms (rotulado, falhas CC) para classificação.
+- Pipeline: features_ca → autoencoder → injecao_falhas → validacao → rul_weibull.
+- Resultados: AE com limiar p99=2,91 (μ+3σ baseline=0,30); injeção LCL com
+  AUC=0,935 (sev=1,0); desbalanceamento com AUC=1,000 e Recall=1,0; sensor CA
+  com AUC=1,000.
+- Orientadora: Profª. Fernanda Cristina Correa. Defesa: março/2027.
 """.strip()
 
 # ============================================================
@@ -184,31 +238,156 @@ def _normalizar_texto(texto: str) -> str:
     return re.sub(r"[^a-z0-9\s]", " ", texto)
 
 
+def _saudacao_pelo_horario() -> str:
+    """Retorna 'Bom dia', 'Boa tarde' ou 'Boa noite' conforme a hora atual."""
+    from datetime import datetime
+    hora = datetime.now().hour
+    if 5 <= hora < 12:
+        return "Bom dia"
+    if 12 <= hora < 18:
+        return "Boa tarde"
+    return "Boa noite"
+
+
 def resposta_interacao_simples(pergunta: str) -> str | None:
-    """Responde localmente a cumprimentos simples sem acionar RAG/LLM."""
-    txt = _normalizar_texto(pergunta)
+    """
+    Responde localmente a mensagens puramente conversacionais sem acionar RAG/LLM.
+    Cobre cumprimentos, despedidas, agradecimentos, reações casuais e correções
+    de horário — tudo o que não justifica busca na literatura.
+
+    Guards (em ordem):
+      1. Se contém '?' → tem pergunta → não intercepta.
+      2. Se contém palavra interrogativa (que, qual, onde, cade, quando...) → não intercepta.
+      3. Se contém termo técnico do mestrado → não intercepta.
+      4. Se tem mais de 14 palavras → não intercepta.
+    """
+    pergunta_original = pergunta or ""
+    txt = _normalizar_texto(pergunta_original).strip()
     termos = [t for t in txt.split() if t]
-    if len(termos) > 6:
+
+    if not termos:
         return None
 
-    saudacoes = {
-        "oi", "ola", "opa", "bom", "dia", "boa", "tarde", "noite",
-        "salve", "eai", "eae",
-    }
-    agradecimentos = {"obrigado", "obrigada", "valeu", "thanks"}
+    # Guard 1: ponto de interrogação no texto original → é pergunta de verdade.
+    if "?" in pergunta_original:
+        return None
 
-    if any(t in saudacoes for t in termos):
+    # Guard 2: palavras interrogativas → é pergunta mesmo sem '?'.
+    PALAVRAS_INTERROGATIVAS = {
+        "que", "qual", "quais", "quanto", "quantos", "quanta", "quantas",
+        "onde", "cade", "quando", "como", "por", "porque", "pq", "porquê",
+        "poderia", "poderias", "consegue", "consegues", "pode",
+    }
+    if any(t in PALAVRAS_INTERROGATIVAS for t in termos):
+        return None
+
+    # Guard 3: termos técnicos → RAG/ferramentas resolvem.
+    TERMOS_PESQUISA = {
+        "fmea", "fmeca", "npr", "rpn", "weibull", "rul", "mttf", "b10",
+        "autoencoder", "inversor", "inversores", "fotovoltaico", "fotovoltaica",
+        "pv", "falha", "falhas", "pipeline", "feature", "features", "validacao",
+        "auc", "f1", "recall", "precision", "dataset", "paderborn", "rcm",
+        "modelo", "algoritmo", "dissertacao", "mestrado", "metodologia",
+        "confiabilidade", "lcl", "igbt", "thd", "fft", "rms", "anomalia",
+        "smd", "ceamazon", "filtro", "sensor", "harmonicos", "deteccao",
+        "literatura", "artigo", "paper", "tese", "tcc", "metrica", "metricas",
+        "resultado", "resultados", "limiar", "baseline", "ml", "imagem",
+        "imagens", "grafico", "graficos", "figura", "figuras", "curva",
+        "curvas", "plot", "roc", "matriz", "tabela", "internet", "web",
+        "wikipedia", "google", "pesquise", "pesquisar", "busque", "buscar",
+        "hora", "horas", "data", "dia",
+    }
+    if any(t in TERMOS_PESQUISA for t in termos):
+        return None
+
+    # Guard 4: mensagem comprida geralmente carrega intenção técnica.
+    if len(termos) > 12:
+        return None
+
+    saudacao_h = _saudacao_pelo_horario()
+
+    palavras_bomdia = {"bom dia", "bomdia"}
+    palavras_boatarde = {"boa tarde", "boatarde"}
+    palavras_boanoite = {"boa noite", "boanoite"}
+    saudacoes_genericas = {
+        "oi", "ola", "opa", "salve", "eai", "eae", "hey", "alo",
+        "olá", "fala", "fala ai", "fala cara", "tudo bem", "tudo certo",
+        "como vai", "como esta",
+    }
+    agradecimentos = {
+        "obrigado", "obrigada", "valeu", "thanks", "grato", "grata",
+        "agradeco", "agradeço", "obg", "vlw",
+    }
+    despedidas = {
+        "tchau", "ate", "ateh", "ate mais", "falou", "ate logo",
+        "ate amanha", "ate breve", "vou indo", "ate depois",
+    }
+    reacoes_curtas = {
+        "kkk", "kk", "rs", "rsrs", "haha", "hahaha", "hehe", "hehehe",
+        "legal", "show", "massa", "top", "bacana", "blz", "beleza",
+        "ok", "okay", "certo", "entendi", "entendido", "perfeito",
+        "ótimo", "otimo", "boa", "bom", "fechou", "combinado",
+    }
+
+    tem_bomdia = "bom dia" in txt or "bomdia" in txt
+    tem_boatarde = "boa tarde" in txt or "boatarde" in txt
+    tem_boanoite = "boa noite" in txt or "boanoite" in txt
+    tem_saudacao_gen = any(t in saudacoes_genericas for t in termos)
+    tem_agradecimento = any(t in agradecimentos for t in termos)
+    tem_despedida = any(t in despedidas for t in termos) or txt.startswith("ate ")
+    tem_reacao = any(t in reacoes_curtas for t in termos)
+
+    # ── Correção de horário (ex.: "Tá de noite cara kkk") ─────
+    fala_de_noite = "de noite" in txt or "ta noite" in txt or "esta noite" in txt
+    fala_de_tarde = "de tarde" in txt or "ta tarde" in txt or "esta tarde" in txt
+    fala_de_dia = "de dia" in txt or "ta dia" in txt or "esta dia" in txt
+    if fala_de_noite or fala_de_tarde or fala_de_dia:
         return (
-            "Bom dia, Rodolfo. Estou por aqui. Pode me pedir para discutir "
-            "literatura, revisar metodologia, interpretar resultados do pipeline "
-            "ou simplesmente pensar junto sobre o mestrado."
+            f"Boa correção! 😅 Eu estava no automático — me perdoe. "
+            f"**{saudacao_h}**, Rodolfo. Como posso te ajudar agora?"
         )
 
-    if any(t in agradecimentos for t in termos):
-        return "Disponha, Rodolfo. Seguimos lapidando isso com calma e rigor."
+    # ── Cumprimentos específicos por período ──────────────────
+    if tem_bomdia:
+        if saudacao_h == "Bom dia":
+            return f"Bom dia, Rodolfo! ☀️ Pronto para mais um dia de pesquisa?"
+        return (
+            f"Saudação anotada, mas aqui já é **{saudacao_h.lower()}** 🌙. "
+            f"De qualquer forma, estou por aqui pronto para o que precisar."
+        )
+    if tem_boatarde:
+        if saudacao_h == "Boa tarde":
+            return f"Boa tarde, Rodolfo! 📚 Em que posso ajudar a destravar o trabalho hoje?"
+        return f"Aqui na verdade é **{saudacao_h.lower()}**, mas estou à disposição."
+    if tem_boanoite:
+        if saudacao_h == "Boa noite":
+            return (
+                f"Boa noite, Rodolfo! 🌙 Estou por aqui — pode pedir para discutir "
+                f"literatura, rodar o pipeline ou interpretar resultados."
+            )
+        return f"Aqui ainda é **{saudacao_h.lower()}**, mas seja bem-vindo!"
 
-    if txt.strip() in {"tudo bem", "como vai", "voce esta ai"}:
-        return "Estou aqui, sim. Pronto para continuar do ponto que fizer mais sentido."
+    # ── Saudações genéricas ───────────────────────────────────
+    if tem_saudacao_gen:
+        return (
+            f"{saudacao_h}, Rodolfo! 👋 Pode me pedir para revisar literatura, "
+            f"rodar etapas do pipeline ou pensar junto sobre a dissertação."
+        )
+
+    # ── Despedidas ────────────────────────────────────────────
+    if tem_despedida:
+        return (
+            f"Até mais, Rodolfo! 👋 Quando voltar, é só puxar o assunto onde paramos. "
+            f"Boa pesquisa!"
+        )
+
+    # ── Agradecimentos ────────────────────────────────────────
+    if tem_agradecimento:
+        return "Disponha! 🤝 Seguimos lapidando o mestrado com calma e rigor."
+
+    # ── Reações curtas ────────────────────────────────────────
+    if tem_reacao and len(termos) <= 5:
+        return "Show. 🙂 Quando quiser continuar, é só mandar a próxima pergunta."
 
     return None
 
@@ -270,49 +449,97 @@ def _formatar_historico(historico: list, orcamento: dict) -> str:
     return "\n".join(linhas)
 
 
+def _contexto_temporal() -> str:
+    """Gera bloco com data, hora e dia da semana atuais."""
+    from datetime import datetime
+    dias = ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira",
+            "sexta-feira", "sábado", "domingo"]
+    meses = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
+             "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
+    agora = datetime.now()
+    saudacao = _saudacao_pelo_horario()
+    return (
+        f"DATA E HORA ATUAL: {dias[agora.weekday()]}, {agora.day} de "
+        f"{meses[agora.month - 1]} de {agora.year}, às {agora.strftime('%H:%M')}. "
+        f"Período do dia: {saudacao.lower()}."
+    )
+
+
 def _montar_prompt(pergunta: str,
                    contexto: str,
                    historico_formatado: str,
                    orcamento: dict) -> str:
     contexto = _limitar_texto(contexto, orcamento["contexto_chars"])
+    bloco_temporal = _contexto_temporal()
+    tem_contexto = bool(contexto.strip())
+    contexto_bloco = contexto if tem_contexto else "Nenhum trecho relevante recuperado."
+
+    # Marca explicitamente se já existe histórico — chave para impedir
+    # o cumprimento repetido a cada mensagem.
+    tem_historico = bool(historico_formatado and historico_formatado.strip())
+    if tem_historico:
+        estado_conversa = (
+            "ESTADO DA CONVERSA: em andamento (há histórico anterior). "
+            "NÃO cumprimente nesta resposta — vá direto ao conteúdo. "
+            "Leia o histórico abaixo para entender o que já foi proposto."
+        )
+    else:
+        estado_conversa = (
+            "ESTADO DA CONVERSA: primeira interação. "
+            "Você pode cumprimentar pelo período do dia (use a data/hora acima)."
+        )
+
     prompt = f"""
 {PERFIL_COMPACTO}
 
-CONTEXTO RECUPERADO:
-{contexto if contexto.strip() else "Nenhum trecho relevante recuperado."}
+{bloco_temporal}
+
+{estado_conversa}
+
+CONTEXTO RECUPERADO DA LITERATURA E MEMÓRIA:
+{contexto_bloco}
 {historico_formatado}
 
 PERGUNTA ATUAL DO PESQUISADOR:
 {pergunta}
 
-INSTRUCOES DE RESPOSTA:
-- Responda em portugues brasileiro, com naturalidade e precisao tecnica.
-- Use o contexto recuperado como evidencia principal e cite autor/ano quando houver fonte.
-- Se a pergunta for conceitual, explique de forma clara e conecte ao mestrado.
-- Se a evidencia recuperada for fraca, diga isso e complemente como conhecimento geral.
-- Ajuste o tamanho ao pedido; nao transforme perguntas simples em relatorios longos.
-- Nao invente numeros, autores ou resultados.
+INSTRUCOES OBRIGATÓRIAS DE RESPOSTA:
+- Releia as REGRAS DE CONVERSA do perfil — em especial as regras 1 (cumprimento)
+  e 2 (uso do histórico).
+- Se o ESTADO DA CONVERSA acima for "em andamento", NÃO comece com "Bom dia",
+  "Boa tarde", "Boa noite" nem com qualquer saudação.
+- Se a pergunta atual for confirmação curta ("sim", "pode seguir", "continue",
+  "ok"), interprete como aceite do que VOCÊ propôs no último turno e EXECUTE.
+- Se a evidência recuperada não tem relação com a pergunta, IGNORE-A em silêncio.
+- Cite autor/ano apenas quando a evidência for de fato usada.
+- Tamanho da resposta proporcional ao pedido. Pergunta curta → resposta curta.
+- Não invente números, autores, equações ou resultados.
 """.strip()
 
     if len(prompt) > orcamento["max_prompt_chars"]:
         excesso = len(prompt) - orcamento["max_prompt_chars"]
         novo_limite = max(2_000, len(contexto) - excesso - 500)
         contexto = _limitar_texto(contexto, novo_limite)
+        contexto_bloco = contexto if contexto.strip() else "Nenhum trecho relevante recuperado."
         prompt = f"""
 {PERFIL_COMPACTO}
 
+{bloco_temporal}
+
 CONTEXTO RECUPERADO:
-{contexto if contexto.strip() else "Nenhum trecho relevante recuperado."}
+{contexto_bloco}
 {historico_formatado}
 
 PERGUNTA ATUAL DO PESQUISADOR:
 {pergunta}
 
 INSTRUCOES DE RESPOSTA:
-- Responda em portugues brasileiro, com naturalidade e precisao tecnica.
-- Cite autor/ano quando usar fontes recuperadas.
-- Se faltar contexto, diga isso e complemente como conhecimento geral.
-- Seja objetivo e nao invente numeros.
+- Português brasileiro, voz natural, precisão técnica.
+- Use emojis com moderação (🔬 📊 ✅).
+- Cumprimente pelo período do dia quando apropriado.
+- Cite autor/ano só quando usar evidência relevante.
+- Se a evidência não for relevante, ignore-a sem comentar.
+- Ajuste o tamanho ao pedido. Não invente números.
 """.strip()
 
     return prompt
