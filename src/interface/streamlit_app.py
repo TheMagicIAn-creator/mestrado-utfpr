@@ -36,14 +36,51 @@ st.set_page_config(
 )
 
 
-# CSS mínimo — apenas oculta deploy button e o menu do Streamlit Cloud.
-# O tema claro/escuro é gerenciado nativamente pelo Streamlit via Settings (⋮).
+# CSS minimo: mantem o menu principal visivel, pois nele fica
+# Settings -> Theme para alternar entre claro/escuro nativo do Streamlit.
 _CSS_MINIMO = """
 <style>
-#MainMenu        { visibility: hidden; }
 .stDeployButton  { display: none; }
+.block-container {
+    max-width: min(1680px, calc(100vw - 2.5rem));
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+}
+[data-testid="stChatMessage"] {
+    max-width: min(1320px, 100%);
+}
+[data-testid="stBottomBlockContainer"],
+[data-testid="stChatInput"] {
+    max-width: min(1680px, calc(100vw - 2.5rem));
+}
+[data-testid="stBottomBlockContainer"] {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+}
+@media (max-width: 900px) {
+    .block-container,
+    [data-testid="stBottomBlockContainer"],
+    [data-testid="stChatInput"] {
+        max-width: calc(100vw - 1rem);
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+}
 </style>
 """
+
+
+# Extensões aceitas como anexo no chat (sem o ponto, como o Streamlit espera).
+# Cobre documentos, dados tabulares, código/config e imagens — o leitor_anexos
+# decide o extrator por extensão e trata o que não reconhecer.
+TIPOS_ANEXO = [
+    "pdf", "csv", "tsv", "xlsx", "xls", "xlsm", "docx",
+    "txt", "md", "markdown", "rst", "json", "yaml", "yml",
+    "toml", "ini", "cfg", "conf", "log", "html", "htm", "xml",
+    "py", "js", "ts", "java", "c", "cpp", "cs", "go", "rs", "rb",
+    "r", "sql", "sh",
+    "png", "jpg", "jpeg", "gif", "webp", "bmp",
+]
 
 
 @st.cache_resource
@@ -87,6 +124,8 @@ def inicializar_estado() -> None:
         "nome_provedor": "Nenhum",
         "caminho_sessao": None,
         "pergunta_pendente": None,
+        "anexos_pendentes": [],
+        "multimodal": False,
     }
     for chave, valor in defaults.items():
         if chave not in st.session_state:
@@ -132,9 +171,12 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
         st.caption(PROVEDORES[escolha]["limite"])
         if st.button("Conectar", use_container_width=True, type="primary"):
             try:
+                from src.conhecimento.provedores import eh_multimodal
+
                 llm, nome = inicializar_provedor(escolha)
                 st.session_state.llm = llm
                 st.session_state.nome_provedor = nome
+                st.session_state.multimodal = eh_multimodal(nome)
                 st.rerun()
             except Exception as exc:
                 st.error(f"Erro ao conectar: {exc}")
@@ -235,7 +277,7 @@ def renderizar_topo(relatorio: list) -> None:
     with col_titulo:
         st.title("⚡ Al IAdo PV")
         st.caption(
-            "Pesquisa, literatura e Machine Learning para falhas CA em inversores "
+            "Pesquisa, confiabilidade e Machine Learning para falhas CA em inversores "
             "fotovoltaicos — Mestrado UTFPR"
         )
     with col_status:
@@ -261,9 +303,9 @@ def renderizar_boas_vindas() -> None:
     saudacao = _saudacao_pelo_horario()
     st.info(
         f"**{saudacao}, Rodolfo!** 👋\n\n"
-        "Como quer trabalhar agora? Peça em linguagem natural — eu consulto a "
-        "literatura, rodo etapas do pipeline, explico métricas, mostro gráficos "
-        "ou discuto a dissertação com você."
+        "Como quer trabalhar agora? Peça em linguagem natural — eu rodo etapas "
+        "do pipeline, explico métricas, mostro gráficos ou discuto a dissertação "
+        "com você."
     )
 
     st.markdown("##### Exemplos de prompt")
@@ -271,7 +313,7 @@ def renderizar_boas_vindas() -> None:
         "🔬 Explique os resultados de validação e mostre as curvas ROC.",
         "📈 Rode a análise de Weibull e depois interprete MTTF e B10.",
         "🎯 Quais falhas tiveram menor severidade mínima detectável?",
-        "📚 Compare o papel do FMEA com o Autoencoder na metodologia.",
+        "📚 Com base na literatura, compare FMEA e Autoencoder na metodologia.",
         "♻️ Faça o recálculo do pipeline completo.",
     ]
     for exemplo in exemplos:
@@ -281,6 +323,36 @@ def renderizar_boas_vindas() -> None:
 def stream_resposta(prompt: str, llm):
     for chunk in llm.stream([HumanMessage(content=prompt)]):
         yield chunk.content
+
+
+def stream_resposta_limpa(conteudo, llm, placeholder, refs_md: str) -> str:
+    """
+    Streama a resposta do LLM dentro de um placeholder e, ao final, substitui
+    pelo texto limpo (sem bloco de fontes hallucinado) + lista oficial.
+
+    `conteudo` pode ser uma string (prompt puro) OU uma lista de partes
+    multimodais (texto + image_url) quando ha imagem anexada e o provedor e
+    multimodal — exatamente o formato aceito por `HumanMessage(content=...)`.
+
+    O efeito visual: o usuario ve a resposta surgir token a token (com um
+    cursor '▌'), e o bloco final de fontes aparece apenas UMA vez,
+    consolidado, mesmo que o LLM tenha gerado o proprio.
+    """
+    from src.conhecimento.agente import remover_bloco_fontes_llm
+
+    texto = ""
+    cursor = "▌"
+    for chunk in llm.stream([HumanMessage(content=conteudo)]):
+        texto += chunk.content
+        placeholder.markdown(texto + cursor)
+
+    texto = remover_bloco_fontes_llm(texto)
+    if refs_md:
+        final = f"{texto}\n\n---\n📚 **Fontes consultadas:**\n{refs_md}"
+    else:
+        final = texto
+    placeholder.markdown(final)
+    return final
 
 
 def renderizar_imagens(imagens: list[dict]) -> None:
@@ -405,38 +477,35 @@ def responder_com_ferramenta(pergunta: str, perfil: str, llm) -> tuple[str, list
     return resposta, imagens
 
 
-def _filtrar_citacoes(citacoes: dict) -> list[str]:
-    """Remove citações vazias/None e deduplica preservando ordem."""
-    vistos = []
-    for v in (citacoes or {}).values():
-        if not v:
-            continue
-        s = str(v).strip()
-        if s and s not in vistos:
-            vistos.append(s)
-    return vistos
-
-
 def responder_com_rag(pergunta: str,
                       perfil: str,
                       modelo,
                       colecao,
-                      colecao_sessoes) -> str:
-    from src.conhecimento.agente import preparar_prompt, resposta_interacao_simples
+                      colecao_sessoes,
+                      anexos: list | None = None) -> str:
+    from src.conhecimento.agente import (
+        deve_consultar_literatura,
+        formatar_referencias_markdown,
+        montar_conteudo_humano,
+        preparar_prompt,
+        resposta_interacao_simples,
+    )
 
     # ── Atalho: cumprimento/casual responde local sem RAG ────
-    resposta_simples = resposta_interacao_simples(pergunta)
-    if resposta_simples:
-        with st.chat_message("assistant", avatar="⚡"):
-            st.markdown(resposta_simples)
-        return resposta_simples
+    # Nunca atalhar quando ha anexos: o pesquisador quer o arquivo lido.
+    if not anexos:
+        resposta_simples = resposta_interacao_simples(pergunta)
+        if resposta_simples:
+            with st.chat_message("assistant", avatar="⚡"):
+                st.markdown(resposta_simples)
+            return resposta_simples
 
     if st.session_state.llm is None:
         with st.chat_message("assistant", avatar="⚡"):
             resposta = (
                 "Consigo consultar status e resultados do pipeline por aqui, "
-                "mas para conversar com a literatura ou interpretar perguntas "
-                "abertas preciso que você conecte um LLM no painel lateral."
+                "mas para interpretar perguntas abertas preciso que você "
+                "conecte um LLM no painel lateral."
             )
             st.info(resposta)
         return resposta
@@ -445,7 +514,14 @@ def responder_com_rag(pergunta: str,
         {"role": m["role"], "content": m["content"]}
         for m in st.session_state.mensagens
     ]
-    with st.spinner("Buscando literatura e memória..."):
+    consultar_literatura = deve_consultar_literatura(pergunta, colecao)
+    mensagem_busca = (
+        "Buscando literatura e memória..."
+        if consultar_literatura else
+        "Buscando memória e contexto do projeto..."
+    )
+
+    with st.spinner(mensagem_busca):
         prompt, citacoes = preparar_prompt(
             pergunta=pergunta,
             perfil=perfil,
@@ -454,15 +530,25 @@ def responder_com_rag(pergunta: str,
             historico=historico,
             colecao_sessoes=colecao_sessoes,
             nome_provedor=st.session_state.get("nome_provedor", ""),
+            anexos=anexos,
         )
+
+    # Quando ha imagem anexada E o provedor e multimodal, o conteudo vira uma
+    # lista (texto + image_url); caso contrario, segue como string.
+    conteudo_humano = montar_conteudo_humano(
+        prompt, anexos, st.session_state.get("multimodal", False)
+    )
 
     with st.chat_message("assistant", avatar="⚡"):
         try:
-            resposta = st.write_stream(stream_resposta(prompt, st.session_state.llm))
-            fontes = _filtrar_citacoes(citacoes)
-            if fontes:
-                st.caption("📚 Fontes consultadas: " + " · ".join(fontes))
-                resposta = f"{resposta}\n\n---\n📚 **Fontes:** {' · '.join(fontes)}"
+            refs_md = formatar_referencias_markdown(citacoes)
+            placeholder = st.empty()
+            resposta = stream_resposta_limpa(
+                conteudo_humano,
+                st.session_state.llm,
+                placeholder,
+                refs_md,
+            )
         except Exception as exc:
             erro = str(exc)
             if "413" in erro or "Request too large" in erro:
@@ -482,30 +568,53 @@ def renderizar_chat(perfil, modelo, colecao, colecao_sessoes) -> None:
     for msg in st.session_state.mensagens:
         renderizar_mensagem(msg)
 
-    if not st.session_state.mensagens and not st.session_state.pergunta_pendente:
+    if not st.session_state.mensagens and st.session_state.pergunta_pendente is None:
         renderizar_boas_vindas()
 
-    if not st.session_state.pergunta_pendente:
+    if st.session_state.pergunta_pendente is None:
         return
 
     pergunta = st.session_state.pergunta_pendente
     st.session_state.pergunta_pendente = None
 
-    with st.chat_message("user", avatar="🔬"):
-        st.markdown(pergunta)
+    arquivos_pendentes = st.session_state.get("anexos_pendentes", []) or []
+    st.session_state.anexos_pendentes = []
 
-    resposta, imagens = responder_com_ferramenta(
-        pergunta, perfil, st.session_state.llm
-    )
-    if not resposta:
+    anexos: list = []
+    rotulo_anexos = ""
+    if arquivos_pendentes:
+        from src.conhecimento.leitor_anexos import ler_anexos
+
+        with st.spinner("Lendo anexos..."):
+            anexos = ler_anexos(arquivos_pendentes)
+        nomes = ", ".join(a.get("nome", "anexo") for a in anexos)
+        rotulo_anexos = f"\n\n_📎 Anexos: {nomes}_"
+
+    conteudo_usuario = pergunta + rotulo_anexos
+
+    with st.chat_message("user", avatar="🔬"):
+        st.markdown(conteudo_usuario)
+
+    # Com anexos, ir direto ao RAG (que le o arquivo). Pular o roteador de
+    # ferramentas evita misrotear "o que tem nesse arquivo?" para o pipeline ML.
+    if anexos:
         resposta = responder_com_rag(
-            pergunta, perfil, modelo, colecao, colecao_sessoes
+            pergunta, perfil, modelo, colecao, colecao_sessoes, anexos=anexos
         )
         imagens = []
+    else:
+        resposta, imagens = responder_com_ferramenta(
+            pergunta, perfil, st.session_state.llm
+        )
+        if not resposta:
+            resposta = responder_com_rag(
+                pergunta, perfil, modelo, colecao, colecao_sessoes
+            )
+            imagens = []
 
     st.session_state.mensagens.append({
         "role": "user",
-        "content": pergunta,
+        "content": conteudo_usuario,
         "imagens": [],
     })
     st.session_state.mensagens.append({
@@ -514,7 +623,7 @@ def renderizar_chat(perfil, modelo, colecao, colecao_sessoes) -> None:
         "imagens": imagens,
     })
     salvar_sessao(
-        pergunta,
+        conteudo_usuario,
         resposta,
         imagens,
         len(st.session_state.mensagens) // 2,
@@ -537,7 +646,30 @@ def main() -> None:
 
     renderizar_chat(perfil, modelo, colecao, colecao_sessoes)
 
-    pergunta = st.chat_input("Peça uma análise, resultado, gráfico ou próxima etapa...")
-    if pergunta:
-        st.session_state.pergunta_pendente = pergunta
-        st.rerun()
+    entrada = st.chat_input(
+        "Peça uma análise ou anexe um arquivo (PDF, CSV, imagem, código...)",
+        accept_file="multiple",
+        file_type=TIPOS_ANEXO,
+    )
+    if entrada:
+        # Com accept_file, `entrada` tem .text e .files; sem, e uma string.
+        texto = getattr(entrada, "text", None)
+        arquivos = getattr(entrada, "files", None)
+        if texto is None and isinstance(entrada, str):
+            texto = entrada
+
+        anexos_bytes: list[tuple[str, bytes]] = []
+        for f in (arquivos or []):
+            try:
+                anexos_bytes.append((f.name, f.getvalue()))
+            except Exception:
+                pass
+
+        # Só anexou arquivo, sem texto: damos um pedido padrão de leitura.
+        if not (texto or "").strip() and anexos_bytes:
+            texto = "Leia o(s) arquivo(s) anexado(s) e me explique o conteúdo."
+
+        if (texto or "").strip() or anexos_bytes:
+            st.session_state.pergunta_pendente = texto or ""
+            st.session_state.anexos_pendentes = anexos_bytes
+            st.rerun()

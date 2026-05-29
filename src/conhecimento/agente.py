@@ -33,36 +33,127 @@ from src.core.config import (
     N_RESULTADOS,
 )
 from langchain_core.messages import HumanMessage
+from src.conhecimento.leitor_anexos import montar_bloco_texto_anexos, tem_imagem
+from src.conhecimento.provedores import eh_multimodal
 
 ORCAMENTOS_RAG = {
     "groq": {
-        "n_pool": 24,
-        "n_resultados": 6,
+        "n_pool": 60,
+        "n_resultados": 10,
+        "n_resultados_revisao": 16,
+        "max_chunks_por_fonte": 2,
         "contexto_chars": 7_000,
         "sessao_chars": 800,
         "historico_turnos": 10,
         "historico_chars": 900,
+        "anexos_chars": 6_000,
         "max_prompt_chars": 28_000,
     },
     "gemini": {
-        "n_pool": 36,
-        "n_resultados": 10,
-        "contexto_chars": 12_000,
+        "n_pool": 120,
+        "n_resultados": 16,
+        "n_resultados_revisao": 28,
+        "max_chunks_por_fonte": 2,
+        "contexto_chars": 14_000,
         "sessao_chars": 1_500,
         "historico_turnos": 14,
         "historico_chars": 1_400,
+        "anexos_chars": 14_000,
         "max_prompt_chars": 48_000,
     },
     "padrao": {
-        "n_pool": 30,
-        "n_resultados": 8,
-        "contexto_chars": 9_000,
+        "n_pool": 80,
+        "n_resultados": 12,
+        "n_resultados_revisao": 20,
+        "max_chunks_por_fonte": 2,
+        "contexto_chars": 10_000,
         "sessao_chars": 1_100,
         "historico_turnos": 10,
         "historico_chars": 900,
+        "anexos_chars": 9_000,
         "max_prompt_chars": 34_000,
     },
 }
+
+# Pesos por pasta tematica — usados no rerank para priorizar literatura
+# nuclear do mestrado (PV, ML preditivo, manutencao) sobre material lateral.
+PESOS_PASTA = {
+    "inversores-pv": 1.4,
+    "ml-preditivo": 1.2,
+    "manutencao": 1.2,
+    "confiabilidade": 1.2,
+    "sinais-eletricos": 0.2,
+}
+
+# Livros-texto generalistas — uteis em contextos especificos mas ruido em
+# perguntas amplas. Recebem penalidade pesada salvo quando a pergunta
+# menciona explicitamente o dominio do livro.
+TEXTBOOKS_PENALIZADOS = {
+    # Gatilhos exigem contexto INEQUIVOCO do dominio do livro — palavras
+    # ambiguas como "calculo" (calcular um limiar) ou "imagem" (imagem
+    # termografica de PV) NAO devem dar passe livre.
+    "stewart_calculo-volume-i_2013.pdf": {
+        "stewart", "calculus", "calculo integral", "calculo diferencial",
+        "integral indefinida", "integral definida", "derivada parcial",
+        "serie de taylor", "convergencia de serie", "limite matematico",
+    },
+    "gonzalez_digital-image-processing_2008.pdf": {
+        "gonzalez", "processamento de imagem", "image processing",
+        "filtro espacial", "morfologia matematica", "segmentacao de imagem",
+    },
+    "tekalp_digital-video-processing_2015.pdf": {
+        "tekalp", "processamento de video", "video processing",
+        "fluxo otico", "compressao de video",
+    },
+    "oppenheim_discrete-time-signal-processing_2014.pdf": {
+        "oppenheim", "transformada z", "z transform", "fir iir",
+    },
+    "smith_the-scientist-and-engineer-s-guide-to-digital-signal-process_1999.pdf": {
+        "guia dsp", "scientist engineer dsp",
+    },
+    "diniz_digital-signal-processing-system-analysis-and-design_2021.pdf": {
+        "diniz dsp", "design dsp",
+    },
+    "grewal_kalman-filtering-theory-and-practice-using-matlab_2001.pdf": {
+        "kalman", "filtro de kalman", "kalman filter",
+    },
+    "grewal_power-electronics-chapter-8_2002.pdf": {
+        "eletronica de potencia", "power electronics", "snubber",
+    },
+}
+
+# Indicadores de pergunta de revisao bibliografica / panorama da literatura.
+# Disparam expansao agressiva da query nos topicos da dissertacao e aumentam
+# o orcamento de resultados.
+INDICADORES_REVISAO = (
+    "literatura completa", "literatura toda", "revisao bibliografica",
+    "revisao da literatura", "estado da arte", "todos os artigos",
+    "todas as fontes", "todas as referencias", "todos os autores",
+    "panorama", "sintese da literatura", "survey", "review",
+    "literatura da dissertacao", "literatura do mestrado",
+    "literatura sobre", "cite a literatura", "cite as referencias",
+    "cite as fontes", "cite os artigos", "cite os autores",
+    "completa da dissertacao", "fundamentacao teorica",
+    "referencial teorico", "bibliografia completa",
+)
+
+# Variacoes injetadas em queries de revisao — cobrem os pilares teoricos
+# da dissertacao para acionar busca semantica em todos os documentos
+# relevantes simultaneamente.
+TOPICOS_DISSERTACAO = (
+    "FMEA FMECA failure mode and effects analysis criticality NPR RPN",
+    "RCM reliability centered maintenance manutencao centrada em confiabilidade",
+    "inversor fotovoltaico on-grid trifasico PV inverter falhas",
+    "autoencoder anomaly detection erro de reconstrucao normalidade",
+    "machine learning fault detection PV inverter diagnostico",
+    "Weibull RUL remaining useful life MTTF B10 confiabilidade",
+    "filtro LCL IGBT capacitor contactor sensor CA inversor",
+    "manutencao preditiva monitoramento de condicao prognostico",
+    "harmonicos THD sinais eletricos CA inversor fotovoltaico",
+    "isolation forest random forest XGBoost classificacao falhas PV",
+    "dataset Paderborn IGBT trifasico inversor saudavel benchmark",
+    "FMECA NPR criticidade inversor lado CA componente critico",
+)
 
 PERFIL_COMPACTO = """
 Você é o Al IAdo PV — pesquisador sênior e coorientador técnico do Rodolfo
@@ -295,7 +386,7 @@ def resposta_interacao_simples(pergunta: str) -> str | None:
         "imagens", "grafico", "graficos", "figura", "figuras", "curva",
         "curvas", "plot", "roc", "matriz", "tabela", "internet", "web",
         "wikipedia", "google", "pesquise", "pesquisar", "busque", "buscar",
-        "hora", "horas", "data", "dia",
+        "hora", "horas", "data",
     }
     if any(t in TERMOS_PESQUISA for t in termos):
         return None
@@ -362,16 +453,16 @@ def resposta_interacao_simples(pergunta: str) -> str | None:
     if tem_boanoite:
         if saudacao_h == "Boa noite":
             return (
-                f"Boa noite, Rodolfo! 🌙 Estou por aqui — pode pedir para discutir "
-                f"literatura, rodar o pipeline ou interpretar resultados."
+                f"Boa noite, Rodolfo! 🌙 Estou por aqui — pode pedir para rodar "
+                f"o pipeline, interpretar resultados ou pensar junto na dissertação."
             )
         return f"Aqui ainda é **{saudacao_h.lower()}**, mas seja bem-vindo!"
 
     # ── Saudações genéricas ───────────────────────────────────
     if tem_saudacao_gen:
         return (
-            f"{saudacao_h}, Rodolfo! 👋 Pode me pedir para revisar literatura, "
-            f"rodar etapas do pipeline ou pensar junto sobre a dissertação."
+            f"{saudacao_h}, Rodolfo! 👋 Pode me pedir para rodar etapas do "
+            f"pipeline, interpretar resultados ou pensar junto sobre a dissertação."
         )
 
     # ── Despedidas ────────────────────────────────────────────
@@ -419,18 +510,332 @@ def _tokens_busca(pergunta: str) -> list[str]:
         if len(t) > 2 and t not in stopwords
     ]
     extras = []
+    # Mapa bilingue PT<->EN. Quando a pergunta usa o termo em portugues,
+    # injetamos as variantes em ingles (e vice-versa) para que os papers
+    # em ingles tambem sejam pontuados pelo reranker baseado em lexico.
     mapa = {
-        "fmea": ["failure", "mode", "effects", "analysis", "fmeca", "npr", "rpn"],
-        "fmeca": ["fmea", "criticidade", "criticality", "npr", "rpn"],
-        "npr": ["rpn", "fmea", "criticidade"],
+        "fmea": [
+            "failure", "mode", "effects", "analysis", "fmeca", "npr", "rpn",
+            "modos", "falhas", "efeitos", "analise",
+        ],
+        "fmeca": [
+            "fmea", "criticidade", "criticality", "npr", "rpn",
+            "modos", "falhas", "efeitos", "analise", "tecnicas",
+        ],
+        "npr": ["rpn", "fmea", "criticidade", "criticality"],
         "rpn": ["npr", "fmea", "risk", "priority"],
-        "weibull": ["confiabilidade", "rul", "mttf", "b10"],
-        "autoencoder": ["anomalia", "reconstrucao", "detector"],
-        "inversor": ["fotovoltaico", "pv", "converter", "inverter"],
+        "weibull": ["confiabilidade", "reliability", "rul", "mttf", "b10"],
+        "autoencoder": ["anomalia", "anomaly", "reconstrucao", "reconstruction", "detector"],
+        "inversor": ["fotovoltaico", "pv", "converter", "inverter", "photovoltaic"],
+        "fotovoltaico": ["pv", "photovoltaic", "solar", "inverter"],
+        "manutencao": ["maintenance", "preventive", "predictive", "preditiva"],
+        "preditiva": ["predictive", "manutencao", "maintenance", "prognosis"],
+        "confiabilidade": ["reliability", "rcm", "weibull", "mttf"],
+        "rcm": ["reliability", "centered", "maintenance", "manutencao", "centrada"],
+        "anomalia": ["anomaly", "outlier", "detection", "deteccao"],
+        "deteccao": ["detection", "anomalia", "anomaly", "diagnosis"],
+        "falha": ["failure", "fault", "defect", "falhas"],
+        "falhas": ["failure", "fault", "failures", "modes"],
+        "lcl": ["filter", "filtro", "passive", "harmonic"],
+        "igbt": ["transistor", "switching", "power", "semiconductor"],
+        "rul": ["remaining", "useful", "life", "weibull", "mttf"],
+        "ml": ["machine", "learning", "algorithm"],
+        "machine": ["learning", "ml", "algorithm"],
     }
     for termo in termos:
         extras.extend(mapa.get(termo, []))
     return list(dict.fromkeys(termos + extras))
+
+
+# Autores/instituicoes presentes na base — qualquer mencao a um deles
+# forca consulta a literatura, mesmo sem palavras como "fonte" ou
+# "artigo". Inclui nomes proprios curtos (NASA) e siglas comuns. A
+# lista oficial e materializada via autores_indexados(colecao) na
+# primeira chamada, lendo o ChromaDB; este fallback cobre quando a
+# colecao nao esta disponivel.
+AUTORES_INDEXADOS_FALLBACK = {
+    "nasa", "administration",
+    "torres",
+    "lafraia",
+    "carpinetti",
+    "sakurada",
+    "muqauwim",
+    "frontin",
+    "moura",
+    "eletrica",
+    "stewart",
+    "gonzalez",
+    "tekalp",
+    "oppenheim",
+    "smith",
+    "diniz",
+    "grewal",
+    "ahirwar",
+    "francisti",
+    "ghoneim",
+    "ibrahim",
+    "marangis",
+    "narayanan",
+    "puc-rio", "pucrio", "puc",
+    "risi",
+    "sharma",
+    "silva",
+    "xavier",
+    "cristaldi",
+    "dhople",
+    "joshi",
+    "karim",
+    "monteiro",
+    "pahwa",
+    "patil",
+    "shuttleworth",
+    "stender",
+    "voss",
+    # Datasets/instituicoes — tambem ativam consulta a literatura
+    "paderborn",
+    "ceamazon",
+    "ufpa",
+    "utfpr",
+    "ieee",
+    "iec",
+    "abnt",
+    "iso",
+    "mil-hdbk", "milhdbk",
+}
+
+_AUTORES_CACHE: set[str] = set()
+_AUTOR_CANONICO_CACHE: dict[str, set[str]] = {}
+# Mapa: autor canonico (ex.: 'Grewal') → lista de arquivos desse autor
+# (necessario porque ha autores com varios papers, e where={"autor": X}
+# pode trazer todos os chunks de um arquivo e nenhum do outro quando o
+# limit nao cobre o primeiro).
+_AUTOR_ARQUIVOS_CACHE: dict[str, set[str]] = {}
+
+
+def autores_indexados(colecao=None) -> set[str]:
+    """
+    Retorna o conjunto de autores presentes no ChromaDB (campo 'autor'
+    do metadado), em minusculas e normalizado. Em caso de erro ou colecao
+    nao fornecida, usa o fallback hardcoded.
+
+    Tambem popula _AUTOR_CANONICO_CACHE, que mapeia cada token normalizado
+    (incluindo sub-tokens de autores compostos como 'Puc Rio' → 'puc' e
+    'rio') para o conjunto de formas canonicas do metadado autor.
+    """
+    global _AUTORES_CACHE, _AUTOR_CANONICO_CACHE, _AUTOR_ARQUIVOS_CACHE
+    if _AUTORES_CACHE:
+        return _AUTORES_CACHE
+    nomes: set[str] = set(AUTORES_INDEXADOS_FALLBACK)
+    canonicos: dict[str, set[str]] = {}
+    autor_arquivos: dict[str, set[str]] = {}
+    if colecao is not None:
+        try:
+            offset, lote = 0, 500
+            while True:
+                r = colecao.get(limit=lote, offset=offset, include=["metadatas"])
+                metas = r.get("metadatas", [])
+                if not metas:
+                    break
+                for m in metas:
+                    autor_raw = str(m.get("autor", "")).strip()
+                    arquivo = str(m.get("arquivo", "")).lower()
+                    autor_norm = _normalizar_texto(autor_raw).strip()
+                    if autor_raw and arquivo:
+                        autor_arquivos.setdefault(autor_raw, set()).add(arquivo)
+                    if autor_norm:
+                        nomes.add(autor_norm)
+                        # Indexa o autor completo e cada sub-token
+                        canonicos.setdefault(autor_norm, set()).add(autor_raw)
+                        for sub in autor_norm.split():
+                            if len(sub) > 2:
+                                nomes.add(sub)
+                                canonicos.setdefault(sub, set()).add(autor_raw)
+                    if "_" in arquivo:
+                        primeiro = arquivo.split("_", 1)[0]
+                        primeiro_norm = _normalizar_texto(primeiro).strip()
+                        if primeiro_norm and len(primeiro_norm) > 2:
+                            nomes.add(primeiro_norm)
+                            for sub in primeiro_norm.split():
+                                if len(sub) > 2:
+                                    nomes.add(sub)
+                                    if autor_raw:
+                                        canonicos.setdefault(sub, set()).add(autor_raw)
+                if len(metas) < lote:
+                    break
+                offset += lote
+        except Exception:
+            pass
+    _AUTORES_CACHE = nomes
+    _AUTOR_CANONICO_CACHE = canonicos
+    _AUTOR_ARQUIVOS_CACHE = autor_arquivos
+    return nomes
+
+
+def arquivos_do_autor(autor_canonico: str, colecao=None) -> set[str]:
+    """Retorna o conjunto de arquivos (filenames) atribuidos a um autor canonico."""
+    if not _AUTOR_ARQUIVOS_CACHE:
+        autores_indexados(colecao)
+    return _AUTOR_ARQUIVOS_CACHE.get(autor_canonico, set())
+
+
+def autores_canonicos_para(token: str, colecao=None) -> set[str]:
+    """
+    Dado um token (sobrenome lowercase, ex.: 'puc', 'grewal'), retorna o
+    conjunto de formas canonicas do metadado autor que cobrem esse token —
+    ex.: 'puc' → {'Puc Rio'}, 'grewal' → {'Grewal'}.
+    """
+    if not _AUTOR_CANONICO_CACHE:
+        autores_indexados(colecao)  # popula cache
+    return _AUTOR_CANONICO_CACHE.get(_normalizar_texto(token).strip(), set())
+
+
+def deve_consultar_literatura(pergunta: str, colecao=None) -> bool:
+    """
+    Retorna True quando o pedido:
+      - menciona explicitamente literatura/artigo/fonte/referencia,
+      - OU cita o sobrenome de um autor indexado (Torres, NASA, Ahirwar...),
+      - OU pergunta sobre presenca/localizacao de uma fonte
+        ("tem o Stender?", "cade o Torres?", "onde esta o paper do Ahirwar?",
+         "perdi a indexacao", "indexado", "na base").
+    """
+    txt = _normalizar_texto(pergunta or "")
+    frases = (
+        "segundo a literatura",
+        "com base na literatura",
+        "consulte a literatura",
+        "na literatura",
+        "com referencias",
+        "com fontes",
+        "cite artigos",
+        "citar artigos",
+        "cite autores",
+        "citar autores",
+        "segundo os autores",
+        "de acordo com os autores",
+        "base indexada",
+        "base de conhecimento",
+        "nos documentos",
+        "documentos indexados",
+        "revisao bibliografica",
+        "estado da arte",
+        "levantamento bibliografico",
+        "perdi a indexacao",
+        "perdeu a indexacao",
+        "na base",
+        "no chromadb",
+        "indexado",
+        "indexada",
+        "esta indexado",
+        "esta indexada",
+    )
+    if any(frase in txt for frase in frases):
+        return True
+
+    gatilhos = {
+        "literatura", "artigo", "artigos", "paper", "papers", "fonte",
+        "fontes", "referencia", "referencias", "bibliografia",
+        "bibliografica", "bibliografico", "citacao", "citacoes",
+        "cite", "citar", "autores", "autor", "survey", "review",
+        "indexado", "indexada", "indexacao", "indexar",
+    }
+    palavras = set(txt.split())
+    if palavras & gatilhos:
+        return True
+
+    # Mencao a um autor/fonte indexada — "E o da NASA?", "Cade o Torres?"
+    nomes = autores_indexados(colecao)
+    if palavras & nomes:
+        return True
+
+    return False
+
+
+def formatar_referencias_markdown(citacoes: dict | list | tuple | set) -> str:
+    """Formata referencias como lista Markdown, deduplicando e ignorando vazios."""
+    valores = citacoes.values() if isinstance(citacoes, dict) else (citacoes or [])
+    vistos = []
+    for valor in valores:
+        if not valor:
+            continue
+        item = str(valor).strip()
+        if item and item not in vistos:
+            vistos.append(item)
+    return "\n".join(f"- {item}" for item in vistos)
+
+
+def remover_bloco_fontes_llm(texto: str) -> str:
+    """
+    Remove qualquer secao terminal de 'Referencias', 'Bibliografia',
+    '📚 Fontes' etc. que o LLM tenha gerado por conta propria. Evita o
+    duplo bloco quando o Streamlit anexa a lista oficial de citacoes.
+
+    Heuristica anti-falso-positivo: so corta se o cabecalho for SEGUIDO
+    por uma lista (linha comecando com '-', '*', '1.', etc.) ou pelo
+    fim do texto. Assim, uma menção em prosa do tipo
+    "📚 Fontes do paragrafo anterior estavam ok." nao e cortada.
+
+    Detecta cabecalhos como:
+      - "## Referencias", "### Referencias"
+      - "**Referencias:**", "**Referências bibliográficas**"
+      - "📚 Fontes:", "📚 **Fontes consultadas:**"
+      - "Referencias:" no inicio de linha
+    Apaga do cabecalho ate o final do texto (e separadores '---' que o
+    LLM as vezes coloca logo antes).
+    """
+    if not texto:
+        return texto
+
+    import re
+
+    # Palavra-chave do cabecalho — fontes/referencias/bibliografia (com
+    # qualificadores opcionais como 'consultadas' ou 'bibliograficas').
+    _palavra = (
+        r"(?:refer[eê]ncias?(?:\s+bibliogr[áa]ficas?)?"
+        r"|bibliografia"
+        r"|fontes?(?:\s+consultadas?)?)"
+    )
+    padroes_cabecalho = [
+        # Headers Markdown (##, ###, etc.)
+        rf"(?im)^\s*#{{1,6}}\s*{_palavra}\b[^\n]*$",
+        # Negrito/italico com colon em qualquer lado: **Refs:**, **Refs**:, **Refs**
+        rf"(?im)^\s*\*+\s*{_palavra}\s*:?\s*\*+\s*:?\s*$",
+        # Plain text com colon obrigatorio: REFERÊNCIAS:, Bibliografia:
+        rf"(?im)^\s*{_palavra}\s*:\s*$",
+        # 📚 — regex generoso; _eh_bloco_real filtra os falsos positivos
+        # (linhas em prosa que apenas mencionam 'Fontes' sem lista logo abaixo).
+        rf"(?im)^\s*📚[^\n]*{_palavra}[^\n]*$",
+    ]
+
+    def _eh_bloco_real(start: int, end: int) -> bool:
+        """Confirma que o cabecalho e seguido por lista ou fim de texto."""
+        apos = texto[end:].lstrip("\n").lstrip(" \t")
+        if not apos:
+            return True  # fim de texto — header solto conta como bloco
+        primeira = apos.split("\n", 1)[0].strip()
+        if not primeira:
+            return True
+        return (
+            primeira.startswith(("-", "*", "•"))
+            or bool(re.match(r"^\d+[.)]\s", primeira))
+        )
+
+    indice_min = len(texto)
+    achou = False
+    for padrao in padroes_cabecalho:
+        for m in re.finditer(padrao, texto):
+            if not _eh_bloco_real(m.start(), m.end()):
+                continue
+            if m.start() < indice_min:
+                indice_min = m.start()
+                achou = True
+
+    if not achou:
+        return texto.rstrip()
+
+    recortado = texto[:indice_min]
+    # Engole separadores '---' e linhas em branco logo antes do bloco.
+    recortado = re.sub(r"(?:\s*\n\s*-{3,}\s*\n)+\s*$", "\n", recortado)
+    return recortado.rstrip()
 
 
 def _formatar_historico(historico: list, orcamento: dict) -> str:
@@ -465,12 +870,35 @@ def _contexto_temporal() -> str:
     )
 
 
+def _bloco_anexos(anexos_texto: str, orcamento: dict) -> str:
+    """
+    Monta o bloco de ARQUIVOS ANEXADOS para o prompt. Vazio quando nao ha
+    anexos de texto. O conteudo ja vem consolidado por
+    `montar_bloco_texto_anexos`; aqui so aplicamos o cap de chars do provedor
+    e envolvemos com cabecalho + instrucao de uso.
+    """
+    if not anexos_texto or not anexos_texto.strip():
+        return ""
+    corpo = _limitar_texto(anexos_texto, orcamento.get("anexos_chars", 9_000))
+    return (
+        "ARQUIVOS ANEXADOS PELO PESQUISADOR (leia e use quando pertinente):\n"
+        f"{corpo}\n"
+        "Os arquivos acima foram enviados agora pelo Rodolfo nesta mensagem. "
+        "Leia, interprete e use o conteudo quando for pertinente a pergunta. "
+        "Trate-os como fonte prioritaria desta resposta; nao invente nada alem "
+        "do que o anexo traz. Se a pergunta for sobre o anexo, responda a partir dele."
+    )
+
+
 def _montar_prompt(pergunta: str,
                    contexto: str,
                    historico_formatado: str,
-                   orcamento: dict) -> str:
+                   orcamento: dict,
+                   consultar_literatura: bool = True,
+                   anexos_texto: str = "") -> str:
     contexto = _limitar_texto(contexto, orcamento["contexto_chars"])
     bloco_temporal = _contexto_temporal()
+    bloco_anexos = _bloco_anexos(anexos_texto, orcamento)
     tem_contexto = bool(contexto.strip())
     contexto_bloco = contexto if tem_contexto else "Nenhum trecho relevante recuperado."
 
@@ -489,6 +917,37 @@ def _montar_prompt(pergunta: str,
             "Você pode cumprimentar pelo período do dia (use a data/hora acima)."
         )
 
+    rotulo_contexto = (
+        "CONTEXTO RECUPERADO DA LITERATURA E MEMORIA"
+        if consultar_literatura else
+        "CONTEXTO RECUPERADO DA MEMORIA DO PROJETO"
+    )
+    instrucao_literatura = (
+        "- A pergunta pediu literatura/fontes: use evidencias recuperadas quando relevantes e cite autor/ano.\n"
+        "- NUNCA escreva uma secao final do tipo 'Referencias', 'Bibliografia', "
+        "'Referencias bibliograficas', '## Referencias', '**Referencias:**', "
+        "'### Referencias' ou '📚 Fontes'. Apenas cite autor/ano inline no texto. "
+        "A lista de fontes consultadas e injetada automaticamente apos sua resposta.\n"
+        "- NUNCA afirme que um autor, paper, instituicao ou tema 'nao esta na base', "
+        "'nao foi indexado' ou 'minha base nao tem'. Voce so enxerga o CONTEXTO desta "
+        "consulta, nao a base inteira. Se um autor citado pelo Rodolfo (NASA, Torres, "
+        "Stender, Ahirwar, etc.) nao aparece no contexto recuperado, diga: "
+        "'nao veio agora na minha busca para esta pergunta — posso refazer focando "
+        "explicitamente no [autor/tema] se voce quiser'. Nunca afirme ausencia total."
+        if consultar_literatura else
+        "- A pergunta NAO pediu literatura/fontes: responda sem mencionar literatura, artigos, fontes ou referencias.\n"
+        "- Use apenas conhecimento do projeto, memoria e raciocinio tecnico geral.\n"
+        "- NUNCA escreva secao 'Referencias' ou '📚 Fontes' ao final."
+    )
+
+    instrucao_anexos = (
+        "- O pesquisador ANEXOU arquivos nesta mensagem (bloco 'ARQUIVOS ANEXADOS'). "
+        "Priorize esse conteudo: leia, interprete e responda a partir dele. "
+        "Para imagens sem texto, descreva o que a imagem mostra quando o provedor "
+        "tiver visao; se nao tiver, avise conforme a nota do anexo.\n"
+        if bloco_anexos else ""
+    )
+
     prompt = f"""
 {PERFIL_COMPACTO}
 
@@ -496,7 +955,9 @@ def _montar_prompt(pergunta: str,
 
 {estado_conversa}
 
-CONTEXTO RECUPERADO DA LITERATURA E MEMÓRIA:
+{bloco_anexos}
+
+{rotulo_contexto}:
 {contexto_bloco}
 {historico_formatado}
 
@@ -510,8 +971,8 @@ INSTRUCOES OBRIGATÓRIAS DE RESPOSTA:
   "Boa tarde", "Boa noite" nem com qualquer saudação.
 - Se a pergunta atual for confirmação curta ("sim", "pode seguir", "continue",
   "ok"), interprete como aceite do que VOCÊ propôs no último turno e EXECUTE.
-- Se a evidência recuperada não tem relação com a pergunta, IGNORE-A em silêncio.
-- Cite autor/ano apenas quando a evidência for de fato usada.
+{instrucao_anexos}{instrucao_literatura}
+- Se a evidência/memória recuperada não tem relação com a pergunta, IGNORE-A em silêncio.
 - Tamanho da resposta proporcional ao pedido. Pergunta curta → resposta curta.
 - Não invente números, autores, equações ou resultados.
 """.strip()
@@ -526,7 +987,9 @@ INSTRUCOES OBRIGATÓRIAS DE RESPOSTA:
 
 {bloco_temporal}
 
-CONTEXTO RECUPERADO:
+{bloco_anexos}
+
+{rotulo_contexto}:
 {contexto_bloco}
 {historico_formatado}
 
@@ -537,26 +1000,69 @@ INSTRUCOES DE RESPOSTA:
 - Português brasileiro, voz natural, precisão técnica.
 - Use emojis com moderação (🔬 📊 ✅).
 - Cumprimente pelo período do dia quando apropriado.
-- Cite autor/ano só quando usar evidência relevante.
+{("- Priorize os ARQUIVOS ANEXADOS desta mensagem; responda a partir deles.\n" if bloco_anexos else "")}- Se a pergunta NAO pediu literatura/fontes, nao mencione literatura nem referencias.
+- Cite autor/ano so quando a pergunta pediu literatura/fontes e a evidencia for relevante.
 - Se a evidência não for relevante, ignore-a sem comentar.
 - Ajuste o tamanho ao pedido. Não invente números.
 """.strip()
 
     return prompt
 
+
+def montar_conteudo_humano(prompt: str, anexos: list | None, suporta_imagem: bool):
+    """
+    Decide o `content` da HumanMessage enviada ao LLM.
+
+    - Provedor multimodal (suporta_imagem=True) COM imagens anexadas → devolve
+      uma LISTA de partes: o texto do prompt + uma parte image_url por imagem
+      (data URI base64). E o formato que ChatGoogleGenerativeAI entende.
+    - Caso contrario → devolve a STRING do prompt. As imagens, quando o provedor
+      nao tem visao, ja viraram nota textual em `montar_bloco_texto_anexos`.
+
+    Helper puro: nao chama LLM, so monta a estrutura.
+    """
+    if not (suporta_imagem and anexos and tem_imagem(anexos)):
+        return prompt
+
+    partes: list = [{"type": "text", "text": prompt}]
+    for a in anexos:
+        if a.get("tipo") == "imagem" and a.get("imagem_b64"):
+            mime = a.get("mime") or "image/jpeg"
+            partes.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:{mime};base64,{a['imagem_b64']}"},
+            })
+    return partes
+
 # ============================================================
 # RAG AVANÇADO — 3 CAMADAS
 # ============================================================
+
+def eh_query_de_revisao(pergunta: str) -> bool:
+    """
+    Detecta perguntas tipo 'literatura completa', 'revisao bibliografica',
+    'estado da arte', 'cite a literatura', 'panorama'. Sao queries amplas
+    que exigem cobertura diversificada da base, nao a melhor passagem unica.
+    """
+    txt = _normalizar_texto(pergunta or "")
+    return any(ind in txt for ind in INDICADORES_REVISAO)
+
 
 def _expandir_query(pergunta: str) -> dict:
     """
     CAMADA 1 — Expansão de query local.
     Evita chamadas auxiliares ao LLM para nao consumir TPM antes da resposta.
+
+    Para perguntas de revisao bibliografica, injeta variacoes cobrindo TODOS
+    os pilares teoricos da dissertacao — assim a busca semantica alcanca os
+    artigos especificos de cada area em uma unica passada.
     """
     termos = _tokens_busca(pergunta)
     variacoes = [pergunta]
 
     txt = _normalizar_texto(pergunta)
+    revisao = eh_query_de_revisao(pergunta)
+
     if "fmea" in txt or "fmeca" in txt:
         variacoes.extend([
             "analise de modos e efeitos de falha",
@@ -573,10 +1079,47 @@ def _expandir_query(pergunta: str) -> dict:
             "detector de anomalias por erro de reconstrucao",
             "autoencoder anomaly detection reconstruction error",
         ])
+    if "inversor" in txt or "fotovoltaic" in txt or "pv" in txt.split():
+        variacoes.extend([
+            "inversor fotovoltaico falhas componentes",
+            "PV inverter failure modes reliability",
+        ])
+    if "rcm" in txt or "manutencao" in txt:
+        variacoes.extend([
+            "manutencao centrada em confiabilidade RCM",
+            "reliability centered maintenance preventive predictive",
+        ])
+
+    # Datasets/instituicoes que mapeiam para um paper especifico
+    if "paderborn" in txt:
+        variacoes.extend([
+            "Paderborn dataset IGBT three phase inverter Stender",
+            "data set description three phase IGBT two level inverter",
+        ])
+        for t in ("stender", "igbt", "data", "set", "description"):
+            if t not in termos:
+                termos.append(t)
+    if "ceamazon" in txt:
+        variacoes.extend([
+            "CEAMAZON sistema fotovoltaico UFPA Torres RCM FMECA",
+        ])
+        for t in ("ceamazon", "torres", "ufpa"):
+            if t not in termos:
+                termos.append(t)
+
+    # Pergunta de revisao → injeta os 12 topicos da dissertacao para puxar
+    # documentos diversos. Bonus: termos-chave de cada topico no keyword search.
+    if revisao:
+        variacoes.extend(TOPICOS_DISSERTACAO)
+        for topico in TOPICOS_DISSERTACAO:
+            for palavra in topico.split():
+                if len(palavra) > 3 and palavra.lower() not in termos:
+                    termos.append(palavra.lower())
 
     return {
         "variacoes": list(dict.fromkeys(variacoes)),
-        "termos": termos[:12],
+        "termos": termos[:30 if revisao else 12],
+        "revisao": revisao,
     }
 
 
@@ -614,78 +1157,250 @@ def _busca_hibrida(
         except Exception:
             continue
 
-    # Busca por palavras-chave (keyword search)
+    # Busca por palavras-chave (keyword search).
+    # IMPORTANTE: ChromaDB where_document $contains e CASE-SENSITIVE. Como
+    # os tokens vem normalizados em minusculas mas o texto dos PDFs tem
+    # autores/siglas em title-case ('Karim', 'NASA', 'Torres'), tentamos
+    # multiplas variantes de capitalizacao para garantir cobertura.
+    autores_conhecidos = autores_indexados(colecao)
     for termo in termos:
         if not termo or len(termo) < 2:
             continue
-        try:
-            resultados = colecao.get(
-                where_document = {"$contains": termo},
-                include        = ["documents", "metadatas"],
-                limit          = 60
-            )
-            docs  = resultados.get("documents", [])
-            metas = resultados.get("metadatas", [])
-            ids   = resultados.get("ids",       [])
 
-            for id_, doc, meta in zip(ids, docs, metas):
-                if id_ not in pool:
-                    pool[id_] = (doc, meta)
-        except Exception:
-            continue
+        variantes = {termo, termo.title(), termo.upper(), termo.capitalize()}
+        for variante in variantes:
+            try:
+                resultados = colecao.get(
+                    where_document = {"$contains": variante},
+                    include        = ["documents", "metadatas"],
+                    limit          = 60,
+                )
+                docs  = resultados.get("documents", [])
+                metas = resultados.get("metadatas", [])
+                ids   = resultados.get("ids",       [])
+
+                for id_, doc, meta in zip(ids, docs, metas):
+                    if id_ not in pool:
+                        pool[id_] = (doc, meta)
+            except Exception:
+                continue
+
+        # Se o termo bate um autor conhecido, busca pelas formas canonicas
+        # do metadado autor — cobre autores compostos (Puc Rio), capitalizacao
+        # inconsistente, e multiplos arquivos do mesmo autor (Grewal Kalman
+        # + Grewal Power Electronics).
+        #
+        # IMPORTANTE: quando um autor tem multiplos arquivos com tamanhos
+        # muito diferentes (Kalman: 1710 chunks; Power Electronics: 63),
+        # uma unica query where={"autor": X} com limit alto so traz o maior.
+        # Por isso iteramos por arquivo, garantindo amostra de CADA paper.
+        if termo.lower() in autores_conhecidos:
+            canonicos = autores_canonicos_para(termo, colecao)
+            tentativas = set(canonicos) if canonicos else {
+                termo.title(), termo.upper(), termo.capitalize(), termo
+            }
+            for capit in tentativas:
+                arqs = arquivos_do_autor(capit, colecao) or {None}
+                for arq in arqs:
+                    where_clause: dict = {"autor": capit}
+                    if arq:
+                        where_clause = {
+                            "$and": [
+                                {"autor": capit},
+                                {"arquivo": arq},
+                            ]
+                        }
+                    try:
+                        resultados = colecao.get(
+                            where = where_clause,
+                            include = ["documents", "metadatas"],
+                            limit = 80,
+                        )
+                        docs  = resultados.get("documents", [])
+                        metas = resultados.get("metadatas", [])
+                        ids   = resultados.get("ids",       [])
+                        for id_, doc, meta in zip(ids, docs, metas):
+                            if id_ not in pool:
+                                pool[id_] = (doc, meta)
+                    except Exception:
+                        continue
 
     return list(pool.values())
 
 
-def _rerankar(candidatos: list, pergunta: str, n_final: int) -> list:
+def _ajuste_textbook(arquivo: str, texto_pergunta_norm: str) -> float:
+    """
+    Penaliza livros-texto genericos quando a pergunta NAO entra no dominio
+    proprio deles. Stewart so deve aparecer em pergunta de calculo, Gonzalez
+    em pergunta de imagem, e assim por diante. Em qualquer outro caso, dao
+    ruido em consultas amplas.
+
+    EXCECAO: se a pergunta cita o sobrenome do autor explicitamente
+    ("E o do Grewal?", "tem Stewart?"), a penalidade nao se aplica —
+    o Rodolfo esta pedindo aquele livro pelo nome.
+    """
+    if not arquivo or arquivo not in TEXTBOOKS_PENALIZADOS:
+        return 0.0
+    # Pergunta cita o sobrenome (primeira parte do filename)?
+    sobrenome = arquivo.split("_", 1)[0].replace("-", " ")
+    if sobrenome and sobrenome in texto_pergunta_norm:
+        return 0.0
+    gatilhos = TEXTBOOKS_PENALIZADOS[arquivo]
+    if any(g in texto_pergunta_norm for g in gatilhos):
+        return 0.0
+    # Penalidade forte o bastante para dominar os boosts incidentais que um
+    # textbook fora de dominio ainda acumula — em especial o match lexical do
+    # slug do arquivo (ex.: "calculo" em 'stewart_calculo-volume-i' batendo
+    # "calculo do limiar do autoencoder"). Medido: -6 deixava o Stewart vazar
+    # nesse caso adversarial; a partir de -10 ele sai sem reduzir a diversidade.
+    return -12.0
+
+
+def _diversificar_por_fonte(
+    pontuados: list,
+    n_final: int,
+    max_por_fonte: int = 2,
+) -> list:
+    """
+    Seleciona ate `n_final` chunks aplicando teto de `max_por_fonte` por
+    arquivo. Garante que o top-K cubra mais documentos distintos em vez de
+    repetir trechos do mesmo PDF.
+
+    Estrategia: percorre `pontuados` (ja em ordem de score) e aceita chunks
+    enquanto a fonte nao bateu o teto. Se faltarem itens ao final, relaxa o
+    teto progressivamente ate completar n_final.
+    """
+    if not pontuados:
+        return []
+
+    selecionados: list = []
+    contagem: dict[str, int] = {}
+    teto = max_por_fonte
+
+    # Varias passadas relaxando o teto, ate completar n_final.
+    while len(selecionados) < n_final and teto <= 50:
+        progrediu = False
+        for _, _, doc, meta in pontuados:
+            if len(selecionados) >= n_final:
+                break
+            fonte = str(meta.get("arquivo", "")) or str(meta.get("citacao", "?"))
+            if (doc, meta) in selecionados:
+                continue
+            if contagem.get(fonte, 0) >= teto:
+                continue
+            selecionados.append((doc, meta))
+            contagem[fonte] = contagem.get(fonte, 0) + 1
+            progrediu = True
+        if not progrediu:
+            break
+        teto += 1
+    return selecionados
+
+
+def _rerankar(
+    candidatos: list,
+    pergunta: str,
+    n_final: int,
+    max_por_fonte: int = 2,
+    termos_extra: list | None = None,
+) -> list:
     """
     CAMADA 3 — Reranking local.
-    Pontua os chunks por sobreposicao lexical e sinais de dominio.
-    Isso reduz latencia e evita gastar TPM com chamadas intermediarias.
+
+    Pontua chunks por sobreposicao lexical, ajusta por pasta tematica
+    (PV/ML/manutencao recebem boost, sinais-eletricos atenua), penaliza
+    textbooks fora de dominio, e diversifica o top-K aplicando teto de
+    chunks por fonte.
+
+    `termos_extra` permite injetar termos da expansao (ex.: 'stender'
+    quando a pergunta tem 'paderborn') para que o boost por autor/arquivo
+    funcione mesmo quando a pergunta original nao traz o sobrenome.
     """
     if not candidatos:
         return []
 
-    if len(candidatos) <= n_final:
-        return candidatos
-
     termos = _tokens_busca(pergunta)
+    if termos_extra:
+        for t in termos_extra:
+            if t and t not in termos:
+                termos.append(t)
     pergunta_norm = _normalizar_texto(pergunta)
-    numeros = {t for t in pergunta_norm.split() if any(ch.isdigit() for ch in t)}
+    # Numero so vale se vier acoplado a alguma letra do projeto — assim
+    # "+30 artigos" nao premia qualquer trecho que tenha um "30" qualquer.
+    numeros_relevantes = {
+        t for t in pergunta_norm.split()
+        if any(ch.isdigit() for ch in t)
+        and any(ch.isalpha() for ch in t)  # ex.: "auc", "npr210", "f1"
+    }
 
     pontuados = []
+    termos_norm = {_normalizar_texto(t) for t in termos}
     for ordem, (doc, meta) in enumerate(candidatos):
-        texto = " ".join([
-            str(meta.get("citacao", "")),
-            str(meta.get("titulo", "")),
-            str(meta.get("arquivo", "")),
-            doc,
-        ])
+        citacao = str(meta.get("citacao", ""))
+        titulo = str(meta.get("titulo", ""))
+        arquivo = str(meta.get("arquivo", ""))
+        autor = str(meta.get("autor", ""))
+        pasta = str(meta.get("pasta", ""))
+        texto = " ".join([citacao, titulo, arquivo, doc])
         texto_norm = _normalizar_texto(texto)
+        citacao_norm = _normalizar_texto(citacao)
+        autor_norm = _normalizar_texto(autor)
+        arquivo_norm = _normalizar_texto(arquivo)
+
         score = 0.0
 
         for termo in termos:
             if termo in texto_norm:
                 score += 2.0 if len(termo) > 4 else 1.0
-                if termo in _normalizar_texto(str(meta.get("citacao", ""))):
+                if termo in citacao_norm:
                     score += 1.5
 
-        for numero in numeros:
+        # Boost forte quando o termo bate o autor do chunk. O nome do
+        # arquivo segue o padrao 'autor_titulo-com-hifens_ano.pdf', entao
+        # comparo o termo APENAS contra o primeiro segmento (sobrenome) e
+        # o ano — assim "calculo" no slug do Stewart nao premia indevidamente
+        # (era o caso de Stewart_calculo-volume-i_2013 entrar em queries
+        # de "calculo do limiar do autoencoder").
+        partes_arquivo = arquivo_norm.replace(".pdf", "").split("_")
+        sobrenome_arquivo = partes_arquivo[0] if partes_arquivo else ""
+        # Sobrenomes compostos com hifen ('puc-rio') ja vieram normalizados
+        # como 'puc rio' (espaco) — quebro para comparar com tokens.
+        sobrenome_tokens = sobrenome_arquivo.split()
+        ano_arquivo = partes_arquivo[-1] if len(partes_arquivo) > 1 else ""
+        for termo_n in termos_norm:
+            if not termo_n or len(termo_n) < 3:
+                continue
+            if termo_n == autor_norm or termo_n in autor_norm.split():
+                score += 6.0
+            if termo_n == sobrenome_arquivo or termo_n in sobrenome_tokens:
+                score += 4.0
+            if termo_n == ano_arquivo:
+                score += 1.5
+
+        for numero in numeros_relevantes:
             if numero in texto_norm:
                 score += 2.0
 
         if "tabela" in texto_norm or "table" in texto_norm:
-            score += 0.4
-        if any(x in texto_norm for x in ("resultado", "metodo", "method", "equacao", "equation")):
             score += 0.3
+        if any(x in texto_norm for x in ("resultado", "metodo", "method", "equacao", "equation")):
+            score += 0.2
+
+        # Boost por pasta tematica — privilegia o nucleo da dissertacao.
+        score += PESOS_PASTA.get(pasta, 0.3)
+
+        # Penalidade para textbooks fora de dominio (Stewart, Gonzalez, etc).
+        score += _ajuste_textbook(arquivo, pergunta_norm)
 
         pontuados.append((score, -ordem, doc, meta))
 
     pontuados.sort(reverse=True)
-    selecionados = [(doc, meta) for score, _, doc, meta in pontuados if score > 0]
-    if not selecionados:
-        selecionados = [(doc, meta) for _, _, doc, meta in pontuados]
-    return selecionados[:n_final]
+
+    # Se ha candidatos suficientes, aplica diversificacao por fonte.
+    if len(pontuados) <= n_final:
+        return [(doc, meta) for _, _, doc, meta in pontuados]
+
+    return _diversificar_por_fonte(pontuados, n_final, max_por_fonte=max_por_fonte)
 
 
 # ============================================================
@@ -701,56 +1416,106 @@ def buscar_contexto(
     n_resultados    : int | None = None,
     contexto_chars  : int | None = None,
     sessao_chars    : int | None = None,
+    consultar_literatura: bool = True,
+    n_resultados_revisao: int | None = None,
+    max_chunks_por_fonte: int = 2,
 ) -> tuple:
     """
-    Pipeline RAG de 3 camadas:
-    1. Expansão: LLM gera variações da query + termos-chave
-    2. Busca híbrida: semântica + keyword → pool ~60 chunks
-    3. Reranking: LLM seleciona os N mais relevantes do pool
+    Pipeline RAG de 3 camadas para literatura, mantendo memória sempre ativa.
+    Quando consultar_literatura=False, pula expansão/busca/reranking da base
+    bibliográfica e usa apenas a memória de sessões.
+
+    Quando a pergunta cheira a revisao bibliografica ("literatura completa",
+    "estado da arte", "cite a literatura"), o orcamento sobe para
+    `n_resultados_revisao` chunks e cap de `max_chunks_por_fonte=1` para
+    maximizar diversidade.
     """
     contexto = ""
     citacoes = {}
 
-    # ── CAMADA 1 — Expansão ──────────────────────────────────
-    expansao  = _expandir_query(pergunta)
-    variacoes = expansao.get("variacoes", [pergunta])
-    termos    = expansao.get("termos",    [])
+    if consultar_literatura:
+        # ── CAMADA 1 — Expansão ───────────────────────────────
+        expansao  = _expandir_query(pergunta)
+        variacoes = expansao.get("variacoes", [pergunta])
+        termos    = expansao.get("termos",    [])
+        revisao   = expansao.get("revisao",   False)
 
-    if pergunta not in variacoes:
-        variacoes.insert(0, pergunta)
+        if pergunta not in variacoes:
+            variacoes.insert(0, pergunta)
 
-    # ── CAMADA 2 — Busca híbrida ─────────────────────────────
-    candidatos = _busca_hibrida(
-        variacoes,
-        termos,
-        colecao,
-        modelo_embeddings,
-        n_pool=n_pool or 30,
-    )
+        # ── CAMADA 2 — Busca híbrida ─────────────────────────
+        candidatos = _busca_hibrida(
+            variacoes,
+            termos,
+            colecao,
+            modelo_embeddings,
+            n_pool=n_pool or 30,
+        )
 
-    # ── CAMADA 3 — Reranking ─────────────────────────────────
-    melhores = _rerankar(candidatos, pergunta, n_resultados or min(N_RESULTADOS, 8))
+        # ── CAMADA 3 — Reranking ─────────────────────────────
+        if revisao:
+            alvo = n_resultados_revisao or (n_resultados or N_RESULTADOS) * 2
+            cap = 1  # exige diversidade absoluta em revisao
+        else:
+            alvo = n_resultados or min(N_RESULTADOS, 8)
+            cap = max_chunks_por_fonte
+        melhores = _rerankar(
+            candidatos,
+            pergunta,
+            n_final=alvo,
+            max_por_fonte=cap,
+            termos_extra=termos,
+        )
+    else:
+        melhores = []
 
-    # Monta contexto da literatura
-    if melhores:
+    # Monta contexto da literatura em ROUND-ROBIN por fonte: a primeira
+    # rodada inclui 1 chunk de cada fonte distinta (em ordem de score), so
+    # entao as rodadas seguintes adicionam segundos/terceiros chunks. Assim,
+    # mesmo com orcamento de caracteres apertado, o LLM recebe a MAIOR
+    # diversidade possivel de fontes — em vez de ficar travado com 2-3 que
+    # esgotaram o limite primeiro.
+    if consultar_literatura and melhores:
         contexto += "\n📚 DA LITERATURA CIENTÍFICA:\n"
         usados = len(contexto)
         limite = contexto_chars or 10_000
+
+        # Agrupa por fonte preservando ordem (e ordem dos chunks dentro
+        # de cada fonte) — assim os chunks de maior score lideram cada rodada.
+        por_fonte: dict[str, list] = {}
+        ordem_fontes: list[str] = []
         for doc, meta in melhores:
-            arquivo = meta.get("arquivo", "")
-            citacao = meta.get("citacao", arquivo)
-            bloco = f"\n[Fonte: {citacao}]\n{doc}\n"
-            if usados + len(bloco) > limite:
-                restante = limite - usados - len(f"\n[Fonte: {citacao}]\n")
-                if restante <= 300:
-                    break
-                bloco = f"\n[Fonte: {citacao}]\n{_limitar_texto(doc, restante)}\n"
-            if arquivo and arquivo not in citacoes:
-                citacoes[arquivo] = citacao
-            contexto += bloco
-            usados += len(bloco)
-            if usados >= limite:
+            arquivo = meta.get("arquivo", "") or meta.get("citacao", "?")
+            if arquivo not in por_fonte:
+                por_fonte[arquivo] = []
+                ordem_fontes.append(arquivo)
+            por_fonte[arquivo].append((doc, meta))
+
+        max_rondas = max((len(c) for c in por_fonte.values()), default=0)
+        cheio = False
+        for ronda in range(max_rondas):
+            if cheio:
                 break
+            for arquivo in ordem_fontes:
+                chunks_fonte = por_fonte[arquivo]
+                if ronda >= len(chunks_fonte):
+                    continue
+                doc, meta = chunks_fonte[ronda]
+                citacao = meta.get("citacao", arquivo)
+                bloco = f"\n[Fonte: {citacao}]\n{doc}\n"
+                if usados + len(bloco) > limite:
+                    restante = limite - usados - len(f"\n[Fonte: {citacao}]\n")
+                    if restante <= 300:
+                        cheio = True
+                        break
+                    bloco = f"\n[Fonte: {citacao}]\n{_limitar_texto(doc, restante)}\n"
+                if arquivo and arquivo not in citacoes:
+                    citacoes[arquivo] = citacao
+                contexto += bloco
+                usados += len(bloco)
+                if usados >= limite:
+                    cheio = True
+                    break
 
     # ── Sessões — busca direta (sem reranking) ───────────────
     if colecao_sessoes:
@@ -843,17 +1608,24 @@ def preparar_prompt(
     historico: list    = None,
     colecao_sessoes    = None,
     nome_provedor: str | None = None,
+    anexos: list | None = None,
 ) -> tuple:
     """
     Prepara o prompt completo sem invocar o LLM.
     Retorna (prompt_str, citacoes_dict).
     Usado pelo Streamlit para fazer streaming separado.
+
+    `anexos` e a lista de dicts vinda de `leitor_anexos.ler_anexos(...)`: o texto
+    extraido (PDF/CSV/Excel/Word/codigo/...) entra no prompt como bloco
+    prioritario; imagens viram nota textual aqui (o pixel vai pela via
+    multimodal em `montar_conteudo_humano`, chamada pelo invocador do LLM).
     """
 
     if historico is None:
         historico = []
 
     orcamento = _orcamento_rag(nome_provedor)
+    consultar_literatura = deve_consultar_literatura(pergunta, colecao)
     contexto, citacoes = buscar_contexto(
         pergunta,
         modelo_embeddings,
@@ -861,12 +1633,28 @@ def preparar_prompt(
         colecao_sessoes,
         n_pool=orcamento["n_pool"],
         n_resultados=orcamento["n_resultados"],
+        n_resultados_revisao=orcamento.get("n_resultados_revisao"),
+        max_chunks_por_fonte=orcamento.get("max_chunks_por_fonte", 2),
         contexto_chars=orcamento["contexto_chars"],
         sessao_chars=orcamento["sessao_chars"],
+        consultar_literatura=consultar_literatura,
+    )
+
+    suporta_imagem = eh_multimodal(nome_provedor)
+    anexos_texto = (
+        montar_bloco_texto_anexos(anexos, suporta_imagem=suporta_imagem)
+        if anexos else ""
     )
 
     historico_formatado = _formatar_historico(historico, orcamento)
-    prompt = _montar_prompt(pergunta, contexto, historico_formatado, orcamento)
+    prompt = _montar_prompt(
+        pergunta,
+        contexto,
+        historico_formatado,
+        orcamento,
+        consultar_literatura=consultar_literatura,
+        anexos_texto=anexos_texto,
+    )
     return prompt, citacoes
 
 def perguntar(
@@ -879,9 +1667,14 @@ def perguntar(
     streaming: bool = True,
     colecao_sessoes = None,
     nome_provedor: str | None = None,
+    anexos: list | None = None,
 ) -> str:
     """
     Pipeline RAG completo com memória e streaming.
+
+    `anexos` (opcional): lista de dicts de `leitor_anexos.ler_anexos(...)`. O
+    texto extraido entra no prompt; imagens vao pela via multimodal quando o
+    provedor ativo for multimodal (Gemini). Caso contrario, viram nota textual.
     """
 
     if historico is None:
@@ -900,9 +1693,13 @@ def perguntar(
         historico=historico,
         colecao_sessoes=colecao_sessoes,
         nome_provedor=nome_provedor,
+        anexos=anexos,
     )
 
-    mensagens = [HumanMessage(content=prompt)]
+    conteudo_humano = montar_conteudo_humano(
+        prompt, anexos, eh_multimodal(nome_provedor)
+    )
+    mensagens = [HumanMessage(content=conteudo_humano)]
     texto_completo = ""
 
     import time
@@ -947,11 +1744,10 @@ def perguntar(
                 else:
                     raise
 
-    # Adiciona fontes ao final
-    if citacoes:
-        rodape  = "\n\n---\n📚 **Fontes consultadas nesta resposta:**\n"
-        for arquivo, citacao in citacoes.items():
-            rodape += f"  → {citacao}\n"
+    refs_md = formatar_referencias_markdown(citacoes)
+    if refs_md:
+        texto_completo = remover_bloco_fontes_llm(texto_completo)
+        rodape = "\n\n---\n📚 **Fontes consultadas nesta resposta:**\n" + refs_md + "\n"
         print(rodape)
         texto_completo += rodape
 

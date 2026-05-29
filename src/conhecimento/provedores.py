@@ -22,20 +22,40 @@ load_dotenv()
 
 PROVEDORES = {
     "1": {
-        "nome"   : "Google Gemini",
-        "modelo" : "gemini-2.5-flash",
-        "env_key": "GOOGLE_API_KEY",
-        "limite" : "20 req/dia",
-        "emoji"  : "🔵"
+        "nome"      : "Google Gemini",
+        "modelo"    : "gemini-2.5-flash",
+        "env_key"   : "GOOGLE_API_KEY",
+        "limite"    : "20 req/dia",
+        "emoji"     : "🔵",
+        "multimodal": True,   # entende imagens (visão)
     },
     "2": {
-        "nome"   : "Groq (LLaMA 3.3)",
-        "modelo" : "llama-3.3-70b-versatile",
-        "env_key": "GROQ_API_KEY",
-        "limite" : "12k tokens/min no tier on-demand",
-        "emoji"  : "🟢"
+        "nome"      : "Groq (LLaMA 3.3)",
+        "modelo"    : "llama-3.3-70b-versatile",
+        "env_key"   : "GROQ_API_KEY",
+        "limite"    : "12k tokens/min no tier on-demand",
+        "emoji"     : "🟢",
+        "multimodal": False,  # texto puro (não lê imagens)
     }
 }
+
+
+def eh_multimodal(nome_ou_chave: str) -> bool:
+    """
+    Diz se um provedor entende imagens (visão), aceitando tanto a chave
+    ("1"/"2") quanto o nome exibido ("Google Gemini", "Groq (LLaMA 3.3)").
+
+    Default conservador: False (assume texto puro se não reconhecer).
+    """
+    if not nome_ou_chave:
+        return False
+    alvo = str(nome_ou_chave).strip()
+    if alvo in PROVEDORES:
+        return bool(PROVEDORES[alvo].get("multimodal", False))
+    for info in PROVEDORES.values():
+        if info["nome"] == alvo:
+            return bool(info.get("multimodal", False))
+    return False
 
 
 # ============================================================

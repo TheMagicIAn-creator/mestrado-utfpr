@@ -470,16 +470,16 @@ def _decisao_rapida(pergunta: str) -> dict | None:
     if any(g in txt for g in _GATILHOS_WEB):
         return {"usar_ferramenta": True, "ferramenta": "buscar_web"}
 
+    # Status é consulta operacional, então deve vencer antes do guard genérico.
+    if _quer_status(pergunta):
+        return {"usar_ferramenta": True, "ferramenta": "consultar_status_pipeline"}
+
     if not _parece_pedido_de_ferramenta(pergunta):
         return {"usar_ferramenta": False, "ferramenta": None}
 
     # Limpeza explícita ("apague", "limpe...") tem prioridade sobre tudo.
     if _quer_limpar(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "limpar_resultados_ml"}
-
-    # Status do pipeline ("o que está pendente?")
-    if _quer_status(pergunta):
-        return {"usar_ferramenta": True, "ferramenta": "consultar_status_pipeline"}
 
     # "Recalcule", "refaça", "rode tudo de novo", "do zero" → pipeline completo.
     if any(t in txt for t in _TERMOS_PIPELINE_IMPLICITO):
@@ -490,6 +490,27 @@ def _decisao_rapida(pergunta: str) -> dict | None:
             return {"usar_ferramenta": True, "ferramenta": etapa_mais_avancada}
         # Sem etapa específica, recalcular = pipeline inteiro.
         return {"usar_ferramenta": True, "ferramenta": "rodar_pipeline_completo"}
+
+    # Consulta passiva ("mostre", "quais foram...", "cadê as imagens?")
+    termos_consulta = (
+        "resultado", "resultados", "mostrar", "mostre", "mostra", "grafico",
+        "graficos", "auc", "f1", "mttf", "b10", "smd", "limiar",
+        "metrica", "metricas", "imagem", "imagens", "figura", "figuras",
+        "curva", "curvas", "plot", "plots", "visualizacao", "matriz",
+        "heatmap", "roc", "tabela",
+    )
+    termos_acao_ativa = (
+        "rodar", "execut", "trein", "gerar", "gere", "calcular",
+        "injetar", "refazer", "regerar", "recalc",
+    )
+    termos_validacao_ativa = ("validar", "valide", "valida")
+    tem_acao_ativa = (
+        any(t in txt for t in termos_acao_ativa)
+        or any(re.search(rf"\b{re.escape(t)}\b", txt) for t in termos_validacao_ativa)
+    )
+    if any(t in txt for t in termos_consulta):
+        if not tem_acao_ativa:
+            return {"usar_ferramenta": True, "ferramenta": "consultar_resultados"}
 
     termos_executar = (
         "rodar", "rode", "roda", "execut", "trein", "treine", "treina",
@@ -507,22 +528,6 @@ def _decisao_rapida(pergunta: str) -> dict | None:
         # Pedido genérico de "gere os resultados" — interpreta como pipeline.
         if "resultado" in txt:
             return {"usar_ferramenta": True, "ferramenta": "rodar_pipeline_completo"}
-
-    # Consulta passiva ("mostre", "quais foram...", "cadê as imagens?")
-    termos_consulta = (
-        "resultado", "resultados", "mostrar", "mostre", "mostra", "grafico",
-        "graficos", "auc", "f1", "mttf", "b10", "smd", "limiar",
-        "metrica", "metricas", "imagem", "imagens", "figura", "figuras",
-        "curva", "curvas", "plot", "plots", "visualizacao", "matriz",
-        "heatmap", "roc", "tabela",
-    )
-    termos_acao_ativa = (
-        "rodar", "execut", "trein", "gerar", "gere", "calcular",
-        "validar", "injetar", "refazer", "regerar", "recalc",
-    )
-    if any(t in txt for t in termos_consulta):
-        if not any(t in txt for t in termos_acao_ativa):
-            return {"usar_ferramenta": True, "ferramenta": "consultar_resultados"}
 
     return None
 
