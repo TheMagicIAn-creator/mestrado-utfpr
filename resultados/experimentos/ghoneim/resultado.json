@@ -1,0 +1,53 @@
+{
+  "experimento": "ghoneim",
+  "referencia": "Ghoneim, Rashed & Elkalashy (2021)",
+  "artigo": "Fault Detection Algorithms for Service Continuity in PV Farms",
+  "dataset": "PV Farms",
+  "tarefa": "classificacao",
+  "data": "2026-05-30 07:32:09",
+  "metrica_principal": "f1",
+  "modelos": {
+    "Random Forest": {
+      "acuracia": 0.87,
+      "precisao": 0.8869047619047619,
+      "recall": 0.87,
+      "f1": 0.8683329249366984,
+      "cv_media": 1.0,
+      "cv_desvio": 0.0,
+      "disponivel": true
+    },
+    "AdaBoost": {
+      "acuracia": 0.37,
+      "precisao": 0.19394841269841268,
+      "recall": 0.37,
+      "f1": 0.2420735265512546,
+      "cv_media": 0.41166666666666674,
+      "cv_desvio": 0.006666666666666668,
+      "disponivel": true
+    },
+    "Regressão Logística": {
+      "acuracia": 0.71,
+      "precisao": 0.6383130081300813,
+      "recall": 0.71,
+      "f1": 0.6429989550679206,
+      "cv_media": 0.9366666666666668,
+      "cv_desvio": 0.02560381915956203,
+      "disponivel": true
+    },
+    "Naive Bayes": {
+      "acuracia": 0.81,
+      "precisao": 0.8756533101045296,
+      "recall": 0.8099999999999999,
+      "f1": 0.791638490365673,
+      "cv_media": 0.915,
+      "cv_desvio": 0.04027681991198191,
+      "disponivel": true
+    },
+    "CN2 (indução de regras)": {
+      "disponivel": false,
+      "motivo": "erro no Orange/CN2: No module named 'bottleneck'"
+    }
+  },
+  "melhor_modelo": "Random Forest",
+  "melhor_valor": 0.8683329249366984
+}

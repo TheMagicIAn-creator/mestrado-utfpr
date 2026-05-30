@@ -1,0 +1,34 @@
+{
+  "experimento": "ibrahim",
+  "referencia": "Ibrahim et al. (2022)",
+  "artigo": "Machine Learning Schemes for Anomaly Detection in Solar Power Plants",
+  "dataset": "Paderborn",
+  "tarefa": "anomalia",
+  "data": "2026-05-30 07:33:12",
+  "metrica_principal": "auc",
+  "modelos": {
+    "Isolation Forest": {
+      "auc": 0.7592343754665711,
+      "f1": 0.7385892116182573,
+      "recall": 0.9726775956284153,
+      "precisao": 0.5953177257525084,
+      "disponivel": true
+    },
+    "AE-LSTM": {
+      "auc": 0.913075935381767,
+      "f1": 0.8787061994609164,
+      "recall": 0.8907103825136612,
+      "precisao": 0.8670212765957447,
+      "disponivel": true
+    },
+    "Facebook Prophet": {
+      "auc": 0.5765624533428888,
+      "f1": 0.6666666666666666,
+      "recall": 1.0,
+      "precisao": 0.5,
+      "disponivel": true
+    }
+  },
+  "melhor_modelo": "AE-LSTM",
+  "melhor_valor": 0.913075935381767
+}

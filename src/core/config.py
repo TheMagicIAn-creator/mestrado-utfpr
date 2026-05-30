@@ -10,6 +10,17 @@ Autor: Rodolfo Torres (UTFPR)
 """
 
 import os
+
+# ── Windows / OpenMP ────────────────────────────────────────────────────────
+# Vários pacotes nativos (torch, numpy/MKL, onnxruntime do ChromaDB e as libs
+# do Orange3) embarcam o PRÓPRIO runtime OpenMP. Quando dois deles inicializam
+# no mesmo processo, o OpenMP ABORTA (access violation → segfault/EXIT 139),
+# de forma INTERMITENTE conforme a ordem de carga — o que derrubava o app no
+# startup às vezes. Permitir a coexistência dos runtimes evita o crash. Definido
+# aqui porque config é importado antes de qualquer biblioteca pesada em todos
+# os pontos de entrada (app, terminal, scripts, bateria).
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 from pathlib import Path
 from dotenv import load_dotenv
 

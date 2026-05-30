@@ -100,6 +100,36 @@ ESPEC_FERRAMENTAS = [
             "perguntar algo factual sobre o mundo que a base local nao cobre."
         ),
     },
+    {
+        "name": "listar_base_bibliografica",
+        "description": (
+            "Lista o CATALOGO COMPLETO da literatura indexada (todos os "
+            "documentos da base, agrupados por tema). Use quando o usuario "
+            "pedir o INVENTARIO inteiro: 'liste todas as referencias', 'o que "
+            "voce tem indexado', 'mostre a base bibliografica completa', "
+            "'quantos artigos voce tem', 'todas as 39'. NAO use para busca "
+            "tematica ('artigos sobre anomalias') — isso e RAG."
+        ),
+    },
+    {
+        "name": "listar_experimentos_artigos",
+        "description": (
+            "Lista os EXPERIMENTOS de ML por artigo-base (Ghoneim, Francisti, "
+            "Ibrahim, Sharma, Ahirwar, Stender) e o status de cada modelo. Use "
+            "quando o usuario perguntar quais experimentos existem, quais "
+            "modelos rodam, ou o que da para testar com base nos artigos."
+        ),
+    },
+    {
+        "name": "rodar_experimento_artigo",
+        "description": (
+            "Treina e avalia os modelos de ML de um ou mais artigos-base e "
+            "compara os resultados (AUC/F1 ou acuracia). Use quando o usuario "
+            "pedir para RODAR/TESTAR um experimento de um artigo: 'rode o "
+            "experimento do Ghoneim', 'teste os modelos do Sharma', 'compare "
+            "os experimentos de anomalia'. Tarefa pesada (treina modelos)."
+        ),
+    },
 ]
 
 
@@ -132,6 +162,114 @@ def _deve_forcar(pergunta: str) -> bool:
 def _quer_status(pergunta: str) -> bool:
     txt = _normalizar(pergunta)
     return "status" in txt or "pendente" in txt or "falt" in txt
+
+
+# --- Catalogo da literatura (inventario completo, NAO e RAG tematico) -------
+# Termos que se referem ao acervo bibliografico em si.
+_TERMOS_BIBLIO = (
+    "referencia", "referencias", "fonte", "fontes", "artigo", "artigos",
+    "documento", "documentos", "obra", "obras", "literatura", "biblio",
+    "bibliografia", "bibliografica", "acervo", "papers", "paper",
+)
+# Termos que indicam INTENCAO de totalidade/inventario (e nao busca por tema).
+_TERMOS_TOTALIDADE = (
+    "todas", "todos", "toda", "todo", "tudo", "completa", "completo",
+    "completas", "completos", "inteira", "inteiro", "lista", "liste",
+    "listar", "catalogo", "inventario", "quantos", "quantas", "quais",
+    "que voce tem", "que voce possui", "disponiveis", "disponivel",
+)
+# Gatilhos fortes: sozinhos ja bastam para pedir o catalogo inteiro.
+_GATILHOS_CATALOGO_FORTE = (
+    "base bibliografica", "base de conhecimento", "literatura indexada",
+    "literatura completa", "toda a literatura", "toda literatura",
+    "catalogo da base", "as 39", "todas as 39", "todos os 39",
+    "39 referencias", "39 artigos", "39 documentos", "39 obras",
+    "indexad",  # "o que voce tem indexado", "o que esta indexado"
+)
+# Qualificadores de TOPICO: se aparecem, e busca tematica (RAG), nunca catalogo.
+_QUALIFICADORES_TOPICO = (
+    "sobre", "a respeito", "acerca", "referente a", "referentes a",
+    "que tratam de", "que trata de", "que falam de", "que fala de",
+    "relacionad", "do tema", "no tema", "a cerca",
+)
+
+
+def _quer_catalogo(pergunta: str) -> bool:
+    """
+    True quando o pedido e pelo INVENTARIO inteiro da base bibliografica
+    (lista completa), e nao por uma busca tematica na literatura.
+
+    Ex. True : "liste todas as referencias", "o que voce tem indexado",
+               "quantos artigos voce tem", "quais documentos voce tem",
+               "mostre a base bibliografica".
+    Ex. False: "cite artigos sobre anomalias", "quais artigos sobre falhas
+               CA?", "o que a literatura diz sobre Weibull?" (vao para o RAG).
+    """
+    txt = _normalizar(pergunta)
+    # Qualificador de topico => busca tematica; deixa para o RAG.
+    if any(q in txt for q in _QUALIFICADORES_TOPICO):
+        return False
+    if any(g in txt for g in _GATILHOS_CATALOGO_FORTE):
+        return True
+    tem_biblio = any(t in txt for t in _TERMOS_BIBLIO)
+    tem_total = any(t in txt for t in _TERMOS_TOTALIDADE)
+    return tem_biblio and tem_total
+
+
+# --- Experimentos de ML por artigo-base ------------------------------------
+# Sobrenome citado -> chave do experimento no registry.
+_AUTORES_EXP = {
+    "ghoneim": "ghoneim",
+    "francisti": "francisti",
+    "ibrahim": "ibrahim",
+    "sharma": "sharma",
+    "ahirwar": "ahirwar",
+    "stender": "stender",
+}
+_VERBOS_RODAR_EXP = (
+    "rode", "rodar", "roda", "execut", "teste", "testar", "testa",
+    "treine", "treinar", "treina", "compare", "comparar", "compara",
+    "rodar os modelos", "avalie", "avaliar",
+)
+
+
+def _experimentos_alvo(pergunta: str) -> list[str]:
+    """Quais experimentos o usuário citou (por autor, tarefa, ou 'todos')."""
+    txt = _normalizar(pergunta)
+    alvos = [k for nome, k in _AUTORES_EXP.items() if nome in txt]
+    if alvos:
+        return alvos
+    if "anomalia" in txt or "anomalias" in txt:
+        return ["francisti", "ibrahim", "sharma", "ahirwar"]
+    if "classificacao" in txt or "supervision" in txt:
+        return ["ghoneim"]
+    if any(t in txt for t in ("todos", "tudo", "compare", "comparar", "todas")):
+        return ["ghoneim", "francisti", "ibrahim", "sharma", "ahirwar"]
+    return []
+
+
+def _quer_rodar_experimento(pergunta: str) -> bool:
+    txt = _normalizar(pergunta)
+    tem_verbo = any(v in txt for v in _VERBOS_RODAR_EXP)
+    if "experimento" in txt:
+        return tem_verbo
+    # "teste os modelos do sharma" (sem a palavra 'experimento')
+    tem_autor = any(a in txt for a in _AUTORES_EXP)
+    tem_modelos = "modelo" in txt or "modelos" in txt
+    return tem_autor and tem_verbo and tem_modelos
+
+
+def _quer_catalogo_experimentos(pergunta: str) -> bool:
+    txt = _normalizar(pergunta)
+    if "experimento" not in txt:
+        return False
+    if _quer_rodar_experimento(pergunta):
+        return False
+    consulta = any(t in txt for t in (
+        "quais", "que ", "liste", "lista", "listar", "mostre", "mostra",
+        "disponiveis", "disponivel", "existem", "tem ", "status", "quantos",
+    ))
+    return consulta
 
 
 def _quer_limpar(pergunta: str) -> bool:
@@ -388,6 +526,143 @@ def buscar_na_web(progresso=None, pergunta: str = "") -> dict:
     }
 
 
+def listar_base_bibliografica(progresso=None, pergunta: str = "") -> dict:
+    """
+    Devolve o catálogo COMPLETO da literatura indexada (todos os documentos,
+    agrupados por tema). Lê os metadados do ChromaDB diretamente — NÃO usa RAG
+    — então a lista é determinística e nunca trunca nem inventa referências.
+    """
+    if progresso:
+        progresso("Lendo o catálogo completo da base de conhecimento...")
+
+    try:
+        import chromadb
+
+        from src.conhecimento.agente import catalogo_literatura
+        from src.core.config import NOME_COLECAO, PASTA_CHROMADB
+
+        cliente = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
+        colecao = cliente.get_collection(NOME_COLECAO)
+        texto = catalogo_literatura(colecao)
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ok": False,
+            "etapa": "Base bibliográfica",
+            "mensagem": (
+                "Não consegui ler o catálogo da base de conhecimento agora "
+                f"({exc}). Verifique se o ChromaDB foi construído."
+            ),
+            "imagens": [],
+            "resposta_pronta": True,
+        }
+
+    return {
+        "ok": True,
+        "etapa": "Base bibliográfica",
+        "mensagem": texto,
+        "imagens": [],
+        "resposta_pronta": True,  # texto determinístico — não passa pelo LLM
+    }
+
+
+def listar_experimentos_artigos(progresso=None, pergunta: str = "") -> dict:
+    """Catálogo dos experimentos de ML por artigo-base + status dos modelos."""
+    if progresso:
+        progresso("Lendo o catálogo de experimentos por artigo...")
+    try:
+        from src.ml.experimentos_artigos import catalogo_experimentos_md
+
+        msg = catalogo_experimentos_md()
+        msg += (
+            "\n\nPara rodar, peça por exemplo: \"rode o experimento do Ghoneim\" "
+            "ou use a barra lateral (🧪 Experimentos por artigo)."
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ok": False, "etapa": "Experimentos por artigo",
+            "mensagem": f"Não consegui ler o catálogo de experimentos: {exc}",
+            "imagens": [], "resposta_pronta": True,
+        }
+    return {
+        "ok": True, "etapa": "Experimentos por artigo",
+        "mensagem": msg, "imagens": [], "resposta_pronta": True,
+    }
+
+
+def _md_experimento(res: dict) -> tuple[str, list[dict]]:
+    """Markdown + imagens de um resultado de experimento."""
+    if not res.get("ok"):
+        ref = res.get("referencia", res.get("experimento", "experimento"))
+        return f"### {ref}\nNão executado — {res.get('mensagem', 'sem modelos disponíveis')}.", []
+
+    mp = res["metrica_principal"]
+    linhas = [
+        f"### {res['referencia']} — {res['dataset']} ({res['tarefa']})",
+        f"| Modelo | {mp} | demais |",
+        "|---|---:|---|",
+    ]
+    for nome, m in res["modelos"].items():
+        if not m.get("disponivel", True):
+            linhas.append(f"| {nome} | — | _{m.get('motivo', 'indisponível')}_ |")
+            continue
+        principal = m.get(mp)
+        outras = ", ".join(
+            f"{k}={v:.3f}" for k, v in m.items()
+            if isinstance(v, (int, float)) and k not in (mp, "disponivel")
+        )
+        linhas.append(f"| {nome} | {principal:.4f} | {outras} |")
+    linhas.append(
+        f"\n**Melhor: {res['melhor_modelo']}** ({mp}={res['melhor_valor']:.4f}). "
+        f"Salvo em `resultados/experimentos/{res['experimento']}/`."
+    )
+    imagens = []
+    graf = res.get("grafico")
+    if graf:
+        from pathlib import Path
+        if Path(graf).exists():
+            imagens.append({"path": graf, "caption": f"{res['referencia']} — comparação"})
+    return "\n".join(linhas), imagens
+
+
+def rodar_experimento_artigo(progresso=None, pergunta: str = "") -> dict:
+    """Roda um ou mais experimentos por artigo e devolve a comparação."""
+    from src.ml.experimentos_artigos import catalogo_experimentos_md, executar_experimento
+
+    alvos = _experimentos_alvo(pergunta)
+    if not alvos:
+        return {
+            "ok": True, "etapa": "Experimentos por artigo",
+            "mensagem": (
+                "Diga qual experimento rodar (por autor). Ex.: \"rode o "
+                "experimento do Ghoneim\" ou \"compare os experimentos de "
+                "anomalia\".\n\n" + catalogo_experimentos_md()
+            ),
+            "imagens": [], "resposta_pronta": True,
+        }
+
+    blocos, imagens = [], []
+    for key in alvos:
+        if progresso:
+            progresso(f"Rodando experimento: {key}...")
+        try:
+            res = executar_experimento(key, progresso=progresso)
+        except Exception as exc:  # noqa: BLE001
+            res = {"experimento": key, "ok": False, "mensagem": str(exc)}
+        md, imgs = _md_experimento(res)
+        blocos.append(md)
+        imagens.extend(imgs)
+
+    cabecalho = (
+        "## Experimentos por artigo — resultados\n"
+        if len(alvos) > 1 else ""
+    )
+    return {
+        "ok": True, "etapa": "Experimentos por artigo",
+        "mensagem": cabecalho + "\n\n".join(blocos),
+        "imagens": imagens, "resposta_pronta": True,
+    }
+
+
 _DESPACHO = {
     "rodar_features_ca": rodar_features_ca,
     "rodar_autoencoder": rodar_autoencoder,
@@ -399,6 +674,9 @@ _DESPACHO = {
     "consultar_status_pipeline": consultar_status_pipeline,
     "limpar_resultados_ml": limpar_resultados_ml,
     "buscar_web": buscar_na_web,
+    "listar_base_bibliografica": listar_base_bibliografica,
+    "listar_experimentos_artigos": listar_experimentos_artigos,
+    "rodar_experimento_artigo": rodar_experimento_artigo,
 }
 
 
@@ -469,6 +747,20 @@ def _decisao_rapida(pergunta: str) -> dict | None:
     # Busca na web — atalho prioritário quando gatilho explícito aparece
     if any(g in txt for g in _GATILHOS_WEB):
         return {"usar_ferramenta": True, "ferramenta": "buscar_web"}
+
+    # Experimentos de ML por artigo — checados ANTES do catálogo de literatura,
+    # pois "experimento" é um sinal mais específico que "artigo" genérico.
+    # RODAR tem prioridade sobre LISTAR.
+    if _quer_rodar_experimento(pergunta):
+        return {"usar_ferramenta": True, "ferramenta": "rodar_experimento_artigo"}
+    if _quer_catalogo_experimentos(pergunta):
+        return {"usar_ferramenta": True, "ferramenta": "listar_experimentos_artigos"}
+
+    # Catálogo da literatura — pedido pelo INVENTÁRIO inteiro ("liste todas as
+    # referências", "o que você tem indexado", "quantos artigos", "as 39").
+    # Atende direto, sem RAG, para nunca truncar nem inventar a lista.
+    if _quer_catalogo(pergunta):
+        return {"usar_ferramenta": True, "ferramenta": "listar_base_bibliografica"}
 
     # Status é consulta operacional, então deve vencer antes do guard genérico.
     if _quer_status(pergunta):

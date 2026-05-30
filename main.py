@@ -15,7 +15,16 @@ import os
 from pathlib import Path
 from datetime import datetime
 
+# ANTES de imports pesados: evitar crash de OpenMP duplicado (torch/numpy/
+# onnxruntime/Orange) no Windows — access violation intermitente no startup.
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 sys.path.insert(0, str(Path(__file__).parent))
+
+# Blinda stdout/stderr contra emoji no Windows (cp1252) antes de qualquer print.
+from src.core.utils import configurar_saida_utf8
+
+configurar_saida_utf8()
 
 from src.conhecimento.agente import inicializar_agente, perguntar, listar_documentos
 from src.conhecimento.provedores import selecionar_provedor

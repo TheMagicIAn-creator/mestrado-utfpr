@@ -11,8 +11,16 @@ Fluxo:
 Autor: Rodolfo Torres (UTFPR)
 """
 import sys
+import os
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
+
+# OpenMP duplicado (torch / numpy-MKL / onnxruntime do ChromaDB) ABORTA no
+# Windows com access violation (EXIT 139), de forma INTERMITENTE conforme a
+# ordem de carga. Precisa ser definido ANTES de importar sentence_transformers
+# (que carrega o torch, logo abaixo) — inclusive em scripts que importam este
+# módulo antes do config (ex.: a bateria de testes).
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -20,7 +28,6 @@ try:
 except Exception:
     pass
 
-import os
 from pathlib import Path
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
@@ -1600,6 +1607,84 @@ def listar_documentos(colecao) -> str:
 
     return texto
 
+
+# Nomes amigaveis para os 5 temas (campo `pasta` no metadado do ChromaDB).
+_NOMES_TEMAS = {
+    "confiabilidade":   "Confiabilidade e FMEA",
+    "inversores-pv":    "Inversores PV e modos de falha",
+    "manutencao":       "Manutenção preditiva e RCM",
+    "ml-preditivo":     "Machine Learning e predição de falhas",
+    "sinais-eletricos": "Sinais elétricos e processamento",
+}
+
+
+def catalogo_literatura(colecao) -> str:
+    """
+    Catálogo COMPLETO e determinístico da literatura indexada.
+
+    Diferente do RAG (que só traz os trechos mais relevantes e leva o LLM a
+    truncar/inventar), aqui lemos TODOS os metadados do ChromaDB e devolvemos
+    o inventário inteiro, agrupado por tema. A citação é reconstruída a partir
+    de autor/ano/título (campos limpos) para não herdar o mojibake do campo
+    `citacao`. Use isto sempre que o pesquisador pedir "liste tudo o que você
+    tem", "a base bibliográfica completa", "quantos artigos", etc.
+    """
+    vistos: dict[str, dict] = {}
+    offset, lote = 0, 200
+
+    while True:
+        try:
+            res = colecao.get(limit=lote, offset=offset, include=["metadatas"])
+        except Exception:
+            break
+        metas = res.get("metadatas", []) or []
+        if not metas:
+            break
+        for m in metas:
+            arq = m.get("arquivo", "desconhecido")
+            if arq not in vistos:
+                vistos[arq] = {
+                    "pasta":  m.get("pasta", "outros"),
+                    "autor":  (m.get("autor") or "Autor desconhecido").strip(),
+                    "ano":    str(m.get("ano") or "s.d.").strip(),
+                    "titulo": (m.get("titulo") or arq).strip(),
+                    "chunks": int(m.get("total_chunks", 0) or 0),
+                }
+        offset += lote
+        if len(metas) < lote:
+            break
+
+    if not vistos:
+        return (
+            "Não encontrei documentos indexados na base de conhecimento. "
+            "Verifique se o ChromaDB foi reconstruído (scripts/reconstruir_literatura.py)."
+        )
+
+    por_tema: dict[str, list[dict]] = {}
+    for info in vistos.values():
+        por_tema.setdefault(info["pasta"], []).append(info)
+
+    total = len(vistos)
+    linhas = [f"📚 **Base bibliográfica completa — {total} documentos indexados**"]
+
+    # Temas conhecidos primeiro (na ordem do dicionário), depois quaisquer extras.
+    ordem_temas = [t for t in _NOMES_TEMAS if t in por_tema]
+    ordem_temas += [t for t in sorted(por_tema) if t not in _NOMES_TEMAS]
+
+    for pasta in ordem_temas:
+        docs = sorted(por_tema[pasta], key=lambda d: (d["autor"].lower(), d["ano"]))
+        nome_tema = _NOMES_TEMAS.get(pasta, pasta)
+        linhas.append(f"\n### {nome_tema} ({len(docs)})")
+        for d in docs:
+            linhas.append(f"- **{d['autor']} ({d['ano']})** — {d['titulo']}")
+
+    linhas.append(
+        f"\n_São {total} documentos no total. Posso detalhar qualquer um, "
+        "comparar dois trabalhos ou buscar um tema específico — é só pedir._"
+    )
+    return "\n".join(linhas)
+
+
 def preparar_prompt(
     pergunta: str,
     perfil: str,
@@ -1684,6 +1769,20 @@ def perguntar(
     if resposta_simples:
         print(resposta_simples)
         return resposta_simples
+
+    # Catálogo da literatura: "liste todas as referências", "o que você tem
+    # indexado", "quantos artigos". Inventário completo e determinístico, lido
+    # direto do ChromaDB — nunca via RAG/LLM (que truncaria/inventaria a lista).
+    # Import tardio: ferramentas.py importa este módulo (evita ciclo).
+    try:
+        from src.conhecimento.ferramentas import _quer_catalogo
+        if not anexos and _quer_catalogo(pergunta):
+            texto = catalogo_literatura(colecao)
+            if streaming:
+                print(texto)
+            return texto
+    except Exception:
+        pass
 
     prompt, citacoes = preparar_prompt(
         pergunta=pergunta,

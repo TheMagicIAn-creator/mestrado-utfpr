@@ -232,6 +232,36 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
                 st.rerun()
 
         st.divider()
+        st.markdown("**🧪 Experimentos por artigo**")
+        st.caption(
+            "Rode os modelos de ML dos artigos-base e compare os resultados."
+        )
+        from src.ml.experimentos_artigos import listar_experimentos
+
+        _exps_exec = [e for e in listar_experimentos() if e.runner]
+        _rotulos_exp = {
+            f"{e.referencia} · {e.dataset}": e.key for e in _exps_exec
+        }
+        _sel_exp = st.multiselect(
+            "Escolha artigos para rodar e comparar",
+            options=list(_rotulos_exp.keys()),
+            label_visibility="collapsed",
+            key="multiselect_experimentos",
+        )
+        if st.button(
+            "Rodar selecionados",
+            use_container_width=True,
+            type="primary",
+            disabled=not _sel_exp,
+        ):
+            st.session_state.exp_para_rodar = [_rotulos_exp[s] for s in _sel_exp]
+            st.rerun()
+        with st.expander("Status dos modelos por artigo"):
+            from src.ml.experimentos_artigos import catalogo_experimentos_md
+
+            st.markdown(catalogo_experimentos_md())
+
+        st.divider()
         st.markdown("**📄 PDFs**")
         arquivo_pdf = st.file_uploader(
             "Adicionar PDF",
@@ -325,6 +355,19 @@ def stream_resposta(prompt: str, llm):
         yield chunk.content
 
 
+# ── Cadência de "digitação" do streaming ────────────────────────────────────
+# A resposta é revelada palavra a palavra com uma pequena pausa, em vez de
+# "estourar" blocos inteiros de texto (efeito comum com o Groq, que entrega
+# muitos tokens de uma vez). Deixa a leitura mais natural, como se o agente
+# estivesse escrevendo na hora.
+#   VELOCIDADE_DIGITACAO   = segundos por palavra (MAIOR = mais devagar).
+#   ORCAMENTO_DIGITACAO_S  = teto de tempo "datilografado"; passando disso, o
+#                            restante aparece direto, para respostas longas não
+#                            se arrastarem.
+VELOCIDADE_DIGITACAO = 0.05
+ORCAMENTO_DIGITACAO_S = 18.0
+
+
 def stream_resposta_limpa(conteudo, llm, placeholder, refs_md: str) -> str:
     """
     Streama a resposta do LLM dentro de um placeholder e, ao final, substitui
@@ -338,13 +381,27 @@ def stream_resposta_limpa(conteudo, llm, placeholder, refs_md: str) -> str:
     cursor '▌'), e o bloco final de fontes aparece apenas UMA vez,
     consolidado, mesmo que o LLM tenha gerado o proprio.
     """
+    import re
+    import time
     from src.conhecimento.agente import remover_bloco_fontes_llm
 
     texto = ""
     cursor = "▌"
+    gasto = 0.0  # tempo ja "datilografado"; apos o orcamento, revela direto
     for chunk in llm.stream([HumanMessage(content=conteudo)]):
-        texto += chunk.content
-        placeholder.markdown(texto + cursor)
+        novo = chunk.content or ""
+        if not novo:
+            continue
+        # Revela palavra a palavra com uma pausa curta, para um efeito de
+        # digitacao natural. O padrao "\s*\S+\s*" preserva TODOS os caracteres
+        # (inclusive espacos no inicio do chunk), evitando colar palavras
+        # quando o provedor quebra o texto em " palavra".
+        for pedaco in re.findall(r"\s*\S+\s*", novo) or [novo]:
+            texto += pedaco
+            placeholder.markdown(texto + cursor)
+            if gasto < ORCAMENTO_DIGITACAO_S:
+                time.sleep(VELOCIDADE_DIGITACAO)
+                gasto += VELOCIDADE_DIGITACAO
 
     texto = remover_bloco_fontes_llm(texto)
     if refs_md:
@@ -631,6 +688,80 @@ def renderizar_chat(perfil, modelo, colecao, colecao_sessoes) -> None:
     )
 
 
+def renderizar_experimentos() -> None:
+    """Roda (se pedido) e exibe os experimentos de ML por artigo + comparação."""
+    import pandas as pd
+
+    from src.ml.experimentos_artigos import executar_experimento, get_experimento
+
+    pendentes = st.session_state.pop("exp_para_rodar", None)
+    if pendentes:
+        resultados = []
+        with st.status("Rodando experimentos por artigo...", expanded=True) as status:
+            for key in pendentes:
+                exp = get_experimento(key)
+                status.write(f"▶ {exp.referencia} ({exp.dataset})")
+                try:
+                    res = executar_experimento(key, progresso=status.write)
+                except Exception as exc:  # noqa: BLE001
+                    res = {"experimento": key, "referencia": exp.referencia,
+                           "ok": False, "mensagem": str(exc)}
+                resultados.append(res)
+            status.update(label="Experimentos concluídos", state="complete")
+        st.session_state.resultados_experimentos = resultados
+
+    resultados = st.session_state.get("resultados_experimentos")
+    if not resultados:
+        return
+
+    st.markdown("### 🧪 Experimentos por artigo — comparação")
+
+    linhas = []
+    for res in resultados:
+        if not res.get("ok"):
+            linhas.append({
+                "Artigo": res.get("referencia", res.get("experimento")),
+                "Status": f"não executado — {res.get('mensagem', 'sem modelos')}",
+            })
+            continue
+        linhas.append({
+            "Artigo": res["referencia"],
+            "Dataset": res["dataset"],
+            "Tarefa": res["tarefa"],
+            "Melhor modelo": res["melhor_modelo"],
+            "Métrica": res["metrica_principal"],
+            "Valor": round(res["melhor_valor"], 4),
+        })
+    st.dataframe(pd.DataFrame(linhas), use_container_width=True, hide_index=True)
+
+    for res in resultados:
+        if not res.get("ok"):
+            continue
+        with st.expander(f"📄 {res['referencia']} — {res['artigo']}"):
+            mdf = []
+            for nome, m in res["modelos"].items():
+                if m.get("disponivel", True):
+                    row = {"Modelo": nome}
+                    row.update({
+                        k: round(v, 4) for k, v in m.items()
+                        if isinstance(v, (int, float)) and k != "disponivel"
+                    })
+                    mdf.append(row)
+                else:
+                    mdf.append({"Modelo": nome, "obs": m.get("motivo", "indisponível")})
+            st.dataframe(pd.DataFrame(mdf), use_container_width=True, hide_index=True)
+            graf = res.get("grafico")
+            if graf and Path(graf).exists():
+                st.image(graf, use_container_width=True)
+            st.caption(f"Resultados salvos em resultados/experimentos/{res['experimento']}/")
+
+    if st.button("Limpar resultados de experimentos", use_container_width=True):
+        st.session_state.pop("resultados_experimentos", None)
+        st.rerun()
+
+    st.divider()
+
+
 def main() -> None:
     inicializar_estado()
     st.markdown(_CSS_MINIMO, unsafe_allow_html=True)
@@ -643,6 +774,8 @@ def main() -> None:
 
     renderizar_sidebar(modelo, colecao, colecao_sessoes)
     renderizar_topo(relatorio)
+
+    renderizar_experimentos()
 
     renderizar_chat(perfil, modelo, colecao, colecao_sessoes)
 

@@ -78,6 +78,12 @@ NOME_PROVEDOR_GROQ = "Groq (LLaMA 3.3)"
 MIN_CHARS_RESPOSTA = 80
 MAX_CHARS_RESPOSTA = 14_000
 
+
+class QuotaExcedida(RuntimeError):
+    """Cota diaria/por-minuto do Groq esgotada (HTTP 429). NAO e falha de
+    qualidade da resposta — e limite externo de API. Tratada a parte para
+    nao contaminar o veredito da bateria."""
+
 # ── RAG carregado uma única vez (um SentenceTransformer; dois modelos torch
 #    vivos ao mesmo tempo provocam access violation no Windows) ──────────────
 _RAG: dict = {}
@@ -363,6 +369,9 @@ def invocar_groq(llm, prompt: str, max_tentativas: int = 4) -> str:
             elif tentativa < max_tentativas:
                 print(f"    ⚠️ erro transitorio ({erro[:80]}); retry...")
                 time.sleep(8)
+            elif "429" in erro:
+                # Esgotou as tentativas ainda em 429: cota da API estourou.
+                raise QuotaExcedida(erro) from exc
             else:
                 raise
     return ""
@@ -569,19 +578,27 @@ def main() -> int:
             extra = f" nota={nota}" if nota is not None else ""
             print(f"    → {status}{extra}"
                   + (f" | falhou: {', '.join(falhas)}" if falhas else ""))
+            quota = False
+
+        except QuotaExcedida as exc:
+            resposta = f"[quota excedida: {exc}]"
+            checks = [("quota", False, "cota diaria/por-minuto do Groq esgotada")]
+            ok, falhas, corrigido = False, ["quota"], False
+            nota, juiz_just, quota = (None, "", True)
+            print("    → SKIP (cota da API esgotada — nao e falha de qualidade)")
 
         except Exception as exc:  # noqa: BLE001
             resposta = f"[erro: {exc}]"
             checks = [("execucao", False, str(exc))]
             ok, falhas, corrigido = False, ["execucao"], False
-            nota, juiz_just = (None, "")
+            nota, juiz_just, quota = (None, "", False)
             print(f"    → ERRO: {exc}")
 
         resultados.append({
             "indice": indice, "nome": nome, "pergunta": pergunta,
             "consultar": consultar, "resposta": resposta, "checks": checks,
             "ok": ok, "falhas": falhas, "corrigido": corrigido,
-            "nota": nota, "juiz_just": juiz_just,
+            "nota": nota, "juiz_just": juiz_just, "quota": quota,
         })
 
         if indice < len(perguntas) and args.pausa > 0:
@@ -594,16 +611,27 @@ def main() -> int:
         memorias = gravar_memoria(resultados, timestamp)
     relatorio = gravar_relatorio(resultados, memorias, timestamp, args.juiz)
 
-    falhas_tot = [r for r in resultados if not r["ok"]]
+    quota_skips = [r for r in resultados if r.get("quota")]
+    falhas_qual = [r for r in resultados if not r["ok"] and not r.get("quota")]
+    avaliadas = len(resultados) - len(quota_skips)
+    passaram = sum(1 for r in resultados if r["ok"])
     print(f"\n{'='*60}")
-    print(f"Perguntas avaliadas : {len(resultados)}")
-    print(f"Passaram            : {len(resultados) - len(falhas_tot)}")
-    print(f"Falharam            : {len(falhas_tot)}")
-    print(f"Corrigidos no retry : {sum(1 for r in resultados if r['corrigido'])}")
-    print(f"Memorias gravadas   : {memorias}")
-    print(f"Relatorio           : {relatorio}")
+    print(f"Perguntas             : {len(resultados)}")
+    print(f"Respondidas/avaliadas : {avaliadas}")
+    print(f"Passaram              : {passaram}")
+    print(f"Falhas de qualidade   : {len(falhas_qual)}")
+    print(f"Puladas (cota da API) : {len(quota_skips)}")
+    print(f"Corrigidos no retry   : {sum(1 for r in resultados if r['corrigido'])}")
+    print(f"Memorias gravadas     : {memorias}")
+    print(f"Relatorio             : {relatorio}")
+    if quota_skips:
+        print("\n⚠️  Algumas perguntas nao foram avaliadas por esgotamento da cota "
+              "diaria do Groq (100k tokens/dia no tier gratuito). Rode novamente "
+              "amanha, ou use --limite/--pausa para caber no orcamento. Isso NAO "
+              "conta como falha de qualidade.")
 
-    return 1 if falhas_tot else 0
+    # Exit 1 apenas para falhas REAIS de qualidade; cota esgotada nao reprova.
+    return 1 if falhas_qual else 0
 
 
 if __name__ == "__main__":

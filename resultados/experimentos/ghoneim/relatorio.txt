@@ -1,0 +1,16 @@
+================================================================
+  EXPERIMENTO: Ghoneim, Rashed & Elkalashy (2021)
+  Fault Detection Algorithms for Service Continuity in PV Farms
+  Dataset: PV Farms | Tarefa: classificacao
+================================================================
+
+Métrica principal: f1
+
+- Random Forest: acuracia=0.8700, precisao=0.8869, recall=0.8700, f1=0.8683, cv_media=1.0000, cv_desvio=0.0000
+- AdaBoost: acuracia=0.3700, precisao=0.1939, recall=0.3700, f1=0.2421, cv_media=0.4117, cv_desvio=0.0067
+- Regressão Logística: acuracia=0.7100, precisao=0.6383, recall=0.7100, f1=0.6430, cv_media=0.9367, cv_desvio=0.0256
+- Naive Bayes: acuracia=0.8100, precisao=0.8757, recall=0.8100, f1=0.7916, cv_media=0.9150, cv_desvio=0.0403
+- CN2 (indução de regras): INDISPONÍVEL (erro no Orange/CN2: No module named 'bottleneck')
+
+MELHOR MODELO: Random Forest (f1=0.8683)
+================================================================

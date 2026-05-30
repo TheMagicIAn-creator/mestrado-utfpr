@@ -19,13 +19,14 @@ from src.conhecimento.agente import (
     _expandir_query,
     _montar_prompt,
     buscar_contexto,
+    catalogo_literatura,
     deve_consultar_literatura,
     eh_query_de_revisao,
     formatar_referencias_markdown,
     remover_bloco_fontes_llm,
     resposta_interacao_simples,
 )
-from src.conhecimento.ferramentas import decidir_acao
+from src.conhecimento.ferramentas import decidir_acao, executar_ferramenta
 from src.conhecimento.leitor_anexos import (
     ler_anexo,
     ler_anexos,
@@ -801,6 +802,187 @@ def _casos_prompt_anexo() -> list[CasoTeste]:
         casos.append(caso_prompt_com_anexo(
             nome, pergunta, anexo, consultar, (), (_HDR_ANEXO, "ARQUIVOS ANEXADOS")
         ))
+
+    return casos
+
+
+def _casos_catalogo() -> list[CasoTeste]:
+    """
+    Catalogo da literatura (inventario completo). Blinda contra o bug de o
+    agente listar so ~8 documentos e ALUCINAR o resto: pedir o inventario tem
+    de rotear para a ferramenta deterministica `listar_base_bibliografica`,
+    que le os metadados do ChromaDB (sem RAG, sem LLM) e nunca trunca/inventa.
+    """
+    casos: list[CasoTeste] = []
+
+    # 1) Roteamento: pedidos de INVENTARIO -> listar_base_bibliografica
+    frases_catalogo = [
+        ("cat_route_01", "liste todas as referencias"),
+        ("cat_route_02", "liste todas as suas referencias bibliograficas"),
+        ("cat_route_03", "o que voce tem indexado?"),
+        ("cat_route_04", "o que esta indexado na base?"),
+        ("cat_route_05", "mostre a base bibliografica completa"),
+        ("cat_route_06", "quantos artigos voce tem na base?"),
+        ("cat_route_07", "quais documentos voce tem?"),
+        ("cat_route_08", "mostre todas as 39 referencias"),
+        ("cat_route_09", "liste a literatura indexada"),
+        ("cat_route_10", "todas as fontes que voce possui"),
+        ("cat_route_11", "me da o catalogo da base"),
+        ("cat_route_12", "liste todos os artigos"),
+        ("cat_route_13", "qual a bibliografia completa do projeto?"),
+        ("cat_route_14", "quais referencias voce tem?"),
+        ("cat_route_15", "me mostre a base de conhecimento inteira"),
+        ("cat_route_16", "quantas obras existem na base?"),
+    ]
+    for nome, pergunta in frases_catalogo:
+        casos.append(caso_ferramenta(nome, pergunta, "listar_base_bibliografica", True))
+
+    # 2) Anti-regressao: buscas TEMATICAS nao podem virar catalogo (seguem RAG)
+    frases_rag = [
+        ("cat_nao_01", "cite artigos sobre deteccao de anomalias em inversores"),
+        ("cat_nao_02", "o que a literatura diz sobre falhas no lado CA?"),
+        ("cat_nao_03", "quais autores tratam de manutencao preditiva?"),
+        ("cat_nao_04", "quais artigos voce tem sobre anomalias?"),
+        ("cat_nao_05", "segundo a literatura, descreva o uso de Weibull"),
+        ("cat_nao_06", "me fale sobre o artigo do Stender"),
+        ("cat_nao_07", "referencias sobre RUL em eletronica de potencia"),
+    ]
+    for nome, pergunta in frases_rag:
+        casos.append(caso_ferramenta(nome, pergunta, None, usar_esperado=False))
+
+    # 3) Completude: catalogo_literatura lista TODOS os docs distintos da
+    #    colecao, sem mojibake e sem extras (contagem == docs distintos reais).
+    def executar_completo() -> tuple[bool, str]:
+        _, colecao = _rag_cache()
+        metas = (colecao.get(include=["metadatas"]).get("metadatas", []) or [])
+        distintos = {m.get("arquivo") for m in metas if m.get("arquivo")}
+        texto = catalogo_literatura(colecao)
+        itens = [l for l in texto.splitlines() if l.startswith("- **")]
+        sem_mojibake = "�" not in texto
+        contagem_ok = len(itens) == len(distintos)
+        total_ok = f"{len(distintos)} documentos indexados" in texto
+        ok = bool(distintos) and contagem_ok and sem_mojibake and total_ok
+        return ok, (
+            f"distintos_colecao={len(distintos)}; itens_listados={len(itens)}; "
+            f"sem_mojibake={sem_mojibake}; total_ok={total_ok}"
+        )
+
+    casos.append(CasoTeste(
+        "cat_completude_contagem", "catalogo_literatura",
+        "catalogo lista todos os docs distintos (sem truncar/inventar)",
+        executar_completo,
+    ))
+
+    # 4) Despacho da ferramenta: resposta pronta, ok, e a lista chega completa.
+    def executar_tool() -> tuple[bool, str]:
+        _, colecao = _rag_cache()
+        metas = (colecao.get(include=["metadatas"]).get("metadatas", []) or [])
+        distintos = {m.get("arquivo") for m in metas if m.get("arquivo")}
+        res = executar_ferramenta(
+            "listar_base_bibliografica", pergunta="liste todas as referencias"
+        )
+        itens = [l for l in (res.get("mensagem") or "").splitlines()
+                 if l.startswith("- **")]
+        ok = (
+            bool(res.get("ok"))
+            and bool(res.get("resposta_pronta"))
+            and len(itens) == len(distintos)
+            and len(itens) >= 1
+        )
+        return ok, (
+            f"ok={res.get('ok')}; resposta_pronta={res.get('resposta_pronta')}; "
+            f"itens={len(itens)}; distintos={len(distintos)}"
+        )
+
+    casos.append(CasoTeste(
+        "cat_tool_resposta_pronta", "catalogo_literatura",
+        "ferramenta listar_base_bibliografica entrega o catalogo completo",
+        executar_tool,
+    ))
+
+    return casos
+
+
+def _casos_experimentos() -> list[CasoTeste]:
+    """
+    Experimentos de ML por artigo: roteamento ('rode o experimento do X',
+    'quais experimentos existem') + integridade do registry (6 artigos, 5
+    executáveis, Stender sem runner) + disponibilidade dos modelos. NÃO roda
+    os experimentos pesados aqui — só valida estrutura e roteamento.
+    """
+    casos: list[CasoTeste] = []
+
+    # 1) Roteamento: RODAR experimento
+    rodar = [
+        ("exp_route_01", "rode o experimento do ghoneim"),
+        ("exp_route_02", "teste os modelos do sharma"),
+        ("exp_route_03", "compare os experimentos de anomalia"),
+        ("exp_route_04", "rode todos os experimentos por artigo"),
+        ("exp_route_05", "rode o experimento do francisti"),
+        ("exp_route_06", "execute o experimento do ibrahim"),
+        ("exp_route_07", "rode o experimento do ahirwar"),
+    ]
+    for nome, p in rodar:
+        casos.append(caso_ferramenta(nome, p, "rodar_experimento_artigo", True))
+
+    # 2) Roteamento: LISTAR experimentos
+    listar = [
+        ("exp_lista_01", "quais experimentos por artigo existem?"),
+        ("exp_lista_02", "liste os experimentos disponiveis"),
+        ("exp_lista_03", "mostre os experimentos por artigo"),
+    ]
+    for nome, p in listar:
+        casos.append(caso_ferramenta(nome, p, "listar_experimentos_artigos", True))
+
+    # 3) Anti-regressão: NÃO confundir com literatura/pipeline/RAG
+    casos.append(caso_ferramenta(
+        "exp_nao_01", "o que o ghoneim diz sobre deteccao de falhas?", None, False))
+    casos.append(caso_ferramenta(
+        "exp_nao_02", "rode o pipeline completo", "rodar_pipeline_completo", True))
+    casos.append(caso_ferramenta(
+        "exp_nao_03", "liste todas as referencias", "listar_base_bibliografica", True))
+
+    # 4) Integridade do registry
+    def executar_registry() -> tuple[bool, str]:
+        from src.ml.experimentos_artigos import REGISTRO, listar_experimentos
+        exps = listar_experimentos()
+        execs = [e for e in exps if e.runner]
+        stender = REGISTRO.get("stender")
+        ok = (
+            len(exps) == 6
+            and len(execs) == 5
+            and stender is not None
+            and not stender.runner
+            and all(e.modelos for e in execs)
+        )
+        return ok, (f"experimentos={len(exps)}; executaveis={len(execs)}; "
+                    f"stender_sem_runner={stender is not None and not stender.runner}")
+
+    casos.append(CasoTeste(
+        "exp_registry_integro", "experimentos_artigos",
+        "registry tem 6 artigos, 5 executáveis, Stender é cartão de dataset",
+        executar_registry,
+    ))
+
+    # 5) Disponibilidade dos modelos (degradação honesta e coerente)
+    def executar_disponibilidade() -> tuple[bool, str]:
+        from src.ml.experimentos_artigos import lib_disponivel, listar_experimentos
+        exps = listar_experimentos()
+        total = sum(len(e.modelos) for e in exps)
+        disp = sum(len(e.modelos_disponiveis()) for e in exps)
+        # cada modelo indisponível deve declarar 'requer' uma lib real
+        coerente = all(
+            (m.requer is not None and not lib_disponivel(m.requer))
+            for e in exps for m in e.modelos_indisponiveis()
+        )
+        ok = total >= 1 and disp >= 1 and coerente
+        return ok, f"modelos_total={total}; disponiveis={disp}; degradacao_coerente={coerente}"
+
+    casos.append(CasoTeste(
+        "exp_disponibilidade", "experimentos_artigos",
+        "modelos disponíveis e degradação coerente (indisponível => lib ausente)",
+        executar_disponibilidade,
+    ))
 
     return casos
 
@@ -1723,6 +1905,12 @@ def montar_casos() -> list[CasoTeste]:
     casos.extend(_casos_leitura_anexos())
     casos.extend(_casos_prompt_anexo())
 
+    # ── NOVO: catalogo da literatura (inventario completo, anti-alucinacao) ──
+    casos.extend(_casos_catalogo())
+
+    # ── NOVO: experimentos de ML por artigo (roteamento + registry) ──
+    casos.extend(_casos_experimentos())
+
     return casos
 
 
@@ -1824,10 +2012,10 @@ def gravar_relatorio(resultados: list[dict], memorias_gravadas: int, timestamp: 
     return caminho
 
 
-TOTAL_TESTES_ESPERADO = 519
+TOTAL_TESTES_ESPERADO = 559
 
 
-def main() -> int:
+def main(gravar_memorias: bool = True) -> int:
     casos = montar_casos()
     if len(casos) != TOTAL_TESTES_ESPERADO:
         print(
@@ -1855,20 +2043,47 @@ def main() -> int:
             "detalhe": detalhe,
         })
 
-    memorias_gravadas = gravar_memoria(resultados, timestamp)
+    falhas = [r for r in resultados if not r["ok"]]
+
+    if gravar_memorias:
+        memorias_gravadas = gravar_memoria(resultados, timestamp)
+        memorias_ok = memorias_gravadas == len(resultados)
+        nota_memoria = str(memorias_gravadas)
+    else:
+        # Pula o encode pesado do torch (SentenceTransformer) que pode causar
+        # access violation / segfault no Windows quando há outro modelo torch
+        # vivo no mesmo processo. A verificação dos testes não depende disto.
+        memorias_gravadas = 0
+        memorias_ok = True
+        nota_memoria = "(puladas: --sem-memoria)"
+
     relatorio = gravar_relatorio(resultados, memorias_gravadas, timestamp)
 
-    falhas = [r for r in resultados if not r["ok"]]
     print(f"Testes executados: {len(resultados)}")
     print(f"Passaram: {len(resultados) - len(falhas)}")
     print(f"Falharam: {len(falhas)}")
-    print(f"Memorias gravadas: {memorias_gravadas}")
+    print(f"Memorias gravadas: {nota_memoria}")
     print(f"Relatorio: {relatorio}")
 
-    if falhas or memorias_gravadas != len(resultados):
+    if falhas or not memorias_ok:
         return 1
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    import argparse
+
+    _parser = argparse.ArgumentParser(
+        description="Bateria determinística do Al IAdo PV."
+    )
+    _parser.add_argument(
+        "--sem-memoria",
+        action="store_true",
+        help=(
+            "Não grava memórias no ChromaDB. Evita o segfault do torch "
+            "(access violation) no Windows ao encodar muitos documentos; "
+            "a verificação dos testes em si não depende dessa etapa."
+        ),
+    )
+    _args = _parser.parse_args()
+    raise SystemExit(main(gravar_memorias=not _args.sem_memoria))

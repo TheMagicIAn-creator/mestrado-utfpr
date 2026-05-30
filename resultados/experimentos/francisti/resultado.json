@@ -1,0 +1,27 @@
+{
+  "experimento": "francisti",
+  "referencia": "Francisti et al. (2025)",
+  "artigo": "Predictive Modeling and Anomaly Detection in Solar PV Inverters",
+  "dataset": "Paderborn",
+  "tarefa": "anomalia",
+  "data": "2026-05-29 23:41:51",
+  "metrica_principal": "auc",
+  "modelos": {
+    "Z-score (estatístico)": {
+      "auc": 0.8152229090149004,
+      "f1": 0.776255707762557,
+      "recall": 0.9289617486338798,
+      "precisao": 0.6666666666666666,
+      "disponivel": true
+    },
+    "Random Forest (anomalia)": {
+      "auc": 0.9837110693063394,
+      "f1": 0.9497206703910615,
+      "recall": 0.9289617486338798,
+      "precisao": 0.9714285714285714,
+      "disponivel": true
+    }
+  },
+  "melhor_modelo": "Random Forest (anomalia)",
+  "melhor_valor": 0.9837110693063394
+}

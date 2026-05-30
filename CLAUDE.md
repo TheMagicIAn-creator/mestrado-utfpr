@@ -127,6 +127,35 @@ Planejados para detecção de anomalias no lado CA:
 - LSTM / GRU (séries temporais)
 - Análise de Weibull (confiabilidade e RUL)
 
+## Experimentos por Artigo-Base
+O módulo src/ml/experimentos_artigos.py permite ao Rodolfo
+rodar e comparar os modelos de ML dos artigos-base, por
+escolha dele — pela barra lateral (🧪 multiseleção + botão
+"Rodar selecionados" + quadro comparativo) ou pelo chat
+("rode o experimento do Ghoneim", "compare os experimentos
+de anomalia"). Cada artigo é um experimento reproduzível;
+os resultados são salvos em resultados/experimentos/<key>/
+(resultado.json, relatorio.txt, comparacao.png).
+
+Experimentos registrados:
+- Ghoneim (2021) — PV Farms, classificação: Random Forest,
+  AdaBoost, Regressão Logística, Naive Bayes, CN2 (Orange)
+- Francisti (2025) — Paderborn, anomalia: Random Forest +
+  Z-score
+- Ibrahim (2022) — Paderborn, anomalia: Isolation Forest,
+  AE-LSTM, Facebook Prophet
+- Sharma (2026) — Paderborn, anomalia: Isolation Forest +
+  PPO (RL); baselines RNN, ANN, CNN, KNN, SVM
+- Ahirwar (2025) — Paderborn, anomalia: híbrido AE-LSTM +
+  Prophet + Isolation Forest (voto)
+- Stender (2020) — cartão de dataset (Paderborn), sem modelo
+
+Anomalia é avaliada contra falhas sintéticas injetadas nas
+features (ground truth → AUC/F1/Recall). Degradação honesta:
+um modelo cujo pacote não está instalado é mostrado como
+"requer <lib>" em vez de sumir. Bibliotecas pesadas já
+instaladas: prophet, stable-baselines3, gymnasium, Orange3.
+
 ## Arquitetura do Sistema
 O projeto é um pacote Python modular. O ponto de
 entrada único é o app.py, que ao iniciar dispara o
@@ -151,7 +180,8 @@ mestrado-utfpr/
 │   │   ├── validacao.py      → AUC, F1, Recall formal
 │   │   ├── rul_weibull.py    → estimativa de RUL
 │   │   ├── eda.py            → análise exploratória
-│   │   └── classificador_pv.py → classificação de falhas CC
+│   │   ├── classificador_pv.py → classificação de falhas CC
+│   │   └── experimentos_artigos.py → experimentos de ML por artigo-base
 │   └── orquestrador.py       → coordena fluxo + controle do pipeline ML
 ├── scripts/                  → scripts de manutenção (rodar manualmente)
 │   ├── reconstruir_literatura.py → reconstrói ChromaDB de literatura

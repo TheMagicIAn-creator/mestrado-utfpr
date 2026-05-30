@@ -1,0 +1,62 @@
+{
+  "experimento": "sharma",
+  "referencia": "Sharma et al. (2026)",
+  "artigo": "Self-Tuning RL-Driven Isolation Forest for Anomaly Detection",
+  "dataset": "Paderborn",
+  "tarefa": "anomalia",
+  "data": "2026-05-30 07:35:39",
+  "metrica_principal": "auc",
+  "modelos": {
+    "Isolation Forest": {
+      "auc": 0.7592343754665711,
+      "f1": 0.7385892116182573,
+      "recall": 0.9726775956284153,
+      "precisao": 0.5953177257525084,
+      "disponivel": true
+    },
+    "KNN": {
+      "auc": 0.5957030666786108,
+      "f1": 0.6666666666666666,
+      "recall": 1.0,
+      "precisao": 0.5,
+      "disponivel": true
+    },
+    "SVM": {
+      "auc": 0.9724237809429961,
+      "f1": 0.9402597402597402,
+      "recall": 0.9890710382513661,
+      "precisao": 0.8960396039603961,
+      "disponivel": true
+    },
+    "ANN (MLP)": {
+      "auc": 0.9782764489832482,
+      "f1": 0.9584487534626038,
+      "recall": 0.9453551912568307,
+      "precisao": 0.9719101123595506,
+      "disponivel": true
+    },
+    "RNN": {
+      "auc": 0.8136402997999344,
+      "f1": 0.7972972972972973,
+      "recall": 0.9672131147540983,
+      "precisao": 0.6781609195402298,
+      "disponivel": true
+    },
+    "CNN": {
+      "auc": 0.9246916898085938,
+      "f1": 0.8716577540106952,
+      "recall": 0.8907103825136612,
+      "precisao": 0.8534031413612565,
+      "disponivel": true
+    },
+    "Isolation Forest + PPO": {
+      "auc": 0.7592343754665711,
+      "f1": 0.7385892116182573,
+      "recall": 0.9726775956284153,
+      "precisao": 0.5953177257525084,
+      "disponivel": true
+    }
+  },
+  "melhor_modelo": "ANN (MLP)",
+  "melhor_valor": 0.9782764489832482
+}

@@ -5,6 +5,33 @@ Funções utilitárias compartilhadas entre os módulos.
 Autor: Rodolfo Torres (UTFPR)
 """
 
+import sys
+
+
+def configurar_saida_utf8() -> None:
+    """
+    Torna stdout/stderr à prova de emoji no Windows.
+
+    O console do Windows (PyCharm, cmd) usa cp1252 por padrão, que NÃO
+    codifica emoji (🟢🔵✅🤖…). Qualquer `print()` com emoji estoura
+    `UnicodeEncodeError` e, quando isso acontece dentro da inicialização
+    do provedor/agente, derruba a subida do app.
+
+    A correção reconfigura os fluxos para UTF-8 com `errors="replace"`:
+    além de exibir os emojis quando o terminal suporta, garante que um
+    caractere não-codificável NUNCA mais derrube um `print()` (vira um
+    caractere de substituição em vez de exceção).
+
+    Idempotente e silenciosa: se o fluxo não suportar `reconfigure`
+    (ex.: já encapsulado), apenas ignora.
+    """
+    for fluxo in (sys.stdout, sys.stderr):
+        try:
+            fluxo.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            # Fluxo sem reconfigure (ou já configurado) — segue sem travar.
+            pass
+
 
 def parsear_nome_arquivo(nome_arquivo: str) -> dict:
     """
