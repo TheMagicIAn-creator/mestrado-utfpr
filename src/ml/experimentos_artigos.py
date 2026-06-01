@@ -849,6 +849,14 @@ def _consolidar(exp: ExperimentoArtigo, modelos_out: dict, metrica_principal: st
         "artigo": exp.artigo,
         "dataset": exp.dataset,
         "tarefa": exp.tarefa,
+        # Benchmark EXPLORATÓRIO. Anomalia usa perturbação GENÉRICA das features
+        # (não a injeção FMEA do pipeline principal, que é E2). Classificação usa
+        # PV Farms (falhas CC). Nunca é validação formal nem prova industrial.
+        "evidence_level": "E1",
+        "evidence_note": (
+            "E1 — benchmark exploratório (perturbação genérica / dataset rotulado "
+            "CC); não é validação formal nem desempenho industrial."
+        ),
         "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "metrica_principal": metrica_principal,
         "origem_dados": _origem_dados(exp),
@@ -1059,10 +1067,17 @@ def _metricas_anomalia(y_true, score, y_pred=None) -> dict:
         thr = _melhor_limiar(y_true_arr, score)
         y_pred = (score >= thr).astype(int)
         ponto = "limiar_otimo_score"
+        # Limiar escolhido NO PRÓPRIO conjunto avaliado → métrica EXPLORATÓRIA
+        # (E1). Não é estimativa de generalização (ver backlog: limiar congelado
+        # em val). O AUC permanece válido por ser independente de limiar.
+        threshold_source = "exploratorio_no_conjunto_avaliado"
     else:
         thr = None
         y_pred = np.asarray(y_pred).astype(int)
         ponto = "decisao_nativa_modelo"
+        # Decisão nativa do modelo (ex.: IsolationForest.predict) — não deriva
+        # dos rótulos do conjunto avaliado.
+        threshold_source = "decisao_nativa_modelo"
 
     metricas = _metricas_classificacao(y_true_arr, y_pred, y_score=score)
     if metricas.get("matriz_confusao") and len(metricas["matriz_confusao"]) == 2:
@@ -1070,6 +1085,9 @@ def _metricas_anomalia(y_true, score, y_pred=None) -> dict:
     metricas.update({
         "limiar_score": thr,
         "ponto_operacao": ponto,
+        "threshold_source": threshold_source,
+        "metrica_dependente_de_limiar": "exploratoria"
+        if threshold_source == "exploratorio_no_conjunto_avaliado" else "nativa",
         "anomalias_detectadas": int(np.sum(y_pred == 1)),
         "anomalias_reais": int(np.sum(y_true_arr == 1)),
         "taxa_anomalias_detectadas": float(np.mean(y_pred == 1)),
