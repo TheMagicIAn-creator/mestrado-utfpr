@@ -253,9 +253,13 @@ CONTEXTO DO PROJETO (memorize)
   Como Paderborn é saudável, a validação de anomalia usa falhas sintéticas
   geradas no pipeline para criar ground truth.
 - Pipeline: features_ca → autoencoder → injecao_falhas → validacao → rul_weibull.
-- Resultados: AE com limiar p99=2,91 (μ+3σ baseline=0,30); injeção LCL com
-  AUC=0,935 (sev=1,0); desbalanceamento com AUC=1,000 e Recall=1,0; sensor CA
-  com AUC=1,000.
+- Limiar operacional do Autoencoder = percentil 99 do erro de reconstrução
+  saudável; μ+3σ é apenas referência comparativa (nunca o limiar em uso).
+- NÃO memorize métricas (limiar, AUC, F1, SMD, MTTF). Os números ficam nos
+  artefatos (resultados/...) e são carregados dinamicamente pela ferramenta de
+  consulta de resultados. Ao falar de desempenho, consulte o artefato ATUAL e
+  diga o nível de evidência — nunca cite um número de memória que pode estar
+  desatualizado após novo treino ou exclusão de artefato.
 - Orientadora: Profª. Fernanda Cristina Correa. Defesa: março/2027.
 """.strip()
 
@@ -1006,7 +1010,13 @@ def _montar_prompt(pergunta: str,
                    historico_formatado: str,
                    orcamento: dict,
                    consultar_literatura: bool = True,
-                   anexos_texto: str = "") -> str:
+                   anexos_texto: str = "",
+                   perfil: str = PERFIL_COMPACTO) -> str:
+    # `perfil` é a identidade ESTÁTICA do agente que entra no prompt. Default é
+    # o PERFIL_COMPACTO (curado, sem resultados numéricos); o chamador pode
+    # injetar outro perfil compacto. Nunca embute métricas — os números vêm dos
+    # artefatos via ferramenta de resultados.
+    perfil = perfil if (perfil and perfil.strip()) else PERFIL_COMPACTO
     contexto = _limitar_texto(contexto, orcamento["contexto_chars"])
     bloco_temporal = _contexto_temporal()
     bloco_anexos = _bloco_anexos(anexos_texto, orcamento)
@@ -1060,7 +1070,7 @@ def _montar_prompt(pergunta: str,
     )
 
     prompt = f"""
-{PERFIL_COMPACTO}
+{perfil}
 
 {bloco_temporal}
 
@@ -1100,7 +1110,7 @@ INSTRUCOES OBRIGATÓRIAS DE RESPOSTA:
         contexto = _limitar_texto(contexto, novo_limite)
         contexto_bloco = contexto if contexto.strip() else "Nenhum trecho relevante recuperado."
         prompt = f"""
-{PERFIL_COMPACTO}
+{perfil}
 
 {bloco_temporal}
 
@@ -1842,6 +1852,13 @@ def preparar_prompt(
     )
 
     historico_formatado = _formatar_historico(historico, orcamento)
+
+    # Identidade estática que ENTRA no prompt. O chamador passa `perfil` (ex.:
+    # CLAUDE.md). Para não inflar cada prompt com o documento inteiro, usamos o
+    # perfil recebido apenas quando é compacto; caso contrário, o PERFIL_COMPACTO
+    # curado. Assim o parâmetro deixa de ser ignorado, mas o custo fica contido.
+    perfil_prompt = perfil if (perfil and perfil.strip() and len(perfil) <= 6000) else PERFIL_COMPACTO
+
     prompt = _montar_prompt(
         pergunta,
         contexto,
@@ -1849,6 +1866,7 @@ def preparar_prompt(
         orcamento,
         consultar_literatura=consultar_literatura,
         anexos_texto=anexos_texto,
+        perfil=perfil_prompt,
     )
     return prompt, citacoes
 
