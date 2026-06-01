@@ -206,6 +206,41 @@ def plotar_roc(resultados: dict, limiar: float, pasta: Path):
     print(f"   📊 {arq.name}")
 
 
+def plotar_pr(resultados: dict, pasta: Path):
+    """Curvas Precision-Recall por falha × severidade (complementa a ROC,
+    importante quando há desbalanceamento entre saudável e falha)."""
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    fig.suptitle("Curvas Precision-Recall — Detecção de Anomalias por Tipo de Falha",
+                 fontsize=13, fontweight="bold")
+
+    cores_sev = {0.30: "#FFB300", 0.50: "#FB8C00", 1.00: "#E53935"}
+
+    for ax, falha in zip(axes, FALHAS):
+        fid, nome, npr = falha["id"], falha["nome"], falha["npr"]
+        for sev in SEVS_VALIDACAO:
+            chave = f"{fid}_sev{sev}"
+            if chave not in resultados:
+                continue
+            res = resultados[chave]
+            ax.plot(res["rec_arr"], res["prec_arr"],
+                    color=cores_sev[sev], linewidth=2,
+                    label=f"sev={sev} (AUC-PR={res['auc_pr']:.3f})")
+        npm_str = f"NPR={npr}" if npr else "D=10"
+        ax.set_title(f"{nome}\n({npm_str})", fontsize=10)
+        ax.set_xlabel("Recall")
+        ax.set_ylabel("Precision")
+        ax.legend(fontsize=8, loc="lower left")
+        ax.grid(True, alpha=0.3)
+        ax.set_xlim([0, 1])
+        ax.set_ylim([0, 1.02])
+
+    plt.tight_layout()
+    arq = pasta / "validacao_pr.png"
+    fig.savefig(arq, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"   📊 {arq.name}")
+
+
 def plotar_matrizes(resultados: dict, pasta: Path):
     """Matrizes de confusão para severidade=1.0 de cada falha."""
     fig, axes = plt.subplots(1, 3, figsize=(13, 4))
@@ -387,6 +422,7 @@ def executar_validacao() -> bool:
     # ── 5. Visualizações ─────────────────────────────────────
     print(f"\n📊 Gerando gráficos...")
     plotar_roc(resultados, limiar, PASTA_AE)
+    plotar_pr(resultados, PASTA_AE)
     plotar_matrizes(resultados, PASTA_AE)
 
     tabela_df = pd.DataFrame(linhas_tabela)
@@ -398,7 +434,20 @@ def executar_validacao() -> bool:
     print(f"   📋 {arq_csv.name}")
 
     arq_json = PASTA_AE / "validacao_report.json"
-    report_serializavel = {}
+    report_serializavel = {
+        "__meta__": {
+            "evidence_level": "E2",
+            "evidence_note": (
+                "Validação sintética orientada pelo FMEA: classe negativa = "
+                "janelas saudáveis; classe positiva = falhas injetadas (ground "
+                "truth). Limiar CONGELADO, carregado de limiar.json — NÃO "
+                "otimizado no teste. Não é prova de desempenho industrial (E3)."
+            ),
+            "threshold_method": info_limiar.get("threshold_method", "p99"),
+            "threshold_source": "congelado_do_limiar_json",
+            "limiar_operacional": float(limiar),
+        },
+    }
     for chave, res in resultados.items():
         report_serializavel[chave] = {
             k: (v if not isinstance(v, np.ndarray) else v.tolist())

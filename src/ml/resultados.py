@@ -292,6 +292,7 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
         _add_img(imagens, "injecao_falhas_comparacao.png", "Falhas sinteticas - comparacao em escala log", grupo="Injecao de falhas", ordem=20, tipo="comparacao", ordem_grupo=20)
     if "validacao" in focos:
         _add_img(imagens, "validacao_roc.png", "Validacao - curvas ROC", grupo="Validacao", ordem=10, tipo="comparacao", ordem_grupo=30)
+        _add_img(imagens, "validacao_pr.png", "Validacao - curvas Precision-Recall", grupo="Validacao", ordem=15, tipo="comparacao", ordem_grupo=30)
         _add_img(imagens, "validacao_matriz.png", "Validacao - matrizes de confusao", grupo="Validacao", ordem=20, tipo="matriz", ordem_grupo=30)
         _add_img(imagens, "validacao_metricas.png", "Validacao - heatmap de metricas", grupo="Validacao", ordem=30, tipo="comparacao", ordem_grupo=30)
     if "weibull" in focos:
@@ -441,8 +442,11 @@ def _resumo_validacao() -> str | None:
     if not d:
         return None
 
+    meta = d.get("__meta__", {})
     melhores = {}
     for chave, res in d.items():
+        if chave.startswith("__"):
+            continue  # bloco de metadados (evidence_level, limiar), não é falha
         falha = _nome_falha(chave)
         if falha not in melhores or res.get("auc_roc", 0) > melhores[falha].get("auc_roc", 0):
             item = dict(res)

@@ -82,6 +82,7 @@ STAGES: dict[str, PipelineStage] = {
         function="executar_validacao",
         artifacts=(
             "resultados/autoencoder/validacao_roc.png",
+            "resultados/autoencoder/validacao_pr.png",
             "resultados/autoencoder/validacao_matriz.png",
             "resultados/autoencoder/validacao_metricas.png",
             "resultados/autoencoder/validacao_tabela.csv",
