@@ -68,7 +68,7 @@ Detecção de anomalias por modelagem de normalidade:
 4. Validar se o detector identifica as falhas injetadas
 5. Estimativa de RUL (Weibull) e decisão de manutenção 
 6. Critério de seleção das falhas: prioridade pelo NPR do FMEA (NPR=210 inversor → primeira falha a injetar)
-7. TTF para Weibull: derivado das falhas sintéticas injetadas no Paderborn — tempo até o Autoencoder cruzar o limiar de anomalia (μ + 3σ do erro de reconstrução)
+7. TTF para Weibull: derivado das falhas sintéticas injetadas no Paderborn — tempo até o Autoencoder cruzar o limiar operacional de anomalia (percentil 99 do erro de reconstrução saudável; μ+3σ é apenas referência comparativa)
 
 Justificativa: na manutenção preditiva real raramente
 há dados de falha; modela-se o comportamento saudável
