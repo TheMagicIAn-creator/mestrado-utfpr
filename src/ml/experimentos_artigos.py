@@ -523,11 +523,13 @@ def _slug_modelo(nome: str) -> str:
 
 
 def _registrar_grafico_modelo(modelo: dict, chave: str, caminho: Path) -> None:
+    from src.core.utils import to_project_relative_path
+
     modelo.setdefault("graficos", [])
-    caminho_abs = str(caminho.resolve())
-    if caminho_abs not in modelo["graficos"]:
-        modelo["graficos"].append(caminho_abs)
-    modelo[chave] = caminho_abs
+    rel = to_project_relative_path(caminho)  # relativo ao projeto (portável)
+    if rel not in modelo["graficos"]:
+        modelo["graficos"].append(rel)
+    modelo[chave] = rel
 
 
 def _grafico_metricas_modelo(exp: ExperimentoArtigo, nome: str, modelo: dict, plt, np) -> Path | None:
@@ -856,8 +858,10 @@ def _consolidar(exp: ExperimentoArtigo, modelos_out: dict, metrica_principal: st
     }
     graficos = _grafico_comparacao(exp, resultado)
     if graficos:
-        resultado["graficos"] = [str(g.resolve()) for g in graficos]
-        resultado["grafico"] = str(graficos[0].resolve())
+        from src.core.utils import to_project_relative_path
+
+        resultado["graficos"] = [to_project_relative_path(g) for g in graficos]
+        resultado["grafico"] = to_project_relative_path(graficos[0])
     _salvar_resultado(exp, resultado)
     return resultado
 

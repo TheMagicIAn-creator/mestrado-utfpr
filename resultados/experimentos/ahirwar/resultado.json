@@ -45,10 +45,10 @@
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.2103825136612022,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_isolation_forest_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_isolation_forest_matriz_confusao.png"
+        "resultados/experimentos/ahirwar/modelo_isolation_forest_metricas.png",
+        "resultados/experimentos/ahirwar/modelo_isolation_forest_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_isolation_forest_metricas.png",
+      "grafico_metricas": "resultados/experimentos/ahirwar/modelo_isolation_forest_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_isolation_forest_matriz_confusao.png"
     },
     "AE-LSTM": {
@@ -81,10 +81,10 @@
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.5136612021857924,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_ae_lstm_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_ae_lstm_matriz_confusao.png"
+        "resultados/experimentos/ahirwar/modelo_ae_lstm_metricas.png",
+        "resultados/experimentos/ahirwar/modelo_ae_lstm_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_ae_lstm_metricas.png",
+      "grafico_metricas": "resultados/experimentos/ahirwar/modelo_ae_lstm_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_ae_lstm_matriz_confusao.png"
     },
     "Facebook Prophet": {
@@ -117,10 +117,10 @@
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 1.0,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_facebook_prophet_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_facebook_prophet_matriz_confusao.png"
+        "resultados/experimentos/ahirwar/modelo_facebook_prophet_metricas.png",
+        "resultados/experimentos/ahirwar/modelo_facebook_prophet_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_facebook_prophet_metricas.png",
+      "grafico_metricas": "resultados/experimentos/ahirwar/modelo_facebook_prophet_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_facebook_prophet_matriz_confusao.png"
     },
     "Híbrido (voto)": {
@@ -153,27 +153,27 @@
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.7841530054644809,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_hibrido_voto_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_hibrido_voto_matriz_confusao.png"
+        "resultados/experimentos/ahirwar/modelo_hibrido_voto_metricas.png",
+        "resultados/experimentos/ahirwar/modelo_hibrido_voto_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_hibrido_voto_metricas.png",
+      "grafico_metricas": "resultados/experimentos/ahirwar/modelo_hibrido_voto_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_hibrido_voto_matriz_confusao.png"
     }
   },
   "melhor_modelo": "AE-LSTM",
   "melhor_valor": 0.8787061994609164,
   "graficos": [
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_isolation_forest_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_isolation_forest_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_ae_lstm_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_ae_lstm_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_facebook_prophet_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_facebook_prophet_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_hibrido_voto_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_hibrido_voto_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\comparacao_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\anomalias_detectadas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\matriz_confusao.png"
+    "resultados/experimentos/ahirwar/modelo_isolation_forest_metricas.png",
+    "resultados/experimentos/ahirwar/modelo_isolation_forest_matriz_confusao.png",
+    "resultados/experimentos/ahirwar/modelo_ae_lstm_metricas.png",
+    "resultados/experimentos/ahirwar/modelo_ae_lstm_matriz_confusao.png",
+    "resultados/experimentos/ahirwar/modelo_facebook_prophet_metricas.png",
+    "resultados/experimentos/ahirwar/modelo_facebook_prophet_matriz_confusao.png",
+    "resultados/experimentos/ahirwar/modelo_hibrido_voto_metricas.png",
+    "resultados/experimentos/ahirwar/modelo_hibrido_voto_matriz_confusao.png",
+    "resultados/experimentos/ahirwar/comparacao_metricas.png",
+    "resultados/experimentos/ahirwar/anomalias_detectadas.png",
+    "resultados/experimentos/ahirwar/matriz_confusao.png"
   ],
-  "grafico": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_isolation_forest_metricas.png"
+  "grafico": "resultados/experimentos/ahirwar/modelo_isolation_forest_metricas.png"
 }

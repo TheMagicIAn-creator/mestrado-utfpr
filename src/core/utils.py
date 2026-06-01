@@ -6,6 +6,39 @@ Autor: Rodolfo Torres (UTFPR)
 """
 
 import sys
+from pathlib import Path
+
+
+def to_project_relative_path(caminho) -> str:
+    """
+    Converte um caminho (absoluto ou relativo) em caminho RELATIVO à raiz do
+    projeto, em formato POSIX (com '/'), para gravar em JSONs portáveis.
+
+    Caminhos fora da árvore do projeto são mantidos como estão (raro). Use
+    `resolve_project_path` para reconstruir o caminho absoluto na interface.
+    """
+    from src.core.config import RAIZ_PROJETO
+
+    try:
+        p = Path(caminho).resolve()
+    except (OSError, ValueError):
+        return str(caminho)
+    try:
+        return p.relative_to(Path(RAIZ_PROJETO).resolve()).as_posix()
+    except ValueError:
+        # fora do projeto — devolve POSIX sem forçar relatividade
+        return p.as_posix()
+
+
+def resolve_project_path(caminho_relativo) -> Path:
+    """
+    Resolve um caminho relativo ao projeto para absoluto (uso na interface).
+    Caminho já absoluto é devolvido como Path inalterado.
+    """
+    from src.core.config import RAIZ_PROJETO
+
+    p = Path(caminho_relativo)
+    return p if p.is_absolute() else (Path(RAIZ_PROJETO) / p)
 
 
 def configurar_saida_utf8() -> None:

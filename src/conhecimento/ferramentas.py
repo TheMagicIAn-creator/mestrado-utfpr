@@ -732,9 +732,10 @@ def _md_experimento_legacy(res: dict) -> tuple[str, list[dict]]:
     imagens = []
     graf = res.get("grafico")
     if graf:
-        from pathlib import Path
-        if Path(graf).exists():
-            imagens.append({"path": graf, "caption": f"{res['referencia']} — comparação"})
+        from src.core.utils import resolve_project_path
+        graf_abs = resolve_project_path(graf)  # relativo→absoluto (na interface)
+        if graf_abs.exists():
+            imagens.append({"path": str(graf_abs), "caption": f"{res['referencia']} — comparação"})
     return "\n".join(linhas), imagens
 
 
@@ -768,12 +769,15 @@ def _md_experimento(res: dict) -> tuple[str, list[dict]]:
         f"Salvo em `resultados/experimentos/{res['experimento']}/`."
     )
 
-    from pathlib import Path
+    from src.core.utils import resolve_project_path
 
     imagens = []
     for graf in res.get("graficos", []) or [res.get("grafico")]:
-        if graf and Path(graf).exists():
-            imagens.append({"path": graf, "caption": f"{res['referencia']} - experimento"})
+        if not graf:
+            continue
+        graf_abs = resolve_project_path(graf)  # relativo→absoluto (na interface)
+        if graf_abs.exists():
+            imagens.append({"path": str(graf_abs), "caption": f"{res['referencia']} - experimento"})
     return "\n".join(linhas), imagens
 
 
