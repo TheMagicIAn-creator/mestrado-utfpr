@@ -62,6 +62,11 @@ _CSS_MINIMO = """
     max-width: 100%;
     overflow: hidden;
 }
+[data-testid="stImage"] > div,
+.stImage > div {
+    width: 100% !important;
+    max-width: 100% !important;
+}
 [data-testid="stImage"] img,
 .stImage img {
     max-width: 100% !important;
@@ -73,6 +78,30 @@ _CSS_MINIMO = """
     white-space: normal;
     overflow-wrap: anywhere;
 }
+[data-testid="stMarkdownContainer"] {
+    overflow-x: auto;
+}
+[data-testid="stMarkdownContainer"] table {
+    width: max-content;
+    max-width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    line-height: 1.35;
+}
+[data-testid="stMarkdownContainer"] th,
+[data-testid="stMarkdownContainer"] td {
+    padding: 0.38rem 0.55rem;
+    vertical-align: top;
+    white-space: nowrap;
+}
+[data-testid="stMarkdownContainer"] td:first-child,
+[data-testid="stMarkdownContainer"] th:first-child {
+    white-space: normal;
+    min-width: 10rem;
+}
+[data-testid="stDataFrame"] {
+    max-width: 100%;
+}
 @media (max-width: 900px) {
     .block-container,
     [data-testid="stBottomBlockContainer"],
@@ -80,6 +109,13 @@ _CSS_MINIMO = """
         max-width: calc(100vw - 1rem);
         padding-left: 0.5rem;
         padding-right: 0.5rem;
+    }
+    [data-testid="stMarkdownContainer"] table {
+        font-size: 0.82rem;
+    }
+    [data-testid="stMarkdownContainer"] th,
+    [data-testid="stMarkdownContainer"] td {
+        padding: 0.32rem 0.42rem;
     }
 }
 </style>
@@ -162,18 +198,17 @@ def renderizar_pipeline_status() -> None:
 
 def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
     with st.sidebar:
-        st.markdown("## ⚡ Al IAdo PV")
-        st.caption("Mestrado UTFPR — agente de pesquisa")
-        st.caption("💡 Tema claro/escuro: menu ⋮ → Settings → Theme")
+        st.markdown("## Al IAdo PV")
+        st.caption("Assistente de pesquisa | Mestrado UTFPR")
 
         provedor = st.session_state.get("nome_provedor", "Nenhum")
         if provedor == "Nenhum":
-            st.warning("LLM desconectado", icon="⚠️")
+            st.warning("LLM desconectado")
         else:
-            st.success(f"LLM ativo: {provedor}", icon="🟢")
+            st.success(f"LLM ativo: {provedor}")
 
         st.divider()
-        st.markdown("**🤖 Provedor**")
+        st.markdown("**Provedor**")
         from src.conhecimento.provedores import PROVEDORES, inicializar_provedor
 
         opcoes = {info["nome"]: chave for chave, info in PROVEDORES.items()}
@@ -198,87 +233,21 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
                 st.error(f"Erro ao conectar: {exc}")
 
         st.divider()
-        st.markdown("**📚 Conhecimento**")
+        st.markdown("**Base local**")
         c1, c2 = st.columns(2)
         c1.metric("Literatura", colecao.count())
         c2.metric("Sessões", colecao_sessoes.count())
+        st.caption("Literatura, memória e resultados são acessados pelo chat.")
 
         st.divider()
-        st.markdown("**🤖 Pipeline ML**")
-        renderizar_pipeline_status()
-        st.caption("Para rodar, refazer ou consultar resultados, use o chat.")
-
-        feedback_limpeza = st.session_state.pop("feedback_limpeza_ml", None)
-        if feedback_limpeza:
-            st.success(feedback_limpeza)
-
-        with st.expander("Resultados e recálculo"):
-            from src.ml.pipeline import (
-                NOMES_ETAPAS,
-                ORDEM_ETAPAS_ML,
-                artefatos_a_partir,
-                limpar_artefatos,
-            )
-
-            labels = {NOMES_ETAPAS[key]: key for key in ORDEM_ETAPAS_ML}
-            etapa_label = st.selectbox(
-                "Apagar a partir de",
-                options=list(labels.keys()),
-                help=(
-                    "Apaga os artefatos da etapa escolhida e de todas as etapas "
-                    "seguintes. Use quando mudar modelo, parâmetros ou dados."
-                ),
-            )
-            etapa = labels[etapa_label]
-            existentes = [p for p in artefatos_a_partir(etapa) if p.exists()]
-            st.caption(f"{len(existentes)} arquivo(s) existente(s) serão removidos.")
-            confirmar = st.checkbox(
-                "Confirmo que quero apagar esses resultados",
-                key="confirmar_limpeza_ml",
-            )
-            if st.button(
-                "Apagar resultados selecionados",
-                use_container_width=True,
-                disabled=not confirmar,
-            ):
-                removidos = limpar_artefatos(etapa)
-                st.session_state.feedback_limpeza_ml = (
-                    f"{len(removidos)} arquivo(s) removido(s) a partir de {etapa_label}."
-                )
-                st.rerun()
-
-        st.divider()
-        st.markdown("**🧪 Experimentos por artigo**")
+        st.markdown("**Comandos por prompt**")
         st.caption(
-            "Rode os modelos de ML dos artigos-base e compare os resultados."
+            "Use o chat para rodar pipeline, comparar artigos, recalcular, "
+            "apagar artefatos, pedir gráficos ou discutir resultados."
         )
-        from src.ml.experimentos_artigos import listar_experimentos
-
-        _exps_exec = [e for e in listar_experimentos() if e.runner]
-        _rotulos_exp = {
-            f"{e.referencia} · {e.dataset}": e.key for e in _exps_exec
-        }
-        _sel_exp = st.multiselect(
-            "Escolha artigos para rodar e comparar",
-            options=list(_rotulos_exp.keys()),
-            label_visibility="collapsed",
-            key="multiselect_experimentos",
-        )
-        if st.button(
-            "Rodar selecionados",
-            use_container_width=True,
-            type="primary",
-            disabled=not _sel_exp,
-        ):
-            st.session_state.exp_para_rodar = [_rotulos_exp[s] for s in _sel_exp]
-            st.rerun()
-        with st.expander("Status dos modelos por artigo"):
-            from src.ml.experimentos_artigos import catalogo_experimentos_md
-
-            st.markdown(catalogo_experimentos_md())
 
         st.divider()
-        st.markdown("**📄 PDFs**")
+        st.markdown("**Documentos**")
         arquivo_pdf = st.file_uploader(
             "Adicionar PDF",
             type=["pdf"],
@@ -292,12 +261,14 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
                 st.success("PDF enviado. O watcher processará automaticamente.")
 
         st.divider()
-        if st.button("🗑️ Limpar conversa", use_container_width=True):
+        st.markdown("**Sessão**")
+        if st.button("Limpar conversa", use_container_width=True):
             st.session_state.mensagens = []
             st.session_state.caminho_sessao = None
             st.rerun()
 
-        with st.expander("⚙️ Manutenção"):
+        with st.expander("Manutenção avançada"):
+            st.caption("Use apenas quando quiser forçar tarefas administrativas.")
             if st.button("Consolidar memória", use_container_width=True):
                 try:
                     from src.conhecimento.consolidar_memoria import consolidar
@@ -315,22 +286,24 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
                 except Exception as exc:
                     st.error(f"Erro: {exc}")
 
+        st.caption("Tema claro/escuro: menu ⋮ → Settings → Theme")
+
 
 def renderizar_topo(relatorio: list) -> None:
     provedor = st.session_state.get("nome_provedor", "Nenhum")
 
-    col_titulo, col_status = st.columns([4, 1])
+    col_titulo, col_status = st.columns([4, 1.1])
     with col_titulo:
-        st.title("⚡ Al IAdo PV")
+        st.markdown("## Al IAdo PV")
         st.caption(
-            "Pesquisa, confiabilidade e Machine Learning para falhas CA em inversores "
-            "fotovoltaicos — Mestrado UTFPR"
+            "Pesquisa aplicada, confiabilidade e Machine Learning para falhas CA "
+            "em inversores fotovoltaicos | UTFPR"
         )
     with col_status:
         if provedor != "Nenhum":
-            st.success(f"🟢 {provedor}")
+            st.success(f"{provedor}")
         else:
-            st.warning("Conecte um LLM →")
+            st.warning("Conecte um LLM")
 
     novidades = [
         str(item)
@@ -338,7 +311,7 @@ def renderizar_topo(relatorio: list) -> None:
         if item and "nenhum pendente" not in str(item).lower()
     ]
     if novidades:
-        with st.expander("📬 Novidades processadas na inicialização", expanded=False):
+        with st.expander("Novidades processadas na inicialização", expanded=False):
             for item in novidades:
                 st.write(item)
 
@@ -348,19 +321,19 @@ def renderizar_boas_vindas() -> None:
 
     saudacao = _saudacao_pelo_horario()
     st.info(
-        f"**{saudacao}, Rodolfo!** 👋\n\n"
-        "Como quer trabalhar agora? Peça em linguagem natural — eu rodo etapas "
-        "do pipeline, explico métricas, mostro gráficos ou discuto a dissertação "
-        "com você."
+        f"**{saudacao}, Rodolfo.**\n\n"
+        "Peça em linguagem natural: posso rodar etapas do pipeline, comparar "
+        "experimentos, explicar métricas, mostrar gráficos ou discutir decisões "
+        "metodológicas da dissertação."
     )
 
     st.markdown("##### Exemplos de prompt")
     exemplos = [
-        "🔬 Explique os resultados de validação e mostre as curvas ROC.",
-        "📈 Rode a análise de Weibull e depois interprete MTTF e B10.",
-        "🎯 Quais falhas tiveram menor severidade mínima detectável?",
-        "📚 Com base na literatura, compare FMEA e Autoencoder na metodologia.",
-        "♻️ Faça o recálculo do pipeline completo.",
+        "Explique os resultados de validação e mostre as curvas ROC.",
+        "Rode a análise de Weibull e depois interprete MTTF e B10.",
+        "Compare os modelos de Sharma e Ibrahim com gráficos.",
+        "What does the literature say about LCL filter faults?",
+        "Explique en español qué modelo parece más confiable.",
     ]
     for exemplo in exemplos:
         st.markdown(f"- _{exemplo}_")
@@ -448,6 +421,35 @@ def _imagem_larga(img: dict) -> bool:
     )
 
 
+def _dimensoes_imagem(path: str) -> tuple[int | None, int | None]:
+    try:
+        from PIL import Image
+
+        with Image.open(path) as im:
+            return int(im.width), int(im.height)
+    except Exception:
+        return None, None
+
+
+def _largura_exibicao_imagem(img: dict) -> int | None:
+    largura_px, _altura_px = _dimensoes_imagem(img["path"])
+    tipo = str(img.get("kind", "")).lower()
+    legenda = str(img.get("caption", "")).lower()
+
+    if tipo in {"comparacao", "wide"} or "comparacao" in legenda:
+        limite = 1080
+    elif tipo == "matriz" or "matriz" in legenda or "confus" in legenda:
+        limite = 620
+    elif tipo == "modelo":
+        limite = 780
+    else:
+        limite = 860
+
+    if largura_px:
+        return min(largura_px, limite)
+    return limite
+
+
 def _ordem_imagem(img: dict, indice: int) -> tuple:
     try:
         ordem_grupo = int(img.get("group_order", 0) or 0)
@@ -462,7 +464,11 @@ def _ordem_imagem(img: dict, indice: int) -> tuple:
 
 def _renderizar_imagem_unica(img: dict, coluna=None) -> None:
     alvo = coluna if coluna is not None else st
-    alvo.image(img["path"], caption=img.get("caption", ""), use_container_width=True)
+    alvo.image(
+        img["path"],
+        caption=img.get("caption", ""),
+        width=_largura_exibicao_imagem(img),
+    )
 
 
 def _renderizar_lote_regular(lote: list[dict]) -> None:
@@ -495,8 +501,8 @@ def _renderizar_grupo_imagens(imagens: list[dict]) -> None:
 def renderizar_imagens(imagens: list[dict]) -> None:
     """
     Renderiza imagens, ignorando paths que não existem mais no disco.
-    Cenário comum: o usuário apagou artefatos via 'Resultados e recálculo'
-    no sidebar e ainda há mensagens antigas com paths inválidos no histórico.
+    Cenário comum: o usuário apagou ou recalculou artefatos pelo chat e ainda
+    há mensagens antigas com paths inválidos no histórico.
     """
     if not imagens:
         return
@@ -591,9 +597,6 @@ def salvar_sessao(pergunta: str, resposta: str, imagens: list[dict], n: int, mod
 
 def responder_com_ferramenta(pergunta: str, perfil: str, llm) -> tuple[str, list[dict]]:
     from src.conhecimento.ferramentas import decidir_acao, processar_com_ferramentas
-
-    if llm is None:
-        return "", []
 
     with st.spinner("Interpretando o pedido..."):
         decisao = decidir_acao(pergunta, llm)
@@ -776,80 +779,6 @@ def renderizar_chat(perfil, modelo, colecao, colecao_sessoes) -> None:
     )
 
 
-def renderizar_experimentos() -> None:
-    """Roda (se pedido) e exibe os experimentos de ML por artigo + comparação."""
-    import pandas as pd
-
-    from src.ml.experimentos_artigos import executar_experimento, get_experimento
-
-    pendentes = st.session_state.pop("exp_para_rodar", None)
-    if pendentes:
-        resultados = []
-        with st.status("Rodando experimentos por artigo...", expanded=True) as status:
-            for key in pendentes:
-                exp = get_experimento(key)
-                status.write(f"▶ {exp.referencia} ({exp.dataset})")
-                try:
-                    res = executar_experimento(key, progresso=status.write)
-                except Exception as exc:  # noqa: BLE001
-                    res = {"experimento": key, "referencia": exp.referencia,
-                           "ok": False, "mensagem": str(exc)}
-                resultados.append(res)
-            status.update(label="Experimentos concluídos", state="complete")
-        st.session_state.resultados_experimentos = resultados
-
-    resultados = st.session_state.get("resultados_experimentos")
-    if not resultados:
-        return
-
-    st.markdown("### 🧪 Experimentos por artigo — comparação")
-
-    linhas = []
-    for res in resultados:
-        if not res.get("ok"):
-            linhas.append({
-                "Artigo": res.get("referencia", res.get("experimento")),
-                "Status": f"não executado — {res.get('mensagem', 'sem modelos')}",
-            })
-            continue
-        linhas.append({
-            "Artigo": res["referencia"],
-            "Dataset": res["dataset"],
-            "Tarefa": res["tarefa"],
-            "Melhor modelo": res["melhor_modelo"],
-            "Métrica": res["metrica_principal"],
-            "Valor": round(res["melhor_valor"], 4),
-        })
-    st.dataframe(pd.DataFrame(linhas), use_container_width=True, hide_index=True)
-
-    for res in resultados:
-        if not res.get("ok"):
-            continue
-        with st.expander(f"📄 {res['referencia']} — {res['artigo']}"):
-            mdf = []
-            for nome, m in res["modelos"].items():
-                if m.get("disponivel", True):
-                    row = {"Modelo": nome}
-                    row.update({
-                        k: round(v, 4) for k, v in m.items()
-                        if isinstance(v, (int, float)) and k != "disponivel"
-                    })
-                    mdf.append(row)
-                else:
-                    mdf.append({"Modelo": nome, "obs": m.get("motivo", "indisponível")})
-            st.dataframe(pd.DataFrame(mdf), use_container_width=True, hide_index=True)
-            graf = res.get("grafico")
-            if graf and Path(graf).exists():
-                st.image(graf, use_container_width=True)
-            st.caption(f"Resultados salvos em resultados/experimentos/{res['experimento']}/")
-
-    if st.button("Limpar resultados de experimentos", use_container_width=True):
-        st.session_state.pop("resultados_experimentos", None)
-        st.rerun()
-
-    st.divider()
-
-
 def main() -> None:
     inicializar_estado()
     st.markdown(_CSS_MINIMO, unsafe_allow_html=True)
@@ -862,8 +791,6 @@ def main() -> None:
 
     renderizar_sidebar(modelo, colecao, colecao_sessoes)
     renderizar_topo(relatorio)
-
-    renderizar_experimentos()
 
     renderizar_chat(perfil, modelo, colecao, colecao_sessoes)
 

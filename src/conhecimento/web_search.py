@@ -21,7 +21,7 @@ _TIMEOUT = 6
 _HEADERS = {
     "User-Agent": "Al-IAdoPV/1.0 (Mestrado UTFPR; contato@al-iado-pv.local)",
     "Accept": "application/json",
-    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.85,es;q=0.75,fr;q=0.7",
 }
 
 
@@ -90,6 +90,8 @@ def buscar_web(termo: str, max_chars: int = 1400) -> dict:
     for tentativa in (
         lambda: _wikipedia_resumo(termo, "pt"),
         lambda: _wikipedia_resumo(termo, "en"),
+        lambda: _wikipedia_resumo(termo, "es"),
+        lambda: _wikipedia_resumo(termo, "fr"),
         lambda: _ddg_instant(termo),
     ):
         try:

@@ -170,6 +170,12 @@ _TERMOS_BIBLIO = (
     "referencia", "referencias", "fonte", "fontes", "artigo", "artigos",
     "documento", "documentos", "obra", "obras", "literatura", "biblio",
     "bibliografia", "bibliografica", "acervo", "papers", "paper",
+    "source", "sources", "reference", "references", "literature", "library",
+    "bibliography", "article", "articles", "documents",
+    "fuente", "fuentes", "referencia", "referencias", "literatura",
+    "bibliografia", "articulo", "articulos", "documentos",
+    "source", "sources", "reference", "references", "litterature",
+    "littérature", "bibliographie", "article", "articles", "documents",
 )
 # Termos que indicam INTENCAO de totalidade/inventario (e nao busca por tema).
 _TERMOS_TOTALIDADE = (
@@ -177,6 +183,12 @@ _TERMOS_TOTALIDADE = (
     "completas", "completos", "inteira", "inteiro", "lista", "liste",
     "listar", "catalogo", "inventario", "quantos", "quantas", "quais",
     "que voce tem", "que voce possui", "disponiveis", "disponivel",
+    "all", "complete", "full", "entire", "list", "catalog", "catalogue",
+    "inventory", "how many", "available", "what do you have",
+    "todas", "todos", "completa", "completo", "lista", "catalogo",
+    "inventario", "cuantos", "cuantas", "disponibles",
+    "tous", "toutes", "complete", "complet", "liste", "catalogue",
+    "inventaire", "combien", "disponibles",
 )
 # Gatilhos fortes: sozinhos ja bastam para pedir o catalogo inteiro.
 _GATILHOS_CATALOGO_FORTE = (
@@ -184,6 +196,12 @@ _GATILHOS_CATALOGO_FORTE = (
     "literatura completa", "toda a literatura", "toda literatura",
     "catalogo da base", "as 39", "todas as 39", "todos os 39",
     "39 referencias", "39 artigos", "39 documentos", "39 obras",
+    "knowledge base", "indexed literature", "complete literature",
+    "full bibliography", "all references", "all papers", "all documents",
+    "base de conocimiento", "literatura indexada", "bibliografia completa",
+    "todas las referencias", "todos los articulos",
+    "base de connaissances", "litterature indexee", "littérature indexée",
+    "bibliographie complete", "toutes les references", "tous les articles",
     "indexad",  # "o que voce tem indexado", "o que esta indexado"
 )
 # Qualificadores de TOPICO: se aparecem, e busca tematica (RAG), nunca catalogo.
@@ -191,6 +209,9 @@ _QUALIFICADORES_TOPICO = (
     "sobre", "a respeito", "acerca", "referente a", "referentes a",
     "que tratam de", "que trata de", "que falam de", "que fala de",
     "relacionad", "do tema", "no tema", "a cerca",
+    "about", "regarding", "related to", "concerning",
+    "sobre", "acerca", "relacionad", "referente a",
+    "sur", "concernant", "relatif", "relative",
 )
 
 
@@ -230,6 +251,11 @@ _VERBOS_RODAR_EXP = (
     "rode", "rodar", "roda", "execut", "teste", "testar", "testa",
     "treine", "treinar", "treina", "compare", "comparar", "compara",
     "rodar os modelos", "avalie", "avaliar",
+    "run", "execute", "test", "train", "evaluate", "compare",
+    "ejecute", "ejecuta", "ejecutar", "prueba", "probar", "entrena",
+    "entrenar", "evalua", "evaluar", "compara", "comparar",
+    "executez", "executer", "exécuter", "tester", "entraine", "entrainer",
+    "entraîner", "evaluer", "évaluer", "comparer",
 )
 
 
@@ -239,11 +265,11 @@ def _experimentos_alvo(pergunta: str) -> list[str]:
     alvos = [k for nome, k in _AUTORES_EXP.items() if nome in txt]
     if alvos:
         return alvos
-    if "anomalia" in txt or "anomalias" in txt:
+    if any(t in txt for t in ("anomalia", "anomalias", "anomaly", "anomalies", "anomalie", "anomalies")):
         return ["francisti", "ibrahim", "sharma", "ahirwar"]
-    if "classificacao" in txt or "supervision" in txt:
+    if any(t in txt for t in ("classificacao", "supervision", "classification", "clasificacion", "classification")):
         return ["ghoneim"]
-    if any(t in txt for t in ("todos", "tudo", "compare", "comparar", "todas")):
+    if any(t in txt for t in ("todos", "tudo", "compare", "comparar", "todas", "all", "todos", "todas", "tous", "toutes")):
         return ["ghoneim", "francisti", "ibrahim", "sharma", "ahirwar"]
     return []
 
@@ -251,17 +277,17 @@ def _experimentos_alvo(pergunta: str) -> list[str]:
 def _quer_rodar_experimento(pergunta: str) -> bool:
     txt = _normalizar(pergunta)
     tem_verbo = any(v in txt for v in _VERBOS_RODAR_EXP)
-    if "experimento" in txt:
+    if any(t in txt for t in ("experimento", "experiment", "experimento", "experience", "expérience")):
         return tem_verbo
     # "teste os modelos do sharma" (sem a palavra 'experimento')
     tem_autor = any(a in txt for a in _AUTORES_EXP)
-    tem_modelos = "modelo" in txt or "modelos" in txt
+    tem_modelos = any(t in txt for t in ("modelo", "modelos", "model", "models", "modele", "modeles", "modèle", "modèles"))
     return tem_autor and tem_verbo and tem_modelos
 
 
 def _quer_catalogo_experimentos(pergunta: str) -> bool:
     txt = _normalizar(pergunta)
-    if "experimento" not in txt:
+    if not any(t in txt for t in ("experimento", "experiment", "experimento", "experience", "expérience")):
         return False
     if _quer_rodar_experimento(pergunta):
         return False
@@ -270,6 +296,9 @@ def _quer_catalogo_experimentos(pergunta: str) -> bool:
     consulta = any(t in txt for t in (
         "quais", "que ", "liste", "lista", "listar", "mostre", "mostra",
         "disponiveis", "disponivel", "existem", "tem ", "status", "quantos",
+        "which", "what", "list", "show", "available", "exist", "how many",
+        "cuales", "que ", "lista", "listar", "muestra", "disponibles",
+        "quels", "quelles", "quoi", "liste", "montre", "disponibles",
     ))
     return consulta
 
@@ -284,6 +313,16 @@ def _quer_resposta_autoral(pergunta: str) -> bool:
         "recomendar", "qual escolher", "escolher", "reforca", "reforcam",
         "sustenta", "sustentam", "discuta", "analise", "analisa",
         "o que isso significa", "implicacao", "implicacoes",
+        "in your opinion", "your opinion", "interpret", "explain", "present",
+        "advisor", "supervisor", "reliable", "recommend", "choose",
+        "support", "supports", "discuss", "analyze", "analyse",
+        "what does this mean", "implication", "implications",
+        "en tu opinion", "tu opinion", "interpreta", "explica", "presentar",
+        "orientadora", "confiable", "recomienda", "elegir", "refuerza",
+        "sustenta", "discute", "analiza", "que significa",
+        "a ton avis", "votre avis", "interprete", "explique", "presenter",
+        "directrice", "fiable", "recommande", "choisir", "soutient",
+        "discute", "analyse", "qu est ce que cela signifie",
     )
     return any(t in txt for t in termos)
 
@@ -292,14 +331,23 @@ def _quer_consultar_resultados_experimentos(pergunta: str) -> bool:
     """Consulta aos artefatos ja gerados dos experimentos por artigo."""
     txt = _normalizar(pergunta)
     tem_exp = (
-        "experimento" in txt
+        any(t in txt for t in ("experimento", "experiment", "experimento", "experience", "expérience"))
         or any(autor in txt for autor in _AUTORES_EXP)
-        or any(t in txt for t in ("modelo", "modelos", "anomalia", "anomalias"))
+        or any(t in txt for t in (
+            "modelo", "modelos", "model", "models", "modele", "modeles",
+            "anomalia", "anomalias", "anomaly", "anomalies", "anomalie",
+        ))
     )
     tem_resultado = any(t in txt for t in (
         "resultado", "resultados", "metrica", "metricas", "f1", "auc",
         "recall", "precision", "matriz", "grafico", "graficos",
         "anomalias detectadas", "detectaram", "detectou",
+        "result", "results", "metric", "metrics", "matrix", "confusion",
+        "chart", "charts", "plot", "plots", "detected anomalies",
+        "resultado", "resultados", "metrica", "metricas", "matriz",
+        "grafico", "graficos", "anomalias detectadas",
+        "resultat", "resultats", "résultat", "résultats", "metrique",
+        "métrique", "matrice", "graphique", "anomalies detectees",
     ))
     return tem_exp and (tem_resultado or _quer_resposta_autoral(pergunta))
 
@@ -309,6 +357,9 @@ def _quer_limpar(pergunta: str) -> bool:
     termos = (
         "apagar", "apague", "limpar", "limpe", "zerar", "zere",
         "remover", "remova", "excluir", "exclua", "deletar", "delete",
+        "clear", "clean", "remove", "reset", "erase",
+        "borrar", "limpiar", "eliminar", "reiniciar",
+        "effacer", "supprimer", "nettoyer", "reinitialiser", "réinitialiser",
     )
     return any(t in txt for t in termos)
 
@@ -320,6 +371,11 @@ _TERMOS_PIPELINE_IMPLICITO = (
     "refazer", "refaca", "refaça", "regerar", "regere", "regenerar",
     "rodar de novo", "executar de novo", "do zero", "rode tudo",
     "rodar tudo", "executar tudo", "pipeline completo",
+    "recalculate", "recompute", "rerun", "run again", "from scratch",
+    "run everything", "full pipeline",
+    "ejecutar de nuevo", "desde cero", "ejecutar todo",
+    "recalculer", "relancer", "executer a nouveau", "exécuter à nouveau",
+    "depuis zero", "depuis zéro", "pipeline complet",
 )
 
 
@@ -339,6 +395,16 @@ def _parece_pedido_de_ferramenta(pergunta: str) -> bool:
         "treinamento", "metricas", "roc", "imagem", "imagens", "figura",
         "figuras", "curva", "curvas", "plot", "plots", "visualizacao",
         "visualizacoes", "matriz", "matrizes", "heatmap", "tabela",
+        "fault", "failure", "validation", "threshold", "anomaly",
+        "reliability", "chart", "charts", "result", "results", "artifact",
+        "artifacts", "model", "models", "detection", "training", "metrics",
+        "image", "images", "figure", "figures", "curve", "curves",
+        "visualization", "matrix", "table",
+        "falla", "fallas", "validacion", "umbral", "confiabilidad",
+        "deteccion", "entrenamiento", "imagen", "imagenes", "tabla",
+        "defaillance", "seuil", "anomalie", "fiabilite", "graphique",
+        "resultat", "resultats", "modele", "modeles", "entrainement",
+        "metriques", "courbe", "matrice", "tableau",
     )
     termos_acao = (
         "rodar", "rode", "roda", "executar", "execute", "executa",
@@ -351,6 +417,14 @@ def _parece_pedido_de_ferramenta(pergunta: str) -> bool:
         "limpe", "zerar", "zere", "remover", "remova", "excluir", "exclua",
         "deletar", "delete", "fazer", "faca", "faça", "cade", "onde",
         "tem", "existe", "existem", "ha", "há",
+        "run", "train", "generate", "calculate", "validate", "inject",
+        "estimate", "show", "display", "consult", "see", "which", "what",
+        "clear", "remove", "make", "where", "available",
+        "ejecutar", "entrenar", "generar", "inyectar", "mostrar",
+        "muestra", "cuales", "cual", "limpiar", "eliminar", "hacer", "donde",
+        "executer", "exécuter", "entrainer", "entraîner", "generer", "générer",
+        "calculer", "injecter", "montrer", "afficher", "consulter", "voir",
+        "quels", "quel", "combien", "effacer", "supprimer", "faire", "ou", "où",
     )
     return any(t in txt for t in termos_ml) and any(t in txt for t in termos_acao)
 
@@ -382,17 +456,25 @@ def consultar_resultados(progresso=None, pergunta: str = "") -> dict:
 
 def _etapa_por_pergunta(pergunta: str) -> str | None:
     txt = _normalizar(pergunta)
-    if "pipeline" in txt or "tudo" in txt or "todos" in txt or "do zero" in txt:
+    if any(t in txt for t in (
+        "pipeline", "tudo", "todos", "do zero", "everything", "all",
+        "from scratch", "todo", "todos", "desde cero", "tout", "tous",
+        "depuis zero", "depuis zéro",
+    )):
         return "features_ca"
-    if "feature" in txt or "sinais" in txt or "dados processados" in txt:
+    if any(t in txt for t in (
+        "feature", "features", "sinais", "dados processados",
+        "signals", "processed data", "senales", "señales", "datos procesados",
+        "signaux", "donnees traitees", "données traitées",
+    )):
         return "features_ca"
-    if "autoencoder" in txt or "detector" in txt or "limiar" in txt:
+    if any(t in txt for t in ("autoencoder", "detector", "limiar", "threshold", "umbral", "seuil")):
         return "autoencoder"
-    if "injec" in txt or "falha" in txt or "smd" in txt:
+    if any(t in txt for t in ("injec", "falha", "failure", "fault", "falla", "defaillance", "smd")):
         return "injecao_falhas"
-    if "valid" in txt or "auc" in txt or "f1" in txt or "recall" in txt:
+    if any(t in txt for t in ("valid", "auc", "f1", "recall")):
         return "validacao"
-    if "weibull" in txt or "rul" in txt or "mttf" in txt or "b10" in txt:
+    if any(t in txt for t in ("weibull", "rul", "mttf", "b10", "reliability", "confiabilidad", "fiabilite")):
         return "rul_weibull"
     return None
 
@@ -769,13 +851,25 @@ def executar_ferramenta(nome: str, progresso=None, pergunta: str = "") -> dict:
 # 'auto_deps=True' garante que tudo até ela rode em ordem.
 _ETAPA_ORDEM = [
     ("feature", "rodar_features_ca"),
+    ("features", "rodar_features_ca"),
     ("sinais", "rodar_features_ca"),
+    ("signals", "rodar_features_ca"),
+    ("senales", "rodar_features_ca"),
+    ("señales", "rodar_features_ca"),
+    ("signaux", "rodar_features_ca"),
     ("autoencoder", "rodar_autoencoder"),
     ("detector", "rodar_autoencoder"),
     ("limiar", "rodar_autoencoder"),
+    ("threshold", "rodar_autoencoder"),
+    ("umbral", "rodar_autoencoder"),
+    ("seuil", "rodar_autoencoder"),
     ("injec", "rodar_injecao_falhas"),
     ("injet", "rodar_injecao_falhas"),
     ("falha sint", "rodar_injecao_falhas"),
+    ("synthetic fault", "rodar_injecao_falhas"),
+    ("synthetic failure", "rodar_injecao_falhas"),
+    ("falla sintet", "rodar_injecao_falhas"),
+    ("defaillance synt", "rodar_injecao_falhas"),
     ("smd", "rodar_injecao_falhas"),
     ("valid", "rodar_validacao"),
     ("auc", "rodar_validacao"),
@@ -788,6 +882,9 @@ _ETAPA_ORDEM = [
     ("mttf", "rodar_weibull"),
     ("b10", "rodar_weibull"),
     ("confiabilidade", "rodar_weibull"),
+    ("reliability", "rodar_weibull"),
+    ("confiabilidad", "rodar_weibull"),
+    ("fiabilite", "rodar_weibull"),
 ]
 
 
@@ -809,6 +906,13 @@ _GATILHOS_WEB = (
     "procure online", "googlar", "no google", "na internet",
     "consulte a wikipedia", "consultar a wikipedia", "wikipedia",
     "qual a definicao oficial", "norma iec", "norma iso", "norma abnt",
+    "search the web", "web search", "search online", "look up online",
+    "google it", "on the internet", "official definition", "iec standard",
+    "iso standard",
+    "buscar en la web", "buscar online", "busca en internet",
+    "consulta wikipedia", "definicion oficial", "norma iec", "norma iso",
+    "rechercher sur le web", "recherche en ligne", "chercher sur internet",
+    "consulte wikipedia", "definition officielle", "norme iec", "norme iso",
 )
 
 
@@ -863,10 +967,23 @@ def _decisao_rapida(pergunta: str) -> dict | None:
         "metrica", "metricas", "imagem", "imagens", "figura", "figuras",
         "curva", "curvas", "plot", "plots", "visualizacao", "matriz",
         "heatmap", "roc", "tabela",
+        "result", "results", "show", "display", "chart", "charts",
+        "threshold", "metric", "metrics", "image", "images", "figure",
+        "figures", "curve", "curves", "visualization", "matrix", "table",
+        "resultado", "resultados", "muestra", "mostrar", "grafico",
+        "graficos", "umbral", "metrica", "metricas", "imagen", "imagenes",
+        "figura", "curva", "visualizacion", "matriz", "tabla",
+        "resultat", "resultats", "montre", "affiche", "graphique",
+        "seuil", "metrique", "metriques", "image", "figure", "courbe",
+        "visualisation", "matrice", "tableau",
     )
     termos_acao_ativa = (
         "rodar", "execut", "trein", "gerar", "gere", "calcular",
         "injetar", "refazer", "regerar", "recalc",
+        "run", "execut", "train", "generate", "calculate", "inject",
+        "rerun", "recompute",
+        "ejecut", "entren", "gener", "calcul", "inyect",
+        "execut", "entraîn", "entrain", "gener", "génér", "calcul", "inject",
     )
     termos_validacao_ativa = ("validar", "valide", "valida")
     tem_acao_ativa = (
@@ -882,6 +999,11 @@ def _decisao_rapida(pergunta: str) -> dict | None:
         "gerar", "gere", "gera", "calcular", "calcule", "calcula",
         "validar", "valide", "valida", "injetar", "injete", "injeta",
         "estimar", "estime", "estima", "fazer", "faca", "faça",
+        "run", "train", "generate", "calculate", "validate", "inject",
+        "estimate", "make", "execute",
+        "ejecut", "entren", "gener", "calcul", "valid", "inyect", "estim",
+        "execut", "exécut", "entrain", "entraîn", "gener", "génér",
+        "calcul", "valid", "inject", "estim",
     )
     if any(t in txt for t in termos_executar):
         if "pipeline" in txt or "tudo" in txt or "todos" in txt:
@@ -939,9 +1061,11 @@ def comentar_resultado(pergunta: str, resultado: dict, perfil: str, llm) -> str:
 
     status = "SUCESSO" if resultado.get("ok") else "FALHA"
     prompt = f"""Voce e o Al IAdo PV, pesquisador tecnico do mestrado do Rodolfo.
-Responda em portugues brasileiro natural, com opiniao tecnica propria quando a pergunta pedir.
+Responda em portugues brasileiro natural por padrao. Se Rodolfo perguntou claramente
+em ingles, espanhol ou frances, voce pode responder no mesmo idioma.
 Use os resultados abaixo como evidencia. Nao invente numeros.
 Nao devolva apenas a tabela: interprete, priorize, compare e diga o que isso significa para a dissertacao.
+Distinga dados locais, metodologia dos artigos e falhas sinteticas quando isso afetar a interpretacao.
 
 Rodolfo pediu: "{pergunta}"
 

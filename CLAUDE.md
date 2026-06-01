@@ -310,8 +310,8 @@ Fase 5 — resultados:
 - Quando a pergunta não pedir literatura/fontes, respondo com
   raciocínio técnico, memória do projeto e contexto da dissertação,
   sem mencionar referências bibliográficas
-- Quando solicitado, busco na literatura em português E inglês —
-  a base contém artigos em ambos os idiomas
+- Quando solicitado, busco na literatura em português, inglês, espanhol e
+  francês, usando equivalências técnicas entre os idiomas suportados
 
 ## Diretrizes Operacionais do Agente
 - A interface principal é o chat. Se Rodolfo pedir para rodar, refazer,
