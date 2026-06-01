@@ -4,59 +4,290 @@
   "artigo": "Self-Tuning RL-Driven Isolation Forest for Anomaly Detection",
   "dataset": "Paderborn",
   "tarefa": "anomalia",
-  "data": "2026-05-30 07:35:39",
-  "metrica_principal": "auc",
+  "data": "2026-05-30 09:39:56",
+  "metrica_principal": "f1",
+  "origem_dados": {
+    "tipo": "dataset_local_paderborn_com_falhas_sinteticas",
+    "descricao": "Usa features locais do Paderborn extraidas de Inverter_Data_Set.csv. Como o Paderborn e saudavel, as anomalias avaliadas sao sinteticas, geradas no pipeline para criar ground truth. O artigo inspira os modelos e a metodologia; os dados avaliados sao os do repositorio.",
+    "arquivos": [
+      "dados/brutos/Inverter_Data_Set.csv",
+      "dados/processados/features_paderborn.parquet"
+    ]
+  },
   "modelos": {
     "Isolation Forest": {
+      "accuracy": 0.6065573770491803,
+      "precision": 0.7532467532467533,
+      "recall": 0.31693989071038253,
+      "f1": 0.4461538461538462,
       "auc": 0.7592343754665711,
-      "f1": 0.7385892116182573,
-      "recall": 0.9726775956284153,
-      "precisao": 0.5953177257525084,
-      "disponivel": true
+      "specificity": 0.6065573770491803,
+      "amostras": 366,
+      "n_classes": 2,
+      "classes": [
+        "Normal",
+        "Anomalia"
+      ],
+      "matriz_confusao": [
+        [
+          164,
+          19
+        ],
+        [
+          125,
+          58
+        ]
+      ],
+      "disponivel": true,
+      "limiar_score": null,
+      "ponto_operacao": "decisao_nativa_modelo",
+      "anomalias_detectadas": 77,
+      "anomalias_reais": 183,
+      "taxa_anomalias_detectadas": 0.2103825136612022,
+      "graficos": [
+        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_metricas.png",
+        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_matriz_confusao.png"
+      ],
+      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_metricas.png",
+      "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_matriz_confusao.png"
     },
     "KNN": {
+      "accuracy": 0.5027322404371585,
+      "precision": 1.0,
+      "recall": 0.00546448087431694,
+      "f1": 0.010869565217391304,
       "auc": 0.5957030666786108,
-      "f1": 0.6666666666666666,
-      "recall": 1.0,
-      "precisao": 0.5,
-      "disponivel": true
+      "specificity": 0.5027322404371585,
+      "amostras": 366,
+      "n_classes": 2,
+      "classes": [
+        "Normal",
+        "Anomalia"
+      ],
+      "matriz_confusao": [
+        [
+          183,
+          0
+        ],
+        [
+          182,
+          1
+        ]
+      ],
+      "disponivel": true,
+      "limiar_score": null,
+      "ponto_operacao": "decisao_nativa_modelo",
+      "anomalias_detectadas": 1,
+      "anomalias_reais": 183,
+      "taxa_anomalias_detectadas": 0.00273224043715847,
+      "graficos": [
+        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_knn_metricas.png",
+        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_knn_matriz_confusao.png"
+      ],
+      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_knn_metricas.png",
+      "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_knn_matriz_confusao.png"
     },
     "SVM": {
+      "accuracy": 0.9289617486338798,
+      "precision": 0.9337016574585635,
+      "recall": 0.9234972677595629,
+      "f1": 0.9285714285714286,
       "auc": 0.9724237809429961,
-      "f1": 0.9402597402597402,
-      "recall": 0.9890710382513661,
-      "precisao": 0.8960396039603961,
-      "disponivel": true
+      "specificity": 0.9289617486338798,
+      "amostras": 366,
+      "n_classes": 2,
+      "classes": [
+        "Normal",
+        "Anomalia"
+      ],
+      "matriz_confusao": [
+        [
+          171,
+          12
+        ],
+        [
+          14,
+          169
+        ]
+      ],
+      "disponivel": true,
+      "limiar_score": null,
+      "ponto_operacao": "decisao_nativa_modelo",
+      "anomalias_detectadas": 181,
+      "anomalias_reais": 183,
+      "taxa_anomalias_detectadas": 0.49453551912568305,
+      "graficos": [
+        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_svm_metricas.png",
+        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_svm_matriz_confusao.png"
+      ],
+      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_svm_metricas.png",
+      "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_svm_matriz_confusao.png"
     },
     "ANN (MLP)": {
+      "accuracy": 0.9234972677595629,
+      "precision": 0.9936305732484076,
+      "recall": 0.8524590163934426,
+      "f1": 0.9176470588235294,
       "auc": 0.9782764489832482,
-      "f1": 0.9584487534626038,
-      "recall": 0.9453551912568307,
-      "precisao": 0.9719101123595506,
-      "disponivel": true
+      "specificity": 0.9234972677595628,
+      "amostras": 366,
+      "n_classes": 2,
+      "classes": [
+        "Normal",
+        "Anomalia"
+      ],
+      "matriz_confusao": [
+        [
+          182,
+          1
+        ],
+        [
+          27,
+          156
+        ]
+      ],
+      "disponivel": true,
+      "limiar_score": null,
+      "ponto_operacao": "decisao_nativa_modelo",
+      "anomalias_detectadas": 157,
+      "anomalias_reais": 183,
+      "taxa_anomalias_detectadas": 0.42896174863387976,
+      "graficos": [
+        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_ann_mlp_metricas.png",
+        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_ann_mlp_matriz_confusao.png"
+      ],
+      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_ann_mlp_metricas.png",
+      "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_ann_mlp_matriz_confusao.png"
     },
     "RNN": {
+      "accuracy": 0.7131147540983607,
+      "precision": 0.6373239436619719,
+      "recall": 0.9890710382513661,
+      "f1": 0.7751605995717344,
       "auc": 0.8136402997999344,
-      "f1": 0.7972972972972973,
-      "recall": 0.9672131147540983,
-      "precisao": 0.6781609195402298,
-      "disponivel": true
+      "specificity": 0.7131147540983607,
+      "amostras": 366,
+      "n_classes": 2,
+      "classes": [
+        "Normal",
+        "Anomalia"
+      ],
+      "matriz_confusao": [
+        [
+          80,
+          103
+        ],
+        [
+          2,
+          181
+        ]
+      ],
+      "disponivel": true,
+      "limiar_score": null,
+      "ponto_operacao": "decisao_nativa_modelo",
+      "anomalias_detectadas": 284,
+      "anomalias_reais": 183,
+      "taxa_anomalias_detectadas": 0.7759562841530054,
+      "graficos": [
+        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_rnn_metricas.png",
+        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_rnn_matriz_confusao.png"
+      ],
+      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_rnn_metricas.png",
+      "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_rnn_matriz_confusao.png"
     },
     "CNN": {
+      "accuracy": 0.6202185792349727,
+      "precision": 0.56875,
+      "recall": 0.994535519125683,
+      "f1": 0.7236580516898609,
       "auc": 0.9246916898085938,
-      "f1": 0.8716577540106952,
-      "recall": 0.8907103825136612,
-      "precisao": 0.8534031413612565,
-      "disponivel": true
+      "specificity": 0.6202185792349727,
+      "amostras": 366,
+      "n_classes": 2,
+      "classes": [
+        "Normal",
+        "Anomalia"
+      ],
+      "matriz_confusao": [
+        [
+          45,
+          138
+        ],
+        [
+          1,
+          182
+        ]
+      ],
+      "disponivel": true,
+      "limiar_score": null,
+      "ponto_operacao": "decisao_nativa_modelo",
+      "anomalias_detectadas": 320,
+      "anomalias_reais": 183,
+      "taxa_anomalias_detectadas": 0.8743169398907104,
+      "graficos": [
+        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_cnn_metricas.png",
+        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_cnn_matriz_confusao.png"
+      ],
+      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_cnn_metricas.png",
+      "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_cnn_matriz_confusao.png"
     },
     "Isolation Forest + PPO": {
+      "accuracy": 0.6775956284153005,
+      "precision": 0.6923076923076923,
+      "recall": 0.639344262295082,
+      "f1": 0.6647727272727273,
       "auc": 0.7592343754665711,
-      "f1": 0.7385892116182573,
-      "recall": 0.9726775956284153,
-      "precisao": 0.5953177257525084,
-      "disponivel": true
+      "specificity": 0.6775956284153006,
+      "amostras": 366,
+      "n_classes": 2,
+      "classes": [
+        "Normal",
+        "Anomalia"
+      ],
+      "matriz_confusao": [
+        [
+          131,
+          52
+        ],
+        [
+          66,
+          117
+        ]
+      ],
+      "disponivel": true,
+      "limiar_score": null,
+      "ponto_operacao": "decisao_nativa_modelo",
+      "anomalias_detectadas": 169,
+      "anomalias_reais": 183,
+      "taxa_anomalias_detectadas": 0.46174863387978143,
+      "graficos": [
+        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_ppo_metricas.png",
+        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_ppo_matriz_confusao.png"
+      ],
+      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_ppo_metricas.png",
+      "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_ppo_matriz_confusao.png"
     }
   },
-  "melhor_modelo": "ANN (MLP)",
-  "melhor_valor": 0.9782764489832482
+  "melhor_modelo": "SVM",
+  "melhor_valor": 0.9285714285714286,
+  "graficos": [
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_metricas.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_matriz_confusao.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_knn_metricas.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_knn_matriz_confusao.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_svm_metricas.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_svm_matriz_confusao.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_ann_mlp_metricas.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_ann_mlp_matriz_confusao.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_rnn_metricas.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_rnn_matriz_confusao.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_cnn_metricas.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_cnn_matriz_confusao.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_ppo_metricas.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_ppo_matriz_confusao.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\comparacao_metricas.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\anomalias_detectadas.png",
+    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\matriz_confusao.png"
+  ],
+  "grafico": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_metricas.png"
 }

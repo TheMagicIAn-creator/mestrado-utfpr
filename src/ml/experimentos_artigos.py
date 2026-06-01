@@ -34,6 +34,8 @@ from typing import Callable
 from src.core.config import RAIZ_PROJETO
 
 PASTA_EXPERIMENTOS = RAIZ_PROJETO / "resultados" / "experimentos"
+METRICAS_BASE = ("accuracy", "precision", "recall", "f1", "auc", "specificity")
+METRICAS_GRAFICO = ("accuracy", "precision", "recall", "f1", "auc", "specificity")
 
 
 # ============================================================
@@ -48,6 +50,88 @@ def lib_disponivel(nome: str | None) -> bool:
         return importlib.util.find_spec(nome) is not None
     except (ImportError, ValueError):
         return False
+
+
+# ============================================================
+# METRICAS PADRONIZADAS
+# ============================================================
+
+def _specificity_macro(y_true, y_pred) -> float:
+    """Specificity macro no esquema one-vs-rest."""
+    import numpy as np
+    from sklearn.metrics import confusion_matrix
+
+    labels = np.unique(np.concatenate([np.asarray(y_true), np.asarray(y_pred)]))
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
+    total = cm.sum()
+    valores = []
+    for i in range(len(labels)):
+        tp = cm[i, i]
+        fp = cm[:, i].sum() - tp
+        fn = cm[i, :].sum() - tp
+        tn = total - tp - fp - fn
+        denom = tn + fp
+        valores.append(float(tn / denom) if denom else 0.0)
+    return float(np.mean(valores)) if valores else 0.0
+
+
+def _auc_seguro(y_true, y_score) -> float | None:
+    import numpy as np
+    from sklearn.metrics import roc_auc_score
+
+    if y_score is None:
+        return None
+    try:
+        y_true_arr = np.asarray(y_true)
+        score_arr = np.asarray(y_score)
+        classes = np.unique(y_true_arr)
+        if len(classes) < 2:
+            return None
+        if score_arr.ndim == 1:
+            if len(classes) != 2:
+                return None
+            return float(roc_auc_score(y_true_arr, score_arr))
+        return float(
+            roc_auc_score(
+                y_true_arr,
+                score_arr,
+                multi_class="ovr",
+                average="macro",
+            )
+        )
+    except Exception:
+        return None
+
+
+def _metricas_classificacao(y_true, y_pred, y_score=None) -> dict:
+    """Schema unico para classificacao e deteccao por ponto de operacao."""
+    import numpy as np
+    from sklearn.metrics import (
+        accuracy_score,
+        confusion_matrix,
+        f1_score,
+        precision_score,
+        recall_score,
+    )
+
+    y_true_arr = np.asarray(y_true)
+    y_pred_arr = np.asarray(y_pred)
+    labels = np.unique(np.concatenate([y_true_arr, y_pred_arr]))
+    media = "binary" if len(labels) == 2 and set(labels).issubset({0, 1}) else "macro"
+
+    return {
+        "accuracy": float(accuracy_score(y_true_arr, y_pred_arr)),
+        "precision": float(precision_score(y_true_arr, y_pred_arr, average=media, zero_division=0)),
+        "recall": float(recall_score(y_true_arr, y_pred_arr, average=media, zero_division=0)),
+        "f1": float(f1_score(y_true_arr, y_pred_arr, average=media, zero_division=0)),
+        "auc": _auc_seguro(y_true_arr, y_score),
+        "specificity": _specificity_macro(y_true_arr, y_pred_arr),
+        "amostras": int(len(y_true_arr)),
+        "n_classes": int(len(labels)),
+        "classes": [str(x) for x in labels.tolist()],
+        "matriz_confusao": confusion_matrix(y_true_arr, y_pred_arr, labels=labels).astype(int).tolist(),
+        "disponivel": True,
+    }
 
 
 # ============================================================
@@ -254,16 +338,106 @@ def catalogo_experimentos_md() -> str:
 # SALVAMENTO DE ARTEFATOS (padrão comum a todos os experimentos)
 # ============================================================
 
+def _resultado_serializavel(resultado: dict) -> dict:
+    """Remove campos privados e converte objetos numericos para JSON/CSV."""
+    import json
+
+    def limpar(valor):
+        if isinstance(valor, dict):
+            return {k: limpar(v) for k, v in valor.items() if not str(k).startswith("_")}
+        if isinstance(valor, (list, tuple)):
+            return [limpar(v) for v in valor]
+        try:
+            import numpy as np
+
+            if isinstance(valor, np.generic):
+                return valor.item()
+            if isinstance(valor, np.ndarray):
+                return valor.tolist()
+        except Exception:
+            pass
+        try:
+            json.dumps(valor)
+            return valor
+        except TypeError:
+            return str(valor)
+
+    return limpar(resultado)
+
+
+def _salvar_metricas_csv(exp: ExperimentoArtigo, resultado: dict) -> None:
+    try:
+        import pandas as pd
+    except Exception:
+        return
+
+    linhas = []
+    for nome, m in resultado.get("modelos", {}).items():
+        linha = {
+            "experimento": exp.key,
+            "referencia": exp.referencia,
+            "tarefa": exp.tarefa,
+            "modelo": nome,
+            "disponivel": m.get("disponivel", True),
+            "motivo": m.get("motivo", ""),
+        }
+        for k, v in m.items():
+            if isinstance(v, (int, float, str, bool)) or v is None:
+                linha[k] = v
+        linhas.append(linha)
+
+    if linhas:
+        pd.DataFrame(linhas).to_csv(exp.pasta() / "metricas.csv", index=False)
+
+
+def _origem_dados(exp: ExperimentoArtigo) -> dict:
+    """Documenta se o experimento usa dados locais ou so referencia do artigo."""
+    if exp.key == "ghoneim":
+        return {
+            "tipo": "dataset_local_rotulado",
+            "descricao": (
+                "Usa os arquivos locais train_data.csv e test_data.csv em dados/brutos. "
+                "O artigo define a metodologia/base PV Farms; os numeros sao recalculados "
+                "no repositorio, nao copiados do paper."
+            ),
+            "arquivos": [
+                "dados/brutos/train_data.csv",
+                "dados/brutos/test_data.csv",
+            ],
+        }
+    if exp.tarefa == "anomalia":
+        return {
+            "tipo": "dataset_local_paderborn_com_falhas_sinteticas",
+            "descricao": (
+                "Usa features locais do Paderborn extraidas de Inverter_Data_Set.csv. "
+                "Como o Paderborn e saudavel, as anomalias avaliadas sao sinteticas, "
+                "geradas no pipeline para criar ground truth. O artigo inspira os modelos "
+                "e a metodologia; os dados avaliados sao os do repositorio."
+            ),
+            "arquivos": [
+                "dados/brutos/Inverter_Data_Set.csv",
+                "dados/processados/features_paderborn.parquet",
+            ],
+        }
+    return {
+        "tipo": "referencia_metodologica",
+        "descricao": "Cartao de referencia; nao executa treinamento.",
+        "arquivos": [],
+    }
+
+
 def _salvar_resultado(exp: ExperimentoArtigo, resultado: dict) -> Path:
-    """Grava resultado.json e relatorio.txt em resultados/experimentos/<key>/."""
+    """Grava resultado.json, metricas.csv e relatorio.txt."""
     import json
 
     pasta = exp.pasta()
     pasta.mkdir(parents=True, exist_ok=True)
+    resultado = _resultado_serializavel(resultado)
 
     (pasta / "resultado.json").write_text(
         json.dumps(resultado, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    _salvar_metricas_csv(exp, resultado)
 
     linhas = [
         "=" * 64,
@@ -272,6 +446,8 @@ def _salvar_resultado(exp: ExperimentoArtigo, resultado: dict) -> Path:
         f"  Dataset: {exp.dataset} | Tarefa: {exp.tarefa}",
         "=" * 64,
         "",
+        f"Origem dos dados: {resultado.get('origem_dados', {}).get('descricao', '-')}",
+        "",
         f"Métrica principal: {resultado.get('metrica_principal', '-')}",
         "",
     ]
@@ -279,8 +455,13 @@ def _salvar_resultado(exp: ExperimentoArtigo, resultado: dict) -> Path:
         if not m.get("disponivel", True):
             linhas.append(f"- {nome}: INDISPONÍVEL ({m.get('motivo', 'requer biblioteca')})")
             continue
-        partes = [f"{k}={v:.4f}" for k, v in m.items()
-                  if isinstance(v, (int, float)) and k != "disponivel"]
+        partes = [
+            f"{k}={v:.4f}"
+            for k, v in m.items()
+            if k in METRICAS_BASE and isinstance(v, (int, float))
+        ]
+        if isinstance(m.get("anomalias_detectadas"), int):
+            partes.append(f"anomalias_detectadas={m['anomalias_detectadas']}")
         linhas.append(f"- {nome}: " + ", ".join(partes))
     linhas += [
         "",
@@ -293,7 +474,7 @@ def _salvar_resultado(exp: ExperimentoArtigo, resultado: dict) -> Path:
     return pasta
 
 
-def _grafico_comparacao(exp: ExperimentoArtigo, resultado: dict) -> Path | None:
+def _grafico_comparacao_legacy(exp: ExperimentoArtigo, resultado: dict) -> Path | None:
     """Barras comparando os modelos pela métrica principal (PNG via matplotlib)."""
     try:
         import matplotlib
@@ -328,6 +509,206 @@ def _grafico_comparacao(exp: ExperimentoArtigo, resultado: dict) -> Path | None:
     fig.savefig(caminho, dpi=110)
     plt.close(fig)
     return caminho
+
+
+def _slug_modelo(nome: str) -> str:
+    """Nome estavel para arquivos de artefatos por modelo."""
+    import re
+    import unicodedata
+
+    texto = unicodedata.normalize("NFD", nome.lower())
+    texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
+    texto = re.sub(r"[^a-z0-9]+", "_", texto).strip("_")
+    return texto or "modelo"
+
+
+def _registrar_grafico_modelo(modelo: dict, chave: str, caminho: Path) -> None:
+    modelo.setdefault("graficos", [])
+    caminho_abs = str(caminho.resolve())
+    if caminho_abs not in modelo["graficos"]:
+        modelo["graficos"].append(caminho_abs)
+    modelo[chave] = caminho_abs
+
+
+def _grafico_metricas_modelo(exp: ExperimentoArtigo, nome: str, modelo: dict, plt, np) -> Path | None:
+    metricas = [
+        met for met in METRICAS_GRAFICO
+        if isinstance(modelo.get(met), (int, float))
+    ]
+    if not metricas:
+        return None
+
+    valores = [float(modelo[met]) for met in metricas]
+    cores = ["#2F80ED", "#27AE60", "#F2994A", "#9B51E0", "#EB5757", "#56CCF2"][:len(metricas)]
+    fig, ax = plt.subplots(figsize=(7.4, 4.6))
+    barras = ax.bar(metricas, valores, color=cores)
+    ax.set_ylim(0, 1.05)
+    ax.set_ylabel("valor")
+    ax.set_title(f"{exp.referencia} - {nome}")
+    ax.grid(axis="y", alpha=0.25)
+    ax.tick_params(axis="x", rotation=20)
+    for barra, valor in zip(barras, valores):
+        ax.text(
+            barra.get_x() + barra.get_width() / 2,
+            min(1.03, valor + 0.02),
+            f"{valor:.3f}",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
+
+    linhas = []
+    if isinstance(modelo.get("anomalias_detectadas"), int):
+        linhas.append(f"Anomalias detectadas: {modelo['anomalias_detectadas']}")
+    if isinstance(modelo.get("anomalias_reais"), int):
+        linhas.append(f"Anomalias reais: {modelo['anomalias_reais']}")
+    if modelo.get("ponto_operacao"):
+        rotulos_ponto = {
+            "limiar_otimo_score": "limiar otimizado",
+            "decisao_nativa_modelo": "decisao nativa",
+        }
+        linhas.append(f"Ponto: {rotulos_ponto.get(modelo['ponto_operacao'], modelo['ponto_operacao'])}")
+    if linhas:
+        fig.text(
+            0.02,
+            0.03,
+            "\n".join(linhas),
+            ha="left",
+            va="bottom",
+            fontsize=9,
+        )
+
+    fig.tight_layout(rect=(0, 0.15 if linhas else 0, 1, 1))
+    caminho = exp.pasta() / f"modelo_{_slug_modelo(nome)}_metricas.png"
+    fig.savefig(caminho, dpi=120)
+    plt.close(fig)
+    _registrar_grafico_modelo(modelo, "grafico_metricas", caminho)
+    return caminho
+
+
+def _grafico_matriz_modelo(exp: ExperimentoArtigo, nome: str, modelo: dict, plt, np) -> Path | None:
+    if not modelo.get("matriz_confusao"):
+        return None
+
+    cm = np.asarray(modelo["matriz_confusao"], dtype=int)
+    if cm.ndim != 2 or cm.size == 0:
+        return None
+
+    labels = modelo.get("classes") or [str(i) for i in range(cm.shape[0])]
+    fig, ax = plt.subplots(figsize=(max(5.2, len(labels) * 0.9), max(4.8, len(labels) * 0.8)))
+    im = ax.imshow(cm, cmap="Blues")
+    ax.set_title(f"Matriz de confusao - {nome}")
+    ax.set_xlabel("predito")
+    ax.set_ylabel("real")
+    ax.set_xticks(range(len(labels)))
+    ax.set_yticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=20, ha="right")
+    ax.set_yticklabels(labels)
+    limite = cm.max() / 2 if cm.size else 0
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            cor = "white" if cm[i, j] > limite else "#111111"
+            ax.text(j, i, str(cm[i, j]), ha="center", va="center", color=cor)
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    fig.tight_layout()
+    caminho = exp.pasta() / f"modelo_{_slug_modelo(nome)}_matriz_confusao.png"
+    fig.savefig(caminho, dpi=120)
+    plt.close(fig)
+    _registrar_grafico_modelo(modelo, "grafico_matriz_confusao", caminho)
+    return caminho
+
+
+def _grafico_comparacao(exp: ExperimentoArtigo, resultado: dict) -> list[Path]:
+    """Gera PNGs comparativos e artefatos individuais por modelo."""
+    try:
+        import numpy as np
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except Exception:
+        return []
+
+    exp.pasta().mkdir(parents=True, exist_ok=True)
+    graficos: list[Path] = []
+    modelos = [
+        (nome, m)
+        for nome, m in resultado.get("modelos", {}).items()
+        if m.get("disponivel", True)
+    ]
+
+    for nome, modelo in modelos:
+        graf = _grafico_metricas_modelo(exp, nome, modelo, plt, np)
+        if graf:
+            graficos.append(graf)
+        graf = _grafico_matriz_modelo(exp, nome, modelo, plt, np)
+        if graf:
+            graficos.append(graf)
+
+    metricas = [
+        met for met in METRICAS_GRAFICO
+        if any(isinstance(m.get(met), (int, float)) for _, m in modelos)
+    ]
+    if modelos and metricas:
+        nomes = [n for n, _ in modelos]
+        x = np.arange(len(nomes))
+        largura = min(0.16, 0.78 / max(1, len(metricas)))
+        fig, ax = plt.subplots(figsize=(max(9, len(nomes) * 1.25), 5.2))
+        for i, met in enumerate(metricas):
+            vals = [
+                float(m.get(met)) if isinstance(m.get(met), (int, float)) else np.nan
+                for _, m in modelos
+            ]
+            ax.bar(x + (i - (len(metricas) - 1) / 2) * largura, vals, largura, label=met)
+        ax.set_ylim(0, 1.05)
+        ax.set_ylabel("valor")
+        ax.set_title(f"{exp.referencia} - comparacao multi-metrica")
+        ax.set_xticks(x)
+        ax.set_xticklabels(nomes, rotation=25, ha="right")
+        ax.legend(ncol=min(3, len(metricas)), fontsize=8)
+        ax.grid(axis="y", alpha=0.25)
+        fig.tight_layout()
+        caminho = exp.pasta() / "comparacao_metricas.png"
+        fig.savefig(caminho, dpi=120)
+        plt.close(fig)
+        graficos.append(caminho)
+
+    itens_anomalia = [
+        (nome, int(m["anomalias_detectadas"]))
+        for nome, m in modelos
+        if isinstance(m.get("anomalias_detectadas"), int)
+    ]
+    if itens_anomalia:
+        nomes = [n for n, _ in itens_anomalia]
+        valores = [v for _, v in itens_anomalia]
+        fig, ax = plt.subplots(figsize=(max(8, len(nomes) * 1.1), 4.5))
+        ax.bar(nomes, valores, color="#7B4CC2")
+        ax.set_ylabel("anomalias detectadas")
+        ax.set_title(f"{exp.referencia} - anomalias no ponto de operacao")
+        ax.tick_params(axis="x", rotation=25)
+        for i, v in enumerate(valores):
+            ax.text(i, v, str(v), ha="center", va="bottom", fontsize=9)
+        fig.tight_layout()
+        caminho = exp.pasta() / "anomalias_detectadas.png"
+        fig.savefig(caminho, dpi=120)
+        plt.close(fig)
+        graficos.append(caminho)
+
+    melhor = resultado.get("melhor_modelo")
+    modelo_cm = resultado.get("modelos", {}).get(melhor, {})
+    if not modelo_cm.get("matriz_confusao"):
+        for _, m in modelos:
+            if m.get("matriz_confusao"):
+                modelo_cm = m
+                break
+    if modelo_cm.get("matriz_confusao"):
+        caminho_individual = modelo_cm.get("grafico_matriz_confusao")
+        if caminho_individual and Path(caminho_individual).exists():
+            caminho = exp.pasta() / "matriz_confusao.png"
+            import shutil
+            shutil.copyfile(caminho_individual, caminho)
+            graficos.append(caminho)
+
+    return graficos
 
 
 # ============================================================
@@ -369,10 +750,6 @@ def _cn2_orange(X_tr, y_tr, X_te, y_te) -> dict | None:
     try:
         import numpy as np
         import Orange
-        from sklearn.metrics import (
-            accuracy_score, f1_score, precision_score, recall_score,
-        )
-
         classes = sorted(set(map(int, y_tr)))
         dominio = Orange.data.Domain(
             [Orange.data.ContinuousVariable(c) for c in map(str, X_tr.columns)],
@@ -387,22 +764,12 @@ def _cn2_orange(X_tr, y_tr, X_te, y_te) -> dict | None:
         pred_idx = modelo(np.asarray(X_te, float))
         y_pred = np.array([classes[int(i)] for i in pred_idx])
         y_true = np.asarray(list(map(int, y_te)))
-        return {
-            "acuracia": float(accuracy_score(y_true, y_pred)),
-            "precisao": float(precision_score(y_true, y_pred, average="macro", zero_division=0)),
-            "recall": float(recall_score(y_true, y_pred, average="macro", zero_division=0)),
-            "f1": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
-            "disponivel": True,
-        }
+        return _metricas_classificacao(y_true, y_pred)
     except Exception as exc:  # noqa: BLE001
         return {"disponivel": False, "motivo": f"erro no Orange/CN2: {exc}"}
 
 
 def executar_classificacao_supervisionada(exp: ExperimentoArtigo, progresso=None) -> dict:
-    import numpy as np
-    from sklearn.metrics import (
-        accuracy_score, f1_score, precision_score, recall_score,
-    )
     from sklearn.model_selection import StratifiedKFold, cross_val_score
     from sklearn.preprocessing import StandardScaler
 
@@ -443,15 +810,16 @@ def executar_classificacao_supervisionada(exp: ExperimentoArtigo, progresso=None
         scores = cross_val_score(est, X_tr_s, y_tr, cv=cv, scoring="accuracy")
         est.fit(X_tr_s, y_tr)
         y_pred = est.predict(X_te_s)
-        modelos_out[spec.nome] = {
-            "acuracia": float(accuracy_score(y_te, y_pred)),
-            "precisao": float(precision_score(y_te, y_pred, average="macro", zero_division=0)),
-            "recall": float(recall_score(y_te, y_pred, average="macro", zero_division=0)),
-            "f1": float(f1_score(y_te, y_pred, average="macro", zero_division=0)),
-            "cv_media": float(scores.mean()),
-            "cv_desvio": float(scores.std()),
-            "disponivel": True,
-        }
+        if hasattr(est, "predict_proba"):
+            y_score = est.predict_proba(X_te_s)
+        elif hasattr(est, "decision_function"):
+            y_score = est.decision_function(X_te_s)
+        else:
+            y_score = None
+        metricas = _metricas_classificacao(y_te, y_pred, y_score=y_score)
+        metricas["cv_accuracy_media"] = float(scores.mean())
+        metricas["cv_accuracy_desvio"] = float(scores.std())
+        modelos_out[spec.nome] = metricas
 
     return _consolidar(exp, modelos_out, metrica_principal="f1")
 
@@ -481,14 +849,16 @@ def _consolidar(exp: ExperimentoArtigo, modelos_out: dict, metrica_principal: st
         "tarefa": exp.tarefa,
         "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "metrica_principal": metrica_principal,
+        "origem_dados": _origem_dados(exp),
         "modelos": modelos_out,
         "melhor_modelo": melhor,
         "melhor_valor": melhor_valor,
     }
+    graficos = _grafico_comparacao(exp, resultado)
+    if graficos:
+        resultado["graficos"] = [str(g.resolve()) for g in graficos]
+        resultado["grafico"] = str(graficos[0].resolve())
     _salvar_resultado(exp, resultado)
-    grafico = _grafico_comparacao(exp, resultado)
-    if grafico:
-        resultado["grafico"] = str(grafico.resolve())
     return resultado
 
 
@@ -587,7 +957,7 @@ def _melhor_limiar(y_true, score):
     return float(melhor_thr)
 
 
-def _metricas_anomalia(y_true, score) -> dict:
+def _metricas_anomalia_legacy(y_true, score) -> dict:
     import numpy as np
     from sklearn.metrics import (
         f1_score, precision_score, recall_score, roc_auc_score,
@@ -606,7 +976,7 @@ def _metricas_anomalia(y_true, score) -> dict:
     }
 
 
-def _score_anomalia(nome, dados, progresso=None):
+def _score_anomalia_legacy(nome, dados, progresso=None):
     """
     Retorna o vetor de score de anomalia para o conjunto de teste, ou None se
     o modelo não estiver implementado neste runner. `dados` é o pacote comum.
@@ -669,6 +1039,101 @@ def _score_anomalia(nome, dados, progresso=None):
         return _score_prophet(dados)
 
     # --- Isolation Forest auto-ajustado por RL (PPO) ---
+    if "ppo" in base:
+        return _score_ppo_iforest(dados)
+
+    return None
+
+
+def _metricas_anomalia(y_true, score, y_pred=None) -> dict:
+    import numpy as np
+
+    y_true_arr = np.asarray(y_true).astype(int)
+    score = np.asarray(score, dtype=float)
+    score = np.nan_to_num(score, nan=0.0, posinf=0.0, neginf=0.0)
+    if y_pred is None:
+        thr = _melhor_limiar(y_true_arr, score)
+        y_pred = (score >= thr).astype(int)
+        ponto = "limiar_otimo_score"
+    else:
+        thr = None
+        y_pred = np.asarray(y_pred).astype(int)
+        ponto = "decisao_nativa_modelo"
+
+    metricas = _metricas_classificacao(y_true_arr, y_pred, y_score=score)
+    if metricas.get("matriz_confusao") and len(metricas["matriz_confusao"]) == 2:
+        metricas["classes"] = ["Normal", "Anomalia"]
+    metricas.update({
+        "limiar_score": thr,
+        "ponto_operacao": ponto,
+        "anomalias_detectadas": int(np.sum(y_pred == 1)),
+        "anomalias_reais": int(np.sum(y_true_arr == 1)),
+        "taxa_anomalias_detectadas": float(np.mean(y_pred == 1)),
+    })
+    return metricas
+
+
+def _score_anomalia(nome, dados, progresso=None):
+    """Retorna (score, y_pred) no ponto de operacao real quando existe."""
+    import numpy as np
+
+    Xn_tr = dados["Xn_tr"]
+    X_tr_sup = dados["X_tr_sup"]
+    y_tr_sup = dados["y_tr_sup"]
+    X_te = dados["X_te"]
+    base = nome.lower()
+
+    if "z-score" in base or "zscore" in base:
+        return np.mean(np.abs(X_te), axis=1), None
+
+    if "isolation forest" in base and "ppo" not in base:
+        from sklearn.ensemble import IsolationForest
+        iso = IsolationForest(n_estimators=200, random_state=42, contamination="auto")
+        iso.fit(Xn_tr)
+        score = -iso.decision_function(X_te)
+        y_pred = (iso.predict(X_te) == -1).astype(int)
+        return score, y_pred
+
+    if "random forest" in base:
+        from sklearn.ensemble import RandomForestClassifier
+        clf = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
+        clf.fit(X_tr_sup, y_tr_sup)
+        score = clf.predict_proba(X_te)[:, 1]
+        return score, (score >= 0.5).astype(int)
+
+    if base.startswith("knn") or "knn" in base:
+        from sklearn.neighbors import KNeighborsClassifier
+        clf = KNeighborsClassifier(n_neighbors=15)
+        clf.fit(X_tr_sup, y_tr_sup)
+        score = clf.predict_proba(X_te)[:, 1]
+        return score, (score >= 0.5).astype(int)
+
+    if base == "svm" or base.startswith("svm"):
+        from sklearn.svm import SVC
+        clf = SVC(kernel="rbf", probability=True, random_state=42)
+        clf.fit(X_tr_sup, y_tr_sup)
+        score = clf.predict_proba(X_te)[:, 1]
+        return score, (score >= 0.5).astype(int)
+
+    if "ann" in base or "mlp" in base:
+        from sklearn.neural_network import MLPClassifier
+        clf = MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=500, random_state=42)
+        clf.fit(X_tr_sup, y_tr_sup)
+        score = clf.predict_proba(X_te)[:, 1]
+        return score, (score >= 0.5).astype(int)
+
+    if "ae-lstm" in base or "ae lstm" in base or "autoencoder" in base:
+        return _score_ae_lstm(dados), None
+    if base == "rnn" or base.startswith("rnn"):
+        score = _score_rnn_torch(dados)
+        return score, (score >= 0.5).astype(int)
+    if base == "cnn" or base.startswith("cnn"):
+        score = _score_cnn_torch(dados)
+        return score, (score >= 0.5).astype(int)
+
+    if "prophet" in base:
+        return _score_prophet(dados), None
+
     if "ppo" in base:
         return _score_ppo_iforest(dados)
 
@@ -867,7 +1332,9 @@ def _score_ppo_iforest(dados, timesteps: int = 600):
 
     iso = IsolationForest(n_estimators=200, contamination=melhor_cont, random_state=42)
     iso.fit(Xn)
-    return -iso.decision_function(dados["X_te"])
+    score = -iso.decision_function(dados["X_te"])
+    y_pred = (iso.predict(dados["X_te"]) == -1).astype(int)
+    return score, y_pred
 
 
 def executar_anomalia(exp: ExperimentoArtigo, progresso=None) -> dict:
@@ -901,6 +1368,7 @@ def executar_anomalia(exp: ExperimentoArtigo, progresso=None) -> dict:
 
     modelos_out: dict[str, dict] = {}
     scores_individuais: dict[str, np.ndarray] = {}
+    predicoes_individuais: dict[str, np.ndarray] = {}
     for spec in exp.modelos:
         if not spec.disponivel:
             modelos_out[spec.nome] = {"disponivel": False, "motivo": f"requer {spec.requer}"}
@@ -917,8 +1385,14 @@ def executar_anomalia(exp: ExperimentoArtigo, progresso=None) -> dict:
         if score is None:
             modelos_out[spec.nome] = {"disponivel": False, "motivo": "implementação pendente"}
             continue
+        if isinstance(score, tuple):
+            score, y_pred = score
+        else:
+            y_pred = None
         scores_individuais[spec.nome] = np.asarray(score, dtype=float)
-        modelos_out[spec.nome] = _metricas_anomalia(y_te, score)
+        if y_pred is not None:
+            predicoes_individuais[spec.nome] = np.asarray(y_pred, dtype=int)
+        modelos_out[spec.nome] = _metricas_anomalia(y_te, score, y_pred)
 
     # Híbrido (voto): média normalizada dos scores dos componentes disponíveis.
     for spec in exp.modelos:
@@ -928,14 +1402,19 @@ def executar_anomalia(exp: ExperimentoArtigo, progresso=None) -> dict:
                     rng_ = s.max() - s.min()
                     return (s - s.min()) / rng_ if rng_ > 1e-12 else s * 0.0
                 combo = np.mean([_norm(s) for s in scores_individuais.values()], axis=0)
-                modelos_out[spec.nome] = _metricas_anomalia(y_te, combo)
+                if len(predicoes_individuais) >= 2:
+                    votos = np.mean(list(predicoes_individuais.values()), axis=0)
+                    y_pred_combo = (votos >= 0.5).astype(int)
+                else:
+                    y_pred_combo = None
+                modelos_out[spec.nome] = _metricas_anomalia(y_te, combo, y_pred_combo)
             else:
                 modelos_out[spec.nome] = {
                     "disponivel": False,
                     "motivo": "precisa de ≥2 componentes disponíveis",
                 }
 
-    return _consolidar(exp, modelos_out, metrica_principal="auc")
+    return _consolidar(exp, modelos_out, metrica_principal="f1")
 
 
 _DISPATCH_RUNNERS: dict[str, Callable] = {

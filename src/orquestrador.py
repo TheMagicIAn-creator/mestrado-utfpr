@@ -64,8 +64,9 @@ def eda_pendente() -> bool:
 
 
 def classificacao_pendente() -> bool:
-    pasta = PASTA_RESULTADOS / "classificacao_pv"
-    return not pasta.exists() or not any(pasta.iterdir())
+    # Caminho legado: a classificacao PV oficial agora e o experimento Ghoneim
+    # em src/ml/experimentos_artigos.py.
+    return False
 
 
 def etapa_indexar_pdfs(modelo_embeddings) -> str:
@@ -231,14 +232,10 @@ def etapa_eda() -> str:
 
 
 def etapa_classificacao() -> str:
-    if not classificacao_pendente():
-        return "Classificacao: ja realizada"
-    try:
-        from src.ml.classificador_pv import executar_classificacao
-
-        return "Classificacao: gerada com sucesso" if executar_classificacao() else "Classificacao: falhou"
-    except Exception as exc:
-        return f"Classificacao: erro - {exc}"
+    return (
+        "Classificacao PV legada depreciada. Use o experimento 'ghoneim' "
+        "em src/ml/experimentos_artigos.py."
+    )
 
 
 def etapa_features_ca() -> str:

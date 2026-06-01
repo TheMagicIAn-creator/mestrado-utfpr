@@ -13,14 +13,13 @@ Protocolo de validação:
   2. Classe POSITIVA (falha): janelas com falhas sintéticas injetadas
      nas 3 severidades mais representativas (0.30, 0.50, 1.00)
   3. Limiar variado de 0 a max_erro para construir a curva ROC
-  4. Métricas no limiar operacional p99=2.91:
+  4. Métricas no limiar operacional carregado de limiar.json:
      Precision, Recall, F1-Score, Accuracy, AUC-ROC
 
 Métricas geradas:
   - Curva ROC com AUC para cada tipo de falha
   - Matriz de Confusão no limiar operacional
-  - Precision-Recall curve
-  - Tabela comparativa por falha e severidade
+  - Heatmap/tabela comparativa por falha e severidade
 
 Conexão com FMEA:
   As métricas são reportadas por falha, conectando com os índices
@@ -29,7 +28,7 @@ Conexão com FMEA:
 Saída:
   resultados/autoencoder/validacao_roc.png
   resultados/autoencoder/validacao_matriz.png
-  resultados/autoencoder/validacao_pr.png
+  resultados/autoencoder/validacao_metricas.png
   resultados/autoencoder/validacao_report.json
   resultados/autoencoder/validacao_tabela.csv
 

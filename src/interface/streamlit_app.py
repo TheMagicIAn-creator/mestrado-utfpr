@@ -57,6 +57,22 @@ _CSS_MINIMO = """
     padding-left: 1.25rem;
     padding-right: 1.25rem;
 }
+[data-testid="stImage"],
+.stImage {
+    max-width: 100%;
+    overflow: hidden;
+}
+[data-testid="stImage"] img,
+.stImage img {
+    max-width: 100% !important;
+    height: auto !important;
+    object-fit: contain;
+}
+[data-testid="stImageCaption"],
+.stImage figcaption {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
 @media (max-width: 900px) {
     .block-container,
     [data-testid="stBottomBlockContainer"],
@@ -412,6 +428,70 @@ def stream_resposta_limpa(conteudo, llm, placeholder, refs_md: str) -> str:
     return final
 
 
+def _grupo_imagem(img: dict) -> str:
+    grupo = img.get("group")
+    if grupo:
+        return str(grupo)
+    legenda = str(img.get("caption", "Resultados"))
+    return legenda.split(" - ", 1)[0] if " - " in legenda else "Resultados"
+
+
+def _imagem_larga(img: dict) -> bool:
+    tipo = str(img.get("kind", "")).lower()
+    legenda = str(img.get("caption", "")).lower()
+    return (
+        tipo in {"comparacao", "wide"}
+        or "comparacao" in legenda
+        or "anomalias detectadas" in legenda
+        or "curvas" in legenda
+        or "heatmap" in legenda
+    )
+
+
+def _ordem_imagem(img: dict, indice: int) -> tuple:
+    try:
+        ordem_grupo = int(img.get("group_order", 0) or 0)
+    except Exception:
+        ordem_grupo = 0
+    try:
+        ordem = int(img.get("order", indice) or indice)
+    except Exception:
+        ordem = indice
+    return ordem_grupo, ordem, indice
+
+
+def _renderizar_imagem_unica(img: dict, coluna=None) -> None:
+    alvo = coluna if coluna is not None else st
+    alvo.image(img["path"], caption=img.get("caption", ""), use_container_width=True)
+
+
+def _renderizar_lote_regular(lote: list[dict]) -> None:
+    if not lote:
+        return
+    if len(lote) == 1:
+        _, centro, _ = st.columns([0.12, 0.76, 0.12], gap="small")
+        _renderizar_imagem_unica(lote[0], centro)
+        return
+
+    for inicio in range(0, len(lote), 2):
+        par = lote[inicio:inicio + 2]
+        cols = st.columns(len(par), gap="small")
+        for col, img in zip(cols, par):
+            _renderizar_imagem_unica(img, col)
+
+
+def _renderizar_grupo_imagens(imagens: list[dict]) -> None:
+    pendentes_regulares: list[dict] = []
+    for img in imagens:
+        if _imagem_larga(img):
+            _renderizar_lote_regular(pendentes_regulares)
+            pendentes_regulares = []
+            _renderizar_imagem_unica(img)
+        else:
+            pendentes_regulares.append(img)
+    _renderizar_lote_regular(pendentes_regulares)
+
+
 def renderizar_imagens(imagens: list[dict]) -> None:
     """
     Renderiza imagens, ignorando paths que não existem mais no disco.
@@ -423,9 +503,11 @@ def renderizar_imagens(imagens: list[dict]) -> None:
 
     validas = []
     invalidas = 0
-    for img in imagens:
+    for idx, img in enumerate(imagens):
         caminho = img.get("path", "")
         if caminho and Path(caminho).is_file():
+            img = dict(img)
+            img["_idx"] = idx
             validas.append(img)
         else:
             invalidas += 1
@@ -438,10 +520,16 @@ def renderizar_imagens(imagens: list[dict]) -> None:
             )
         return
 
-    cols = st.columns(min(2, len(validas)))
-    for idx, img in enumerate(validas):
-        col = cols[idx % len(cols)]
-        col.image(img["path"], caption=img.get("caption", ""), use_container_width=True)
+    validas.sort(key=lambda img: _ordem_imagem(img, int(img.get("_idx", 0))))
+    grupos: dict[str, list[dict]] = {}
+    for img in validas:
+        grupos.setdefault(_grupo_imagem(img), []).append(img)
+
+    mostrar_titulos = len(grupos) > 1
+    for grupo, itens in grupos.items():
+        if mostrar_titulos:
+            st.markdown(f"**{grupo}**")
+        _renderizar_grupo_imagens(itens)
 
     if invalidas:
         st.caption(

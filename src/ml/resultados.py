@@ -16,6 +16,7 @@ from pathlib import Path
 from src.core.config import PASTA_CHROMADB, RAIZ_PROJETO
 
 PASTA_AE = RAIZ_PROJETO / "resultados" / "autoencoder"
+PASTA_EXPERIMENTOS = RAIZ_PROJETO / "resultados" / "experimentos"
 
 
 def _json(path: Path) -> dict | None:
@@ -40,23 +41,140 @@ def _normalizar(texto: str) -> str:
     )
 
 
+_EXPERIMENTOS_ALIASES = {
+    "ghoneim": "ghoneim",
+    "francisti": "francisti",
+    "ibrahim": "ibrahim",
+    "sharma": "sharma",
+    "ahirwar": "ahirwar",
+    "stender": "stender",
+}
+_EXPERIMENTOS_ANOMALIA = {"francisti", "ibrahim", "sharma", "ahirwar"}
+
+
+def _slug_modelo(nome: str) -> str:
+    import unicodedata
+
+    texto = unicodedata.normalize("NFD", nome.lower())
+    texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
+    return re.sub(r"[^a-z0-9]+", "_", texto).strip("_") or "modelo"
+
+
+def _quer_resultado_experimentos(txt: str) -> bool:
+    if any(autor in txt for autor in _EXPERIMENTOS_ALIASES):
+        return True
+    if any(t in txt for t in (
+        "experimento", "experimentos", "artigo", "artigos", "benchmark",
+        "comparacao", "comparar", "ppo",
+    )):
+        return True
+    if "modelo" in txt or "modelos" in txt:
+        return any(t in txt for t in (
+            "anomalia", "anomalias", "detectaram", "detectou", "melhor",
+            "matriz", "metricas", "grafico", "graficos",
+        ))
+    return False
+
+
+def _experimentos_pedidos(pergunta: str = "") -> list[str]:
+    txt = _normalizar(pergunta)
+    encontrados = []
+    for nome, key in _EXPERIMENTOS_ALIASES.items():
+        pos = txt.find(nome)
+        if pos >= 0:
+            encontrados.append((pos, key))
+    pedidos = [key for _, key in sorted(encontrados)]
+    if pedidos:
+        return pedidos
+    if "anomalia" in txt or "anomalias" in txt:
+        return ["francisti", "ibrahim", "sharma", "ahirwar"]
+    if "classificacao" in txt or "supervision" in txt:
+        return ["ghoneim"]
+    return []
+
+
+def _arquivos_experimentos(pergunta: str = "") -> list[Path]:
+    arquivos = sorted(PASTA_EXPERIMENTOS.glob("*/resultado.json"))
+    pedidos_lista = _experimentos_pedidos(pergunta)
+    pedidos = set(pedidos_lista)
+    if pedidos:
+        por_nome = {arq.parent.name: arq for arq in arquivos}
+        arquivos = [por_nome[key] for key in pedidos_lista if key in por_nome]
+    return arquivos
+
+
+def _pede_matriz(txt: str) -> bool:
+    return "matriz" in txt or "matrizes" in txt or "confusao" in txt
+
+
+def _pede_anomalias(txt: str) -> bool:
+    return "anomalias detectadas" in txt or "detectaram" in txt or "detectou" in txt
+
+
+def _pede_melhor(txt: str) -> bool:
+    return "melhor" in txt or "best" in txt
+
+
+def _contem_termo(txt: str, termo: str) -> bool:
+    if len(termo) <= 3 or " " in termo:
+        return bool(re.search(rf"\b{re.escape(termo)}\b", txt))
+    return termo in txt
+
+
+def _modelo_citado(txt: str, modelo: str) -> bool:
+    nome = _normalizar(modelo)
+    slug = _slug_modelo(modelo).replace("_", " ")
+    aliases = {nome, slug}
+    mapa = {
+        "isolation forest": ("isolation forest", "iforest"),
+        "ppo": ("ppo", "rl"),
+        "random forest": ("random forest", "rf"),
+        "z-score": ("z-score", "z score", "zscore"),
+        "ae-lstm": ("ae-lstm", "ae lstm", "autoencoder lstm"),
+        "facebook prophet": ("facebook prophet", "prophet"),
+        "hibrido": ("hibrido", "voto"),
+        "svm": ("svm",),
+        "knn": ("knn",),
+        "ann": ("ann", "mlp"),
+        "rnn": ("rnn",),
+        "cnn": ("cnn",),
+        "adaboost": ("adaboost",),
+        "naive bayes": ("naive bayes", "bayes"),
+        "regressao logistica": ("regressao logistica", "logistica"),
+    }
+    for chave, valores in mapa.items():
+        if chave in nome or chave in slug:
+            aliases.update(valores)
+    return any(alias and alias in txt for alias in aliases)
+
+
+def _modelos_citados(txt: str, modelos: dict) -> set[str]:
+    return {modelo for modelo in modelos if _modelo_citado(txt, modelo)}
+
+
 def _focos(pergunta: str) -> set[str]:
     txt = _normalizar(pergunta)
     focos = set()
+    quer_experimentos = _quer_resultado_experimentos(txt)
+
     if any(t in txt for t in ("autoencoder", "limiar", "baseline", "reconstrucao")):
         focos.add("autoencoder")
     if any(t in txt for t in ("injecao", "falha", "falhas", "smd", "severidade")):
         focos.add("injecao")
-    if any(t in txt for t in ("validacao", "auc", "f1", "recall", "precision", "roc", "matriz")):
+    if any(t in txt for t in ("validacao", "auc", "f1", "recall", "precision", "roc", "matriz")) and (
+        not quer_experimentos or "validacao" in txt or "autoencoder" in txt
+    ):
         focos.add("validacao")
     if any(t in txt for t in ("weibull", "rul", "mttf", "b10", "beta", "eta", "confiabilidade")):
         focos.add("weibull")
+    if quer_experimentos:
+        focos.add("experimentos")
     return focos
 
 
 def _quer_imagens(pergunta: str) -> bool:
     txt = _normalizar(pergunta)
-    return any(t in txt for t in (
+    return any(_contem_termo(txt, t) for t in (
         "grafico", "graficos", "imagem", "imagens", "figura", "figuras",
         "curva", "curvas", "plot", "plots", "roc", "matriz", "matrizes",
         "heatmap", "visual", "visualiza", "mostre", "mostra", "mostrar",
@@ -64,34 +182,163 @@ def _quer_imagens(pergunta: str) -> bool:
     ))
 
 
-def _add_img(imagens: list[dict], nome: str, legenda: str) -> None:
-    path = PASTA_AE / nome
+def _add_img(
+    imagens: list[dict],
+    nome: str | Path,
+    legenda: str,
+    pasta: Path = PASTA_AE,
+    grupo: str | None = None,
+    ordem: int = 0,
+    tipo: str = "grafico",
+    ordem_grupo: int = 0,
+) -> None:
+    path = nome if isinstance(nome, Path) else pasta / nome
     if path.exists():
-        imagens.append({"path": str(path.resolve()), "caption": legenda})
+        resolvido = str(path.resolve())
+        if not any(img["path"] == resolvido for img in imagens):
+            imagens.append({
+                "path": resolvido,
+                "caption": legenda,
+                "group": grupo or "Resultados",
+                "group_order": ordem_grupo,
+                "order": ordem,
+                "kind": tipo,
+            })
+
+
+def _add_grafico_modelo(
+    imagens: list[dict],
+    pasta: Path,
+    modelo: str,
+    dados_modelo: dict,
+    chave: str,
+    legenda: str,
+    grupo: str,
+    ordem: int,
+    ordem_grupo: int,
+) -> None:
+    caminho = dados_modelo.get(chave)
+    tipo = "matriz" if chave == "grafico_matriz_confusao" else "modelo"
+    if caminho:
+        _add_img(
+            imagens,
+            Path(caminho),
+            legenda,
+            grupo=grupo,
+            ordem=ordem,
+            tipo=tipo,
+            ordem_grupo=ordem_grupo,
+        )
+        return
+
+    sufixo = "metricas" if chave == "grafico_metricas" else "matriz_confusao"
+    _add_img(
+        imagens,
+        pasta / f"modelo_{_slug_modelo(modelo)}_{sufixo}.png",
+        legenda,
+        grupo=grupo,
+        ordem=ordem,
+        tipo=tipo,
+        ordem_grupo=ordem_grupo,
+    )
 
 
 def imagens_relevantes(pergunta: str = "") -> list[dict]:
+    txt = _normalizar(pergunta)
     focos = _focos(pergunta)
     if not focos:
-        focos = {"autoencoder", "injecao", "validacao", "weibull"}
+        focos = {"autoencoder", "injecao", "validacao", "weibull", "experimentos"}
 
     imagens = []
     if "autoencoder" in focos:
-        _add_img(imagens, "curva_treino.png", "Autoencoder - curva de treinamento")
-        _add_img(imagens, "distribuicao_erro.png", "Autoencoder - distribuicao do erro")
-        _add_img(imagens, "erro_temporal.png", "Autoencoder - erro temporal")
+        _add_img(imagens, "curva_treino.png", "Autoencoder - curva de treinamento", grupo="Autoencoder", ordem=10, ordem_grupo=10)
+        _add_img(imagens, "distribuicao_erro.png", "Autoencoder - distribuicao do erro", grupo="Autoencoder", ordem=20, ordem_grupo=10)
+        _add_img(imagens, "erro_temporal.png", "Autoencoder - erro temporal", grupo="Autoencoder", ordem=30, ordem_grupo=10)
     if "injecao" in focos:
-        _add_img(imagens, "injecao_falhas_resultados.png", "Falhas sinteticas - erro por severidade")
-        _add_img(imagens, "injecao_falhas_comparacao.png", "Falhas sinteticas - comparacao em escala log")
+        _add_img(imagens, "injecao_falhas_resultados.png", "Falhas sinteticas - erro por severidade", grupo="Injecao de falhas", ordem=10, tipo="comparacao", ordem_grupo=20)
+        _add_img(imagens, "injecao_falhas_comparacao.png", "Falhas sinteticas - comparacao em escala log", grupo="Injecao de falhas", ordem=20, tipo="comparacao", ordem_grupo=20)
     if "validacao" in focos:
-        _add_img(imagens, "validacao_roc.png", "Validacao - curvas ROC")
-        _add_img(imagens, "validacao_matriz.png", "Validacao - matrizes de confusao")
-        _add_img(imagens, "validacao_metricas.png", "Validacao - heatmap de metricas")
+        _add_img(imagens, "validacao_roc.png", "Validacao - curvas ROC", grupo="Validacao", ordem=10, tipo="comparacao", ordem_grupo=30)
+        _add_img(imagens, "validacao_matriz.png", "Validacao - matrizes de confusao", grupo="Validacao", ordem=20, tipo="matriz", ordem_grupo=30)
+        _add_img(imagens, "validacao_metricas.png", "Validacao - heatmap de metricas", grupo="Validacao", ordem=30, tipo="comparacao", ordem_grupo=30)
     if "weibull" in focos:
-        _add_img(imagens, "weibull_ttf.png", "Weibull - distribuicao TTF")
-        _add_img(imagens, "weibull_confiabilidade.png", "Weibull - funcoes de confiabilidade")
-        _add_img(imagens, "weibull_rul.png", "Weibull - RUL condicional")
-    return imagens
+        _add_img(imagens, "weibull_ttf.png", "Weibull - distribuicao TTF", grupo="Weibull / RUL", ordem=10, ordem_grupo=40)
+        _add_img(imagens, "weibull_confiabilidade.png", "Weibull - funcoes de confiabilidade", grupo="Weibull / RUL", ordem=20, ordem_grupo=40)
+        _add_img(imagens, "weibull_rul.png", "Weibull - RUL condicional", grupo="Weibull / RUL", ordem=30, ordem_grupo=40)
+    if "experimentos" in focos:
+        somente_matriz = _pede_matriz(txt)
+        melhor_apenas = _pede_melhor(txt)
+        pede_anomalias = _pede_anomalias(txt)
+
+        for idx_exp, resultado in enumerate(_arquivos_experimentos(pergunta)):
+            pasta = resultado.parent
+            nome = pasta.name
+            dados = _json(resultado) or {}
+            modelos = dados.get("modelos", {})
+            melhor = dados.get("melhor_modelo")
+            modelos_pedidos = _modelos_citados(txt, modelos)
+            grupo = dados.get("referencia") or f"Experimento {nome}"
+
+            if not somente_matriz:
+                _add_img(
+                    imagens,
+                    pasta / "comparacao_metricas.png",
+                    f"{grupo} - comparacao de metricas",
+                    grupo=grupo,
+                    ordem=0,
+                    tipo="comparacao",
+                    ordem_grupo=100 + idx_exp,
+                )
+                if pede_anomalias or nome in _EXPERIMENTOS_ANOMALIA:
+                    _add_img(
+                        imagens,
+                        pasta / "anomalias_detectadas.png",
+                        f"{grupo} - anomalias detectadas",
+                        grupo=grupo,
+                        ordem=1,
+                        tipo="comparacao",
+                        ordem_grupo=100 + idx_exp,
+                    )
+
+            for idx_modelo, (modelo, dados_modelo) in enumerate(modelos.items()):
+                if not dados_modelo.get("disponivel", True):
+                    continue
+                if melhor_apenas and melhor and modelo != melhor:
+                    continue
+                if modelos_pedidos and modelo not in modelos_pedidos:
+                    continue
+                if somente_matriz:
+                    _add_grafico_modelo(
+                        imagens,
+                        pasta,
+                        modelo,
+                        dados_modelo,
+                        "grafico_matriz_confusao",
+                        f"{grupo} - matriz de confusao ({modelo})",
+                        grupo,
+                        100 + idx_modelo,
+                        100 + idx_exp,
+                    )
+                else:
+                    _add_grafico_modelo(
+                        imagens,
+                        pasta,
+                        modelo,
+                        dados_modelo,
+                        "grafico_metricas",
+                        f"{grupo} - resultado individual ({modelo})",
+                        grupo,
+                        100 + idx_modelo,
+                        100 + idx_exp,
+                    )
+    return sorted(
+        imagens,
+        key=lambda img: (
+            int(img.get("group_order", 0) or 0),
+            int(img.get("order", 0) or 0),
+            str(img.get("caption", "")),
+        ),
+    )
 
 
 def _resumo_autoencoder() -> str | None:
@@ -213,10 +460,98 @@ def _resumo_weibull() -> str | None:
     return "".join(linhas)
 
 
+def _resumo_experimentos(pergunta: str = "") -> str | None:
+    arquivos = _arquivos_experimentos(pergunta)
+    if not arquivos:
+        return None
+
+    txt = _normalizar(pergunta)
+    metricas = ("accuracy", "precision", "recall", "f1", "auc", "specificity")
+    linhas = [
+        "## Experimentos por artigo\n\n",
+        "| Experimento | Modelo | Accuracy | Precision | Recall | F1 | AUC | Specificity | Anomalias detectadas |\n",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|\n",
+    ]
+
+    linhas_modelos = []
+    destaques_melhor = []
+    origens = []
+    for arq in arquivos:
+        d = _json(arq)
+        if not d:
+            continue
+        exp = d.get("referencia") or d.get("experimento") or arq.parent.name
+        origem = d.get("origem_dados") or {}
+        if origem.get("descricao"):
+            origens.append((exp, origem["descricao"]))
+        if _pede_melhor(txt) and d.get("melhor_modelo"):
+            destaques_melhor.append(
+                f"- **{exp}**: {d.get('melhor_modelo')} "
+                f"({_fmt(d.get('metrica_principal'))}={_fmt(d.get('melhor_valor'))})"
+            )
+        modelos = d.get("modelos", {})
+        modelos_pedidos = _modelos_citados(txt, modelos)
+        for modelo, m in modelos.items():
+            if modelos_pedidos and modelo not in modelos_pedidos:
+                continue
+            if not m.get("disponivel", True):
+                motivo = m.get("motivo", "indisponivel")
+                linhas_modelos.append({
+                    "anomalias": None,
+                    "exp": exp,
+                    "modelo": modelo,
+                    "linha": f"| {exp} | {modelo} ({motivo}) | - | - | - | - | - | - | - |\n",
+                })
+                continue
+            valores = [_fmt(m.get(chave)) if m.get(chave) is not None else "-" for chave in metricas]
+            anomalias = m.get("anomalias_detectadas", "-")
+            linhas_modelos.append({
+                "anomalias": anomalias if isinstance(anomalias, int) else None,
+                "exp": exp,
+                "modelo": modelo,
+                "linha": (
+                    f"| {exp} | {modelo} | {valores[0]} | {valores[1]} | {valores[2]} | "
+                    f"{valores[3]} | {valores[4]} | {valores[5]} | {anomalias} |\n"
+                ),
+            })
+
+    if _pede_anomalias(txt):
+        linhas_modelos.sort(key=lambda item: item["anomalias"] if item["anomalias"] is not None else -1, reverse=True)
+    linhas.extend(item["linha"] for item in linhas_modelos)
+
+    if _pede_anomalias(txt):
+        candidatos = [item for item in linhas_modelos if item["anomalias"] is not None]
+        if candidatos:
+            topo = candidatos[0]
+            linhas.append(
+                f"\nDestaque: quem mais marcou anomalias foi **{topo['modelo']}** "
+                f"em **{topo['exp']}**, com **{topo['anomalias']}** detecções no ponto de operação.\n"
+            )
+    if destaques_melhor:
+        linhas.append("\nMelhor modelo pelo criterio salvo:\n" + "\n".join(destaques_melhor) + "\n")
+    if origens:
+        vistos = set()
+        linhas.append("\nOrigem dos dados usados nestes resultados:\n")
+        for exp, descricao in origens:
+            chave = (exp, descricao)
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            linhas.append(f"- **{exp}**: {descricao}\n")
+
+    linhas.append(
+        "\nLeitura rapida: AUC alto mede separacao por score. Para operacao real, "
+        "olhe junto F1/accuracy e a coluna de anomalias detectadas; AUC ou recall "
+        "alto com poucas ou zero anomalias detectadas indica que o modelo pode "
+        "estar ranqueando bem, mas operando conservador demais no ponto escolhido."
+    )
+    return "".join(linhas)
+
+
 def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> dict:
     focos = _focos(pergunta)
     if not focos:
-        focos = {"autoencoder", "injecao", "validacao", "weibull"}
+        focos = {"autoencoder", "injecao", "validacao", "weibull", "experimentos"}
 
     secoes = []
     if "autoencoder" in focos:
@@ -227,6 +562,8 @@ def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> d
         secoes.append(_resumo_validacao())
     if "weibull" in focos:
         secoes.append(_resumo_weibull())
+    if "experimentos" in focos:
+        secoes.append(_resumo_experimentos(pergunta))
 
     secoes = [s for s in secoes if s]
     if not secoes:

@@ -4,12 +4,14 @@
   Dataset: PV Farms | Tarefa: classificacao
 ================================================================
 
+Origem dos dados: Usa os arquivos locais train_data.csv e test_data.csv em dados/brutos. O artigo define a metodologia/base PV Farms; os numeros sao recalculados no repositorio, nao copiados do paper.
+
 Métrica principal: f1
 
-- Random Forest: acuracia=0.8700, precisao=0.8869, recall=0.8700, f1=0.8683, cv_media=1.0000, cv_desvio=0.0000
-- AdaBoost: acuracia=0.3700, precisao=0.1939, recall=0.3700, f1=0.2421, cv_media=0.4117, cv_desvio=0.0067
-- Regressão Logística: acuracia=0.7100, precisao=0.6383, recall=0.7100, f1=0.6430, cv_media=0.9367, cv_desvio=0.0256
-- Naive Bayes: acuracia=0.8100, precisao=0.8757, recall=0.8100, f1=0.7916, cv_media=0.9150, cv_desvio=0.0403
+- Random Forest: accuracy=0.8700, precision=0.8869, recall=0.8700, f1=0.8683, auc=0.9871, specificity=0.9567
+- AdaBoost: accuracy=0.3700, precision=0.1939, recall=0.3700, f1=0.2421, auc=0.7467, specificity=0.7900
+- Regressão Logística: accuracy=0.7100, precision=0.6383, recall=0.7100, f1=0.6430, auc=0.8147, specificity=0.9033
+- Naive Bayes: accuracy=0.8100, precision=0.8757, recall=0.8100, f1=0.7916, auc=0.8893, specificity=0.9367
 - CN2 (indução de regras): INDISPONÍVEL (erro no Orange/CN2: No module named 'bottleneck')
 
 MELHOR MODELO: Random Forest (f1=0.8683)

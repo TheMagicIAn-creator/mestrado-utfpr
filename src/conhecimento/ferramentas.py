@@ -265,11 +265,43 @@ def _quer_catalogo_experimentos(pergunta: str) -> bool:
         return False
     if _quer_rodar_experimento(pergunta):
         return False
+    if _quer_consultar_resultados_experimentos(pergunta):
+        return False
     consulta = any(t in txt for t in (
         "quais", "que ", "liste", "lista", "listar", "mostre", "mostra",
         "disponiveis", "disponivel", "existem", "tem ", "status", "quantos",
     ))
     return consulta
+
+
+def _quer_resposta_autoral(pergunta: str) -> bool:
+    """Perguntas que precisam de interpretacao do agente, nao so tabela pronta."""
+    txt = _normalizar(pergunta)
+    termos = (
+        "na sua opiniao", "sua opiniao", "opine", "parecer", "interprete",
+        "interpretar", "explique", "explica", "como se eu fosse apresentar",
+        "apresentar", "orientadora", "confiavel", "confiaveis", "recomende",
+        "recomendar", "qual escolher", "escolher", "reforca", "reforcam",
+        "sustenta", "sustentam", "discuta", "analise", "analisa",
+        "o que isso significa", "implicacao", "implicacoes",
+    )
+    return any(t in txt for t in termos)
+
+
+def _quer_consultar_resultados_experimentos(pergunta: str) -> bool:
+    """Consulta aos artefatos ja gerados dos experimentos por artigo."""
+    txt = _normalizar(pergunta)
+    tem_exp = (
+        "experimento" in txt
+        or any(autor in txt for autor in _AUTORES_EXP)
+        or any(t in txt for t in ("modelo", "modelos", "anomalia", "anomalias"))
+    )
+    tem_resultado = any(t in txt for t in (
+        "resultado", "resultados", "metrica", "metricas", "f1", "auc",
+        "recall", "precision", "matriz", "grafico", "graficos",
+        "anomalias detectadas", "detectaram", "detectou",
+    ))
+    return tem_exp and (tem_resultado or _quer_resposta_autoral(pergunta))
 
 
 def _quer_limpar(pergunta: str) -> bool:
@@ -589,7 +621,7 @@ def listar_experimentos_artigos(progresso=None, pergunta: str = "") -> dict:
     }
 
 
-def _md_experimento(res: dict) -> tuple[str, list[dict]]:
+def _md_experimento_legacy(res: dict) -> tuple[str, list[dict]]:
     """Markdown + imagens de um resultado de experimento."""
     if not res.get("ok"):
         ref = res.get("referencia", res.get("experimento", "experimento"))
@@ -621,6 +653,45 @@ def _md_experimento(res: dict) -> tuple[str, list[dict]]:
         from pathlib import Path
         if Path(graf).exists():
             imagens.append({"path": graf, "caption": f"{res['referencia']} — comparação"})
+    return "\n".join(linhas), imagens
+
+
+def _md_experimento(res: dict) -> tuple[str, list[dict]]:
+    """Markdown + imagens no schema padronizado dos experimentos."""
+    if not res.get("ok"):
+        ref = res.get("referencia", res.get("experimento", "experimento"))
+        return f"### {ref}\nNao executado - {res.get('mensagem', 'sem modelos disponiveis')}.", []
+
+    mp = res["metrica_principal"]
+    linhas = [
+        f"### {res['referencia']} - {res['dataset']} ({res['tarefa']})",
+        "| Modelo | Accuracy | Precision | Recall | F1 | AUC | Specificity | Anomalias |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for nome, m in res["modelos"].items():
+        if not m.get("disponivel", True):
+            linhas.append(f"| {nome} (_{m.get('motivo', 'indisponivel')}_) | - | - | - | - | - | - | - |")
+            continue
+        valores = []
+        for chave in ("accuracy", "precision", "recall", "f1", "auc", "specificity"):
+            valor = m.get(chave)
+            valores.append(f"{valor:.3f}" if isinstance(valor, (int, float)) else "-")
+        anomalias = m.get("anomalias_detectadas", "-")
+        linhas.append(
+            f"| {nome} | {valores[0]} | {valores[1]} | {valores[2]} | "
+            f"{valores[3]} | {valores[4]} | {valores[5]} | {anomalias} |"
+        )
+    linhas.append(
+        f"\n**Melhor: {res['melhor_modelo']}** ({mp}={res['melhor_valor']:.4f}). "
+        f"Salvo em `resultados/experimentos/{res['experimento']}/`."
+    )
+
+    from pathlib import Path
+
+    imagens = []
+    for graf in res.get("graficos", []) or [res.get("grafico")]:
+        if graf and Path(graf).exists():
+            imagens.append({"path": graf, "caption": f"{res['referencia']} - experimento"})
     return "\n".join(linhas), imagens
 
 
@@ -753,6 +824,8 @@ def _decisao_rapida(pergunta: str) -> dict | None:
     # RODAR tem prioridade sobre LISTAR.
     if _quer_rodar_experimento(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "rodar_experimento_artigo"}
+    if _quer_consultar_resultados_experimentos(pergunta):
+        return {"usar_ferramenta": True, "ferramenta": "consultar_resultados"}
     if _quer_catalogo_experimentos(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "listar_experimentos_artigos"}
 
@@ -861,18 +934,21 @@ Responda apenas JSON valido:
 
 
 def comentar_resultado(pergunta: str, resultado: dict, perfil: str, llm) -> str:
-    if resultado.get("resposta_pronta"):
+    if resultado.get("resposta_pronta") and not _quer_resposta_autoral(pergunta):
         return resultado.get("mensagem", "")
 
     status = "SUCESSO" if resultado.get("ok") else "FALHA"
-    prompt = f"""{perfil}
+    prompt = f"""Voce e o Al IAdo PV, pesquisador tecnico do mestrado do Rodolfo.
+Responda em portugues brasileiro natural, com opiniao tecnica propria quando a pergunta pedir.
+Use os resultados abaixo como evidencia. Nao invente numeros.
+Nao devolva apenas a tabela: interprete, priorize, compare e diga o que isso significa para a dissertacao.
 
 Rodolfo pediu: "{pergunta}"
 
 Resultado tecnico ({status}):
 {resultado.get('mensagem', 'sem detalhes')}
 
-Explique de forma natural, humana e tecnicamente precisa. Nao invente numeros."""
+Explique de forma natural, humana e tecnicamente precisa."""
     try:
         from langchain_core.messages import HumanMessage
 
