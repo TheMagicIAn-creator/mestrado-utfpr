@@ -104,12 +104,23 @@ def _auc_seguro(y_true, y_score) -> float | None:
 
 
 def _metricas_classificacao(y_true, y_pred, y_score=None) -> dict:
-    """Schema unico para classificacao e deteccao por ponto de operacao."""
+    """
+    Schema único para classificação e detecção por ponto de operação.
+
+    Especificidade com SEMÂNTICA EXPLÍCITA (item 4.1):
+    - `specificity`           = TN/(TN+FP) no caso BINÁRIO; em multiclasse cai
+                                para o macro one-vs-rest (mesmo valor de
+                                `specificity_macro_ovr`);
+    - `specificity_macro_ovr` = média one-vs-rest (sempre presente);
+    - `specificity_tipo`      = qual definição `specificity` representa.
+    """
     import numpy as np
     from sklearn.metrics import (
         accuracy_score,
+        balanced_accuracy_score,
         confusion_matrix,
         f1_score,
+        matthews_corrcoef,
         precision_score,
         recall_score,
     )
@@ -117,19 +128,41 @@ def _metricas_classificacao(y_true, y_pred, y_score=None) -> dict:
     y_true_arr = np.asarray(y_true)
     y_pred_arr = np.asarray(y_pred)
     labels = np.unique(np.concatenate([y_true_arr, y_pred_arr]))
-    media = "binary" if len(labels) == 2 and set(labels).issubset({0, 1}) else "macro"
+    binario = len(labels) == 2 and set(labels.tolist()).issubset({0, 1})
+    media = "binary" if binario else "macro"
+    cm = confusion_matrix(y_true_arr, y_pred_arr, labels=labels)
+    spec_macro = _specificity_macro(y_true_arr, y_pred_arr)
+
+    if binario:
+        # labels ordenados por np.unique → [0, 1]; cm: linhas=real, col=previsto
+        tn, fp = int(cm[0, 0]), int(cm[0, 1])
+        fn, tp = int(cm[1, 0]), int(cm[1, 1])
+        specificity = float(tn / (tn + fp)) if (tn + fp) else 0.0
+        fpr = float(fp / (fp + tn)) if (fp + tn) else 0.0
+        fnr = float(fn / (fn + tp)) if (fn + tp) else 0.0
+        spec_tipo = "binaria_TN/(TN+FP)"
+    else:
+        specificity = spec_macro          # em multiclasse usa-se o macro OvR
+        fpr = fnr = None                   # FPR/FNR binários não se aplicam
+        spec_tipo = "macro_one_vs_rest"
 
     return {
         "accuracy": float(accuracy_score(y_true_arr, y_pred_arr)),
+        "balanced_accuracy": float(balanced_accuracy_score(y_true_arr, y_pred_arr)),
         "precision": float(precision_score(y_true_arr, y_pred_arr, average=media, zero_division=0)),
         "recall": float(recall_score(y_true_arr, y_pred_arr, average=media, zero_division=0)),
         "f1": float(f1_score(y_true_arr, y_pred_arr, average=media, zero_division=0)),
+        "mcc": float(matthews_corrcoef(y_true_arr, y_pred_arr)),
         "auc": _auc_seguro(y_true_arr, y_score),
-        "specificity": _specificity_macro(y_true_arr, y_pred_arr),
+        "specificity": specificity,
+        "specificity_macro_ovr": spec_macro,
+        "specificity_tipo": spec_tipo,
+        "false_positive_rate": fpr,
+        "false_negative_rate": fnr,
         "amostras": int(len(y_true_arr)),
         "n_classes": int(len(labels)),
         "classes": [str(x) for x in labels.tolist()],
-        "matriz_confusao": confusion_matrix(y_true_arr, y_pred_arr, labels=labels).astype(int).tolist(),
+        "matriz_confusao": cm.astype(int).tolist(),
         "disponivel": True,
     }
 
