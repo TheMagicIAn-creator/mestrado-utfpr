@@ -18,6 +18,7 @@ from src.ml.pipeline import (
     NOMES_ETAPAS,
     ORDEM_ETAPAS_ML,
     artefatos_a_partir,
+    estado_pipeline,
     executar_etapa,
     executar_pipeline_ml,
     limpar_artefatos,
@@ -433,11 +434,20 @@ def consultar_status_pipeline(progresso=None, pergunta: str = "") -> dict:
     if progresso:
         progresso("Lendo status do pipeline...")
 
-    status = pipeline_status()
+    estados = estado_pipeline()
+    rotulo = {"ready": "✅ pronto", "stale": "⚠️ desatualizado (stale)",
+              "pending": "⬜ pendente"}
     linhas = ["## Status do pipeline de ML\n"]
-    for key, pronto in status.items():
-        estado = "pronto" if pronto else "pendente"
-        linhas.append(f"- **{NOMES_ETAPAS[key]}**: {estado}")
+    for key in ORDEM_ETAPAS_ML:
+        info = estados[key]
+        txt = rotulo.get(info["estado"], info["estado"])
+        if info["estado"] == "stale" and info.get("motivos"):
+            txt += f" — {', '.join(info['motivos'])}"
+        linhas.append(f"- **{NOMES_ETAPAS[key]}**: {txt}")
+    linhas.append(
+        "\n_stale = artefato existe mas o código, os parâmetros ou um artefato "
+        "anterior mudaram; recalcule sob comando para revalidar._"
+    )
 
     return {
         "ok": True,

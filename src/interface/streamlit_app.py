@@ -185,13 +185,17 @@ def inicializar_estado() -> None:
 
 
 def renderizar_pipeline_status() -> None:
-    """Mostra status do pipeline no sidebar com elementos nativos do Streamlit."""
-    from src.ml.pipeline import NOMES_ETAPAS, pipeline_status
+    """Status do pipeline no sidebar: ready / stale / pending."""
+    from src.ml.pipeline import NOMES_ETAPAS, estado_pipeline
 
-    for key, pronto in pipeline_status().items():
+    for key, info in estado_pipeline().items():
         nome = NOMES_ETAPAS[key]
-        if pronto:
+        estado = info.get("estado")
+        if estado == "ready":
             st.markdown(f"✅ {nome}")
+        elif estado == "stale":
+            motivos = ", ".join(info.get("motivos", [])) or "algo mudou"
+            st.markdown(f"⚠️ {nome} _(stale: {motivos})_")
         else:
             st.markdown(f"⚪ {nome} _(pendente)_")
 
