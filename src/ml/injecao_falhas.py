@@ -151,6 +151,38 @@ FALHAS = [
 ]
 
 
+def smd_probabilistico(deteccoes_por_severidade: dict, alvo: float = 0.95) -> dict:
+    """
+    SMD probabilística (item 4.3) a partir de detecções REPETIDAS (múltiplas
+    sementes/janelas), em vez da primeira média acima do limiar.
+
+    `deteccoes_por_severidade`: {severidade: lista[bool]} — cada bool é uma
+    detecção numa repetição independente.
+
+    Retorna taxa de detecção por severidade, SMD pontual (menor severidade com
+    qualquer detecção) e SMD_95 (menor severidade com taxa de detecção ≥ alvo).
+    SMD_95 = None quando nenhuma severidade alcança o alvo.
+    """
+    import numpy as np
+
+    taxas, n_rep = {}, {}
+    for sev, dets in deteccoes_por_severidade.items():
+        arr = np.asarray(list(dets), dtype=float)
+        taxas[float(sev)] = float(arr.mean()) if arr.size else 0.0
+        n_rep[float(sev)] = int(arr.size)
+
+    sevs = sorted(taxas)
+    smd_pontual = next((s for s in sevs if taxas[s] > 0.0), None)
+    smd_95 = next((s for s in sevs if taxas[s] >= alvo), None)
+    return {
+        "taxa_deteccao": taxas,
+        "smd_pontual": smd_pontual,
+        "smd_95": smd_95,
+        "alvo": alvo,
+        "n_repeticoes": n_rep,
+    }
+
+
 # ============================================================
 # MODELOS DE FALHA (assinaturas elétricas)
 # ============================================================
