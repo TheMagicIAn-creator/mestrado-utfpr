@@ -389,9 +389,12 @@ def executar_autoencoder(
     # RobustScaler usa mediana e IQR — resistente a outliers
     # (THD alto em transientes não distorce a escala geral)
     print(f"\n⚖️  Normalizando com RobustScaler...")
-    X_treino_raw, X_val_raw = train_test_split(
-        X, test_size=VAL_FRAC, random_state=seed, shuffle=True
-    )
+    # Divisão TEMPORAL com purga (NÃO aleatória): janelas com 50% de
+    # sobreposição não podem vazar entre treino e validação (item 3.4).
+    from src.ml.split_temporal import split_treino_val
+
+    idx_tr, idx_val = split_treino_val(len(X), val_frac=VAL_FRAC, purge_janelas=2)
+    X_treino_raw, X_val_raw = X[idx_tr], X[idx_val]
     scaler = RobustScaler()
     X_treino = scaler.fit_transform(X_treino_raw).astype(np.float32)
     X_val    = scaler.transform(X_val_raw).astype(np.float32)

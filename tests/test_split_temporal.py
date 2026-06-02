@@ -59,3 +59,13 @@ def test_ratios_invalidos_levantam():
 def test_janelas_insuficientes_levantam():
     with pytest.raises(ValueError):
         split_temporal_com_purga(5, 0.6, 0.2, 0.2, purge_janelas=10)
+
+
+def test_split_treino_val_temporal_sem_overlap():
+    from src.ml.split_temporal import split_treino_val
+
+    tr, val = split_treino_val(365, val_frac=0.2, purge_janelas=2)
+    assert tr.max() < val.min()                  # treino antes da validação
+    assert val.min() - tr.max() - 1 >= 2          # purga respeitada
+    assert set(tr).isdisjoint(set(val))           # sem overlap
+    assert np.all(np.diff(tr) == 1) and np.all(np.diff(val) == 1)  # contíguos

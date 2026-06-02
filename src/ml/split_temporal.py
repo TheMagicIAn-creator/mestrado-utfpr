@@ -104,3 +104,29 @@ def split_temporal_com_purga(
         "ratios": {"train": train_ratio, "val": val_ratio, "test": test_ratio},
         "n_janelas": n_janelas,
     }
+
+
+def split_treino_val(n_janelas: int, val_frac: float = 0.2,
+                     purge_janelas: int = PURGA_PADRAO):
+    """
+    Divisão TEMPORAL treino/validação em 2 blocos contíguos com purga (sem
+    bloco de teste). Treino = bloco inicial; validação = bloco final; a purga
+    descarta janelas na fronteira para que janelas sobrepostas não vazem entre
+    os conjuntos. Retorna (idx_treino, idx_val) como np.ndarray. Determinístico.
+    """
+    if n_janelas <= 0:
+        raise ValueError("n_janelas deve ser > 0.")
+    if not (0.0 < val_frac < 1.0):
+        raise ValueError(f"val_frac deve estar em (0,1); recebido {val_frac}.")
+    if purge_janelas < 0:
+        raise ValueError("purge_janelas deve ser >= 0.")
+
+    idx = np.arange(n_janelas, dtype=int)
+    n_val = int(np.floor(n_janelas * val_frac))
+    fim_treino = n_janelas - n_val - purge_janelas
+    if fim_treino <= 0 or n_val <= 0:
+        raise ValueError(
+            f"Janelas insuficientes ({n_janelas}) para treino/val com purga="
+            f"{purge_janelas} e val_frac={val_frac}."
+        )
+    return idx[:fim_treino], idx[fim_treino + purge_janelas:]
