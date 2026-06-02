@@ -2002,13 +2002,19 @@ def gravar_relatorio(resultados: list[dict], memorias_gravadas: int, timestamp: 
         for item in falhas:
             linhas.append(f"- {item['indice']:03d} {item['nome']}: {item['detalhe']}")
     else:
-        linhas.extend([
-            "",
-            "## Parecer",
-            "",
-            "A bateria passou integralmente. A memoria recebeu um documento por teste, "
-            "registrando o comportamento esperado e o aprendizado operacional do agente.",
-        ])
+        linhas.extend(["", "## Parecer", ""])
+        if memorias_gravadas:
+            linhas.append(
+                "A bateria passou integralmente. A colecao de avaliacao recebeu "
+                "um documento por teste, registrando o comportamento esperado e "
+                "o aprendizado operacional do agente."
+            )
+        else:
+            linhas.append(
+                "A bateria passou integralmente. Nenhuma memoria foi gravada; "
+                "use --com-memoria apenas quando quiser registrar a avaliacao "
+                "na colecao separada de testes."
+            )
 
     caminho.write_text("\n".join(linhas) + "\n", encoding="utf-8")
     return caminho
@@ -2017,7 +2023,7 @@ def gravar_relatorio(resultados: list[dict], memorias_gravadas: int, timestamp: 
 TOTAL_TESTES_ESPERADO = 559
 
 
-def main(gravar_memorias: bool = True) -> int:
+def main(gravar_memorias: bool = False) -> int:
     casos = montar_casos()
     if len(casos) != TOTAL_TESTES_ESPERADO:
         print(

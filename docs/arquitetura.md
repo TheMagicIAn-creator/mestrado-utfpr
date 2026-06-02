@@ -20,7 +20,7 @@ src/
 │   ├── pipeline.py       registry das etapas + estado ready/stale/pending
 │   ├── proveniencia.py   manifesto + hash + detecção de stale
 │   ├── split_temporal.py divisão temporal com purga (anti-vazamento)
-│   ├── features_ca.py    109 features CA (Paderborn)
+│   ├── features_ca.py    features CA do Paderborn
 │   ├── autoencoder.py    modelo de normalidade (limiar p99)
 │   ├── injecao_falhas.py falhas sintéticas FMEA (schema E2) + SMD_95
 │   ├── validacao.py      validação formal (limiar congelado, ROC+PR, E2)

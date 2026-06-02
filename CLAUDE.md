@@ -86,7 +86,8 @@ FMEA fornece ground truth para validação.
 
 ## Datasets do Projeto
 1. Inverter_Data_Set.csv (Universidade de Paderborn)
-   - ~235 mil amostras, 26 colunas, taxa de 10 kHz
+   - Dataset de sinais do inversor IGBT trifásico; quantidade de linhas,
+     colunas e hashes devem ser lidos do manifesto/dados locais vigentes
    - Inversor IGBT trifásico em operação SAUDÁVEL
    - NÃO contém falhas — é a referência de normalidade
    - Sinais: tensão CC, correntes CA trifásicas com
@@ -95,7 +96,8 @@ FMEA fornece ground truth para validação.
    - Uso: treinar o modelo de inversor saudável
 
 2. train_data.csv / test_data.csv (PV Farms)
-   - 600 instâncias treino + 100 teste, 30 features
+   - Dataset rotulado; quantidade de linhas, features, distribuição de classes
+     e hashes devem ser lidos dinamicamente do manifesto/dados locais vigentes
    - Usina PV simulada de 250 kW, dados rotulados
    - 4 classes: Normal, F1 string, F2 string-terra,
      F3 string-string (falhas do lado CC)
@@ -174,10 +176,10 @@ mestrado-utfpr/
 │   │   ├── processador_pdf.py→ processa PDFs novos
 │   │   └── consolidar_memoria.py → consolida sessões
 │   ├── ml/                   → pipeline de ML
-│   │   ├── features_ca.py    → extração de 109 features CA
+│   │   ├── features_ca.py    → extração de features CA do Paderborn
 │   │   ├── autoencoder.py    → modelo de normalidade
 │   │   ├── injecao_falhas.py → falhas sintéticas (FMEA)
-│   │   ├── validacao.py      → AUC, F1, Recall formal
+│   │   ├── validacao.py      → métricas formais no limiar congelado
 │   │   ├── rul_weibull.py    → estimativa de RUL
 │   │   ├── eda.py            → análise exploratória
 │   │   ├── classificador_pv.py → classificação de falhas CC
@@ -257,32 +259,26 @@ Cada PDF é indexado com 3 tipos de chunks:
 Extração de metadados em cascata:
   LLM (Groq) → regex → metadados internos → pendência
 
-## Status das Fases do Projeto
-FASE 1 — FUNDAÇÃO             : ✅ CONCLUÍDA
-FASE 2 — AGENTE RAG           : ✅ CONCLUÍDA
-FASE 3 — INTERFACE STREAMLIT  : ✅ CONCLUÍDA
-FASE 4 — AUTOMAÇÃO            : ✅ CONCLUÍDA
-FASE 5 — PIPELINE DE ML       : ✅ CONCLUÍDA (núcleo)
+## Estado Metodológico e Artefatos
+O projeto possui arquitetura para:
+- RAG acadêmico e memória de projeto;
+- interface Streamlit;
+- pipeline CA principal: features_ca → autoencoder → injecao_falhas →
+  validacao → rul_weibull;
+- classificação supervisionada PV Farms como eixo complementar;
+- experimentos por artigo como benchmark exploratório;
+- manifestos de proveniência e estados ready/stale/pending.
 
-Fase 5 — status metodológico (os NÚMEROS ficam nos artefatos, não aqui):
-✅ EDA dos datasets concluída
-✅ Classificação supervisionada PV Farms (5 modelos) — métricas em
-   resultados/classificacao_pv/ e resultados/experimentos/ghoneim/
-✅ Extração de 109 features CA com F0 adaptativo (Paderborn)
-✅ Autoencoder treinado — limiar operacional = percentil 99 do erro de
-   reconstrução saudável (μ+3σ é apenas referência comparativa); valores em
-   resultados/autoencoder/limiar.json
-✅ Injeção de falhas sintéticas fundamentada no FMEA (LCL, desbalanceamento,
-   sensor CA) — SMD em resultados/autoencoder/injecao_falhas_report.json
-✅ Validação formal contra falhas injetadas (ground truth) — AUC/F1/Recall em
-   resultados/autoencoder/validacao_report.json
-⬜ Análise de RUL com Weibull
-⬜ Integração dos módulos ML no orquestrador
+Não use este arquivo para afirmar que uma etapa está pronta, atualizada ou
+validada. Status e métricas devem vir de:
+- `resultados/manifestos/*.json`;
+- JSONs/CSVs vigentes em `resultados/...`;
+- ferramentas de consulta do agente;
+- scripts de verificação.
 
-IMPORTANTE: nunca cite essas métricas de memória. Consulte sempre o artefato
-JSON vigente (a ferramenta de resultados o carrega) e informe o nível de
-evidência. Resultado de injeção/validação é E2 (sintético orientado pelo FMEA),
-não prova de desempenho industrial.
+IMPORTANTE: nunca cite métricas de memória. Consulte sempre o artefato JSON
+vigente e informe o nível de evidência. Resultado de injeção/validação é E2
+(sintético orientado pelo FMEA), não prova de desempenho industrial.
 
 ## Como Devo Me Comportar
 - Responder por padrão em português brasileiro, salvo quando Rodolfo escrever

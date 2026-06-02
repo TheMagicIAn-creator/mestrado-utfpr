@@ -124,10 +124,16 @@ def test_formatar_intervalo_paginas_se_disponivel():
     """O formatador de páginas vive em agente.py (que puxa torch); roda local,
     pula no CI torch-free."""
     pytest.importorskip("sentence_transformers")
-    from src.conhecimento.agente import _formatar_intervalo_paginas as f
+    from src.conhecimento.agente import (
+        _formatar_intervalo_paginas as f,
+        _paginas_do_intervalo,
+    )
 
     assert f({3}) == "3"
     assert f({3, 4, 5, 8}) == "3–5, 8"
     assert f({12, 13, 20, 21, 22}) == "12–13, 20–22"
     assert f(set()) == ""
     assert f({0, None, "", -1, 7}) == "7"
+    assert _paginas_do_intervalo(3, 5) == [3, 4, 5]
+    assert f(_paginas_do_intervalo("10", "12")) == "10–12"
+    assert _paginas_do_intervalo("", 12) == []

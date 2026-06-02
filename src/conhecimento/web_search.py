@@ -2,8 +2,9 @@
 web_search.py — Al IAdo PV
 Busca leve na web (sem chave de API).
 
-Usa Wikipedia (API REST) como fonte primária e DuckDuckGo Instant Answer
-como complemento. Cobre lookups factuais (datas, definições, contexto
+Prioriza fonte oficial quando a consulta parece norma técnica; usa Wikipedia
+(API REST) e DuckDuckGo Instant Answer como fallback. Cobre lookups factuais
+(datas, definições, contexto
 histórico) que ficam fora da literatura indexada do mestrado.
 
 Não pretende substituir o RAG: é uma camada de "saber geral" para o agente
@@ -73,6 +74,48 @@ def _ddg_instant(termo: str) -> dict | None:
         return None
 
 
+def _fonte_oficial_norma(termo: str) -> dict | None:
+    """
+    Para normas IEC/ISO/IEEE/ABNT, devolve a busca/catálogo oficial antes de
+    fontes nível C. Não inventa escopo, edição ou conteúdo da norma.
+    """
+    termo_limpo = " ".join((termo or "").split())
+    low = termo_limpo.lower()
+    m = re.search(r"\b(iec|iso|ieee|abnt)\s*([0-9][0-9A-Za-z.\-:]*)?", low)
+    if not m and not any(p in low for p in ("norma", "standard", "norme")):
+        return None
+
+    org = (m.group(1) if m else "").upper()
+    numero = (m.group(2) or "").strip()
+    consulta = " ".join(p for p in (org, numero) if p).strip() or termo_limpo
+
+    if org == "IEC":
+        url = f"https://webstore.iec.ch/searchform&q={urllib.parse.quote(consulta)}"
+        fonte = "IEC Webstore"
+    elif org == "ISO":
+        url = f"https://www.iso.org/search.html?q={urllib.parse.quote(consulta)}"
+        fonte = "ISO"
+    elif org == "IEEE":
+        url = f"https://standards.ieee.org/search/?q={urllib.parse.quote(consulta)}"
+        fonte = "IEEE Standards"
+    elif org == "ABNT":
+        url = "https://www.abntcatalogo.com.br/"
+        fonte = "ABNT Catálogo"
+    else:
+        return None
+
+    return {
+        "titulo": f"Consulta oficial: {consulta}",
+        "extrato": (
+            "Fonte oficial priorizada para consulta normativa. Use-a para "
+            "confirmar escopo, edição vigente, partes da norma e texto oficial; "
+            "fontes nível C/D não devem sustentar afirmações normativas."
+        ),
+        "url": url,
+        "fonte": fonte,
+    }
+
+
 def _nivel_confianca(url: str, fonte: str) -> tuple[str, str]:
     """
     Classifica a confiança da fonte web (seção 11):
@@ -98,7 +141,7 @@ def _nivel_confianca(url: str, fonte: str) -> tuple[str, str]:
 
 def buscar_web(termo: str, max_chars: int = 1400) -> dict:
     """
-    Tenta Wikipedia pt → en → DuckDuckGo.
+    Tenta fonte oficial de norma → Wikipedia pt → en → es → fr → DuckDuckGo.
     Retorna {ok, resultados: [{titulo, extrato, url, fonte, nivel_confianca}], mensagem}.
     """
     termo = (termo or "").strip()
@@ -111,6 +154,7 @@ def buscar_web(termo: str, max_chars: int = 1400) -> dict:
 
     resultados = []
     for tentativa in (
+        lambda: _fonte_oficial_norma(termo),
         lambda: _wikipedia_resumo(termo, "pt"),
         lambda: _wikipedia_resumo(termo, "en"),
         lambda: _wikipedia_resumo(termo, "es"),

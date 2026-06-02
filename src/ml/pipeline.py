@@ -25,6 +25,7 @@ class PipelineStage:
     function: str
     artifacts: tuple[str, ...]
     depends_on: tuple[str, ...] = ()
+    parameter_names: tuple[str, ...] = ()
 
     def paths(self) -> list[Path]:
         return [RAIZ_PROJETO / rel for rel in self.artifacts]
@@ -36,6 +37,27 @@ class PipelineStage:
         module = import_module(self.module)
         return getattr(module, self.function)
 
+    def parameters(self) -> dict:
+        if not self.parameter_names:
+            return {}
+        module = import_module(self.module)
+        return {
+            nome.lower(): _valor_manifesto(getattr(module, nome))
+            for nome in self.parameter_names
+            if hasattr(module, nome)
+        }
+
+
+def _valor_manifesto(valor):
+    """Normaliza constantes de etapa para JSON estável no manifesto."""
+    if isinstance(valor, (str, int, float, bool)) or valor is None:
+        return valor
+    if isinstance(valor, (list, tuple)):
+        return [_valor_manifesto(v) for v in valor]
+    if isinstance(valor, dict):
+        return {str(k): _valor_manifesto(v) for k, v in valor.items()}
+    return str(valor)
+
 
 STAGES: dict[str, PipelineStage] = {
     "features_ca": PipelineStage(
@@ -43,6 +65,7 @@ STAGES: dict[str, PipelineStage] = {
         label="Features CA",
         module="src.ml.features_ca",
         function="executar_features_ca",
+        parameter_names=("FS", "F0", "JANELA", "SOBREPOSICAO", "HARMONICOS"),
         artifacts=(
             "dados/processados/features_paderborn.parquet",
             "dados/processados/features_paderborn_stats.csv",
@@ -53,6 +76,10 @@ STAGES: dict[str, PipelineStage] = {
         label="Autoencoder",
         module="src.ml.autoencoder",
         function="executar_autoencoder",
+        parameter_names=(
+            "LATENTE_DIM", "EPOCHS", "BATCH_SIZE", "LR", "SIGMA",
+            "THRESHOLD_METHOD", "SEED",
+        ),
         artifacts=(
             "resultados/autoencoder/modelo_autoencoder.pt",
             "resultados/autoencoder/scaler.pkl",
@@ -68,6 +95,7 @@ STAGES: dict[str, PipelineStage] = {
         label="Injecao de Falhas",
         module="src.ml.injecao_falhas",
         function="executar_injecao_falhas",
+        parameter_names=("T_INICIO_ESTAVEL", "T_FIM_ESTAVEL", "SEVERIDADES"),
         artifacts=(
             "resultados/autoencoder/injecao_falhas_resultados.png",
             "resultados/autoencoder/injecao_falhas_comparacao.png",
@@ -80,6 +108,7 @@ STAGES: dict[str, PipelineStage] = {
         label="Validacao Formal",
         module="src.ml.validacao",
         function="executar_validacao",
+        parameter_names=("SEVS_VALIDACAO", "N_JANELAS_SAUDAVEL", "N_JANELAS_FALHA"),
         artifacts=(
             "resultados/autoencoder/validacao_roc.png",
             "resultados/autoencoder/validacao_pr.png",
@@ -95,6 +124,7 @@ STAGES: dict[str, PipelineStage] = {
         label="RUL / Weibull",
         module="src.ml.rul_weibull",
         function="executar_rul_weibull",
+        parameter_names=("N_TRAJ", "N_STEPS", "BATCH_INFERENCIA"),
         artifacts=(
             "resultados/autoencoder/weibull_ttf.png",
             "resultados/autoencoder/weibull_confiabilidade.png",
@@ -160,12 +190,11 @@ def _code_path(stage: PipelineStage) -> str:
 
 
 def _inputs_da_etapa(stage: PipelineStage) -> dict:
-    """{etapa_upstream: 1º artefato} — para detectar regeneração upstream."""
+    """Todos os artefatos upstream, para detectar qualquer regeneração relevante."""
     inputs: dict[str, str] = {}
     for dep in stage.depends_on:
-        paths = STAGES[dep].paths()
-        if paths:
-            inputs[dep] = str(paths[0])
+        for idx, path in enumerate(STAGES[dep].paths()):
+            inputs[f"{dep}:{idx}:{path.name}"] = str(path)
     return inputs
 
 
@@ -176,8 +205,9 @@ def registrar_manifesto(key: str, parameters: dict | None = None,
         from src.ml.proveniencia import gerar_manifesto, salvar_manifesto
 
         stage = get_stage(key)
+        parametros = parameters if parameters is not None else stage.parameters()
         manifesto = gerar_manifesto(
-            key, _code_path(stage), parameters or {},
+            key, _code_path(stage), parametros,
             _inputs_da_etapa(stage), [str(p) for p in stage.paths()],
             evidence_level=evidence_level,
         )
@@ -197,7 +227,7 @@ def estado_etapa_completo(key: str) -> dict:
     stage = get_stage(key)
     return estado_etapa(
         key, [str(p) for p in stage.paths()],
-        _code_path(stage), None, _inputs_da_etapa(stage),
+        _code_path(stage), stage.parameters(), _inputs_da_etapa(stage),
     )
 
 
@@ -207,11 +237,23 @@ def estado_pipeline() -> dict[str, dict]:
 
 
 def status_markdown() -> str:
+    rotulo = {
+        "ready": "pronto",
+        "stale": "desatualizado (stale)",
+        "pending": "pendente",
+    }
+    estados = estado_pipeline()
     linhas = ["## Status do pipeline de ML\n"]
     for key in ORDEM_ETAPAS_ML:
         stage = STAGES[key]
-        status = "pronto" if stage.is_complete() else "pendente"
+        info = estados[key]
+        status = rotulo.get(info["estado"], info["estado"])
+        if info["estado"] == "stale" and info.get("motivos"):
+            status += f" — {', '.join(info['motivos'])}"
         linhas.append(f"- {stage.label}: **{status}**")
+    linhas.append(
+        "\n_stale = artefato existe, mas código, parâmetros ou artefatos upstream mudaram._"
+    )
     return "\n".join(linhas)
 
 

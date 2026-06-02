@@ -14,10 +14,10 @@ Fundamentação:
   disponíveis em manutenção preditiva real (Ibrahim, 2022; Ahirwar, 2025).
 
 Arquitetura:
-  Entrada : 109 features normalizadas (RobustScaler)
-  Encoder : 109 → 64 → 32 → 16  (ReLU + Dropout 0.2)
+  Entrada : n_features normalizadas (RobustScaler)
+  Encoder : n_features → 64 → 32 → 16  (ReLU + Dropout 0.2)
   Latente : 16 dimensões
-  Decoder : 16 → 32 → 64 → 109  (ReLU + saída Linear)
+  Decoder : 16 → 32 → 64 → n_features  (ReLU + saída Linear)
   Loss    : MSE — erro de reconstrução por janela
   Limiar  : percentil 99 do erro de reconstrução saudável (operacional);
             μ + 3σ é referência comparativa, não o limiar em uso
@@ -70,6 +70,7 @@ VAL_FRAC       = 0.2    # fração de validação
 PACIENCIA      = 20     # early stopping: épocas sem melhora
 SIGMA          = 3.0    # fator k da REFERÊNCIA μ+kσ (comparativa); o limiar
                         # operacional é o percentil 99, não μ+kσ
+THRESHOLD_METHOD = "p99"
 SEED           = 42
 
 # Colunas de metadado (não entram no modelo)

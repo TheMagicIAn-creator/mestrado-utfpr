@@ -917,6 +917,23 @@ def _formatar_intervalo_paginas(paginas) -> str:
     return ", ".join(partes)
 
 
+def _paginas_do_intervalo(pagina_inicio, pagina_fim=None) -> list[int]:
+    """Normaliza metadados de pagina em uma lista inclusiva e ordenada."""
+    try:
+        inicio = int(pagina_inicio)
+    except (TypeError, ValueError):
+        return []
+    if inicio <= 0:
+        return []
+    try:
+        fim = int(pagina_fim) if pagina_fim not in (None, "") else inicio
+    except (TypeError, ValueError):
+        fim = inicio
+    if fim < inicio:
+        fim = inicio
+    return list(range(inicio, fim + 1))
+
+
 def remover_bloco_fontes_llm(texto: str) -> str:
     """
     Remove qualquer secao terminal de 'Referencias', 'Bibliografia',
@@ -1673,12 +1690,8 @@ def buscar_contexto(
                 # Página do chunk (extração page-aware). Chunks antigos sem
                 # essa metadado simplesmente não recebem página.
                 p_ini, p_fim = meta.get("pagina_inicio"), meta.get("pagina_fim")
-                pag_chunk = ""
-                if p_ini:
-                    pag_chunk = (
-                        str(p_ini) if (not p_fim or p_fim == p_ini)
-                        else f"{p_ini}–{p_fim}"
-                    )
+                paginas_chunk = _paginas_do_intervalo(p_ini, p_fim)
+                pag_chunk = _formatar_intervalo_paginas(paginas_chunk)
                 rotulo = citacao + (f" — p. {pag_chunk}" if pag_chunk else "")
                 cabecalho = f"\n[Fonte: {rotulo}]\n"
                 bloco = f"{cabecalho}{doc}\n"
@@ -1690,11 +1703,9 @@ def buscar_contexto(
                     bloco = f"{cabecalho}{_limitar_texto(doc, restante)}\n"
                 if arquivo and arquivo not in citacoes:
                     citacoes[arquivo] = citacao
-                if p_ini:
+                if paginas_chunk:
                     pgs = paginas_por_fonte.setdefault(arquivo, set())
-                    pgs.add(p_ini)
-                    if p_fim:
-                        pgs.add(p_fim)
+                    pgs.update(paginas_chunk)
                 contexto += bloco
                 usados += len(bloco)
                 if usados >= limite:

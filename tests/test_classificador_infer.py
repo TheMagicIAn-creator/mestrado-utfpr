@@ -5,6 +5,8 @@ Treina/salva um modelo (fixture sintética), classifica uma amostra compatível
 e rejeita amostras com colunas ausentes/extras. Sempre com aviso de domínio CC.
 """
 
+import json
+
 import numpy as np
 import pandas as pd
 
@@ -25,8 +27,20 @@ def test_treina_salva_e_classifica(tmp_path):
     X, y = _dados()
     treinar_e_salvar_de(X, y, X, y, pasta=tmp_path)
     assert (tmp_path / "modelo_classificador.pkl").exists()
+    assert (tmp_path / "scaler.pkl").exists()
     assert (tmp_path / "feature_columns.json").exists()
     assert (tmp_path / "class_mapping.json").exists()
+    assert (tmp_path / "dataset_manifest.json").exists()
+    assert (tmp_path / "training_manifest.json").exists()
+    assert (tmp_path / "metricas.json").exists()
+    assert (tmp_path / "metricas.csv").exists()
+    assert (tmp_path / "matriz_confusao.png").exists()
+    assert (tmp_path / "importancia_features.png").exists()
+
+    manifest = json.loads((tmp_path / "dataset_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["dominio"] == "CC"
+    assert manifest["evidence_level"] == "E1"
+    assert manifest["n_features"] == 3
 
     r = classificar({"f1": 5.0, "f2": 5.0, "f3": 5.0}, pasta=tmp_path)
     assert r["ok"] and r["dominio"] == "CC"

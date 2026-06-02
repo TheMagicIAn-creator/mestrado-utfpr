@@ -86,3 +86,32 @@ def test_estado_pipeline_valores_validos():
     }
     for info in estados.values():
         assert info["estado"] in {P.READY, P.STALE, P.PENDING}
+
+
+def test_pipeline_captura_parametros_das_etapas():
+    from src.ml.pipeline import get_stage
+
+    auto = get_stage("autoencoder").parameters()
+    assert auto["epochs"] > 0
+    assert auto["latente_dim"] > 0
+    assert auto["threshold_method"] == "p99"
+
+    validacao = get_stage("validacao").parameters()
+    assert validacao["n_janelas_saudavel"] > 0
+    assert validacao["sevs_validacao"]
+
+
+def test_pipeline_registra_todos_artefatos_upstream():
+    from src.ml.pipeline import _inputs_da_etapa, get_stage
+
+    inputs = _inputs_da_etapa(get_stage("autoencoder"))
+    assert any("features_paderborn.parquet" in key for key in inputs)
+    assert any("features_paderborn_stats.csv" in key for key in inputs)
+
+
+def test_status_markdown_usa_estado_trivalorado():
+    from src.ml.pipeline import status_markdown
+
+    md = status_markdown().lower()
+    assert "status do pipeline" in md
+    assert any(t in md for t in ("pronto", "pendente", "stale", "desatualizado"))

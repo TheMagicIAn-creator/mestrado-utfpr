@@ -51,3 +51,26 @@ def test_resultado_json_experimento_sem_caminho_absoluto():
             val = d.get(campo)
             if val:
                 assert not _ABSOLUTO.match(str(val)), f"{arq.name}:{campo} absoluto: {val}"
+
+
+def test_metadados_pendentes_gravam_caminho_relativo(tmp_path, monkeypatch):
+    import json
+
+    import src.conhecimento.processador_pdf as proc
+    import src.core.config as config
+    import src.core.utils as utils
+
+    monkeypatch.setattr(config, "RAIZ_PROJETO", tmp_path)
+    monkeypatch.setattr(utils, "RAIZ_PROJETO", tmp_path, raising=False)
+    monkeypatch.setattr(proc, "RAIZ_PROJETO", tmp_path)
+
+    pdf = tmp_path / "novos_pdfs" / "Autor_Titulo_2024.pdf"
+    pdf.parent.mkdir(parents=True)
+    pdf.write_bytes(b"%PDF-1.4\n")
+
+    proc._registrar_pendencia(pdf, "Autor", "Titulo", "2024")
+
+    d = json.loads((tmp_path / "metadados_pendentes.json").read_text(encoding="utf-8"))
+    caminho = d[pdf.name]["arquivo"]
+    assert caminho == "novos_pdfs/Autor_Titulo_2024.pdf"
+    assert not _ABSOLUTO.match(caminho)

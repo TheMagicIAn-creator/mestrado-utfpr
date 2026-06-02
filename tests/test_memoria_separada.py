@@ -29,3 +29,11 @@ def test_avaliadores_gravam_na_colecao_de_avaliacao():
             txt, re.S,
         )
         assert m and m.group(1) == "NOME_COLECAO_AVALIACOES", script
+
+
+def test_bateria_100_nao_grava_memoria_por_padrao():
+    txt = (Path(RAIZ_PROJETO) / "scripts" / "avaliar_agente_100.py").read_text(
+        encoding="utf-8"
+    )
+    assert "def main(gravar_memorias: bool = False)" in txt
+    assert "main(gravar_memorias=_args.com_memoria)" in txt

@@ -4,7 +4,7 @@ Sprint 4 — confiança da busca web (seção 11).
 A classificação A>B>C>D evita tratar Wikipedia (C) como fonte normativa.
 """
 
-from src.conhecimento.web_search import _nivel_confianca
+from src.conhecimento.web_search import _fonte_oficial_norma, _nivel_confianca
 
 
 def test_nivel_a_norma_doi():
@@ -24,3 +24,11 @@ def test_nivel_c_wikipedia():
 
 def test_nivel_d_informal():
     assert _nivel_confianca("https://um-blog-qualquer.com/post", "Blog")[0] == "D"
+
+
+def test_norma_iec_prioriza_fonte_oficial():
+    r = _fonte_oficial_norma("norma IEC 61724")
+    assert r is not None
+    assert "iec" in r["fonte"].lower()
+    assert _nivel_confianca(r["url"], r["fonte"])[0] == "A"
+    assert "oficial" in r["extrato"].lower()
