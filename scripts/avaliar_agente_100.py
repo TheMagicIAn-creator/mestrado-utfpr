@@ -36,6 +36,7 @@ from src.conhecimento.indexador import upsert_em_lotes
 from src.core.config import (
     MODELO_EMBEDDINGS,
     NOME_COLECAO,
+    NOME_COLECAO_AVALIACOES,
     NOME_COLECAO_SESSOES,
     PASTA_CHROMADB,
     PASTA_NOTAS,
@@ -1921,7 +1922,8 @@ def gravar_memoria(resultados: list[dict], timestamp: str) -> int:
     # concorrendo pela mesma memoria nativa. Um unico modelo resolve.
     modelo, _ = _rag_cache()
     client = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
-    colecao = client.get_or_create_collection(name=NOME_COLECAO_SESSOES)
+    # Memória de AVALIAÇÃO, separada da memória de produção (sessoes_pv).
+    colecao = client.get_or_create_collection(name=NOME_COLECAO_AVALIACOES)
 
     ids = []
     documentos = []

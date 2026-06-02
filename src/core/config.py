@@ -72,6 +72,9 @@ MODELO_EMBEDDINGS      = "paraphrase-multilingual-MiniLM-L12-v2"
 MODELO_GEMINI          = "gemini-2.5-flash"
 NOME_COLECAO           = "literatura_pv"
 NOME_COLECAO_SESSOES   = "sessoes_pv"
+# Memória de AVALIAÇÃO (baterias/harness) — SEPARADA da memória de produção,
+# para que testes automatizados nunca contaminem as sessões reais (item 8.2/18).
+NOME_COLECAO_AVALIACOES = "avaliacoes_agente"
 N_RESULTADOS           = 25
 TAMANHO_CHUNK          = 500
 SOBREPOSICAO           = 50

@@ -47,7 +47,8 @@ jobs:
             tests/test_metricas.py \
             tests/test_abordagens.py \
             tests/test_confirmacao_destrutiva.py \
-            tests/test_logs.py
+            tests/test_logs.py \
+            tests/test_memoria_separada.py
 
       - name: Lint (ruff, não bloqueante)
         continue-on-error: true

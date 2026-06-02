@@ -65,6 +65,7 @@ from src.conhecimento.provedores import inicializar_provedor
 from src.core.config import (
     MODELO_EMBEDDINGS,
     NOME_COLECAO,
+    NOME_COLECAO_AVALIACOES,
     NOME_COLECAO_SESSOES,
     PASTA_CHROMADB,
     PASTA_NOTAS,
@@ -404,7 +405,8 @@ def julgar(llm, pergunta: str, resposta: str) -> tuple[int | None, str]:
 def gravar_memoria(resultados: list[dict], timestamp: str) -> int:
     modelo, _, _ = _carregar_rag()
     client = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
-    colecao = client.get_or_create_collection(name=NOME_COLECAO_SESSOES)
+    # Memória de AVALIAÇÃO, separada da memória de produção (sessoes_pv).
+    colecao = client.get_or_create_collection(name=NOME_COLECAO_AVALIACOES)
 
     ids, documentos, metadados = [], [], []
     for item in resultados:
