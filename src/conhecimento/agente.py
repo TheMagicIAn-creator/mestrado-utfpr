@@ -12,6 +12,8 @@ Autor: Rodolfo Torres (UTFPR)
 """
 import sys
 import os
+import hashlib
+import re
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -139,7 +141,8 @@ INDICADORES_REVISAO = (
     "panorama", "sintese da literatura", "survey", "review",
     "literatura da dissertacao", "literatura do mestrado",
     "literatura sobre", "cite a literatura", "cite as referencias",
-    "cite as fontes", "cite os artigos", "cite os autores",
+    "cite as fontes", "cite artigos", "cite papers", "cite os artigos", "cite os autores",
+    "citar artigos", "liste artigos", "listar artigos",
     "completa da dissertacao", "fundamentacao teorica",
     "referencial teorico", "bibliografia completa",
 )
@@ -974,6 +977,108 @@ def _paginas_do_intervalo(pagina_inicio, pagina_fim=None) -> list[int]:
     return list(range(inicio, fim + 1))
 
 
+def _rotulo_paginas_meta(meta: dict) -> str:
+    """Formata a pagina fisica e, quando houver, o rotulo interno do PDF."""
+    paginas = _paginas_do_intervalo(
+        meta.get("pagina_inicio"),
+        meta.get("pagina_fim"),
+    )
+    intervalo = _formatar_intervalo_paginas(paginas)
+    if not intervalo:
+        return ""
+
+    rotulo_pdf = str(meta.get("pagina_rotulo") or "").strip()
+    rotulos_fisicos = {str(p) for p in paginas}
+    if rotulo_pdf and rotulo_pdf not in rotulos_fisicos and rotulo_pdf != intervalo:
+        return f"p. {intervalo} (rotulo PDF: {rotulo_pdf})"
+    return f"p. {intervalo}"
+
+
+def _limpar_trecho_citacao(texto: str, limite: int = 280) -> str:
+    """Normaliza e encurta excertos exibidos na lista de fontes."""
+    texto = re.sub(r"\s+", " ", str(texto or "")).strip()
+    texto = texto.replace('"', "'")
+    if not texto:
+        return ""
+    limite = max(120, int(limite))
+    if len(texto) <= limite:
+        return texto
+    corte = max(
+        texto.rfind(".", 0, limite),
+        texto.rfind(";", 0, limite),
+        texto.rfind(":", 0, limite),
+        texto.rfind("?", 0, limite),
+        texto.rfind("!", 0, limite),
+    )
+    if corte < int(limite * 0.55):
+        corte = texto.rfind(" ", 0, limite)
+    if corte < int(limite * 0.55):
+        corte = limite
+    return texto[:corte].strip().rstrip(",;:") + "..."
+
+
+def _trecho_relevante(doc: str, pergunta: str, meta: dict | None = None, limite: int = 280) -> str:
+    """
+    Seleciona um excerto curto do chunk que tenha maior sobreposicao lexical
+    com a pergunta. Fallback: trecho auditavel gravado no indice ou inicio do
+    chunk. A lista final de fontes usa esse excerto para auditoria rapida.
+    """
+    meta = meta or {}
+    texto = re.sub(r"\s+", " ", str(doc or "")).strip()
+    if not texto:
+        return _limpar_trecho_citacao(meta.get("trecho", ""), limite)
+
+    termos = [t for t in _tokens_busca(pergunta or "") if len(t) >= 4]
+    termos = list(dict.fromkeys(termos))[:24]
+
+    melhor = ""
+    melhor_score = 0
+    sentencas = re.split(r"(?<=[.!?])\s+", texto)
+    for sentenca in sentencas:
+        sentenca = sentenca.strip()
+        if len(sentenca) < 40:
+            continue
+        norm = _normalizar_texto(sentenca)
+        score = sum(1 for termo in termos if termo in norm)
+        if score > melhor_score:
+            melhor = sentenca
+            melhor_score = score
+
+    if melhor_score > 0:
+        return _limpar_trecho_citacao(melhor, limite)
+
+    trecho_meta = meta.get("trecho")
+    if trecho_meta:
+        return _limpar_trecho_citacao(trecho_meta, limite)
+    return _limpar_trecho_citacao(texto, limite)
+
+
+def _chave_citacao(meta: dict, doc: str) -> str:
+    """Identidade estavel da fonte usada: arquivo + pagina + hash do chunk."""
+    arquivo = str(meta.get("arquivo") or meta.get("citacao") or "fonte")
+    p_ini = str(meta.get("pagina_inicio") or "")
+    p_fim = str(meta.get("pagina_fim") or p_ini)
+    sha = str(meta.get("chunk_sha1") or "").strip()
+    if not sha:
+        sha = hashlib.sha1(str(doc or "").encode("utf-8", errors="ignore")).hexdigest()
+    return f"{arquivo}|{p_ini}|{p_fim}|{sha[:16]}"
+
+
+def _entrada_citacao(meta: dict, doc: str, pergunta: str) -> str:
+    """Monta a fonte final com pagina e trecho exatamente do chunk recuperado."""
+    arquivo = str(meta.get("arquivo") or "").strip()
+    base = str(meta.get("citacao") or arquivo or "Fonte sem identificacao").strip()
+    pagina = _rotulo_paginas_meta(meta)
+    trecho = _trecho_relevante(doc, pergunta, meta)
+
+    partes = [base]
+    if pagina:
+        partes.append(pagina)
+    if trecho:
+        partes.append(f'trecho: "{trecho}"')
+    return " — ".join(partes)
+
+
 def remover_bloco_fontes_llm(texto: str) -> str:
     """
     Remove qualquer secao terminal de 'Referencias', 'Bibliografia',
@@ -1141,6 +1246,9 @@ def _montar_prompt(pergunta: str,
     )
     instrucao_literatura = (
         "- A pergunta pediu literatura/fontes: use evidencias recuperadas quando relevantes e cite autor/ano.\n"
+        "- Quando o contexto trouxer '[Fonte: ...]' com pagina e 'Trecho-chave', use SOMENTE essa pagina/trecho para localizar a evidencia. "
+        "Nunca invente pagina, secao, tabela ou trecho que nao esteja no bloco recuperado.\n"
+        "- Se a pagina nao aparecer no cabecalho da fonte, cite apenas autor/ano, sem localizacao.\n"
         "- NUNCA escreva uma secao final do tipo 'Referencias', 'Bibliografia', "
         "'Referencias bibliograficas', '## Referencias', '**Referencias:**', "
         "'### Referencias' ou '📚 Fontes'. Apenas cite autor/ano inline no texto. "
@@ -1307,6 +1415,17 @@ def _expandir_query(pergunta: str) -> dict:
             "inversor fotovoltaico falhas componentes",
             "PV inverter failure modes reliability",
         ])
+    if (
+        any(x in txt for x in ("anomalia", "anomaly", "deteccao", "detection"))
+        and any(x in txt for x in ("inversor", "inverter", "fotovoltaico", "photovoltaic", "pv"))
+    ):
+        variacoes.extend([
+            "anomaly detection solar PV inverter isolation forest autoencoder",
+            "Ahirwar Francisti Ibrahim Sharma Ghoneim anomaly detection PV inverter",
+        ])
+        for t in ("ahirwar", "francisti", "ibrahim", "sharma", "ghoneim", "anomaly", "detection", "inverter"):
+            if t not in termos:
+                termos.append(t)
     if "rcm" in txt or "manutencao" in txt:
         variacoes.extend([
             "manutencao centrada em confiabilidade RCM",
@@ -1548,6 +1667,11 @@ def _rerankar(
             if t and t not in termos:
                 termos.append(t)
     pergunta_norm = _normalizar_texto(pergunta)
+    consulta_artigos_anomalia_pv = (
+        any(x in pergunta_norm for x in ("anomalia", "anomaly", "deteccao", "detection"))
+        and any(x in pergunta_norm for x in ("inversor", "inverter", "fotovoltaico", "photovoltaic", "pv"))
+        and any(x in pergunta_norm for x in ("artigo", "artigos", "paper", "papers", "cite", "citar", "literatura"))
+    )
     # Numero so vale se vier acoplado a alguma letra do projeto — assim
     # "+30 artigos" nao premia qualquer trecho que tenha um "30" qualquer.
     numeros_relevantes = {
@@ -1611,6 +1735,28 @@ def _rerankar(
 
         # Boost por pasta tematica — privilegia o nucleo da dissertacao.
         score += PESOS_PASTA.get(pasta, 0.3)
+
+        if consulta_artigos_anomalia_pv:
+            autores_alvo = ("ahirwar", "francisti", "ibrahim", "sharma", "ghoneim", "marangis")
+            if pasta == "ml-preditivo":
+                score += 4.0
+            if any(a in arquivo_norm or a in autor_norm for a in autores_alvo):
+                score += 8.0
+            if any(
+                termo in texto_norm
+                for termo in (
+                    "anomaly detection",
+                    "fault detection",
+                    "solar pv inverter",
+                    "pv inverter",
+                    "machine learning",
+                    "isolation forest",
+                    "autoencoder",
+                )
+            ):
+                score += 2.0
+            if pasta in ("manutencao", "confiabilidade") and not any(a in arquivo_norm for a in autores_alvo):
+                score -= 3.0
 
         # Penalidade para textbooks fora de dominio (Stewart, Gonzalez, etc).
         score += _ajuste_textbook(arquivo, pergunta_norm)
@@ -1707,8 +1853,6 @@ def buscar_contexto(
         # de cada fonte) — assim os chunks de maior score lideram cada rodada.
         por_fonte: dict[str, list] = {}
         ordem_fontes: list[str] = []
-        # Páginas efetivamente usadas por fonte → vira "p. X–Y" na citação.
-        paginas_por_fonte: dict[str, set] = {}
         for doc, meta in melhores:
             arquivo = meta.get("arquivo", "") or meta.get("citacao", "?")
             if arquivo not in por_fonte:
@@ -1729,37 +1873,24 @@ def buscar_contexto(
                 citacao = meta.get("citacao", arquivo)
                 # Página do chunk (extração page-aware). Chunks antigos sem
                 # essa metadado simplesmente não recebem página.
-                p_ini, p_fim = meta.get("pagina_inicio"), meta.get("pagina_fim")
-                paginas_chunk = _paginas_do_intervalo(p_ini, p_fim)
-                pag_chunk = _formatar_intervalo_paginas(paginas_chunk)
-                rotulo = citacao + (f" — p. {pag_chunk}" if pag_chunk else "")
+                pagina = _rotulo_paginas_meta(meta)
+                trecho = _trecho_relevante(doc, pergunta, meta)
+                trecho_linha = f'Trecho-chave: "{trecho}"\n' if trecho else ""
+                rotulo = citacao + (f" - {pagina}" if pagina else "")
                 cabecalho = f"\n[Fonte: {rotulo}]\n"
-                bloco = f"{cabecalho}{doc}\n"
+                bloco = f"{cabecalho}{trecho_linha}{doc}\n"
                 if usados + len(bloco) > limite:
-                    restante = limite - usados - len(cabecalho)
+                    restante = limite - usados - len(cabecalho) - len(trecho_linha)
                     if restante <= 300:
                         cheio = True
                         break
-                    bloco = f"{cabecalho}{_limitar_texto(doc, restante)}\n"
-                if arquivo and arquivo not in citacoes:
-                    citacoes[arquivo] = citacao
-                if paginas_chunk:
-                    pgs = paginas_por_fonte.setdefault(arquivo, set())
-                    pgs.update(paginas_chunk)
+                    bloco = f"{cabecalho}{trecho_linha}{_limitar_texto(doc, restante)}\n"
+                citacoes[_chave_citacao(meta, doc)] = _entrada_citacao(meta, doc, pergunta)
                 contexto += bloco
                 usados += len(bloco)
                 if usados >= limite:
                     cheio = True
                     break
-
-        # Enriquece cada citação com as páginas efetivamente usadas no contexto.
-        for arquivo, pgs in paginas_por_fonte.items():
-            base = citacoes.get(arquivo)
-            if not base or "p." in str(base):
-                continue
-            intervalo = _formatar_intervalo_paginas(pgs)
-            if intervalo:
-                citacoes[arquivo] = f"{base}, p. {intervalo}"
 
     # ── Sessões — busca direta (sem reranking) ───────────────
     if colecao_sessoes:

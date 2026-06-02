@@ -155,6 +155,32 @@ def ler_pdf(caminho_pdf: Path) -> str:
         return ""
 
 
+def _rotulos_paginas_pdf(caminho_pdf: Path) -> dict[int, str]:
+    """
+    Le os rotulos de pagina definidos no proprio PDF, quando existirem.
+
+    O numero fisico (1, 2, 3...) continua sendo a referencia principal porque
+    ele e auditavel em qualquer visualizador. O rotulo do PDF entra como
+    complemento, util para documentos com capa, resumo em romano ou numeracao
+    reiniciada.
+    """
+    try:
+        reader = PdfReader(str(caminho_pdf))
+        labels = getattr(reader, "page_labels", None)
+        if callable(labels):
+            labels = labels()
+        if not labels:
+            return {}
+        rotulos: dict[int, str] = {}
+        for i, label in enumerate(labels, 1):
+            valor = str(label or "").strip()
+            if valor:
+                rotulos[i] = valor
+        return rotulos
+    except Exception:
+        return {}
+
+
 def ler_pdf_paginas(caminho_pdf: Path) -> list[tuple[str, int]]:
     """
     Extrai o texto do PDF preservando a fronteira de páginas.
@@ -203,6 +229,38 @@ def normalizar_texto_pdf(texto: str) -> str:
     texto = re.sub(r"\s+([,.;:!?])", r"\1", texto)
 
     return texto.strip()
+
+
+def trecho_auditavel(texto: str, limite: int = 360) -> str:
+    """
+    Gera um trecho curto, limpo e rastreavel para auditoria de citacoes.
+
+    Esse texto vai para o metadado do chunk e aparece no bloco de fontes. Nao
+    substitui o chunk completo; serve para o pesquisador conferir rapidamente
+    se a pagina/trecho recuperado realmente sustenta a resposta.
+    """
+    texto = normalizar_texto_pdf(texto or "")
+    texto = re.sub(r"\s+", " ", texto).strip()
+    if not texto:
+        return ""
+
+    limite = max(120, int(limite))
+    if len(texto) <= limite:
+        return texto
+
+    corte = max(
+        texto.rfind(".", 0, limite),
+        texto.rfind(";", 0, limite),
+        texto.rfind(":", 0, limite),
+        texto.rfind("?", 0, limite),
+        texto.rfind("!", 0, limite),
+    )
+    if corte < int(limite * 0.55):
+        corte = texto.rfind(" ", 0, limite)
+    if corte < int(limite * 0.55):
+        corte = limite
+
+    return texto[:corte].strip().rstrip(",;:") + "..."
 
 
 def detectar_idioma_texto(texto: str) -> str:
@@ -488,6 +546,7 @@ def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path
 
         # Chunking por página: cada chunk herda o número da sua página.
         # itens: lista de (texto_chunk, pagina_inicio, pagina_fim).
+        rotulos_paginas = _rotulos_paginas_pdf(caminho_pdf)
         itens: list[tuple[str, int, int]] = []
         for texto_pag, num_pag in paginas:
             for ch in dividir_em_chunks(
@@ -534,6 +593,9 @@ def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path
                 "total_chunks": len(itens),
                 "pagina_inicio": int(itens[j][1]),
                 "pagina_fim": int(itens[j][2]),
+                "pagina_rotulo": rotulos_paginas.get(int(itens[j][1]), ""),
+                "trecho": trecho_auditavel(chunks[j]),
+                "chunk_sha1": hashlib.sha1(chunks[j].encode("utf-8", errors="ignore")).hexdigest(),
                 "autor": info_arquivo.get("autor", ""),
                 "titulo": info_arquivo.get("titulo", ""),
                 "ano": info_arquivo.get("ano", ""),

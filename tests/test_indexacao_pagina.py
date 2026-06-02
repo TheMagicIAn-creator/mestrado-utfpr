@@ -22,6 +22,7 @@ from src.conhecimento.indexador import (
     ler_pdf_paginas,
     remover_itens_duplicados,
     indexar_pdf_unico,
+    trecho_auditavel,
 )
 
 # Marcadores únicos por página — curtos o bastante para um chunk por página.
@@ -86,6 +87,15 @@ def test_remover_itens_duplicados_preserva_primeira_pagina():
     assert out == [("texto repetido", 2, 2), ("outro texto", 7, 7)]
 
 
+def test_trecho_auditavel_limpa_e_limita_texto():
+    texto = "  Falha no sensor CA.  " + ("conteudo tecnico " * 40)
+    trecho = trecho_auditavel(texto, limite=150)
+
+    assert trecho.startswith("Falha no sensor CA")
+    assert "\n" not in trecho
+    assert len(trecho) <= 153
+
+
 def test_indexar_pdf_unico_grava_pagina(pdf_tres_paginas, tmp_path):
     import chromadb
     from src.core.config import NOME_COLECAO
@@ -106,6 +116,9 @@ def test_indexar_pdf_unico_grava_pagina(pdf_tres_paginas, tmp_path):
     # toda metadado tem página válida (>= 1) e fim >= início
     for meta in metadados:
         assert "pagina_inicio" in meta and "pagina_fim" in meta
+        assert "pagina_rotulo" in meta
+        assert meta.get("trecho")
+        assert len(str(meta.get("chunk_sha1", ""))) == 40
         assert int(meta["pagina_inicio"]) >= 1
         assert int(meta["pagina_fim"]) >= int(meta["pagina_inicio"])
 
@@ -127,6 +140,11 @@ def test_formatar_intervalo_paginas_se_disponivel():
     from src.conhecimento.agente import (
         _formatar_intervalo_paginas as f,
         _paginas_do_intervalo,
+        _entrada_citacao,
+        _rotulo_paginas_meta,
+        _rerankar,
+        _trecho_relevante,
+        eh_query_de_revisao,
     )
 
     assert f({3}) == "3"
@@ -137,3 +155,55 @@ def test_formatar_intervalo_paginas_se_disponivel():
     assert _paginas_do_intervalo(3, 5) == [3, 4, 5]
     assert f(_paginas_do_intervalo("10", "12")) == "10–12"
     assert _paginas_do_intervalo("", 12) == []
+    assert eh_query_de_revisao(
+        "Cite artigos sobre deteccao de anomalias em inversores fotovoltaicos."
+    )
+
+    meta = {
+        "citacao": "Autor (2026)",
+        "pagina_inicio": 12,
+        "pagina_fim": 12,
+        "pagina_rotulo": "A-3",
+        "chunk_sha1": "a" * 40,
+        "trecho": "O dataset de Paderborn descreve um inversor saudavel.",
+    }
+    doc = (
+        "O dataset de Paderborn descreve um inversor saudavel usado como "
+        "referencia de normalidade. Outro paragrafo fala de detalhes laterais."
+    )
+    assert _rotulo_paginas_meta(meta) == "p. 12 (rotulo PDF: A-3)"
+    assert "Paderborn" in _trecho_relevante(doc, "O que diz sobre Paderborn?", meta)
+    fonte = _entrada_citacao(meta, doc, "O que diz sobre Paderborn?")
+    assert "Autor (2026)" in fonte
+    assert "p. 12" in fonte
+    assert "trecho:" in fonte
+
+    candidatos = [
+        (
+            "Tabela FMEA e RCM para sistema fotovoltaico com indice de deteccao.",
+            {
+                "citacao": "Torres (2024)",
+                "titulo": "RCM em sistema fotovoltaico",
+                "arquivo": "torres_rcm_2024.pdf",
+                "autor": "Torres",
+                "pasta": "confiabilidade",
+            },
+        ),
+        (
+            "Anomaly detection in solar PV inverter using isolation forest and machine learning.",
+            {
+                "citacao": "Sharma (2026)",
+                "titulo": "Self tuning isolation forest for PV inverter anomaly detection",
+                "arquivo": "sharma_a-self-tuning-reinforcement-learning-driven-isolation-forest_2026.pdf",
+                "autor": "Sharma",
+                "pasta": "ml-preditivo",
+            },
+        ),
+    ]
+    melhores = _rerankar(
+        candidatos,
+        "Cite artigos sobre deteccao de anomalias em inversores fotovoltaicos.",
+        n_final=2,
+        max_por_fonte=1,
+    )
+    assert melhores[0][1]["autor"] == "Sharma"
