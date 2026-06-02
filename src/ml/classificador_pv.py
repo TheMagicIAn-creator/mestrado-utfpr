@@ -212,15 +212,27 @@ def treinar_e_avaliar(modelos, X_treino, y_treino, X_teste, y_teste) -> dict:
         recall    = recall_score(y_teste_ajust, y_pred, average="macro")
         f1        = f1_score(y_teste_ajust, y_pred, average="macro")
 
+        # Métricas ampliadas (4.1/4.2), via o schema único já testado:
+        # MCC, balanced_accuracy, specificity (binária/macro-OvR rotulada), FPR/FNR.
+        from src.ml.experimentos_artigos import _metricas_classificacao
+        extra = _metricas_classificacao(list(y_teste_ajust), list(y_pred))
+
         resultados[nome] = {
-            "modelo"      : modelo,
-            "cv_media"    : scores_cv.mean(),
-            "cv_desvio"   : scores_cv.std(),
-            "acuracia"    : acc,
-            "precisao"    : precisao,
-            "recall"      : recall,
-            "f1"          : f1,
-            "y_pred"      : y_pred
+            "modelo"                : modelo,
+            "cv_media"              : scores_cv.mean(),
+            "cv_desvio"             : scores_cv.std(),
+            "acuracia"              : acc,
+            "precisao"              : precisao,
+            "recall"                : recall,
+            "f1"                    : f1,
+            "mcc"                   : extra["mcc"],
+            "balanced_accuracy"     : extra["balanced_accuracy"],
+            "specificity"           : extra["specificity"],
+            "specificity_macro_ovr" : extra["specificity_macro_ovr"],
+            "specificity_tipo"      : extra["specificity_tipo"],
+            "false_positive_rate"   : extra["false_positive_rate"],
+            "false_negative_rate"   : extra["false_negative_rate"],
+            "y_pred"                : y_pred,
         }
 
         print(f"     Validação Cruzada : {scores_cv.mean():.4f} (±{scores_cv.std():.4f})")
@@ -228,6 +240,8 @@ def treinar_e_avaliar(modelos, X_treino, y_treino, X_teste, y_teste) -> dict:
         print(f"     Precisão (macro)  : {precisao:.4f}")
         print(f"     Recall (macro)    : {recall:.4f}")
         print(f"     F1-Score (macro)  : {f1:.4f}")
+        print(f"     MCC               : {extra['mcc']:.4f}")
+        print(f"     Balanced accuracy : {extra['balanced_accuracy']:.4f}")
 
     return resultados, y_teste_ajust
 

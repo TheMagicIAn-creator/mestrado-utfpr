@@ -1,0 +1,4 @@
+# EXTRA — Reinforcement Learning (PPO do experimento Sharma).
+# Sem isto, o modelo "Isolation Forest + PPO" degrada para "requer stable_baselines3".
+stable-baselines3
+gymnasium

@@ -1,0 +1,8 @@
+# ML — pipeline CA (Autoencoder), classificação supervisionada e gráficos.
+-r requirements-core.txt
+torch
+xgboost
+lightgbm
+matplotlib
+plotly
+pyarrow

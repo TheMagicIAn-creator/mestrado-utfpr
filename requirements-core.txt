@@ -1,0 +1,8 @@
+# NÚCLEO — base científica mínima (numérico + dados).
+# Pins exatos do ambiente de referência ficam em requirements.txt.
+numpy
+pandas
+scipy
+scikit-learn
+joblib
+python-dotenv
