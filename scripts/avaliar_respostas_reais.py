@@ -518,8 +518,10 @@ def main() -> int:
                         help="ativa o LLM-juiz (1 chamada Groq extra por pergunta).")
     parser.add_argument("--sem-retry", action="store_true",
                         help="desativa a correcao/retry em caso de falha.")
+    parser.add_argument("--com-memoria", action="store_true",
+                        help="grava memorias no ChromaDB (NAO e o padrao em avaliacao).")
     parser.add_argument("--sem-memoria", action="store_true",
-                        help="nao grava memorias no ChromaDB.")
+                        help="(compat.) nao grava memorias — ja e o padrao.")
     args = parser.parse_args()
 
     if not os.getenv("GROQ_API_KEY"):
@@ -606,7 +608,7 @@ def main() -> int:
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     memorias = 0
-    if not args.sem_memoria:
+    if args.com_memoria:  # padrão: NÃO grava (avaliação não contamina produção)
         print("\n💾 Gravando memorias no ChromaDB...")
         memorias = gravar_memoria(resultados, timestamp)
     relatorio = gravar_relatorio(resultados, memorias, timestamp, args.juiz)
