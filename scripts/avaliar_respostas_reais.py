@@ -450,8 +450,10 @@ def gravar_relatorio(resultados: list[dict], memorias: int, timestamp: str,
     caminho = pasta / f"{timestamp}_avaliacao_respostas_reais.md"
 
     total = len(resultados)
-    falhas = [r for r in resultados if not r["ok"]]
+    quota_skips = [r for r in resultados if r.get("quota")]
+    falhas = [r for r in resultados if not r["ok"] and not r.get("quota")]
     corrigidos = [r for r in resultados if r["corrigido"]]
+    avaliadas = total - len(quota_skips)
 
     linhas = [
         f"# Avaliacao de respostas reais (Groq) - {total} perguntas",
@@ -459,8 +461,10 @@ def gravar_relatorio(resultados: list[dict], memorias: int, timestamp: str,
         f"- Data: {timestamp}",
         f"- Provedor: {NOME_PROVEDOR_GROQ}",
         f"- Total: {total}",
-        f"- Passaram: {total - len(falhas)}",
-        f"- Falharam: {len(falhas)}",
+        f"- Respondidas/avaliadas: {avaliadas}",
+        f"- Passaram: {sum(1 for r in resultados if r['ok'])}",
+        f"- Falhas de qualidade: {len(falhas)}",
+        f"- Puladas por cota/API: {len(quota_skips)}",
         f"- Corrigidos no retry: {len(corrigidos)}",
         f"- Memorias gravadas: {memorias}",
     ]
@@ -471,7 +475,7 @@ def gravar_relatorio(resultados: list[dict], memorias: int, timestamp: str,
     linhas.extend(["", "## Casos", ""])
 
     for item in resultados:
-        status = "PASS" if item["ok"] else "FAIL"
+        status = "SKIP" if item.get("quota") else ("PASS" if item["ok"] else "FAIL")
         marca_corr = " (corrigido)" if item["corrigido"] else ""
         linhas.append(f"### {item['indice']:02d}. {item['nome']} — {status}{marca_corr}")
         linhas.append("")
@@ -497,10 +501,16 @@ def gravar_relatorio(resultados: list[dict], memorias: int, timestamp: str,
     else:
         linhas.extend([
             "## Parecer", "",
-            "Todas as respostas reais passaram nos criterios programaticos. "
+            "Todas as respostas reais avaliadas passaram nos criterios programaticos. "
             "O agente cita literatura quando solicitado, nao duplica o bloco de "
             "fontes, mantem os termos-chave do dominio e nunca nega a base.",
         ])
+        if quota_skips:
+            linhas.append("")
+            linhas.append(
+                f"{len(quota_skips)} pergunta(s) foram puladas por cota/API; "
+                "isso nao conta como falha de qualidade."
+            )
 
     caminho.write_text("\n".join(linhas) + "\n", encoding="utf-8")
     return caminho

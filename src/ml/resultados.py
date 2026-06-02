@@ -117,6 +117,15 @@ def _pede_matriz(txt: str) -> bool:
     return any(t in txt for t in ("matriz", "matrizes", "confusao", "matrix", "confusion", "matrice"))
 
 
+def _pede_graficos_modelo(txt: str) -> bool:
+    return any(t in txt for t in (
+        "grafico", "graficos", "grafica", "graficas", "metricas", "metrica",
+        "plot", "plots", "chart", "charts", "figure", "figures",
+        "imagen", "imagenes", "figura", "figuras",
+        "graphique", "graphiques", "metriques", "métriques",
+    ))
+
+
 def _pede_anomalias(txt: str) -> bool:
     return any(t in txt for t in (
         "anomalias detectadas", "detectaram", "detectou",
@@ -300,7 +309,9 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
         _add_img(imagens, "weibull_confiabilidade.png", "Weibull - funcoes de confiabilidade", grupo="Weibull / RUL", ordem=20, ordem_grupo=40)
         _add_img(imagens, "weibull_rul.png", "Weibull - RUL condicional", grupo="Weibull / RUL", ordem=30, ordem_grupo=40)
     if "experimentos" in focos:
-        somente_matriz = _pede_matriz(txt)
+        pede_matriz = _pede_matriz(txt)
+        pede_graficos = _pede_graficos_modelo(txt)
+        somente_matriz = pede_matriz and not pede_graficos
         melhor_apenas = _pede_melhor(txt)
         pede_anomalias = _pede_anomalias(txt)
 
@@ -341,19 +352,7 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
                     continue
                 if modelos_pedidos and modelo not in modelos_pedidos:
                     continue
-                if somente_matriz:
-                    _add_grafico_modelo(
-                        imagens,
-                        pasta,
-                        modelo,
-                        dados_modelo,
-                        "grafico_matriz_confusao",
-                        f"{grupo} - matriz de confusao ({modelo})",
-                        grupo,
-                        100 + idx_modelo,
-                        100 + idx_exp,
-                    )
-                else:
+                if not somente_matriz:
                     _add_grafico_modelo(
                         imagens,
                         pasta,
@@ -362,7 +361,19 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
                         "grafico_metricas",
                         f"{grupo} - resultado individual ({modelo})",
                         grupo,
-                        100 + idx_modelo,
+                        100 + idx_modelo * 2,
+                        100 + idx_exp,
+                    )
+                if pede_matriz:
+                    _add_grafico_modelo(
+                        imagens,
+                        pasta,
+                        modelo,
+                        dados_modelo,
+                        "grafico_matriz_confusao",
+                        f"{grupo} - matriz de confusao ({modelo})",
+                        grupo,
+                        101 + idx_modelo * 2,
                         100 + idx_exp,
                     )
     return sorted(

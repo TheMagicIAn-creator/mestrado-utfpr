@@ -1,0 +1,2 @@
+accuracy,balanced_accuracy,precision,recall,f1,mcc,auc,specificity,specificity_macro_ovr,specificity_tipo,false_positive_rate,false_negative_rate,amostras,n_classes,classes,matriz_confusao,disponivel,evidence_level,dominio,modelo
+0.87,0.87,0.8869047619047619,0.87,0.8683329249366984,0.8321210672693807,,0.9566666666666667,0.9566666666666667,macro_one_vs_rest,,,100,4,"['0', '1', '2', '3']","[[25, 0, 0, 0], [5, 20, 0, 0], [0, 8, 17, 0], [0, 0, 0, 25]]",True,E1,CC,Random Forest

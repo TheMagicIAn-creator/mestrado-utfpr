@@ -4,7 +4,9 @@
   "artigo": "Predictive Modeling and Anomaly Detection in Solar PV Inverters",
   "dataset": "Paderborn",
   "tarefa": "anomalia",
-  "data": "2026-05-30 09:38:09",
+  "evidence_level": "E1",
+  "evidence_note": "E1 — benchmark exploratório (perturbação genérica / dataset rotulado CC); não é validação formal nem desempenho industrial.",
+  "data": "2026-06-02 09:47:20",
   "metrica_principal": "f1",
   "origem_dados": {
     "tipo": "dataset_local_paderborn_com_falhas_sinteticas",
@@ -17,11 +19,17 @@
   "modelos": {
     "Z-score (estatístico)": {
       "accuracy": 0.73224043715847,
+      "balanced_accuracy": 0.73224043715847,
       "precision": 0.6666666666666666,
       "recall": 0.9289617486338798,
       "f1": 0.776255707762557,
+      "mcc": 0.5052279240652235,
       "auc": 0.8152229090149004,
-      "specificity": 0.73224043715847,
+      "specificity": 0.5355191256830601,
+      "specificity_macro_ovr": 0.73224043715847,
+      "specificity_tipo": "binaria_TN/(TN+FP)",
+      "false_positive_rate": 0.4644808743169399,
+      "false_negative_rate": 0.07103825136612021,
       "amostras": 366,
       "n_classes": 2,
       "classes": [
@@ -41,6 +49,8 @@
       "disponivel": true,
       "limiar_score": 0.6970339750305429,
       "ponto_operacao": "limiar_otimo_score",
+      "threshold_source": "exploratorio_no_conjunto_avaliado",
+      "metrica_dependente_de_limiar": "exploratoria",
       "anomalias_detectadas": 255,
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.6967213114754098,
@@ -49,15 +59,21 @@
         "resultados/experimentos/francisti/modelo_z_score_estatistico_matriz_confusao.png"
       ],
       "grafico_metricas": "resultados/experimentos/francisti/modelo_z_score_estatistico_metricas.png",
-      "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\modelo_z_score_estatistico_matriz_confusao.png"
+      "grafico_matriz_confusao": "resultados/experimentos/francisti/modelo_z_score_estatistico_matriz_confusao.png"
     },
     "Random Forest (anomalia)": {
       "accuracy": 0.9262295081967213,
+      "balanced_accuracy": 0.9262295081967213,
       "precision": 0.9698795180722891,
       "recall": 0.8797814207650273,
       "f1": 0.9226361031518625,
+      "mcc": 0.8561612279195846,
       "auc": 0.9837110693063394,
-      "specificity": 0.9262295081967213,
+      "specificity": 0.9726775956284153,
+      "specificity_macro_ovr": 0.9262295081967213,
+      "specificity_tipo": "binaria_TN/(TN+FP)",
+      "false_positive_rate": 0.0273224043715847,
+      "false_negative_rate": 0.12021857923497267,
       "amostras": 366,
       "n_classes": 2,
       "classes": [
@@ -77,6 +93,8 @@
       "disponivel": true,
       "limiar_score": null,
       "ponto_operacao": "decisao_nativa_modelo",
+      "threshold_source": "decisao_nativa_modelo",
+      "metrica_dependente_de_limiar": "nativa",
       "anomalias_detectadas": 166,
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.453551912568306,
@@ -85,7 +103,7 @@
         "resultados/experimentos/francisti/modelo_random_forest_anomalia_matriz_confusao.png"
       ],
       "grafico_metricas": "resultados/experimentos/francisti/modelo_random_forest_anomalia_metricas.png",
-      "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\modelo_random_forest_anomalia_matriz_confusao.png"
+      "grafico_matriz_confusao": "resultados/experimentos/francisti/modelo_random_forest_anomalia_matriz_confusao.png"
     }
   },
   "melhor_modelo": "Random Forest (anomalia)",

@@ -1,0 +1,25 @@
+{
+  "stage": "rul_weibull",
+  "created_at": "2026-06-02T09:46:25.702159",
+  "git_commit": "9ebfd50604c17283ddefd5b08e5c004bca984ac1",
+  "code_sha256": "0acc9a4db6fa1e20d5563c5bf4271c5bcb5ce5f2c8661344b94a27572f927bd8",
+  "parameters": {
+    "n_traj": 100,
+    "n_steps": 120,
+    "batch_inferencia": 16
+  },
+  "input_artifacts": {
+    "validacao:0:validacao_roc.png": "2c2e4e5db36dbca11b1b83c58228d38c54f474216dc3a9f334d998d00bdb09bd",
+    "validacao:1:validacao_pr.png": "8011f4fb3d7dc28ef5acba2cd90b8c8fef3382c2a26e43cb853ba9ca85bed2dd",
+    "validacao:2:validacao_matriz.png": "8379255a01a1b90220a227f7c86d025f65998193a55e78820ee902a041d51f61",
+    "validacao:3:validacao_metricas.png": "efc2003728b84ab0c1c6f5144719a27eff178cb89f7f5bf8e0b9a8423b8bc169",
+    "validacao:4:validacao_tabela.csv": "56c636359cb7ffa2bb85df8c575928e989e47f61f9f2be6afb55b7875b78229f",
+    "validacao:5:validacao_report.json": "da020ecdac22fdc2963e5fe4f59af74dc85f5d0782aede89af3f22645907e7d7"
+  },
+  "outputs": [
+    "resultados/autoencoder/weibull_ttf.png",
+    "resultados/autoencoder/weibull_confiabilidade.png",
+    "resultados/autoencoder/weibull_rul.png",
+    "resultados/autoencoder/weibull_results.json"
+  ]
+}

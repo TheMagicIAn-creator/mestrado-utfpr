@@ -1,10 +1,10 @@
 falha,falha_id,npr,severidade,f1,auc_roc,recall,precision,accuracy,auc_pr
-Degradação Filtro LCL,lcl,210.0,0.3,0.10909090909090909,0.6783999999999999,0.06,0.6,0.51,0.6527812450679464
-Degradação Filtro LCL,lcl,210.0,0.5,0.3225806451612903,0.7948,0.2,0.8333333333333334,0.58,0.788675849371633
-Degradação Filtro LCL,lcl,210.0,1.0,0.631578947368421,0.9352,0.48,0.9230769230769231,0.72,0.9266388497947615
-Desbalanceamento de Fase,desbalanceamento,150.0,0.3,0.8181818181818182,0.982,0.72,0.9473684210526315,0.84,0.9780902400989251
-Desbalanceamento de Fase,desbalanceamento,150.0,0.5,0.9803921568627451,1.0,1.0,0.9615384615384616,0.98,1.0
-Desbalanceamento de Fase,desbalanceamento,150.0,1.0,0.9803921568627451,1.0,1.0,0.9615384615384616,0.98,1.0
-Falha de Sensor CA,sensor,,0.3,0.9803921568627451,1.0,1.0,0.9615384615384616,0.98,1.0
-Falha de Sensor CA,sensor,,0.5,0.9803921568627451,1.0,1.0,0.9615384615384616,0.98,1.0
-Falha de Sensor CA,sensor,,1.0,0.9803921568627451,1.0,1.0,0.9615384615384616,0.98,1.0
+Degradação Filtro LCL,lcl,210.0,0.3,0.0,0.6716,0.0,0.0,0.5,0.6606409798072996
+Degradação Filtro LCL,lcl,210.0,0.5,0.24561403508771928,0.7976000000000001,0.14,1.0,0.57,0.8132640853019593
+Degradação Filtro LCL,lcl,210.0,1.0,0.6486486486486487,0.9428,0.48,1.0,0.74,0.9358017748218823
+Desbalanceamento de Fase,desbalanceamento,150.0,0.3,1.0,1.0,1.0,1.0,1.0,1.0
+Desbalanceamento de Fase,desbalanceamento,150.0,0.5,1.0,1.0,1.0,1.0,1.0,1.0
+Desbalanceamento de Fase,desbalanceamento,150.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0
+Falha de Sensor CA,sensor,,0.3,1.0,1.0,1.0,1.0,1.0,1.0
+Falha de Sensor CA,sensor,,0.5,1.0,1.0,1.0,1.0,1.0,1.0
+Falha de Sensor CA,sensor,,1.0,1.0,1.0,1.0,1.0,1.0,1.0

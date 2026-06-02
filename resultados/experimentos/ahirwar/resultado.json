@@ -4,7 +4,9 @@
   "artigo": "Enhanced Anomaly Detection Using Hybrid ML Techniques",
   "dataset": "Paderborn",
   "tarefa": "anomalia",
-  "data": "2026-05-30 09:40:01",
+  "evidence_level": "E1",
+  "evidence_note": "E1 — benchmark exploratório (perturbação genérica / dataset rotulado CC); não é validação formal nem desempenho industrial.",
+  "data": "2026-06-02 09:49:17",
   "metrica_principal": "f1",
   "origem_dados": {
     "tipo": "dataset_local_paderborn_com_falhas_sinteticas",
@@ -17,11 +19,17 @@
   "modelos": {
     "Isolation Forest": {
       "accuracy": 0.6065573770491803,
+      "balanced_accuracy": 0.6065573770491803,
       "precision": 0.7532467532467533,
       "recall": 0.31693989071038253,
       "f1": 0.4461538461538462,
+      "mcc": 0.26143896952505175,
       "auc": 0.7592343754665711,
-      "specificity": 0.6065573770491803,
+      "specificity": 0.8961748633879781,
+      "specificity_macro_ovr": 0.6065573770491803,
+      "specificity_tipo": "binaria_TN/(TN+FP)",
+      "false_positive_rate": 0.10382513661202186,
+      "false_negative_rate": 0.6830601092896175,
       "amostras": 366,
       "n_classes": 2,
       "classes": [
@@ -41,6 +49,8 @@
       "disponivel": true,
       "limiar_score": null,
       "ponto_operacao": "decisao_nativa_modelo",
+      "threshold_source": "decisao_nativa_modelo",
+      "metrica_dependente_de_limiar": "nativa",
       "anomalias_detectadas": 77,
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.2103825136612022,
@@ -49,15 +59,21 @@
         "resultados/experimentos/ahirwar/modelo_isolation_forest_matriz_confusao.png"
       ],
       "grafico_metricas": "resultados/experimentos/ahirwar/modelo_isolation_forest_metricas.png",
-      "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_isolation_forest_matriz_confusao.png"
+      "grafico_matriz_confusao": "resultados/experimentos/ahirwar/modelo_isolation_forest_matriz_confusao.png"
     },
     "AE-LSTM": {
       "accuracy": 0.8770491803278688,
+      "balanced_accuracy": 0.8770491803278688,
       "precision": 0.8670212765957447,
       "recall": 0.8907103825136612,
       "f1": 0.8787061994609164,
+      "mcc": 0.7543799907552088,
       "auc": 0.913075935381767,
-      "specificity": 0.8770491803278688,
+      "specificity": 0.8633879781420765,
+      "specificity_macro_ovr": 0.8770491803278688,
+      "specificity_tipo": "binaria_TN/(TN+FP)",
+      "false_positive_rate": 0.1366120218579235,
+      "false_negative_rate": 0.1092896174863388,
       "amostras": 366,
       "n_classes": 2,
       "classes": [
@@ -77,6 +93,8 @@
       "disponivel": true,
       "limiar_score": 0.986076020116183,
       "ponto_operacao": "limiar_otimo_score",
+      "threshold_source": "exploratorio_no_conjunto_avaliado",
+      "metrica_dependente_de_limiar": "exploratoria",
       "anomalias_detectadas": 188,
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.5136612021857924,
@@ -85,15 +103,21 @@
         "resultados/experimentos/ahirwar/modelo_ae_lstm_matriz_confusao.png"
       ],
       "grafico_metricas": "resultados/experimentos/ahirwar/modelo_ae_lstm_metricas.png",
-      "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_ae_lstm_matriz_confusao.png"
+      "grafico_matriz_confusao": "resultados/experimentos/ahirwar/modelo_ae_lstm_matriz_confusao.png"
     },
     "Facebook Prophet": {
       "accuracy": 0.5,
+      "balanced_accuracy": 0.5,
       "precision": 0.5,
       "recall": 1.0,
       "f1": 0.6666666666666666,
+      "mcc": 0.0,
       "auc": 0.5765624533428888,
-      "specificity": 0.5,
+      "specificity": 0.0,
+      "specificity_macro_ovr": 0.5,
+      "specificity_tipo": "binaria_TN/(TN+FP)",
+      "false_positive_rate": 1.0,
+      "false_negative_rate": 0.0,
       "amostras": 366,
       "n_classes": 2,
       "classes": [
@@ -113,6 +137,8 @@
       "disponivel": true,
       "limiar_score": 0.0020435351860108816,
       "ponto_operacao": "limiar_otimo_score",
+      "threshold_source": "exploratorio_no_conjunto_avaliado",
+      "metrica_dependente_de_limiar": "exploratoria",
       "anomalias_detectadas": 366,
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 1.0,
@@ -121,15 +147,21 @@
         "resultados/experimentos/ahirwar/modelo_facebook_prophet_matriz_confusao.png"
       ],
       "grafico_metricas": "resultados/experimentos/ahirwar/modelo_facebook_prophet_metricas.png",
-      "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_facebook_prophet_matriz_confusao.png"
+      "grafico_matriz_confusao": "resultados/experimentos/ahirwar/modelo_facebook_prophet_matriz_confusao.png"
     },
     "Híbrido (voto)": {
       "accuracy": 0.6721311475409836,
+      "balanced_accuracy": 0.6721311475409836,
       "precision": 0.6097560975609756,
       "recall": 0.9562841530054644,
       "f1": 0.7446808510638298,
+      "mcc": 0.4183945853154685,
       "auc": 0.7816895099883544,
-      "specificity": 0.6721311475409836,
+      "specificity": 0.3879781420765027,
+      "specificity_macro_ovr": 0.6721311475409836,
+      "specificity_tipo": "binaria_TN/(TN+FP)",
+      "false_positive_rate": 0.6120218579234973,
+      "false_negative_rate": 0.04371584699453552,
       "amostras": 366,
       "n_classes": 2,
       "classes": [
@@ -149,6 +181,8 @@
       "disponivel": true,
       "limiar_score": 0.06376271602275681,
       "ponto_operacao": "limiar_otimo_score",
+      "threshold_source": "exploratorio_no_conjunto_avaliado",
+      "metrica_dependente_de_limiar": "exploratoria",
       "anomalias_detectadas": 287,
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.7841530054644809,
@@ -157,7 +191,7 @@
         "resultados/experimentos/ahirwar/modelo_hibrido_voto_matriz_confusao.png"
       ],
       "grafico_metricas": "resultados/experimentos/ahirwar/modelo_hibrido_voto_metricas.png",
-      "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ahirwar\\modelo_hibrido_voto_matriz_confusao.png"
+      "grafico_matriz_confusao": "resultados/experimentos/ahirwar/modelo_hibrido_voto_matriz_confusao.png"
     }
   },
   "melhor_modelo": "AE-LSTM",

@@ -1,0 +1,27 @@
+{
+  "stage": "autoencoder",
+  "created_at": "2026-06-02T09:44:18.965691",
+  "git_commit": "9ebfd50604c17283ddefd5b08e5c004bca984ac1",
+  "code_sha256": "20953cca74b57902d790f444b9e5828b7e504cff9a555a0451f845dd11091258",
+  "parameters": {
+    "latente_dim": 16,
+    "epochs": 150,
+    "batch_size": 32,
+    "lr": 0.001,
+    "sigma": 3.0,
+    "threshold_method": "p99",
+    "seed": 42
+  },
+  "input_artifacts": {
+    "features_ca:0:features_paderborn.parquet": "5e62b7fb86a5f18d524bd389546894f94c2f5ab725afec69bc2e8d07747e1de4",
+    "features_ca:1:features_paderborn_stats.csv": "d56e491981ab93805de1ed205c386387c264cdaf18a7bb808143aa6a880e7a55"
+  },
+  "outputs": [
+    "resultados/autoencoder/modelo_autoencoder.pt",
+    "resultados/autoencoder/scaler.pkl",
+    "resultados/autoencoder/limiar.json",
+    "resultados/autoencoder/curva_treino.png",
+    "resultados/autoencoder/distribuicao_erro.png",
+    "resultados/autoencoder/erro_temporal.png"
+  ]
+}

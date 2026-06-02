@@ -8,10 +8,10 @@ Origem dos dados: Usa features locais do Paderborn extraidas de Inverter_Data_Se
 
 Métrica principal: f1
 
-- Isolation Forest: accuracy=0.6066, precision=0.7532, recall=0.3169, f1=0.4462, auc=0.7592, specificity=0.6066, anomalias_detectadas=77
-- AE-LSTM: accuracy=0.8770, precision=0.8670, recall=0.8907, f1=0.8787, auc=0.9131, specificity=0.8770, anomalias_detectadas=188
-- Facebook Prophet: accuracy=0.5000, precision=0.5000, recall=1.0000, f1=0.6667, auc=0.5766, specificity=0.5000, anomalias_detectadas=366
-- Híbrido (voto): accuracy=0.6721, precision=0.6098, recall=0.9563, f1=0.7447, auc=0.7817, specificity=0.6721, anomalias_detectadas=287
+- Isolation Forest: accuracy=0.6066, precision=0.7532, recall=0.3169, f1=0.4462, auc=0.7592, specificity=0.8962, anomalias_detectadas=77
+- AE-LSTM: accuracy=0.8770, precision=0.8670, recall=0.8907, f1=0.8787, auc=0.9131, specificity=0.8634, anomalias_detectadas=188
+- Facebook Prophet: accuracy=0.5000, precision=0.5000, recall=1.0000, f1=0.6667, auc=0.5766, specificity=0.0000, anomalias_detectadas=366
+- Híbrido (voto): accuracy=0.6721, precision=0.6098, recall=0.9563, f1=0.7447, auc=0.7817, specificity=0.3880, anomalias_detectadas=287
 
 MELHOR MODELO: AE-LSTM (f1=0.8787)
 ================================================================
