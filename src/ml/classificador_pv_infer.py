@@ -10,13 +10,15 @@ NUNCA afirma diagnóstico CA: PV Farms é classificação de falhas CC conhecida
 
 Artefatos (em resultados/classificacao_pv/):
     modelo_classificador.pkl, scaler.pkl, feature_columns.json,
-    class_mapping.json, metricas.json
+    class_mapping.json, dataset_manifest.json, training_manifest.json,
+    metricas.json, metricas.csv, matriz_confusao.png, importancia_features.png
 """
 
 from __future__ import annotations
 
 import json
 import pickle
+from datetime import datetime
 from pathlib import Path
 
 from src.core.config import RAIZ_PROJETO
@@ -31,13 +33,76 @@ AVISO_DOMINIO = (
 )
 
 
-def treinar_e_salvar_de(X_tr, y_tr, X_te, y_te, pasta: Path = PASTA) -> dict:
+def _dist_classes(y) -> dict:
+    contagem = y.value_counts().sort_index() if hasattr(y, "value_counts") else {}
+    return {str(k): int(v) for k, v in dict(contagem).items()}
+
+
+def _nome_classe(classe) -> str:
+    try:
+        return NOMES_CLASSES.get(int(classe), f"Classe {classe}")
+    except (TypeError, ValueError):
+        return str(classe)
+
+
+def _plotar_matriz_confusao(cm, classes: list[str], destino: Path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(6.2, 5.2))
+    im = ax.imshow(cm, cmap="Blues")
+    ax.set_title("PV Farms - matriz de confusao (E1)")
+    ax.set_xlabel("Predito")
+    ax.set_ylabel("Real")
+    ax.set_xticks(range(len(classes)), classes, rotation=35, ha="right")
+    ax.set_yticks(range(len(classes)), classes)
+    for i, linha in enumerate(cm):
+        for j, valor in enumerate(linha):
+            ax.text(j, i, int(valor), ha="center", va="center")
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    fig.tight_layout()
+    fig.savefig(destino, dpi=140)
+    plt.close(fig)
+
+
+def _plotar_importancia_features(clf, colunas: list[str], destino: Path) -> None:
+    if not hasattr(clf, "feature_importances_"):
+        return
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import pandas as pd
+
+    serie = pd.Series(clf.feature_importances_, index=colunas).sort_values(ascending=False).head(20)
+    fig, ax = plt.subplots(figsize=(7.2, max(4.2, 0.28 * len(serie))))
+    serie.sort_values().plot(kind="barh", ax=ax, color="#2F80ED")
+    ax.set_title("PV Farms - importancia global de features (E1)")
+    ax.set_xlabel("Importancia relativa")
+    ax.set_ylabel("")
+    fig.tight_layout()
+    fig.savefig(destino, dpi=140)
+    plt.close(fig)
+
+
+def treinar_e_salvar_de(
+    X_tr,
+    y_tr,
+    X_te,
+    y_te,
+    pasta: Path = PASTA,
+    source_paths: dict | None = None,
+) -> dict:
     """Treina RF, salva artefatos e métricas. Genérico (testável com fixture)."""
     import joblib
+    import pandas as pd
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.preprocessing import StandardScaler
 
     from src.ml.experimentos_artigos import _metricas_classificacao
+    from src.ml.proveniencia import sha256_arquivo
 
     pasta.mkdir(parents=True, exist_ok=True)
     colunas = list(X_tr.columns)
@@ -47,7 +112,56 @@ def treinar_e_salvar_de(X_tr, y_tr, X_te, y_te, pasta: Path = PASTA) -> dict:
     Xtr_s, Xte_s = scaler.transform(X_tr), scaler.transform(X_te)
     clf = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
     clf.fit(Xtr_s, y_tr)
-    metricas = _metricas_classificacao(list(y_te), list(clf.predict(Xte_s)))
+    y_pred = clf.predict(Xte_s)
+    metricas = _metricas_classificacao(list(y_te), list(y_pred))
+    metricas_salvas = {
+        **{k: v for k, v in metricas.items() if k != "modelo"},
+        "evidence_level": "E1",
+        "dominio": "CC",
+        "modelo": "Random Forest",
+    }
+
+    source_paths = source_paths or {}
+    dataset_manifest = {
+        "dataset": "PV Farms",
+        "dominio": "CC",
+        "train_rows": int(len(X_tr)),
+        "test_rows": int(len(X_te)),
+        "n_features": int(len(colunas)),
+        "class_distribution_train": _dist_classes(y_tr),
+        "class_distribution_test": _dist_classes(y_te),
+        "train_sha256": sha256_arquivo(source_paths.get("train", "")) or "",
+        "test_sha256": sha256_arquivo(source_paths.get("test", "")) or "",
+        "feature_columns": colunas,
+        "evidence_level": "E1",
+        "limitations": [
+            "dominio CC; nao diagnostica falhas CA do inversor",
+            "benchmark supervisionado com rotulos conhecidos",
+        ],
+    }
+    training_manifest = {
+        "created_at": datetime.now().isoformat(),
+        "dataset": "PV Farms",
+        "dominio": "CC",
+        "modelo": "Random Forest",
+        "parameters": {"n_estimators": 200, "random_state": 42, "n_jobs": -1},
+        "scaler": "StandardScaler",
+        "train_rows": int(len(X_tr)),
+        "test_rows": int(len(X_te)),
+        "n_features": int(len(colunas)),
+        "feature_columns": colunas,
+        "evidence_level": "E1",
+        "outputs": [
+            "modelo_classificador.pkl",
+            "scaler.pkl",
+            "feature_columns.json",
+            "class_mapping.json",
+            "metricas.json",
+            "metricas.csv",
+            "matriz_confusao.png",
+            "importancia_features.png",
+        ],
+    }
 
     joblib.dump(clf, pasta / "modelo_classificador.pkl")
     with open(pasta / "scaler.pkl", "wb") as f:
@@ -58,9 +172,15 @@ def treinar_e_salvar_de(X_tr, y_tr, X_te, y_te, pasta: Path = PASTA) -> dict:
         json.dumps({str(c): NOMES_CLASSES.get(c, f"Classe {c}") for c in classes},
                    ensure_ascii=False, indent=2), encoding="utf-8")
     (pasta / "metricas.json").write_text(
-        json.dumps({**{k: v for k, v in metricas.items() if k != "modelo"},
-                    "evidence_level": "E1", "dominio": "CC", "modelo": "Random Forest"},
-                   ensure_ascii=False, indent=2), encoding="utf-8")
+        json.dumps(metricas_salvas, ensure_ascii=False, indent=2), encoding="utf-8")
+    pd.DataFrame([metricas_salvas]).to_csv(pasta / "metricas.csv", index=False)
+    (pasta / "dataset_manifest.json").write_text(
+        json.dumps(dataset_manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    (pasta / "training_manifest.json").write_text(
+        json.dumps(training_manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    nomes_classes = [_nome_classe(c) for c in metricas.get("classes", [str(c) for c in classes])]
+    _plotar_matriz_confusao(metricas["matriz_confusao"], nomes_classes, pasta / "matriz_confusao.png")
+    _plotar_importancia_features(clf, colunas, pasta / "importancia_features.png")
 
     try:
         from src.ml.pipeline import registrar_manifesto  # noqa: F401
@@ -72,10 +192,17 @@ def treinar_e_salvar_de(X_tr, y_tr, X_te, y_te, pasta: Path = PASTA) -> dict:
 
 def treinar_e_salvar(pasta: Path = PASTA) -> dict:
     """Treina/salva a partir do dataset PV Farms local."""
-    from src.ml.classificador_pv import carregar_dados
+    from src.ml.classificador_pv import CSV_TESTE, CSV_TREINO, carregar_dados
 
     X_tr, y_tr, X_te, y_te = carregar_dados()
-    return treinar_e_salvar_de(X_tr, y_tr, X_te, y_te, pasta)
+    return treinar_e_salvar_de(
+        X_tr,
+        y_tr,
+        X_te,
+        y_te,
+        pasta,
+        source_paths={"train": CSV_TREINO, "test": CSV_TESTE},
+    )
 
 
 def carregar(pasta: Path = PASTA) -> dict | None:
@@ -102,7 +229,7 @@ def classificar(amostra, pasta: Path = PASTA) -> dict:
     Valida colunas (ausentes/extras), retorna classe, probabilidade, aviso de
     domínio, versão e limitações. NÃO levanta exceção em erro de validação.
     """
-    import numpy as np
+    import pandas as pd
 
     art = carregar(pasta)
     if art is None:
@@ -127,7 +254,8 @@ def classificar(amostra, pasta: Path = PASTA) -> dict:
                     f"recebido {len(vetor)}.", "aviso": AVISO_DOMINIO}
         vetor = [float(v) for v in vetor]
 
-    X = art["scaler"].transform(np.array(vetor, dtype=float).reshape(1, -1))
+    X_df = pd.DataFrame([vetor], columns=colunas, dtype=float)
+    X = art["scaler"].transform(X_df)
     clf = art["modelo"]
     pred = int(clf.predict(X)[0])
     probas = clf.predict_proba(X)[0]

@@ -16,6 +16,9 @@ git). Valide-os localmente com `python scripts/verificar_datasets.py` (gera
 - Arquivos: `dados/brutos/train_data.csv`, `test_data.csv` (separador `;`).
 - Dados **rotulados**: Normal, F1 (string), F2 (string-terra), F3 (string-string).
 - Predominância de **falhas CC**; uso como **benchmark supervisionado**.
+- O classificador supervisionado salva `dataset_manifest.json`,
+  `training_manifest.json`, `metricas.json/csv`, matriz de confusão e
+  importância de features em `resultados/classificacao_pv/`.
 - Ref.: Ghoneim, Rashed & Elkalashy (2021).
 
 ## Regra de separação de domínio

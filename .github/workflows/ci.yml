@@ -1,8 +1,8 @@
 name: CI
 
-# CI LEVE: lint, smoke de import, testes unitários sem dependências pesadas
-# (sem torch/chromadb) e varredura de segredos. NÃO treina modelos nem roda o
-# pipeline pesado — isso é feito localmente (ver docs/comandos.md).
+# CI leve: lint, smoke de import, testes unitarios sem dependencias pesadas
+# (sem torch/chromadb) e varredura de segredos. Nao treina modelos nem roda o
+# pipeline pesado; isso e feito localmente (ver docs/comandos.md).
 
 on:
   push:
@@ -20,25 +20,29 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Instalar dependências de dev
+      - name: Instalar dependencias de dev
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
-      - name: Varredura de segredos (não pode haver chave commitada)
+      - name: Varredura de segredos
         run: |
-          if grep -rnE "(GROQ_API_KEY|GOOGLE_API_KEY|sk-[A-Za-z0-9]{20})" \
+          achados="$(grep -rnE "(sk-[A-Za-z0-9]{20,}|gsk_[A-Za-z0-9_-]{20,}|AIza[A-Za-z0-9_-]{35})" \
               --include="*.py" --include="*.md" --include="*.json" \
-              --exclude-dir=".git" . | grep -vE "os\.getenv|env_key|getenv|example|\.env"; then
-            echo "::error::Possível segredo commitado."; exit 1
+              --include="*.yml" --include="*.yaml" --include="*.toml" \
+              --exclude-dir=".git" --exclude-dir=".venv" \
+              --exclude-dir=".codex-remote-attachments" . || true)"
+          if [ -n "$achados" ]; then
+            echo "$achados"
+            echo "::error::Possivel segredo commitado."; exit 1
           fi
-          echo "OK — nenhum segredo aparente."
+          echo "OK - nenhum segredo aparente."
 
-      - name: Smoke de import (módulos leves)
+      - name: Smoke de import (modulos leves)
         run: |
           python -c "import src.core.config, src.core.utils, src.ml.split_temporal, src.ml.proveniencia; print('import OK')"
 
-      - name: Testes unitários leves (sem torch/chromadb)
+      - name: Testes unitarios leves (sem torch/chromadb)
         run: |
           python -m pytest -p no:cacheprovider -q -W ignore \
             tests/test_split_temporal.py \
@@ -55,6 +59,6 @@ jobs:
             tests/test_classificador_tools.py \
             tests/test_retrieval_metrics.py
 
-      - name: Lint (ruff, não bloqueante)
+      - name: Lint (ruff, nao bloqueante)
         continue-on-error: true
         run: ruff check src tests scripts || true

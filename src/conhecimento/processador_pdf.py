@@ -237,6 +237,8 @@ def _registrar_pendencia(caminho_pdf: Path, autor: str, titulo: str, ano: str):
     """Registra documentos com metadados não resolvidos para revisão manual."""
     import json as _json
 
+    from src.core.utils import to_project_relative_path
+
     arquivo_pendencias = RAIZ_PROJETO / "metadados_pendentes.json"
 
     pendencias = {}
@@ -249,7 +251,7 @@ def _registrar_pendencia(caminho_pdf: Path, autor: str, titulo: str, ano: str):
     nome = caminho_pdf.name
     if nome not in pendencias:
         pendencias[nome] = {
-            "arquivo"     : str(caminho_pdf),
+            "arquivo"     : to_project_relative_path(caminho_pdf),
             "autor_atual" : autor,
             "titulo_atual": titulo,
             "ano_atual"   : ano,

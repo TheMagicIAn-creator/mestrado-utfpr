@@ -56,4 +56,9 @@ desktop.ini
 # ========================
 .idea/
 
+# ========================
+# ANEXOS LOCAIS DO CODEX
+# ========================
+.codex-remote-attachments/
+
 novos_pdfs/*.pdf

@@ -10,3 +10,5 @@ scipy
 scikit-learn
 matplotlib
 python-dotenv
+requests
+pypdf
