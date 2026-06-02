@@ -82,13 +82,17 @@ class HandlerPDF(FileSystemEventHandler):
             print(f"⚠️  Arquivo não encontrado após espera: {caminho.name}")
             return
 
-        # Processa o PDF
-        resultado = processar_pdf_unico(
-            caminho_pdf      = caminho,
-            modelo_embeddings= self.modelo,
-            pasta_chromadb   = PASTA_CHROMADB,
-            gerar_obsidian   = True
-        )
+        # Processa o PDF sob LOCK de indexação — serializa a escrita no ChromaDB
+        # (watcher, chat e reprocessamento não escrevem ao mesmo tempo).
+        from src.conhecimento.index_lock import lock_indexacao
+
+        with lock_indexacao():
+            resultado = processar_pdf_unico(
+                caminho_pdf      = caminho,
+                modelo_embeddings= self.modelo,
+                pasta_chromadb   = PASTA_CHROMADB,
+                gerar_obsidian   = True
+            )
 
         if resultado["sucesso"]:
             print(f"\n✅ Processado com sucesso!")

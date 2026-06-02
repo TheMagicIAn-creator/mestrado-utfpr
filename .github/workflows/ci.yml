@@ -49,7 +49,8 @@ jobs:
             tests/test_confirmacao_destrutiva.py \
             tests/test_logs.py \
             tests/test_memoria_separada.py \
-            tests/test_web_confianca.py
+            tests/test_web_confianca.py \
+            tests/test_index_lock.py
 
       - name: Lint (ruff, não bloqueante)
         continue-on-error: true
