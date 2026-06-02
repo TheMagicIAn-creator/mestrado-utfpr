@@ -183,8 +183,11 @@ def registrar_manifesto(key: str, parameters: dict | None = None,
         )
         salvar_manifesto(manifesto)
     except Exception:
-        # Manifesto é rastreabilidade, não deve derrubar a execução da etapa.
-        pass
+        # Manifesto é rastreabilidade, não deve derrubar a execução da etapa,
+        # mas a falha é REGISTRADA (não silenciada).
+        from src.core.logs import get_logger
+
+        get_logger("pipeline").exception("falha ao registrar manifesto de %s", key)
 
 
 def estado_etapa_completo(key: str) -> dict:

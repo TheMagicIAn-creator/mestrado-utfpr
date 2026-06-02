@@ -40,6 +40,11 @@ venv_mestrado/
 base_conhecimento/
 
 # ========================
+# LOGS
+# ========================
+logs/
+
+# ========================
 # SISTEMA OPERACIONAL
 # ========================
 .DS_Store
