@@ -50,7 +50,7 @@ jobs:
             tests/test_logs.py \
             tests/test_memoria_separada.py \
             tests/test_web_confianca.py \
-            tests/test_index_lock.py \n            tests/test_classificador_infer.py
+            tests/test_index_lock.py \n            tests/test_classificador_infer.py \n            tests/test_classificador_tools.py
 
       - name: Lint (ruff, não bloqueante)
         continue-on-error: true

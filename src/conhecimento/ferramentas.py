@@ -142,6 +142,28 @@ ESPEC_FERRAMENTAS = [
         ),
     },
     {
+        "name": "treinar_classificador_pv",
+        "description": (
+            "Treina e salva o classificador supervisionado PV Farms (falhas CC). "
+            "Use quando o usuario pedir para treinar/retreinar o classificador PV."
+        ),
+    },
+    {
+        "name": "avaliar_classificador_pv",
+        "description": (
+            "Mostra metricas, melhor modelo e limitacoes do classificador PV "
+            "Farms ja treinado. Use ao pedir desempenho/metricas do classificador."
+        ),
+    },
+    {
+        "name": "classificar_amostra_pv",
+        "description": (
+            "Classifica uma amostra PV Farms enviada como JSON. Use quando o "
+            "usuario pedir para classificar uma amostra. Valida colunas e avisa "
+            "que e dominio CC (nao diagnostica falhas CA)."
+        ),
+    },
+    {
         "name": "rodar_experimento_artigo",
         "description": (
             "Treina e avalia os modelos de ML de um ou mais artigos-base e "
@@ -358,6 +380,20 @@ def _quer_comparar_abordagens(pergunta: str) -> bool:
         "comparar", "versus", " vs ",
     ))
     return tem_abordagem and contexto
+
+
+def _quer_classificador_pv(pergunta: str) -> str | None:
+    """Roteia ações do classificador supervisionado PV Farms (CC)."""
+    txt = _normalizar(pergunta)
+    quer_classificar = ("classifique" in txt or "classificar" in txt) and "amostra" in txt
+    tem_clf = "classificador" in txt
+    if not (tem_clf or quer_classificar):
+        return None
+    if quer_classificar:
+        return "classificar_amostra_pv"
+    if any(t in txt for t in ("treine", "treinar", "treina", "retreine")):
+        return "treinar_classificador_pv"
+    return "avaliar_classificador_pv"
 
 
 def _quer_resposta_autoral(pergunta: str) -> bool:
@@ -996,6 +1032,85 @@ def comparar_abordagens_ml(progresso=None, pergunta: str = "") -> dict:
     }
 
 
+def treinar_classificador_pv(progresso=None, pergunta: str = "") -> dict:
+    """Treina e salva o classificador supervisionado PV Farms (CC)."""
+    if progresso:
+        progresso("Treinando o classificador PV Farms (CC)...")
+    try:
+        from src.ml.classificador_pv_infer import AVISO_DOMINIO, treinar_e_salvar
+
+        r = treinar_e_salvar()
+        m = r["metricas"]
+        msg = (
+            f"Classificador PV Farms (**CC**) treinado e salvo. "
+            f"{r['n_features']} features, classes {r['classes']}.\n\n"
+            f"F1={m.get('f1', 0):.3f} · MCC={m.get('mcc', 0):.3f} · "
+            f"balanced_acc={m.get('balanced_accuracy', 0):.3f}. Evidência **E1**.\n\n"
+            f"{AVISO_DOMINIO}"
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "etapa": "Classificador PV Farms",
+                "mensagem": f"Não consegui treinar: {exc}", "imagens": [],
+                "resposta_pronta": True}
+    return {"ok": True, "etapa": "Classificador PV Farms", "mensagem": msg,
+            "imagens": [], "resposta_pronta": True}
+
+
+def avaliar_classificador_pv(progresso=None, pergunta: str = "") -> dict:
+    """Mostra métricas + limitações do classificador PV Farms já treinado."""
+    import json
+
+    from src.core.config import RAIZ_PROJETO
+    from src.ml.classificador_pv_infer import AVISO_DOMINIO
+
+    arq = Path(RAIZ_PROJETO) / "resultados" / "classificacao_pv" / "metricas.json"
+    if not arq.exists():
+        return {"ok": True, "etapa": "Classificador PV Farms",
+                "mensagem": "Classificador ainda não treinado. Peça: \"treine o "
+                "classificador PV Farms\".", "imagens": [], "resposta_pronta": True}
+    m = json.loads(arq.read_text(encoding="utf-8"))
+    msg = (
+        "## Classificador PV Farms (CC)\n"
+        f"- Modelo: {m.get('modelo', 'Random Forest')} · evidência **E1**\n"
+        f"- Acurácia: {m.get('accuracy', 0):.3f} · F1: {m.get('f1', 0):.3f} · "
+        f"MCC: {m.get('mcc', 0):.3f} · balanced_acc: {m.get('balanced_accuracy', 0):.3f}\n"
+        f"- Specificity ({m.get('specificity_tipo', '-')}): {m.get('specificity', 0):.3f}\n\n"
+        f"{AVISO_DOMINIO}"
+    )
+    return {"ok": True, "etapa": "Classificador PV Farms", "mensagem": msg,
+            "imagens": [], "resposta_pronta": True}
+
+
+def classificar_amostra_pv(progresso=None, pergunta: str = "") -> dict:
+    """Classifica uma amostra PV Farms enviada como JSON na mensagem."""
+    import json
+    import re
+
+    from src.ml.classificador_pv_infer import AVISO_DOMINIO, classificar
+
+    achado = re.search(r"\{.*\}", pergunta or "", re.S)
+    if not achado:
+        return {"ok": True, "etapa": "Classificação PV Farms",
+                "mensagem": "Envie a amostra como JSON, ex.: "
+                "`classifique a amostra {\"feature_0\": 1.2, ...}`.\n\n" + AVISO_DOMINIO,
+                "imagens": [], "resposta_pronta": True}
+    try:
+        amostra = json.loads(achado.group(0))
+    except Exception:
+        return {"ok": True, "etapa": "Classificação PV Farms",
+                "mensagem": "JSON inválido. Use {\"coluna\": valor, ...}.\n\n" + AVISO_DOMINIO,
+                "imagens": [], "resposta_pronta": True}
+    r = classificar(amostra)
+    if not r.get("ok"):
+        msg = f"Não classifiquei: {r.get('erro')}\n\n{r.get('aviso', AVISO_DOMINIO)}"
+    else:
+        msg = (f"Classe prevista: **{r['classe_nome']}** "
+               f"(probabilidade {r['probabilidade']:.2f}) — domínio CC.\n\n"
+               f"{r['aviso']} (importância de feature ≠ causalidade.)")
+    return {"ok": True, "etapa": "Classificação PV Farms", "mensagem": msg,
+            "imagens": [], "resposta_pronta": True}
+
+
 _DESPACHO = {
     "rodar_features_ca": rodar_features_ca,
     "rodar_autoencoder": rodar_autoencoder,
@@ -1007,6 +1122,9 @@ _DESPACHO = {
     "consultar_status_pipeline": consultar_status_pipeline,
     "consultar_datasets": consultar_datasets,
     "comparar_abordagens_ml": comparar_abordagens_ml,
+    "treinar_classificador_pv": treinar_classificador_pv,
+    "avaliar_classificador_pv": avaliar_classificador_pv,
+    "classificar_amostra_pv": classificar_amostra_pv,
     "limpar_resultados_ml": limpar_resultados_ml,
     "buscar_web": buscar_na_web,
     "listar_base_bibliografica": listar_base_bibliografica,
@@ -1122,6 +1240,11 @@ def _decisao_rapida(pergunta: str) -> dict | None:
     # Comparação das abordagens de ML (supervisionado x anomalia x sintético).
     if _quer_comparar_abordagens(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "comparar_abordagens_ml"}
+
+    # Classificador supervisionado PV Farms (CC): treinar / avaliar / classificar.
+    _acao_clf = _quer_classificador_pv(pergunta)
+    if _acao_clf:
+        return {"usar_ferramenta": True, "ferramenta": _acao_clf}
 
     # Catálogo da literatura — pedido pelo INVENTÁRIO inteiro ("liste todas as
     # referências", "o que você tem indexado", "quantos artigos", "as 39").
