@@ -6,7 +6,7 @@
   "tarefa": "anomalia",
   "evidence_level": "E1",
   "evidence_note": "E1 — benchmark exploratório (perturbação genérica / dataset rotulado CC); não é validação formal nem desempenho industrial.",
-  "data": "2026-06-02 09:47:28",
+  "data": "2026-06-02 18:15:06",
   "metrica_principal": "f1",
   "origem_dados": {
     "tipo": "dataset_local_paderborn_com_falhas_sinteticas",
@@ -135,7 +135,7 @@
         ]
       ],
       "disponivel": true,
-      "limiar_score": 0.002038420833381332,
+      "limiar_score": 0.0020423591749611884,
       "ponto_operacao": "limiar_otimo_score",
       "threshold_source": "exploratorio_no_conjunto_avaliado",
       "metrica_dependente_de_limiar": "exploratoria",

@@ -382,6 +382,43 @@ def _normalizar_texto(texto: str) -> str:
     return re.sub(r"[^a-z0-9\s]", " ", texto)
 
 
+def pedido_sem_literatura(pergunta: str) -> bool:
+    """
+    True quando o pesquisador proibe explicitamente literatura/fontes.
+
+    Importante: a palavra "literatura" por si so costuma acionar RAG. Sem este
+    guard, prompts como "Nao use literatura; explique FMEA com base no projeto"
+    acabam recebendo rodape de fontes, contrariando a instrucao principal.
+    """
+    txt = _normalizar_texto(pergunta or "")
+    alvos = (
+        "literatura", "fontes", "fonte", "referencias", "referencia",
+        "artigos", "artigo", "papers", "paper", "bibliografia",
+        "literature", "sources", "source", "references", "reference",
+        "bibliography", "fuentes", "referencias", "bibliografia",
+        "litterature", "littérature", "bibliographie",
+    )
+    negacoes = (
+        "nao use", "nao consulte", "nao buscar", "nao busque", "nao cite",
+        "sem", "dispense", "ignore",
+        "do not use", "dont use", "without", "do not cite",
+        "no use", "no consultes", "sin", "ne pas utiliser", "sans",
+    )
+    if any(n in txt for n in negacoes) and any(a in txt for a in alvos):
+        return True
+    return any(t in txt for t in (
+        "somente com base no projeto",
+        "apenas com base no projeto",
+        "so com base no projeto",
+        "com base no projeto apenas",
+        "use somente o projeto",
+        "use apenas o projeto",
+        "only based on the project",
+        "solo con base en el proyecto",
+        "seulement sur la base du projet",
+    ))
+
+
 def _saudacao_pelo_horario() -> str:
     """Retorna 'Bom dia', 'Boa tarde' ou 'Boa noite' conforme a hora atual."""
     from datetime import datetime
@@ -792,6 +829,9 @@ def deve_consultar_literatura(pergunta: str, colecao=None) -> bool:
         ("tem o Stender?", "cade o Torres?", "onde esta o paper do Ahirwar?",
          "perdi a indexacao", "indexado", "na base").
     """
+    if pedido_sem_literatura(pergunta):
+        return False
+
     txt = _normalizar_texto(pergunta or "")
     frases = (
         "segundo a literatura",

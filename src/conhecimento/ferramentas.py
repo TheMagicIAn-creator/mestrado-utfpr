@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import unicodedata
 
 from src.core.config import RAIZ_PROJETO
@@ -122,6 +123,15 @@ ESPEC_FERRAMENTAS = [
         ),
     },
     {
+        "name": "limpar_experimentos_artigos",
+        "description": (
+            "Apaga artefatos/resultados dos experimentos por artigo-base "
+            "(Ghoneim, Francisti, Ibrahim, Sharma, Ahirwar), mediante "
+            "confirmacao explicita. Use quando o usuario pedir para apagar, "
+            "limpar, excluir ou resetar experimentos por artigo."
+        ),
+    },
+    {
         "name": "consultar_datasets",
         "description": (
             "Explica os datasets do projeto (Paderborn e PV Farms): finalidade, "
@@ -169,8 +179,9 @@ ESPEC_FERRAMENTAS = [
             "Treina e avalia os modelos de ML de um ou mais artigos-base e "
             "compara os resultados (AUC/F1 ou acuracia). Use quando o usuario "
             "pedir para RODAR/TESTAR um experimento de um artigo: 'rode o "
-            "experimento do Ghoneim', 'teste os modelos do Sharma', 'compare "
-            "os experimentos de anomalia'. Tarefa pesada (treina modelos)."
+            "experimento do Ghoneim', 'teste os modelos do Sharma'. Tarefa "
+            "pesada (treina modelos). Para comparar resultados ja gerados, use "
+            "consultar_resultados."
         ),
     },
 ]
@@ -270,6 +281,12 @@ def _quer_catalogo(pergunta: str) -> bool:
                CA?", "o que a literatura diz sobre Weibull?" (vao para o RAG).
     """
     txt = _normalizar(pergunta)
+    if any(t in txt for t in (
+        "resultado", "resultados", "metrica", "metricas", "grafico",
+        "graficos", "matriz", "matrizes", "replicacao", "replicacoes",
+        "replicado", "replicados", "artefato", "artefatos", "proveniencia",
+    )):
+        return False
     # Qualificador de topico => busca tematica; deixa para o RAG.
     if any(q in txt for q in _QUALIFICADORES_TOPICO):
         return False
@@ -292,13 +309,12 @@ _AUTORES_EXP = {
 }
 _VERBOS_RODAR_EXP = (
     "rode", "rodar", "roda", "execut", "teste", "testar", "testa",
-    "treine", "treinar", "treina", "compare", "comparar", "compara",
-    "rodar os modelos", "avalie", "avaliar",
-    "run", "execute", "test", "train", "evaluate", "compare",
+    "treine", "treinar", "treina", "rodar os modelos",
+    "run", "execute", "test", "train",
     "ejecute", "ejecuta", "ejecutar", "prueba", "probar", "entrena",
-    "entrenar", "evalua", "evaluar", "compara", "comparar",
+    "entrenar",
     "executez", "executer", "exécuter", "tester", "entraine", "entrainer",
-    "entraîner", "evaluer", "évaluer", "comparer",
+    "entraîner",
 )
 
 
@@ -346,10 +362,28 @@ def _quer_catalogo_experimentos(pergunta: str) -> bool:
     return consulta
 
 
+def _quer_limpar_experimentos(pergunta: str) -> bool:
+    """Pedido destrutivo voltado aos experimentos/artigos, nao ao pipeline AE."""
+    txt = _normalizar(pergunta)
+    if not _quer_limpar(pergunta):
+        return False
+    return (
+        any(t in txt for t in ("experimento", "experimentos", "benchmark", "benchmarks"))
+        or any(autor in txt for autor in _AUTORES_EXP)
+    )
+
+
 def _quer_consultar_datasets(pergunta: str) -> bool:
     """Pergunta sobre os datasets do projeto (Paderborn / PV Farms)."""
     txt = _normalizar(pergunta)
     if _quer_rodar_experimento(pergunta):
+        return False
+    if any(autor in txt for autor in _AUTORES_EXP):
+        return False
+    if any(t in txt for t in (
+        "resultado", "resultados", "replicacao", "replicacoes",
+        "replicado", "replicados", "artigo", "artigos", "paper", "papers",
+    )):
         return False
     tem_dataset = any(t in txt for t in (
         "dataset", "datasets", "paderborn", "pv farms", "pv-farms",
@@ -405,6 +439,9 @@ def _quer_resposta_autoral(pergunta: str) -> bool:
         "apresentar", "orientadora", "confiavel", "confiaveis", "recomende",
         "recomendar", "qual escolher", "escolher", "reforca", "reforcam",
         "sustenta", "sustentam", "discuta", "analise", "analisa",
+        "compare", "comparar", "compara", "separe", "separar",
+        "origem", "metodologia", "dados usados", "recalculado",
+        "recalculados", "replicacao", "replicacoes",
         "o que isso significa", "implicacao", "implicacoes",
         "in your opinion", "your opinion", "interpret", "explain", "present",
         "advisor", "supervisor", "reliable", "recommend", "choose",
@@ -823,6 +860,82 @@ def listar_experimentos_artigos(progresso=None, pergunta: str = "") -> dict:
     }
 
 
+def limpar_experimentos_artigos(progresso=None, pergunta: str = "") -> dict:
+    """Apaga artefatos dos experimentos por artigo mediante confirmacao."""
+    from pathlib import Path
+
+    from src.ml.experimentos_artigos import ORDEM_EXPERIMENTOS, PASTA_EXPERIMENTOS
+
+    alvos = _experimentos_alvo(pergunta) or [
+        key for key in ORDEM_EXPERIMENTOS if key != "stender"
+    ]
+    alvos = list(dict.fromkeys(alvos))
+    rotulo = (
+        "TODOS"
+        if len(alvos) >= len([k for k in ORDEM_EXPERIMENTOS if k != "stender"])
+        else " ".join(k.upper() for k in alvos)
+    )
+    token = (
+        "CONFIRMAR LIMPEZA EXPERIMENTOS"
+        if rotulo == "TODOS" else
+        f"CONFIRMAR LIMPEZA EXPERIMENTOS {rotulo}"
+    )
+
+    pasta_base = Path(PASTA_EXPERIMENTOS).resolve()
+    pastas = []
+    for key in alvos:
+        p = (pasta_base / key).resolve()
+        if pasta_base in p.parents:
+            pastas.append(p)
+
+    existentes = [p for p in pastas if p.exists()]
+    n_arquivos = sum(
+        1 for pasta in existentes for item in pasta.rglob("*") if item.is_file()
+    )
+
+    if _normalizar(token) not in _normalizar(pergunta):
+        nomes = ", ".join(alvos)
+        return {
+            "ok": True,
+            "etapa": "Limpeza de experimentos",
+            "mensagem": (
+                f"Isso vai apagar os artefatos dos experimentos: **{nomes}**.\n\n"
+                f"Diretorios encontrados: {len(existentes)} | arquivos: {n_arquivos}.\n"
+                "A acao e irreversivel e nao apaga dados brutos nem literatura.\n\n"
+                f"Para confirmar, escreva exatamente:\n\n`{token}`"
+            ),
+            "imagens": [],
+            "resposta_pronta": True,
+        }
+
+    if progresso:
+        progresso("Apagando artefatos dos experimentos por artigo...")
+
+    removidos = []
+    for pasta in existentes:
+        shutil.rmtree(pasta)
+        removidos.append(pasta)
+
+    if removidos:
+        detalhe = "\n".join(f"- {p.relative_to(RAIZ_PROJETO)}" for p in removidos)
+        detalhe = f"\n\nDiretorios removidos:\n{detalhe}"
+    else:
+        detalhe = "\n\nNao havia diretorios de experimento para remover."
+
+    return {
+        "ok": True,
+        "etapa": "Limpeza de experimentos",
+        "mensagem": (
+            "Experimentos por artigo apagados. Os dados brutos permanecem "
+            "intactos; quando quiser comparar novamente, peca para rodar o "
+            "experimento do autor desejado ou todos os experimentos."
+            f"{detalhe}"
+        ),
+        "imagens": [],
+        "resposta_pronta": True,
+    }
+
+
 def _md_experimento_legacy(res: dict) -> tuple[str, list[dict]]:
     """Markdown + imagens de um resultado de experimento."""
     if not res.get("ok"):
@@ -1126,6 +1239,7 @@ _DESPACHO = {
     "avaliar_classificador_pv": avaliar_classificador_pv,
     "classificar_amostra_pv": classificar_amostra_pv,
     "limpar_resultados_ml": limpar_resultados_ml,
+    "limpar_experimentos_artigos": limpar_experimentos_artigos,
     "buscar_web": buscar_na_web,
     "listar_base_bibliografica": listar_base_bibliografica,
     "listar_experimentos_artigos": listar_experimentos_artigos,
@@ -1216,12 +1330,66 @@ _GATILHOS_WEB = (
 )
 
 
+def _quer_resposta_discursiva_sem_ferramenta(pergunta: str) -> bool:
+    """
+    Conversa tecnica/conceitual deve ir para RAG/LLM, nao para execucao.
+
+    Ex.: "Faca uma revisao bibliografica curta sobre RUL" contem RUL, mas a
+    intencao e escrever uma revisao, nao rodar Weibull. O mesmo vale para
+    "Explique FMEA com base no projeto".
+    """
+    txt = _normalizar(pergunta)
+
+    if _quer_limpar(pergunta) or _quer_rodar_experimento(pergunta):
+        return False
+    if any(t in txt for t in _TERMOS_PIPELINE_IMPLICITO):
+        return False
+
+    pede_resultado = any(t in txt for t in (
+        "resultado", "resultados", "artefato", "artefatos", "grafico",
+        "graficos", "matriz", "matrizes", "imagem", "imagens", "metricas",
+        "metrica", "auc", "f1", "recall", "precision", "status",
+        "result", "results", "artifact", "artifacts", "chart", "charts",
+        "matrix", "metrics",
+    ))
+    if pede_resultado:
+        return False
+
+    if any(t in txt for t in (
+        "revisao bibliografica", "revisao da literatura", "estado da arte",
+        "levantamento bibliografico", "referencial teorico",
+        "literature review", "state of the art", "survey",
+        "revision bibliografica", "estado del arte",
+        "revue bibliographique", "etat de l art",
+    )):
+        return True
+
+    verbos_discursivos = (
+        "explique", "explica", "fale", "descreva", "resuma", "discuta",
+        "analise", "o que e", "o que eh", "qual a diferenca",
+        "explain", "describe", "summarize", "discuss",
+        "explica", "describe", "resume", "discute",
+        "expliquez", "decrivez", "decrire", "resumer", "discutez",
+    )
+    conceitos = (
+        "fmea", "fmeca", "rul", "weibull", "mttf", "b10", "autoencoder",
+        "anomalia", "anomalias", "rcm", "npr", "paderborn", "inversor",
+        "confiabilidade", "manutencao", "eletronica de potencia",
+        "reliability", "maintenance", "inverter", "anomaly",
+        "confiabilidad", "mantenimiento", "fiabilite", "onduleur",
+    )
+    return any(v in txt for v in verbos_discursivos) and any(c in txt for c in conceitos)
+
+
 def _decisao_rapida(pergunta: str) -> dict | None:
     txt = _normalizar(pergunta)
 
     # Busca na web — atalho prioritário quando gatilho explícito aparece
     if any(g in txt for g in _GATILHOS_WEB):
         return {"usar_ferramenta": True, "ferramenta": "buscar_web"}
+
+    if _quer_limpar_experimentos(pergunta):
+        return {"usar_ferramenta": True, "ferramenta": "limpar_experimentos_artigos"}
 
     # Experimentos de ML por artigo — checados ANTES do catálogo de literatura,
     # pois "experimento" é um sinal mais específico que "artigo" genérico.
@@ -1255,6 +1423,9 @@ def _decisao_rapida(pergunta: str) -> dict | None:
     # Status é consulta operacional, então deve vencer antes do guard genérico.
     if _quer_status(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "consultar_status_pipeline"}
+
+    if _quer_resposta_discursiva_sem_ferramenta(pergunta):
+        return {"usar_ferramenta": False, "ferramenta": None}
 
     if not _parece_pedido_de_ferramenta(pergunta):
         return {"usar_ferramenta": False, "ferramenta": None}

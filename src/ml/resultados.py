@@ -143,6 +143,18 @@ def _pede_melhor(txt: str) -> bool:
     ))
 
 
+def _pede_origem_dados(txt: str) -> bool:
+    return any(t in txt for t in (
+        "origem", "dados usados", "dataset local", "datasets locais",
+        "recalculos", "recalculado", "recalculados", "recalculei",
+        "replicacao", "replicacoes", "replicado", "replicados",
+        "metodologia dos artigos", "somente os artefatos", "artefatos recalculados",
+        "repositorio", "local", "proveniencia", "proveniência",
+        "origin", "local dataset", "local datasets", "replication",
+        "replications", "recalculated", "repository", "provenance",
+    ))
+
+
 def _contem_termo(txt: str, termo: str) -> bool:
     if len(termo) <= 3 or " " in termo:
         return bool(re.search(rf"\b{re.escape(termo)}\b", txt))
@@ -524,6 +536,7 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
     linhas_modelos = []
     destaques_melhor = []
     origens = []
+    evidencias = []
     for arq in arquivos:
         d = _json(arq)
         if not d:
@@ -532,6 +545,8 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
         origem = d.get("origem_dados") or {}
         if origem.get("descricao"):
             origens.append((exp, origem["descricao"]))
+        if d.get("evidence_level") or d.get("evidence_note"):
+            evidencias.append((exp, d.get("evidence_level"), d.get("evidence_note")))
         if _pede_melhor(txt) and d.get("melhor_modelo"):
             destaques_melhor.append(
                 f"- **{exp}**: {d.get('melhor_modelo')} "
@@ -586,6 +601,41 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
                 continue
             vistos.add(chave)
             linhas.append(f"- **{exp}**: {descricao}\n")
+
+    if _pede_origem_dados(txt):
+        linhas.append("\nSeparacao entre artigo e recalculo local:\n")
+        linhas.append(
+            "- **Metodologia dos artigos**: define quais familias de modelos entram "
+            "no benchmark (por exemplo, Isolation Forest, AE-LSTM, Prophet, SVM, "
+            "RNN/CNN ou hibrido). Isso e inspiracao metodologica, nao copia de "
+            "metricas publicadas.\n"
+        )
+        linhas.append(
+            "- **Recalculado no repositorio**: metricas, matrizes de confusao, "
+            "graficos e contagens de anomalias sao gerados a partir dos artefatos "
+            "locais em `resultados/experimentos/<autor>/resultado.json`.\n"
+        )
+        linhas.append(
+            "- **Dados locais**: Ghoneim usa `dados/brutos/train_data.csv` e "
+            "`test_data.csv` (PV Farms, dominio CC). Francisti, Ibrahim, Sharma "
+            "e Ahirwar usam features locais do Paderborn extraidas de "
+            "`dados/brutos/Inverter_Data_Set.csv`; como esse dataset e saudavel, "
+            "o ground truth de anomalia vem de falhas sinteticas do pipeline.\n"
+        )
+        linhas.append(
+            "- **Nao e validacao industrial**: esses experimentos sao E1 "
+            "(benchmark exploratorio). Eles ajudam a comparar abordagens, mas "
+            "nao substituem validacao externa em bancada/campo.\n"
+        )
+    elif evidencias:
+        vistos_ev = set()
+        linhas.append("\nNivel de evidencia:\n")
+        for exp, nivel, nota in evidencias:
+            chave = (exp, nivel, nota)
+            if chave in vistos_ev:
+                continue
+            vistos_ev.add(chave)
+            linhas.append(f"- **{exp}**: {nivel or '-'} - {nota or 'sem nota'}\n")
 
     linhas.append(
         "\nLeitura rapida: AUC alto mede separacao por score. Para operacao real, "

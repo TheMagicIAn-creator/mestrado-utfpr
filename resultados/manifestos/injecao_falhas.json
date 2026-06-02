@@ -1,7 +1,7 @@
 {
   "stage": "injecao_falhas",
-  "created_at": "2026-06-02T09:44:22.280659",
-  "git_commit": "9ebfd50604c17283ddefd5b08e5c004bca984ac1",
+  "created_at": "2026-06-02T18:37:03.766451",
+  "git_commit": "d613e4ff78fb59259c0d84570a0c6538f36445c3",
   "code_sha256": "1a75cb060eecf04899d37c75a7c4d152caadc411cab8d5dbf6e0bcc8bd27e431",
   "parameters": {
     "t_inicio_estavel": 10.0,
@@ -17,9 +17,9 @@
     ]
   },
   "input_artifacts": {
-    "autoencoder:0:modelo_autoencoder.pt": "688f37d3c92dd66c6264962583119a1516a7561d34d8dd092e3735869cfb6471",
+    "autoencoder:0:modelo_autoencoder.pt": "de43b98137315b2a69b326a595eaf2f6d27f1f10fe1701cc3c0ebb54ab49ed5a",
     "autoencoder:1:scaler.pkl": "83307da2ee76a4fe1f59921eba9eb5b03f30ded786e7fa49423c92e8b771c4f1",
-    "autoencoder:2:limiar.json": "374180f2c9943925cc43d0d65ae79139d9ffb1dc8ce269e25d5d183a91db816c",
+    "autoencoder:2:limiar.json": "772ab8e1bca0ce3ca2e73e932b8b053dca5bf5300324efd295e5caff22d58c8f",
     "autoencoder:3:curva_treino.png": "58cf5cc0358171e3f9ea24297dedc548778d360ca0e2648f08ff3c6b50d76947",
     "autoencoder:4:distribuicao_erro.png": "3d180364c4c20fa5766acb8f3adb5ab9acffc3f9fec7891ad8eed87befec6623",
     "autoencoder:5:erro_temporal.png": "282676d5d5a6cfb34246615befa95330971101036055dfed700b8e6e5d600c35"

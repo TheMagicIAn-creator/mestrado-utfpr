@@ -1,6 +1,6 @@
 # Resultados da Fase 5 - Pipeline de ML
 
-> Gerado em 02/06/2026 09:50
+> Gerado em 02/06/2026 18:39
 
 Aqui está o que já existe nos artefatos do pipeline.
 
@@ -78,5 +78,12 @@ Origem dos dados usados nestes resultados:
 - **Ghoneim, Rashed & Elkalashy (2021)**: Usa os arquivos locais train_data.csv e test_data.csv em dados/brutos. O artigo define a metodologia/base PV Farms; os numeros sao recalculados no repositorio, nao copiados do paper.
 - **Ibrahim et al. (2022)**: Usa features locais do Paderborn extraidas de Inverter_Data_Set.csv. Como o Paderborn e saudavel, as anomalias avaliadas sao sinteticas, geradas no pipeline para criar ground truth. O artigo inspira os modelos e a metodologia; os dados avaliados sao os do repositorio.
 - **Sharma et al. (2026)**: Usa features locais do Paderborn extraidas de Inverter_Data_Set.csv. Como o Paderborn e saudavel, as anomalias avaliadas sao sinteticas, geradas no pipeline para criar ground truth. O artigo inspira os modelos e a metodologia; os dados avaliados sao os do repositorio.
+
+Nivel de evidencia:
+- **Ahirwar & Nandanwar (2025)**: E1 - E1 — benchmark exploratório (perturbação genérica / dataset rotulado CC); não é validação formal nem desempenho industrial.
+- **Francisti et al. (2025)**: E1 - E1 — benchmark exploratório (perturbação genérica / dataset rotulado CC); não é validação formal nem desempenho industrial.
+- **Ghoneim, Rashed & Elkalashy (2021)**: E1 - E1 — benchmark exploratório (perturbação genérica / dataset rotulado CC); não é validação formal nem desempenho industrial.
+- **Ibrahim et al. (2022)**: E1 - E1 — benchmark exploratório (perturbação genérica / dataset rotulado CC); não é validação formal nem desempenho industrial.
+- **Sharma et al. (2026)**: E1 - E1 — benchmark exploratório (perturbação genérica / dataset rotulado CC); não é validação formal nem desempenho industrial.
 
 Leitura rapida: AUC alto mede separacao por score. Para operacao real, olhe junto F1/accuracy e a coluna de anomalias detectadas; AUC ou recall alto com poucas ou zero anomalias detectadas indica que o modelo pode estar ranqueando bem, mas operando conservador demais no ponto escolhido.
