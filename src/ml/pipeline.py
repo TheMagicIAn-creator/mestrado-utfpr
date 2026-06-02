@@ -9,6 +9,7 @@ recriar listas paralelas de etapas.
 
 from __future__ import annotations
 
+import ast
 from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
@@ -40,12 +41,49 @@ class PipelineStage:
     def parameters(self) -> dict:
         if not self.parameter_names:
             return {}
-        module = import_module(self.module)
+        valores = _parametros_do_fonte(self.module, self.parameter_names)
+        pendentes = [nome for nome in self.parameter_names if nome not in valores]
+        if pendentes:
+            module = import_module(self.module)
+            for nome in pendentes:
+                if hasattr(module, nome):
+                    valores[nome] = getattr(module, nome)
         return {
-            nome.lower(): _valor_manifesto(getattr(module, nome))
+            nome.lower(): _valor_manifesto(valores[nome])
             for nome in self.parameter_names
-            if hasattr(module, nome)
+            if nome in valores
         }
+
+
+def _parametros_do_fonte(module: str, nomes: tuple[str, ...]) -> dict:
+    """Le constantes simples do arquivo sem importar modulos pesados."""
+    caminho = RAIZ_PROJETO / Path(*module.split(".")).with_suffix(".py")
+    if not caminho.exists():
+        return {}
+    procurados = set(nomes)
+    valores = {}
+    try:
+        arvore = ast.parse(caminho.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError):
+        return {}
+
+    for node in arvore.body:
+        if isinstance(node, ast.Assign):
+            alvos = [t.id for t in node.targets if isinstance(t, ast.Name)]
+            for alvo in alvos:
+                if alvo in procurados:
+                    try:
+                        valores[alvo] = ast.literal_eval(node.value)
+                    except (ValueError, TypeError, SyntaxError):
+                        pass
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            alvo = node.target.id
+            if alvo in procurados and node.value is not None:
+                try:
+                    valores[alvo] = ast.literal_eval(node.value)
+                except (ValueError, TypeError, SyntaxError):
+                    pass
+    return valores
 
 
 def _valor_manifesto(valor):

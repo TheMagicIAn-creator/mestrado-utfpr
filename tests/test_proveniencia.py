@@ -101,6 +101,21 @@ def test_pipeline_captura_parametros_das_etapas():
     assert validacao["sevs_validacao"]
 
 
+def test_pipeline_le_parametros_sem_importar_modulo_pesado(monkeypatch):
+    import src.ml.pipeline as pipeline
+
+    def falha_import(module):
+        if module == "src.ml.autoencoder":
+            raise ModuleNotFoundError("torch")
+        return __import__(module, fromlist=["*"])
+
+    monkeypatch.setattr(pipeline, "import_module", falha_import)
+    auto = pipeline.get_stage("autoencoder").parameters()
+
+    assert auto["epochs"] > 0
+    assert auto["threshold_method"] == "p99"
+
+
 def test_pipeline_registra_todos_artefatos_upstream():
     from src.ml.pipeline import _inputs_da_etapa, get_stage
 
