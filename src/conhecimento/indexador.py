@@ -33,7 +33,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import chromadb
 from pypdf import PdfReader
-from sentence_transformers import SentenceTransformer
 
 from src.core.utils import parsear_nome_arquivo
 from src.core.config import (
@@ -154,6 +153,31 @@ def ler_pdf(caminho_pdf: Path) -> str:
     except Exception as e:
         print(f"  ⚠️  Erro ao ler {caminho_pdf.name}: {e}")
         return ""
+
+
+def ler_pdf_paginas(caminho_pdf: Path) -> list[tuple[str, int]]:
+    """
+    Extrai o texto do PDF preservando a fronteira de páginas.
+
+    Retorna uma lista de (texto_da_pagina, numero_da_pagina), com numeração
+    começando em 1 (como o leitor humano vê). Páginas sem texto extraível são
+    omitidas. Diferente de ``ler_pdf`` (que concatena tudo e perde a página),
+    esta função habilita a citação com página — ``Autor (ano, p. X)``.
+    """
+    try:
+        reader = PdfReader(str(caminho_pdf))
+        paginas: list[tuple[str, int]] = []
+
+        for num_pag, pagina in enumerate(reader.pages, 1):
+            texto_pagina = pagina.extract_text()
+            if texto_pagina and texto_pagina.strip():
+                paginas.append((texto_pagina, num_pag))
+
+        return paginas
+
+    except Exception as e:
+        print(f"  ⚠️  Erro ao ler páginas de {caminho_pdf.name}: {e}")
+        return []
 
 
 def normalizar_texto_pdf(texto: str) -> str:
@@ -281,14 +305,20 @@ def dividir_em_chunks(texto: str, tamanho: int, sobreposicao: int) -> list[str]:
     return chunks
 
 
-def extrair_tabelas_pdf(caminho_pdf: Path, metadados_doc: dict) -> list[str]:
+def extrair_tabelas_pdf(
+    caminho_pdf: Path, metadados_doc: dict, com_pagina: bool = False
+):
     """
     Extrai tabelas do PDF como chunks Markdown estruturados.
 
     Esta rotina é opcional porque aumenta tempo de indexação e tamanho da base.
     Ative apenas quando tabelas forem essenciais para a busca.
+
+    Se ``com_pagina=True``, retorna lista de ``(markdown, num_pagina)`` para que
+    a indexação registre a página da tabela; caso contrário (padrão), retorna
+    lista de ``markdown`` (compatível com o comportamento anterior).
     """
-    chunks_tabelas = []
+    chunks_tabelas: list = []
 
     if not EXTRAIR_TABELAS_LITERATURA:
         return chunks_tabelas
@@ -334,7 +364,10 @@ def extrair_tabelas_pdf(caminho_pdf: Path, metadados_doc: dict) -> list[str]:
                         md += "| " + " | ".join(limpar_celula(c) for c in linha_pad[:n_cols]) + " |\n"
 
                     if len(md) >= 150:
-                        chunks_tabelas.append(md.strip())
+                        if com_pagina:
+                            chunks_tabelas.append((md.strip(), num_pag))
+                        else:
+                            chunks_tabelas.append(md.strip())
 
     except ImportError:
         print("  ⚠️  pdfplumber não instalado; tabelas ignoradas.")
@@ -363,6 +396,36 @@ def remover_chunks_duplicados(chunks: list[str]) -> list[str]:
 
         vistos.add(chave)
         unicos.append(chunk.strip())
+
+    return unicos
+
+
+def remover_itens_duplicados(
+    itens: list[tuple[str, int, int]]
+) -> list[tuple[str, int, int]]:
+    """
+    Versão de ``remover_chunks_duplicados`` que preserva a página de cada chunk.
+
+    Recebe e devolve tuplas ``(texto, pagina_inicio, pagina_fim)``; mantém a
+    PRIMEIRA ocorrência (com a sua página) de cada texto normalizado.
+    """
+    vistos: set = set()
+    unicos: list[tuple[str, int, int]] = []
+
+    for texto, p_ini, p_fim in itens:
+        normalizado = " ".join((texto or "").split()).strip()
+        if not normalizado:
+            continue
+
+        chave = hashlib.sha1(
+            normalizado.lower().encode("utf-8", errors="ignore")
+        ).hexdigest()
+
+        if chave in vistos:
+            continue
+
+        vistos.add(chave)
+        unicos.append((texto.strip(), p_ini, p_fim))
 
     return unicos
 
@@ -411,7 +474,10 @@ def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path
                 resultado["n_chunks"] = 0
             return resultado
 
-        texto = ler_pdf(caminho_pdf)
+        # Extração PAGE-AWARE: preserva a página de origem de cada chunk para
+        # permitir citação com página — "Autor (ano, p. X)".
+        paginas = ler_pdf_paginas(caminho_pdf)
+        texto = "\n\n".join(t for t, _ in paginas).strip()
 
         if not texto:
             resultado["erro"] = "Não foi possível extrair texto do PDF."
@@ -420,21 +486,30 @@ def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path
         info_arquivo = parsear_nome_arquivo(caminho_pdf.name)
         idioma = detectar_idioma_texto(texto)
 
-        # Estratégia principal: um único pipeline de chunking.
-        chunks = dividir_em_chunks(
-            texto,
-            TAMANHO_CHUNK_LITERATURA,
-            SOBREPOSICAO_LITERATURA,
-        )
+        # Chunking por página: cada chunk herda o número da sua página.
+        # itens: lista de (texto_chunk, pagina_inicio, pagina_fim).
+        itens: list[tuple[str, int, int]] = []
+        for texto_pag, num_pag in paginas:
+            for ch in dividir_em_chunks(
+                texto_pag,
+                TAMANHO_CHUNK_LITERATURA,
+                SOBREPOSICAO_LITERATURA,
+            ):
+                itens.append((ch, num_pag, num_pag))
 
-        # Tabelas são opcionais.
-        chunks_tabelas = extrair_tabelas_pdf(caminho_pdf, info_arquivo)
+        # Tabelas são opcionais — também carregam a página de origem.
+        for md, num_pag in extrair_tabelas_pdf(
+            caminho_pdf, info_arquivo, com_pagina=True
+        ):
+            itens.append((md, num_pag, num_pag))
 
-        chunks = remover_chunks_duplicados(chunks + chunks_tabelas)
+        itens = remover_itens_duplicados(itens)
 
-        if not chunks:
+        if not itens:
             resultado["erro"] = "Nenhum chunk gerado."
             return resultado
+
+        chunks = [it[0] for it in itens]
 
         removidos = remover_documento_antigo(
             colecao,
@@ -456,14 +531,16 @@ def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path
                 "arquivo_hash": arquivo_hash,
                 "pasta": nome_pasta,
                 "chunk_index": j,
-                "total_chunks": len(chunks),
+                "total_chunks": len(itens),
+                "pagina_inicio": int(itens[j][1]),
+                "pagina_fim": int(itens[j][2]),
                 "autor": info_arquivo.get("autor", ""),
                 "titulo": info_arquivo.get("titulo", ""),
                 "ano": info_arquivo.get("ano", ""),
                 "citacao": info_arquivo.get("citacao", caminho_pdf.name),
                 "idioma": idioma,
             }
-            for j in range(len(chunks))
+            for j in range(len(itens))
         ]
 
         upsert_em_lotes(
@@ -505,6 +582,9 @@ def indexar_literatura() -> None:
     print(f"Chunk literatura: {TAMANHO_CHUNK_LITERATURA}")
     print(f"Sobreposição literatura: {SOBREPOSICAO_LITERATURA}")
     print(f"Extração de tabelas: {'ativada' if EXTRAIR_TABELAS_LITERATURA else 'desativada'}")
+
+    # Import tardio: evita carregar torch só para indexar pela função utilitária.
+    from sentence_transformers import SentenceTransformer
 
     modelo = SentenceTransformer(MODELO_EMBEDDINGS)
 

@@ -892,6 +892,31 @@ def formatar_referencias_markdown(citacoes: dict | list | tuple | set) -> str:
     return "\n".join(f"- {item}" for item in vistos)
 
 
+def _formatar_intervalo_paginas(paginas) -> str:
+    """
+    Comprime um conjunto de números de página em uma string compacta de
+    intervalos: {3} → "3"; {3,4,5,8} → "3–5, 8". Usa travessão (en dash) para
+    intervalos. Ignora valores nulos/zero/negativos. Retorna "" se vazio.
+    """
+    try:
+        nums = sorted({int(p) for p in paginas if p not in (None, "") and int(p) > 0})
+    except (TypeError, ValueError):
+        return ""
+    if not nums:
+        return ""
+    grupos: list[tuple[int, int]] = []
+    ini = prev = nums[0]
+    for n in nums[1:]:
+        if n == prev + 1:
+            prev = n
+        else:
+            grupos.append((ini, prev))
+            ini = prev = n
+    grupos.append((ini, prev))
+    partes = [str(a) if a == b else f"{a}–{b}" for a, b in grupos]
+    return ", ".join(partes)
+
+
 def remover_bloco_fontes_llm(texto: str) -> str:
     """
     Remove qualquer secao terminal de 'Referencias', 'Bibliografia',
@@ -1625,6 +1650,8 @@ def buscar_contexto(
         # de cada fonte) — assim os chunks de maior score lideram cada rodada.
         por_fonte: dict[str, list] = {}
         ordem_fontes: list[str] = []
+        # Páginas efetivamente usadas por fonte → vira "p. X–Y" na citação.
+        paginas_por_fonte: dict[str, set] = {}
         for doc, meta in melhores:
             arquivo = meta.get("arquivo", "") or meta.get("citacao", "?")
             if arquivo not in por_fonte:
@@ -1643,20 +1670,45 @@ def buscar_contexto(
                     continue
                 doc, meta = chunks_fonte[ronda]
                 citacao = meta.get("citacao", arquivo)
-                bloco = f"\n[Fonte: {citacao}]\n{doc}\n"
+                # Página do chunk (extração page-aware). Chunks antigos sem
+                # essa metadado simplesmente não recebem página.
+                p_ini, p_fim = meta.get("pagina_inicio"), meta.get("pagina_fim")
+                pag_chunk = ""
+                if p_ini:
+                    pag_chunk = (
+                        str(p_ini) if (not p_fim or p_fim == p_ini)
+                        else f"{p_ini}–{p_fim}"
+                    )
+                rotulo = citacao + (f" — p. {pag_chunk}" if pag_chunk else "")
+                cabecalho = f"\n[Fonte: {rotulo}]\n"
+                bloco = f"{cabecalho}{doc}\n"
                 if usados + len(bloco) > limite:
-                    restante = limite - usados - len(f"\n[Fonte: {citacao}]\n")
+                    restante = limite - usados - len(cabecalho)
                     if restante <= 300:
                         cheio = True
                         break
-                    bloco = f"\n[Fonte: {citacao}]\n{_limitar_texto(doc, restante)}\n"
+                    bloco = f"{cabecalho}{_limitar_texto(doc, restante)}\n"
                 if arquivo and arquivo not in citacoes:
                     citacoes[arquivo] = citacao
+                if p_ini:
+                    pgs = paginas_por_fonte.setdefault(arquivo, set())
+                    pgs.add(p_ini)
+                    if p_fim:
+                        pgs.add(p_fim)
                 contexto += bloco
                 usados += len(bloco)
                 if usados >= limite:
                     cheio = True
                     break
+
+        # Enriquece cada citação com as páginas efetivamente usadas no contexto.
+        for arquivo, pgs in paginas_por_fonte.items():
+            base = citacoes.get(arquivo)
+            if not base or "p." in str(base):
+                continue
+            intervalo = _formatar_intervalo_paginas(pgs)
+            if intervalo:
+                citacoes[arquivo] = f"{base}, p. {intervalo}"
 
     # ── Sessões — busca direta (sem reranking) ───────────────
     if colecao_sessoes:
