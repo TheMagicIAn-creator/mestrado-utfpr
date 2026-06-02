@@ -132,6 +132,16 @@ ESPEC_FERRAMENTAS = [
         ),
     },
     {
+        "name": "comparar_abordagens_ml",
+        "description": (
+            "Explica e compara as abordagens de ML do projeto: supervisionada "
+            "(classifica falhas CC conhecidas), nao supervisionada (aprende "
+            "normalidade e detecta anomalia CA) e sintetica orientada pelo FMEA. "
+            "Use quando o usuario pedir a diferenca entre supervisionado e nao "
+            "supervisionado, ou comparar as abordagens."
+        ),
+    },
+    {
         "name": "rodar_experimento_artigo",
         "description": (
             "Treina e avalia os modelos de ML de um ou mais artigos-base e "
@@ -331,6 +341,23 @@ def _quer_consultar_datasets(pergunta: str) -> bool:
         "para que", "serve", "quantos", "quantas",
     ))
     return consulta
+
+
+def _quer_comparar_abordagens(pergunta: str) -> bool:
+    """Pergunta sobre supervisionado x não supervisionado x sintético."""
+    txt = _normalizar(pergunta)
+    if _quer_rodar_experimento(pergunta):
+        return False
+    tem_abordagem = any(t in txt for t in (
+        "abordagem", "abordagens", "supervisionad", "nao supervision",
+        "não supervision",
+    ))
+    contexto = any(t in txt for t in (
+        "supervision", "anomalia", "classificacao", "classificação",
+        "deteccao", "detecção", "diferenca", "diferença", "compare",
+        "comparar", "versus", " vs ",
+    ))
+    return tem_abordagem and contexto
 
 
 def _quer_resposta_autoral(pergunta: str) -> bool:
@@ -945,6 +972,30 @@ def consultar_datasets(progresso=None, pergunta: str = "") -> dict:
     }
 
 
+def comparar_abordagens_ml(progresso=None, pergunta: str = "") -> dict:
+    """Compara supervisionado x não supervisionado x sintético (FMEA), com rigor."""
+    msg = (
+        "## Abordagens de ML na dissertação\n\n"
+        "| Abordagem | O que faz | Rótulos? | No projeto |\n"
+        "|---|---|---|---|\n"
+        "| **Supervisionada** | classifica falhas CONHECIDAS | sim | PV Farms (**CC**): RF, AdaBoost, LogReg, Naive Bayes, CN2 |\n"
+        "| **Não supervisionada** | aprende a NORMALIDADE e detecta desvios | não | Paderborn (**CA**): Autoencoder, Isolation Forest |\n"
+        "| **Sintética (FMEA)** | valida assinaturas CA modeladas | ground truth sintético | injeção de falhas no Paderborn (**E2**) |\n\n"
+        "**Rigor:**\n"
+        "- O não supervisionado DETECTA anomalia, mas NÃO garante diagnóstico "
+        "causal da falha.\n"
+        "- A validação sintética (E2) depende de calibração física (ex.: o ruído "
+        "de sensor é um proxy).\n"
+        "- PV Farms (CC) e Paderborn (CA) NÃO se fundem: o classificador PV Farms "
+        "não diagnostica falhas CA do inversor, nem transfere suas métricas ao "
+        "pipeline CA."
+    )
+    return {
+        "ok": True, "etapa": "Abordagens de ML",
+        "mensagem": msg, "imagens": [], "resposta_pronta": True,
+    }
+
+
 _DESPACHO = {
     "rodar_features_ca": rodar_features_ca,
     "rodar_autoencoder": rodar_autoencoder,
@@ -955,6 +1006,7 @@ _DESPACHO = {
     "consultar_resultados": consultar_resultados,
     "consultar_status_pipeline": consultar_status_pipeline,
     "consultar_datasets": consultar_datasets,
+    "comparar_abordagens_ml": comparar_abordagens_ml,
     "limpar_resultados_ml": limpar_resultados_ml,
     "buscar_web": buscar_na_web,
     "listar_base_bibliografica": listar_base_bibliografica,
@@ -1066,6 +1118,10 @@ def _decisao_rapida(pergunta: str) -> dict | None:
     # Datasets do projeto (Paderborn CA / PV Farms CC) — explicação determinística.
     if _quer_consultar_datasets(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "consultar_datasets"}
+
+    # Comparação das abordagens de ML (supervisionado x anomalia x sintético).
+    if _quer_comparar_abordagens(pergunta):
+        return {"usar_ferramenta": True, "ferramenta": "comparar_abordagens_ml"}
 
     # Catálogo da literatura — pedido pelo INVENTÁRIO inteiro ("liste todas as
     # referências", "o que você tem indexado", "quantos artigos", "as 39").
