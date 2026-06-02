@@ -1,0 +1,3 @@
+# EXTRA — Orange3 (modelo CN2 do experimento Ghoneim).
+# Pesado (puxa Qt e rebaixa xgboost). Sem isto, CN2 degrada para "requer Orange".
+Orange3

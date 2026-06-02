@@ -1,0 +1,6 @@
+# UI — interface Streamlit + leitura de anexos (Office/imagens).
+-r requirements-core.txt
+streamlit
+openpyxl
+python-docx
+pillow
