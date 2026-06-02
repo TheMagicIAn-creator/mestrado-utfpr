@@ -1,0 +1,56 @@
+name: CI
+
+# CI LEVE: lint, smoke de import, testes unitários sem dependências pesadas
+# (sem torch/chromadb) e varredura de segredos. NÃO treina modelos nem roda o
+# pipeline pesado — isso é feito localmente (ver docs/comandos.md).
+
+on:
+  push:
+    branches: ["main", "auditoria-integridade-academica"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  testes-leves:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar dependências de dev
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Varredura de segredos (não pode haver chave commitada)
+        run: |
+          if grep -rnE "(GROQ_API_KEY|GOOGLE_API_KEY|sk-[A-Za-z0-9]{20})" \
+              --include="*.py" --include="*.md" --include="*.json" \
+              --exclude-dir=".git" . | grep -vE "os\.getenv|env_key|getenv|example|\.env"; then
+            echo "::error::Possível segredo commitado."; exit 1
+          fi
+          echo "OK — nenhum segredo aparente."
+
+      - name: Smoke de import (módulos leves)
+        run: |
+          python -c "import src.core.config, src.core.utils, src.ml.split_temporal, src.ml.proveniencia; print('import OK')"
+
+      - name: Testes unitários leves (sem torch/chromadb)
+        run: |
+          python -m pytest -p no:cacheprovider -q -W ignore \
+            tests/test_split_temporal.py \
+            tests/test_proveniencia.py \
+            tests/test_caminhos.py \
+            tests/test_metricas.py \
+            tests/test_abordagens.py \
+            tests/test_confirmacao_destrutiva.py \
+            tests/test_logs.py \
+            tests/test_memoria_separada.py \
+            tests/test_web_confianca.py
+
+      - name: Lint (ruff, não bloqueante)
+        continue-on-error: true
+        run: ruff check src tests scripts || true

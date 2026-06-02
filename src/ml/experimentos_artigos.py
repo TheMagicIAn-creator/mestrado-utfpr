@@ -104,12 +104,23 @@ def _auc_seguro(y_true, y_score) -> float | None:
 
 
 def _metricas_classificacao(y_true, y_pred, y_score=None) -> dict:
-    """Schema unico para classificacao e deteccao por ponto de operacao."""
+    """
+    Schema único para classificação e detecção por ponto de operação.
+
+    Especificidade com SEMÂNTICA EXPLÍCITA (item 4.1):
+    - `specificity`           = TN/(TN+FP) no caso BINÁRIO; em multiclasse cai
+                                para o macro one-vs-rest (mesmo valor de
+                                `specificity_macro_ovr`);
+    - `specificity_macro_ovr` = média one-vs-rest (sempre presente);
+    - `specificity_tipo`      = qual definição `specificity` representa.
+    """
     import numpy as np
     from sklearn.metrics import (
         accuracy_score,
+        balanced_accuracy_score,
         confusion_matrix,
         f1_score,
+        matthews_corrcoef,
         precision_score,
         recall_score,
     )
@@ -117,19 +128,41 @@ def _metricas_classificacao(y_true, y_pred, y_score=None) -> dict:
     y_true_arr = np.asarray(y_true)
     y_pred_arr = np.asarray(y_pred)
     labels = np.unique(np.concatenate([y_true_arr, y_pred_arr]))
-    media = "binary" if len(labels) == 2 and set(labels).issubset({0, 1}) else "macro"
+    binario = len(labels) == 2 and set(labels.tolist()).issubset({0, 1})
+    media = "binary" if binario else "macro"
+    cm = confusion_matrix(y_true_arr, y_pred_arr, labels=labels)
+    spec_macro = _specificity_macro(y_true_arr, y_pred_arr)
+
+    if binario:
+        # labels ordenados por np.unique → [0, 1]; cm: linhas=real, col=previsto
+        tn, fp = int(cm[0, 0]), int(cm[0, 1])
+        fn, tp = int(cm[1, 0]), int(cm[1, 1])
+        specificity = float(tn / (tn + fp)) if (tn + fp) else 0.0
+        fpr = float(fp / (fp + tn)) if (fp + tn) else 0.0
+        fnr = float(fn / (fn + tp)) if (fn + tp) else 0.0
+        spec_tipo = "binaria_TN/(TN+FP)"
+    else:
+        specificity = spec_macro          # em multiclasse usa-se o macro OvR
+        fpr = fnr = None                   # FPR/FNR binários não se aplicam
+        spec_tipo = "macro_one_vs_rest"
 
     return {
         "accuracy": float(accuracy_score(y_true_arr, y_pred_arr)),
+        "balanced_accuracy": float(balanced_accuracy_score(y_true_arr, y_pred_arr)),
         "precision": float(precision_score(y_true_arr, y_pred_arr, average=media, zero_division=0)),
         "recall": float(recall_score(y_true_arr, y_pred_arr, average=media, zero_division=0)),
         "f1": float(f1_score(y_true_arr, y_pred_arr, average=media, zero_division=0)),
+        "mcc": float(matthews_corrcoef(y_true_arr, y_pred_arr)),
         "auc": _auc_seguro(y_true_arr, y_score),
-        "specificity": _specificity_macro(y_true_arr, y_pred_arr),
+        "specificity": specificity,
+        "specificity_macro_ovr": spec_macro,
+        "specificity_tipo": spec_tipo,
+        "false_positive_rate": fpr,
+        "false_negative_rate": fnr,
         "amostras": int(len(y_true_arr)),
         "n_classes": int(len(labels)),
         "classes": [str(x) for x in labels.tolist()],
-        "matriz_confusao": confusion_matrix(y_true_arr, y_pred_arr, labels=labels).astype(int).tolist(),
+        "matriz_confusao": cm.astype(int).tolist(),
         "disponivel": True,
     }
 
@@ -523,11 +556,13 @@ def _slug_modelo(nome: str) -> str:
 
 
 def _registrar_grafico_modelo(modelo: dict, chave: str, caminho: Path) -> None:
+    from src.core.utils import to_project_relative_path
+
     modelo.setdefault("graficos", [])
-    caminho_abs = str(caminho.resolve())
-    if caminho_abs not in modelo["graficos"]:
-        modelo["graficos"].append(caminho_abs)
-    modelo[chave] = caminho_abs
+    rel = to_project_relative_path(caminho)  # relativo ao projeto (portável)
+    if rel not in modelo["graficos"]:
+        modelo["graficos"].append(rel)
+    modelo[chave] = rel
 
 
 def _grafico_metricas_modelo(exp: ExperimentoArtigo, nome: str, modelo: dict, plt, np) -> Path | None:
@@ -847,6 +882,14 @@ def _consolidar(exp: ExperimentoArtigo, modelos_out: dict, metrica_principal: st
         "artigo": exp.artigo,
         "dataset": exp.dataset,
         "tarefa": exp.tarefa,
+        # Benchmark EXPLORATÓRIO. Anomalia usa perturbação GENÉRICA das features
+        # (não a injeção FMEA do pipeline principal, que é E2). Classificação usa
+        # PV Farms (falhas CC). Nunca é validação formal nem prova industrial.
+        "evidence_level": "E1",
+        "evidence_note": (
+            "E1 — benchmark exploratório (perturbação genérica / dataset rotulado "
+            "CC); não é validação formal nem desempenho industrial."
+        ),
         "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "metrica_principal": metrica_principal,
         "origem_dados": _origem_dados(exp),
@@ -856,8 +899,10 @@ def _consolidar(exp: ExperimentoArtigo, modelos_out: dict, metrica_principal: st
     }
     graficos = _grafico_comparacao(exp, resultado)
     if graficos:
-        resultado["graficos"] = [str(g.resolve()) for g in graficos]
-        resultado["grafico"] = str(graficos[0].resolve())
+        from src.core.utils import to_project_relative_path
+
+        resultado["graficos"] = [to_project_relative_path(g) for g in graficos]
+        resultado["grafico"] = to_project_relative_path(graficos[0])
     _salvar_resultado(exp, resultado)
     return resultado
 
@@ -1055,10 +1100,17 @@ def _metricas_anomalia(y_true, score, y_pred=None) -> dict:
         thr = _melhor_limiar(y_true_arr, score)
         y_pred = (score >= thr).astype(int)
         ponto = "limiar_otimo_score"
+        # Limiar escolhido NO PRÓPRIO conjunto avaliado → métrica EXPLORATÓRIA
+        # (E1). Não é estimativa de generalização (ver backlog: limiar congelado
+        # em val). O AUC permanece válido por ser independente de limiar.
+        threshold_source = "exploratorio_no_conjunto_avaliado"
     else:
         thr = None
         y_pred = np.asarray(y_pred).astype(int)
         ponto = "decisao_nativa_modelo"
+        # Decisão nativa do modelo (ex.: IsolationForest.predict) — não deriva
+        # dos rótulos do conjunto avaliado.
+        threshold_source = "decisao_nativa_modelo"
 
     metricas = _metricas_classificacao(y_true_arr, y_pred, y_score=score)
     if metricas.get("matriz_confusao") and len(metricas["matriz_confusao"]) == 2:
@@ -1066,6 +1118,9 @@ def _metricas_anomalia(y_true, score, y_pred=None) -> dict:
     metricas.update({
         "limiar_score": thr,
         "ponto_operacao": ponto,
+        "threshold_source": threshold_source,
+        "metrica_dependente_de_limiar": "exploratoria"
+        if threshold_source == "exploratorio_no_conjunto_avaliado" else "nativa",
         "anomalias_detectadas": int(np.sum(y_pred == 1)),
         "anomalias_reais": int(np.sum(y_true_arr == 1)),
         "taxa_anomalias_detectadas": float(np.mean(y_pred == 1)),

@@ -45,10 +45,10 @@
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.2103825136612022,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_matriz_confusao.png"
+        "resultados/experimentos/sharma/modelo_isolation_forest_metricas.png",
+        "resultados/experimentos/sharma/modelo_isolation_forest_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_metricas.png",
+      "grafico_metricas": "resultados/experimentos/sharma/modelo_isolation_forest_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_matriz_confusao.png"
     },
     "KNN": {
@@ -81,10 +81,10 @@
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.00273224043715847,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_knn_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_knn_matriz_confusao.png"
+        "resultados/experimentos/sharma/modelo_knn_metricas.png",
+        "resultados/experimentos/sharma/modelo_knn_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_knn_metricas.png",
+      "grafico_metricas": "resultados/experimentos/sharma/modelo_knn_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_knn_matriz_confusao.png"
     },
     "SVM": {
@@ -117,10 +117,10 @@
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.49453551912568305,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_svm_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_svm_matriz_confusao.png"
+        "resultados/experimentos/sharma/modelo_svm_metricas.png",
+        "resultados/experimentos/sharma/modelo_svm_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_svm_metricas.png",
+      "grafico_metricas": "resultados/experimentos/sharma/modelo_svm_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_svm_matriz_confusao.png"
     },
     "ANN (MLP)": {
@@ -153,10 +153,10 @@
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.42896174863387976,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_ann_mlp_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_ann_mlp_matriz_confusao.png"
+        "resultados/experimentos/sharma/modelo_ann_mlp_metricas.png",
+        "resultados/experimentos/sharma/modelo_ann_mlp_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_ann_mlp_metricas.png",
+      "grafico_metricas": "resultados/experimentos/sharma/modelo_ann_mlp_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_ann_mlp_matriz_confusao.png"
     },
     "RNN": {
@@ -189,10 +189,10 @@
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.7759562841530054,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_rnn_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_rnn_matriz_confusao.png"
+        "resultados/experimentos/sharma/modelo_rnn_metricas.png",
+        "resultados/experimentos/sharma/modelo_rnn_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_rnn_metricas.png",
+      "grafico_metricas": "resultados/experimentos/sharma/modelo_rnn_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_rnn_matriz_confusao.png"
     },
     "CNN": {
@@ -225,10 +225,10 @@
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.8743169398907104,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_cnn_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_cnn_matriz_confusao.png"
+        "resultados/experimentos/sharma/modelo_cnn_metricas.png",
+        "resultados/experimentos/sharma/modelo_cnn_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_cnn_metricas.png",
+      "grafico_metricas": "resultados/experimentos/sharma/modelo_cnn_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_cnn_matriz_confusao.png"
     },
     "Isolation Forest + PPO": {
@@ -261,33 +261,33 @@
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.46174863387978143,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_ppo_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_ppo_matriz_confusao.png"
+        "resultados/experimentos/sharma/modelo_isolation_forest_ppo_metricas.png",
+        "resultados/experimentos/sharma/modelo_isolation_forest_ppo_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_ppo_metricas.png",
+      "grafico_metricas": "resultados/experimentos/sharma/modelo_isolation_forest_ppo_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_ppo_matriz_confusao.png"
     }
   },
   "melhor_modelo": "SVM",
   "melhor_valor": 0.9285714285714286,
   "graficos": [
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_knn_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_knn_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_svm_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_svm_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_ann_mlp_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_ann_mlp_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_rnn_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_rnn_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_cnn_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_cnn_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_ppo_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_ppo_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\comparacao_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\anomalias_detectadas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\matriz_confusao.png"
+    "resultados/experimentos/sharma/modelo_isolation_forest_metricas.png",
+    "resultados/experimentos/sharma/modelo_isolation_forest_matriz_confusao.png",
+    "resultados/experimentos/sharma/modelo_knn_metricas.png",
+    "resultados/experimentos/sharma/modelo_knn_matriz_confusao.png",
+    "resultados/experimentos/sharma/modelo_svm_metricas.png",
+    "resultados/experimentos/sharma/modelo_svm_matriz_confusao.png",
+    "resultados/experimentos/sharma/modelo_ann_mlp_metricas.png",
+    "resultados/experimentos/sharma/modelo_ann_mlp_matriz_confusao.png",
+    "resultados/experimentos/sharma/modelo_rnn_metricas.png",
+    "resultados/experimentos/sharma/modelo_rnn_matriz_confusao.png",
+    "resultados/experimentos/sharma/modelo_cnn_metricas.png",
+    "resultados/experimentos/sharma/modelo_cnn_matriz_confusao.png",
+    "resultados/experimentos/sharma/modelo_isolation_forest_ppo_metricas.png",
+    "resultados/experimentos/sharma/modelo_isolation_forest_ppo_matriz_confusao.png",
+    "resultados/experimentos/sharma/comparacao_metricas.png",
+    "resultados/experimentos/sharma/anomalias_detectadas.png",
+    "resultados/experimentos/sharma/matriz_confusao.png"
   ],
-  "grafico": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\sharma\\modelo_isolation_forest_metricas.png"
+  "grafico": "resultados/experimentos/sharma/modelo_isolation_forest_metricas.png"
 }

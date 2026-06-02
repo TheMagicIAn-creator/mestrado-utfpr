@@ -6,7 +6,9 @@ no lado CA do inversor fotovoltaico.
 Fundamentação:
   O Autoencoder aprende a reconstruir o comportamento SAUDÁVEL do inversor
   a partir do dataset de Paderborn. Em operação real, sinais anômalos
-  (falhas) produzem erro de reconstrução alto — acima do limiar μ + 3σ.
+  (falhas) produzem erro de reconstrução alto — acima do limiar operacional
+  (percentil 99 do erro saudável). μ + 3σ é mantido apenas como referência
+  teórica comparativa, não como limiar operacional.
 
   Esta abordagem é adequada porque dados de falha raramente estão
   disponíveis em manutenção preditiva real (Ibrahim, 2022; Ahirwar, 2025).
@@ -17,7 +19,8 @@ Arquitetura:
   Latente : 16 dimensões
   Decoder : 16 → 32 → 64 → 109  (ReLU + saída Linear)
   Loss    : MSE — erro de reconstrução por janela
-  Limiar  : μ_treino + 3σ_treino do erro de reconstrução
+  Limiar  : percentil 99 do erro de reconstrução saudável (operacional);
+            μ + 3σ é referência comparativa, não o limiar em uso
 
 Entrada : dados/processados/features_paderborn.parquet
 Saída   : resultados/autoencoder/
@@ -65,7 +68,8 @@ LR             = 1e-3   # taxa de aprendizado (Adam)
 DROPOUT        = 0.2    # regularização
 VAL_FRAC       = 0.2    # fração de validação
 PACIENCIA      = 20     # early stopping: épocas sem melhora
-SIGMA          = 3.0    # limiar = μ + SIGMA × σ
+SIGMA          = 3.0    # fator k da REFERÊNCIA μ+kσ (comparativa); o limiar
+                        # operacional é o percentil 99, não μ+kσ
 SEED           = 42
 
 # Colunas de metadado (não entram no modelo)
@@ -223,11 +227,17 @@ def calcular_erros(modelo, X_tensor: torch.Tensor,
 def calcular_limiar(erros_treino: np.ndarray,
                     sigma: float = SIGMA) -> dict:
     """
-    Dois limiares calculados em paralelo:
-    - Percentil 99: controla diretamente a taxa de FP (~1%)
-    - μ + kσ: referência teórica (assume distribuição normal)
-    O limiar operacional usa o percentil 99 — mais robusto
-    para distribuições assimétricas com poucos dados.
+    Define o limiar de anomalia do Autoencoder.
+
+    DEFINIÇÃO OFICIAL (não confundir):
+    - Limiar OPERACIONAL = percentil 99 do erro de reconstrução saudável.
+      Controla diretamente a taxa de falso positivo (~1%) e é robusto a
+      distribuições assimétricas com poucas janelas.
+    - Referência COMPARATIVA = μ + 3σ (assume normalidade; só para comparação
+      teórica, NUNCA usado como limiar operacional).
+    - Referência ADICIONAL = percentil 95.
+
+    O campo `threshold_method` registra explicitamente o método em uso.
     """
     mu      = float(erros_treino.mean())
     sig     = float(erros_treino.std())
@@ -236,13 +246,16 @@ def calcular_limiar(erros_treino: np.ndarray,
     mu_3sig = mu + sigma * sig
 
     return {
-        "mu"         : mu,
-        "sigma"      : sig,
-        "k"          : sigma,
-        "limiar"     : p99,          # ← operacional: percentil 99
-        "limiar_p99" : p99,
-        "limiar_p95" : p95,
-        "limiar_mu3s": mu_3sig,      # ← referência teórica
+        "threshold_method"  : "p99",        # método operacional em uso
+        "limiar"            : p99,          # operacional (chave de compat. retroativa)
+        "limiar_operacional": p99,          # operacional explícito = percentil 99
+        "mu"                : mu,
+        "sigma"             : sig,
+        "k"                 : sigma,
+        "limiar_p99"        : p99,          # operacional: percentil 99
+        "limiar_p95"        : p95,          # referência adicional
+        "limiar_mu3sigma"   : mu_3sig,      # referência teórica comparativa
+        "limiar_mu3s"       : mu_3sig,      # alias de compat. retroativa
     }
 
 
@@ -284,7 +297,13 @@ def plotar_distribuicao(erros_treino: np.ndarray,
 
     limiar = info_limiar["limiar"]
     ax.axvline(limiar, color="red", linewidth=2, linestyle="--",
-               label=f"Limiar μ+{info_limiar['k']}σ = {limiar:.4f}")
+               label=f"Limiar operacional (p99) = {limiar:.4f}")
+
+    # μ+kσ entra apenas como REFERÊNCIA comparativa (não é o limiar em uso).
+    mu3s = info_limiar.get("limiar_mu3sigma", info_limiar.get("limiar_mu3s"))
+    if mu3s is not None:
+        ax.axvline(mu3s, color="gray", linewidth=1.5, linestyle=":",
+                   label=f"Referência μ+{info_limiar['k']:.0f}σ = {mu3s:.4f}")
 
     ax.set_xlabel("Erro de Reconstrução (MSE)")
     ax.set_ylabel("Frequência")
@@ -430,7 +449,7 @@ def executar_autoencoder(
     fp_all = (erros_all > limiar).mean() * 100
     print(f"\n   Falsos positivos (val): {fp_val:.1f}%")
     print(f"   Falsos positivos (all): {fp_all:.1f}%")
-    print(f"   (esperado ≈ 0,3% com μ+3σ em distribuição normal)")
+    print(f"   (limiar p99 alveja FP ≈ 1%; μ+3σ daria ≈ 0,3% se o erro fosse normal)")
 
     # ── 8. Salva artefatos ───────────────────────────────────
     print(f"\n💾 Salvando artefatos...")

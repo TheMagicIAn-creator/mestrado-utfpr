@@ -66,12 +66,22 @@ def _quer_resultado_experimentos(txt: str) -> bool:
     if any(t in txt for t in (
         "experimento", "experimentos", "artigo", "artigos", "benchmark",
         "comparacao", "comparar", "ppo",
+        "experiment", "experiments", "paper", "papers", "comparison", "compare",
+        "experimento", "experimentos", "articulo", "articulos", "comparacion",
+        "comparar", "experience", "expérience", "article", "articles",
+        "comparaison", "comparer",
     )):
         return True
-    if "modelo" in txt or "modelos" in txt:
+    if any(t in txt for t in ("modelo", "modelos", "model", "models", "modele", "modeles", "modèle", "modèles")):
         return any(t in txt for t in (
             "anomalia", "anomalias", "detectaram", "detectou", "melhor",
-            "matriz", "metricas", "grafico", "graficos",
+            "confiavel", "robusto", "matriz", "metricas", "grafico", "graficos",
+            "anomaly", "anomalies", "detected", "best", "matrix",
+            "reliable", "robust", "metrics", "chart", "charts", "plot", "plots",
+            "anomalia", "anomalias", "detectadas", "mejor", "confiable", "robusto", "matriz",
+            "metricas", "grafico", "graficos",
+            "anomalie", "anomalies", "detectees", "détectées", "meilleur", "fiable", "robuste",
+            "matrice", "metriques", "métriques", "graphique", "graphiques",
         ))
     return False
 
@@ -86,9 +96,9 @@ def _experimentos_pedidos(pergunta: str = "") -> list[str]:
     pedidos = [key for _, key in sorted(encontrados)]
     if pedidos:
         return pedidos
-    if "anomalia" in txt or "anomalias" in txt:
+    if any(t in txt for t in ("anomalia", "anomalias", "anomaly", "anomalies", "anomalie")):
         return ["francisti", "ibrahim", "sharma", "ahirwar"]
-    if "classificacao" in txt or "supervision" in txt:
+    if any(t in txt for t in ("classificacao", "supervision", "classification", "clasificacion")):
         return ["ghoneim"]
     return []
 
@@ -104,15 +114,24 @@ def _arquivos_experimentos(pergunta: str = "") -> list[Path]:
 
 
 def _pede_matriz(txt: str) -> bool:
-    return "matriz" in txt or "matrizes" in txt or "confusao" in txt
+    return any(t in txt for t in ("matriz", "matrizes", "confusao", "matrix", "confusion", "matrice"))
 
 
 def _pede_anomalias(txt: str) -> bool:
-    return "anomalias detectadas" in txt or "detectaram" in txt or "detectou" in txt
+    return any(t in txt for t in (
+        "anomalias detectadas", "detectaram", "detectou",
+        "detected anomalies", "detected", "detectadas", "detecto",
+        "anomalies detectees", "anomalies détectées", "detectees", "détectées",
+    ))
 
 
 def _pede_melhor(txt: str) -> bool:
-    return "melhor" in txt or "best" in txt
+    return any(t in txt for t in (
+        "melhor", "best", "mejor", "meilleur",
+        "mais confiavel", "confiavel", "more reliable", "reliable",
+        "mas confiable", "confiable", "plus fiable", "fiable",
+        "robusto", "robust", "robuste",
+    ))
 
 
 def _contem_termo(txt: str, termo: str) -> bool:
@@ -128,7 +147,7 @@ def _modelo_citado(txt: str, modelo: str) -> bool:
     mapa = {
         "isolation forest": ("isolation forest", "iforest"),
         "ppo": ("ppo", "rl"),
-        "random forest": ("random forest", "rf"),
+        "random forest": ("random forest", "rf", "bosque aleatorio", "foret aleatoire", "forêt aléatoire"),
         "z-score": ("z-score", "z score", "zscore"),
         "ae-lstm": ("ae-lstm", "ae lstm", "autoencoder lstm"),
         "facebook prophet": ("facebook prophet", "prophet"),
@@ -159,13 +178,21 @@ def _focos(pergunta: str) -> set[str]:
 
     if any(t in txt for t in ("autoencoder", "limiar", "baseline", "reconstrucao")):
         focos.add("autoencoder")
-    if any(t in txt for t in ("injecao", "falha", "falhas", "smd", "severidade")):
+    if any(t in txt for t in (
+        "injecao", "falha", "falhas", "smd", "severidade",
+        "injection", "fault", "failure", "severity",
+        "inyeccion", "falla", "fallas", "severidad",
+        "injection", "defaillance", "defaillances", "severite", "sévérité",
+    )):
         focos.add("injecao")
     if any(t in txt for t in ("validacao", "auc", "f1", "recall", "precision", "roc", "matriz")) and (
         not quer_experimentos or "validacao" in txt or "autoencoder" in txt
     ):
         focos.add("validacao")
-    if any(t in txt for t in ("weibull", "rul", "mttf", "b10", "beta", "eta", "confiabilidade")):
+    if any(t in txt for t in (
+        "weibull", "rul", "mttf", "b10", "beta", "eta", "confiabilidade",
+        "reliability", "remaining useful life", "confiabilidad", "fiabilite",
+    )):
         focos.add("weibull")
     if quer_experimentos:
         focos.add("experimentos")
@@ -179,6 +206,12 @@ def _quer_imagens(pergunta: str) -> bool:
         "curva", "curvas", "plot", "plots", "roc", "matriz", "matrizes",
         "heatmap", "visual", "visualiza", "mostre", "mostra", "mostrar",
         "cade", "exibe", "exibir", "veja", "ver",
+        "chart", "charts", "image", "images", "figure", "figures",
+        "curve", "curves", "matrix", "show", "display", "see",
+        "grafico", "graficos", "imagen", "imagenes", "figura", "curva",
+        "matriz", "muestra", "mostrar", "ver",
+        "graphique", "graphiques", "image", "images", "figure", "courbe",
+        "matrice", "montre", "affiche", "voir",
     ))
 
 
@@ -259,6 +292,7 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
         _add_img(imagens, "injecao_falhas_comparacao.png", "Falhas sinteticas - comparacao em escala log", grupo="Injecao de falhas", ordem=20, tipo="comparacao", ordem_grupo=20)
     if "validacao" in focos:
         _add_img(imagens, "validacao_roc.png", "Validacao - curvas ROC", grupo="Validacao", ordem=10, tipo="comparacao", ordem_grupo=30)
+        _add_img(imagens, "validacao_pr.png", "Validacao - curvas Precision-Recall", grupo="Validacao", ordem=15, tipo="comparacao", ordem_grupo=30)
         _add_img(imagens, "validacao_matriz.png", "Validacao - matrizes de confusao", grupo="Validacao", ordem=20, tipo="matriz", ordem_grupo=30)
         _add_img(imagens, "validacao_metricas.png", "Validacao - heatmap de metricas", grupo="Validacao", ordem=30, tipo="comparacao", ordem_grupo=30)
     if "weibull" in focos:
@@ -408,8 +442,11 @@ def _resumo_validacao() -> str | None:
     if not d:
         return None
 
+    meta = d.get("__meta__", {})
     melhores = {}
     for chave, res in d.items():
+        if chave.startswith("__"):
+            continue  # bloco de metadados (evidence_level, limiar), não é falha
         falha = _nome_falha(chave)
         if falha not in melhores or res.get("auc_roc", 0) > melhores[falha].get("auc_roc", 0):
             item = dict(res)

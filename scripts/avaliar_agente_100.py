@@ -36,6 +36,7 @@ from src.conhecimento.indexador import upsert_em_lotes
 from src.core.config import (
     MODELO_EMBEDDINGS,
     NOME_COLECAO,
+    NOME_COLECAO_AVALIACOES,
     NOME_COLECAO_SESSOES,
     PASTA_CHROMADB,
     PASTA_NOTAS,
@@ -1921,7 +1922,8 @@ def gravar_memoria(resultados: list[dict], timestamp: str) -> int:
     # concorrendo pela mesma memoria nativa. Um unico modelo resolve.
     modelo, _ = _rag_cache()
     client = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
-    colecao = client.get_or_create_collection(name=NOME_COLECAO_SESSOES)
+    # Memória de AVALIAÇÃO, separada da memória de produção (sessoes_pv).
+    colecao = client.get_or_create_collection(name=NOME_COLECAO_AVALIACOES)
 
     ids = []
     documentos = []
@@ -2076,14 +2078,18 @@ if __name__ == "__main__":
     _parser = argparse.ArgumentParser(
         description="Bateria determinística do Al IAdo PV."
     )
+    # Por padrão NÃO grava memórias: avaliação não deve contaminar a memória de
+    # produção (item 8.3) — e evita o segfault do torch no Windows. Use
+    # --com-memoria para registrar explicitamente as memórias de teste.
+    _parser.add_argument(
+        "--com-memoria",
+        action="store_true",
+        help="Grava as memórias de teste no ChromaDB (NÃO é o padrão).",
+    )
     _parser.add_argument(
         "--sem-memoria",
         action="store_true",
-        help=(
-            "Não grava memórias no ChromaDB. Evita o segfault do torch "
-            "(access violation) no Windows ao encodar muitos documentos; "
-            "a verificação dos testes em si não depende dessa etapa."
-        ),
+        help="(compat.) não grava memórias — já é o comportamento padrão.",
     )
     _args = _parser.parse_args()
-    raise SystemExit(main(gravar_memorias=not _args.sem_memoria))
+    raise SystemExit(main(gravar_memorias=_args.com_memoria))

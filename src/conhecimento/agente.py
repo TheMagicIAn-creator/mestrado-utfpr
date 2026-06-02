@@ -203,6 +203,14 @@ REGRAS DE CONVERSA (LEIA ANTES DE RESPONDER)
    - Se faltar evidência, diga: "isso não está coberto pela base que tenho
      aqui" e siga com conhecimento geral, separando bem os dois.
    - NUNCA invente números, autores, equações ou resultados.
+   - NÍVEIS DE EVIDÊNCIA — sempre informe ao falar de resultados:
+       E0 = hipótese; E1 = benchmark exploratório (perturbação genérica ou
+       dataset rotulado, ex.: experimentos por artigo); E2 = validação sintética
+       orientada pelo FMEA (injeção/validação do pipeline principal); E3 =
+       validação experimental externa em bancada/campo.
+     NUNCA trate E1 ou E2 como prova de desempenho industrial. Um limiar
+     escolhido no próprio conjunto avaliado é EXPLORATÓRIO (E1), não estimativa
+     de generalização.
 
 5. VOZ E FORMA
    - Português brasileiro natural, técnico-acadêmico mas humano.
@@ -215,6 +223,29 @@ REGRAS DE CONVERSA (LEIA ANTES DE RESPONDER)
    - Reaja com naturalidade: "Boa pergunta!", "Excelente resultado!",
      "Aqui tem uma sutileza importante...", "Discordo um pouco — veja...".
 
+6. IDIOMAS E TRADUÇÃO TÉCNICA
+   - Entenda português, inglês, espanhol e francês. Responda em português
+     brasileiro por padrão, mas acompanhe o idioma da pergunta se Rodolfo
+     escrever claramente em EN/ES/FR ou pedir tradução.
+   - Traduza mentalmente termos técnicos para recuperar contexto e resultados:
+     fault/falla/faille ↔ falha; anomaly/anomalía/anomalie ↔ anomalia;
+     reliability/confiabilidad/fiabilité ↔ confiabilidade; maintenance/
+     mantenimiento/maintenance ↔ manutenção; inverter/inversor/onduleur ↔ inversor.
+   - Não trate mudança de idioma como assunto paralelo. Use-a só para entender
+     melhor a intenção e responder com precisão.
+
+7. RESULTADOS, GRÁFICOS E PARECER
+   - Tabelas e gráficos são evidência, não a resposta inteira.
+   - Se Rodolfo pedir "mostre", "exiba" ou "matriz", seja direto e traga o
+     artefato correto.
+   - Se Rodolfo pedir opinião, explicação, apresentação para orientadora,
+     escolha metodológica ou implicação para a dissertação, interprete os
+     números: priorize modelos, explique trade-offs, aponte ressalvas e diga
+     o que isso sustenta academicamente.
+   - Sempre diferencie: dados locais do repositório, metodologia inspirada em
+     artigo, falhas sintéticas e resultados copiados. Não deixe essa origem
+     ambígua.
+
 ══════════════════════════════════════════════════════════════
 CONTEXTO DO PROJETO (memorize)
 ══════════════════════════════════════════════════════════════
@@ -224,10 +255,25 @@ CONTEXTO DO PROJETO (memorize)
   subsistema CA NPR=150 (segundo mais crítico).
 - Datasets: Paderborn (inversor SAUDÁVEL, 235k amostras, 10 kHz) para treinar
   o modelo de normalidade; PV Farms (rotulado, falhas CC) para classificação.
+- SEPARAÇÃO DE DOMÍNIO (regra rígida): Paderborn → detecção de anomalia CA do
+  inversor por modelagem de normalidade; PV Farms → classificação supervisionada
+  de falhas CC conhecidas (string, string-terra, string-string). NUNCA afirme
+  que o classificador PV Farms diagnostica falhas CA do inversor, nem transfira
+  métricas de PV Farms para o pipeline CA. Os dois NÃO se fundem: o uso é
+  conceitual/arquitetural, não fusão de dados.
+- Experimentos por artigo usam dados locais do repositório. Ghoneim usa
+  dados/brutos/train_data.csv e test_data.csv; Francisti, Ibrahim, Sharma e
+  Ahirwar usam features locais do Paderborn extraídas de Inverter_Data_Set.csv.
+  Como Paderborn é saudável, a validação de anomalia usa falhas sintéticas
+  geradas no pipeline para criar ground truth.
 - Pipeline: features_ca → autoencoder → injecao_falhas → validacao → rul_weibull.
-- Resultados: AE com limiar p99=2,91 (μ+3σ baseline=0,30); injeção LCL com
-  AUC=0,935 (sev=1,0); desbalanceamento com AUC=1,000 e Recall=1,0; sensor CA
-  com AUC=1,000.
+- Limiar operacional do Autoencoder = percentil 99 do erro de reconstrução
+  saudável; μ+3σ é apenas referência comparativa (nunca o limiar em uso).
+- NÃO memorize métricas (limiar, AUC, F1, SMD, MTTF). Os números ficam nos
+  artefatos (resultados/...) e são carregados dinamicamente pela ferramenta de
+  consulta de resultados. Ao falar de desempenho, consulte o artefato ATUAL e
+  diga o nível de evidência — nunca cite um número de memória que pode estar
+  desatualizado após novo treino ou exclusão de artefato.
 - Orientadora: Profª. Fernanda Cristina Correa. Defesa: março/2027.
 """.strip()
 
@@ -375,6 +421,10 @@ def resposta_interacao_simples(pergunta: str) -> str | None:
         "que", "qual", "quais", "quanto", "quantos", "quanta", "quantas",
         "onde", "cade", "quando", "como", "por", "porque", "pq", "porquê",
         "poderia", "poderias", "consegue", "consegues", "pode",
+        "what", "which", "where", "when", "how", "why", "can", "could",
+        "que", "cual", "cuales", "donde", "cuando", "como", "por", "puede",
+        "quoi", "quel", "quels", "quelle", "quelles", "ou", "quand",
+        "comment", "pourquoi", "peux", "pouvez",
     }
     if any(t in PALAVRAS_INTERROGATIVAS for t in termos):
         return None
@@ -394,6 +444,15 @@ def resposta_interacao_simples(pergunta: str) -> str | None:
         "curvas", "plot", "roc", "matriz", "tabela", "internet", "web",
         "wikipedia", "google", "pesquise", "pesquisar", "busque", "buscar",
         "hora", "horas", "data",
+        "fault", "failure", "failures", "anomaly", "anomalies", "reliability",
+        "maintenance", "inverter", "photovoltaic", "dataset", "paper",
+        "source", "sources", "reference", "references", "metrics", "results",
+        "chart", "charts", "figure", "figures", "confusion", "matrix",
+        "falla", "fallas", "anomalia", "anomalias", "confiabilidad",
+        "mantenimiento", "inversor", "fotovoltaico", "articulo", "fuente",
+        "referencia", "metricas", "resultados", "grafico", "matriz",
+        "defaillance", "defaillances", "anomalie", "fiabilite", "onduleur",
+        "photovoltaique", "article", "source", "reference", "resultats",
     }
     if any(t in TERMOS_PESQUISA for t in termos):
         return None
@@ -410,11 +469,12 @@ def resposta_interacao_simples(pergunta: str) -> str | None:
     saudacoes_genericas = {
         "oi", "ola", "opa", "salve", "eai", "eae", "hey", "alo",
         "olá", "fala", "fala ai", "fala cara", "tudo bem", "tudo certo",
-        "como vai", "como esta",
+        "como vai", "como esta", "hi", "hello", "hola", "buenas",
+        "bonjour", "salut",
     }
     agradecimentos = {
         "obrigado", "obrigada", "valeu", "thanks", "grato", "grata",
-        "agradeco", "agradeço", "obg", "vlw",
+        "agradeco", "agradeço", "obg", "vlw", "thank", "gracias", "merci",
     }
     despedidas = {
         "tchau", "ate", "ateh", "ate mais", "falou", "ate logo",
@@ -511,43 +571,70 @@ def _tokens_busca(pergunta: str) -> list[str]:
         "a", "as", "o", "os", "de", "da", "do", "das", "dos", "e", "em",
         "no", "na", "nos", "nas", "um", "uma", "para", "por", "sobre",
         "fale", "explique", "quais", "qual", "como", "que", "com",
+        "the", "and", "for", "with", "about", "from", "what", "which", "how",
+        "show", "explain", "compare", "give", "me",
+        "el", "la", "los", "las", "un", "una", "unos", "unas", "del", "sobre",
+        "con", "para", "por", "que", "cual", "cuales", "como", "explique",
+        "le", "la", "les", "des", "du", "un", "une", "avec", "pour", "sur",
+        "quel", "quels", "quelle", "quelles", "comment", "expliquez",
     }
     termos = [
         t for t in _normalizar_texto(pergunta).split()
         if len(t) > 2 and t not in stopwords
     ]
     extras = []
-    # Mapa bilingue PT<->EN. Quando a pergunta usa o termo em portugues,
-    # injetamos as variantes em ingles (e vice-versa) para que os papers
-    # em ingles tambem sejam pontuados pelo reranker baseado em lexico.
+    # Mapa multilingue PT<->EN<->ES<->FR. Quando a pergunta usa um termo em
+    # qualquer idioma suportado, injetamos variantes tecnicas para que papers
+    # em ingles e notas em portugues sejam recuperados pelo reranker lexico.
     mapa = {
         "fmea": [
             "failure", "mode", "effects", "analysis", "fmeca", "npr", "rpn",
-            "modos", "falhas", "efeitos", "analise",
+            "modos", "falhas", "efeitos", "analise", "fallas", "efectos",
+            "defaillance", "effets",
         ],
         "fmeca": [
             "fmea", "criticidade", "criticality", "npr", "rpn",
             "modos", "falhas", "efeitos", "analise", "tecnicas",
+            "criticidad", "criticite",
         ],
         "npr": ["rpn", "fmea", "criticidade", "criticality"],
         "rpn": ["npr", "fmea", "risk", "priority"],
-        "weibull": ["confiabilidade", "reliability", "rul", "mttf", "b10"],
-        "autoencoder": ["anomalia", "anomaly", "reconstrucao", "reconstruction", "detector"],
-        "inversor": ["fotovoltaico", "pv", "converter", "inverter", "photovoltaic"],
-        "fotovoltaico": ["pv", "photovoltaic", "solar", "inverter"],
-        "manutencao": ["maintenance", "preventive", "predictive", "preditiva"],
-        "preditiva": ["predictive", "manutencao", "maintenance", "prognosis"],
-        "confiabilidade": ["reliability", "rcm", "weibull", "mttf"],
-        "rcm": ["reliability", "centered", "maintenance", "manutencao", "centrada"],
-        "anomalia": ["anomaly", "outlier", "detection", "deteccao"],
-        "deteccao": ["detection", "anomalia", "anomaly", "diagnosis"],
-        "falha": ["failure", "fault", "defect", "falhas"],
-        "falhas": ["failure", "fault", "failures", "modes"],
-        "lcl": ["filter", "filtro", "passive", "harmonic"],
+        "weibull": ["confiabilidade", "reliability", "fiabilidade", "fiabilite", "rul", "mttf", "b10"],
+        "autoencoder": ["anomalia", "anomaly", "anomalia", "anomalie", "reconstrucao", "reconstruction", "detector"],
+        "inversor": ["fotovoltaico", "pv", "converter", "inverter", "photovoltaic", "ondulador", "onduleur"],
+        "inverter": ["inversor", "photovoltaic", "pv", "converter", "ondulador", "onduleur"],
+        "ondulador": ["inversor", "inverter", "pv", "fotovoltaico"],
+        "onduleur": ["inversor", "inverter", "pv", "photovoltaique"],
+        "fotovoltaico": ["pv", "photovoltaic", "solar", "inverter", "fotovoltaica", "photovoltaique"],
+        "photovoltaic": ["fotovoltaico", "pv", "solar", "inverter"],
+        "manutencao": ["maintenance", "mantenimiento", "preventive", "predictive", "preditiva"],
+        "maintenance": ["manutencao", "mantenimiento", "predictive", "reliability"],
+        "mantenimiento": ["manutencao", "maintenance", "predictivo", "confiabilidad"],
+        "preditiva": ["predictive", "predictivo", "manutencao", "maintenance", "prognosis"],
+        "predictive": ["preditiva", "predictivo", "maintenance", "prognosis"],
+        "confiabilidade": ["reliability", "confiabilidad", "fiabilite", "rcm", "weibull", "mttf"],
+        "reliability": ["confiabilidade", "confiabilidad", "fiabilite", "rcm", "weibull"],
+        "confiabilidad": ["confiabilidade", "reliability", "weibull"],
+        "fiabilite": ["confiabilidade", "reliability", "weibull"],
+        "rcm": ["reliability", "centered", "maintenance", "manutencao", "centrada", "centrado"],
+        "anomalia": ["anomaly", "anomalie", "outlier", "detection", "deteccao"],
+        "anomaly": ["anomalia", "anomalie", "outlier", "detection"],
+        "anomalie": ["anomalia", "anomaly", "detection"],
+        "deteccao": ["detection", "deteccion", "detection", "anomalia", "anomaly", "diagnosis"],
+        "detection": ["deteccao", "deteccion", "anomalia", "anomaly", "diagnosis"],
+        "deteccion": ["deteccao", "detection", "anomalia"],
+        "falha": ["failure", "fault", "falla", "defaillance", "defect", "falhas"],
+        "falhas": ["failure", "fault", "failures", "fallas", "defaillances", "modes"],
+        "fault": ["falha", "failure", "falla", "defaillance", "diagnosis"],
+        "failure": ["falha", "fault", "falla", "defaillance", "mode"],
+        "falla": ["falha", "fault", "failure", "modo"],
+        "defaillance": ["falha", "fault", "failure"],
+        "lcl": ["filter", "filtro", "filtre", "passive", "harmonic", "harmonico"],
         "igbt": ["transistor", "switching", "power", "semiconductor"],
-        "rul": ["remaining", "useful", "life", "weibull", "mttf"],
-        "ml": ["machine", "learning", "algorithm"],
-        "machine": ["learning", "ml", "algorithm"],
+        "rul": ["remaining", "useful", "life", "vida", "util", "weibull", "mttf"],
+        "ml": ["machine", "learning", "aprendizado", "aprendizaje", "algorithm"],
+        "machine": ["learning", "ml", "algorithm", "aprendizado", "aprendizaje"],
+        "learning": ["machine", "ml", "aprendizado", "aprendizaje"],
     }
     for termo in termos:
         extras.extend(mapa.get(termo, []))
@@ -734,6 +821,32 @@ def deve_consultar_literatura(pergunta: str, colecao=None) -> bool:
         "indexada",
         "esta indexado",
         "esta indexada",
+        "according to the literature",
+        "based on the literature",
+        "scientific literature",
+        "literature review",
+        "state of the art",
+        "cite papers",
+        "cite sources",
+        "indexed documents",
+        "knowledge base",
+        "segun la literatura",
+        "según la literatura",
+        "con base en la literatura",
+        "revision bibliografica",
+        "revisión bibliográfica",
+        "estado del arte",
+        "citar articulos",
+        "citar fuentes",
+        "base de conocimiento",
+        "selon la litterature",
+        "selon la littérature",
+        "revue bibliographique",
+        "etat de l art",
+        "état de l art",
+        "citer des articles",
+        "citer les sources",
+        "base de connaissances",
     )
     if any(frase in txt for frase in frases):
         return True
@@ -744,6 +857,15 @@ def deve_consultar_literatura(pergunta: str, colecao=None) -> bool:
         "bibliografica", "bibliografico", "citacao", "citacoes",
         "cite", "citar", "autores", "autor", "survey", "review",
         "indexado", "indexada", "indexacao", "indexar",
+        "literature", "source", "sources", "reference", "references",
+        "citation", "citations", "author", "authors", "bibliography",
+        "indexed", "indexing",
+        "articulo", "articulos", "fuente", "fuentes", "referencia",
+        "referencias", "bibliografia", "autor", "autores", "revision",
+        "indexado", "indexada",
+        "litterature", "littérature", "article", "articles", "source",
+        "sources", "reference", "référence", "references", "références",
+        "auteur", "auteurs", "bibliographie", "revue",
     }
     palavras = set(txt.split())
     if palavras & gatilhos:
@@ -902,7 +1024,13 @@ def _montar_prompt(pergunta: str,
                    historico_formatado: str,
                    orcamento: dict,
                    consultar_literatura: bool = True,
-                   anexos_texto: str = "") -> str:
+                   anexos_texto: str = "",
+                   perfil: str = PERFIL_COMPACTO) -> str:
+    # `perfil` é a identidade ESTÁTICA do agente que entra no prompt. Default é
+    # o PERFIL_COMPACTO (curado, sem resultados numéricos); o chamador pode
+    # injetar outro perfil compacto. Nunca embute métricas — os números vêm dos
+    # artefatos via ferramenta de resultados.
+    perfil = perfil if (perfil and perfil.strip()) else PERFIL_COMPACTO
     contexto = _limitar_texto(contexto, orcamento["contexto_chars"])
     bloco_temporal = _contexto_temporal()
     bloco_anexos = _bloco_anexos(anexos_texto, orcamento)
@@ -956,7 +1084,7 @@ def _montar_prompt(pergunta: str,
     )
 
     prompt = f"""
-{PERFIL_COMPACTO}
+{perfil}
 
 {bloco_temporal}
 
@@ -980,6 +1108,12 @@ INSTRUCOES OBRIGATÓRIAS DE RESPOSTA:
   "ok"), interprete como aceite do que VOCÊ propôs no último turno e EXECUTE.
 {instrucao_anexos}{instrucao_literatura}
 - Se a evidência/memória recuperada não tem relação com a pergunta, IGNORE-A em silêncio.
+- Se a pergunta estiver em inglês, espanhol ou francês, entenda naturalmente e
+  responda no mesmo idioma quando isso for útil; caso contrário, responda em
+  português brasileiro.
+- Quando houver resultados do pipeline no contexto, use-os como evidência e
+  entregue interpretação técnica quando a pergunta pedir parecer, explicação
+  ou recomendação. Não devolva só a tabela nesses casos.
 - Tamanho da resposta proporcional ao pedido. Pergunta curta → resposta curta.
 - Não invente números, autores, equações ou resultados.
 """.strip()
@@ -990,7 +1124,7 @@ INSTRUCOES OBRIGATÓRIAS DE RESPOSTA:
         contexto = _limitar_texto(contexto, novo_limite)
         contexto_bloco = contexto if contexto.strip() else "Nenhum trecho relevante recuperado."
         prompt = f"""
-{PERFIL_COMPACTO}
+{perfil}
 
 {bloco_temporal}
 
@@ -1732,6 +1866,13 @@ def preparar_prompt(
     )
 
     historico_formatado = _formatar_historico(historico, orcamento)
+
+    # Identidade estática que ENTRA no prompt. O chamador passa `perfil` (ex.:
+    # CLAUDE.md). Para não inflar cada prompt com o documento inteiro, usamos o
+    # perfil recebido apenas quando é compacto; caso contrário, o PERFIL_COMPACTO
+    # curado. Assim o parâmetro deixa de ser ignorado, mas o custo fica contido.
+    perfil_prompt = perfil if (perfil and perfil.strip() and len(perfil) <= 6000) else PERFIL_COMPACTO
+
     prompt = _montar_prompt(
         pergunta,
         contexto,
@@ -1739,6 +1880,7 @@ def preparar_prompt(
         orcamento,
         consultar_literatura=consultar_literatura,
         anexos_texto=anexos_texto,
+        perfil=perfil_prompt,
     )
     return prompt, citacoes
 

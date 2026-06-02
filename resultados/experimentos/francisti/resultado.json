@@ -45,10 +45,10 @@
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.6967213114754098,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\modelo_z_score_estatistico_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\modelo_z_score_estatistico_matriz_confusao.png"
+        "resultados/experimentos/francisti/modelo_z_score_estatistico_metricas.png",
+        "resultados/experimentos/francisti/modelo_z_score_estatistico_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\modelo_z_score_estatistico_metricas.png",
+      "grafico_metricas": "resultados/experimentos/francisti/modelo_z_score_estatistico_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\modelo_z_score_estatistico_matriz_confusao.png"
     },
     "Random Forest (anomalia)": {
@@ -81,23 +81,23 @@
       "anomalias_reais": 183,
       "taxa_anomalias_detectadas": 0.453551912568306,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\modelo_random_forest_anomalia_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\modelo_random_forest_anomalia_matriz_confusao.png"
+        "resultados/experimentos/francisti/modelo_random_forest_anomalia_metricas.png",
+        "resultados/experimentos/francisti/modelo_random_forest_anomalia_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\modelo_random_forest_anomalia_metricas.png",
+      "grafico_metricas": "resultados/experimentos/francisti/modelo_random_forest_anomalia_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\modelo_random_forest_anomalia_matriz_confusao.png"
     }
   },
   "melhor_modelo": "Random Forest (anomalia)",
   "melhor_valor": 0.9226361031518625,
   "graficos": [
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\modelo_z_score_estatistico_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\modelo_z_score_estatistico_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\modelo_random_forest_anomalia_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\modelo_random_forest_anomalia_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\comparacao_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\anomalias_detectadas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\matriz_confusao.png"
+    "resultados/experimentos/francisti/modelo_z_score_estatistico_metricas.png",
+    "resultados/experimentos/francisti/modelo_z_score_estatistico_matriz_confusao.png",
+    "resultados/experimentos/francisti/modelo_random_forest_anomalia_metricas.png",
+    "resultados/experimentos/francisti/modelo_random_forest_anomalia_matriz_confusao.png",
+    "resultados/experimentos/francisti/comparacao_metricas.png",
+    "resultados/experimentos/francisti/anomalias_detectadas.png",
+    "resultados/experimentos/francisti/matriz_confusao.png"
   ],
-  "grafico": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\francisti\\modelo_z_score_estatistico_metricas.png"
+  "grafico": "resultados/experimentos/francisti/modelo_z_score_estatistico_metricas.png"
 }

@@ -1,10 +1,13 @@
 {
+  "threshold_method": "p99",
+  "limiar": 2.9103293418884277,
+  "limiar_operacional": 2.9103293418884277,
   "mu": 0.32136377692222595,
   "sigma": 0.501655101776123,
   "k": 3.0,
-  "limiar": 2.9103293418884277,
   "limiar_p99": 2.9103293418884277,
   "limiar_p95": 1.2892383337020874,
+  "limiar_mu3sigma": 1.826329082250595,
   "limiar_mu3s": 1.826329082250595,
   "n_janelas_treino": 365,
   "n_features": 109,
@@ -13,6 +16,6 @@
   "epoca_melhor": 64,
   "loss_val_melhor": 1.5623989493950554,
   "fp_val_pct": 4.3478260869565215,
-  "data_treino": "2026-05-30T07:44:34.437780",
+  "data_treino": "2026-06-01T18:27:29.193506",
   "device": "cpu"
 }

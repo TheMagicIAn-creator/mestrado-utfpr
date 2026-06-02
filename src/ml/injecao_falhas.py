@@ -90,7 +90,21 @@ FALHAS = [
         "npr"     : 210,
         "s"       : 3, "o": 7, "d": 10,
         "cor"     : "#E53935",
-        "descricao": "Injeção de harmônicos 5°, 7° e 11° nas correntes CA"
+        "descricao": "Injeção de harmônicos 5°, 7° e 11° nas correntes CA",
+        # Schema de proveniência da falha sintética (item 4.4)
+        "evidence_level"     : "E2",
+        "hipotese_fisica"    : (
+            "Capacitor com ESR elevado / indutor degradado no filtro LCL reduz a "
+            "atenuação do chaveamento, elevando harmônicos ímpares nas correntes."
+        ),
+        "sinais"             : ["i_a", "i_b", "i_c"],
+        "formula"            : "i += sev·(0,30·h5 + 0,20·h7 + h11)·amplitude",
+        "severity_definition": "fração [0..1] da amplitude harmônica injetada",
+        "source"             : "Torres (2024) FMECA CEAMAZON (NPR=210)",
+        "limitations"        : [
+            "amplitudes harmônicas são plausíveis, não medidas em bancada",
+            "não modela envelhecimento térmico real do capacitor",
+        ],
     },
     {
         "id"      : "desbalanceamento",
@@ -98,7 +112,19 @@ FALHAS = [
         "npr"     : 150,
         "s"       : 5, "o": 3, "d": 10,
         "cor"     : "#FB8C00",
-        "descricao": "Redução de amplitude da fase A"
+        "descricao": "Redução de amplitude da fase A",
+        "evidence_level"     : "E2",
+        "hipotese_fisica"    : (
+            "Assimetria entre fases (perda parcial de fase ou carga "
+            "desbalanceada) reduz a amplitude de uma das correntes."
+        ),
+        "sinais"             : ["i_a"],
+        "formula"            : "i_a ·= (1 − sev·k)  (reduz amplitude da fase A)",
+        "severity_definition": "fração de redução da amplitude da fase A",
+        "source"             : "Torres (2024) FMECA, subsistema CA (NPR=150)",
+        "limitations"        : [
+            "modelo simplificado; desbalanceamento real afeta fase E amplitude",
+        ],
     },
     {
         "id"      : "sensor",
@@ -106,9 +132,55 @@ FALHAS = [
         "npr"     : None,
         "s"       : None, "o": None, "d": 10,
         "cor"     : "#8E24AA",
-        "descricao": "Ruído gaussiano na corrente da fase A"
+        "descricao": "Ruído gaussiano na corrente da fase A",
+        "evidence_level"     : "E2",
+        "hipotese_fisica"    : (
+            "Degradação do sensor Hall / circuito de condicionamento introduz "
+            "ruído de medição na corrente."
+        ),
+        "sinais"             : ["i_a"],
+        "formula"            : "i_a += N(0, sev·σ)  (ruído gaussiano)",
+        "severity_definition": "desvio do ruído gaussiano, proporcional à severidade",
+        "source"             : "FMEA (D=10 — alta dificuldade de detecção)",
+        "limitations"        : [
+            "RUÍDO GAUSSIANO É UM PROXY — exige CALIBRAÇÃO FÍSICA do sensor real",
+            "a alta sensibilidade observada é E2 (sintética): NÃO afirmar alta "
+            "sensibilidade da falha de sensor sem esta ressalva",
+        ],
     },
 ]
+
+
+def smd_probabilistico(deteccoes_por_severidade: dict, alvo: float = 0.95) -> dict:
+    """
+    SMD probabilística (item 4.3) a partir de detecções REPETIDAS (múltiplas
+    sementes/janelas), em vez da primeira média acima do limiar.
+
+    `deteccoes_por_severidade`: {severidade: lista[bool]} — cada bool é uma
+    detecção numa repetição independente.
+
+    Retorna taxa de detecção por severidade, SMD pontual (menor severidade com
+    qualquer detecção) e SMD_95 (menor severidade com taxa de detecção ≥ alvo).
+    SMD_95 = None quando nenhuma severidade alcança o alvo.
+    """
+    import numpy as np
+
+    taxas, n_rep = {}, {}
+    for sev, dets in deteccoes_por_severidade.items():
+        arr = np.asarray(list(dets), dtype=float)
+        taxas[float(sev)] = float(arr.mean()) if arr.size else 0.0
+        n_rep[float(sev)] = int(arr.size)
+
+    sevs = sorted(taxas)
+    smd_pontual = next((s for s in sevs if taxas[s] > 0.0), None)
+    smd_95 = next((s for s in sevs if taxas[s] >= alvo), None)
+    return {
+        "taxa_deteccao": taxas,
+        "smd_pontual": smd_pontual,
+        "smd_95": smd_95,
+        "alvo": alvo,
+        "n_repeticoes": n_rep,
+    }
 
 
 # ============================================================
@@ -481,6 +553,13 @@ def executar_injecao_falhas() -> bool:
 
     # ── 7. Salva relatório JSON ───────────────────────────────
     relatorio = {
+        "evidence_level": "E2",
+        "evidence_note": (
+            "Falhas sintéticas orientadas pelo FMEA (ground truth para validar o "
+            "detector). Não é validação experimental externa (E3). A injeção de "
+            "ruído do sensor é um PROXY e exige calibração física."
+        ),
+        "threshold_method": "p99",
         "limiar": float(limiar),
         "baseline_mean": float(baseline_mean),
         "baseline_std": float(baseline_std),
@@ -494,6 +573,14 @@ def executar_injecao_falhas() -> bool:
             "nome": falha["nome"],
             "npr": falha["npr"],
             "descricao": falha["descricao"],
+            # Schema de proveniência da falha sintética (item 4.4)
+            "evidence_level": falha.get("evidence_level", "E2"),
+            "hipotese_fisica": falha.get("hipotese_fisica"),
+            "sinais": falha.get("sinais"),
+            "formula": falha.get("formula"),
+            "severity_definition": falha.get("severity_definition"),
+            "source": falha.get("source"),
+            "limitations": falha.get("limitations"),
             "resultados": {
                 str(s): {
                     "erro": float(resultados[fid][s]["erro"]),

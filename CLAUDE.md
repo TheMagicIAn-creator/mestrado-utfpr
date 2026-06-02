@@ -68,7 +68,7 @@ Detecção de anomalias por modelagem de normalidade:
 4. Validar se o detector identifica as falhas injetadas
 5. Estimativa de RUL (Weibull) e decisão de manutenção 
 6. Critério de seleção das falhas: prioridade pelo NPR do FMEA (NPR=210 inversor → primeira falha a injetar)
-7. TTF para Weibull: derivado das falhas sintéticas injetadas no Paderborn — tempo até o Autoencoder cruzar o limiar de anomalia (μ + 3σ do erro de reconstrução)
+7. TTF para Weibull: derivado das falhas sintéticas injetadas no Paderborn — tempo até o Autoencoder cruzar o limiar operacional de anomalia (percentil 99 do erro de reconstrução saudável; μ+3σ é apenas referência comparativa)
 
 Justificativa: na manutenção preditiva real raramente
 há dados de falha; modela-se o comportamento saudável
@@ -264,19 +264,25 @@ FASE 3 — INTERFACE STREAMLIT  : ✅ CONCLUÍDA
 FASE 4 — AUTOMAÇÃO            : ✅ CONCLUÍDA
 FASE 5 — PIPELINE DE ML       : ✅ CONCLUÍDA (núcleo)
 
-Fase 5 — resultados:
+Fase 5 — status metodológico (os NÚMEROS ficam nos artefatos, não aqui):
 ✅ EDA dos datasets concluída
-✅ Classificação supervisionada (5 modelos, RF F1=0,87)
+✅ Classificação supervisionada PV Farms (5 modelos) — métricas em
+   resultados/classificacao_pv/ e resultados/experimentos/ghoneim/
 ✅ Extração de 109 features CA com F0 adaptativo (Paderborn)
-✅ Autoencoder treinado — limiar p99=2,91 (μ+3σ baseline=0,30)
-✅ Injeção de falhas sintéticas fundamentada no FMEA:
-   SMD=1,00 (LCL) | SMD=0,30 (desbalanc.) | SMD=0,10 (sensor)
-✅ Validação formal:
-   AUC=0,935 Degradação LCL (sev=1,0) — valida D=10 do FMEA
-   AUC=1,000 Desbalanceamento (sev≥0,5) — F1=0,980, Recall=1,0
-   AUC=1,000 Sensor CA (sev≥0,3) — ML supera D=10 do FMEA
-⬜ Análise de RUL com Weibull (próxima sessão)
+✅ Autoencoder treinado — limiar operacional = percentil 99 do erro de
+   reconstrução saudável (μ+3σ é apenas referência comparativa); valores em
+   resultados/autoencoder/limiar.json
+✅ Injeção de falhas sintéticas fundamentada no FMEA (LCL, desbalanceamento,
+   sensor CA) — SMD em resultados/autoencoder/injecao_falhas_report.json
+✅ Validação formal contra falhas injetadas (ground truth) — AUC/F1/Recall em
+   resultados/autoencoder/validacao_report.json
+⬜ Análise de RUL com Weibull
 ⬜ Integração dos módulos ML no orquestrador
+
+IMPORTANTE: nunca cite essas métricas de memória. Consulte sempre o artefato
+JSON vigente (a ferramenta de resultados o carrega) e informe o nível de
+evidência. Resultado de injeção/validação é E2 (sintético orientado pelo FMEA),
+não prova de desempenho industrial.
 
 ## Como Devo Me Comportar
 - Responder por padrão em português brasileiro, salvo quando Rodolfo escrever
@@ -310,8 +316,8 @@ Fase 5 — resultados:
 - Quando a pergunta não pedir literatura/fontes, respondo com
   raciocínio técnico, memória do projeto e contexto da dissertação,
   sem mencionar referências bibliográficas
-- Quando solicitado, busco na literatura em português E inglês —
-  a base contém artigos em ambos os idiomas
+- Quando solicitado, busco na literatura em português, inglês, espanhol e
+  francês, usando equivalências técnicas entre os idiomas suportados
 
 ## Diretrizes Operacionais do Agente
 - A interface principal é o chat. Se Rodolfo pedir para rodar, refazer,

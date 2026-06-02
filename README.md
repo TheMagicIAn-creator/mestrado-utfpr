@@ -69,6 +69,22 @@ committed to the repository.
 | 4     | Automation            | Done          |
 | 5     | ML pipeline           | In progress   |
 
+## Documentação técnica
+
+- [`docs/metodologia_ml.md`](docs/metodologia_ml.md) — decisões metodológicas e de integridade.
+- [`docs/datasets.md`](docs/datasets.md) — Paderborn (CA) vs PV Farms (CC) e separação de domínio.
+- [`docs/evidence_levels.md`](docs/evidence_levels.md) — níveis de evidência E0–E3.
+- [`docs/reproducibilidade.md`](docs/reproducibilidade.md) — manifestos, estados, memória, recálculo.
+- [`docs/comandos.md`](docs/comandos.md) — todos os comandos.
+
+## Verificação rápida
+
+```powershell
+python scripts/verificar_ambiente.py    # diagnóstico (imports, chaves, datasets, ChromaDB, pipeline)
+python -m pytest                        # testes unitários
+streamlit run app.py                    # interface (use 'streamlit run', não 'python app.py')
+```
+
 ## Author
 
 Rodolfo Torres — Master's student in Electrical Engineering, UTFPR.

@@ -3,6 +3,13 @@ indexador.py — Al IAdo PV
 
 Indexador seguro para literatura e sessões.
 
+Diretrizes atuais:
+- manter chunks semanticamente legíveis, sem granularidade excessiva;
+- preservar metadados suficientes para auditoria acadêmica;
+- aceitar literatura em português, inglês, espanhol e francês;
+- registrar idioma estimado do documento sem impedir a indexação;
+- nunca duplicar documentos iguais: SHA256 é a identidade primária.
+
 Correções principais desta versão:
 - controle de duplicidade por SHA256 do PDF;
 - IDs determinísticos por hash + chunk;
@@ -172,6 +179,28 @@ def normalizar_texto_pdf(texto: str) -> str:
     texto = re.sub(r"\s+([,.;:!?])", r"\1", texto)
 
     return texto.strip()
+
+
+def detectar_idioma_texto(texto: str) -> str:
+    """
+    Heurística leve para metadado de idioma.
+
+    O embedding local já é multilíngue; este campo existe para auditoria,
+    filtros futuros e transparência do catálogo, não para bloquear indexação.
+    """
+    amostra = normalizar_texto_pdf(texto[:6000]).lower()
+    sinais = {
+        "pt": ("ção", "ções", "não", "falha", "manutenção", "confiabilidade"),
+        "en": (" the ", " and ", "failure", "maintenance", "reliability", "inverter"),
+        "es": ("ción", "ciones", "falla", "mantenimiento", "confiabilidad"),
+        "fr": (" pour ", " avec ", "défaillance", "defaillance", "fiabilité", "fiabilite"),
+    }
+    pontuacao = {
+        idioma: sum(amostra.count(sinal) for sinal in termos)
+        for idioma, termos in sinais.items()
+    }
+    melhor = max(pontuacao, key=pontuacao.get)
+    return melhor if pontuacao[melhor] > 0 else "desconhecido"
 
 
 def _melhor_ponto_de_corte(texto: str, inicio: int, limite: int, tamanho_minimo: int) -> int:
@@ -389,6 +418,7 @@ def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path
             return resultado
 
         info_arquivo = parsear_nome_arquivo(caminho_pdf.name)
+        idioma = detectar_idioma_texto(texto)
 
         # Estratégia principal: um único pipeline de chunking.
         chunks = dividir_em_chunks(
@@ -431,6 +461,7 @@ def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path
                 "titulo": info_arquivo.get("titulo", ""),
                 "ano": info_arquivo.get("ano", ""),
                 "citacao": info_arquivo.get("citacao", caminho_pdf.name),
+                "idioma": idioma,
             }
             for j in range(len(chunks))
         ]

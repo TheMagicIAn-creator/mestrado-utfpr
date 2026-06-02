@@ -60,10 +60,10 @@
       "cv_accuracy_media": 1.0,
       "cv_accuracy_desvio": 0.0,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_random_forest_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_random_forest_matriz_confusao.png"
+        "resultados/experimentos/ghoneim/modelo_random_forest_metricas.png",
+        "resultados/experimentos/ghoneim/modelo_random_forest_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_random_forest_metricas.png",
+      "grafico_metricas": "resultados/experimentos/ghoneim/modelo_random_forest_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_random_forest_matriz_confusao.png"
     },
     "AdaBoost": {
@@ -111,10 +111,10 @@
       "cv_accuracy_media": 0.41166666666666674,
       "cv_accuracy_desvio": 0.006666666666666668,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_adaboost_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_adaboost_matriz_confusao.png"
+        "resultados/experimentos/ghoneim/modelo_adaboost_metricas.png",
+        "resultados/experimentos/ghoneim/modelo_adaboost_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_adaboost_metricas.png",
+      "grafico_metricas": "resultados/experimentos/ghoneim/modelo_adaboost_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_adaboost_matriz_confusao.png"
     },
     "Regressão Logística": {
@@ -162,10 +162,10 @@
       "cv_accuracy_media": 0.9366666666666668,
       "cv_accuracy_desvio": 0.02560381915956203,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_regressao_logistica_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_regressao_logistica_matriz_confusao.png"
+        "resultados/experimentos/ghoneim/modelo_regressao_logistica_metricas.png",
+        "resultados/experimentos/ghoneim/modelo_regressao_logistica_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_regressao_logistica_metricas.png",
+      "grafico_metricas": "resultados/experimentos/ghoneim/modelo_regressao_logistica_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_regressao_logistica_matriz_confusao.png"
     },
     "Naive Bayes": {
@@ -213,10 +213,10 @@
       "cv_accuracy_media": 0.915,
       "cv_accuracy_desvio": 0.04027681991198191,
       "graficos": [
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_naive_bayes_metricas.png",
-        "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_naive_bayes_matriz_confusao.png"
+        "resultados/experimentos/ghoneim/modelo_naive_bayes_metricas.png",
+        "resultados/experimentos/ghoneim/modelo_naive_bayes_matriz_confusao.png"
       ],
-      "grafico_metricas": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_naive_bayes_metricas.png",
+      "grafico_metricas": "resultados/experimentos/ghoneim/modelo_naive_bayes_metricas.png",
       "grafico_matriz_confusao": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_naive_bayes_matriz_confusao.png"
     },
     "CN2 (indução de regras)": {
@@ -227,16 +227,16 @@
   "melhor_modelo": "Random Forest",
   "melhor_valor": 0.8683329249366984,
   "graficos": [
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_random_forest_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_random_forest_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_adaboost_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_adaboost_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_regressao_logistica_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_regressao_logistica_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_naive_bayes_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_naive_bayes_matriz_confusao.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\comparacao_metricas.png",
-    "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\matriz_confusao.png"
+    "resultados/experimentos/ghoneim/modelo_random_forest_metricas.png",
+    "resultados/experimentos/ghoneim/modelo_random_forest_matriz_confusao.png",
+    "resultados/experimentos/ghoneim/modelo_adaboost_metricas.png",
+    "resultados/experimentos/ghoneim/modelo_adaboost_matriz_confusao.png",
+    "resultados/experimentos/ghoneim/modelo_regressao_logistica_metricas.png",
+    "resultados/experimentos/ghoneim/modelo_regressao_logistica_matriz_confusao.png",
+    "resultados/experimentos/ghoneim/modelo_naive_bayes_metricas.png",
+    "resultados/experimentos/ghoneim/modelo_naive_bayes_matriz_confusao.png",
+    "resultados/experimentos/ghoneim/comparacao_metricas.png",
+    "resultados/experimentos/ghoneim/matriz_confusao.png"
   ],
-  "grafico": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\resultados\\experimentos\\ghoneim\\modelo_random_forest_metricas.png"
+  "grafico": "resultados/experimentos/ghoneim/modelo_random_forest_metricas.png"
 }

@@ -21,7 +21,7 @@ _TIMEOUT = 6
 _HEADERS = {
     "User-Agent": "Al-IAdoPV/1.0 (Mestrado UTFPR; contato@al-iado-pv.local)",
     "Accept": "application/json",
-    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.85,es;q=0.75,fr;q=0.7",
 }
 
 
@@ -73,10 +73,33 @@ def _ddg_instant(termo: str) -> dict | None:
         return None
 
 
+def _nivel_confianca(url: str, fonte: str) -> tuple[str, str]:
+    """
+    Classifica a confiança da fonte web (seção 11):
+      A — norma oficial / DOI / documentação institucional
+      B — universidade / fabricante / editora técnica
+      C — Wikipedia / agregador
+      D — conteúdo informal
+    """
+    u = (url or "").lower()
+    f = (fonte or "").lower()
+    nivel_a = ("doi.org", "iso.org", "iec.ch", "ieee.org", "abnt.org", ".gov",
+               "crossref", "openalex", "semanticscholar")
+    nivel_b = (".edu", "scholar.google", "researchgate", "springer", "elsevier",
+               "sciencedirect", "mdpi", "nature.com")
+    if any(t in u for t in nivel_a):
+        return "A", "norma/DOI/institucional"
+    if any(t in u for t in nivel_b):
+        return "B", "universidade/editora técnica"
+    if "wikipedia" in u or "wikipedia" in f or "duckduckgo" in f:
+        return "C", "Wikipedia/agregador"
+    return "D", "conteúdo informal"
+
+
 def buscar_web(termo: str, max_chars: int = 1400) -> dict:
     """
     Tenta Wikipedia pt → en → DuckDuckGo.
-    Retorna {ok, resultados: [{titulo, extrato, url, fonte}], mensagem}.
+    Retorna {ok, resultados: [{titulo, extrato, url, fonte, nivel_confianca}], mensagem}.
     """
     termo = (termo or "").strip()
     if not termo:
@@ -90,6 +113,8 @@ def buscar_web(termo: str, max_chars: int = 1400) -> dict:
     for tentativa in (
         lambda: _wikipedia_resumo(termo, "pt"),
         lambda: _wikipedia_resumo(termo, "en"),
+        lambda: _wikipedia_resumo(termo, "es"),
+        lambda: _wikipedia_resumo(termo, "fr"),
         lambda: _ddg_instant(termo),
     ):
         try:
@@ -101,6 +126,9 @@ def buscar_web(termo: str, max_chars: int = 1400) -> dict:
             if len(extrato) > max_chars:
                 extrato = extrato[:max_chars].rsplit(" ", 1)[0] + "…"
             r["extrato"] = extrato
+            nivel, desc = _nivel_confianca(r.get("url", ""), r.get("fonte", ""))
+            r["nivel_confianca"] = nivel
+            r["confianca_desc"] = desc
             resultados.append(r)
             break  # primeiro hit válido já basta
 
@@ -116,11 +144,22 @@ def buscar_web(termo: str, max_chars: int = 1400) -> dict:
 
     linhas = [f"## Resultado da busca: {termo}\n"]
     for r in resultados:
-        linhas.append(f"**{r['titulo']}** — _{r['fonte']}_")
+        nivel = r.get("nivel_confianca", "?")
+        linhas.append(
+            f"**{r['titulo']}** — _{r['fonte']}_ · confiança **{nivel}** "
+            f"({r.get('confianca_desc', '')})"
+        )
         linhas.append(r["extrato"])
         if r.get("url"):
             linhas.append(f"🔗 {r['url']}")
         linhas.append("")
+
+    if any(r.get("nivel_confianca") in ("C", "D") for r in resultados):
+        linhas.append(
+            "⚠️ Fonte nível C/D (Wikipedia/agregador) NÃO sustenta afirmação "
+            "normativa. Para normas (IEC/ISO/IEEE/ABNT) ou artigos, prefira a "
+            "fonte oficial / DOI."
+        )
 
     return {
         "ok": True,

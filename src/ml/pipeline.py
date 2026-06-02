@@ -82,6 +82,7 @@ STAGES: dict[str, PipelineStage] = {
         function="executar_validacao",
         artifacts=(
             "resultados/autoencoder/validacao_roc.png",
+            "resultados/autoencoder/validacao_pr.png",
             "resultados/autoencoder/validacao_matriz.png",
             "resultados/autoencoder/validacao_metricas.png",
             "resultados/autoencoder/validacao_tabela.csv",
@@ -141,8 +142,68 @@ def rul_weibull_pendente() -> bool:
 
 
 def pipeline_status() -> dict[str, bool]:
-    """Retorna {etapa: pronto}."""
+    """Retorna {etapa: pronto}. (Mantido para compatibilidade — booleano.)"""
     return {key: stage.is_complete() for key, stage in STAGES.items()}
+
+
+# ── Proveniência: estado ready / stale / pending por etapa ──────────────────
+
+def _code_path(stage: PipelineStage) -> str:
+    """Caminho do arquivo-fonte da etapa (para o hash de código do manifesto)."""
+    from importlib.util import find_spec
+
+    try:
+        spec = find_spec(stage.module)
+        return spec.origin if spec and spec.origin else ""
+    except Exception:
+        return ""
+
+
+def _inputs_da_etapa(stage: PipelineStage) -> dict:
+    """{etapa_upstream: 1º artefato} — para detectar regeneração upstream."""
+    inputs: dict[str, str] = {}
+    for dep in stage.depends_on:
+        paths = STAGES[dep].paths()
+        if paths:
+            inputs[dep] = str(paths[0])
+    return inputs
+
+
+def registrar_manifesto(key: str, parameters: dict | None = None,
+                        evidence_level: str | None = None) -> None:
+    """Salva o manifesto de proveniência de uma etapa recém-concluída."""
+    try:
+        from src.ml.proveniencia import gerar_manifesto, salvar_manifesto
+
+        stage = get_stage(key)
+        manifesto = gerar_manifesto(
+            key, _code_path(stage), parameters or {},
+            _inputs_da_etapa(stage), [str(p) for p in stage.paths()],
+            evidence_level=evidence_level,
+        )
+        salvar_manifesto(manifesto)
+    except Exception:
+        # Manifesto é rastreabilidade, não deve derrubar a execução da etapa,
+        # mas a falha é REGISTRADA (não silenciada).
+        from src.core.logs import get_logger
+
+        get_logger("pipeline").exception("falha ao registrar manifesto de %s", key)
+
+
+def estado_etapa_completo(key: str) -> dict:
+    """{'estado': ready|stale|pending, 'motivos': [...]} via manifesto."""
+    from src.ml.proveniencia import estado_etapa
+
+    stage = get_stage(key)
+    return estado_etapa(
+        key, [str(p) for p in stage.paths()],
+        _code_path(stage), None, _inputs_da_etapa(stage),
+    )
+
+
+def estado_pipeline() -> dict[str, dict]:
+    """Estado de 3 valores (ready/stale/pending) de todas as etapas."""
+    return {k: estado_etapa_completo(k) for k in ORDEM_ETAPAS_ML}
 
 
 def status_markdown() -> str:
@@ -258,6 +319,11 @@ def executar_etapa(etapa: str,
             "executou": True,
             "mensagem": f"Erro ao executar {stage.label}: {exc}",
         }
+
+    # Etapa concluída → registra manifesto de proveniência (rastreabilidade +
+    # detecção de stale futura). Não derruba a execução se falhar.
+    if ok:
+        registrar_manifesto(etapa)
 
     msg_base = (
         f"{stage.label} concluido com sucesso."
