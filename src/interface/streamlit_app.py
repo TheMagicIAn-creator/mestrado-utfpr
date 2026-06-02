@@ -200,6 +200,49 @@ def renderizar_pipeline_status() -> None:
             st.markdown(f"⚪ {nome} _(pendente)_")
 
 
+def renderizar_diagnostico(colecao, colecao_sessoes) -> None:
+    """Painel de diagnóstico (13.4): ChromaDB, pipeline, libs opcionais, log."""
+    import importlib.util
+
+    try:
+        st.caption(f"ChromaDB · literatura: {colecao.count()} · "
+                   f"sessões: {colecao_sessoes.count()}")
+    except Exception as exc:  # noqa: BLE001
+        st.warning(f"ChromaDB indisponível: {exc}")
+
+    try:
+        from src.ml.pipeline import NOMES_ETAPAS, estado_pipeline
+
+        rot = {"ready": "✅", "stale": "⚠️", "pending": "⬜"}
+        for key, info in estado_pipeline().items():
+            st.caption(f"{rot.get(info['estado'], '?')} {NOMES_ETAPAS[key]} "
+                       f"— {info['estado']}")
+    except Exception as exc:  # noqa: BLE001
+        st.caption(f"pipeline: {exc}")
+
+    libs = {"prophet": "Prophet", "stable_baselines3": "PPO",
+            "Orange": "CN2", "torch": "torch"}
+    marcas = []
+    for mod, desc in libs.items():
+        try:
+            ok = importlib.util.find_spec(mod) is not None
+        except Exception:  # noqa: BLE001
+            ok = False
+        marcas.append(f"{'✅' if ok else '⛔'}{desc}")
+    st.caption("Opcionais: " + " · ".join(marcas))
+
+    try:
+        from src.core.logs import ARQUIVO_LOG
+
+        if ARQUIVO_LOG.exists():
+            erros = [ln for ln in ARQUIVO_LOG.read_text(encoding="utf-8").splitlines()
+                     if "ERROR" in ln]
+            st.caption("Último erro: " + erros[-1][-110:] if erros
+                       else "Sem erros registrados no log.")
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
     with st.sidebar:
         st.markdown("## Al IAdo PV")
@@ -270,6 +313,9 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
             st.session_state.mensagens = []
             st.session_state.caminho_sessao = None
             st.rerun()
+
+        with st.expander("🔧 Diagnóstico"):
+            renderizar_diagnostico(colecao, colecao_sessoes)
 
         with st.expander("Manutenção avançada"):
             st.caption("Use apenas quando quiser forçar tarefas administrativas.")
