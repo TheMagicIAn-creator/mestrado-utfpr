@@ -533,6 +533,24 @@ def limpar_resultados_ml(progresso=None, pergunta: str = "") -> dict:
             "resposta_pronta": True,
         }
 
+    # ── Confirmação em DUAS ETAPAS (item 10.2) ───────────────────
+    # Nenhuma exclusão ocorre sem o token explícito na mensagem do usuário.
+    token = f"CONFIRMAR LIMPEZA {etapa.upper()}"
+    if _normalizar(token) not in _normalizar(pergunta):
+        existentes = [p for p in artefatos_a_partir(etapa) if p.exists()]
+        return {
+            "ok": True,
+            "etapa": "Limpeza de resultados",
+            "mensagem": (
+                f"⚠️ Isso vai **apagar {len(existentes)} artefato(s)** a partir de "
+                f"**{NOMES_ETAPAS[etapa]}** e invalidar as etapas seguintes. "
+                f"A ação é irreversível.\n\n"
+                f"Para confirmar, escreva exatamente:\n\n`{token}`"
+            ),
+            "imagens": [],
+            "resposta_pronta": True,
+        }
+
     if progresso:
         progresso(f"Apagando artefatos a partir de: {NOMES_ETAPAS[etapa]}...")
 
