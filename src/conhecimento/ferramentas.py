@@ -373,6 +373,41 @@ def _quer_limpar_experimentos(pergunta: str) -> bool:
     )
 
 
+def _quer_literatura_tematica(pergunta: str) -> bool:
+    """
+    Pedido de busca/sintese bibliografica sobre um tema.
+
+    Deve ir para RAG, nao para ferramentas. Sem esse retorno explicito, o LLM
+    roteador pode confundir "cite artigos sobre anomalias" com o catalogo de
+    experimentos por artigo-base.
+    """
+    txt = _normalizar(pergunta)
+    if _quer_catalogo(pergunta):
+        return False
+    if any(t in txt for t in (
+        "experimento", "experimentos", "resultado", "resultados",
+        "artefato", "artefatos", "metricas", "metrica",
+    )):
+        return False
+
+    termos_biblio = (
+        "literatura", "artigo", "artigos", "paper", "papers", "fonte",
+        "fontes", "referencia", "referencias", "bibliografia",
+        "bibliografica", "bibliografico", "autor", "autores",
+        "literature", "source", "sources", "reference", "references",
+        "bibliography", "author", "authors",
+    )
+    gatilhos_tematicos = (
+        "cite", "citar", "cita", "liste referencias", "liste artigos",
+        "quais autores", "quais artigos", "artigos sobre", "papers sobre",
+        "sobre", "segundo a literatura", "com base na literatura",
+        "revisao bibliografica", "estado da arte", "o que a bibliografia diz",
+        "cite papers", "cite sources", "papers about", "articles about",
+        "literature review", "state of the art",
+    )
+    return any(t in txt for t in termos_biblio) and any(g in txt for g in gatilhos_tematicos)
+
+
 def _quer_consultar_datasets(pergunta: str) -> bool:
     """Pergunta sobre os datasets do projeto (Paderborn / PV Farms)."""
     txt = _normalizar(pergunta)
@@ -1390,6 +1425,9 @@ def _decisao_rapida(pergunta: str) -> dict | None:
 
     if _quer_limpar_experimentos(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "limpar_experimentos_artigos"}
+
+    if _quer_literatura_tematica(pergunta):
+        return {"usar_ferramenta": False, "ferramenta": None}
 
     # Experimentos de ML por artigo — checados ANTES do catálogo de literatura,
     # pois "experimento" é um sinal mais específico que "artigo" genérico.

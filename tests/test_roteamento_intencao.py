@@ -8,6 +8,7 @@ pergunta discursiva/conceitual em execucao pesada de pipeline ou experimento.
 from src.conhecimento.agente import deve_consultar_literatura
 from src.conhecimento.ferramentas import (
     _decisao_rapida,
+    decidir_acao,
     limpar_experimentos_artigos,
 )
 
@@ -22,6 +23,20 @@ def test_revisao_bibliografica_de_rul_nao_roda_weibull():
         "Faça uma revisão bibliográfica curta sobre RUL em eletrônica de potência."
     )
     assert decisao == {"usar_ferramenta": False, "ferramenta": None}
+
+
+def test_citar_artigos_sobre_anomalias_vai_para_rag_nao_experimentos():
+    pergunta = "Cite artigos sobre detecção de anomalias em inversores fotovoltaicos."
+    esperado = {"usar_ferramenta": False, "ferramenta": None}
+
+    assert _decisao_rapida(pergunta) == esperado
+    assert deve_consultar_literatura(pergunta)
+
+    class RoteadorRuim:
+        def invoke(self, *_args, **_kwargs):  # pragma: no cover - nao deve chamar
+            raise AssertionError("o LLM roteador nao deve ser chamado")
+
+    assert decidir_acao(pergunta, RoteadorRuim()) == esperado
 
 
 def test_explicacao_de_fmea_com_base_no_projeto_nao_aciona_pipeline():
