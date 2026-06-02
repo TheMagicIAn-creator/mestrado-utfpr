@@ -122,6 +122,16 @@ ESPEC_FERRAMENTAS = [
         ),
     },
     {
+        "name": "consultar_datasets",
+        "description": (
+            "Explica os datasets do projeto (Paderborn e PV Farms): finalidade, "
+            "rotulos, arquivos, nº de linhas, features, dominio CA ou CC e "
+            "limitacoes — lendo as contagens dinamicamente. Use quando o usuario "
+            "perguntar sobre os datasets, os dados, ou a diferenca entre "
+            "Paderborn e PV Farms."
+        ),
+    },
+    {
         "name": "rodar_experimento_artigo",
         "description": (
             "Treina e avalia os modelos de ML de um ou mais artigos-base e "
@@ -300,6 +310,25 @@ def _quer_catalogo_experimentos(pergunta: str) -> bool:
         "which", "what", "list", "show", "available", "exist", "how many",
         "cuales", "que ", "lista", "listar", "muestra", "disponibles",
         "quels", "quelles", "quoi", "liste", "montre", "disponibles",
+    ))
+    return consulta
+
+
+def _quer_consultar_datasets(pergunta: str) -> bool:
+    """Pergunta sobre os datasets do projeto (Paderborn / PV Farms)."""
+    txt = _normalizar(pergunta)
+    if _quer_rodar_experimento(pergunta):
+        return False
+    tem_dataset = any(t in txt for t in (
+        "dataset", "datasets", "paderborn", "pv farms", "pv-farms",
+        "dados do projeto", "conjunto de dados", "conjuntos de dados",
+    ))
+    if not tem_dataset:
+        return False
+    consulta = any(t in txt for t in (
+        "qual", "quais", "que ", "o que", "explique", "explica", "descreva",
+        "diferenca", "diferença", "sobre", "mostre", "fale", "compare",
+        "para que", "serve", "quantos", "quantas",
     ))
     return consulta
 
@@ -830,6 +859,74 @@ def rodar_experimento_artigo(progresso=None, pergunta: str = "") -> dict:
     }
 
 
+def _contar_linhas(caminho) -> int:
+    """Conta linhas de um arquivo grande sem carregá-lo na memória."""
+    total = 0
+    with open(caminho, "rb") as f:
+        for bloco in iter(lambda: f.read(1024 * 1024), b""):
+            total += bloco.count(b"\n")
+    return total
+
+
+def consultar_datasets(progresso=None, pergunta: str = "") -> dict:
+    """Explica os datasets do projeto lendo contagens DINAMICAMENTE (sem hardcode)."""
+    if progresso:
+        progresso("Lendo metadados dos datasets...")
+    from pathlib import Path
+
+    from src.core.config import RAIZ_PROJETO
+
+    base = Path(RAIZ_PROJETO) / "dados" / "brutos"
+    linhas = ["## Datasets do projeto\n"]
+
+    # PV Farms (supervisionado, falhas CC)
+    try:
+        import pandas as pd
+
+        tr = pd.read_csv(base / "train_data.csv", sep=";")
+        te = pd.read_csv(base / "test_data.csv", sep=";")
+        n_feat = tr.shape[1] - (1 if "class" in tr.columns else 0)
+        classes = sorted(tr["class"].unique().tolist()) if "class" in tr.columns else []
+        linhas.append(
+            f"### PV Farms — classificação supervisionada (domínio **CC**)\n"
+            f"- Arquivos: `dados/brutos/train_data.csv`, `test_data.csv`\n"
+            f"- Treino: {len(tr)} linhas | Teste: {len(te)} linhas | {n_feat} features\n"
+            f"- Classes: {classes} (Normal, F1 string, F2 string-terra, F3 string-string)\n"
+            f"- Uso: **classificação supervisionada de falhas CC conhecidas**.\n"
+            f"- Limitação: NÃO diagnostica falhas CA do inversor."
+        )
+    except Exception as exc:  # noqa: BLE001
+        linhas.append(f"### PV Farms — não foi possível ler ({exc})")
+
+    # Paderborn (saudável, anomalia CA)
+    pad = base / "Inverter_Data_Set.csv"
+    if pad.exists():
+        try:
+            n_rows = max(0, _contar_linhas(pad) - 1)  # menos cabeçalho
+        except Exception:  # noqa: BLE001
+            n_rows = "?"
+        linhas.append(
+            f"\n### Paderborn — detecção de anomalia (domínio **CA**)\n"
+            f"- Arquivo: `dados/brutos/Inverter_Data_Set.csv`\n"
+            f"- Amostras: {n_rows} (inversor IGBT trifásico **SAUDÁVEL**, 10 kHz)\n"
+            f"- Uso: **treinar o modelo de normalidade** (Autoencoder); como é "
+            f"saudável, a validação de anomalia usa falhas sintéticas (E2).\n"
+            f"- Limitação: sem rótulos reais de falha."
+        )
+    else:
+        linhas.append("\n### Paderborn — arquivo não encontrado localmente.")
+
+    linhas.append(
+        "\n**Separação de domínio:** os dois NÃO se fundem. PV Farms = falhas "
+        "**CC** conhecidas (supervisionado); Paderborn = anomalia **CA** por "
+        "modelagem de normalidade. O uso combinado é conceitual/arquitetural."
+    )
+    return {
+        "ok": True, "etapa": "Datasets do projeto",
+        "mensagem": "\n".join(linhas), "imagens": [], "resposta_pronta": True,
+    }
+
+
 _DESPACHO = {
     "rodar_features_ca": rodar_features_ca,
     "rodar_autoencoder": rodar_autoencoder,
@@ -839,6 +936,7 @@ _DESPACHO = {
     "rodar_pipeline_completo": rodar_pipeline_completo,
     "consultar_resultados": consultar_resultados,
     "consultar_status_pipeline": consultar_status_pipeline,
+    "consultar_datasets": consultar_datasets,
     "limpar_resultados_ml": limpar_resultados_ml,
     "buscar_web": buscar_na_web,
     "listar_base_bibliografica": listar_base_bibliografica,
@@ -946,6 +1044,10 @@ def _decisao_rapida(pergunta: str) -> dict | None:
         return {"usar_ferramenta": True, "ferramenta": "consultar_resultados"}
     if _quer_catalogo_experimentos(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "listar_experimentos_artigos"}
+
+    # Datasets do projeto (Paderborn CA / PV Farms CC) — explicação determinística.
+    if _quer_consultar_datasets(pergunta):
+        return {"usar_ferramenta": True, "ferramenta": "consultar_datasets"}
 
     # Catálogo da literatura — pedido pelo INVENTÁRIO inteiro ("liste todas as
     # referências", "o que você tem indexado", "quantos artigos", "as 39").

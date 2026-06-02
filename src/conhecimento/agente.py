@@ -255,6 +255,12 @@ CONTEXTO DO PROJETO (memorize)
   subsistema CA NPR=150 (segundo mais crítico).
 - Datasets: Paderborn (inversor SAUDÁVEL, 235k amostras, 10 kHz) para treinar
   o modelo de normalidade; PV Farms (rotulado, falhas CC) para classificação.
+- SEPARAÇÃO DE DOMÍNIO (regra rígida): Paderborn → detecção de anomalia CA do
+  inversor por modelagem de normalidade; PV Farms → classificação supervisionada
+  de falhas CC conhecidas (string, string-terra, string-string). NUNCA afirme
+  que o classificador PV Farms diagnostica falhas CA do inversor, nem transfira
+  métricas de PV Farms para o pipeline CA. Os dois NÃO se fundem: o uso é
+  conceitual/arquitetural, não fusão de dados.
 - Experimentos por artigo usam dados locais do repositório. Ghoneim usa
   dados/brutos/train_data.csv e test_data.csv; Francisti, Ibrahim, Sharma e
   Ahirwar usam features locais do Paderborn extraídas de Inverter_Data_Set.csv.
