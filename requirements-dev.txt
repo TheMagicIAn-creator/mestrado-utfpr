@@ -1,0 +1,12 @@
+# Dependências de DESENVOLVIMENTO / TESTE — não necessárias em produção.
+# As deps completas (torch, chromadb, prophet, Orange3, etc.) estão em
+# requirements.txt. Aqui ficam apenas as usadas pelos testes leves e lint.
+pytest>=8
+ruff>=0.6
+# Stack científico leve usado pelos testes sem torch/chromadb:
+numpy
+pandas
+scipy
+scikit-learn
+matplotlib
+python-dotenv
