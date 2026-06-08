@@ -1051,7 +1051,13 @@ def _md_experimento(res: dict) -> tuple[str, list[dict]]:
 
 def rodar_experimento_artigo(progresso=None, pergunta: str = "") -> dict:
     """Roda um ou mais experimentos por artigo e devolve a comparação."""
-    from src.ml.experimentos_artigos import catalogo_experimentos_md, executar_experimento
+    from src.ml.experimentos_artigos import catalogo_experimentos_md
+    # 10.4 — isola cargas pesadas (Orange/RL/torch/prophet) em subprocesso para
+    # que um segfault/conflito de OpenMP não derrube o app. Cai para in-process
+    # se o subprocesso não puder ser lançado.
+    from src.ml.exec_experimento_isolado import (
+        executar_experimento_isolado as executar_experimento,
+    )
 
     alvos = _experimentos_alvo(pergunta)
     if not alvos:

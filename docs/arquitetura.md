@@ -27,6 +27,7 @@ src/
 │   ├── rul_weibull.py    RUL / Weibull
 │   ├── classificador_pv.py classificação supervisionada PV Farms (CC)
 │   ├── experimentos_artigos.py experimentos de ML por artigo-base
+│   ├── exec_experimento_isolado.py roda experimento pesado em subprocesso
 │   └── resultados.py     leitura/resumo de artefatos
 └── orquestrador.py       coordena init + pipeline
 ```
@@ -40,6 +41,17 @@ src/
   catálogo de literatura, `consultar_datasets`, `comparar_abordagens_ml`, etc.
 - **Pipeline ML:** `features_ca → autoencoder → injecao_falhas → validacao →
   rul_weibull`, cada etapa com manifesto de proveniência.
+
+## Isolamento de cargas pesadas (subprocesso)
+Experimentos por artigo que carregam bibliotecas pesadas (Orange3, RL via
+`stable-baselines3`, `torch`, `prophet`) rodam em **subprocesso** via
+`exec_experimento_isolado.executar_experimento_isolado(key)`. Um segfault,
+conflito de OpenMP ou estouro de memória derruba apenas o filho — o app
+Streamlit segue de pé e recebe uma mensagem de falha legível. O progresso é
+lido do stdout do filho e encaminhado ao vivo; o resultado volta por um JSON
+temporário. Degradação honesta: se o subprocesso não puder ser lançado, cai
+para execução in-process. Variáveis: `AL_IADO_SEM_ISOLAMENTO=1` força
+in-process (debug/CI); `AL_IADO_EXP_CHILD=1` é o marcador interno do filho.
 
 ## Eixos de ML
 - **Paderborn (CA):** detecção de anomalia por modelagem de normalidade.

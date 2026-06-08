@@ -57,7 +57,8 @@ jobs:
             tests/test_index_lock.py \
             tests/test_classificador_infer.py \
             tests/test_classificador_tools.py \
-            tests/test_retrieval_metrics.py
+            tests/test_retrieval_metrics.py \
+            tests/test_exec_isolado.py
 
       - name: Lint (ruff, nao bloqueante)
         continue-on-error: true
