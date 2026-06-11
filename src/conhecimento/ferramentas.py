@@ -1037,6 +1037,46 @@ def _md_experimento(res: dict) -> tuple[str, list[dict]]:
         f"Salvo em `resultados/experimentos/{res['experimento']}/`."
     )
 
+    # Bloco de METODOLOGIA do protocolo por artigo (split temporal, injeção
+    # FMEA e a regra de decisão de cada modelo) — rastreabilidade na resposta.
+    met = res.get("metodologia")
+    if met:
+        linhas.append(f"\n**Protocolo do artigo** (`{met.get('protocolo', '?')}`):")
+        sp = met.get("split", {})
+        if sp:
+            partes = [f"treino={sp.get('treino')}", f"teste={sp.get('teste')}"]
+            if sp.get("val"):
+                partes.insert(1, f"val={sp.get('val')}")
+            linhas.append(
+                f"- Split {sp.get('tipo', '?')} (purga={sp.get('purga_janelas')}): "
+                f"{', '.join(partes)} janelas.")
+        inj = met.get("injecao", {})
+        if inj:
+            linhas.append(
+                f"- Injeção: {inj.get('tipo', '?')} — famílias FMEA "
+                f"{', '.join(inj.get('falhas', []))} (severidade {inj.get('severidade')}).")
+        for modelo, regra in (met.get("decisoes") or {}).items():
+            linhas.append(f"- Decisão {modelo}: {regra}.")
+        for nota in met.get("fidelidade", []):
+            linhas.append(f"- _{nota}_")
+
+    # Detecção por família de falha FMEA (quando o protocolo reporta)
+    com_falhas = {
+        nome: m["deteccao_por_falha"]
+        for nome, m in res["modelos"].items()
+        if isinstance(m, dict) and m.get("deteccao_por_falha")
+    }
+    if com_falhas:
+        linhas.append("\n**Detecção por família de falha (recall):**")
+        linhas.append("| Modelo | LCL (NPR 210) | Desbalanceamento (NPR 150) | Sensor |")
+        linhas.append("|---|---:|---:|---:|")
+        for nome, det in com_falhas.items():
+            def _pct(v):
+                return f"{v:.0%}" if isinstance(v, (int, float)) else "—"
+            linhas.append(
+                f"| {nome} | {_pct(det.get('lcl'))} | "
+                f"{_pct(det.get('desbalanceamento'))} | {_pct(det.get('sensor'))} |")
+
     from src.core.utils import resolve_project_path
 
     imagens = []

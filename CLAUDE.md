@@ -152,11 +152,20 @@ Experimentos registrados:
   Prophet + Isolation Forest (voto)
 - Stender (2020) — cartão de dataset (Paderborn), sem modelo
 
-Anomalia é avaliada contra falhas sintéticas injetadas nas
-features (ground truth → AUC/F1/Recall). Degradação honesta:
-um modelo cujo pacote não está instalado é mostrado como
-"requer <lib>" em vez de sumir. Bibliotecas pesadas já
-instaladas: prophet, stable-baselines3, gymnasium, Orange3.
+Anomalia é avaliada com PROTOCOLO PRÓPRIO POR ARTIGO
+(src/ml/protocolos_artigos.py): split temporal com purga,
+injeção sintética orientada pelo FMEA no espaço de features
+(famílias LCL/desbalanceamento/sensor, com detecção por
+falha) e a regra de decisão do próprio artigo — Shewhart 3σ
+(Francisti), contaminação a priori + p99 do treino + banda
+do Prophet (Ibrahim), PPO em validação temporal (Sharma),
+voto majoritário (Ahirwar). Nenhum limiar enxerga os rótulos
+do teste; F1 não é comparável entre protocolos (compare por
+AUC). O resultado.json carrega o bloco "metodologia".
+Degradação honesta: um modelo cujo pacote não está instalado
+é mostrado como "requer <lib>" em vez de sumir. Bibliotecas
+pesadas já instaladas: prophet, stable-baselines3, gymnasium,
+Orange3.
 
 ## Arquitetura do Sistema
 O projeto é um pacote Python modular. O ponto de

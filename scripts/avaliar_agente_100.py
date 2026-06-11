@@ -239,7 +239,9 @@ def caso_proveniencia(nome: str,
             sessao_chars=1_500,
             consultar_literatura=True,
         )
-        fontes = set(citacoes.keys())
+        # chaves podem ser 'arquivo' (legado) ou 'arquivo|pag|pag|hash'
+        # (citacao por pagina) — comparamos pelo arquivo-base.
+        fontes = {str(k).split('|')[0] for k in citacoes}
         encontrados = [a for a in arquivos_esperados if a in fontes]
         ok = len(encontrados) >= min_match
         return ok, (
@@ -913,11 +915,16 @@ def _casos_experimentos() -> list[CasoTeste]:
     """
     casos: list[CasoTeste] = []
 
+    # "compare os experimentos" CONSULTA resultados salvos (roteamento
+    # por intencao da sessao web); re-rodar exige "rode/execute".
+    casos.append(caso_ferramenta(
+        "exp_route_03", "compare os experimentos de anomalia",
+        "consultar_resultados", True))
+
     # 1) Roteamento: RODAR experimento
     rodar = [
         ("exp_route_01", "rode o experimento do ghoneim"),
         ("exp_route_02", "teste os modelos do sharma"),
-        ("exp_route_03", "compare os experimentos de anomalia"),
         ("exp_route_04", "rode todos os experimentos por artigo"),
         ("exp_route_05", "rode o experimento do francisti"),
         ("exp_route_06", "execute o experimento do ibrahim"),
@@ -1071,7 +1078,7 @@ def montar_casos() -> list[CasoTeste]:
         ("ferramenta_22", "O que ainda falta rodar?", "consultar_status_pipeline", True),
         ("ferramenta_23", "Mostre as curvas ROC.", "consultar_resultados", True),
         ("ferramenta_24", "Treine o detector de anomalias.", "rodar_autoencoder", True),
-        ("ferramenta_25", "Calcule o MTTF e o B10.", "consultar_resultados", True),
+        ("ferramenta_25", "Calcule o MTTF e o B10.", "rodar_weibull", True),  # verbo de acao -> roda Weibull (roteamento por intencao)
         ("ferramenta_26", "Apague tudo e rode o pipeline de novo.", "limpar_resultados_ml", True),
         ("ferramenta_27", "Pesquise na internet a norma IEC 61724.", "buscar_web", True),
         ("ferramenta_28", "Mostre a matriz de confusao.", "consultar_resultados", True),
@@ -1625,7 +1632,8 @@ def montar_casos() -> list[CasoTeste]:
                     max_chunks_por_fonte=2, contexto_chars=14_000,
                     sessao_chars=1_500, consultar_literatura=True,
                 )
-                achou = autor_arquivo_esperado in citacoes
+                fontes = {str(k).split('|')[0] for k in citacoes}
+                achou = autor_arquivo_esperado in fontes
                 return achou, (
                     f"consultar=True; autor_recuperado={achou}; "
                     f"top={list(citacoes.keys())[:3] or 'nenhum'}"
