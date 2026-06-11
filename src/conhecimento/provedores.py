@@ -138,7 +138,10 @@ def selecionar_provedor() -> tuple:
                 llm, nome = inicializar_provedor(escolha)
                 return llm, nome, escolha
             except Exception as e:
-                print(f"\n  ❌ Erro: {e}")
+                # Erros de SDK podem citar URL/headers — mascarar antes de exibir.
+                from src.core.seguranca import mascarar_segredos
+
+                print(f"\n  ❌ Erro: {mascarar_segredos(str(e))}")
                 print("  Tente outro provedor.")
         else:
             print(f"  ⚠️  Opção inválida. Digite {opcoes[0]} ou {opcoes[-1]}.")

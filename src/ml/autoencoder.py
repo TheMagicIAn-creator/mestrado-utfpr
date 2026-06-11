@@ -470,10 +470,13 @@ def executar_autoencoder(
     }, arq_modelo)
     print(f"   ✅ {arq_modelo.name}")
 
-    # Scaler
+    # Scaler (+ sidecar SHA-256 para carga verificada nas etapas seguintes)
     arq_scaler = pasta_saida / "scaler.pkl"
     with open(arq_scaler, "wb") as f:
         pickle.dump(scaler, f)
+    from src.core.seguranca import gravar_sidecar_sha256
+
+    gravar_sidecar_sha256(arq_scaler)
     print(f"   ✅ {arq_scaler.name}")
 
     # Limiar e metadados

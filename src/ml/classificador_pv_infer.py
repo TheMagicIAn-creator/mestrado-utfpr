@@ -166,6 +166,16 @@ def treinar_e_salvar_de(
     joblib.dump(clf, pasta / "modelo_classificador.pkl")
     with open(pasta / "scaler.pkl", "wb") as f:
         pickle.dump(scaler, f)
+    # Integridade: SHA-256 dos artefatos pickle — conferido em carregar().
+    # Pickle executa código ao desserializar; o hash garante que só carregamos
+    # exatamente o que este treino gravou.
+    from src.core.seguranca import sha256_de_arquivo
+
+    (pasta / "hashes.json").write_text(
+        json.dumps({
+            "modelo_classificador.pkl": sha256_de_arquivo(pasta / "modelo_classificador.pkl"),
+            "scaler.pkl": sha256_de_arquivo(pasta / "scaler.pkl"),
+        }, indent=2), encoding="utf-8")
     (pasta / "feature_columns.json").write_text(
         json.dumps(colunas, ensure_ascii=False, indent=2), encoding="utf-8")
     (pasta / "class_mapping.json").write_text(
@@ -206,17 +216,47 @@ def treinar_e_salvar(pasta: Path = PASTA) -> dict:
 
 
 def carregar(pasta: Path = PASTA) -> dict | None:
-    """Carrega os artefatos do classificador, ou None se ausentes."""
+    """Carrega os artefatos do classificador, ou None se ausentes.
+
+    Segurança: quando ``hashes.json`` existe (gravado por ``treinar_e_salvar``),
+    o SHA-256 de cada pickle é conferido ANTES de desserializar — um artefato
+    trocado em disco levanta ``ValueError`` em vez de executar código
+    arbitrário. Artefatos antigos sem hash carregam com aviso no log.
+    """
     import joblib
+
+    from src.core.seguranca import carregar_pickle_verificado, sha256_de_arquivo
 
     arq_modelo = pasta / "modelo_classificador.pkl"
     arq_cols = pasta / "feature_columns.json"
     if not (arq_modelo.exists() and arq_cols.exists()):
         return None
-    with open(pasta / "scaler.pkl", "rb") as f:
-        scaler = pickle.load(f)
+
+    arq_hashes = pasta / "hashes.json"
+    if arq_hashes.exists():
+        hashes = json.loads(arq_hashes.read_text(encoding="utf-8"))
+        scaler = carregar_pickle_verificado(
+            pasta / "scaler.pkl", hashes.get("scaler.pkl", ""))
+        h_modelo = hashes.get("modelo_classificador.pkl", "")
+        if sha256_de_arquivo(arq_modelo) != str(h_modelo).lower():
+            raise ValueError(
+                "Integridade violada em modelo_classificador.pkl: SHA-256 não "
+                "confere com hashes.json. Retreine com treinar_e_salvar()."
+            )
+        modelo = joblib.load(arq_modelo)
+    else:
+        from src.core.logs import get_logger
+
+        get_logger("classificador_pv_infer").warning(
+            "Artefatos sem hashes.json (anteriores ao hardening); carregando "
+            "sem verificação de integridade. Retreine para gerar os hashes."
+        )
+        with open(pasta / "scaler.pkl", "rb") as f:
+            scaler = pickle.load(f)
+        modelo = joblib.load(arq_modelo)
+
     return {
-        "modelo": joblib.load(arq_modelo),
+        "modelo": modelo,
         "scaler": scaler,
         "colunas": json.loads(arq_cols.read_text(encoding="utf-8")),
         "classes": json.loads((pasta / "class_mapping.json").read_text(encoding="utf-8")),

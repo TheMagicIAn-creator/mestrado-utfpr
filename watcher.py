@@ -64,6 +64,19 @@ class HandlerPDF(FileSystemEventHandler):
         if caminho.suffix.lower() != ".pdf":
             return
 
+        # Segurança: só processa arquivos REALMENTE dentro da pasta monitorada
+        # (sem symlinks nem caminhos resolvendo para fora dela).
+        try:
+            from src.core.seguranca import caminho_dentro_do_projeto
+
+            if caminho.is_symlink():
+                print(f"⚠️  Symlink ignorado por segurança: {caminho.name}")
+                return
+            caminho = caminho_dentro_do_projeto(caminho, base=PASTA_MONITORADA)
+        except ValueError:
+            print(f"⚠️  Caminho fora da pasta monitorada ignorado: {caminho}")
+            return
+
         # Evita processar o mesmo arquivo duas vezes
         if str(caminho) in self.processados:
             return

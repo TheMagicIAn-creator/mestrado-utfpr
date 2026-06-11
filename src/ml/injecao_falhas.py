@@ -356,8 +356,9 @@ def executar_injecao_falhas() -> bool:
 
     checkpoint = torch.load(arq_modelo, map_location="cpu",
                             weights_only=False)
-    with open(arq_scaler, "rb") as f:
-        scaler = pickle.load(f)
+    from src.core.seguranca import carregar_pickle_com_sidecar
+
+    scaler = carregar_pickle_com_sidecar(arq_scaler)
     with open(arq_limiar, "r") as f:
         info_limiar = json.load(f)
 

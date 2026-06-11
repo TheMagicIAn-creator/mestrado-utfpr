@@ -69,11 +69,12 @@ def executar_experimento_isolado(
     out = Path(caminho_out)
 
     cmd = [sys.executable, "-m", "src.ml.exec_experimento_isolado", str(key), str(out)]
-    env = dict(os.environ)
-    env["AL_IADO_EXP_CHILD"] = "1"
-    env.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
-    env.setdefault("PYTHONUTF8", "1")
-    env.setdefault("PYTHONIOENCODING", "utf-8")
+    # Menor privilégio: o filho treina modelos LOCAIS e não precisa de chaves
+    # de API — env_minimo_subprocesso remove GROQ/GOOGLE/etc. e já define
+    # KMP/UTF-8 com defaults seguros.
+    from src.core.seguranca import env_minimo_subprocesso
+
+    env = env_minimo_subprocesso(extras={"AL_IADO_EXP_CHILD": "1"})
 
     try:
         proc = subprocess.Popen(

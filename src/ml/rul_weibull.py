@@ -384,8 +384,9 @@ def executar_rul_weibull() -> bool:
 
     checkpoint = torch.load(PASTA_AE/"modelo_autoencoder.pt",
                             map_location="cpu", weights_only=False)
-    with open(PASTA_AE/"scaler.pkl", "rb") as f:
-        scaler = pickle.load(f)
+    from src.core.seguranca import carregar_pickle_com_sidecar
+
+    scaler = carregar_pickle_com_sidecar(PASTA_AE / "scaler.pkl")
     with open(PASTA_AE/"limiar.json", "r") as f:
         info_limiar = json.load(f)
 

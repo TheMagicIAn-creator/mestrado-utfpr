@@ -302,8 +302,16 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
         )
         if arquivo_pdf is not None:
             if st.button("Enviar para processamento", use_container_width=True):
-                destino = RAIZ_PROJETO / "novos_pdfs" / arquivo_pdf.name
-                destino.parent.mkdir(exist_ok=True)
+                # Sanitiza o nome vindo do navegador (anti path-traversal) e
+                # confirma que o destino fica DENTRO de novos_pdfs/.
+                from src.core.seguranca import (
+                    caminho_dentro_do_projeto, nome_arquivo_seguro,
+                )
+
+                pasta_novos = RAIZ_PROJETO / "novos_pdfs"
+                pasta_novos.mkdir(exist_ok=True)
+                nome = nome_arquivo_seguro(arquivo_pdf.name, padrao="upload.pdf")
+                destino = caminho_dentro_do_projeto(nome, base=pasta_novos)
                 destino.write_bytes(arquivo_pdf.getbuffer())
                 st.success("PDF enviado. O watcher processará automaticamente.")
 
