@@ -38,6 +38,26 @@ Uso:
 Autor: Rodolfo Torres (UTFPR)
 """
 
+from src.core.logs import get_logger as _get_logger
+
+_logger = _get_logger("validacao")
+
+
+def _log(*args, sep=" ", end="\n", flush=None):
+    """Progresso/sumário de ML vai para o ARQUIVO de log — o terminal
+    fica silencioso quando rodando pelo app. Scripts manuais reativam o
+    eco chamando habilitar_console() no bloco __main__. Linhas de
+    progresso com \\r são rebaixadas a DEBUG."""
+    texto = sep.join(str(a) for a in args)
+    if not texto.strip():
+        return
+    if texto.startswith("\r"):
+        _logger.debug(texto.strip())
+        return
+    _logger.info(texto.rstrip("\n"))
+
+
+
 import json
 import pickle
 import numpy as np
@@ -203,7 +223,7 @@ def plotar_roc(resultados: dict, limiar: float, pasta: Path):
     arq = pasta / "validacao_roc.png"
     fig.savefig(arq, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"   📊 {arq.name}")
+    _log(f"   📊 {arq.name}")
 
 
 def plotar_pr(resultados: dict, pasta: Path):
@@ -238,7 +258,7 @@ def plotar_pr(resultados: dict, pasta: Path):
     arq = pasta / "validacao_pr.png"
     fig.savefig(arq, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"   📊 {arq.name}")
+    _log(f"   📊 {arq.name}")
 
 
 def plotar_matrizes(resultados: dict, pasta: Path):
@@ -284,7 +304,7 @@ def plotar_matrizes(resultados: dict, pasta: Path):
     arq = pasta / "validacao_matriz.png"
     fig.savefig(arq, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"   📊 {arq.name}")
+    _log(f"   📊 {arq.name}")
 
 
 def plotar_tabela_metricas(tabela_df: pd.DataFrame, pasta: Path):
@@ -323,7 +343,7 @@ def plotar_tabela_metricas(tabela_df: pd.DataFrame, pasta: Path):
     arq = pasta / "validacao_metricas.png"
     fig.savefig(arq, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"   📊 {arq.name}")
+    _log(f"   📊 {arq.name}")
 
 
 # ============================================================
@@ -331,19 +351,19 @@ def plotar_tabela_metricas(tabela_df: pd.DataFrame, pasta: Path):
 # ============================================================
 
 def executar_validacao() -> bool:
-    print("=" * 60)
-    print("  AL IADO PV — VALIDAÇÃO FORMAL DO DETECTOR")
-    print("=" * 60)
+    _log("=" * 60)
+    _log("  AL IADO PV — VALIDAÇÃO FORMAL DO DETECTOR")
+    _log("=" * 60)
 
     # ── 1. Carrega artefatos ─────────────────────────────────
-    print(f"\n📂 Carregando artefatos...")
+    _log(f"\n📂 Carregando artefatos...")
     arq_modelo = PASTA_AE / "modelo_autoencoder.pt"
     arq_scaler = PASTA_AE / "scaler.pkl"
     arq_limiar = PASTA_AE / "limiar.json"
 
     for arq in [arq_modelo, arq_scaler, arq_limiar]:
         if not arq.exists():
-            print(f"   ❌ {arq.name} não encontrado")
+            _log(f"   ❌ {arq.name} não encontrado")
             return False
 
     checkpoint = torch.load(arq_modelo, map_location="cpu",
@@ -362,34 +382,34 @@ def executar_validacao() -> bool:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     modelo = Autoencoder(n_features, latente_dim).to(device)
     modelo.load_state_dict(checkpoint["state_dict"])
-    print(f"   ✅ Modelo carregado | limiar={limiar:.4f}")
+    _log(f"   ✅ Modelo carregado | limiar={limiar:.4f}")
 
     # ── 2. Dataset estável ───────────────────────────────────
-    print(f"\n📂 Carregando dataset...")
+    _log(f"\n📂 Carregando dataset...")
     df = pd.read_csv(ARQUIVO_CSV)
     idx_i = int(T_INICIO_ESTAVEL * FS)
     idx_f = int(T_FIM_ESTAVEL * FS)
     df_estavel = df.iloc[idx_i:idx_f].reset_index(drop=True)
-    print(f"   ✅ {len(df_estavel):,} amostras estáveis disponíveis")
+    _log(f"   ✅ {len(df_estavel):,} amostras estáveis disponíveis")
 
     # ── 3. Erros classe negativa (saudável) ──────────────────
-    print(f"\n⚕️  Coletando erros — classe SAUDÁVEL ({N_JANELAS_SAUDAVEL} janelas)...")
+    _log(f"\n⚕️  Coletando erros — classe SAUDÁVEL ({N_JANELAS_SAUDAVEL} janelas)...")
     erros_neg = coletar_erros(
         df_estavel, modelo, scaler, device, colunas_feat,
         "saudavel", 0.0, N_JANELAS_SAUDAVEL
     )
-    print(f"   μ={erros_neg.mean():.4f} ± {erros_neg.std():.4f} | "
+    _log(f"   μ={erros_neg.mean():.4f} ± {erros_neg.std():.4f} | "
           f"FP={( erros_neg > limiar).mean()*100:.1f}%")
 
     # ── 4. Erros por falha e severidade ──────────────────────
-    print(f"\n💉 Coletando erros — classes FALHA...")
+    _log(f"\n💉 Coletando erros — classes FALHA...")
     resultados = {}
     linhas_tabela = []
 
     for falha in FALHAS:
         fid  = falha["id"]
         nome = falha["nome"]
-        print(f"\n   🔴 {nome}")
+        _log(f"\n   🔴 {nome}")
 
         for sev in SEVS_VALIDACAO:
             erros_pos = coletar_erros(
@@ -401,7 +421,7 @@ def executar_validacao() -> bool:
             chave = f"{fid}_sev{sev}"
             resultados[chave] = res
 
-            print(f"      sev={sev:.2f} | "
+            _log(f"      sev={sev:.2f} | "
                   f"F1={res['f1']:.3f} | "
                   f"AUC={res['auc_roc']:.3f} | "
                   f"Recall={res['recall']:.3f} | "
@@ -421,7 +441,7 @@ def executar_validacao() -> bool:
             })
 
     # ── 5. Visualizações ─────────────────────────────────────
-    print(f"\n📊 Gerando gráficos...")
+    _log(f"\n📊 Gerando gráficos...")
     plotar_roc(resultados, limiar, PASTA_AE)
     plotar_pr(resultados, PASTA_AE)
     plotar_matrizes(resultados, PASTA_AE)
@@ -432,7 +452,7 @@ def executar_validacao() -> bool:
     # ── 6. Salva resultados ──────────────────────────────────
     arq_csv = PASTA_AE / "validacao_tabela.csv"
     tabela_df.to_csv(arq_csv, index=False)
-    print(f"   📋 {arq_csv.name}")
+    _log(f"   📋 {arq_csv.name}")
 
     arq_json = PASTA_AE / "validacao_report.json"
     report_serializavel = {
@@ -456,25 +476,25 @@ def executar_validacao() -> bool:
         }
     with open(arq_json, "w", encoding="utf-8") as f:
         json.dump(report_serializavel, f, indent=2, ensure_ascii=False)
-    print(f"   ✅ {arq_json.name}")
+    _log(f"   ✅ {arq_json.name}")
 
     # ── 7. Resumo final ──────────────────────────────────────
-    print(f"\n{'='*60}")
-    print(f"  VALIDAÇÃO CONCLUÍDA!")
-    print(f"\n  {'Falha':<30} {'Sev':>5} {'F1':>7} {'AUC':>7} {'Recall':>8}")
-    print(f"  {'-'*60}")
+    _log(f"\n{'='*60}")
+    _log(f"  VALIDAÇÃO CONCLUÍDA!")
+    _log(f"\n  {'Falha':<30} {'Sev':>5} {'F1':>7} {'AUC':>7} {'Recall':>8}")
+    _log(f"  {'-'*60}")
     for row in linhas_tabela:
         npm_str = f"NPR={row['npr']}" if row["npr"] else "  D=10"
-        print(f"  {row['falha']:<30} {row['severidade']:>5.2f} "
+        _log(f"  {row['falha']:<30} {row['severidade']:>5.2f} "
               f"{row['f1']:>7.3f} {row['auc_roc']:>7.3f} "
               f"{row['recall']:>8.3f}")
 
     # Melhor AUC geral
     melhor = max(linhas_tabela, key=lambda x: x["auc_roc"])
-    print(f"\n  Melhor resultado: {melhor['falha']} "
+    _log(f"\n  Melhor resultado: {melhor['falha']} "
           f"(sev={melhor['severidade']}) — AUC={melhor['auc_roc']:.3f}")
-    print(f"\n  Próximo passo: dissertação — Capítulo 4 (Resultados)")
-    print(f"{'='*60}")
+    _log(f"\n  Próximo passo: dissertação — Capítulo 4 (Resultados)")
+    _log(f"{'='*60}")
 
     return True
 
@@ -484,4 +504,6 @@ def executar_validacao() -> bool:
 # ============================================================
 
 if __name__ == "__main__":
+    from src.core.logs import habilitar_console
+    habilitar_console()
     executar_validacao()

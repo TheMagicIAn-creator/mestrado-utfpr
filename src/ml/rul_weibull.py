@@ -51,6 +51,26 @@ Uso:
 Autor: Rodolfo Torres (UTFPR)
 """
 
+from src.core.logs import get_logger as _get_logger
+
+_logger = _get_logger("rul_weibull")
+
+
+def _log(*args, sep=" ", end="\n", flush=None):
+    """Progresso/sumário de ML vai para o ARQUIVO de log — o terminal
+    fica silencioso quando rodando pelo app. Scripts manuais reativam o
+    eco chamando habilitar_console() no bloco __main__. Linhas de
+    progresso com \\r são rebaixadas a DEBUG."""
+    texto = sep.join(str(a) for a in args)
+    if not texto.strip():
+        return
+    if texto.startswith("\r"):
+        _logger.debug(texto.strip())
+        return
+    _logger.info(texto.rstrip("\n"))
+
+
+
 import json
 import pickle
 import numpy as np
@@ -273,7 +293,7 @@ def plotar_ttf_histogramas(ttfs_dict: dict, params: dict, pasta: Path):
     arq = pasta / "weibull_ttf.png"
     fig.savefig(arq, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"   📊 {arq.name}")
+    _log(f"   📊 {arq.name}")
 
 
 def plotar_confiabilidade(ttfs_dict: dict, params: dict, pasta: Path):
@@ -324,7 +344,7 @@ def plotar_confiabilidade(ttfs_dict: dict, params: dict, pasta: Path):
     arq = pasta / "weibull_confiabilidade.png"
     fig.savefig(arq, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"   📊 {arq.name}")
+    _log(f"   📊 {arq.name}")
 
 
 def plotar_rul(params: dict, pasta: Path):
@@ -359,7 +379,7 @@ def plotar_rul(params: dict, pasta: Path):
     arq = pasta / "weibull_rul.png"
     fig.savefig(arq, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"   📊 {arq.name}")
+    _log(f"   📊 {arq.name}")
 
 
 # ============================================================
@@ -367,19 +387,19 @@ def plotar_rul(params: dict, pasta: Path):
 # ============================================================
 
 def executar_rul_weibull() -> bool:
-    print("=" * 60)
-    print("  AL IADO PV — RUL COM WEIBULL")
-    print("=" * 60)
-    print(f"\n  Trajetórias por falha: {N_TRAJ}")
-    print(f"  Passos de degradação : {N_STEPS} (sev 0→1,0)")
+    _log("=" * 60)
+    _log("  AL IADO PV — RUL COM WEIBULL")
+    _log("=" * 60)
+    _log(f"\n  Trajetórias por falha: {N_TRAJ}")
+    _log(f"  Passos de degradação : {N_STEPS} (sev 0→1,0)")
 
     # ── 1. Carrega artefatos ─────────────────────────────────
-    print(f"\n📂 Carregando artefatos...")
+    _log(f"\n📂 Carregando artefatos...")
     for arq in [PASTA_AE/"modelo_autoencoder.pt",
                 PASTA_AE/"scaler.pkl",
                 PASTA_AE/"limiar.json"]:
         if not arq.exists():
-            print(f"   ❌ {arq.name} não encontrado")
+            _log(f"   ❌ {arq.name} não encontrado")
             return False
 
     checkpoint = torch.load(PASTA_AE/"modelo_autoencoder.pt",
@@ -399,23 +419,23 @@ def executar_rul_weibull() -> bool:
     modelo = Autoencoder(n_features, latente_dim).to(device)
     modelo.load_state_dict(checkpoint["state_dict"])
     modelo.eval()
-    print(f"   ✅ Limiar={limiar:.4f} | device={device}")
+    _log(f"   ✅ Limiar={limiar:.4f} | device={device}")
 
     # ── 2. Dataset estável ───────────────────────────────────
-    print(f"\n📂 Carregando dataset...")
+    _log(f"\n📂 Carregando dataset...")
     df = pd.read_csv(ARQUIVO_CSV)
     df_estavel = df.iloc[int(T_INICIO_ESTAVEL*FS):
                           int(T_FIM_ESTAVEL*FS)].reset_index(drop=True)
-    print(f"   ✅ {len(df_estavel):,} amostras estáveis")
+    _log(f"   ✅ {len(df_estavel):,} amostras estáveis")
 
     # ── 3. Gera TTFs por tipo de falha ───────────────────────
-    print(f"\n⚙️  Gerando trajetórias de degradação...")
+    _log(f"\n⚙️  Gerando trajetórias de degradação...")
     ttfs_dict = {}
 
     for falha in FALHAS:
         fid  = falha["id"]
         nome = falha["nome"]
-        print(f"\n   🔴 {nome} ({N_TRAJ} trajetórias × {N_STEPS} passos)...")
+        _log(f"\n   🔴 {nome} ({N_TRAJ} trajetórias × {N_STEPS} passos)...")
 
         ttfs = []
         for i in range(N_TRAJ):
@@ -425,7 +445,7 @@ def executar_rul_weibull() -> bool:
             )
             ttfs.append(ttf)
             if (i + 1) % 20 == 0:
-                print(f"      [{i+1:>3}/{N_TRAJ}] TTF médio até agora: "
+                _log(f"      [{i+1:>3}/{N_TRAJ}] TTF médio até agora: "
                       f"{np.mean(ttfs):.1f} passos", end="\r")
 
         ttfs = np.array(ttfs, dtype=float)
@@ -436,31 +456,31 @@ def executar_rul_weibull() -> bool:
 
         ttfs_dict[fid] = ttfs
         pct_cens = censurados.mean() * 100
-        print(f"\n      TTF: μ={ttfs.mean():.1f} ± {ttfs.std():.1f} | "
+        _log(f"\n      TTF: μ={ttfs.mean():.1f} ± {ttfs.std():.1f} | "
               f"min={ttfs.min():.0f} | max={ttfs.max():.0f} | "
               f"censurados={pct_cens:.0f}%")
 
     # ── 4. Ajuste de Weibull ─────────────────────────────────
-    print(f"\n📐 Ajustando distribuição de Weibull...")
+    _log(f"\n📐 Ajustando distribuição de Weibull...")
     params = {}
     for falha in FALHAS:
         fid = falha["id"]
         p   = ajustar_weibull(ttfs_dict[fid])
         params[fid] = p
         npm_str = f"NPR={falha['npr']}" if falha['npr'] else "  D=10"
-        print(f"\n   {falha['nome']} ({npm_str})")
-        print(f"      β={p['beta']:.3f}  η={p['eta']:.1f}  "
+        _log(f"\n   {falha['nome']} ({npm_str})")
+        _log(f"      β={p['beta']:.3f}  η={p['eta']:.1f}  "
               f"MTTF={p['mttf']:.1f}  B10={p['b10']:.1f}")
-        print(f"      KS p-value={p['ks_pval']:.3f} "
+        _log(f"      KS p-value={p['ks_pval']:.3f} "
               + ("✅ ajuste adequado" if p['ks_pval'] > 0.05
                  else "⚠️  ajuste pode ser melhorado"))
         tipo_beta = ("crescente (desgaste)" if p["beta"] > 1.1
                      else "constante (aleatório)" if p["beta"] > 0.9
                      else "decrescente (mortalidade infantil)")
-        print(f"      Taxa de falha: {tipo_beta}")
+        _log(f"      Taxa de falha: {tipo_beta}")
 
     # ── 5. Visualizações ─────────────────────────────────────
-    print(f"\n📊 Gerando gráficos...")
+    _log(f"\n📊 Gerando gráficos...")
     plotar_ttf_histogramas(ttfs_dict, params, PASTA_AE)
     plotar_confiabilidade(ttfs_dict, params, PASTA_AE)
     plotar_rul(params, PASTA_AE)
@@ -485,27 +505,27 @@ def executar_rul_weibull() -> bool:
         }
     with open(arq_json, "w", encoding="utf-8") as f:
         json.dump(relatorio, f, indent=2, ensure_ascii=False)
-    print(f"   ✅ {arq_json.name}")
+    _log(f"   ✅ {arq_json.name}")
 
     # ── 7. Resumo final ──────────────────────────────────────
-    print(f"\n{'='*60}")
-    print(f"  ANÁLISE DE WEIBULL E RUL CONCLUÍDA!")
-    print(f"\n  {'Falha':<28} {'β':>6} {'η':>7} {'MTTF':>8} {'B10':>8}")
-    print(f"  {'-'*58}")
+    _log(f"\n{'='*60}")
+    _log(f"  ANÁLISE DE WEIBULL E RUL CONCLUÍDA!")
+    _log(f"\n  {'Falha':<28} {'β':>6} {'η':>7} {'MTTF':>8} {'B10':>8}")
+    _log(f"  {'-'*58}")
     for falha in FALHAS:
         fid = falha["id"]
         p   = params[fid]
-        print(f"  {falha['nome']:<28} "
+        _log(f"  {falha['nome']:<28} "
               f"{p['beta']:>6.3f} {p['eta']:>7.1f} "
               f"{p['mttf']:>8.1f} {p['b10']:>8.1f}")
 
-    print(f"\n  Interpretação do β:")
-    print(f"  β > 1 → taxa de falha crescente (desgaste) — esperado")
-    print(f"  β < 1 → mortalidade infantil")
-    print(f"  β = 1 → falhas aleatórias (exponencial)")
-    print(f"\n  Fase 5 do pipeline de ML concluída!")
-    print(f"  Próximo passo: integração no orquestrador")
-    print(f"{'='*60}")
+    _log(f"\n  Interpretação do β:")
+    _log(f"  β > 1 → taxa de falha crescente (desgaste) — esperado")
+    _log(f"  β < 1 → mortalidade infantil")
+    _log(f"  β = 1 → falhas aleatórias (exponencial)")
+    _log(f"\n  Fase 5 do pipeline de ML concluída!")
+    _log(f"  Próximo passo: integração no orquestrador")
+    _log(f"{'='*60}")
     return True
 
 
@@ -514,4 +534,6 @@ def executar_rul_weibull() -> bool:
 # ============================================================
 
 if __name__ == "__main__":
+    from src.core.logs import habilitar_console
+    habilitar_console()
     executar_rul_weibull()

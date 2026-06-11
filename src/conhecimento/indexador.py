@@ -137,6 +137,21 @@ def upsert_em_lotes(colecao, ids, embeddings, documents, metadados, tamanho_lote
 # EXTRAÇÃO E CHUNKING DE PDF
 # ============================================================
 
+# Singleton do modelo de embeddings: ~500 MB e 2-3 s de carga; reutilizado
+# entre chamadas de indexação na mesma sessão (watcher, chat, orquestrador).
+_MODELO_EMBEDDINGS = None
+
+
+def obter_modelo_embeddings():
+    """Carrega o SentenceTransformer UMA vez por processo e reutiliza."""
+    global _MODELO_EMBEDDINGS
+    if _MODELO_EMBEDDINGS is None:
+        from sentence_transformers import SentenceTransformer
+
+        _MODELO_EMBEDDINGS = SentenceTransformer(MODELO_EMBEDDINGS)
+    return _MODELO_EMBEDDINGS
+
+
 def ler_pdf(caminho_pdf: Path) -> str:
     """Extrai texto do PDF usando pypdf."""
     try:
@@ -645,10 +660,7 @@ def indexar_literatura() -> None:
     print(f"Sobreposição literatura: {SOBREPOSICAO_LITERATURA}")
     print(f"Extração de tabelas: {'ativada' if EXTRAIR_TABELAS_LITERATURA else 'desativada'}")
 
-    # Import tardio: evita carregar torch só para indexar pela função utilitária.
-    from sentence_transformers import SentenceTransformer
-
-    modelo = SentenceTransformer(MODELO_EMBEDDINGS)
+    modelo = obter_modelo_embeddings()
 
     total_chunks = 0
     pdfs_indexados = 0

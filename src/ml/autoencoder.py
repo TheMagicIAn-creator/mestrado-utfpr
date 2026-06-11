@@ -37,6 +37,26 @@ Uso:
 Autor: Rodolfo Torres (UTFPR)
 """
 
+from src.core.logs import get_logger as _get_logger
+
+_logger = _get_logger("autoencoder")
+
+
+def _log(*args, sep=" ", end="\n", flush=None):
+    """Progresso/sumário de ML vai para o ARQUIVO de log — o terminal
+    fica silencioso quando rodando pelo app. Scripts manuais reativam o
+    eco chamando habilitar_console() no bloco __main__. Linhas de
+    progresso com \\r são rebaixadas a DEBUG."""
+    texto = sep.join(str(a) for a in args)
+    if not texto.strip():
+        return
+    if texto.startswith("\r"):
+        _logger.debug(texto.strip())
+        return
+    _logger.info(texto.rstrip("\n"))
+
+
+
 import json
 import pickle
 import argparse
@@ -186,13 +206,13 @@ def treinar(modelo, loader_treino, loader_val,
             sem_melhora += 1
 
         if epoca % 10 == 0 or epoca == 1:
-            print(f"   Época {epoca:>4}/{epochs} | "
+            _log(f"   Época {epoca:>4}/{epochs} | "
                   f"treino: {loss_treino:.6f} | "
                   f"val: {loss_val:.6f}"
                   + (" ✓" if sem_melhora == 0 else ""))
 
         if sem_melhora >= paciencia:
-            print(f"\n   ⏹️  Early stopping na época {epoca} "
+            _log(f"\n   ⏹️  Early stopping na época {epoca} "
                   f"(melhor val={melhor_val:.6f} na época {epoca_melhor})")
             break
 
@@ -282,7 +302,7 @@ def plotar_curvas(hist_treino: list, hist_val: list,
     caminho = pasta / "curva_treino.png"
     fig.savefig(caminho, dpi=150)
     plt.close(fig)
-    print(f"   📊 {caminho.name}")
+    _log(f"   📊 {caminho.name}")
 
 
 def plotar_distribuicao(erros_treino: np.ndarray,
@@ -315,7 +335,7 @@ def plotar_distribuicao(erros_treino: np.ndarray,
     caminho = pasta / "distribuicao_erro.png"
     fig.savefig(caminho, dpi=150)
     plt.close(fig)
-    print(f"   📊 {caminho.name}")
+    _log(f"   📊 {caminho.name}")
 
 
 def plotar_erro_temporal(erros: np.ndarray,
@@ -338,7 +358,7 @@ def plotar_erro_temporal(erros: np.ndarray,
     caminho = pasta / "erro_temporal.png"
     fig.savefig(caminho, dpi=150)
     plt.close(fig)
-    print(f"   📊 {caminho.name}")
+    _log(f"   📊 {caminho.name}")
 
 
 # ============================================================
@@ -358,24 +378,24 @@ def executar_autoencoder(
 ) -> bool:
     """Pipeline completo de treinamento do Autoencoder."""
 
-    print("=" * 60)
-    print("  AL IADO PV — AUTOENCODER (Paderborn)")
-    print("=" * 60)
+    _log("=" * 60)
+    _log("  AL IADO PV — AUTOENCODER (Paderborn)")
+    _log("=" * 60)
 
     torch.manual_seed(seed)
     np.random.seed(seed)
 
     # ── Dispositivo ──────────────────────────────────────────
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"\n🖥️  Dispositivo: {device}"
+    _log(f"\n🖥️  Dispositivo: {device}"
           + (f" ({torch.cuda.get_device_name(0)})"
              if device.type == "cuda" else ""))
 
     # ── 1. Carrega features ──────────────────────────────────
-    print(f"\n📂 Carregando features...")
+    _log(f"\n📂 Carregando features...")
     if not arquivo_feat.exists():
-        print(f"   ❌ Não encontrado: {arquivo_feat}")
-        print("   Execute primeiro: python src/ml/features_ca.py")
+        _log(f"   ❌ Não encontrado: {arquivo_feat}")
+        _log("   Execute primeiro: python src/ml/features_ca.py")
         return False
 
     df = pd.read_parquet(arquivo_feat)
@@ -384,12 +404,12 @@ def executar_autoencoder(
     colunas_feat = [c for c in df.columns if c not in META_COLS]
     X = df[colunas_feat].values.astype(np.float32)
     n_janelas, n_features = X.shape
-    print(f"   ✅ {n_janelas} janelas × {n_features} features")
+    _log(f"   ✅ {n_janelas} janelas × {n_features} features")
 
     # ── 2. Normalização com RobustScaler ─────────────────────
     # RobustScaler usa mediana e IQR — resistente a outliers
     # (THD alto em transientes não distorce a escala geral)
-    print(f"\n⚖️  Normalizando com RobustScaler...")
+    _log(f"\n⚖️  Normalizando com RobustScaler...")
     # Divisão TEMPORAL com purga (NÃO aleatória): janelas com 50% de
     # sobreposição não podem vazar entre treino e validação (item 3.4).
     from src.ml.split_temporal import split_treino_val
@@ -400,8 +420,8 @@ def executar_autoencoder(
     X_treino = scaler.fit_transform(X_treino_raw).astype(np.float32)
     X_val    = scaler.transform(X_val_raw).astype(np.float32)
     X_all    = scaler.transform(X).astype(np.float32)
-    print(f"   Treino : {len(X_treino)} janelas")
-    print(f"   Val    : {len(X_val)} janelas")
+    _log(f"   Treino : {len(X_treino)} janelas")
+    _log(f"   Val    : {len(X_val)} janelas")
 
     # ── 3. DataLoaders ───────────────────────────────────────
     ds_treino = TensorDataset(torch.from_numpy(X_treino))
@@ -413,22 +433,22 @@ def executar_autoencoder(
     modelo = Autoencoder(n_features, latente_dim, DROPOUT).to(device)
     n_params = sum(p.numel() for p in modelo.parameters())
 
-    print(f"\n🧠 Arquitetura:")
-    print(f"   Entrada  : {n_features}")
-    print(f"   Encoder  : {n_features} → 64 → 32 → {latente_dim}")
-    print(f"   Latente  : {latente_dim} dimensões")
-    print(f"   Decoder  : {latente_dim} → 32 → 64 → {n_features}")
-    print(f"   Parâmetros: {n_params:,}")
+    _log(f"\n🧠 Arquitetura:")
+    _log(f"   Entrada  : {n_features}")
+    _log(f"   Encoder  : {n_features} → 64 → 32 → {latente_dim}")
+    _log(f"   Latente  : {latente_dim} dimensões")
+    _log(f"   Decoder  : {latente_dim} → 32 → 64 → {n_features}")
+    _log(f"   Parâmetros: {n_params:,}")
 
     # ── 5. Treinamento ───────────────────────────────────────
-    print(f"\n🏋️  Treinando ({epochs} épocas, early stopping={paciencia})...")
+    _log(f"\n🏋️  Treinando ({epochs} épocas, early stopping={paciencia})...")
     hist_t, hist_v, ep_melhor = treinar(
         modelo, loader_treino, loader_val,
         epochs, lr, paciencia, device
     )
 
     # ── 6. Erros de reconstrução ─────────────────────────────
-    print(f"\n📐 Calculando erros de reconstrução...")
+    _log(f"\n📐 Calculando erros de reconstrução...")
     T_treino = torch.from_numpy(X_treino)
     T_val    = torch.from_numpy(X_val)
     T_all    = torch.from_numpy(X_all)
@@ -441,22 +461,22 @@ def executar_autoencoder(
     info_limiar = calcular_limiar(erros_treino, sigma)
     limiar      = info_limiar["limiar"]
 
-    print(f"\n🎯 Limiares de anomalia:")
-    print(f"   μ (treino)     = {info_limiar['mu']:.6f}")
-    print(f"   σ (treino)     = {info_limiar['sigma']:.6f}")
-    print(f"   Percentil 99   = {info_limiar['limiar_p99']:.6f}  ← operacional")
-    print(f"   Percentil 95   = {info_limiar['limiar_p95']:.6f}")
-    print(f"   μ + {sigma}σ        = {info_limiar['limiar_mu3s']:.6f}  ← referência teórica")
+    _log(f"\n🎯 Limiares de anomalia:")
+    _log(f"   μ (treino)     = {info_limiar['mu']:.6f}")
+    _log(f"   σ (treino)     = {info_limiar['sigma']:.6f}")
+    _log(f"   Percentil 99   = {info_limiar['limiar_p99']:.6f}  ← operacional")
+    _log(f"   Percentil 95   = {info_limiar['limiar_p95']:.6f}")
+    _log(f"   μ + {sigma}σ        = {info_limiar['limiar_mu3s']:.6f}  ← referência teórica")
 
     # Taxa de falso positivo no conjunto de validação
     fp_val = (erros_val > limiar).mean() * 100
     fp_all = (erros_all > limiar).mean() * 100
-    print(f"\n   Falsos positivos (val): {fp_val:.1f}%")
-    print(f"   Falsos positivos (all): {fp_all:.1f}%")
-    print(f"   (limiar p99 alveja FP ≈ 1%; μ+3σ daria ≈ 0,3% se o erro fosse normal)")
+    _log(f"\n   Falsos positivos (val): {fp_val:.1f}%")
+    _log(f"   Falsos positivos (all): {fp_all:.1f}%")
+    _log(f"   (limiar p99 alveja FP ≈ 1%; μ+3σ daria ≈ 0,3% se o erro fosse normal)")
 
     # ── 8. Salva artefatos ───────────────────────────────────
-    print(f"\n💾 Salvando artefatos...")
+    _log(f"\n💾 Salvando artefatos...")
     pasta_saida.mkdir(parents=True, exist_ok=True)
 
     # Modelo PyTorch
@@ -468,7 +488,7 @@ def executar_autoencoder(
         "colunas_feat": colunas_feat,
         "data_treino" : datetime.now().isoformat(),
     }, arq_modelo)
-    print(f"   ✅ {arq_modelo.name}")
+    _log(f"   ✅ {arq_modelo.name}")
 
     # Scaler (+ sidecar SHA-256 para carga verificada nas etapas seguintes)
     arq_scaler = pasta_saida / "scaler.pkl"
@@ -477,7 +497,7 @@ def executar_autoencoder(
     from src.core.seguranca import gravar_sidecar_sha256
 
     gravar_sidecar_sha256(arq_scaler)
-    print(f"   ✅ {arq_scaler.name}")
+    _log(f"   ✅ {arq_scaler.name}")
 
     # Limiar e metadados
     arq_limiar = pasta_saida / "limiar.json"
@@ -495,28 +515,28 @@ def executar_autoencoder(
     }
     with open(arq_limiar, "w", encoding="utf-8") as f:
         json.dump(metadados, f, indent=2, ensure_ascii=False)
-    print(f"   ✅ {arq_limiar.name}")
+    _log(f"   ✅ {arq_limiar.name}")
 
     # ── 9. Visualizações ─────────────────────────────────────
-    print(f"\n📊 Gerando gráficos...")
+    _log(f"\n📊 Gerando gráficos...")
     plotar_curvas(hist_t, hist_v, ep_melhor, pasta_saida)
     plotar_distribuicao(erros_treino, erros_val, info_limiar, pasta_saida)
     if tempos is not None:
         plotar_erro_temporal(erros_all, tempos, info_limiar, pasta_saida)
 
     # ── 10. Resumo final ─────────────────────────────────────
-    print(f"\n{'='*60}")
-    print(f"  AUTOENCODER CONCLUÍDO!")
-    print(f"  Janelas treino  : {len(X_treino)}")
-    print(f"  Features        : {n_features}")
-    print(f"  Épocas treinadas: {len(hist_t)}")
-    print(f"  Loss val melhor : {min(hist_v):.6f}")
-    print(f"  Limiar anomalia : {limiar:.6f}")
-    print(f"  Falsos positivos: {fp_val:.1f}% (val)")
-    print(f"  Artefatos em    : resultados/autoencoder/")
-    print(f"\n  Próximo passo: injeção de falhas sintéticas")
-    print(f"  (src/ml/injecao_falhas.py)")
-    print(f"{'='*60}")
+    _log(f"\n{'='*60}")
+    _log(f"  AUTOENCODER CONCLUÍDO!")
+    _log(f"  Janelas treino  : {len(X_treino)}")
+    _log(f"  Features        : {n_features}")
+    _log(f"  Épocas treinadas: {len(hist_t)}")
+    _log(f"  Loss val melhor : {min(hist_v):.6f}")
+    _log(f"  Limiar anomalia : {limiar:.6f}")
+    _log(f"  Falsos positivos: {fp_val:.1f}% (val)")
+    _log(f"  Artefatos em    : resultados/autoencoder/")
+    _log(f"\n  Próximo passo: injeção de falhas sintéticas")
+    _log(f"  (src/ml/injecao_falhas.py)")
+    _log(f"{'='*60}")
     return True
 
 
@@ -525,6 +545,8 @@ def executar_autoencoder(
 # ============================================================
 
 if __name__ == "__main__":
+    from src.core.logs import habilitar_console
+    habilitar_console()
     parser = argparse.ArgumentParser(
         description="Treina Autoencoder para detecção de anomalias no lado CA"
     )

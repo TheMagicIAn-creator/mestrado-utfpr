@@ -53,6 +53,26 @@ Uso:
 Autor: Rodolfo Torres (UTFPR)
 """
 
+from src.core.logs import get_logger as _get_logger
+
+_logger = _get_logger("injecao_falhas")
+
+
+def _log(*args, sep=" ", end="\n", flush=None):
+    """Progresso/sumário de ML vai para o ARQUIVO de log — o terminal
+    fica silencioso quando rodando pelo app. Scripts manuais reativam o
+    eco chamando habilitar_console() no bloco __main__. Linhas de
+    progresso com \\r são rebaixadas a DEBUG."""
+    texto = sep.join(str(a) for a in args)
+    if not texto.strip():
+        return
+    if texto.startswith("\r"):
+        _logger.debug(texto.strip())
+        return
+    _logger.info(texto.rstrip("\n"))
+
+
+
 import json
 import pickle
 import numpy as np
@@ -333,16 +353,16 @@ def executar_injecao_falhas() -> bool:
     """
     Pipeline completo de injeção de falhas sintéticas.
     """
-    print("=" * 60)
-    print("  AL IADO PV — INJEÇÃO DE FALHAS SINTÉTICAS")
-    print("=" * 60)
-    print("\n  Fundamentação: FMEA Torres (2024)")
-    print("  NPR=210 → Degradação Filtro LCL")
-    print("  NPR=150 → Desbalanceamento de Fase")
-    print("  D=10    → Falha de Sensor CA")
+    _log("=" * 60)
+    _log("  AL IADO PV — INJEÇÃO DE FALHAS SINTÉTICAS")
+    _log("=" * 60)
+    _log("\n  Fundamentação: FMEA Torres (2024)")
+    _log("  NPR=210 → Degradação Filtro LCL")
+    _log("  NPR=150 → Desbalanceamento de Fase")
+    _log("  D=10    → Falha de Sensor CA")
 
     # ── 1. Carrega artefatos do Autoencoder ──────────────────
-    print(f"\n📂 Carregando Autoencoder...")
+    _log(f"\n📂 Carregando Autoencoder...")
 
     arq_modelo = PASTA_AE / "modelo_autoencoder.pt"
     arq_scaler = PASTA_AE / "scaler.pkl"
@@ -350,8 +370,8 @@ def executar_injecao_falhas() -> bool:
 
     for arq in [arq_modelo, arq_scaler, arq_limiar]:
         if not arq.exists():
-            print(f"   ❌ Não encontrado: {arq.name}")
-            print("   Execute primeiro: python src/ml/autoencoder.py")
+            _log(f"   ❌ Não encontrado: {arq.name}")
+            _log("   Execute primeiro: python src/ml/autoencoder.py")
             return False
 
     checkpoint = torch.load(arq_modelo, map_location="cpu",
@@ -372,22 +392,22 @@ def executar_injecao_falhas() -> bool:
     modelo.load_state_dict(checkpoint["state_dict"])
     modelo.eval()
 
-    print(f"   ✅ Modelo: {n_features} features → latente {latente_dim}")
-    print(f"   ✅ Limiar de anomalia: {limiar:.4f}")
+    _log(f"   ✅ Modelo: {n_features} features → latente {latente_dim}")
+    _log(f"   ✅ Limiar de anomalia: {limiar:.4f}")
 
     # ── 2. Carrega dataset e seleciona janelas estáveis ──────
-    print(f"\n📂 Carregando dataset de Paderborn...")
+    _log(f"\n📂 Carregando dataset de Paderborn...")
     df = pd.read_csv(ARQUIVO_CSV)
 
     # Período estável: t=10-20s (pós-transiente de velocidade)
     idx_inicio = int(T_INICIO_ESTAVEL * FS)
     idx_fim    = int(T_FIM_ESTAVEL * FS)
     df_estavel = df.iloc[idx_inicio:idx_fim].reset_index(drop=True)
-    print(f"   ✅ Período estável: t={T_INICIO_ESTAVEL}-{T_FIM_ESTAVEL}s "
+    _log(f"   ✅ Período estável: t={T_INICIO_ESTAVEL}-{T_FIM_ESTAVEL}s "
           f"({len(df_estavel):,} amostras)")
 
     # ── 3. Erro baseline (comportamento saudável) ─────────────
-    print(f"\n⚕️  Calculando erro baseline (saudável)...")
+    _log(f"\n⚕️  Calculando erro baseline (saudável)...")
     n_janelas_baseline = 20
     erros_baseline = []
     for i in range(n_janelas_baseline):
@@ -402,12 +422,12 @@ def executar_injecao_falhas() -> bool:
 
     baseline_mean = np.mean(erros_baseline)
     baseline_std  = np.std(erros_baseline)
-    print(f"   Baseline: μ={baseline_mean:.4f} ± {baseline_std:.4f}")
-    print(f"   Limiar  : {limiar:.4f} "
+    _log(f"   Baseline: μ={baseline_mean:.4f} ± {baseline_std:.4f}")
+    _log(f"   Limiar  : {limiar:.4f} "
           f"({limiar/baseline_mean:.1f}× acima do baseline)")
 
     # ── 4. Injeção de falhas por severidade ──────────────────
-    print(f"\n💉 Injetando falhas (3 tipos × {len(SEVERIDADES)} severidades)...")
+    _log(f"\n💉 Injetando falhas (3 tipos × {len(SEVERIDADES)} severidades)...")
 
     resultados = {}   # {id_falha: {severidade: erro_medio}}
 
@@ -419,7 +439,7 @@ def executar_injecao_falhas() -> bool:
         fn   = FUNCOES_FALHA[fid]
         erros_por_sev = {}
 
-        print(f"\n   🔴 {falha['nome']} (NPR={falha['npr']})")
+        _log(f"\n   🔴 {falha['nome']} (NPR={falha['npr']})")
 
         for sev in SEVERIDADES:
             # Injeta falha em 5 janelas diferentes e faz média
@@ -446,13 +466,13 @@ def executar_injecao_falhas() -> bool:
             }
 
             status = "✅ DETECTADA" if detectado else "⬜ não detectada"
-            print(f"      sev={sev:.2f} | erro={erro_medio:.4f} | "
+            _log(f"      sev={sev:.2f} | erro={erro_medio:.4f} | "
                   f"margem={margem:.2f}× | {status}")
 
         resultados[fid] = erros_por_sev
 
     # ── 5. Severidade mínima detectável (SMD) ────────────────
-    print(f"\n🎯 Severidade Mínima Detectável (SMD):")
+    _log(f"\n🎯 Severidade Mínima Detectável (SMD):")
     smd_report = {}
     for falha in FALHAS:
         fid = falha["id"]
@@ -463,13 +483,13 @@ def executar_injecao_falhas() -> bool:
                 break
         smd_report[fid] = smd
         if smd:
-            print(f"   {falha['nome']:<30}: SMD = {smd:.2f} "
+            _log(f"   {falha['nome']:<30}: SMD = {smd:.2f} "
                   f"(erro = {resultados[fid][smd]['erro']:.4f})")
         else:
-            print(f"   {falha['nome']:<30}: não detectada em nenhuma severidade")
+            _log(f"   {falha['nome']:<30}: não detectada em nenhuma severidade")
 
     # ── 6. Visualizações ─────────────────────────────────────
-    print(f"\n📊 Gerando gráficos...")
+    _log(f"\n📊 Gerando gráficos...")
     PASTA_AE.mkdir(parents=True, exist_ok=True)
 
     # Gráfico 1: Erro vs Severidade por tipo de falha
@@ -515,7 +535,7 @@ def executar_injecao_falhas() -> bool:
     arq_g1 = PASTA_AE / "injecao_falhas_resultados.png"
     fig.savefig(arq_g1, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"   📊 {arq_g1.name}")
+    _log(f"   📊 {arq_g1.name}")
 
     # Gráfico 2: Comparação consolidada em escala log
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -550,7 +570,7 @@ def executar_injecao_falhas() -> bool:
     arq_g2 = PASTA_AE / "injecao_falhas_comparacao.png"
     fig.savefig(arq_g2, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"   📊 {arq_g2.name}")
+    _log(f"   📊 {arq_g2.name}")
 
     # ── 7. Salva relatório JSON ───────────────────────────────
     relatorio = {
@@ -595,29 +615,29 @@ def executar_injecao_falhas() -> bool:
     arq_report = PASTA_AE / "injecao_falhas_report.json"
     with open(arq_report, "w", encoding="utf-8") as f:
         json.dump(relatorio, f, indent=2, ensure_ascii=False)
-    print(f"   ✅ {arq_report.name}")
+    _log(f"   ✅ {arq_report.name}")
 
     # ── 8. Resumo final ───────────────────────────────────────
-    print(f"\n{'='*60}")
-    print(f"  INJEÇÃO DE FALHAS CONCLUÍDA!")
-    print(f"  Baseline saudável : {baseline_mean:.4f} ± {baseline_std:.4f}")
-    print(f"  Limiar de anomalia: {limiar:.4f}")
-    print()
+    _log(f"\n{'='*60}")
+    _log(f"  INJEÇÃO DE FALHAS CONCLUÍDA!")
+    _log(f"  Baseline saudável : {baseline_mean:.4f} ± {baseline_std:.4f}")
+    _log(f"  Limiar de anomalia: {limiar:.4f}")
+    _log()
     for falha in FALHAS:
         fid = falha["id"]
         smd = smd_report[fid]
         if smd:
             erro_smd = resultados[fid][smd]["erro"]
             margem   = erro_smd / limiar
-            print(f"  {falha['nome']:<30}")
-            print(f"    SMD = {smd:.2f} | erro = {erro_smd:.4f} | "
+            _log(f"  {falha['nome']:<30}")
+            _log(f"    SMD = {smd:.2f} | erro = {erro_smd:.4f} | "
                   f"margem = {margem:.1f}× acima do limiar")
         else:
-            print(f"  {falha['nome']:<30}")
-            print(f"    Não detectada — severidade insuficiente")
-    print()
-    print(f"  Próximo passo: validação cruzada + métricas finais")
-    print(f"{'='*60}")
+            _log(f"  {falha['nome']:<30}")
+            _log(f"    Não detectada — severidade insuficiente")
+    _log()
+    _log(f"  Próximo passo: validação cruzada + métricas finais")
+    _log(f"{'='*60}")
 
     return True
 
@@ -627,4 +647,6 @@ def executar_injecao_falhas() -> bool:
 # ============================================================
 
 if __name__ == "__main__":
+    from src.core.logs import habilitar_console
+    habilitar_console()
     executar_injecao_falhas()

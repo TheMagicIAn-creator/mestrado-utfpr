@@ -15,6 +15,26 @@ Uso:
 Autor: Rodolfo Torres (UTFPR)
 """
 
+from src.core.logs import get_logger as _get_logger
+
+_logger = _get_logger("eda")
+
+
+def _log(*args, sep=" ", end="\n", flush=None):
+    """Progresso/sumário de ML vai para o ARQUIVO de log — o terminal
+    fica silencioso quando rodando pelo app. Scripts manuais reativam o
+    eco chamando habilitar_console() no bloco __main__. Linhas de
+    progresso com \\r são rebaixadas a DEBUG."""
+    texto = sep.join(str(a) for a in args)
+    if not texto.strip():
+        return
+    if texto.startswith("\r"):
+        _logger.debug(texto.strip())
+        return
+    _logger.info(texto.rstrip("\n"))
+
+
+
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -39,9 +59,9 @@ TAXA_AMOSTRAGEM = 10_000  # Hz
 # ============================================================
 
 def carregar_dados() -> pd.DataFrame:
-    print("📂 Carregando dataset...")
+    _log("📂 Carregando dataset...")
     df = pd.read_csv(CAMINHO_CSV)
-    print(f"   ✅ {len(df):,} amostras | {len(df.columns)} colunas")
+    _log(f"   ✅ {len(df):,} amostras | {len(df.columns)} colunas")
     return df
 
 
@@ -50,27 +70,27 @@ def carregar_dados() -> pd.DataFrame:
 # ============================================================
 
 def analise_basica(df: pd.DataFrame):
-    print("\n📊 ESTATÍSTICAS DESCRITIVAS")
-    print("=" * 60)
+    _log("\n📊 ESTATÍSTICAS DESCRITIVAS")
+    _log("=" * 60)
 
     stats = df.describe().T
     stats["cv%"] = (stats["std"] / stats["mean"].abs() * 100).round(2)
 
-    print(stats[["mean", "std", "min", "max", "cv%"]].to_string())
+    _log(stats[["mean", "std", "min", "max", "cv%"]].to_string())
 
     # Verifica valores nulos
     nulos = df.isnull().sum()
     if nulos.any():
-        print(f"\n⚠️  Valores nulos encontrados:")
-        print(nulos[nulos > 0])
+        _log(f"\n⚠️  Valores nulos encontrados:")
+        _log(nulos[nulos > 0])
     else:
-        print(f"\n✅ Nenhum valor nulo encontrado!")
+        _log(f"\n✅ Nenhum valor nulo encontrado!")
 
     # Velocidade do motor
-    print(f"\n🔄 Velocidade do motor (n_k):")
-    print(f"   Mín : {df['n_k'].min():.1f} RPM")
-    print(f"   Máx : {df['n_k'].max():.1f} RPM")
-    print(f"   Média: {df['n_k'].mean():.1f} RPM")
+    _log(f"\n🔄 Velocidade do motor (n_k):")
+    _log(f"   Mín : {df['n_k'].min():.1f} RPM")
+    _log(f"   Máx : {df['n_k'].max():.1f} RPM")
+    _log(f"   Média: {df['n_k'].mean():.1f} RPM")
 
 
 # ============================================================
@@ -82,8 +102,8 @@ def analise_fases(df: pd.DataFrame) -> pd.DataFrame:
     Calcula métricas de desequilíbrio entre as fases A, B, C.
     Desequilíbrio é um dos principais indicadores de falha.
     """
-    print("\n⚡ ANÁLISE DE DESEQUILÍBRIO DE FASE")
-    print("=" * 60)
+    _log("\n⚡ ANÁLISE DE DESEQUILÍBRIO DE FASE")
+    _log("=" * 60)
 
     # RMS das correntes por fase (janela de 100 amostras = 10ms)
     janela = 100
@@ -107,9 +127,9 @@ def analise_fases(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     df_valido = df.dropna(subset=["desequilibrio"])
-    print(f"   Desequilíbrio médio : {df_valido['desequilibrio'].mean():.2f}%")
-    print(f"   Desequilíbrio máximo: {df_valido['desequilibrio'].max():.2f}%")
-    print(f"   Desequilíbrio > 5%  : {(df_valido['desequilibrio'] > 5).sum():,} amostras")
+    _log(f"   Desequilíbrio médio : {df_valido['desequilibrio'].mean():.2f}%")
+    _log(f"   Desequilíbrio máximo: {df_valido['desequilibrio'].max():.2f}%")
+    _log(f"   Desequilíbrio > 5%  : {(df_valido['desequilibrio'] > 5).sum():,} amostras")
 
     return df
 
@@ -172,7 +192,7 @@ def plotar_series_temporais(df: pd.DataFrame):
 
     caminho = PASTA_GRAFICOS / "series_temporais.html"
     fig.write_html(str(caminho))
-    print(f"\n✅ Gráfico salvo: {caminho}")
+    _log(f"\n✅ Gráfico salvo: {caminho}")
 
 
 def plotar_distribuicoes(df: pd.DataFrame):
@@ -196,7 +216,7 @@ def plotar_distribuicoes(df: pd.DataFrame):
 
     caminho = PASTA_GRAFICOS / "distribuicao_correntes.html"
     fig.write_html(str(caminho))
-    print(f"✅ Gráfico salvo: {caminho}")
+    _log(f"✅ Gráfico salvo: {caminho}")
 
 
 def plotar_correlacoes(df: pd.DataFrame):
@@ -220,7 +240,7 @@ def plotar_correlacoes(df: pd.DataFrame):
 
     caminho = PASTA_GRAFICOS / "correlacoes.html"
     fig.write_html(str(caminho))
-    print(f"✅ Gráfico salvo: {caminho}")
+    _log(f"✅ Gráfico salvo: {caminho}")
 
 
 def plotar_desequilibrio(df: pd.DataFrame):
@@ -257,7 +277,7 @@ def plotar_desequilibrio(df: pd.DataFrame):
 
     caminho = PASTA_GRAFICOS / "desequilibrio_fase.html"
     fig.write_html(str(caminho))
-    print(f"✅ Gráfico salvo: {caminho}")
+    _log(f"✅ Gráfico salvo: {caminho}")
 
 
 # ============================================================
@@ -265,9 +285,9 @@ def plotar_desequilibrio(df: pd.DataFrame):
 # ============================================================
 
 def executar_eda() -> bool:
-    print("=" * 60)
-    print("  AL IADO PV — ANÁLISE EXPLORATÓRIA (EDA)")
-    print("=" * 60)
+    _log("=" * 60)
+    _log("  AL IADO PV — ANÁLISE EXPLORATÓRIA (EDA)")
+    _log("=" * 60)
 
     # 1. Carrega dados
     df = carregar_dados()
@@ -279,20 +299,22 @@ def executar_eda() -> bool:
     df = analise_fases(df)
 
     # 4. Gráficos
-    print("\n📈 GERANDO GRÁFICOS...")
+    _log("\n📈 GERANDO GRÁFICOS...")
     plotar_series_temporais(df)
     plotar_distribuicoes(df)
     plotar_correlacoes(df)
     plotar_desequilibrio(df)
 
-    print("\n" + "=" * 60)
-    print("  EDA CONCLUÍDA!")
-    print(f"  Gráficos salvos em: resultados/eda/")
-    print("  Abra os arquivos .html no navegador")
-    print("=" * 60)
+    _log("\n" + "=" * 60)
+    _log("  EDA CONCLUÍDA!")
+    _log(f"  Gráficos salvos em: resultados/eda/")
+    _log("  Abra os arquivos .html no navegador")
+    _log("=" * 60)
 
     return True
 
 
 if __name__ == "__main__":
+    from src.core.logs import habilitar_console
+    habilitar_console()
     executar_eda()

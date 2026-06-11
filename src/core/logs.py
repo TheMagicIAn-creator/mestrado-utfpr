@@ -55,3 +55,26 @@ def get_logger(nome: str) -> logging.Logger:
     """Retorna um logger filho (al_iado_pv.<nome>) já configurado."""
     configurar_logging()
     return logging.getLogger(f"{_RAIZ_LOGGER}.{nome}")
+
+
+def habilitar_console(nivel: int = logging.INFO) -> None:
+    """
+    Espelha os logs também no TERMINAL (formato curto, sem timestamp).
+
+    Os módulos de ML logam em arquivo por padrão (terminal silencioso no app).
+    Scripts executados manualmente (``python src/ml/autoencoder.py``) chamam
+    isto no bloco ``__main__`` para o pesquisador continuar vendo o progresso.
+    Idempotente.
+    """
+    configurar_logging()
+    root = logging.getLogger(_RAIZ_LOGGER)
+    ja_tem = any(
+        isinstance(h, logging.StreamHandler)
+        and not isinstance(h, RotatingFileHandler)
+        for h in root.handlers
+    )
+    if not ja_tem:
+        console = logging.StreamHandler()
+        console.setLevel(nivel)
+        console.setFormatter(logging.Formatter("%(message)s"))
+        root.addHandler(console)

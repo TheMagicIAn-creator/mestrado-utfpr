@@ -17,6 +17,26 @@ Uso:
 Autor: Rodolfo Torres (UTFPR)
 """
 
+from src.core.logs import get_logger as _get_logger
+
+_logger = _get_logger("classificador_pv")
+
+
+def _log(*args, sep=" ", end="\n", flush=None):
+    """Progresso/sumário de ML vai para o ARQUIVO de log — o terminal
+    fica silencioso quando rodando pelo app. Scripts manuais reativam o
+    eco chamando habilitar_console() no bloco __main__. Linhas de
+    progresso com \\r são rebaixadas a DEBUG."""
+    texto = sep.join(str(a) for a in args)
+    if not texto.strip():
+        return
+    if texto.startswith("\r"):
+        _logger.debug(texto.strip())
+        return
+    _logger.info(texto.rstrip("\n"))
+
+
+
 import sys
 import warnings
 from pathlib import Path
@@ -66,14 +86,14 @@ def carregar_dados() -> tuple:
     Carrega os datasets de treino e teste.
     Separa features (X) e rótulo (y).
     """
-    print("📂 Carregando datasets...")
+    _log("📂 Carregando datasets...")
 
     # Separador é ponto-e-vírgula
     df_treino = pd.read_csv(CSV_TREINO, sep=";")
     df_teste  = pd.read_csv(CSV_TESTE,  sep=";")
 
-    print(f"   ✅ Treino: {len(df_treino)} instâncias")
-    print(f"   ✅ Teste : {len(df_teste)} instâncias")
+    _log(f"   ✅ Treino: {len(df_treino)} instâncias")
+    _log(f"   ✅ Teste : {len(df_teste)} instâncias")
 
     # Separa features e rótulo
     X_treino = df_treino.drop(columns=["class"])
@@ -81,8 +101,8 @@ def carregar_dados() -> tuple:
     X_teste  = df_teste.drop(columns=["class"])
     y_teste  = df_teste["class"]
 
-    print(f"   ✅ Features: {X_treino.shape[1]} colunas")
-    print(f"   ✅ Classes : {sorted(y_treino.unique())}")
+    _log(f"   ✅ Features: {X_treino.shape[1]} colunas")
+    _log(f"   ✅ Classes : {sorted(y_treino.unique())}")
 
     return X_treino, y_treino, X_teste, y_teste
 
@@ -94,15 +114,15 @@ def carregar_dados() -> tuple:
 def analisar_classes(y_treino, y_teste):
     """Mostra o balanceamento das classes."""
 
-    print("\n📊 DISTRIBUIÇÃO DAS CLASSES")
-    print("=" * 60)
+    _log("\n📊 DISTRIBUIÇÃO DAS CLASSES")
+    _log("=" * 60)
 
     dist_treino = y_treino.value_counts().sort_index()
 
     for classe, qtd in dist_treino.items():
         nome = NOMES_CLASSES.get(classe, f"Classe {classe}")
         pct  = qtd / len(y_treino) * 100
-        print(f"   {nome:25s}: {qtd:4d} ({pct:5.1f}%)")
+        _log(f"   {nome:25s}: {qtd:4d} ({pct:5.1f}%)")
 
 
 # ============================================================
@@ -118,13 +138,13 @@ def preprocessar(X_treino, X_teste) -> tuple:
     valores grandes (ex: tensão ~500) dominariam features
     pequenas (ex: variância ~0.001) sem normalização.
     """
-    print("\n⚙️  Pré-processando (normalização)...")
+    _log("\n⚙️  Pré-processando (normalização)...")
 
     scaler   = StandardScaler()
     X_treino_norm = scaler.fit_transform(X_treino)  # aprende e aplica
     X_teste_norm  = scaler.transform(X_teste)        # só aplica
 
-    print("   ✅ Features normalizadas (média 0, desvio 1)")
+    _log("   ✅ Features normalizadas (média 0, desvio 1)")
 
     return X_treino_norm, X_teste_norm, scaler
 
@@ -158,7 +178,7 @@ def criar_modelos() -> dict:
             use_label_encoder=False, eval_metric="mlogloss"
         )
     except ImportError:
-        print("   ⚠️  XGBoost não instalado — pulando")
+        _log("   ⚠️  XGBoost não instalado — pulando")
 
     # LightGBM (opcional)
     try:
@@ -167,7 +187,7 @@ def criar_modelos() -> dict:
             n_estimators=200, random_state=42, verbose=-1
         )
     except ImportError:
-        print("   ⚠️  LightGBM não instalado — pulando")
+        _log("   ⚠️  LightGBM não instalado — pulando")
 
     return modelos
 
@@ -182,8 +202,8 @@ def treinar_e_avaliar(modelos, X_treino, y_treino, X_teste, y_teste) -> dict:
       - Validação cruzada (5-fold) no treino
       - Métricas finais no conjunto de teste
     """
-    print("\n🤖 TREINANDO E AVALIANDO MODELOS")
-    print("=" * 60)
+    _log("\n🤖 TREINANDO E AVALIANDO MODELOS")
+    _log("=" * 60)
 
     # XGBoost precisa de classes começando em 0
     y_treino_ajust = y_treino - y_treino.min()
@@ -193,7 +213,7 @@ def treinar_e_avaliar(modelos, X_treino, y_treino, X_teste, y_teste) -> dict:
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
     for nome, modelo in modelos.items():
-        print(f"\n  ▶ {nome}")
+        _log(f"\n  ▶ {nome}")
 
         # Validação cruzada no treino
         scores_cv = cross_val_score(
@@ -235,13 +255,13 @@ def treinar_e_avaliar(modelos, X_treino, y_treino, X_teste, y_teste) -> dict:
             "y_pred"                : y_pred,
         }
 
-        print(f"     Validação Cruzada : {scores_cv.mean():.4f} (±{scores_cv.std():.4f})")
-        print(f"     Acurácia (teste)  : {acc:.4f}")
-        print(f"     Precisão (macro)  : {precisao:.4f}")
-        print(f"     Recall (macro)    : {recall:.4f}")
-        print(f"     F1-Score (macro)  : {f1:.4f}")
-        print(f"     MCC               : {extra['mcc']:.4f}")
-        print(f"     Balanced accuracy : {extra['balanced_accuracy']:.4f}")
+        _log(f"     Validação Cruzada : {scores_cv.mean():.4f} (±{scores_cv.std():.4f})")
+        _log(f"     Acurácia (teste)  : {acc:.4f}")
+        _log(f"     Precisão (macro)  : {precisao:.4f}")
+        _log(f"     Recall (macro)    : {recall:.4f}")
+        _log(f"     F1-Score (macro)  : {f1:.4f}")
+        _log(f"     MCC               : {extra['mcc']:.4f}")
+        _log(f"     Balanced accuracy : {extra['balanced_accuracy']:.4f}")
 
     return resultados, y_teste_ajust
 
@@ -276,7 +296,7 @@ def plotar_comparacao(resultados: dict):
 
     caminho = PASTA_RESULT / "comparacao_modelos.html"
     fig.write_html(str(caminho))
-    print(f"\n✅ Gráfico salvo: {caminho.name}")
+    _log(f"\n✅ Gráfico salvo: {caminho.name}")
 
 
 def plotar_matriz_confusao(resultados: dict, y_teste, melhor_modelo: str):
@@ -300,7 +320,7 @@ def plotar_matriz_confusao(resultados: dict, y_teste, melhor_modelo: str):
 
     caminho = PASTA_RESULT / "matriz_confusao.html"
     fig.write_html(str(caminho))
-    print(f"✅ Gráfico salvo: {caminho.name}")
+    _log(f"✅ Gráfico salvo: {caminho.name}")
 
 
 def plotar_importancia(resultados: dict, nomes_features: list, melhor_modelo: str):
@@ -309,7 +329,7 @@ def plotar_importancia(resultados: dict, nomes_features: list, melhor_modelo: st
     modelo = resultados[melhor_modelo]["modelo"]
 
     if not hasattr(modelo, "feature_importances_"):
-        print(f"ℹ️  {melhor_modelo} não fornece importância de features.")
+        _log(f"ℹ️  {melhor_modelo} não fornece importância de features.")
         return
 
     importancias = modelo.feature_importances_
@@ -335,7 +355,7 @@ def plotar_importancia(resultados: dict, nomes_features: list, melhor_modelo: st
 
     caminho = PASTA_RESULT / "importancia_features.html"
     fig.write_html(str(caminho))
-    print(f"✅ Gráfico salvo: {caminho.name}")
+    _log(f"✅ Gráfico salvo: {caminho.name}")
 
 
 # ============================================================
@@ -372,7 +392,7 @@ def gerar_relatorio(resultados: dict, melhor_modelo: str, y_teste):
     linhas.append("=" * 60)
 
     caminho.write_text("\n".join(linhas), encoding="utf-8")
-    print(f"✅ Relatório salvo: {caminho.name}")
+    _log(f"✅ Relatório salvo: {caminho.name}")
 
 
 # ============================================================
@@ -380,9 +400,9 @@ def gerar_relatorio(resultados: dict, melhor_modelo: str, y_teste):
 # ============================================================
 
 def executar_classificacao() -> bool:
-    print("=" * 60)
-    print("  AL IADO PV — CLASSIFICAÇÃO DE FALHAS FOTOVOLTAICAS")
-    print("=" * 60)
+    _log("=" * 60)
+    _log("  AL IADO PV — CLASSIFICAÇÃO DE FALHAS FOTOVOLTAICAS")
+    _log("=" * 60)
 
     # 1. Carrega dados
     X_treino, y_treino, X_teste, y_teste = carregar_dados()
@@ -394,9 +414,9 @@ def executar_classificacao() -> bool:
     X_treino_norm, X_teste_norm, scaler = preprocessar(X_treino, X_teste)
 
     # 4. Cria modelos
-    print("\n🔧 Criando modelos...")
+    _log("\n🔧 Criando modelos...")
     modelos = criar_modelos()
-    print(f"   ✅ {len(modelos)} modelos prontos: {', '.join(modelos.keys())}")
+    _log(f"   ✅ {len(modelos)} modelos prontos: {', '.join(modelos.keys())}")
 
     # 5. Treina e avalia
     resultados, y_teste_ajust = treinar_e_avaliar(
@@ -406,13 +426,13 @@ def executar_classificacao() -> bool:
     # 6. Identifica o melhor (por F1-Score)
     melhor = max(resultados, key=lambda n: resultados[n]["f1"])
 
-    print("\n" + "=" * 60)
-    print(f"  🏆 MELHOR MODELO: {melhor}")
-    print(f"     F1-Score: {resultados[melhor]['f1']:.4f}")
-    print("=" * 60)
+    _log("\n" + "=" * 60)
+    _log(f"  🏆 MELHOR MODELO: {melhor}")
+    _log(f"     F1-Score: {resultados[melhor]['f1']:.4f}")
+    _log("=" * 60)
 
     # 7. Gráficos
-    print("\n📈 Gerando gráficos...")
+    _log("\n📈 Gerando gráficos...")
     plotar_comparacao(resultados)
     plotar_matriz_confusao(resultados, y_teste_ajust, melhor)
     plotar_importancia(resultados, list(X_treino.columns), melhor)
@@ -420,12 +440,14 @@ def executar_classificacao() -> bool:
     # 8. Relatório
     gerar_relatorio(resultados, melhor, y_teste_ajust)
 
-    print("\n" + "=" * 60)
-    print("  PIPELINE CONCLUÍDO!")
-    print(f"  Resultados em: resultados/classificacao_pv/")
-    print("=" * 60)
+    _log("\n" + "=" * 60)
+    _log("  PIPELINE CONCLUÍDO!")
+    _log(f"  Resultados em: resultados/classificacao_pv/")
+    _log("=" * 60)
 
     return True
 
 if __name__ == "__main__":
+    from src.core.logs import habilitar_console
+    habilitar_console()
     executar_classificacao()

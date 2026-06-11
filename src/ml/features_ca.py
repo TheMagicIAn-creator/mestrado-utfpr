@@ -40,6 +40,26 @@ Uso:
 Autor: Rodolfo Torres (UTFPR)
 """
 
+from src.core.logs import get_logger as _get_logger
+
+_logger = _get_logger("features_ca")
+
+
+def _log(*args, sep=" ", end="\n", flush=None):
+    """Progresso/sumário de ML vai para o ARQUIVO de log — o terminal
+    fica silencioso quando rodando pelo app. Scripts manuais reativam o
+    eco chamando habilitar_console() no bloco __main__. Linhas de
+    progresso com \\r são rebaixadas a DEBUG."""
+    texto = sep.join(str(a) for a in args)
+    if not texto.strip():
+        return
+    if texto.startswith("\r"):
+        _logger.debug(texto.strip())
+        return
+    _logger.info(texto.rstrip("\n"))
+
+
+
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -343,36 +363,36 @@ def executar_features_ca(
     Pipeline completo de extração de features CA.
     Retorna True se concluiu com sucesso.
     """
-    print("=" * 60)
-    print("  AL IADO PV — FEATURES CA (Paderborn)")
-    print("=" * 60)
+    _log("=" * 60)
+    _log("  AL IADO PV — FEATURES CA (Paderborn)")
+    _log("=" * 60)
 
     # 1. Carrega dados
-    print(f"\n📂 Carregando dataset...")
+    _log(f"\n📂 Carregando dataset...")
     if not arquivo_csv.exists():
-        print(f"   ❌ Não encontrado: {arquivo_csv}")
+        _log(f"   ❌ Não encontrado: {arquivo_csv}")
         return False
 
     df = pd.read_csv(arquivo_csv, nrows=limite_linhas)
-    print(f"   ✅ {len(df):,} amostras | {df.shape[1]} colunas")
+    _log(f"   ✅ {len(df):,} amostras | {df.shape[1]} colunas")
 
     faltando = [c for c in COLUNAS_CORRENTE + COLUNAS_TENSAO + [COLUNA_DC]
                 if c not in df.columns]
     if faltando:
-        print(f"   ❌ Colunas ausentes: {faltando}")
+        _log(f"   ❌ Colunas ausentes: {faltando}")
         return False
 
     # 2. Janelamento
     n_total   = len(df)
     n_janelas = (n_total - JANELA) // PASSO + 1
-    print(f"\n🪟  Janelamento:")
-    print(f"   Janela       : {JANELA} amostras = {JANELA/FS*1000:.1f} ms")
-    print(f"   Sobreposição : {SOBREPOSICAO} amostras (50%)")
-    print(f"   Duração total: {n_total/FS:.1f} s")
-    print(f"   Janelas      : {n_janelas:,}")
+    _log(f"\n🪟  Janelamento:")
+    _log(f"   Janela       : {JANELA} amostras = {JANELA/FS*1000:.1f} ms")
+    _log(f"   Sobreposição : {SOBREPOSICAO} amostras (50%)")
+    _log(f"   Duração total: {n_total/FS:.1f} s")
+    _log(f"   Janelas      : {n_janelas:,}")
 
     # 3. Extração
-    print(f"\n⚙️  Extraindo features...")
+    _log(f"\n⚙️  Extraindo features...")
     registros = []
     for i in range(n_janelas):
         inicio = i * PASSO
@@ -384,15 +404,15 @@ def executar_features_ca(
         registros.append(feats)
 
         if (i + 1) % 500 == 0 or i == n_janelas - 1:
-            print(f"   [{(i+1)/n_janelas*100:5.1f}%] {i+1:,}/{n_janelas:,}", end="\r")
+            _log(f"   [{(i+1)/n_janelas*100:5.1f}%] {i+1:,}/{n_janelas:,}", end="\r")
 
-    print()
+    _log()
     df_feat = pd.DataFrame(registros)
 
     # 4. Remove features com média AC ≈ 0
     colunas_remover = [c for c in FEATURES_EXCLUIR if c in df_feat.columns]
     df_feat.drop(columns=colunas_remover, inplace=True)
-    print(f"   ✅ {len(df_feat):,} janelas × "
+    _log(f"   ✅ {len(df_feat):,} janelas × "
           f"{len(df_feat.columns)-3} features "
           f"(removidas: {len(colunas_remover)} médias AC)")
 
@@ -401,11 +421,11 @@ def executar_features_ca(
 
     arq_parquet = pasta_saida / "features_paderborn.parquet"
     df_feat.to_parquet(arq_parquet, index=False)
-    print(f"\n💾 {arq_parquet.name} ({arq_parquet.stat().st_size/1024:.0f} KB)")
+    _log(f"\n💾 {arq_parquet.name} ({arq_parquet.stat().st_size/1024:.0f} KB)")
 
     arq_stats = pasta_saida / "features_paderborn_stats.csv"
     df_feat.describe().T.to_csv(arq_stats)
-    print(f"   {arq_stats.name}")
+    _log(f"   {arq_stats.name}")
 
     # 6. Resumo
     meta     = ["janela_idx", "amostra_inicio", "tempo_s"]
@@ -429,38 +449,38 @@ def executar_features_ca(
                                                     "potencia","dc","f0"])],
     }
 
-    print(f"\n📊 Features por grupo:")
+    _log(f"\n📊 Features por grupo:")
     total = 0
     for grupo, cols in grupos.items():
-        print(f"   {grupo:<22}: {len(cols):>3}")
+        _log(f"   {grupo:<22}: {len(cols):>3}")
         total += len(cols)
-    print(f"   {'TOTAL':<22}: {total:>3}")
+    _log(f"   {'TOTAL':<22}: {total:>3}")
 
     # THD resumo
-    print(f"\n📈 THD das correntes (F0 adaptativo):")
+    _log(f"\n📈 THD das correntes (F0 adaptativo):")
     for fase in FASES:
         col = f"i_{fase}_thd"
         if col in df_feat.columns:
-            print(f"   {col}: mean={df_feat[col].mean():.4f}  "
+            _log(f"   {col}: mean={df_feat[col].mean():.4f}  "
                   f"std={df_feat[col].std():.4f}  "
                   f"max={df_feat[col].max():.4f}")
 
-    print(f"\n📈 F0 estimado:")
-    print(f"   mean={df_feat['f0_estimado'].mean():.2f} Hz  "
+    _log(f"\n📈 F0 estimado:")
+    _log(f"   mean={df_feat['f0_estimado'].mean():.2f} Hz  "
           f"std={df_feat['f0_estimado'].std():.2f} Hz  "
           f"min={df_feat['f0_estimado'].min():.2f}  "
           f"max={df_feat['f0_estimado'].max():.2f}")
 
     n_nan = df_feat[col_feat].isna().sum().sum()
     if n_nan > 0:
-        print(f"\n   ⚠️  {n_nan} valores NaN detectados")
+        _log(f"\n   ⚠️  {n_nan} valores NaN detectados")
     else:
-        print(f"\n   ✅ Nenhum NaN — dados prontos para o Autoencoder")
+        _log(f"\n   ✅ Nenhum NaN — dados prontos para o Autoencoder")
 
-    print(f"\n{'='*60}")
-    print(f"  EXTRAÇÃO CONCLUÍDA!")
-    print(f"  Próximo passo: Autoencoder em src/ml/autoencoder.py")
-    print(f"{'='*60}")
+    _log(f"\n{'='*60}")
+    _log(f"  EXTRAÇÃO CONCLUÍDA!")
+    _log(f"  Próximo passo: Autoencoder em src/ml/autoencoder.py")
+    _log(f"{'='*60}")
     return True
 
 
@@ -469,6 +489,8 @@ def executar_features_ca(
 # ============================================================
 
 if __name__ == "__main__":
+    from src.core.logs import habilitar_console
+    habilitar_console()
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--limite", type=int, default=None,
