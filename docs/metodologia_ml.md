@@ -84,3 +84,35 @@ precision, recall, f1, **MCC**, AUC, **specificity** (= TN/(TN+FP) no binário) 
   para absoluto só na interface.
 - **Datasets** validados por `scripts/verificar_datasets.py` (SHA-256, linhas);
   dados brutos não são versionados.
+
+## 9. Protocolos de avaliação POR ARTIGO (anti "erro de simulação")
+
+Antes, todos os experimentos de anomalia compartilhavam um harness único:
+split **aleatório** de janelas sobrepostas (vazamento temporal) e limiar
+escolhido **no próprio teste** (oráculo) para os modelos sem decisão nativa.
+Agora cada artigo segue o **seu** protocolo (`src/ml/protocolos_artigos.py`)
+e **nenhum limiar enxerga os rótulos do teste**:
+
+| Artigo | Decisão de cada modelo | `threshold_source` |
+|---|---|---|
+| **Francisti (2025)** | Shewhart: alarme se alguma feature sai de ±3σ do treino (fixo a priori); RF probabilidade ≥ 0,5 | `shewhart_3sigma_a_priori` |
+| **Ibrahim (2022)** | IF contaminação a priori (5%); AE-LSTM limiar = p99 do erro **no treino** (congelado); Prophet fora da banda de 99% | `contaminacao_a_priori_0.05`, `p99_erro_reconstrucao_treino`, `intervalo_prophet_0.99` |
+| **Sharma (2026)** | PPO otimiza a contaminação do IF em **validação temporal** separada (split 60/20/20 com purga); teste só com o parâmetro congelado; baselines em 0,5 nativo | `ppo_otimizado_em_validacao_temporal` |
+| **Ahirwar (2025)** | Voto **majoritário** entre membros (IF/AE-LSTM/Prophet), cada um na sua regra a priori | `voto_majoritario_K_de_N` |
+
+Infraestrutura comum (benchmark justo):
+- **Split temporal com purga** (`split_temporal.py`) — nunca aleatório;
+- **Injeção orientada pelo FMEA no espaço de features**: cada anomalia pertence
+  a uma família do FMECA de Torres (2024) — degradação LCL (NPR=210),
+  desbalanceamento de fase (NPR=150), falha de sensor — perturbando apenas as
+  features que a física daquela falha afeta. O resultado reporta **detecção
+  por família** (`deteccao_por_falha`).
+- O `resultado.json` carrega o bloco **`metodologia`** (split, injeção, decisão
+  por modelo, notas de fidelidade ao artigo).
+
+**Leitura correta:** os F1 **não** são comparáveis entre protocolos (cada um
+opera no seu ponto de decisão); o **AUC** é a métrica comparável. Continua
+**E1** (benchmark exploratório com ground truth sintético) — não é validação
+formal nem desempenho industrial. Métricas antigas com
+`exploratorio_no_conjunto_avaliado` permanecem válidas como histórico, mas o
+caminho padrão atual usa decisões a priori/congeladas.

@@ -863,7 +863,8 @@ def executar_classificacao_supervisionada(exp: ExperimentoArtigo, progresso=None
 # CONSOLIDAÇÃO + DISPATCH
 # ============================================================
 
-def _consolidar(exp: ExperimentoArtigo, modelos_out: dict, metrica_principal: str) -> dict:
+def _consolidar(exp: ExperimentoArtigo, modelos_out: dict, metrica_principal: str,
+                metodologia: dict | None = None) -> dict:
     from datetime import datetime
 
     validos = {
@@ -897,6 +898,10 @@ def _consolidar(exp: ExperimentoArtigo, modelos_out: dict, metrica_principal: st
         "melhor_modelo": melhor,
         "melhor_valor": melhor_valor,
     }
+    if metodologia:
+        # Protocolo por artigo: split temporal, injeção FMEA e a regra de
+        # decisão de CADA modelo — rastreabilidade completa no resultado.
+        resultado["metodologia"] = metodologia
     graficos = _grafico_comparacao(exp, resultado)
     if graficos:
         from src.core.utils import to_project_relative_path
@@ -949,8 +954,17 @@ def executar_experimento(key: str, progresso=None) -> dict:
 _META_FEATURES = ("janela_idx", "amostra_inicio", "tempo_s")
 
 
+# Cache de módulo: o parquet de features é relido por TODO experimento de
+# anomalia; com 4 experimentos em sequência isso era I/O repetido. A chave
+# inclui o mtime do arquivo → recomputar features invalida o cache sozinho.
+_CACHE_FEATURES: dict = {}
+
+
 def _carregar_features_paderborn(progresso=None):
-    """Carrega a matriz de features do Paderborn; extrai se ainda não existir."""
+    """Carrega a matriz de features do Paderborn; extrai se ainda não existir.
+
+    Retorna ``(X, cols)`` com X sempre uma CÓPIA (caller pode mutar à vontade).
+    """
     import pandas as pd
 
     from src.ml.features_ca import PASTA_SAIDA, executar_features_ca
@@ -962,9 +976,14 @@ def _carregar_features_paderborn(progresso=None):
         if not executar_features_ca():
             raise RuntimeError("Falha ao extrair features do Paderborn.")
 
-    df = pd.read_parquet(parquet)
-    cols = [c for c in df.columns if c not in _META_FEATURES]
-    return df[cols].to_numpy(dtype=float), cols
+    chave = (str(parquet), parquet.stat().st_mtime_ns)
+    if chave not in _CACHE_FEATURES:
+        df = pd.read_parquet(parquet)
+        cols = [c for c in df.columns if c not in _META_FEATURES]
+        _CACHE_FEATURES.clear()  # nunca acumula versões antigas
+        _CACHE_FEATURES[chave] = (df[cols].to_numpy(dtype=float), cols)
+    X, cols = _CACHE_FEATURES[chave]
+    return X.copy(), list(cols)
 
 
 def _gerar_anomalias(X_base, rng, severidade: float = 3.0):
@@ -1090,7 +1109,21 @@ def _score_anomalia_legacy(nome, dados, progresso=None):
     return None
 
 
-def _metricas_anomalia(y_true, score, y_pred=None) -> dict:
+def _metricas_anomalia(y_true, score, y_pred=None,
+                       threshold_source: str | None = None,
+                       limiar: float | None = None) -> dict:
+    """
+    Métricas de anomalia no ponto de operação informado.
+
+    Comportamento PADRÃO (compatível com o histórico):
+    - ``y_pred=None``  → limiar ótimo no próprio conjunto (EXPLORATÓRIO, E1);
+    - ``y_pred`` dado  → decisão nativa do modelo.
+
+    Protocolos por artigo passam ``threshold_source``/``limiar`` EXPLÍCITOS
+    (ex.: "shewhart_3sigma_a_priori", "p99_erro_reconstrucao_treino") — esses
+    limiares são definidos SEM olhar os rótulos do conjunto avaliado, então a
+    métrica é marcada como "a_priori_ou_congelada".
+    """
     import numpy as np
 
     y_true_arr = np.asarray(y_true).astype(int)
@@ -1104,13 +1137,22 @@ def _metricas_anomalia(y_true, score, y_pred=None) -> dict:
         # (E1). Não é estimativa de generalização (ver backlog: limiar congelado
         # em val). O AUC permanece válido por ser independente de limiar.
         threshold_source = "exploratorio_no_conjunto_avaliado"
-    else:
+        dependencia = "exploratoria"
+    elif threshold_source is None:
         thr = None
         y_pred = np.asarray(y_pred).astype(int)
         ponto = "decisao_nativa_modelo"
         # Decisão nativa do modelo (ex.: IsolationForest.predict) — não deriva
         # dos rótulos do conjunto avaliado.
         threshold_source = "decisao_nativa_modelo"
+        dependencia = "nativa"
+    else:
+        # Protocolo por artigo: regra de decisão definida a priori ou
+        # congelada em treino/validação — nunca nos rótulos do teste.
+        thr = float(limiar) if limiar is not None else None
+        y_pred = np.asarray(y_pred).astype(int)
+        ponto = "protocolo_do_artigo"
+        dependencia = "a_priori_ou_congelada"
 
     metricas = _metricas_classificacao(y_true_arr, y_pred, y_score=score)
     if metricas.get("matriz_confusao") and len(metricas["matriz_confusao"]) == 2:
@@ -1119,8 +1161,7 @@ def _metricas_anomalia(y_true, score, y_pred=None) -> dict:
         "limiar_score": thr,
         "ponto_operacao": ponto,
         "threshold_source": threshold_source,
-        "metrica_dependente_de_limiar": "exploratoria"
-        if threshold_source == "exploratorio_no_conjunto_avaliado" else "nativa",
+        "metrica_dependente_de_limiar": dependencia,
         "anomalias_detectadas": int(np.sum(y_pred == 1)),
         "anomalias_reais": int(np.sum(y_true_arr == 1)),
         "taxa_anomalias_detectadas": float(np.mean(y_pred == 1)),
@@ -1197,8 +1238,13 @@ def _score_anomalia(nome, dados, progresso=None):
 
 # ---- Redes neurais compactas (PyTorch) -------------------------------------
 
-def _score_ae_lstm(dados, epochs: int = 60):
-    """Autoencoder-LSTM: erro de reconstrução como score (fit no normal)."""
+def _score_ae_lstm(dados, epochs: int = 60, retornar_treino: bool = False):
+    """Autoencoder-LSTM: erro de reconstrução como score (fit no normal).
+
+    Com ``retornar_treino=True`` devolve ``(score_teste, score_treino)`` —
+    o erro no próprio treino permite CONGELAR um limiar (ex.: p99) antes de
+    olhar o teste, como nos protocolos por artigo.
+    """
     import numpy as np
     import torch
     import torch.nn as nn
@@ -1237,7 +1283,12 @@ def _score_ae_lstm(dados, epochs: int = 60):
     model.eval()
     with torch.no_grad():
         rec = model(Xte)
-        return ((rec - Xte) ** 2).mean(dim=1).numpy()
+        score_te = ((rec - Xte) ** 2).mean(dim=1).numpy()
+        if not retornar_treino:
+            return score_te
+        rec_tr = model(Xn)
+        score_tr = ((rec_tr - Xn) ** 2).mean(dim=1).numpy()
+        return score_te, score_tr
 
 
 def _treinar_clf_torch(model, dados, epochs: int = 60):
@@ -1301,10 +1352,12 @@ def _score_cnn_torch(dados):
 
 # ---- Facebook Prophet (univariado sobre a feature mais informativa) --------
 
-def _score_prophet(dados):
+def _score_prophet(dados, interval_width: float = 0.80):
     """
     Prophet aplicado à feature de maior variância no normal: aprende o nível e
-    a banda de incerteza; o score é o desvio do valor em relação à banda.
+    a banda de incerteza; o score é o desvio do valor em relação à banda
+    (score > 1 ⇒ fora da banda — decisão NATIVA do modelo, sem oráculo).
+    ``interval_width`` controla a banda (protocolo Ibrahim/Ahirwar usa 0,99).
     Univariado por natureza — resultado honesto e mais modesto que o multivar.
     """
     import logging
@@ -1318,13 +1371,16 @@ def _score_prophet(dados):
 
     Xn = dados["Xn_tr"]
     Xte = dados["X_te"]
-    j = int(np.argmax(Xn.var(axis=0)))
+    # Protocolos passam a coluna a monitorar (feature sensível às falhas
+    # FMEA); sem ela, cai no comportamento antigo (maior variância).
+    j = dados.get("col_prophet")
+    j = int(np.argmax(Xn.var(axis=0))) if j is None else int(j)
     yn = Xn[:, j]
     ds = pd.date_range("2020-01-01", periods=len(yn), freq="D")
     df = pd.DataFrame({"ds": ds, "y": yn})
 
     m = Prophet(weekly_seasonality=False, yearly_seasonality=False,
-                daily_seasonality=False)
+                daily_seasonality=False, interval_width=interval_width)
     m.fit(df)
     fc = m.predict(df)
     centro = float(np.mean(fc["yhat"].to_numpy()))
@@ -1335,31 +1391,28 @@ def _score_prophet(dados):
 
 # ---- Isolation Forest auto-ajustado por RL (PPO) ---------------------------
 
-def _score_ppo_iforest(dados, timesteps: int = 600):
+def _ppo_buscar_contaminacao(Xn_fit, Xval, yval, timesteps: int = 600,
+                             metrica: str = "auc") -> float:
     """
-    Reproduz a ideia de Sharma et al. (2026): um agente PPO ajusta a
-    'contamination' do Isolation Forest. Ambiente de 1 passo (bandit):
-    ação → contamination; recompensa → AUC numa validação interna.
+    Busca a 'contamination' do Isolation Forest via PPO (Sharma et al., 2026).
+    Ambiente de 1 passo (bandit): ação → contamination; recompensa → métrica
+    na VALIDAÇÃO fornecida pelo chamador (o teste nunca entra aqui).
+    ``metrica``: "auc" (independente de limiar) ou "f1" (decisional).
     """
     import numpy as np
     import gymnasium as gym
     from gymnasium import spaces
     from sklearn.ensemble import IsolationForest
-    from sklearn.metrics import roc_auc_score
-    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import f1_score, roc_auc_score
     from stable_baselines3 import PPO
 
-    rng = np.random.default_rng(7)
-    Xn = dados["Xn_tr"]
-    Xn_fit, Xn_val = train_test_split(Xn, test_size=0.4, random_state=7)
-    Xa_val = _gerar_anomalias(Xn_val, rng)
-    Xval = np.vstack([Xn_val, Xa_val])
-    yval = np.r_[np.zeros(len(Xn_val)), np.ones(len(Xa_val))]
-
-    def auc_para(cont):
+    def recompensa(cont):
         cont = float(np.clip(cont, 0.01, 0.45))
         iso = IsolationForest(n_estimators=120, contamination=cont, random_state=42)
         iso.fit(Xn_fit)
+        if metrica == "f1":
+            y_pred = (iso.predict(Xval) == -1).astype(int)
+            return float(f1_score(yval, y_pred, zero_division=0))
         return float(roc_auc_score(yval, -iso.decision_function(Xval)))
 
     class EnvIForest(gym.Env):
@@ -1374,7 +1427,7 @@ def _score_ppo_iforest(dados, timesteps: int = 600):
 
         def step(self, action):
             cont = 0.01 + (float(action[0]) + 1.0) / 2.0 * 0.44
-            reward = auc_para(cont)
+            reward = recompensa(cont)
             return np.zeros(1, dtype=np.float32), reward, True, False, {"cont": cont}
 
     modelo = PPO("MlpPolicy", EnvIForest(), seed=42, verbose=0,
@@ -1383,7 +1436,27 @@ def _score_ppo_iforest(dados, timesteps: int = 600):
 
     obs = np.zeros(1, dtype=np.float32)
     accao, _ = modelo.predict(obs, deterministic=True)
-    melhor_cont = float(np.clip(0.01 + (float(accao[0]) + 1.0) / 2.0 * 0.44, 0.01, 0.45))
+    return float(np.clip(0.01 + (float(accao[0]) + 1.0) / 2.0 * 0.44, 0.01, 0.45))
+
+
+def _score_ppo_iforest(dados, timesteps: int = 600):
+    """
+    Caminho LEGADO (harness genérico): PPO ajusta a contamination numa
+    validação interna aleatória. Os protocolos por artigo usam
+    ``_ppo_buscar_contaminacao`` com validação TEMPORAL separada.
+    """
+    import numpy as np
+    from sklearn.ensemble import IsolationForest
+    from sklearn.model_selection import train_test_split
+
+    rng = np.random.default_rng(7)
+    Xn = dados["Xn_tr"]
+    Xn_fit, Xn_val = train_test_split(Xn, test_size=0.4, random_state=7)
+    Xa_val = _gerar_anomalias(Xn_val, rng)
+    Xval = np.vstack([Xn_val, Xa_val])
+    yval = np.r_[np.zeros(len(Xn_val)), np.ones(len(Xa_val))]
+
+    melhor_cont = _ppo_buscar_contaminacao(Xn_fit, Xval, yval, timesteps)
 
     iso = IsolationForest(n_estimators=200, contamination=melhor_cont, random_state=42)
     iso.fit(Xn)
@@ -1397,6 +1470,26 @@ def executar_anomalia(exp: ExperimentoArtigo, progresso=None) -> dict:
     from sklearn.model_selection import train_test_split
     from sklearn.preprocessing import StandardScaler
 
+    # ── PROTOCOLO POR ARTIGO (caminho principal) ─────────────────────────
+    # Cada artigo tem o próprio protocolo de decisão (limiar a priori,
+    # p99 de treino, banda do Prophet, PPO em validação temporal, voto) —
+    # ver src/ml/protocolos_artigos.py. Evita o "erro de simulação" de
+    # avaliar todos os métodos sob um harness único com limiar-oráculo.
+    from src.ml.protocolos_artigos import executar_protocolo
+
+    saida_protocolo = executar_protocolo(exp.key, progresso=progresso)
+    if saida_protocolo is not None:
+        modelos_proto, metodologia = saida_protocolo
+        # Specs indisponíveis mantêm a degradação honesta ("requer <lib>").
+        for spec in exp.modelos:
+            if spec.nome not in modelos_proto:
+                motivo = (f"requer {spec.requer}" if not spec.disponivel
+                          else "fora do protocolo deste artigo")
+                modelos_proto[spec.nome] = {"disponivel": False, "motivo": motivo}
+        return _consolidar(exp, modelos_proto, metrica_principal="f1",
+                           metodologia=metodologia)
+
+    # ── HARNESS GENÉRICO LEGADO (fallback p/ chaves sem protocolo) ──────
     rng = np.random.default_rng(42)
     if progresso:
         progresso("Carregando features de normalidade (Paderborn)...")

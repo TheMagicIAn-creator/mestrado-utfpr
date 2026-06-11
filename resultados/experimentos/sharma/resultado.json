@@ -6,7 +6,7 @@
   "tarefa": "anomalia",
   "evidence_level": "E1",
   "evidence_note": "E1 — benchmark exploratório (perturbação genérica / dataset rotulado CC); não é validação formal nem desempenho industrial.",
-  "data": "2026-06-02 18:18:02",
+  "data": "2026-06-11 15:27:47",
   "metrica_principal": "f1",
   "origem_dados": {
     "tipo": "dataset_local_paderborn_com_falhas_sinteticas",
@@ -18,19 +18,19 @@
   },
   "modelos": {
     "Isolation Forest": {
-      "accuracy": 0.6065573770491803,
-      "balanced_accuracy": 0.6065573770491803,
-      "precision": 0.7532467532467533,
-      "recall": 0.31693989071038253,
-      "f1": 0.4461538461538462,
-      "mcc": 0.26143896952505175,
-      "auc": 0.7592343754665711,
-      "specificity": 0.8961748633879781,
-      "specificity_macro_ovr": 0.6065573770491803,
+      "accuracy": 0.5,
+      "balanced_accuracy": 0.5,
+      "precision": 0.5,
+      "recall": 0.056818181818181816,
+      "f1": 0.10204081632653061,
+      "mcc": 0.0,
+      "auc": 0.6198992768595042,
+      "specificity": 0.9431818181818182,
+      "specificity_macro_ovr": 0.5,
       "specificity_tipo": "binaria_TN/(TN+FP)",
-      "false_positive_rate": 0.10382513661202186,
-      "false_negative_rate": 0.6830601092896175,
-      "amostras": 366,
+      "false_positive_rate": 0.056818181818181816,
+      "false_negative_rate": 0.9431818181818182,
+      "amostras": 176,
       "n_classes": 2,
       "classes": [
         "Normal",
@@ -38,22 +38,27 @@
       ],
       "matriz_confusao": [
         [
-          164,
-          19
+          83,
+          5
         ],
         [
-          125,
-          58
+          83,
+          5
         ]
       ],
       "disponivel": true,
       "limiar_score": null,
-      "ponto_operacao": "decisao_nativa_modelo",
-      "threshold_source": "decisao_nativa_modelo",
-      "metrica_dependente_de_limiar": "nativa",
-      "anomalias_detectadas": 77,
-      "anomalias_reais": 183,
-      "taxa_anomalias_detectadas": 0.2103825136612022,
+      "ponto_operacao": "protocolo_do_artigo",
+      "threshold_source": "contaminacao_a_priori_0.05",
+      "metrica_dependente_de_limiar": "a_priori_ou_congelada",
+      "anomalias_detectadas": 10,
+      "anomalias_reais": 88,
+      "taxa_anomalias_detectadas": 0.056818181818181816,
+      "deteccao_por_falha": {
+        "lcl": 0.06818181818181818,
+        "desbalanceamento": 0.04,
+        "sensor": 0.05263157894736842
+      },
       "graficos": [
         "resultados/experimentos/sharma/modelo_isolation_forest_metricas.png",
         "resultados/experimentos/sharma/modelo_isolation_forest_matriz_confusao.png"
@@ -62,19 +67,19 @@
       "grafico_matriz_confusao": "resultados/experimentos/sharma/modelo_isolation_forest_matriz_confusao.png"
     },
     "KNN": {
-      "accuracy": 0.5027322404371585,
-      "balanced_accuracy": 0.5027322404371585,
+      "accuracy": 0.7386363636363636,
+      "balanced_accuracy": 0.7386363636363636,
       "precision": 1.0,
-      "recall": 0.00546448087431694,
-      "f1": 0.010869565217391304,
-      "mcc": 0.05234239225902137,
-      "auc": 0.5957030666786108,
+      "recall": 0.4772727272727273,
+      "f1": 0.6461538461538462,
+      "mcc": 0.5598507263734642,
+      "auc": 0.8321280991735538,
       "specificity": 1.0,
-      "specificity_macro_ovr": 0.5027322404371585,
+      "specificity_macro_ovr": 0.7386363636363636,
       "specificity_tipo": "binaria_TN/(TN+FP)",
       "false_positive_rate": 0.0,
-      "false_negative_rate": 0.994535519125683,
-      "amostras": 366,
+      "false_negative_rate": 0.5227272727272727,
+      "amostras": 176,
       "n_classes": 2,
       "classes": [
         "Normal",
@@ -82,22 +87,27 @@
       ],
       "matriz_confusao": [
         [
-          183,
+          88,
           0
         ],
         [
-          182,
-          1
+          46,
+          42
         ]
       ],
       "disponivel": true,
-      "limiar_score": null,
-      "ponto_operacao": "decisao_nativa_modelo",
-      "threshold_source": "decisao_nativa_modelo",
-      "metrica_dependente_de_limiar": "nativa",
-      "anomalias_detectadas": 1,
-      "anomalias_reais": 183,
-      "taxa_anomalias_detectadas": 0.00273224043715847,
+      "limiar_score": 0.5,
+      "ponto_operacao": "protocolo_do_artigo",
+      "threshold_source": "probabilidade_nativa_0.5",
+      "metrica_dependente_de_limiar": "a_priori_ou_congelada",
+      "anomalias_detectadas": 42,
+      "anomalias_reais": 88,
+      "taxa_anomalias_detectadas": 0.23863636363636365,
+      "deteccao_por_falha": {
+        "lcl": 0.7954545454545454,
+        "desbalanceamento": 0.0,
+        "sensor": 0.3684210526315789
+      },
       "graficos": [
         "resultados/experimentos/sharma/modelo_knn_metricas.png",
         "resultados/experimentos/sharma/modelo_knn_matriz_confusao.png"
@@ -106,19 +116,19 @@
       "grafico_matriz_confusao": "resultados/experimentos/sharma/modelo_knn_matriz_confusao.png"
     },
     "SVM": {
-      "accuracy": 0.9289617486338798,
-      "balanced_accuracy": 0.9289617486338798,
-      "precision": 0.9337016574585635,
-      "recall": 0.9234972677595629,
-      "f1": 0.9285714285714286,
-      "mcc": 0.8579747379951103,
-      "auc": 0.9724237809429961,
-      "specificity": 0.9344262295081968,
-      "specificity_macro_ovr": 0.9289617486338798,
+      "accuracy": 0.7784090909090909,
+      "balanced_accuracy": 0.7784090909090909,
+      "precision": 0.9152542372881356,
+      "recall": 0.6136363636363636,
+      "f1": 0.7346938775510204,
+      "mcc": 0.5897624848171971,
+      "auc": 0.9347882231404958,
+      "specificity": 0.9431818181818182,
+      "specificity_macro_ovr": 0.7784090909090909,
       "specificity_tipo": "binaria_TN/(TN+FP)",
-      "false_positive_rate": 0.06557377049180328,
-      "false_negative_rate": 0.07650273224043716,
-      "amostras": 366,
+      "false_positive_rate": 0.056818181818181816,
+      "false_negative_rate": 0.38636363636363635,
+      "amostras": 176,
       "n_classes": 2,
       "classes": [
         "Normal",
@@ -126,22 +136,27 @@
       ],
       "matriz_confusao": [
         [
-          171,
-          12
+          83,
+          5
         ],
         [
-          14,
-          169
+          34,
+          54
         ]
       ],
       "disponivel": true,
-      "limiar_score": null,
-      "ponto_operacao": "decisao_nativa_modelo",
-      "threshold_source": "decisao_nativa_modelo",
-      "metrica_dependente_de_limiar": "nativa",
-      "anomalias_detectadas": 181,
-      "anomalias_reais": 183,
-      "taxa_anomalias_detectadas": 0.49453551912568305,
+      "limiar_score": 0.5,
+      "ponto_operacao": "protocolo_do_artigo",
+      "threshold_source": "probabilidade_nativa_0.5",
+      "metrica_dependente_de_limiar": "a_priori_ou_congelada",
+      "anomalias_detectadas": 59,
+      "anomalias_reais": 88,
+      "taxa_anomalias_detectadas": 0.3352272727272727,
+      "deteccao_por_falha": {
+        "lcl": 0.8409090909090909,
+        "desbalanceamento": 0.08,
+        "sensor": 0.7894736842105263
+      },
       "graficos": [
         "resultados/experimentos/sharma/modelo_svm_metricas.png",
         "resultados/experimentos/sharma/modelo_svm_matriz_confusao.png"
@@ -150,19 +165,19 @@
       "grafico_matriz_confusao": "resultados/experimentos/sharma/modelo_svm_matriz_confusao.png"
     },
     "ANN (MLP)": {
-      "accuracy": 0.9234972677595629,
-      "balanced_accuracy": 0.9234972677595628,
-      "precision": 0.9936305732484076,
-      "recall": 0.8524590163934426,
-      "f1": 0.9176470588235294,
-      "mcc": 0.855674774182504,
-      "auc": 0.9782764489832482,
-      "specificity": 0.994535519125683,
-      "specificity_macro_ovr": 0.9234972677595628,
+      "accuracy": 0.8806818181818182,
+      "balanced_accuracy": 0.8806818181818181,
+      "precision": 0.958904109589041,
+      "recall": 0.7954545454545454,
+      "f1": 0.8695652173913043,
+      "mcc": 0.7726712628513035,
+      "auc": 0.9269111570247933,
+      "specificity": 0.9659090909090909,
+      "specificity_macro_ovr": 0.8806818181818181,
       "specificity_tipo": "binaria_TN/(TN+FP)",
-      "false_positive_rate": 0.00546448087431694,
-      "false_negative_rate": 0.14754098360655737,
-      "amostras": 366,
+      "false_positive_rate": 0.03409090909090909,
+      "false_negative_rate": 0.20454545454545456,
+      "amostras": 176,
       "n_classes": 2,
       "classes": [
         "Normal",
@@ -170,22 +185,27 @@
       ],
       "matriz_confusao": [
         [
-          182,
-          1
+          85,
+          3
         ],
         [
-          27,
-          156
+          18,
+          70
         ]
       ],
       "disponivel": true,
-      "limiar_score": null,
-      "ponto_operacao": "decisao_nativa_modelo",
-      "threshold_source": "decisao_nativa_modelo",
-      "metrica_dependente_de_limiar": "nativa",
-      "anomalias_detectadas": 157,
-      "anomalias_reais": 183,
-      "taxa_anomalias_detectadas": 0.42896174863387976,
+      "limiar_score": 0.5,
+      "ponto_operacao": "protocolo_do_artigo",
+      "threshold_source": "probabilidade_nativa_0.5",
+      "metrica_dependente_de_limiar": "a_priori_ou_congelada",
+      "anomalias_detectadas": 73,
+      "anomalias_reais": 88,
+      "taxa_anomalias_detectadas": 0.4147727272727273,
+      "deteccao_por_falha": {
+        "lcl": 0.8409090909090909,
+        "desbalanceamento": 0.6,
+        "sensor": 0.9473684210526315
+      },
       "graficos": [
         "resultados/experimentos/sharma/modelo_ann_mlp_metricas.png",
         "resultados/experimentos/sharma/modelo_ann_mlp_matriz_confusao.png"
@@ -194,19 +214,19 @@
       "grafico_matriz_confusao": "resultados/experimentos/sharma/modelo_ann_mlp_matriz_confusao.png"
     },
     "RNN": {
-      "accuracy": 0.7131147540983607,
-      "balanced_accuracy": 0.7131147540983607,
-      "precision": 0.6373239436619719,
-      "recall": 0.9890710382513661,
-      "f1": 0.7751605995717344,
-      "mcc": 0.5111266275647381,
-      "auc": 0.8136402997999344,
-      "specificity": 0.4371584699453552,
-      "specificity_macro_ovr": 0.7131147540983607,
+      "accuracy": 0.5,
+      "balanced_accuracy": 0.5,
+      "precision": 0.5,
+      "recall": 0.03409090909090909,
+      "f1": 0.06382978723404255,
+      "mcc": 0.0,
+      "auc": 0.5253099173553719,
+      "specificity": 0.9659090909090909,
+      "specificity_macro_ovr": 0.5,
       "specificity_tipo": "binaria_TN/(TN+FP)",
-      "false_positive_rate": 0.5628415300546448,
-      "false_negative_rate": 0.01092896174863388,
-      "amostras": 366,
+      "false_positive_rate": 0.03409090909090909,
+      "false_negative_rate": 0.9659090909090909,
+      "amostras": 176,
       "n_classes": 2,
       "classes": [
         "Normal",
@@ -214,22 +234,27 @@
       ],
       "matriz_confusao": [
         [
-          80,
-          103
+          85,
+          3
         ],
         [
-          2,
-          181
+          85,
+          3
         ]
       ],
       "disponivel": true,
-      "limiar_score": null,
-      "ponto_operacao": "decisao_nativa_modelo",
-      "threshold_source": "decisao_nativa_modelo",
-      "metrica_dependente_de_limiar": "nativa",
-      "anomalias_detectadas": 284,
-      "anomalias_reais": 183,
-      "taxa_anomalias_detectadas": 0.7759562841530054,
+      "limiar_score": 0.5,
+      "ponto_operacao": "protocolo_do_artigo",
+      "threshold_source": "probabilidade_nativa_0.5",
+      "metrica_dependente_de_limiar": "a_priori_ou_congelada",
+      "anomalias_detectadas": 6,
+      "anomalias_reais": 88,
+      "taxa_anomalias_detectadas": 0.03409090909090909,
+      "deteccao_por_falha": {
+        "lcl": 0.022727272727272728,
+        "desbalanceamento": 0.04,
+        "sensor": 0.05263157894736842
+      },
       "graficos": [
         "resultados/experimentos/sharma/modelo_rnn_metricas.png",
         "resultados/experimentos/sharma/modelo_rnn_matriz_confusao.png"
@@ -238,19 +263,19 @@
       "grafico_matriz_confusao": "resultados/experimentos/sharma/modelo_rnn_matriz_confusao.png"
     },
     "CNN": {
-      "accuracy": 0.6202185792349727,
-      "balanced_accuracy": 0.6202185792349727,
-      "precision": 0.56875,
-      "recall": 0.994535519125683,
-      "f1": 0.7236580516898609,
-      "mcc": 0.36265926036768287,
-      "auc": 0.9246916898085938,
-      "specificity": 0.2459016393442623,
-      "specificity_macro_ovr": 0.6202185792349727,
+      "accuracy": 0.5568181818181818,
+      "balanced_accuracy": 0.5568181818181819,
+      "precision": 0.7777777777777778,
+      "recall": 0.1590909090909091,
+      "f1": 0.2641509433962264,
+      "mcc": 0.1875146501543373,
+      "auc": 0.7395402892561983,
+      "specificity": 0.9545454545454546,
+      "specificity_macro_ovr": 0.5568181818181819,
       "specificity_tipo": "binaria_TN/(TN+FP)",
-      "false_positive_rate": 0.7540983606557377,
-      "false_negative_rate": 0.00546448087431694,
-      "amostras": 366,
+      "false_positive_rate": 0.045454545454545456,
+      "false_negative_rate": 0.8409090909090909,
+      "amostras": 176,
       "n_classes": 2,
       "classes": [
         "Normal",
@@ -258,22 +283,27 @@
       ],
       "matriz_confusao": [
         [
-          45,
-          138
+          84,
+          4
         ],
         [
-          1,
-          182
+          74,
+          14
         ]
       ],
       "disponivel": true,
-      "limiar_score": null,
-      "ponto_operacao": "decisao_nativa_modelo",
-      "threshold_source": "decisao_nativa_modelo",
-      "metrica_dependente_de_limiar": "nativa",
-      "anomalias_detectadas": 320,
-      "anomalias_reais": 183,
-      "taxa_anomalias_detectadas": 0.8743169398907104,
+      "limiar_score": 0.5,
+      "ponto_operacao": "protocolo_do_artigo",
+      "threshold_source": "probabilidade_nativa_0.5",
+      "metrica_dependente_de_limiar": "a_priori_ou_congelada",
+      "anomalias_detectadas": 18,
+      "anomalias_reais": 88,
+      "taxa_anomalias_detectadas": 0.10227272727272728,
+      "deteccao_por_falha": {
+        "lcl": 0.3181818181818182,
+        "desbalanceamento": 0.0,
+        "sensor": 0.0
+      },
       "graficos": [
         "resultados/experimentos/sharma/modelo_cnn_metricas.png",
         "resultados/experimentos/sharma/modelo_cnn_matriz_confusao.png"
@@ -282,19 +312,19 @@
       "grafico_matriz_confusao": "resultados/experimentos/sharma/modelo_cnn_matriz_confusao.png"
     },
     "Isolation Forest + PPO": {
-      "accuracy": 0.6775956284153005,
-      "balanced_accuracy": 0.6775956284153006,
-      "precision": 0.6923076923076923,
-      "recall": 0.639344262295082,
-      "f1": 0.6647727272727273,
-      "mcc": 0.3562352499395482,
-      "auc": 0.7592343754665711,
-      "specificity": 0.7158469945355191,
-      "specificity_macro_ovr": 0.6775956284153006,
+      "accuracy": 0.5,
+      "balanced_accuracy": 0.5,
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.6666666666666666,
+      "mcc": 0.0,
+      "auc": 0.6198992768595042,
+      "specificity": 0.0,
+      "specificity_macro_ovr": 0.5,
       "specificity_tipo": "binaria_TN/(TN+FP)",
-      "false_positive_rate": 0.28415300546448086,
-      "false_negative_rate": 0.36065573770491804,
-      "amostras": 366,
+      "false_positive_rate": 1.0,
+      "false_negative_rate": 0.0,
+      "amostras": 176,
       "n_classes": 2,
       "classes": [
         "Normal",
@@ -302,22 +332,28 @@
       ],
       "matriz_confusao": [
         [
-          131,
-          52
+          0,
+          88
         ],
         [
-          66,
-          117
+          0,
+          88
         ]
       ],
       "disponivel": true,
-      "limiar_score": null,
-      "ponto_operacao": "decisao_nativa_modelo",
-      "threshold_source": "decisao_nativa_modelo",
-      "metrica_dependente_de_limiar": "nativa",
-      "anomalias_detectadas": 169,
-      "anomalias_reais": 183,
-      "taxa_anomalias_detectadas": 0.46174863387978143,
+      "limiar_score": 0.45,
+      "ponto_operacao": "protocolo_do_artigo",
+      "threshold_source": "ppo_otimizado_em_validacao_temporal",
+      "metrica_dependente_de_limiar": "a_priori_ou_congelada",
+      "anomalias_detectadas": 176,
+      "anomalias_reais": 88,
+      "taxa_anomalias_detectadas": 1.0,
+      "deteccao_por_falha": {
+        "lcl": 1.0,
+        "desbalanceamento": 1.0,
+        "sensor": 1.0
+      },
+      "contaminacao_ppo": 0.45,
       "graficos": [
         "resultados/experimentos/sharma/modelo_isolation_forest_ppo_metricas.png",
         "resultados/experimentos/sharma/modelo_isolation_forest_ppo_matriz_confusao.png"
@@ -326,8 +362,45 @@
       "grafico_matriz_confusao": "resultados/experimentos/sharma/modelo_isolation_forest_ppo_matriz_confusao.png"
     }
   },
-  "melhor_modelo": "SVM",
-  "melhor_valor": 0.9285714285714286,
+  "melhor_modelo": "ANN (MLP)",
+  "melhor_valor": 0.8695652173913043,
+  "metodologia": {
+    "protocolo": "sharma2026_rl_self_tuning",
+    "fonte": "Sharma et al. (2026)",
+    "decisoes": {
+      "Isolation Forest + PPO": "contaminação otimizada por PPO em VALIDAÇÃO temporal (F1); teste com parâmetro congelado",
+      "baselines": "probabilidade nativa ≥ 0,5 (KNN/SVM/ANN/RNN/CNN); IF base com contaminação a priori"
+    },
+    "fidelidade": [
+      "Segue o artigo: IF auto-ajustável por RL contra baselines.",
+      "Adaptação: ambiente PPO de 1 passo (bandit) — o ajuste é de um hiperparâmetro contínuo, não um MDP sequencial; documentado.",
+      "Split 60/20/20 temporal com purga: o teste nunca participa do ajuste."
+    ],
+    "split": {
+      "tipo": "temporal_com_purga",
+      "purga_janelas": 2,
+      "n_janelas": 457,
+      "treino": 274,
+      "teste": 88,
+      "val": 91
+    },
+    "injecao": {
+      "tipo": "fmea_espaco_features",
+      "falhas": [
+        "lcl",
+        "desbalanceamento",
+        "sensor"
+      ],
+      "pesos": {
+        "lcl": 0.4,
+        "desbalanceamento": 0.35,
+        "sensor": 0.25
+      },
+      "severidade": 1.0,
+      "fonte": "Torres (2024) — FMECA CEAMAZON (NPR 210/150) via assinaturas de src/ml/injecao_falhas.py",
+      "nota": "E1 — proxy sintético no espaço de features; ground truth por família de falha, não medição de bancada."
+    }
+  },
   "graficos": [
     "resultados/experimentos/sharma/modelo_isolation_forest_metricas.png",
     "resultados/experimentos/sharma/modelo_isolation_forest_matriz_confusao.png",

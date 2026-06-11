@@ -6,7 +6,7 @@
   "tarefa": "anomalia",
   "evidence_level": "E1",
   "evidence_note": "E1 — benchmark exploratório (perturbação genérica / dataset rotulado CC); não é validação formal nem desempenho industrial.",
-  "data": "2026-06-02 09:47:20",
+  "data": "2026-06-11 15:21:49",
   "metrica_principal": "f1",
   "origem_dados": {
     "tipo": "dataset_local_paderborn_com_falhas_sinteticas",
@@ -18,19 +18,19 @@
   },
   "modelos": {
     "Z-score (estatístico)": {
-      "accuracy": 0.73224043715847,
-      "balanced_accuracy": 0.73224043715847,
-      "precision": 0.6666666666666666,
-      "recall": 0.9289617486338798,
-      "f1": 0.776255707762557,
-      "mcc": 0.5052279240652235,
-      "auc": 0.8152229090149004,
-      "specificity": 0.5355191256830601,
-      "specificity_macro_ovr": 0.73224043715847,
+      "accuracy": 0.5659340659340659,
+      "balanced_accuracy": 0.5659340659340659,
+      "precision": 0.6935483870967742,
+      "recall": 0.23626373626373626,
+      "f1": 0.3524590163934426,
+      "mcc": 0.1753928663081973,
+      "auc": 0.7406563217002777,
+      "specificity": 0.8956043956043956,
+      "specificity_macro_ovr": 0.5659340659340659,
       "specificity_tipo": "binaria_TN/(TN+FP)",
-      "false_positive_rate": 0.4644808743169399,
-      "false_negative_rate": 0.07103825136612021,
-      "amostras": 366,
+      "false_positive_rate": 0.1043956043956044,
+      "false_negative_rate": 0.7637362637362637,
+      "amostras": 364,
       "n_classes": 2,
       "classes": [
         "Normal",
@@ -38,22 +38,27 @@
       ],
       "matriz_confusao": [
         [
-          98,
-          85
+          163,
+          19
         ],
         [
-          13,
-          170
+          139,
+          43
         ]
       ],
       "disponivel": true,
-      "limiar_score": 0.6970339750305429,
-      "ponto_operacao": "limiar_otimo_score",
-      "threshold_source": "exploratorio_no_conjunto_avaliado",
-      "metrica_dependente_de_limiar": "exploratoria",
-      "anomalias_detectadas": 255,
-      "anomalias_reais": 183,
-      "taxa_anomalias_detectadas": 0.6967213114754098,
+      "limiar_score": 3.0,
+      "ponto_operacao": "protocolo_do_artigo",
+      "threshold_source": "shewhart_3sigma_a_priori",
+      "metrica_dependente_de_limiar": "a_priori_ou_congelada",
+      "anomalias_detectadas": 62,
+      "anomalias_reais": 182,
+      "taxa_anomalias_detectadas": 0.17032967032967034,
+      "deteccao_por_falha": {
+        "lcl": 0.36585365853658536,
+        "desbalanceamento": 0.14035087719298245,
+        "sensor": 0.11627906976744186
+      },
       "graficos": [
         "resultados/experimentos/francisti/modelo_z_score_estatistico_metricas.png",
         "resultados/experimentos/francisti/modelo_z_score_estatistico_matriz_confusao.png"
@@ -62,19 +67,19 @@
       "grafico_matriz_confusao": "resultados/experimentos/francisti/modelo_z_score_estatistico_matriz_confusao.png"
     },
     "Random Forest (anomalia)": {
-      "accuracy": 0.9262295081967213,
-      "balanced_accuracy": 0.9262295081967213,
-      "precision": 0.9698795180722891,
-      "recall": 0.8797814207650273,
-      "f1": 0.9226361031518625,
-      "mcc": 0.8561612279195846,
-      "auc": 0.9837110693063394,
-      "specificity": 0.9726775956284153,
-      "specificity_macro_ovr": 0.9262295081967213,
+      "accuracy": 0.8516483516483516,
+      "balanced_accuracy": 0.8516483516483517,
+      "precision": 0.8902439024390244,
+      "recall": 0.8021978021978022,
+      "f1": 0.8439306358381503,
+      "mcc": 0.7067617668790178,
+      "auc": 0.9387453206134524,
+      "specificity": 0.9010989010989011,
+      "specificity_macro_ovr": 0.8516483516483517,
       "specificity_tipo": "binaria_TN/(TN+FP)",
-      "false_positive_rate": 0.0273224043715847,
-      "false_negative_rate": 0.12021857923497267,
-      "amostras": 366,
+      "false_positive_rate": 0.0989010989010989,
+      "false_negative_rate": 0.1978021978021978,
+      "amostras": 364,
       "n_classes": 2,
       "classes": [
         "Normal",
@@ -82,22 +87,27 @@
       ],
       "matriz_confusao": [
         [
-          178,
-          5
+          164,
+          18
         ],
         [
-          22,
-          161
+          36,
+          146
         ]
       ],
       "disponivel": true,
-      "limiar_score": null,
-      "ponto_operacao": "decisao_nativa_modelo",
-      "threshold_source": "decisao_nativa_modelo",
-      "metrica_dependente_de_limiar": "nativa",
-      "anomalias_detectadas": 166,
-      "anomalias_reais": 183,
-      "taxa_anomalias_detectadas": 0.453551912568306,
+      "limiar_score": 0.5,
+      "ponto_operacao": "protocolo_do_artigo",
+      "threshold_source": "probabilidade_nativa_0.5",
+      "metrica_dependente_de_limiar": "a_priori_ou_congelada",
+      "anomalias_detectadas": 164,
+      "anomalias_reais": 182,
+      "taxa_anomalias_detectadas": 0.45054945054945056,
+      "deteccao_por_falha": {
+        "lcl": 0.9878048780487805,
+        "desbalanceamento": 0.42105263157894735,
+        "sensor": 0.9534883720930233
+      },
       "graficos": [
         "resultados/experimentos/francisti/modelo_random_forest_anomalia_metricas.png",
         "resultados/experimentos/francisti/modelo_random_forest_anomalia_matriz_confusao.png"
@@ -107,7 +117,42 @@
     }
   },
   "melhor_modelo": "Random Forest (anomalia)",
-  "melhor_valor": 0.9226361031518625,
+  "melhor_valor": 0.8439306358381503,
+  "metodologia": {
+    "protocolo": "francisti2025_spc_rf",
+    "fonte": "Francisti et al. (2025)",
+    "decisoes": {
+      "Z-score (estatístico)": "|z| > 3.0σ por variável (Shewhart, fixo a priori)",
+      "Random Forest (anomalia)": "probabilidade nativa ≥ 0,5"
+    },
+    "fidelidade": [
+      "Segue o artigo: controle estatístico Z-score + RF supervisionado.",
+      "Adaptação: alarme por variável (máx |z|) — prática padrão de SPC multivariável simples; o artigo não detalha a agregação."
+    ],
+    "split": {
+      "tipo": "temporal_com_purga",
+      "purga_janelas": 2,
+      "n_janelas": 457,
+      "treino": 273,
+      "teste": 182
+    },
+    "injecao": {
+      "tipo": "fmea_espaco_features",
+      "falhas": [
+        "lcl",
+        "desbalanceamento",
+        "sensor"
+      ],
+      "pesos": {
+        "lcl": 0.4,
+        "desbalanceamento": 0.35,
+        "sensor": 0.25
+      },
+      "severidade": 1.0,
+      "fonte": "Torres (2024) — FMECA CEAMAZON (NPR 210/150) via assinaturas de src/ml/injecao_falhas.py",
+      "nota": "E1 — proxy sintético no espaço de features; ground truth por família de falha, não medição de bancada."
+    }
+  },
   "graficos": [
     "resultados/experimentos/francisti/modelo_z_score_estatistico_metricas.png",
     "resultados/experimentos/francisti/modelo_z_score_estatistico_matriz_confusao.png",

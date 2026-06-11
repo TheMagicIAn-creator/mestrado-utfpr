@@ -8,8 +8,8 @@ Origem dos dados: Usa features locais do Paderborn extraidas de Inverter_Data_Se
 
 Métrica principal: f1
 
-- Z-score (estatístico): accuracy=0.7322, precision=0.6667, recall=0.9290, f1=0.7763, auc=0.8152, specificity=0.5355, anomalias_detectadas=255
-- Random Forest (anomalia): accuracy=0.9262, precision=0.9699, recall=0.8798, f1=0.9226, auc=0.9837, specificity=0.9727, anomalias_detectadas=166
+- Z-score (estatístico): accuracy=0.5659, precision=0.6935, recall=0.2363, f1=0.3525, auc=0.7407, specificity=0.8956, anomalias_detectadas=62
+- Random Forest (anomalia): accuracy=0.8516, precision=0.8902, recall=0.8022, f1=0.8439, auc=0.9387, specificity=0.9011, anomalias_detectadas=164
 
-MELHOR MODELO: Random Forest (anomalia) (f1=0.9226)
+MELHOR MODELO: Random Forest (anomalia) (f1=0.8439)
 ================================================================
