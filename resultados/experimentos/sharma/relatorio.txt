@@ -12,7 +12,7 @@ Métrica principal: f1
 - KNN: accuracy=0.7386, precision=1.0000, recall=0.4773, f1=0.6462, auc=0.8321, specificity=1.0000, anomalias_detectadas=42
 - SVM: accuracy=0.7784, precision=0.9153, recall=0.6136, f1=0.7347, auc=0.9348, specificity=0.9432, anomalias_detectadas=59
 - ANN (MLP): accuracy=0.8807, precision=0.9589, recall=0.7955, f1=0.8696, auc=0.9269, specificity=0.9659, anomalias_detectadas=73
-- RNN: accuracy=0.5000, precision=0.5000, recall=0.0341, f1=0.0638, auc=0.5253, specificity=0.9659, anomalias_detectadas=6
+- RNN: accuracy=0.5000, precision=0.0000, recall=0.0000, f1=0.0000, auc=0.5314, specificity=1.0000, anomalias_detectadas=0
 - CNN: accuracy=0.5568, precision=0.7778, recall=0.1591, f1=0.2642, auc=0.7395, specificity=0.9545, anomalias_detectadas=18
 - Isolation Forest + PPO: accuracy=0.5000, precision=0.5000, recall=1.0000, f1=0.6667, auc=0.6199, specificity=0.0000, anomalias_detectadas=176
 

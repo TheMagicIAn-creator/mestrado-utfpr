@@ -5,8 +5,8 @@
   "dataset": "Paderborn",
   "tarefa": "anomalia",
   "evidence_level": "E1",
-  "evidence_note": "E1 — benchmark exploratório (perturbação genérica / dataset rotulado CC); não é validação formal nem desempenho industrial.",
-  "data": "2026-06-11 15:31:00",
+  "evidence_note": "E1 — benchmark exploratório (injeção sintética orientada pelo FMEA no espaço de features, com protocolo de decisão do próprio artigo); não é validação formal nem desempenho industrial.",
+  "data": "2026-06-11 21:12:09",
   "metrica_principal": "f1",
   "origem_dados": {
     "tipo": "dataset_local_paderborn_com_falhas_sinteticas",
@@ -67,18 +67,18 @@
       "grafico_matriz_confusao": "resultados/experimentos/ahirwar/modelo_isolation_forest_matriz_confusao.png"
     },
     "AE-LSTM": {
-      "accuracy": 0.5027472527472527,
-      "balanced_accuracy": 0.5027472527472527,
-      "precision": 0.5714285714285714,
-      "recall": 0.02197802197802198,
-      "f1": 0.042328042328042326,
-      "mcc": 0.020004001200400138,
-      "auc": 0.7329428812945298,
-      "specificity": 0.9835164835164835,
-      "specificity_macro_ovr": 0.5027472527472527,
+      "accuracy": 0.5,
+      "balanced_accuracy": 0.5,
+      "precision": 0.5,
+      "recall": 0.027472527472527472,
+      "f1": 0.052083333333333336,
+      "mcc": 0.0,
+      "auc": 0.7289276657408525,
+      "specificity": 0.9725274725274725,
+      "specificity_macro_ovr": 0.5,
       "specificity_tipo": "binaria_TN/(TN+FP)",
-      "false_positive_rate": 0.016483516483516484,
-      "false_negative_rate": 0.978021978021978,
+      "false_positive_rate": 0.027472527472527472,
+      "false_negative_rate": 0.9725274725274725,
       "amostras": 364,
       "n_classes": 2,
       "classes": [
@@ -87,25 +87,25 @@
       ],
       "matriz_confusao": [
         [
-          179,
-          3
+          177,
+          5
         ],
         [
-          178,
-          4
+          177,
+          5
         ]
       ],
       "disponivel": true,
-      "limiar_score": 4.608428478240967,
+      "limiar_score": 4.062711238861084,
       "ponto_operacao": "protocolo_do_artigo",
-      "threshold_source": "p99_erro_reconstrucao_treino",
+      "threshold_source": "p99_erro_em_calibracao_temporal",
       "metrica_dependente_de_limiar": "a_priori_ou_congelada",
-      "anomalias_detectadas": 7,
+      "anomalias_detectadas": 10,
       "anomalias_reais": 182,
-      "taxa_anomalias_detectadas": 0.019230769230769232,
+      "taxa_anomalias_detectadas": 0.027472527472527472,
       "deteccao_por_falha": {
         "lcl": 0.024390243902439025,
-        "desbalanceamento": 0.017543859649122806,
+        "desbalanceamento": 0.03508771929824561,
         "sensor": 0.023255813953488372
       },
       "graficos": [
@@ -165,18 +165,18 @@
       "grafico_matriz_confusao": "resultados/experimentos/ahirwar/modelo_facebook_prophet_matriz_confusao.png"
     },
     "Híbrido (voto)": {
-      "accuracy": 0.5027472527472527,
-      "balanced_accuracy": 0.5027472527472527,
-      "precision": 0.5454545454545454,
-      "recall": 0.03296703296703297,
-      "f1": 0.06217616580310881,
-      "mcc": 0.01604782961763111,
-      "auc": 0.518883588938534,
-      "specificity": 0.9725274725274725,
-      "specificity_macro_ovr": 0.5027472527472527,
+      "accuracy": 0.5,
+      "balanced_accuracy": 0.5,
+      "precision": 0.5,
+      "recall": 0.038461538461538464,
+      "f1": 0.07142857142857142,
+      "mcc": 0.0,
+      "auc": 0.518491124260355,
+      "specificity": 0.9615384615384616,
+      "specificity_macro_ovr": 0.5,
       "specificity_tipo": "binaria_TN/(TN+FP)",
-      "false_positive_rate": 0.027472527472527472,
-      "false_negative_rate": 0.967032967032967,
+      "false_positive_rate": 0.038461538461538464,
+      "false_negative_rate": 0.9615384615384616,
       "amostras": 364,
       "n_classes": 2,
       "classes": [
@@ -185,12 +185,12 @@
       ],
       "matriz_confusao": [
         [
-          177,
-          5
+          175,
+          7
         ],
         [
-          176,
-          6
+          175,
+          7
         ]
       ],
       "disponivel": true,
@@ -198,12 +198,12 @@
       "ponto_operacao": "protocolo_do_artigo",
       "threshold_source": "voto_majoritario_2_de_3",
       "metrica_dependente_de_limiar": "a_priori_ou_congelada",
-      "anomalias_detectadas": 11,
+      "anomalias_detectadas": 14,
       "anomalias_reais": 182,
-      "taxa_anomalias_detectadas": 0.03021978021978022,
+      "taxa_anomalias_detectadas": 0.038461538461538464,
       "deteccao_por_falha": {
         "lcl": 0.04878048780487805,
-        "desbalanceamento": 0.017543859649122806,
+        "desbalanceamento": 0.03508771929824561,
         "sensor": 0.023255813953488372
       },
       "concordancia_media_membros": 0.9432234432234433,
@@ -226,12 +226,13 @@
     "protocolo": "ahirwar2025_voto_hibrido",
     "fonte": "Ahirwar & Nandanwar (2025)",
     "decisoes": {
-      "membros": "cada um pela própria regra a priori (IF contaminação; AE-LSTM p99 do treino; Prophet banda 99%)",
+      "membros": "cada um pela própria regra a priori (IF contaminação; AE-LSTM p99 em calibração temporal; Prophet banda 99%) — o voto usa as MESMAS predições das métricas individuais; Prophet monitora 'i_a_energia_chaveamento'",
       "Híbrido (voto)": "anomalia quando a MAIORIA dos membros disponíveis vota anomalia"
     },
     "fidelidade": [
       "Segue o artigo: ensemble heterogêneo AE-LSTM + Prophet + IF.",
-      "Adaptação: voto majoritário simples no lugar da otimização bayesiana de hiperparâmetros (documentado como simplificação)."
+      "Adaptação: voto majoritário simples no lugar da otimização bayesiana de hiperparâmetros (documentado como simplificação).",
+      "Membros em pontos de operação conservadores tornam o voto majoritário ainda mais conservador (recall baixo por construção) — achado metodológico a discutir, não defeito de implementação."
     ],
     "split": {
       "tipo": "temporal_com_purga",

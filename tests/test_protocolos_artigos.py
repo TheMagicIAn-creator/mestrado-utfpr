@@ -185,9 +185,10 @@ def test_metricas_anomalia_caminhos():
 def test_ahirwar_voto_majoritario(features_fake, monkeypatch):
     dados = P.preparar_dados_anomalia()
     y_te = dados["y_te"]
-    n = len(y_te)
 
-    # membros fake: 2 acertam tudo, 1 erra tudo → maioria (2/3) acerta tudo
+    # membros fake: 2 acertam tudo, 1 erra tudo → maioria (2/3) acerta tudo.
+    # O voto recebe as MESMAS predições devolvidas pelo protocolo do Ibrahim
+    # (retornar_predicoes=True) — sem refazer fits.
     perfeito = np.asarray(y_te).astype(int)
     invertido = 1 - perfeito
     fake_preds = {
@@ -195,16 +196,16 @@ def test_ahirwar_voto_majoritario(features_fake, monkeypatch):
         "AE-LSTM": perfeito,
         "Facebook Prophet": invertido,
     }
-    monkeypatch.setattr(P, "_predicoes_membros",
-                        lambda dados, nomes: fake_preds)
-
     base = {"anomalias_detectadas": 1}  # marca membro como disponível
-    monkeypatch.setattr(
-        P, "protocolo_ibrahim",
-        lambda dados, progresso=None: (
-            {"Isolation Forest": dict(base), "AE-LSTM": dict(base),
-             "Facebook Prophet": dict(base)}, {}),
-    )
+
+    def fake_ibrahim(dados, progresso=None, retornar_predicoes=False):
+        saida = {"Isolation Forest": dict(base), "AE-LSTM": dict(base),
+                 "Facebook Prophet": dict(base)}
+        if retornar_predicoes:
+            return saida, {}, fake_preds
+        return saida, {}
+
+    monkeypatch.setattr(P, "protocolo_ibrahim", fake_ibrahim)
 
     saida, met = P.protocolo_ahirwar(dados)
     h = saida["Híbrido (voto)"]

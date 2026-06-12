@@ -5,8 +5,8 @@
   "dataset": "Paderborn",
   "tarefa": "anomalia",
   "evidence_level": "E1",
-  "evidence_note": "E1 — benchmark exploratório (perturbação genérica / dataset rotulado CC); não é validação formal nem desempenho industrial.",
-  "data": "2026-06-11 15:21:49",
+  "evidence_note": "E1 — benchmark exploratório (injeção sintética orientada pelo FMEA no espaço de features, com protocolo de decisão do próprio artigo); não é validação formal nem desempenho industrial.",
+  "data": "2026-06-11 21:12:38",
   "metrica_principal": "f1",
   "origem_dados": {
     "tipo": "dataset_local_paderborn_com_falhas_sinteticas",

@@ -368,11 +368,16 @@ def protocolo_francisti(dados, progresso=None):
 # PROTOCOLO — IBRAHIM et al. (2022)
 # ============================================================
 
-def protocolo_ibrahim(dados, progresso=None):
+def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
     """
-    IF com contaminação A PRIORI; AE-LSTM com limiar p99 do erro de
-    reconstrução NO TREINO (congelado); Prophet com banda de 99% (fora da
-    banda = anomalia). Nenhuma decisão enxerga os rótulos do teste.
+    IF com contaminação A PRIORI; AE-LSTM com limiar = percentil do erro de
+    reconstrução numa fatia de CALIBRAÇÃO temporal do treino (o AE não vê a
+    calibração no ajuste — evita o limiar otimista do erro de treino);
+    Prophet com banda de 99% (fora da banda = anomalia). Nenhuma decisão
+    enxerga os rótulos do teste.
+
+    Com ``retornar_predicoes=True`` devolve também ``{modelo: y_pred}`` para
+    o ensemble do Ahirwar REUTILIZAR as mesmas decisões (sem refazer fits).
     """
     import numpy as np
 
@@ -381,6 +386,7 @@ def protocolo_ibrahim(dados, progresso=None):
     X_te, y_te = dados["X_te"], dados["y_te"]
     tipos = dados["tipos_te"]
     saida = {}
+    preds: dict = {}
 
     if progresso:
         progresso("Ibrahim: Isolation Forest (contaminação a priori)...")
@@ -391,6 +397,7 @@ def protocolo_ibrahim(dados, progresso=None):
     iso.fit(dados["Xn_tr"])
     score_if = -iso.decision_function(X_te)
     y_pred_if = (iso.predict(X_te) == -1).astype(int)
+    preds["Isolation Forest"] = y_pred_if
     saida["Isolation Forest"] = _metricas(
         y_te, score_if, y_pred_if,
         threshold_source=f"contaminacao_a_priori_{CONTAMINACAO_A_PRIORI}",
@@ -399,15 +406,27 @@ def protocolo_ibrahim(dados, progresso=None):
 
     if lib_disponivel("torch"):
         if progresso:
-            progresso("Ibrahim: AE-LSTM (limiar p99 do treino)...")
+            progresso("Ibrahim: AE-LSTM (calibração temporal do limiar)...")
         from src.ml.experimentos_artigos import _score_ae_lstm
 
-        score_te, score_tr = _score_ae_lstm(dados, retornar_treino=True)
-        limiar = float(np.percentile(score_tr, PERCENTIL_TREINO))
+        # Fatia de CALIBRAÇÃO: bloco final do treino normal (com purga) fica
+        # FORA do ajuste do AE e fornece o erro "não visto" para o percentil.
+        # Calibrar no erro de treino subestimaria o erro real (modelo decora).
+        Xn_tr = dados["Xn_tr"]
+        corte = max(10, int(len(Xn_tr) * 0.8))
+        Xn_fit = Xn_tr[:max(1, corte - PURGA_JANELAS)]
+        X_calib = Xn_tr[corte:]
+        dados_ae = {**dados, "Xn_tr": Xn_fit,
+                    "X_te": np.vstack([X_calib, X_te])}
+        score_all = _score_ae_lstm(dados_ae)
+        score_calib = score_all[:len(X_calib)]
+        score_te = score_all[len(X_calib):]
+        limiar = float(np.percentile(score_calib, PERCENTIL_TREINO))
         y_pred_ae = (score_te > limiar).astype(int)
+        preds["AE-LSTM"] = y_pred_ae
         saida["AE-LSTM"] = _metricas(
             y_te, score_te, y_pred_ae,
-            threshold_source=f"p{PERCENTIL_TREINO}_erro_reconstrucao_treino",
+            threshold_source=f"p{PERCENTIL_TREINO}_erro_em_calibracao_temporal",
             limiar=limiar, tipos_te=tipos,
         )
     else:
@@ -420,6 +439,7 @@ def protocolo_ibrahim(dados, progresso=None):
 
         score_p = _score_prophet(dados, interval_width=INTERVALO_PROPHET)
         y_pred_p = (score_p > 1.0).astype(int)  # >1 = fora da banda
+        preds["Facebook Prophet"] = y_pred_p
         saida["Facebook Prophet"] = _metricas(
             y_te, score_p, y_pred_p,
             threshold_source=f"intervalo_prophet_{INTERVALO_PROPHET}",
@@ -433,15 +453,17 @@ def protocolo_ibrahim(dados, progresso=None):
         "fonte": "Ibrahim et al. (2022)",
         "decisoes": {
             "Isolation Forest": f"contaminação a priori = {CONTAMINACAO_A_PRIORI}",
-            "AE-LSTM": f"limiar = p{PERCENTIL_TREINO} do erro de reconstrução "
-                       "no TREINO (congelado antes do teste)",
+            "AE-LSTM": f"limiar = p{PERCENTIL_TREINO} do erro numa fatia de "
+                       "CALIBRAÇÃO temporal do treino (fora do ajuste do AE; "
+                       "congelado antes do teste)",
             "Facebook Prophet": f"fora da banda de incerteza de "
                                 f"{INTERVALO_PROPHET:.0%}",
         },
         "fidelidade": [
             "Segue o artigo: trio IF / AE-LSTM / Prophet para anomalia.",
-            "AE-LSTM usa a MESMA disciplina de limiar congelado do pipeline "
-            "principal da dissertação (percentil no saudável de treino).",
+            "AE-LSTM usa a disciplina de limiar congelado do pipeline "
+            "principal, com calibração em bloco temporal NÃO visto no ajuste "
+            "(o erro de treino subestimaria o erro real).",
             "Adaptação: Prophet univariado monitorando a feature mais "
             "sensível às famílias FMEA (proxy da série de potência do artigo).",
             "Leitura correta: a contaminação a priori de 5% reflete a "
@@ -453,6 +475,8 @@ def protocolo_ibrahim(dados, progresso=None):
     if dados.get("col_prophet_nome"):
         metodologia["decisoes"]["Facebook Prophet"] += (
             f" — monitora '{dados['col_prophet_nome']}'")
+    if retornar_predicoes:
+        return saida, metodologia, preds
     return saida, metodologia
 
 
@@ -590,24 +614,18 @@ def protocolo_ahirwar(dados, progresso=None):
     """
     import numpy as np
 
-    # Reusa o protocolo do Ibrahim para os MEMBROS (mesmas regras a priori).
-    saida, _ = protocolo_ibrahim(dados, progresso=progresso)
+    # Reusa o protocolo do Ibrahim para os MEMBROS, recebendo as MESMAS
+    # predições que geraram as métricas individuais — o voto decide sobre
+    # exatamente o que foi reportado (sem refazer fits).
+    saida, _met_ibrahim, preds = protocolo_ibrahim(
+        dados, progresso=progresso, retornar_predicoes=True)
 
     y_te = dados["y_te"]
     tipos = dados["tipos_te"]
 
-    membros = {}
-    for nome in ("Isolation Forest", "AE-LSTM", "Facebook Prophet"):
-        m = saida.get(nome, {})
-        if m.get("disponivel", True) and "anomalias_detectadas" in m:
-            membros[nome] = m
-
-    if len(membros) >= 2:
+    if len(preds) >= 2:
         if progresso:
             progresso("Ahirwar: voto majoritário dos membros...")
-        # Reconstrói os y_pred dos membros pelas mesmas regras (refazer é
-        # barato e evita carregar vetores nos dicts de métricas).
-        preds = _predicoes_membros(dados, list(membros))
         matriz = np.vstack(list(preds.values()))
         votos = matriz.sum(axis=0)
         maioria = len(preds) // 2 + 1
@@ -638,8 +656,9 @@ def protocolo_ahirwar(dados, progresso=None):
         "fonte": "Ahirwar & Nandanwar (2025)",
         "decisoes": {
             "membros": "cada um pela própria regra a priori (IF contaminação; "
-                       f"AE-LSTM p{PERCENTIL_TREINO} do treino; Prophet banda "
-                       f"{INTERVALO_PROPHET:.0%})",
+                       f"AE-LSTM p{PERCENTIL_TREINO} em calibração temporal; "
+                       f"Prophet banda {INTERVALO_PROPHET:.0%}) — o voto usa "
+                       "as MESMAS predições das métricas individuais",
             "Híbrido (voto)": "anomalia quando a MAIORIA dos membros "
                               "disponíveis vota anomalia",
         },
@@ -656,37 +675,6 @@ def protocolo_ahirwar(dados, progresso=None):
         metodologia["decisoes"]["membros"] += (
             f"; Prophet monitora '{dados['col_prophet_nome']}'")
     return saida, metodologia
-
-
-def _predicoes_membros(dados, nomes_membros):
-    """Recalcula o y_pred de cada membro pela mesma regra a priori."""
-    import numpy as np
-
-    preds = {}
-    X_te = dados["X_te"]
-
-    if "Isolation Forest" in nomes_membros:
-        from sklearn.ensemble import IsolationForest
-
-        iso = IsolationForest(n_estimators=200, random_state=42,
-                              contamination=CONTAMINACAO_A_PRIORI)
-        iso.fit(dados["Xn_tr"])
-        preds["Isolation Forest"] = (iso.predict(X_te) == -1).astype(int)
-
-    if "AE-LSTM" in nomes_membros:
-        from src.ml.experimentos_artigos import _score_ae_lstm
-
-        score_te, score_tr = _score_ae_lstm(dados, retornar_treino=True)
-        limiar = float(np.percentile(score_tr, PERCENTIL_TREINO))
-        preds["AE-LSTM"] = (score_te > limiar).astype(int)
-
-    if "Facebook Prophet" in nomes_membros:
-        from src.ml.experimentos_artigos import _score_prophet
-
-        score_p = _score_prophet(dados, interval_width=INTERVALO_PROPHET)
-        preds["Facebook Prophet"] = (score_p > 1.0).astype(int)
-
-    return preds
 
 
 # ============================================================

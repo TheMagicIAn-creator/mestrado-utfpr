@@ -902,6 +902,15 @@ def _consolidar(exp: ExperimentoArtigo, modelos_out: dict, metrica_principal: st
         # Protocolo por artigo: split temporal, injeção FMEA e a regra de
         # decisão de CADA modelo — rastreabilidade completa no resultado.
         resultado["metodologia"] = metodologia
+        if metodologia.get("injecao", {}).get("tipo") == "fmea_espaco_features":
+            # A nota padrão fala em "perturbação genérica"; os protocolos
+            # usam injeção ORIENTADA PELO FMEA — a proveniência deve refletir.
+            resultado["evidence_note"] = (
+                "E1 — benchmark exploratório (injeção sintética orientada "
+                "pelo FMEA no espaço de features, com protocolo de decisão "
+                "do próprio artigo); não é validação formal nem desempenho "
+                "industrial."
+            )
     graficos = _grafico_comparacao(exp, resultado)
     if graficos:
         from src.core.utils import to_project_relative_path

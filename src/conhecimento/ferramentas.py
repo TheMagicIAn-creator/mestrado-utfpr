@@ -1218,7 +1218,11 @@ def comparar_abordagens_ml(progresso=None, pergunta: str = "") -> dict:
         "de sensor é um proxy).\n"
         "- PV Farms (CC) e Paderborn (CA) NÃO se fundem: o classificador PV Farms "
         "não diagnostica falhas CA do inversor, nem transfere suas métricas ao "
-        "pipeline CA."
+        "pipeline CA.\n"
+        "- Cada experimento por artigo segue o PROTOCOLO do próprio artigo "
+        "(Shewhart 3σ, contaminação a priori, p99 do treino, banda do Prophet, "
+        "PPO em validação temporal, voto majoritário) — por isso o F1 não é "
+        "comparável entre protocolos; compare métodos pelo AUC."
     )
     return {
         "ok": True, "etapa": "Abordagens de ML",
