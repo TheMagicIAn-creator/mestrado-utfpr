@@ -15,7 +15,15 @@ Uso:
 Autor: Rodolfo Torres (UTFPR)
 """
 
-from src.core.logs import get_logger as _get_logger
+try:
+    from src.core.logs import get_logger as _get_logger
+except ModuleNotFoundError:  # execução direta: python src/ml/<arquivo>.py
+    import sys as _sys
+    from pathlib import Path as _Path
+    _raiz = str(_Path(__file__).resolve().parents[2])
+    if _raiz not in _sys.path:
+        _sys.path.insert(0, _raiz)
+    from src.core.logs import get_logger as _get_logger
 
 _logger = _get_logger("eda")
 

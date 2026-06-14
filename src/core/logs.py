@@ -64,8 +64,15 @@ def habilitar_console(nivel: int = logging.INFO) -> None:
     Os módulos de ML logam em arquivo por padrão (terminal silencioso no app).
     Scripts executados manualmente (``python src/ml/autoencoder.py``) chamam
     isto no bloco ``__main__`` para o pesquisador continuar vendo o progresso.
-    Idempotente.
+    Também garante stdout/stderr em UTF-8 (Windows cp1252 quebra com acentos
+    e emojis em prints/help). Idempotente.
     """
+    try:
+        from src.core.utils import configurar_saida_utf8
+
+        configurar_saida_utf8()
+    except Exception:  # noqa: BLE001 — nunca bloquear a execução manual
+        pass
     configurar_logging()
     root = logging.getLogger(_RAIZ_LOGGER)
     ja_tem = any(
