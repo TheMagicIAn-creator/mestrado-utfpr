@@ -6,7 +6,7 @@
   "tarefa": "classificacao",
   "evidence_level": "E1",
   "evidence_note": "E1 — benchmark exploratório (perturbação genérica / dataset rotulado CC); não é validação formal nem desempenho industrial.",
-  "data": "2026-06-02 09:47:18",
+  "data": "2026-06-14 00:46:12",
   "metrica_principal": "f1",
   "origem_dados": {
     "tipo": "dataset_local_rotulado",
@@ -246,8 +246,59 @@
       "grafico_matriz_confusao": "resultados/experimentos/ghoneim/modelo_naive_bayes_matriz_confusao.png"
     },
     "CN2 (indução de regras)": {
-      "disponivel": false,
-      "motivo": "erro no Orange/CN2: No module named 'bottleneck'"
+      "accuracy": 0.5,
+      "balanced_accuracy": 0.5,
+      "precision": 0.5178225359911406,
+      "recall": 0.5,
+      "f1": 0.48462237829728055,
+      "mcc": 0.3484849444862238,
+      "auc": null,
+      "specificity": 0.8333333333333335,
+      "specificity_macro_ovr": 0.8333333333333335,
+      "specificity_tipo": "macro_one_vs_rest",
+      "false_positive_rate": null,
+      "false_negative_rate": null,
+      "amostras": 100,
+      "n_classes": 4,
+      "classes": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "matriz_confusao": [
+        [
+          3,
+          20,
+          0,
+          2
+        ],
+        [
+          5,
+          11,
+          6,
+          3
+        ],
+        [
+          0,
+          12,
+          13,
+          0
+        ],
+        [
+          0,
+          0,
+          2,
+          23
+        ]
+      ],
+      "disponivel": true,
+      "graficos": [
+        "resultados/experimentos/ghoneim/modelo_cn2_inducao_de_regras_metricas.png",
+        "resultados/experimentos/ghoneim/modelo_cn2_inducao_de_regras_matriz_confusao.png"
+      ],
+      "grafico_metricas": "resultados/experimentos/ghoneim/modelo_cn2_inducao_de_regras_metricas.png",
+      "grafico_matriz_confusao": "resultados/experimentos/ghoneim/modelo_cn2_inducao_de_regras_matriz_confusao.png"
     }
   },
   "melhor_modelo": "Random Forest",
@@ -261,6 +312,8 @@
     "resultados/experimentos/ghoneim/modelo_regressao_logistica_matriz_confusao.png",
     "resultados/experimentos/ghoneim/modelo_naive_bayes_metricas.png",
     "resultados/experimentos/ghoneim/modelo_naive_bayes_matriz_confusao.png",
+    "resultados/experimentos/ghoneim/modelo_cn2_inducao_de_regras_metricas.png",
+    "resultados/experimentos/ghoneim/modelo_cn2_inducao_de_regras_matriz_confusao.png",
     "resultados/experimentos/ghoneim/comparacao_metricas.png",
     "resultados/experimentos/ghoneim/matriz_confusao.png"
   ],
