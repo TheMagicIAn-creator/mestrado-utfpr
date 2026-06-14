@@ -64,8 +64,10 @@ def test_injecao_perturba_somente_assinatura():
     assert set(tipos) <= {"lcl", "desbalanceamento", "sensor"}
 
     # colunas que NENHUMA assinatura toca devem permanecer idênticas
+    # (tensões u_* não são afetadas por nenhuma falha de corrente; kurtosis e
+    # tensão CC também não).
     intocaveis = [NOMES.index("i_a_kurtosis"), NOMES.index("u_a_rms"),
-                  NOMES.index("tensao_dc_media"), NOMES.index("i_b_rms")]
+                  NOMES.index("tensao_dc_media")]
     assert np.allclose(X_anom[:, intocaveis], X[:, intocaveis])
 
     # numa janela LCL: harmônicos sobem, rms da fase A fica intacto
@@ -76,10 +78,12 @@ def test_injecao_perturba_somente_assinatura():
     assert np.all(X_anom[idx_lcl, j_h5] > X[idx_lcl, j_h5])
     assert np.allclose(X_anom[idx_lcl, j_rms], X[idx_lcl, j_rms])
 
-    # numa janela de desbalanceamento: rms da fase A CAI
+    # numa janela de desbalanceamento: fase A CAI e fases B/C COMPENSAM (sobem)
     idx_db = np.where(tipos == "desbalanceamento")[0]
     assert len(idx_db) > 0
+    j_rms_b = NOMES.index("i_b_rms")
     assert np.all(X_anom[idx_db, j_rms] < X[idx_db, j_rms])
+    assert np.all(X_anom[idx_db, j_rms_b] > X[idx_db, j_rms_b])
 
 
 def test_injecao_deterministica_com_mesma_semente():
@@ -144,6 +148,30 @@ def test_protocolo_francisti_limiar_fixo_sem_oraculo(features_fake):
 
 def test_executar_protocolo_desconhecido_retorna_none():
     assert P.executar_protocolo("artigo_inexistente") is None
+
+
+def test_comparar_auc_le_jsons_salvos(tmp_path, monkeypatch):
+    """comparar_anomalia_por_auc lê os resultado.json e ordena por AUC."""
+    import json
+    import src.ml.experimentos_artigos as E
+
+    monkeypatch.setattr(E, "PASTA_EXPERIMENTOS", tmp_path)
+    # cria resultado.json mínimo p/ dois experimentos de anomalia
+    for k, ref, auc_rf in [("francisti", "Francisti (2025)", 0.94),
+                           ("ibrahim", "Ibrahim (2022)", 0.73)]:
+        (tmp_path / k).mkdir()
+        (tmp_path / k / "resultado.json").write_text(json.dumps({
+            "referencia": ref,
+            "modelos": {"M1": {"auc": auc_rf, "disponivel": True},
+                        "M2": {"disponivel": False, "motivo": "requer torch"}},
+        }), encoding="utf-8")
+
+    cmp = E.comparar_anomalia_por_auc()
+    assert cmp["ok"] is True
+    # ordenado por AUC desc; modelo indisponível (sem auc) é ignorado
+    aucs = [a for _ref, _n, a in cmp["dados"]]
+    assert aucs == sorted(aucs, reverse=True)
+    assert "AUC" in cmp["tabela_md"] and "0.940" in cmp["tabela_md"]
 
 
 def test_executar_protocolo_francisti_inclui_split_e_injecao(features_fake):

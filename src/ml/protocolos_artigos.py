@@ -72,12 +72,19 @@ ASSINATURAS_FMEA = {
         (r"^i_[abc]_energia_media$", "soma_std", 0.8, 1.5),
     ],
     "desbalanceamento": [
-        # amplitude da fase A ↓ → rms/pico/desvio/potência da fase A caem,
-        # desbalanceamento entre correntes sobe
+        # Perda parcial/assimetria na fase A: a fase A ENFRAQUECE (rms, pico,
+        # desvio, energia da fundamental e potência caem)…
         (r"^i_a_rms$", "mult", 0.15, 0.35),
         (r"^i_a_pico_a_pico$", "mult", 0.15, 0.35),
         (r"^i_a_desvio$", "mult", 0.15, 0.35),
+        (r"^i_a_energia_baixa$", "mult", 0.15, 0.35),
         (r"^potencia_a$", "mult", 0.15, 0.35),
+        # …e as fases B e C COMPENSAM parcialmente (corrente/energia/potência
+        # sobem) — assinatura física de redistribuição entre fases.
+        (r"^i_[bc]_rms$", "soma_std", 0.6, 1.2),
+        (r"^i_[bc]_energia_baixa$", "soma_std", 0.6, 1.2),
+        (r"^potencia_[bc]$", "soma_std", 0.6, 1.2),
+        # A métrica de desbalanceamento de corrente é a assinatura central.
         (r"^desbalanceamento_corrente$", "soma_std", 2.0, 4.0),
     ],
     "sensor": [

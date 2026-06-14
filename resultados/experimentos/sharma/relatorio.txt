@@ -8,13 +8,13 @@ Origem dos dados: Usa features locais do Paderborn extraidas de Inverter_Data_Se
 
 Métrica principal: f1
 
-- Isolation Forest: accuracy=0.5000, precision=0.5000, recall=0.0568, f1=0.1020, auc=0.6199, specificity=0.9432, anomalias_detectadas=10
-- KNN: accuracy=0.7386, precision=1.0000, recall=0.4773, f1=0.6462, auc=0.8321, specificity=1.0000, anomalias_detectadas=42
-- SVM: accuracy=0.7784, precision=0.9153, recall=0.6136, f1=0.7347, auc=0.9348, specificity=0.9432, anomalias_detectadas=59
-- ANN (MLP): accuracy=0.8807, precision=0.9589, recall=0.7955, f1=0.8696, auc=0.9269, specificity=0.9659, anomalias_detectadas=73
-- RNN: accuracy=0.5000, precision=0.0000, recall=0.0000, f1=0.0000, auc=0.5314, specificity=1.0000, anomalias_detectadas=0
-- CNN: accuracy=0.5568, precision=0.7778, recall=0.1591, f1=0.2642, auc=0.7395, specificity=0.9545, anomalias_detectadas=18
-- Isolation Forest + PPO: accuracy=0.5000, precision=0.5000, recall=1.0000, f1=0.6667, auc=0.6199, specificity=0.0000, anomalias_detectadas=176
+- Isolation Forest: accuracy=0.5000, precision=0.5000, recall=0.0568, f1=0.1020, auc=0.6306, specificity=0.9432, anomalias_detectadas=10
+- KNN: accuracy=0.7216, precision=0.9756, recall=0.4545, f1=0.6202, auc=0.9045, specificity=0.9886, anomalias_detectadas=41
+- SVM: accuracy=0.8239, precision=0.9254, recall=0.7045, f1=0.8000, auc=0.9618, specificity=0.9432, anomalias_detectadas=67
+- ANN (MLP): accuracy=0.9318, precision=0.9634, recall=0.8977, f1=0.9294, auc=0.9574, specificity=0.9659, anomalias_detectadas=82
+- RNN: accuracy=0.5227, precision=0.7000, recall=0.0795, f1=0.1429, auc=0.5498, specificity=0.9659, anomalias_detectadas=10
+- CNN: accuracy=0.5398, precision=0.8182, recall=0.1023, f1=0.1818, auc=0.7705, specificity=0.9773, anomalias_detectadas=11
+- Isolation Forest + PPO: accuracy=0.5000, precision=0.5000, recall=1.0000, f1=0.6667, auc=0.6306, specificity=0.0000, anomalias_detectadas=176
 
-MELHOR MODELO: ANN (MLP) (f1=0.8696)
+MELHOR MODELO: ANN (MLP) (f1=0.9294)
 ================================================================

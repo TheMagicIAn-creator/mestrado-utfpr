@@ -6,7 +6,7 @@
   "tarefa": "classificacao",
   "evidence_level": "E1",
   "evidence_note": "E1 — benchmark exploratório (perturbação genérica / dataset rotulado CC); não é validação formal nem desempenho industrial.",
-  "data": "2026-06-14 00:46:12",
+  "data": "2026-06-14 01:00:04",
   "metrica_principal": "f1",
   "origem_dados": {
     "tipo": "dataset_local_rotulado",
@@ -75,15 +75,15 @@
       "grafico_matriz_confusao": "resultados/experimentos/ghoneim/modelo_random_forest_matriz_confusao.png"
     },
     "AdaBoost": {
-      "accuracy": 0.37,
-      "balanced_accuracy": 0.37,
-      "precision": 0.19394841269841268,
-      "recall": 0.37,
-      "f1": 0.2420735265512546,
-      "mcc": 0.2182178902359924,
-      "auc": 0.7466666666666667,
-      "specificity": 0.79,
-      "specificity_macro_ovr": 0.79,
+      "accuracy": 0.95,
+      "balanced_accuracy": 0.95,
+      "precision": 0.9583333333333334,
+      "recall": 0.95,
+      "f1": 0.9494949494949495,
+      "mcc": 0.9364600869269116,
+      "auc": 0.9583333333333334,
+      "specificity": 0.9833333333333334,
+      "specificity_macro_ovr": 0.9833333333333334,
       "specificity_tipo": "macro_one_vs_rest",
       "false_positive_rate": null,
       "false_negative_rate": null,
@@ -103,27 +103,27 @@
           0
         ],
         [
+          5,
+          20,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
           25,
-          0,
-          0,
           0
         ],
         [
-          13,
           0,
-          12,
-          0
-        ],
-        [
-          9,
           0,
-          16,
-          0
+          0,
+          25
         ]
       ],
       "disponivel": true,
-      "cv_accuracy_media": 0.41166666666666674,
-      "cv_accuracy_desvio": 0.006666666666666668,
+      "cv_accuracy_media": 1.0,
+      "cv_accuracy_desvio": 0.0,
       "graficos": [
         "resultados/experimentos/ghoneim/modelo_adaboost_metricas.png",
         "resultados/experimentos/ghoneim/modelo_adaboost_matriz_confusao.png"
@@ -301,8 +301,8 @@
       "grafico_matriz_confusao": "resultados/experimentos/ghoneim/modelo_cn2_inducao_de_regras_matriz_confusao.png"
     }
   },
-  "melhor_modelo": "Random Forest",
-  "melhor_valor": 0.8683329249366984,
+  "melhor_modelo": "AdaBoost",
+  "melhor_valor": 0.9494949494949495,
   "graficos": [
     "resultados/experimentos/ghoneim/modelo_random_forest_metricas.png",
     "resultados/experimentos/ghoneim/modelo_random_forest_matriz_confusao.png",

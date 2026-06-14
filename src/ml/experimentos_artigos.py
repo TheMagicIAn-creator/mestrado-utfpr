@@ -350,6 +350,114 @@ def listar_experimentos() -> list[ExperimentoArtigo]:
     return [REGISTRO[k] for k in ORDEM_EXPERIMENTOS]
 
 
+def comparar_anomalia_por_auc() -> dict:
+    """
+    Comparativo dos experimentos de anomalia pela AUC — a ÚNICA métrica
+    comparável entre protocolos (independe do ponto de operação, que difere
+    por artigo). Lê os resultado.json já salvos (não re-roda nada), gera um
+    gráfico de barras e uma tabela Markdown.
+
+    Retorna {"ok", "grafico", "tabela_md", "dados", "mensagem"}.
+    """
+    import json
+
+    chaves = [k for k in ORDEM_EXPERIMENTOS
+              if REGISTRO[k].tarefa == "anomalia"]
+    linhas = []   # (referencia, modelo, auc)
+    faltando = []
+    for k in chaves:
+        arq = PASTA_EXPERIMENTOS / k / "resultado.json"
+        if not arq.exists():
+            faltando.append(k)
+            continue
+        res = json.loads(arq.read_text(encoding="utf-8"))
+        ref = res.get("referencia", k)
+        for nome, m in res.get("modelos", {}).items():
+            if isinstance(m, dict) and isinstance(m.get("auc"), (int, float)):
+                linhas.append((ref, nome, float(m["auc"])))
+
+    if not linhas:
+        return {"ok": False, "grafico": None, "tabela_md": "",
+                "dados": [], "mensagem": (
+                    "Nenhum experimento de anomalia salvo ainda. Rode-os antes "
+                    "(ex.: python scripts/rodar_experimentos.py --todos).")}
+
+    # tabela markdown ordenada por AUC desc
+    linhas_ord = sorted(linhas, key=lambda t: t[2], reverse=True)
+    tab = ["| Experimento | Modelo | AUC |", "|---|---|---|"]
+    for ref, nome, auc in linhas_ord:
+        tab.append(f"| {ref} | {nome} | {auc:.3f} |")
+    tabela_md = "\n".join(tab)
+
+    grafico = _grafico_auc_anomalia(linhas)
+    nota = ""
+    if faltando:
+        nota = f" (sem resultado salvo: {', '.join(faltando)})"
+    return {
+        "ok": True,
+        "grafico": grafico,
+        "tabela_md": tabela_md,
+        "dados": linhas_ord,
+        "mensagem": (
+            "Comparação por AUC (métrica comparável entre protocolos; F1 não é, "
+            "pois cada artigo opera em um ponto de decisão próprio)." + nota),
+    }
+
+
+def _grafico_auc_anomalia(linhas: list) -> str | None:
+    """Barras horizontais de AUC por modelo, agrupadas por experimento."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        from src.core.utils import to_project_relative_path
+
+        # agrupa por experimento, preserva ordem do registro
+        refs = []
+        for ref, _n, _a in linhas:
+            if ref not in refs:
+                refs.append(ref)
+        cores = plt.cm.tab10.colors
+
+        rotulos, valores, cores_barra = [], [], []
+        for i, ref in enumerate(refs):
+            for r, nome, auc in linhas:
+                if r == ref:
+                    rotulos.append(f"{nome}")
+                    valores.append(auc)
+                    cores_barra.append(cores[i % len(cores)])
+
+        fig, ax = plt.subplots(figsize=(9, max(4, 0.42 * len(valores))))
+        y = range(len(valores))
+        ax.barh(list(y), valores, color=cores_barra)
+        ax.set_yticks(list(y))
+        ax.set_yticklabels(rotulos, fontsize=8)
+        ax.invert_yaxis()
+        ax.axvline(0.5, color="grey", ls="--", lw=1, label="acaso (0,5)")
+        ax.set_xlim(0, 1)
+        ax.set_xlabel("AUC (comparável entre protocolos)")
+        ax.set_title("Detecção de anomalia — AUC por modelo e artigo (E1)")
+        # legenda por experimento
+        from matplotlib.patches import Patch
+        leg = [Patch(color=cores[i % len(cores)], label=ref)
+               for i, ref in enumerate(refs)]
+        leg.append(Patch(color="grey", label="acaso (0,5)"))
+        ax.legend(handles=leg, fontsize=7, loc="lower right")
+        for yi, v in zip(y, valores):
+            ax.text(v + 0.01, yi, f"{v:.3f}", va="center", fontsize=7)
+        fig.tight_layout()
+        destino = PASTA_EXPERIMENTOS / "comparacao_auc_anomalia.png"
+        fig.savefig(destino, dpi=120)
+        plt.close(fig)
+        return to_project_relative_path(destino)
+    except Exception as exc:  # noqa: BLE001
+        from src.core.logs import get_logger
+
+        get_logger("experimentos_artigos").warning(
+            "Falha ao gerar gráfico AUC: %s", exc)
+        return None
+
+
 def catalogo_experimentos_md() -> str:
     """Markdown legível com os experimentos e o status de cada modelo."""
     linhas = ["## Experimentos por artigo-base\n"]
@@ -766,12 +874,21 @@ def _estimador_supervisionado(nome: str):
     from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
     from sklearn.linear_model import LogisticRegression
     from sklearn.naive_bayes import GaussianNB
+    from sklearn.tree import DecisionTreeClassifier
 
     mapa = {
         "Random Forest": RandomForestClassifier(
             n_estimators=200, random_state=42, n_jobs=-1
         ),
-        "AdaBoost": AdaBoostClassifier(random_state=42),
+        # Base com profundidade > 1: em sklearn >=1.4 o AdaBoost usa SAMME com
+        # estimador padrão = decision STUMP (max_depth=1). Num problema de 4
+        # classes (PV Farms) o stump é fraco demais (F1≈0,24, ~acaso). Uma
+        # árvore rasa (depth=3) com mais rounds e learning_rate menor é a
+        # receita robusta padrão e alinha o AdaBoost aos demais (F1≈0,95).
+        "AdaBoost": AdaBoostClassifier(
+            estimator=DecisionTreeClassifier(max_depth=3, random_state=42),
+            n_estimators=300, learning_rate=0.5, random_state=42,
+        ),
         "Regressão Logística": LogisticRegression(max_iter=1000, random_state=42),
         "Naive Bayes": GaussianNB(),
     }

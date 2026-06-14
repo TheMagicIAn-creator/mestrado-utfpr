@@ -115,7 +115,21 @@ def main(argv=None) -> int:
                         help=f"chaves a rodar ({', '.join(ORDEM_EXPERIMENTOS)})")
     parser.add_argument("--todos", action="store_true",
                         help="roda todos os experimentos com modelo treinável")
+    parser.add_argument("--auc", action="store_true",
+                        help="comparativo por AUC dos experimentos de anomalia "
+                             "já salvos (gráfico + tabela; não re-roda)")
     args = parser.parse_args(argv)
+
+    if args.auc:
+        from src.ml.experimentos_artigos import comparar_anomalia_por_auc
+
+        cmp = comparar_anomalia_por_auc()
+        print("\n" + cmp["mensagem"])
+        if cmp["ok"]:
+            print("\n" + cmp["tabela_md"])
+            if cmp["grafico"]:
+                print(f"\nGráfico salvo em: {cmp['grafico']}")
+        return 0 if cmp["ok"] else 1
 
     if args.todos:
         alvos = list(ORDEM_EXPERIMENTOS)
