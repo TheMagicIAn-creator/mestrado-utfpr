@@ -71,20 +71,26 @@ ASSINATURAS_FMEA = {
         (r"^i_[abc]_thd$", "soma_std", 1.0, 2.5),
         (r"^i_[abc]_energia_media$", "soma_std", 0.8, 1.5),
     ],
+    # HIPÓTESE (E1, não verdade universal): modelamos perda parcial/assimetria
+    # na fase A em que o CONTROLE do inversor (malha de potência) redistribui
+    # corrente para B/C, mantendo a potência total — cenário comum em inversores
+    # com controle de tensão/corrente. NÃO cobre o caso em que A cai E B/C
+    # também caem (perda de linha, carga severamente desbalanceada sem
+    # compensação). A assinatura central (sempre presente) é a fase A enfraquecer
+    # e a métrica de desbalanceamento subir; a compensação B/C é a parte
+    # dependente do controle. Magnitudes plausíveis, não medidas em bancada.
     "desbalanceamento": [
-        # Perda parcial/assimetria na fase A: a fase A ENFRAQUECE (rms, pico,
-        # desvio, energia da fundamental e potência caem)…
+        # Fase A ENFRAQUECE (rms, pico, desvio, energia da fundamental, potência)
         (r"^i_a_rms$", "mult", 0.15, 0.35),
         (r"^i_a_pico_a_pico$", "mult", 0.15, 0.35),
         (r"^i_a_desvio$", "mult", 0.15, 0.35),
         (r"^i_a_energia_baixa$", "mult", 0.15, 0.35),
         (r"^potencia_a$", "mult", 0.15, 0.35),
-        # …e as fases B e C COMPENSAM parcialmente (corrente/energia/potência
-        # sobem) — assinatura física de redistribuição entre fases.
+        # Fases B e C COMPENSAM parcialmente (hipótese dependente do controle)
         (r"^i_[bc]_rms$", "soma_std", 0.6, 1.2),
         (r"^i_[bc]_energia_baixa$", "soma_std", 0.6, 1.2),
         (r"^potencia_[bc]$", "soma_std", 0.6, 1.2),
-        # A métrica de desbalanceamento de corrente é a assinatura central.
+        # Métrica de desbalanceamento de corrente — assinatura central.
         (r"^desbalanceamento_corrente$", "soma_std", 2.0, 4.0),
     ],
     "sensor": [

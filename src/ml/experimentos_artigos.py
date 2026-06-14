@@ -370,7 +370,16 @@ def comparar_anomalia_por_auc() -> dict:
         if not arq.exists():
             faltando.append(k)
             continue
-        res = json.loads(arq.read_text(encoding="utf-8"))
+        try:
+            res = json.loads(arq.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, ValueError, OSError) as exc:
+            # JSON corrompido/ilegível não derruba a comparação: registra e pula.
+            from src.core.logs import get_logger
+
+            get_logger("experimentos_artigos").warning(
+                "resultado.json inválido em %s: %s", k, exc)
+            faltando.append(f"{k} (JSON inválido)")
+            continue
         ref = res.get("referencia", k)
         for nome, m in res.get("modelos", {}).items():
             if isinstance(m, dict) and isinstance(m.get("auc"), (int, float)):
@@ -406,12 +415,13 @@ def comparar_anomalia_por_auc() -> dict:
 
 def _grafico_auc_anomalia(linhas: list) -> str | None:
     """Barras horizontais de AUC por modelo, agrupadas por experimento."""
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        from src.core.utils import to_project_relative_path
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from src.core.utils import to_project_relative_path
 
+    fig = None
+    try:
         # agrupa por experimento, preserva ordem do registro
         refs = []
         for ref, _n, _a in linhas:
@@ -448,7 +458,6 @@ def _grafico_auc_anomalia(linhas: list) -> str | None:
         fig.tight_layout()
         destino = PASTA_EXPERIMENTOS / "comparacao_auc_anomalia.png"
         fig.savefig(destino, dpi=120)
-        plt.close(fig)
         return to_project_relative_path(destino)
     except Exception as exc:  # noqa: BLE001
         from src.core.logs import get_logger
@@ -456,6 +465,10 @@ def _grafico_auc_anomalia(linhas: list) -> str | None:
         get_logger("experimentos_artigos").warning(
             "Falha ao gerar gráfico AUC: %s", exc)
         return None
+    finally:
+        # Garante a liberação da figura mesmo se o plot levantar exceção.
+        if fig is not None:
+            plt.close(fig)
 
 
 def catalogo_experimentos_md() -> str:
@@ -881,10 +894,16 @@ def _estimador_supervisionado(nome: str):
             n_estimators=200, random_state=42, n_jobs=-1
         ),
         # Base com profundidade > 1: em sklearn >=1.4 o AdaBoost usa SAMME com
-        # estimador padrão = decision STUMP (max_depth=1). Num problema de 4
-        # classes (PV Farms) o stump é fraco demais (F1≈0,24, ~acaso). Uma
-        # árvore rasa (depth=3) com mais rounds e learning_rate menor é a
-        # receita robusta padrão e alinha o AdaBoost aos demais (F1≈0,95).
+        # estimador padrão = decision STUMP (max_depth=1). Num problema MULTI-
+        # CLASSE (4 classes, PV Farms) o stump é fraco demais e o boosting não
+        # converge (F1≈0,24, ~acaso). Árvores rasas (depth 2-4) são a base
+        # recomendada para boosting multiclasse (Hastie, Tibshirani & Friedman,
+        # ESL §10; doc do sklearn). Escolhi depth=3 / 300 rounds / lr=0,5 por
+        # validação cruzada (não para "ganhar").
+        # RESSALVA (E1): a CV chega a 1,0 porque o PV Farms é um dataset PEQUENO
+        # e simulado (600 treino / 100 teste). Isso NÃO é prova de
+        # generalização industrial — é benchmark exploratório (evidence_level
+        # E1 no resultado).
         "AdaBoost": AdaBoostClassifier(
             estimator=DecisionTreeClassifier(max_depth=3, random_state=42),
             n_estimators=300, learning_rate=0.5, random_state=42,

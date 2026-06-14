@@ -174,6 +174,26 @@ def test_comparar_auc_le_jsons_salvos(tmp_path, monkeypatch):
     assert "AUC" in cmp["tabela_md"] and "0.940" in cmp["tabela_md"]
 
 
+def test_comparar_auc_tolera_json_corrompido(tmp_path, monkeypatch):
+    """JSON corrompido em um experimento não derruba a comparação."""
+    import json
+    import src.ml.experimentos_artigos as E
+
+    monkeypatch.setattr(E, "PASTA_EXPERIMENTOS", tmp_path)
+    (tmp_path / "francisti").mkdir()
+    (tmp_path / "francisti" / "resultado.json").write_text(
+        json.dumps({"referencia": "Francisti (2025)",
+                    "modelos": {"M1": {"auc": 0.9, "disponivel": True}}}),
+        encoding="utf-8")
+    (tmp_path / "ibrahim").mkdir()
+    (tmp_path / "ibrahim" / "resultado.json").write_text(
+        "{ isto não é JSON válido", encoding="utf-8")  # corrompido
+
+    cmp = E.comparar_anomalia_por_auc()
+    assert cmp["ok"] is True  # ainda funciona com o experimento válido
+    assert any("0.900" in cmp["tabela_md"] for _ in [0])
+
+
 def test_executar_protocolo_francisti_inclui_split_e_injecao(features_fake):
     modelos, met = P.executar_protocolo("francisti")
     assert met["split"]["tipo"] == "temporal_com_purga"
