@@ -1,0 +1,89 @@
+# Arquitetura do `src/` — Al IAdo PV
+
+Mapa rápido para não se perder. O pacote tem **4 camadas** com dependência só
+para baixo (nada em `core/` importa coisas de cima):
+
+```
+core/  ──►  conhecimento/   (RAG / agente)
+       ──►  ml/             (pipeline e experimentos)
+                 │
+                 ▼
+       interface/ + orquestrador.py   (UI Streamlit e init do backend)
+```
+
+Regra de ouro: **`core/` é a fundação** (todos importam dela; ela não importa
+ninguém). `conhecimento/` e `ml/` são irmãos e quase não se cruzam. A
+`interface/` e o `orquestrador.py` ficam no topo e amarram tudo.
+
+---
+
+## `core/` — fundação (4 arquivos)
+| Arquivo | O que faz |
+|---|---|
+| `config.py` | Ponto único de verdade: caminhos, constantes RAG/ML, env. |
+| `logs.py` | Logging rotativo sem emoji (terminal legível no Windows). |
+| `seguranca.py` | Cibersegurança stdlib-only: máscara de segredos, anti path-traversal, pickle verificado por SHA-256, guarda anti-injeção. |
+| `utils.py` | Caminhos projeto-relativos, UTF-8 no Windows, parse de `autor_titulo_ano.pdf`. |
+
+## `conhecimento/` — o cérebro do agente / RAG (10 arquivos)
+| Arquivo | O que faz |
+|---|---|
+| `agente.py` | **Maior arquivo.** Pipeline RAG de 3 camadas, montagem do prompt, perfil, chamada ao LLM. |
+| `ferramentas.py` | **Tool calling.** Specs, roteador determinístico (linguagem→ferramenta) e a implementação de cada ferramenta do chat. |
+| `indexador.py` | Indexa PDFs e sessões no ChromaDB (chunking por página, dedupe SHA-256). |
+| `processador_pdf.py` | Ingestão de PDF novo: metadados, nome padrão, tema, cópia, indexa, nota Obsidian. |
+| `consolidar_memoria.py` | Consolida sessões `.md` em memória via LLM, reindexa e arquiva. |
+| `leitor_anexos.py` | Leitura **efêmera** de anexos da conversa (PDF/CSV/XLSX/DOCX/imagem). |
+| `web_search.py` | Busca web sem API, com classificação de confiança A–D da fonte. |
+| `provedores.py` | Catálogo/factory de provedores de LLM (Gemini, Groq). |
+| `retrieval_metrics.py` | Métricas puras de **recuperação** RAG (Recall@k, MRR, nDCG). |
+| `index_lock.py` | Lock in-process que serializa escritas concorrentes no ChromaDB. |
+
+## `ml/` — pipeline e experimentos (16 arquivos)
+**Pipeline CA principal** (em ordem; cada etapa alimenta a seguinte):
+`features_ca` → `autoencoder` → `injecao_falhas` → `validacao` → `rul_weibull`,
+coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
+
+| Arquivo | O que faz |
+|---|---|
+| `features_ca.py` | Etapa 1: extrai features de tempo/frequência/inter-fase do Paderborn. |
+| `autoencoder.py` | Etapa 2: Autoencoder de normalidade + limiar operacional (p99). |
+| `injecao_falhas.py` | Etapa 3: falhas sintéticas orientadas pelo FMEA + SMD. |
+| `validacao.py` | Etapa 4: métricas no limiar congelado (ROC/PR/F1/AUC). |
+| `rul_weibull.py` | Etapa 5: TTF, Weibull 2P, RUL condicional. |
+| `pipeline.py` | Coordena estado/execução das etapas e grava manifestos. |
+| `proveniencia.py` | Manifestos de proveniência e estado ready/stale/pending. |
+| `split_temporal.py` | Split temporal com purga (anti-vazamento), compartilhado. |
+| `eda.py` | Análise exploratória do Paderborn (Plotly). |
+| **Experimentos por artigo** | |
+| `experimentos_artigos.py` | Registry de experimentos, métricas, artefatos, runners de classificação e anomalia. |
+| `protocolos_artigos.py` | Protocolo de decisão **por artigo** (Francisti/Ibrahim/Sharma/Ahirwar) + injeção FMEA no espaço de features. |
+| `modelos_anomalia.py` | **Módulo folha**: zoo de scorers de anomalia (AE-LSTM, RNN, CNN, Prophet, PPO-IForest). Existe para quebrar o ciclo `experimentos`↔`protocolos`. |
+| `exec_experimento_isolado.py` | Roda experimento em subprocesso isolado (crash de lib pesada não derruba o app). |
+| **Classificação PV (CC)** | |
+| `classificador_pv.py` | Pipeline CLI de classificação PV Farms (Ghoneim) + carregamento de dados. |
+| `classificador_pv_infer.py` | Persistência/inferência do classificador (pickle verificado SHA-256). |
+| `resultados.py` | Lê/resume artefatos JSON/CSV/PNG do pipeline e experimentos para o chat. |
+
+## `interface/` + raiz do pacote
+| Arquivo | O que faz |
+|---|---|
+| `interface/streamlit_app.py` | UI Streamlit completa: estado, sidebar, chat, streaming, render de imagens. |
+| `orquestrador.py` | Coordenação leve do backend na init (reprocessamento por sinal + indexação de PDFs novos). |
+
+---
+
+## Dois fluxos para entender o todo
+
+**1. Pergunta no chat** (`streamlit_app` → `agente`/`ferramentas`):
+`ferramentas.decidir_acao` decide se é caso de **ferramenta** (rodar/consultar ML)
+ou de **RAG**. Se RAG: `agente` expande a query → busca híbrida no ChromaDB →
+reranking → resposta do LLM com citações por página.
+
+**2. Experimento de ML** (`ferramentas` → `experimentos_artigos`):
+roda em subprocesso isolado; cada artigo usa seu **protocolo próprio**
+(`protocolos_artigos`) com split temporal e injeção FMEA; os scorers vêm de
+`modelos_anomalia`. Resultados em `resultados/experimentos/<key>/`.
+
+> Os entrypoints ficam na **raiz do repo** (não em `src/`): `app.py` (Streamlit),
+> `main.py` (chat no terminal) e `watcher.py` (monitora `novos_pdfs/`).
