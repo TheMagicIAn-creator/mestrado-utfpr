@@ -19,27 +19,7 @@ from src.core.config import (
     PASTA_SESSOES,
     RAIZ_PROJETO,
 )
-from src.ml.pipeline import (
-    ARTEFATOS_ML,
-    NOMES_ETAPAS,
-    ORDEM_ETAPAS_ML,
-)
-
-# Reexports do pipeline de ML usados por codigo legado.
-from src.ml.pipeline import (  # noqa: F401
-    autoencoder_pendente,
-    etapa_pendente,
-    executar_etapa,
-    executar_pipeline_ml,
-    features_ca_pendente,
-    injecao_falhas_pendente,
-    limpar_artefatos,
-    pipeline_status,
-    regenerar_pipeline,
-    rul_weibull_pendente,
-    validacao_pendente,
-)
-from src.ml.resultados import indexar_resultados_ml  # noqa: F401
+from src.ml.pipeline import NOMES_ETAPAS, pipeline_status
 
 
 def ha_pdfs_novos() -> bool:
@@ -56,17 +36,6 @@ def ha_arquivos_com_nome_ruim() -> bool:
 
 def ha_sinal_reprocessamento() -> bool:
     return (RAIZ_PROJETO / "REPROCESSAR").exists()
-
-
-def eda_pendente() -> bool:
-    pasta = PASTA_RESULTADOS / "eda"
-    return not pasta.exists() or not any(pasta.iterdir())
-
-
-def classificacao_pendente() -> bool:
-    # Caminho legado: a classificacao PV oficial agora e o experimento Ghoneim
-    # em src/ml/experimentos_artigos.py.
-    return False
 
 
 def etapa_indexar_pdfs(modelo_embeddings) -> str:
@@ -217,45 +186,6 @@ def executar_pipeline(modelo_embeddings) -> list[str]:
         relatorio.append(reprocessar_literatura())
     relatorio.append(etapa_indexar_pdfs(modelo_embeddings))
     return relatorio
-
-
-# Compatibilidade com nomes antigos.
-def etapa_eda() -> str:
-    if not eda_pendente():
-        return "EDA: ja realizada"
-    try:
-        from src.ml.eda import executar_eda
-
-        return "EDA: gerada com sucesso" if executar_eda() else "EDA: falhou"
-    except Exception as exc:
-        return f"EDA: erro - {exc}"
-
-
-def etapa_classificacao() -> str:
-    return (
-        "Classificacao PV legada depreciada. Use o experimento 'ghoneim' "
-        "em src/ml/experimentos_artigos.py."
-    )
-
-
-def etapa_features_ca() -> str:
-    return executar_etapa("features_ca")["mensagem"]
-
-
-def etapa_autoencoder() -> str:
-    return executar_etapa("autoencoder")["mensagem"]
-
-
-def etapa_injecao_falhas() -> str:
-    return executar_etapa("injecao_falhas")["mensagem"]
-
-
-def etapa_validacao_ml() -> str:
-    return executar_etapa("validacao")["mensagem"]
-
-
-def etapa_rul_weibull() -> str:
-    return executar_etapa("rul_weibull")["mensagem"]
 
 
 if __name__ == "__main__":
