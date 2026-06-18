@@ -420,7 +420,7 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
     if lib_disponivel("torch"):
         if progresso:
             progresso("Ibrahim: AE-LSTM (calibração temporal do limiar)...")
-        from src.ml.experimentos_artigos import _score_ae_lstm
+        from src.ml.modelos_anomalia import _score_ae_lstm
 
         # Fatia de CALIBRAÇÃO: bloco final do treino normal (com purga) fica
         # FORA do ajuste do AE e fornece o erro "não visto" para o percentil.
@@ -448,7 +448,7 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
     if lib_disponivel("prophet"):
         if progresso:
             progresso("Ibrahim: Prophet (banda de 99%)...")
-        from src.ml.experimentos_artigos import _score_prophet
+        from src.ml.modelos_anomalia import _score_prophet
 
         score_p = _score_prophet(dados, interval_width=INTERVALO_PROPHET)
         y_pred_p = (score_p > 1.0).astype(int)  # >1 = fora da banda
@@ -548,7 +548,7 @@ def protocolo_sharma(dados, progresso=None):
                                     random_state=42), "ANN (MLP)")
 
     if lib_disponivel("torch"):
-        from src.ml.experimentos_artigos import _score_cnn_torch, _score_rnn_torch
+        from src.ml.modelos_anomalia import _score_cnn_torch, _score_rnn_torch
 
         if progresso:
             progresso("Sharma: RNN...")
@@ -572,7 +572,7 @@ def protocolo_sharma(dados, progresso=None):
     if lib_disponivel("stable_baselines3") and "X_val" in dados:
         if progresso:
             progresso("Sharma: PPO ajustando contaminação em validação...")
-        from src.ml.experimentos_artigos import _ppo_buscar_contaminacao
+        from src.ml.modelos_anomalia import _ppo_buscar_contaminacao
 
         melhor_cont = _ppo_buscar_contaminacao(
             dados["Xn_tr"], dados["X_val"], dados["y_val"], metrica="f1")
