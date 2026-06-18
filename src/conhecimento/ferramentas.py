@@ -184,6 +184,18 @@ ESPEC_FERRAMENTAS = [
             "consultar_resultados."
         ),
     },
+    {
+        "name": "comparar_experimentos_auc",
+        "description": (
+            "Compara os experimentos de anomalia (Francisti, Ibrahim, Sharma, "
+            "Ahirwar) pelo AUC — a unica metrica comparavel entre protocolos "
+            "distintos. Exibe tabela ranqueada e grafico. Use quando o usuario "
+            "pedir para COMPARAR os experimentos/modelos de anomalia: 'compare "
+            "os experimentos de anomalia', 'compare por AUC', 'qual e o melhor "
+            "modelo de anomalia'. NAO usa para rodar — apenas le os resultados "
+            "ja salvos."
+        ),
+    },
 ]
 
 
@@ -490,6 +502,37 @@ def _quer_resposta_autoral(pergunta: str) -> bool:
         "discute", "analyse", "qu est ce que cela signifie",
     )
     return any(t in txt for t in termos)
+
+
+def _quer_comparar_auc_experimentos(pergunta: str) -> bool:
+    """
+    Pedido de COMPARAÇÃO dos experimentos de anomalia por AUC.
+
+    Distingue de 'rode o experimento' (rodar_experimento_artigo) e de 'compare
+    as abordagens de ML' (comparar_abordagens_ml). Só dispara quando o verbo de
+    comparação acompanha experimentos ou anomalia, sem verbo de execução.
+
+    Ex. True : "compare os experimentos de anomalia", "comparar por AUC",
+               "qual o melhor modelo de anomalia", "analise os experimentos".
+    Ex. False: "rode o experimento e compare", "compare as abordagens de ML".
+    """
+    if _quer_rodar_experimento(pergunta):
+        return False
+    txt = _normalizar(pergunta)
+    tem_compare = any(t in txt for t in (
+        "compare", "comparar", "comparacao", "comparacao",
+        "analise", "analisa", "qual o melhor", "qual e o melhor",
+        "melhor modelo",
+    ))
+    if not tem_compare:
+        return False
+    tem_alvo = any(t in txt for t in (
+        "experimento", "experimentos",
+        "anomalia", "anomalias",
+        "protocolo", "protocolos",
+        "auc", "por auc",
+    ))
+    return tem_alvo
 
 
 def _quer_consultar_resultados_experimentos(pergunta: str) -> bool:
@@ -1226,7 +1269,8 @@ def comparar_abordagens_ml(progresso=None, pergunta: str = "") -> dict:
     )
     return {
         "ok": True, "etapa": "Abordagens de ML",
-        "mensagem": msg, "imagens": [], "resposta_pronta": True,
+        "mensagem": msg, "imagens": [],
+        "resposta_pronta": True, "forcar_resposta_direta": True,
     }
 
 
@@ -1309,6 +1353,61 @@ def classificar_amostra_pv(progresso=None, pergunta: str = "") -> dict:
             "imagens": [], "resposta_pronta": True}
 
 
+def comparar_experimentos_auc(progresso=None, pergunta: str = "") -> dict:
+    """
+    Compara experimentos de anomalia pelo AUC (tabela ranqueada + gráfico).
+    Lê os resultado.json já salvos — não re-roda. AUC é a métrica comparável
+    entre protocolos distintos; F1 não é (cada protocolo opera em ponto
+    de decisão diferente).
+    """
+    if progresso:
+        progresso("Comparando experimentos de anomalia por AUC...")
+    try:
+        from src.ml.experimentos_artigos import comparar_anomalia_por_auc
+        cmp = comparar_anomalia_por_auc()
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ok": False, "etapa": "Comparação AUC",
+            "mensagem": f"Não consegui comparar os experimentos: {exc}",
+            "imagens": [], "resposta_pronta": True, "forcar_resposta_direta": True,
+        }
+
+    if not cmp.get("ok"):
+        return {
+            "ok": False, "etapa": "Comparação AUC",
+            "mensagem": cmp.get("mensagem", "Sem resultados salvos para comparar. "
+                                "Rode os experimentos primeiro."),
+            "imagens": [], "resposta_pronta": True, "forcar_resposta_direta": True,
+        }
+
+    nota = (
+        "## Comparação dos experimentos de anomalia por AUC\n\n"
+        "> **Nota metodológica:** AUC é a única métrica comparável entre os "
+        "protocolos (Shewhart 3σ, p99 em calibração temporal, PPO em validação, "
+        "voto majoritário). O F1 **não** é comparável — cada protocolo opera em "
+        "um ponto de decisão diferente.\n\n"
+    )
+    msg = nota + cmp.get("tabela_md", "(sem dados)")
+
+    imagens = []
+    graf = cmp.get("grafico")
+    if graf:
+        from pathlib import Path
+        p = Path(graf)
+        if p.exists():
+            imagens.append({
+                "path": str(p),
+                "caption": "Comparação AUC — experimentos de anomalia",
+            })
+
+    return {
+        "ok": True, "etapa": "Comparação AUC",
+        "mensagem": msg, "imagens": imagens,
+        "resposta_pronta": True,
+        "forcar_resposta_direta": True,  # não passa pelo LLM; já é direto e completo
+    }
+
+
 _DESPACHO = {
     "rodar_features_ca": rodar_features_ca,
     "rodar_autoencoder": rodar_autoencoder,
@@ -1329,6 +1428,7 @@ _DESPACHO = {
     "listar_base_bibliografica": listar_base_bibliografica,
     "listar_experimentos_artigos": listar_experimentos_artigos,
     "rodar_experimento_artigo": rodar_experimento_artigo,
+    "comparar_experimentos_auc": comparar_experimentos_auc,
 }
 
 
@@ -1481,9 +1581,11 @@ def _decisao_rapida(pergunta: str) -> dict | None:
 
     # Experimentos de ML por artigo — checados ANTES do catálogo de literatura,
     # pois "experimento" é um sinal mais específico que "artigo" genérico.
-    # RODAR tem prioridade sobre LISTAR.
+    # RODAR > COMPARAR AUC > CONSULTAR (do mais específico para o mais geral).
     if _quer_rodar_experimento(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "rodar_experimento_artigo"}
+    if _quer_comparar_auc_experimentos(pergunta):
+        return {"usar_ferramenta": True, "ferramenta": "comparar_experimentos_auc"}
     if _quer_consultar_resultados_experimentos(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "consultar_resultados"}
     if _quer_catalogo_experimentos(pergunta):
@@ -1628,6 +1730,9 @@ Responda apenas JSON valido:
 
 
 def comentar_resultado(pergunta: str, resultado: dict, perfil: str, llm) -> str:
+    # forcar_resposta_direta: ferramenta determinística — não passa pelo LLM.
+    if resultado.get("forcar_resposta_direta"):
+        return resultado.get("mensagem", "")
     if resultado.get("resposta_pronta") and not _quer_resposta_autoral(pergunta):
         return resultado.get("mensagem", "")
 
