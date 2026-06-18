@@ -52,7 +52,7 @@ def main() -> int:
     from src.core.config import (
         MODELO_EMBEDDINGS, NOME_COLECAO, NOME_COLECAO_SESSOES, PASTA_CHROMADB,
     )
-    from src.ml.retrieval_metrics import agregimar
+    from src.conhecimento.retrieval_metrics import agregimar
 
     modelo = SentenceTransformer(MODELO_EMBEDDINGS)
     cli = chromadb.PersistentClient(path=str(PASTA_CHROMADB))

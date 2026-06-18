@@ -1,8 +1,8 @@
 {
   "stage": "rul_weibull",
-  "created_at": "2026-06-02T18:39:10.172879",
-  "git_commit": "d613e4ff78fb59259c0d84570a0c6538f36445c3",
-  "code_sha256": "0acc9a4db6fa1e20d5563c5bf4271c5bcb5ce5f2c8661344b94a27572f927bd8",
+  "created_at": "2026-06-17T20:02:29.539369",
+  "git_commit": "0ce1e778402dfa2e28bf20577219c57b94ba0309",
+  "code_sha256": "695cd3858f6b15048dc2e833cfb58f94b1524bdc372f5ed2fdee4b5bee2a1a45",
   "parameters": {
     "n_traj": 100,
     "n_steps": 120,

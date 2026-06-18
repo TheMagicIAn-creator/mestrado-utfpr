@@ -6,7 +6,7 @@
   "tarefa": "anomalia",
   "evidence_level": "E1",
   "evidence_note": "E1 — benchmark exploratório (injeção sintética orientada pelo FMEA no espaço de features, com protocolo de decisão do próprio artigo); não é validação formal nem desempenho industrial.",
-  "data": "2026-06-14 01:03:09",
+  "data": "2026-06-17 20:32:08",
   "metrica_principal": "f1",
   "origem_dados": {
     "tipo": "dataset_local_paderborn_com_falhas_sinteticas",
@@ -216,16 +216,16 @@
     "RNN": {
       "accuracy": 0.5227272727272727,
       "balanced_accuracy": 0.5227272727272727,
-      "precision": 0.7,
-      "recall": 0.07954545454545454,
-      "f1": 0.14285714285714285,
-      "mcc": 0.0981761387347632,
-      "auc": 0.549845041322314,
-      "specificity": 0.9659090909090909,
+      "precision": 1.0,
+      "recall": 0.045454545454545456,
+      "f1": 0.08695652173913043,
+      "mcc": 0.15249857033260467,
+      "auc": 0.5463584710743801,
+      "specificity": 1.0,
       "specificity_macro_ovr": 0.5227272727272727,
       "specificity_tipo": "binaria_TN/(TN+FP)",
-      "false_positive_rate": 0.03409090909090909,
-      "false_negative_rate": 0.9204545454545454,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.9545454545454546,
       "amostras": 176,
       "n_classes": 2,
       "classes": [
@@ -234,12 +234,12 @@
       ],
       "matriz_confusao": [
         [
-          85,
-          3
+          88,
+          0
         ],
         [
-          81,
-          7
+          84,
+          4
         ]
       ],
       "disponivel": true,
@@ -247,13 +247,13 @@
       "ponto_operacao": "protocolo_do_artigo",
       "threshold_source": "probabilidade_nativa_0.5",
       "metrica_dependente_de_limiar": "a_priori_ou_congelada",
-      "anomalias_detectadas": 10,
+      "anomalias_detectadas": 4,
       "anomalias_reais": 88,
-      "taxa_anomalias_detectadas": 0.056818181818181816,
+      "taxa_anomalias_detectadas": 0.022727272727272728,
       "deteccao_por_falha": {
-        "lcl": 0.022222222222222223,
-        "desbalanceamento": 0.20833333333333334,
-        "sensor": 0.05263157894736842
+        "lcl": 0.0,
+        "desbalanceamento": 0.16666666666666666,
+        "sensor": 0.0
       },
       "graficos": [
         "resultados/experimentos/sharma/modelo_rnn_metricas.png",

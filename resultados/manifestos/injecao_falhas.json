@@ -1,8 +1,8 @@
 {
   "stage": "injecao_falhas",
-  "created_at": "2026-06-02T18:37:03.766451",
-  "git_commit": "d613e4ff78fb59259c0d84570a0c6538f36445c3",
-  "code_sha256": "1a75cb060eecf04899d37c75a7c4d152caadc411cab8d5dbf6e0bcc8bd27e431",
+  "created_at": "2026-06-17T20:00:52.031286",
+  "git_commit": "0ce1e778402dfa2e28bf20577219c57b94ba0309",
+  "code_sha256": "87422fc86738444772c347dfa1e5085c9d4b6f8a6808d748c6d103ce62720c17",
   "parameters": {
     "t_inicio_estavel": 10.0,
     "t_fim_estavel": 20.0,
@@ -17,9 +17,9 @@
     ]
   },
   "input_artifacts": {
-    "autoencoder:0:modelo_autoencoder.pt": "de43b98137315b2a69b326a595eaf2f6d27f1f10fe1701cc3c0ebb54ab49ed5a",
+    "autoencoder:0:modelo_autoencoder.pt": "3bbf57af989edf1aabd5eb41c3d150c393bdd69a885a2e777e1652e1cdd60614",
     "autoencoder:1:scaler.pkl": "83307da2ee76a4fe1f59921eba9eb5b03f30ded786e7fa49423c92e8b771c4f1",
-    "autoencoder:2:limiar.json": "772ab8e1bca0ce3ca2e73e932b8b053dca5bf5300324efd295e5caff22d58c8f",
+    "autoencoder:2:limiar.json": "55e4519f03f6bde0160ee0847eba27969cc55618876c31985fea36a5958ae0ab",
     "autoencoder:3:curva_treino.png": "58cf5cc0358171e3f9ea24297dedc548778d360ca0e2648f08ff3c6b50d76947",
     "autoencoder:4:distribuicao_erro.png": "3d180364c4c20fa5766acb8f3adb5ab9acffc3f9fec7891ad8eed87befec6623",
     "autoencoder:5:erro_temporal.png": "282676d5d5a6cfb34246615befa95330971101036055dfed700b8e6e5d600c35"

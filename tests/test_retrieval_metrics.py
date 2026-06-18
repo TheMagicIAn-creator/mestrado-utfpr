@@ -2,7 +2,7 @@
 Sprint 4 — métricas de recuperação (7.2): Recall@k, MRR, nDCG@k, cobertura.
 """
 
-from src.ml.retrieval_metrics import (
+from src.conhecimento.retrieval_metrics import (
     agregimar,
     cobertura_fontes,
     mrr,

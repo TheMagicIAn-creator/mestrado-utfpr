@@ -1,8 +1,8 @@
 {
   "stage": "autoencoder",
-  "created_at": "2026-06-02T17:44:05.577346",
-  "git_commit": "d613e4ff78fb59259c0d84570a0c6538f36445c3",
-  "code_sha256": "20953cca74b57902d790f444b9e5828b7e504cff9a555a0451f845dd11091258",
+  "created_at": "2026-06-17T20:00:39.329267",
+  "git_commit": "0ce1e778402dfa2e28bf20577219c57b94ba0309",
+  "code_sha256": "ebbae80e4e834acc2b512b3c9ce90e12959460131169928ac2ccab4636a24489",
   "parameters": {
     "latente_dim": 16,
     "epochs": 150,
@@ -13,8 +13,8 @@
     "seed": 42
   },
   "input_artifacts": {
-    "features_ca:0:features_paderborn.parquet": "5e62b7fb86a5f18d524bd389546894f94c2f5ab725afec69bc2e8d07747e1de4",
-    "features_ca:1:features_paderborn_stats.csv": "d56e491981ab93805de1ed205c386387c264cdaf18a7bb808143aa6a880e7a55"
+    "features_ca:0:features_paderborn.parquet": "b7478633fdcd740e45b9198a9809e525dec0b0293ec2c2e5d493b7faa7688310",
+    "features_ca:1:features_paderborn_stats.csv": "9417ebc0634a70c1124038aad54a84fb987d8b69279ebbc19f99ef7c67314fcf"
   },
   "outputs": [
     "resultados/autoencoder/modelo_autoencoder.pt",

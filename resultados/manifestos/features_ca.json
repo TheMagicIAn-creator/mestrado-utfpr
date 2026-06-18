@@ -1,8 +1,8 @@
 {
   "stage": "features_ca",
-  "created_at": "2026-06-02T17:35:58.993133",
-  "git_commit": "d613e4ff78fb59259c0d84570a0c6538f36445c3",
-  "code_sha256": "76a82bc84b7a09e745e51fc71ee40f3f1408db9abdcb10894d5149677aac7d75",
+  "created_at": "2026-06-17T20:00:34.115851",
+  "git_commit": "0ce1e778402dfa2e28bf20577219c57b94ba0309",
+  "code_sha256": "b6f7b3c2eee7dec7050209f81feb4d8f845868f53da663d1eda78e100a0b1b49",
   "parameters": {
     "fs": 10000,
     "f0": 60,
