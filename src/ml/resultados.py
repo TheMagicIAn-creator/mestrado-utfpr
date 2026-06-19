@@ -474,19 +474,36 @@ def _resumo_validacao() -> str | None:
 
     linhas = [
         "## Validação formal\n\n",
-        "| Falha | Severidade | AUC-ROC | F1 | Recall | Precision |\n",
+        "| Falha | Severidade | AUC-ROC | Recall | F1 (50%) | F1 (raro 5%) |\n",
         "|---|---:|---:|---:|---:|---:|\n",
     ]
+    cego = []
     for falha, res in melhores.items():
+        rec = res.get("recall")
+        if isinstance(rec, (int, float)) and rec < 0.1:
+            cego.append(falha)
         linhas.append(
             f"| {falha} | {_sev(res['chave'])} | {_fmt(res.get('auc_roc'))} | "
-            f"{_fmt(res.get('f1'))} | {_fmt(res.get('recall'))} | "
-            f"{_fmt(res.get('precision'))} |\n"
+            f"{_fmt(rec)} | {_fmt(res.get('f1'))} | "
+            f"{_fmt(res.get('f1_raro'))} |\n"
         )
-    linhas.append(
-        "\nLeitura rápida: AUC próximo de 1 indica separação muito forte entre "
-        "comportamento saudável e falha injetada."
+    leitura = [
+        "\n**Leitura honesta:** a AUC mede a separação por *ranking* (independe "
+        "do limiar). No PONTO DE OPERAÇÃO (limiar p99 congelado), o recall pode "
+        "ser bem menor que a AUC sugere."
+    ]
+    if cego:
+        leitura.append(
+            f" Atenção: **{', '.join(cego)}** tem AUC alta mas recall ~0 — é bem "
+            "ranqueada, mas o limiar conservador a deixa passar (praticamente "
+            "cega no ponto de operação)."
+        )
+    leitura.append(
+        " F1 (50%) é o teste balanceado; F1 (raro 5%) reflete a raridade real "
+        "das falhas CA. Evidência E2 (falha sintética orientada pelo FMEA), não "
+        "desempenho industrial."
     )
+    linhas.append("".join(leitura))
     return "".join(linhas)
 
 

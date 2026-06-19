@@ -229,9 +229,11 @@ REGISTRO: dict[str, ExperimentoArtigo] = {
         dataset="Paderborn",
         tarefa="anomalia",
         descricao=(
-            "Detecção de anomalia no inversor saudável (Paderborn) com Random "
-            "Forest e limiar estatístico Z-score, avaliada contra falhas "
-            "sintéticas injetadas (ground truth do FMEA)."
+            "Detecção de anomalia no inversor saudável (Paderborn) com limiar "
+            "estatístico Z-score (Shewhart 3σ, controle estatístico de processo "
+            "NÃO-supervisionado), avaliada contra falhas sintéticas injetadas "
+            "(ground truth do FMEA). O Random Forest supervisionado do artigo "
+            "foi removido na curadoria (treinava nos rótulos da injeção)."
         ),
         modelos=(
             ModeloSpec("Z-score (estatístico)", "anomalia"),
