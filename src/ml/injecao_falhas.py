@@ -147,8 +147,8 @@ FALHAS = [
             "desbalanceada) reduz a amplitude de uma das correntes."
         ),
         "sinais"             : ["i_a"],
-        "formula"            : "i_a ·= (1 − sev·k)  (reduz amplitude da fase A)",
-        "severity_definition": "fração de redução da amplitude da fase A",
+        "formula"            : "i_a ·= (1 − sev·0,12)  (reduz amplitude da fase A; máx 12%)",
+        "severity_definition": "fração de redução da amplitude da fase A (calibrada: máx 12%)",
         "source"             : "Torres (2024) FMECA, subsistema CA (NPR=150)",
         "limitations"        : [
             "modelo simplificado; desbalanceamento real afeta fase E amplitude",
@@ -167,8 +167,8 @@ FALHAS = [
             "ruído de medição na corrente."
         ),
         "sinais"             : ["i_a"],
-        "formula"            : "i_a += N(0, sev·σ)  (ruído gaussiano)",
-        "severity_definition": "desvio do ruído gaussiano, proporcional à severidade",
+        "formula"            : "i_a += N(0, sev·σ_sinal)  (ruído gaussiano; ×1.0, calibrado p/ D=10)",
+        "severity_definition": "desvio do ruído ≈ sev·σ_sinal (calibrado: a falha MAIS difícil, D=10)",
         "source"             : "FMEA (D=10 — alta dificuldade de detecção)",
         "limitations"        : [
             "RUÍDO GAUSSIANO É UM PROXY — exige CALIBRAÇÃO FÍSICA do sensor real",
@@ -264,16 +264,20 @@ def falha_desbalanceamento_fase(janela_df: pd.DataFrame,
     reduzida. O desbalanceamento é medido pela feature inter-fase:
       desbalanceamento = (max_rms - min_rms) / media_rms
 
-    Fator de redução: fator = 1 - severidade × 0.7
-      severidade=0.1 → fase A com 93% da amplitude normal (7% de redução)
-      severidade=0.5 → fase A com 65% (35% de redução)
-      severidade=1.0 → fase A com 30% (70% de redução — falha severa)
+    Fator de redução CALIBRADO p/ curva severidade↔detecção realista
+    (fator = 1 - severidade × 0.12):
+      severidade=0.3 → ~3,6% de redução (incipiente, ~limiar FMEA de 5%, DIFÍCIL)
+      severidade=0.5 → 6% de redução (perceptível)
+      severidade=1.0 → 12% de redução (desbalanceamento severo, mas plausível)
+
+    Antes usava ×0.7 (até 70% de redução) → o detector separava com erro ZERO
+    em qualquer severidade (validacao_report perfeito = artificial). Um
+    desbalanceamento real raramente passa de ~10–15% sem desarme de proteção.
 
     A fase A é escolhida por ser a referência do FMEA (Id.1 do Apêndice E).
     """
     janela_falha = janela_df.copy()
-    fator        = 1.0 - severidade * 0.7
-    fator        = max(0.1, fator)  # mínimo de 10% de amplitude
+    fator        = 1.0 - severidade * 0.12
 
     # Afeta corrente e tensão da fase A
     janela_falha["i_a_k"] = janela_df["i_a_k"].values * fator
@@ -295,18 +299,26 @@ def falha_sensor_corrente(janela_df: pd.DataFrame,
     com variações normais do sinal.
 
     Modelagem: sinal_falha = sinal + N(0, σ_ruído)
-    onde σ_ruído = severidade × std(sinal) × 3
+    onde σ_ruído = severidade × std(sinal) × 0.3 (CALIBRADO para D=10).
 
-    severidade=0.05 → SNR alto (~26 dB) — muito difícil de detectar
-    severidade=0.30 → SNR médio (~10 dB) — detectável
-    severidade=1.00 → SNR baixo — claramente anômalo
+    Como o FMEA atribui D=10 (a MAIOR dificuldade de detecção), esta deve ser a
+    falha MAIS difícil — não a mais fácil. O multiplicador caiu de ×3 para ×0.3,
+    o que produz uma curva severidade↔detecção real (varredura empírica):
+      severidade=0.30 → σ_ruído ≈ 0,09·σ_sinal (SNR ~21 dB) — NÃO detectada (difícil)
+      severidade=0.50 → σ_ruído ≈ 0,15·σ_sinal — limítrofe
+      severidade=1.00 → σ_ruído ≈ 0,30·σ_sinal (SNR ~10 dB) — detectada
+
+    Antes (×3) o ruído era enorme já em sev=0.3 → detecção trivial PERFEITA em
+    todas as severidades, contradizendo o índice D=10 do próprio FMEA.
+    Nota: features espectrais (THD/harmônicos/kurtosis) são naturalmente
+    sensíveis a ruído branco — por isso o multiplicador precisa ser pequeno.
     """
     rng          = np.random.default_rng(seed)
     janela_falha = janela_df.copy()
 
     sinal   = janela_df["i_a_k"].values
     std_sig = np.std(sinal)
-    ruido   = rng.normal(0, severidade * std_sig * 3, size=len(sinal))
+    ruido   = rng.normal(0, severidade * std_sig * 0.3, size=len(sinal))
 
     janela_falha["i_a_k"] = sinal + ruido
     return janela_falha
