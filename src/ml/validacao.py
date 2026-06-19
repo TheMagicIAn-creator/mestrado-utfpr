@@ -511,7 +511,14 @@ def executar_validacao() -> bool:
                 "reportamos também precision_raro/f1_raro reprojetados para "
                 f"prevalência de {PREVALENCIA_RARA:.0%} (regra de Bayes no ponto "
                 "de operação). AUC, recall (TPR) e specificity independem da "
-                "prevalência; só precision/F1 mudam."
+                "prevalência; só precision/F1 mudam. RESSALVA HONESTA: neste "
+                "pipeline do Autoencoder o limiar p99 deixa fpr_op≈0 nas "
+                f"{N_JANELAS_SAUDAVEL} janelas saudáveis, então precision_raro≈"
+                "precision e a reprojeção é praticamente um NO-OP aqui (com FPR=0, "
+                "Bayes dá precisão=1). Isso é limite de resolução amostral (poucas "
+                "janelas não resolvem FPR<~1/N), NÃO prova de zero falsos "
+                "positivos. O colapso de precisão sob raridade aparece nos "
+                "protocolos por artigo (IForest/Z-score, fpr_op>0), não aqui."
             ),
         },
     }

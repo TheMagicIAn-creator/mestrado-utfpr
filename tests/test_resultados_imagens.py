@@ -9,21 +9,23 @@ def _png(path: Path) -> str:
 
 
 def test_imagens_experimento_distingue_graficos_e_matrizes(tmp_path, monkeypatch):
+    # Usa um experimento do NÚCLEO curado (Ibrahim) como veículo do teste de
+    # agrupamento de imagens — Sharma/Ghoneim foram removidos do registry.
     from src.ml import resultados
 
-    pasta = tmp_path / "sharma"
+    pasta = tmp_path / "ibrahim"
     dados = {
-        "referencia": "Sharma et al. (2026)",
+        "referencia": "Ibrahim et al. (2022)",
         "modelos": {
-            "SVM": {
+            "Isolation Forest": {
                 "disponivel": True,
-                "grafico_metricas": _png(pasta / "svm_metricas.png"),
-                "grafico_matriz_confusao": _png(pasta / "svm_matriz.png"),
+                "grafico_metricas": _png(pasta / "if_metricas.png"),
+                "grafico_matriz_confusao": _png(pasta / "if_matriz.png"),
             },
-            "CNN": {
+            "AE-LSTM": {
                 "disponivel": True,
-                "grafico_metricas": _png(pasta / "cnn_metricas.png"),
-                "grafico_matriz_confusao": _png(pasta / "cnn_matriz.png"),
+                "grafico_metricas": _png(pasta / "ae_metricas.png"),
+                "grafico_matriz_confusao": _png(pasta / "ae_matriz.png"),
             },
         },
     }
@@ -36,19 +38,19 @@ def test_imagens_experimento_distingue_graficos_e_matrizes(tmp_path, monkeypatch
     monkeypatch.setattr(resultados, "PASTA_EXPERIMENTOS", tmp_path)
 
     somente_matriz = resultados.imagens_relevantes(
-        "Mostre a matriz de confusao do Sharma."
+        "Mostre a matriz de confusao do Ibrahim."
     )
     ambos = resultados.imagens_relevantes(
-        "Mostre os graficos e matrizes do Sharma."
+        "Mostre os graficos e matrizes do Ibrahim."
     )
 
     assert len(somente_matriz) == 2
     assert all("matriz de confusao" in img["caption"] for img in somente_matriz)
     assert [img["caption"] for img in ambos] == [
-        "Sharma et al. (2026) - comparacao de metricas",
-        "Sharma et al. (2026) - anomalias detectadas",
-        "Sharma et al. (2026) - resultado individual (SVM)",
-        "Sharma et al. (2026) - matriz de confusao (SVM)",
-        "Sharma et al. (2026) - resultado individual (CNN)",
-        "Sharma et al. (2026) - matriz de confusao (CNN)",
+        "Ibrahim et al. (2022) - comparacao de metricas",
+        "Ibrahim et al. (2022) - anomalias detectadas",
+        "Ibrahim et al. (2022) - resultado individual (Isolation Forest)",
+        "Ibrahim et al. (2022) - matriz de confusao (Isolation Forest)",
+        "Ibrahim et al. (2022) - resultado individual (AE-LSTM)",
+        "Ibrahim et al. (2022) - matriz de confusao (AE-LSTM)",
     ]

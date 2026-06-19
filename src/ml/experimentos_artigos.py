@@ -13,13 +13,16 @@ Princípios:
   fica registrado e é reportado como "requer <lib>" em vez de quebrar a corrida.
 - Métricas e artefatos padronizados para permitir comparação entre artigos.
 
-Artigos-base:
-  1. Ghoneim, Rashed & Elkalashy (2021)  — RF, AdaBoost, LogReg, NaiveBayes, CN2
-  2. Francisti et al. (2025)             — RF (reg+clf) + Z-score
-  3. Ibrahim et al. (2022)               — AE-LSTM, Prophet, Isolation Forest
-  4. Sharma et al. (2026)                — Isolation Forest + PPO; baselines RNN/ANN/CNN/KNN/SVM
-  5. Stender, Wallscheid & Böcker (2020) — descrição do dataset (Paderborn)
-  6. Ahirwar & Nandanwar (2025)          — híbrido AE-LSTM + Prophet + IForest + BayesOpt
+Artigos-base do NÚCLEO (curadoria "só anomalia CA por modelagem de normalidade"):
+  1. Francisti et al. (2025)             — Z-score (Shewhart/SPC), não-supervisionado
+  2. Ibrahim et al. (2022)               — AE-LSTM, Prophet, Isolation Forest
+  3. Ahirwar & Nandanwar (2025)          — híbrido AE-LSTM + Prophet + IForest (voto)
+  4. Stender, Wallscheid & Böcker (2020) — descrição do dataset (Paderborn)
+
+Removidos da curadoria (treinavam nos rótulos da injeção sintética ou
+inadequados): Ghoneim (classificação CC supervisionada — segue no
+classificador_pv, não como experimento), Sharma (baselines supervisionados +
+RNN/CNN + IForest+PPO degenerado) e o Random Forest supervisionado do Francisti.
 
 Autor: Rodolfo Torres (UTFPR)
 """

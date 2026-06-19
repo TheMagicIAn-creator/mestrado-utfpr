@@ -7,7 +7,7 @@
     "limiar_operacional": 2.0784525871276855,
     "prevalencia_teste": 0.5,
     "prevalencia_raro": 0.05,
-    "nota_regime_raro": "O teste é balanceado (50% falha) para estimar TPR/FPR com estabilidade, mas falhas CA são RARAS em operação. Por isso reportamos também precision_raro/f1_raro reprojetados para prevalência de 5% (regra de Bayes no ponto de operação). AUC, recall (TPR) e specificity independem da prevalência; só precision/F1 mudam."
+    "nota_regime_raro": "O teste é balanceado (50% falha) para estimar TPR/FPR com estabilidade, mas falhas CA são RARAS em operação. Por isso reportamos também precision_raro/f1_raro reprojetados para prevalência de 5% (regra de Bayes no ponto de operação). AUC, recall (TPR) e specificity independem da prevalência; só precision/F1 mudam. RESSALVA HONESTA: neste pipeline do Autoencoder o limiar p99 deixa fpr_op≈0 nas 50 janelas saudáveis, então precision_raro≈precision e a reprojeção é praticamente um NO-OP aqui (com FPR=0, Bayes dá precisão=1). Isso é limite de resolução amostral (poucas janelas não resolvem FPR<~1/N), NÃO prova de zero falsos positivos. O colapso de precisão sob raridade aparece nos protocolos por artigo (IForest/Z-score, fpr_op>0), não aqui."
   },
   "lcl_sev0.3": {
     "precision": 0.0,

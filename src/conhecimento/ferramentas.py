@@ -116,8 +116,8 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "listar_experimentos_artigos",
         "description": (
-            "Lista os EXPERIMENTOS de ML por artigo-base (Ghoneim, Francisti, "
-            "Ibrahim, Sharma, Ahirwar, Stender) e o status de cada modelo. Use "
+            "Lista os EXPERIMENTOS de ML por artigo-base (Francisti, Ibrahim, "
+            "Ahirwar, Stender) e o status de cada modelo. Use "
             "quando o usuario perguntar quais experimentos existem, quais "
             "modelos rodam, ou o que da para testar com base nos artigos."
         ),
@@ -126,7 +126,7 @@ ESPEC_FERRAMENTAS = [
         "name": "limpar_experimentos_artigos",
         "description": (
             "Apaga artefatos/resultados dos experimentos por artigo-base "
-            "(Ghoneim, Francisti, Ibrahim, Sharma, Ahirwar), mediante "
+            "(Francisti, Ibrahim, Ahirwar), mediante "
             "confirmacao explicita. Use quando o usuario pedir para apagar, "
             "limpar, excluir ou resetar experimentos por artigo."
         ),
@@ -179,7 +179,7 @@ ESPEC_FERRAMENTAS = [
             "Treina e avalia os modelos de ML de um ou mais artigos-base e "
             "compara os resultados (AUC/F1 ou acuracia). Use quando o usuario "
             "pedir para RODAR/TESTAR um experimento de um artigo: 'rode o "
-            "experimento do Ghoneim', 'teste os modelos do Sharma'. Tarefa "
+            "experimento do Ibrahim', 'teste os modelos do Ahirwar'. Tarefa "
             "pesada (treina modelos). Para comparar resultados ja gerados, use "
             "consultar_resultados."
         ),
@@ -187,7 +187,7 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "comparar_experimentos_auc",
         "description": (
-            "Compara os experimentos de anomalia (Francisti, Ibrahim, Sharma, "
+            "Compara os experimentos de anomalia (Francisti, Ibrahim, "
             "Ahirwar) pelo AUC — a unica metrica comparavel entre protocolos "
             "distintos. Exibe tabela ranqueada e grafico. Use quando o usuario "
             "pedir para COMPARAR os experimentos/modelos de anomalia: 'compare "
@@ -346,7 +346,7 @@ def _quer_rodar_experimento(pergunta: str) -> bool:
     tem_verbo = any(v in txt for v in _VERBOS_RODAR_EXP)
     if any(t in txt for t in ("experimento", "experiment", "experimento", "experience", "expérience")):
         return tem_verbo
-    # "teste os modelos do sharma" (sem a palavra 'experimento')
+    # "teste os modelos do ahirwar" (sem a palavra 'experimento')
     tem_autor = any(a in txt for a in _AUTORES_EXP)
     tem_modelos = any(t in txt for t in ("modelo", "modelos", "model", "models", "modele", "modeles", "modèle", "modèles"))
     return tem_autor and tem_verbo and tem_modelos
@@ -919,7 +919,7 @@ def listar_experimentos_artigos(progresso=None, pergunta: str = "") -> dict:
 
         msg = catalogo_experimentos_md()
         msg += (
-            "\n\nPara rodar, peça por exemplo: \"rode o experimento do Ghoneim\" "
+            "\n\nPara rodar, peça por exemplo: \"rode o experimento do Ibrahim\" "
             "ou use a barra lateral (🧪 Experimentos por artigo)."
         )
     except Exception as exc:  # noqa: BLE001
@@ -1144,7 +1144,7 @@ def rodar_experimento_artigo(progresso=None, pergunta: str = "") -> dict:
             "ok": True, "etapa": "Experimentos por artigo",
             "mensagem": (
                 "Diga qual experimento rodar (por autor). Ex.: \"rode o "
-                "experimento do Ghoneim\" ou \"compare os experimentos de "
+                "experimento do Ibrahim\" ou \"compare os experimentos de "
                 "anomalia\".\n\n" + catalogo_experimentos_md()
             ),
             "imagens": [], "resposta_pronta": True,

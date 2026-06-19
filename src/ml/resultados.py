@@ -42,14 +42,12 @@ def _normalizar(texto: str) -> str:
 
 
 _EXPERIMENTOS_ALIASES = {
-    "ghoneim": "ghoneim",
     "francisti": "francisti",
     "ibrahim": "ibrahim",
-    "sharma": "sharma",
     "ahirwar": "ahirwar",
     "stender": "stender",
 }
-_EXPERIMENTOS_ANOMALIA = {"francisti", "ibrahim", "sharma", "ahirwar"}
+_EXPERIMENTOS_ANOMALIA = {"francisti", "ibrahim", "ahirwar"}
 
 
 def _slug_modelo(nome: str) -> str:
@@ -97,9 +95,7 @@ def _experimentos_pedidos(pergunta: str = "") -> list[str]:
     if pedidos:
         return pedidos
     if any(t in txt for t in ("anomalia", "anomalias", "anomaly", "anomalies", "anomalie")):
-        return ["francisti", "ibrahim", "sharma", "ahirwar"]
-    if any(t in txt for t in ("classificacao", "supervision", "classification", "clasificacion")):
-        return ["ghoneim"]
+        return ["francisti", "ibrahim", "ahirwar"]
     return []
 
 
@@ -616,9 +612,8 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
             "locais em `resultados/experimentos/<autor>/resultado.json`.\n"
         )
         linhas.append(
-            "- **Dados locais**: Ghoneim usa `dados/brutos/train_data.csv` e "
-            "`test_data.csv` (PV Farms, dominio CC). Francisti, Ibrahim, Sharma "
-            "e Ahirwar usam features locais do Paderborn extraidas de "
+            "- **Dados locais**: Francisti, Ibrahim e Ahirwar usam features "
+            "locais do Paderborn extraidas de "
             "`dados/brutos/Inverter_Data_Set.csv`; como esse dataset e saudavel, "
             "o ground truth de anomalia vem de falhas sinteticas do pipeline.\n"
         )

@@ -389,7 +389,7 @@ def renderizar_boas_vindas() -> None:
     exemplos = [
         "Explique os resultados de validação e mostre as curvas ROC.",
         "Rode a análise de Weibull e depois interprete MTTF e B10.",
-        "Compare os modelos de Sharma e Ibrahim com gráficos.",
+        "Compare os experimentos de anomalia por AUC.",
         "What does the literature say about LCL filter faults?",
         "Explique en español qué modelo parece más confiable.",
     ]
