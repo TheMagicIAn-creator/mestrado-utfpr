@@ -35,14 +35,6 @@ from pathlib import Path
 from typing import Callable
 
 from src.core.config import RAIZ_PROJETO
-from src.ml.modelos_anomalia import (  # noqa: F401  (re-export p/ compat)
-    _ppo_buscar_contaminacao,
-    _score_ae_lstm,
-    _score_cnn_torch,
-    _score_prophet,
-    _score_rnn_torch,
-    _treinar_clf_torch,
-)
 
 PASTA_EXPERIMENTOS = RAIZ_PROJETO / "resultados" / "experimentos"
 METRICAS_BASE = ("accuracy", "precision", "recall", "f1", "auc", "specificity")
@@ -514,19 +506,6 @@ def _salvar_metricas_csv(exp: ExperimentoArtigo, resultado: dict) -> None:
 
 def _origem_dados(exp: ExperimentoArtigo) -> dict:
     """Documenta se o experimento usa dados locais ou so referencia do artigo."""
-    if exp.key == "ghoneim":
-        return {
-            "tipo": "dataset_local_rotulado",
-            "descricao": (
-                "Usa os arquivos locais train_data.csv e test_data.csv em dados/brutos. "
-                "O artigo define a metodologia/base PV Farms; os numeros sao recalculados "
-                "no repositorio, nao copiados do paper."
-            ),
-            "arquivos": [
-                "dados/brutos/train_data.csv",
-                "dados/brutos/test_data.csv",
-            ],
-        }
     if exp.tarefa == "anomalia":
         return {
             "tipo": "dataset_local_paderborn_com_falhas_sinteticas",
@@ -594,43 +573,6 @@ def _salvar_resultado(exp: ExperimentoArtigo, resultado: dict) -> Path:
     ]
     (pasta / "relatorio.txt").write_text("\n".join(linhas), encoding="utf-8")
     return pasta
-
-
-def _grafico_comparacao_legacy(exp: ExperimentoArtigo, resultado: dict) -> Path | None:
-    """Barras comparando os modelos pela métrica principal (PNG via matplotlib)."""
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-    except Exception:
-        return None
-
-    metrica = resultado.get("metrica_principal", "f1")
-    itens = [
-        (nome, m.get(metrica))
-        for nome, m in resultado.get("modelos", {}).items()
-        if m.get("disponivel", True) and isinstance(m.get(metrica), (int, float))
-    ]
-    if not itens:
-        return None
-    itens.sort(key=lambda x: x[1], reverse=True)
-    nomes = [i[0] for i in itens]
-    valores = [i[1] for i in itens]
-
-    fig, ax = plt.subplots(figsize=(8, 4.5))
-    cores = ["#2E7D32" if v == max(valores) else "#4C72B0" for v in valores]
-    ax.barh(nomes[::-1], valores[::-1], color=cores[::-1])
-    ax.set_xlim(0, 1.05)
-    ax.set_xlabel(metrica)
-    ax.set_title(f"{exp.referencia} — comparação de modelos")
-    for i, v in enumerate(valores[::-1]):
-        ax.text(v + 0.01, i, f"{v:.3f}", va="center", fontsize=9)
-    fig.tight_layout()
-
-    caminho = exp.pasta() / "comparacao.png"
-    fig.savefig(caminho, dpi=110)
-    plt.close(fig)
-    return caminho
 
 
 def _slug_modelo(nome: str) -> str:
@@ -839,130 +781,6 @@ def _grafico_comparacao(exp: ExperimentoArtigo, resultado: dict) -> list[Path]:
 # RUNNER 1 — CLASSIFICAÇÃO SUPERVISIONADA (Ghoneim, PV Farms)
 # ============================================================
 
-def _carregar_pv_farms():
-    import pandas as pd
-
-    base = RAIZ_PROJETO / "dados" / "brutos"
-    df_tr = pd.read_csv(base / "train_data.csv", sep=";")
-    df_te = pd.read_csv(base / "test_data.csv", sep=";")
-    X_tr, y_tr = df_tr.drop(columns=["class"]), df_tr["class"]
-    X_te, y_te = df_te.drop(columns=["class"]), df_te["class"]
-    return X_tr, y_tr, X_te, y_te
-
-
-def _estimador_supervisionado(nome: str):
-    """Mapeia o nome do modelo para um estimador sklearn (ou None se especial)."""
-    from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.naive_bayes import GaussianNB
-    from sklearn.tree import DecisionTreeClassifier
-
-    mapa = {
-        "Random Forest": RandomForestClassifier(
-            n_estimators=200, random_state=42, n_jobs=-1
-        ),
-        # Base com profundidade > 1: em sklearn >=1.4 o AdaBoost usa SAMME com
-        # estimador padrão = decision STUMP (max_depth=1). Num problema MULTI-
-        # CLASSE (4 classes, PV Farms) o stump é fraco demais e o boosting não
-        # converge (F1≈0,24, ~acaso). Árvores rasas (depth 2-4) são a base
-        # recomendada para boosting multiclasse (Hastie, Tibshirani & Friedman,
-        # ESL §10; doc do sklearn). Escolhi depth=3 / 300 rounds / lr=0,5 por
-        # validação cruzada (não para "ganhar").
-        # RESSALVA (E1): a CV chega a 1,0 porque o PV Farms é um dataset PEQUENO
-        # e simulado (600 treino / 100 teste). Isso NÃO é prova de
-        # generalização industrial — é benchmark exploratório (evidence_level
-        # E1 no resultado).
-        "AdaBoost": AdaBoostClassifier(
-            estimator=DecisionTreeClassifier(max_depth=3, random_state=42),
-            n_estimators=300, learning_rate=0.5, random_state=42,
-        ),
-        "Regressão Logística": LogisticRegression(max_iter=1000, random_state=42),
-        "Naive Bayes": GaussianNB(),
-    }
-    return mapa.get(nome)
-
-
-def _cn2_orange(X_tr, y_tr, X_te, y_te) -> dict | None:
-    """CN2 (indução de regras) via Orange3, se instalado. None se indisponível."""
-    if not lib_disponivel("Orange"):
-        return None
-    try:
-        import numpy as np
-        import Orange
-        classes = sorted(set(map(int, y_tr)))
-        dominio = Orange.data.Domain(
-            [Orange.data.ContinuousVariable(c) for c in map(str, X_tr.columns)],
-            Orange.data.DiscreteVariable("class", values=[str(c) for c in classes]),
-        )
-        tab_tr = Orange.data.Table.from_numpy(
-            dominio, np.asarray(X_tr, float),
-            np.array([classes.index(int(v)) for v in y_tr], float),
-        )
-        aprendiz = Orange.classification.CN2Learner()
-        modelo = aprendiz(tab_tr)
-        pred_idx = modelo(np.asarray(X_te, float))
-        y_pred = np.array([classes[int(i)] for i in pred_idx])
-        y_true = np.asarray(list(map(int, y_te)))
-        return _metricas_classificacao(y_true, y_pred)
-    except Exception as exc:  # noqa: BLE001
-        return {"disponivel": False, "motivo": f"erro no Orange/CN2: {exc}"}
-
-
-def executar_classificacao_supervisionada(exp: ExperimentoArtigo, progresso=None) -> dict:
-    from sklearn.model_selection import StratifiedKFold, cross_val_score
-    from sklearn.preprocessing import StandardScaler
-
-    if progresso:
-        progresso("Carregando dataset PV Farms...")
-    X_tr, y_tr, X_te, y_te = _carregar_pv_farms()
-
-    scaler = StandardScaler()
-    X_tr_s = scaler.fit_transform(X_tr)
-    X_te_s = scaler.transform(X_te)
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-
-    modelos_out: dict[str, dict] = {}
-    for spec in exp.modelos:
-        if not spec.disponivel:
-            modelos_out[spec.nome] = {
-                "disponivel": False,
-                "motivo": f"requer {spec.requer}",
-            }
-            continue
-
-        if spec.nome.startswith("CN2"):
-            if progresso:
-                progresso("Treinando CN2 (Orange)...")
-            res_cn2 = _cn2_orange(X_tr, y_tr, X_te, y_te)
-            modelos_out[spec.nome] = res_cn2 or {
-                "disponivel": False, "motivo": "Orange indisponível",
-            }
-            continue
-
-        est = _estimador_supervisionado(spec.nome)
-        if est is None:
-            modelos_out[spec.nome] = {"disponivel": False, "motivo": "não implementado"}
-            continue
-
-        if progresso:
-            progresso(f"Treinando {spec.nome}...")
-        scores = cross_val_score(est, X_tr_s, y_tr, cv=cv, scoring="accuracy")
-        est.fit(X_tr_s, y_tr)
-        y_pred = est.predict(X_te_s)
-        if hasattr(est, "predict_proba"):
-            y_score = est.predict_proba(X_te_s)
-        elif hasattr(est, "decision_function"):
-            y_score = est.decision_function(X_te_s)
-        else:
-            y_score = None
-        metricas = _metricas_classificacao(y_te, y_pred, y_score=y_score)
-        metricas["cv_accuracy_media"] = float(scores.mean())
-        metricas["cv_accuracy_desvio"] = float(scores.std())
-        modelos_out[spec.nome] = metricas
-
-    return _consolidar(exp, modelos_out, metrica_principal="f1")
-
-
 # ============================================================
 # CONSOLIDAÇÃO + DISPATCH
 # ============================================================
@@ -1099,25 +917,6 @@ def _carregar_features_paderborn(progresso=None):
     return X.copy(), list(cols)
 
 
-def _gerar_anomalias(X_base, rng, severidade: float = 3.0):
-    """
-    Gera anomalias sintéticas perturbando um subconjunto de features de cada
-    janela por `severidade × desvio-padrão` — emula assinaturas de falha
-    (desvios de harmônicos/RMS/desbalanceamento) e dá ground truth para AUC.
-    """
-    import numpy as np
-
-    std = X_base.std(axis=0) + 1e-9
-    n, n_feat = X_base.shape
-    X_anom = X_base.copy()
-    for i in range(n):
-        k = int(rng.integers(3, max(4, n_feat // 4)))
-        cols = rng.choice(n_feat, size=k, replace=False)
-        sinal = rng.choice([-1.0, 1.0], size=k)
-        X_anom[i, cols] += severidade * sinal * std[cols]
-    return X_anom
-
-
 def _melhor_limiar(y_true, score):
     """Limiar que maximiza F1 (varre os scores)."""
     import numpy as np
@@ -1132,94 +931,6 @@ def _melhor_limiar(y_true, score):
         if f1 > melhor_f1:
             melhor_f1, melhor_thr = f1, thr
     return float(melhor_thr)
-
-
-def _metricas_anomalia_legacy(y_true, score) -> dict:
-    import numpy as np
-    from sklearn.metrics import (
-        f1_score, precision_score, recall_score, roc_auc_score,
-    )
-
-    score = np.asarray(score, dtype=float)
-    score = np.nan_to_num(score, nan=0.0, posinf=0.0, neginf=0.0)
-    thr = _melhor_limiar(y_true, score)
-    y_pred = (score >= thr).astype(int)
-    return {
-        "auc": float(roc_auc_score(y_true, score)),
-        "f1": float(f1_score(y_true, y_pred, zero_division=0)),
-        "recall": float(recall_score(y_true, y_pred, zero_division=0)),
-        "precisao": float(precision_score(y_true, y_pred, zero_division=0)),
-        "disponivel": True,
-    }
-
-
-def _score_anomalia_legacy(nome, dados, progresso=None):
-    """
-    Retorna o vetor de score de anomalia para o conjunto de teste, ou None se
-    o modelo não estiver implementado neste runner. `dados` é o pacote comum.
-    """
-    import numpy as np
-
-    Xn_tr = dados["Xn_tr"]          # normal de treino (modela normalidade)
-    X_tr_sup = dados["X_tr_sup"]    # treino supervisionado (normal+anom)
-    y_tr_sup = dados["y_tr_sup"]
-    X_te = dados["X_te"]            # teste (normal+anom)
-
-    base = nome.lower()
-
-    # --- estatístico: Z-score (desvio médio absoluto, já padronizado) ---
-    if "z-score" in base or "zscore" in base:
-        return np.mean(np.abs(X_te), axis=1)
-
-    # --- Isolation Forest (não supervisionado, fit no normal) ---
-    if "isolation forest" in base and "ppo" not in base:
-        from sklearn.ensemble import IsolationForest
-        iso = IsolationForest(n_estimators=200, random_state=42, contamination="auto")
-        iso.fit(Xn_tr)
-        return -iso.decision_function(X_te)
-
-    # --- supervisionados (normal vs anomalia sintética) ---
-    if "random forest" in base:
-        from sklearn.ensemble import RandomForestClassifier
-        clf = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
-        clf.fit(X_tr_sup, y_tr_sup)
-        return clf.predict_proba(X_te)[:, 1]
-
-    if base.startswith("knn") or "knn" in base:
-        from sklearn.neighbors import KNeighborsClassifier
-        clf = KNeighborsClassifier(n_neighbors=15)
-        clf.fit(X_tr_sup, y_tr_sup)
-        return clf.predict_proba(X_te)[:, 1]
-
-    if base == "svm" or base.startswith("svm"):
-        from sklearn.svm import SVC
-        clf = SVC(kernel="rbf", probability=True, random_state=42)
-        clf.fit(X_tr_sup, y_tr_sup)
-        return clf.predict_proba(X_te)[:, 1]
-
-    if "ann" in base or "mlp" in base:
-        from sklearn.neural_network import MLPClassifier
-        clf = MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=500, random_state=42)
-        clf.fit(X_tr_sup, y_tr_sup)
-        return clf.predict_proba(X_te)[:, 1]
-
-    # --- redes neurais (PyTorch) ---
-    if "ae-lstm" in base or "ae lstm" in base or "autoencoder" in base:
-        return _score_ae_lstm(dados)
-    if base == "rnn" or base.startswith("rnn"):
-        return _score_rnn_torch(dados)
-    if base == "cnn" or base.startswith("cnn"):
-        return _score_cnn_torch(dados)
-
-    # --- Facebook Prophet (série temporal univariada) ---
-    if "prophet" in base:
-        return _score_prophet(dados)
-
-    # --- Isolation Forest auto-ajustado por RL (PPO) ---
-    if "ppo" in base:
-        return _score_ppo_iforest(dados)
-
-    return None
 
 
 def _metricas_anomalia(y_true, score, y_pred=None,
@@ -1304,110 +1015,7 @@ def _metricas_anomalia(y_true, score, y_pred=None,
     return metricas
 
 
-def _score_anomalia(nome, dados, progresso=None):
-    """Retorna (score, y_pred) no ponto de operacao real quando existe."""
-    import numpy as np
-
-    Xn_tr = dados["Xn_tr"]
-    X_tr_sup = dados["X_tr_sup"]
-    y_tr_sup = dados["y_tr_sup"]
-    X_te = dados["X_te"]
-    base = nome.lower()
-
-    if "z-score" in base or "zscore" in base:
-        return np.mean(np.abs(X_te), axis=1), None
-
-    if "isolation forest" in base and "ppo" not in base:
-        from sklearn.ensemble import IsolationForest
-        iso = IsolationForest(n_estimators=200, random_state=42, contamination="auto")
-        iso.fit(Xn_tr)
-        score = -iso.decision_function(X_te)
-        y_pred = (iso.predict(X_te) == -1).astype(int)
-        return score, y_pred
-
-    if "random forest" in base:
-        from sklearn.ensemble import RandomForestClassifier
-        clf = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
-        clf.fit(X_tr_sup, y_tr_sup)
-        score = clf.predict_proba(X_te)[:, 1]
-        return score, (score >= 0.5).astype(int)
-
-    if base.startswith("knn") or "knn" in base:
-        from sklearn.neighbors import KNeighborsClassifier
-        clf = KNeighborsClassifier(n_neighbors=15)
-        clf.fit(X_tr_sup, y_tr_sup)
-        score = clf.predict_proba(X_te)[:, 1]
-        return score, (score >= 0.5).astype(int)
-
-    if base == "svm" or base.startswith("svm"):
-        from sklearn.svm import SVC
-        clf = SVC(kernel="rbf", probability=True, random_state=42)
-        clf.fit(X_tr_sup, y_tr_sup)
-        score = clf.predict_proba(X_te)[:, 1]
-        return score, (score >= 0.5).astype(int)
-
-    if "ann" in base or "mlp" in base:
-        from sklearn.neural_network import MLPClassifier
-        clf = MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=500, random_state=42)
-        clf.fit(X_tr_sup, y_tr_sup)
-        score = clf.predict_proba(X_te)[:, 1]
-        return score, (score >= 0.5).astype(int)
-
-    if "ae-lstm" in base or "ae lstm" in base or "autoencoder" in base:
-        return _score_ae_lstm(dados), None
-    if base == "rnn" or base.startswith("rnn"):
-        score = _score_rnn_torch(dados)
-        return score, (score >= 0.5).astype(int)
-    if base == "cnn" or base.startswith("cnn"):
-        score = _score_cnn_torch(dados)
-        return score, (score >= 0.5).astype(int)
-
-    if "prophet" in base:
-        return _score_prophet(dados), None
-
-    if "ppo" in base:
-        return _score_ppo_iforest(dados)
-
-    return None
-
-
-# Scorers de anomalia (AE-LSTM, RNN, CNN, Prophet, PPO-IForest) foram
-# EXTRAIDOS para src/ml/modelos_anomalia.py (modulo folha que quebra o
-# ciclo experimentos_artigos<->protocolos_artigos). Re-exportados no topo
-# deste modulo para os chamadores internos (_score_anomalia, _score_ppo_iforest).
-
-
-def _score_ppo_iforest(dados, timesteps: int = 600):
-    """
-    Caminho LEGADO (harness genérico): PPO ajusta a contamination numa
-    validação interna aleatória. Os protocolos por artigo usam
-    ``_ppo_buscar_contaminacao`` com validação TEMPORAL separada.
-    """
-    import numpy as np
-    from sklearn.ensemble import IsolationForest
-    from sklearn.model_selection import train_test_split
-
-    rng = np.random.default_rng(7)
-    Xn = dados["Xn_tr"]
-    Xn_fit, Xn_val = train_test_split(Xn, test_size=0.4, random_state=7)
-    Xa_val = _gerar_anomalias(Xn_val, rng)
-    Xval = np.vstack([Xn_val, Xa_val])
-    yval = np.r_[np.zeros(len(Xn_val)), np.ones(len(Xa_val))]
-
-    melhor_cont = _ppo_buscar_contaminacao(Xn_fit, Xval, yval, timesteps)
-
-    iso = IsolationForest(n_estimators=200, contamination=melhor_cont, random_state=42)
-    iso.fit(Xn)
-    score = -iso.decision_function(dados["X_te"])
-    y_pred = (iso.predict(dados["X_te"]) == -1).astype(int)
-    return score, y_pred
-
-
 def executar_anomalia(exp: ExperimentoArtigo, progresso=None) -> dict:
-    import numpy as np
-    from sklearn.model_selection import train_test_split
-    from sklearn.preprocessing import StandardScaler
-
     # ── PROTOCOLO POR ARTIGO (caminho principal) ─────────────────────────
     # Cada artigo tem o próprio protocolo de decisão (limiar a priori,
     # p99 de treino, banda do Prophet, PPO em validação temporal, voto) —
@@ -1427,83 +1035,13 @@ def executar_anomalia(exp: ExperimentoArtigo, progresso=None) -> dict:
         return _consolidar(exp, modelos_proto, metrica_principal="f1",
                            metodologia=metodologia)
 
-    # ── HARNESS GENÉRICO LEGADO (fallback p/ chaves sem protocolo) ──────
-    rng = np.random.default_rng(42)
-    if progresso:
-        progresso("Carregando features de normalidade (Paderborn)...")
-    X_normal, _nomes = _carregar_features_paderborn(progresso)
-
-    Xn_tr, Xn_te = train_test_split(X_normal, test_size=0.4, random_state=42)
-    Xa_tr = _gerar_anomalias(Xn_tr, rng)
-    Xa_te = _gerar_anomalias(Xn_te, rng)
-
-    scaler = StandardScaler().fit(Xn_tr)
-    Xn_tr_s = scaler.transform(Xn_tr)
-    Xn_te_s = scaler.transform(Xn_te)
-    Xa_tr_s = scaler.transform(Xa_tr)
-    Xa_te_s = scaler.transform(Xa_te)
-
-    dados = {
-        "Xn_tr": Xn_tr_s,
-        "X_tr_sup": np.vstack([Xn_tr_s, Xa_tr_s]),
-        "y_tr_sup": np.r_[np.zeros(len(Xn_tr_s)), np.ones(len(Xa_tr_s))],
-        "X_te": np.vstack([Xn_te_s, Xa_te_s]),
-        "y_te": np.r_[np.zeros(len(Xn_te_s)), np.ones(len(Xa_te_s))],
-    }
-    y_te = dados["y_te"]
-
-    modelos_out: dict[str, dict] = {}
-    scores_individuais: dict[str, np.ndarray] = {}
-    predicoes_individuais: dict[str, np.ndarray] = {}
-    for spec in exp.modelos:
-        if not spec.disponivel:
-            modelos_out[spec.nome] = {"disponivel": False, "motivo": f"requer {spec.requer}"}
-            continue
-        if "híbrido" in spec.nome.lower() or "hibrido" in spec.nome.lower():
-            continue  # tratado ao final, combinando os scores
-        if progresso:
-            progresso(f"Treinando {spec.nome}...")
-        try:
-            score = _score_anomalia(spec.nome, dados, progresso)
-        except Exception as exc:  # noqa: BLE001
-            modelos_out[spec.nome] = {"disponivel": False, "motivo": f"erro: {exc}"}
-            continue
-        if score is None:
-            modelos_out[spec.nome] = {"disponivel": False, "motivo": "implementação pendente"}
-            continue
-        if isinstance(score, tuple):
-            score, y_pred = score
-        else:
-            y_pred = None
-        scores_individuais[spec.nome] = np.asarray(score, dtype=float)
-        if y_pred is not None:
-            predicoes_individuais[spec.nome] = np.asarray(y_pred, dtype=int)
-        modelos_out[spec.nome] = _metricas_anomalia(y_te, score, y_pred)
-
-    # Híbrido (voto): média normalizada dos scores dos componentes disponíveis.
-    for spec in exp.modelos:
-        if "híbrido" in spec.nome.lower() or "hibrido" in spec.nome.lower():
-            if len(scores_individuais) >= 2:
-                def _norm(s):
-                    rng_ = s.max() - s.min()
-                    return (s - s.min()) / rng_ if rng_ > 1e-12 else s * 0.0
-                combo = np.mean([_norm(s) for s in scores_individuais.values()], axis=0)
-                if len(predicoes_individuais) >= 2:
-                    votos = np.mean(list(predicoes_individuais.values()), axis=0)
-                    y_pred_combo = (votos >= 0.5).astype(int)
-                else:
-                    y_pred_combo = None
-                modelos_out[spec.nome] = _metricas_anomalia(y_te, combo, y_pred_combo)
-            else:
-                modelos_out[spec.nome] = {
-                    "disponivel": False,
-                    "motivo": "precisa de ≥2 componentes disponíveis",
-                }
-
-    return _consolidar(exp, modelos_out, metrica_principal="f1")
-
-
+    # Sem protocolo registrado para esta chave. O nucleo curado (anomalia
+    # CA por modelagem de normalidade) define um protocolo por artigo para
+    # cada experimento; o harness generico legado foi removido na curadoria.
+    raise ValueError(
+        f"Experimento '{exp.key}' nao tem protocolo de anomalia registrado "
+        f"(nucleo: francisti, ibrahim, ahirwar)."
+    )
 _DISPATCH_RUNNERS: dict[str, Callable] = {
-    "executar_classificacao_supervisionada": executar_classificacao_supervisionada,
     "executar_anomalia": executar_anomalia,
 }

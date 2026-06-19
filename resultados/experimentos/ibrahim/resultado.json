@@ -6,7 +6,7 @@
   "tarefa": "anomalia",
   "evidence_level": "E1",
   "evidence_note": "E1 — benchmark exploratório (injeção sintética orientada pelo FMEA no espaço de features, com protocolo de decisão do próprio artigo); não é validação formal nem desempenho industrial.",
-  "data": "2026-06-19 00:11:58",
+  "data": "2026-06-19 07:52:10",
   "metrica_principal": "f1",
   "origem_dados": {
     "tipo": "dataset_local_paderborn_com_falhas_sinteticas",
