@@ -134,20 +134,33 @@ O módulo src/ml/experimentos_artigos.py permite ao Rodolfo
 rodar e comparar os modelos de ML dos artigos-base, por
 escolha dele — pela barra lateral (🧪 multiseleção + botão
 "Rodar selecionados" + quadro comparativo) ou pelo chat
-("rode o experimento do Ghoneim", "compare os experimentos
+("rode o experimento do Ibrahim", "compare os experimentos
 de anomalia"). Cada artigo é um experimento reproduzível;
 os resultados são salvos em resultados/experimentos/<key>/
 (resultado.json, relatorio.txt, comparacao.png).
 
-Experimentos registrados:
-- Ghoneim (2021) — PV Farms, classificação: Random Forest,
-  AdaBoost, Regressão Logística, Naive Bayes, CN2 (Orange)
-- Francisti (2025) — Paderborn, anomalia: Random Forest +
-  Z-score
+CURADORIA (foco do mestrado — só núcleo de anomalia CA por
+modelagem de NORMALIDADE, sem rótulos de falha): mantidos
+apenas os detectores não-supervisionados. Removidos da
+vitrine (registry) os experimentos e modelos que treinavam
+nos rótulos da injeção sintética (superestimam o desempenho
+real) ou que eram inadequados/degenerados:
+- CORTADO Ghoneim (2021) — classificação supervisionada CC
+  (PV Farms). Domínio CC, fora do foco CA. (A classificação
+  CC segue acessível pelo classificador_pv, não como
+  experimento.)
+- CORTADO Sharma (2026) — baselines supervisionados
+  (KNN/SVM/ANN), RNN/CNN (arquitetura inadequada a vetor de
+  features) e IForest+PPO (degenerou: recall 1.0 /
+  especificidade 0.0).
+- Francisti (2025) — mantido SÓ o Z-score (Shewhart/SPC,
+  não-supervisionado); o Random Forest supervisionado foi
+  removido.
+
+Experimentos registrados (núcleo CA):
+- Francisti (2025) — Paderborn, anomalia: Z-score (Shewhart 3σ)
 - Ibrahim (2022) — Paderborn, anomalia: Isolation Forest,
   AE-LSTM, Facebook Prophet
-- Sharma (2026) — Paderborn, anomalia: Isolation Forest +
-  PPO (RL); baselines RNN, ANN, CNN, KNN, SVM
 - Ahirwar (2025) — Paderborn, anomalia: híbrido AE-LSTM +
   Prophet + Isolation Forest (voto)
 - Stender (2020) — cartão de dataset (Paderborn), sem modelo
@@ -158,14 +171,13 @@ injeção sintética orientada pelo FMEA no espaço de features
 (famílias LCL/desbalanceamento/sensor, com detecção por
 falha) e a regra de decisão do próprio artigo — Shewhart 3σ
 (Francisti), contaminação a priori + p99 do treino + banda
-do Prophet (Ibrahim), PPO em validação temporal (Sharma),
-voto majoritário (Ahirwar). Nenhum limiar enxerga os rótulos
-do teste; F1 não é comparável entre protocolos (compare por
-AUC). O resultado.json carrega o bloco "metodologia".
-Degradação honesta: um modelo cujo pacote não está instalado
-é mostrado como "requer <lib>" em vez de sumir. Bibliotecas
-pesadas já instaladas: prophet, stable-baselines3, gymnasium,
-Orange3.
+do Prophet (Ibrahim), voto majoritário (Ahirwar). Nenhum
+limiar enxerga os rótulos do teste; F1 não é comparável entre
+protocolos (compare por AUC). O resultado.json carrega o
+bloco "metodologia". Degradação honesta: um modelo cujo
+pacote não está instalado é mostrado como "requer <lib>" em
+vez de sumir. Bibliotecas pesadas já instaladas: prophet,
+stable-baselines3, gymnasium, Orange3.
 
 ## Arquitetura do Sistema
 O projeto é um pacote Python modular. O ponto de

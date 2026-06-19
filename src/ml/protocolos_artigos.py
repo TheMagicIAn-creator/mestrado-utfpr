@@ -327,7 +327,12 @@ def protocolo_francisti(dados, progresso=None):
     Z-score com regra de Shewhart: alarme se QUALQUER feature sai da banda de
     ±3σ do comportamento saudável de treino (controle estatístico de processo
     por variável — limiar FIXO a priori, nunca ajustado no teste).
-    Random Forest supervisionado decide pela probabilidade nativa ≥ 0,5.
+
+    Mantém apenas o detector NÃO-supervisionado do artigo (SPC/Z-score). O
+    Random Forest supervisionado foi removido na curadoria do mestrado: por
+    treinar nos rótulos da injeção sintética, superestima o desempenho que se
+    obteria em operação real, onde NÃO há rótulos de falha (a tese é detecção
+    por modelagem de normalidade).
     """
     import numpy as np
 
@@ -346,30 +351,18 @@ def protocolo_francisti(dados, progresso=None):
         limiar=LIMIAR_SIGMA, tipos_te=tipos,
     )
 
-    if progresso:
-        progresso("Francisti: Random Forest (anomalia)...")
-    from sklearn.ensemble import RandomForestClassifier
-
-    rf = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
-    rf.fit(dados["X_tr_sup"], dados["y_tr_sup"])
-    score_rf = rf.predict_proba(X_te)[:, 1]
-    y_pred_rf = (score_rf >= 0.5).astype(int)
-    saida["Random Forest (anomalia)"] = _metricas(
-        y_te, score_rf, y_pred_rf,
-        threshold_source="probabilidade_nativa_0.5",
-        limiar=0.5, tipos_te=tipos,
-    )
-
     metodologia = {
-        "protocolo": "francisti2025_spc_rf",
+        "protocolo": "francisti2025_spc",
         "fonte": "Francisti et al. (2025)",
         "decisoes": {
             "Z-score (estatístico)": f"|z| > {LIMIAR_SIGMA}σ por variável "
                                      "(Shewhart, fixo a priori)",
-            "Random Forest (anomalia)": "probabilidade nativa ≥ 0,5",
         },
         "fidelidade": [
-            "Segue o artigo: controle estatístico Z-score + RF supervisionado.",
+            "Segue o artigo no detector estatístico (Z-score / SPC).",
+            "O Random Forest supervisionado do artigo foi removido: treina nos "
+            "rótulos da injeção sintética e superestima o desempenho real "
+            "(em operação não há rótulos de falha).",
             "Adaptação: alarme por variável (máx |z|) — prática padrão de SPC "
             "multivariável simples; o artigo não detalha a agregação.",
         ],
@@ -494,127 +487,6 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
 
 
 # ============================================================
-# PROTOCOLO — SHARMA et al. (2026)
-# ============================================================
-
-def protocolo_sharma(dados, progresso=None):
-    """
-    PPO ajusta a contaminação do Isolation Forest maximizando F1 em VALIDAÇÃO
-    temporal separada; o teste só é tocado com o parâmetro congelado.
-    Baselines com decisão nativa (0,5) — sem busca de limiar em lugar nenhum.
-    """
-    import numpy as np
-
-    from src.ml.experimentos_artigos import lib_disponivel
-
-    X_te, y_te = dados["X_te"], dados["y_te"]
-    tipos = dados["tipos_te"]
-    saida = {}
-
-    # — IF base (mesma regra a priori do Ibrahim, para comparação justa) —
-    if progresso:
-        progresso("Sharma: Isolation Forest base...")
-    from sklearn.ensemble import IsolationForest
-
-    iso = IsolationForest(n_estimators=200, random_state=42,
-                          contamination=CONTAMINACAO_A_PRIORI)
-    iso.fit(dados["Xn_tr"])
-    saida["Isolation Forest"] = _metricas(
-        y_te, -iso.decision_function(X_te),
-        (iso.predict(X_te) == -1).astype(int),
-        threshold_source=f"contaminacao_a_priori_{CONTAMINACAO_A_PRIORI}",
-        tipos_te=tipos,
-    )
-
-    # — supervisionados clássicos (decisão nativa 0,5) —
-    def _sup(nome, est, rotulo):
-        if progresso:
-            progresso(f"Sharma: {nome}...")
-        est.fit(dados["X_tr_sup"], dados["y_tr_sup"])
-        sc = est.predict_proba(X_te)[:, 1]
-        saida[rotulo] = _metricas(
-            y_te, sc, (sc >= 0.5).astype(int),
-            threshold_source="probabilidade_nativa_0.5",
-            limiar=0.5, tipos_te=tipos,
-        )
-
-    from sklearn.neighbors import KNeighborsClassifier
-    from sklearn.neural_network import MLPClassifier
-    from sklearn.svm import SVC
-
-    _sup("KNN", KNeighborsClassifier(n_neighbors=15), "KNN")
-    _sup("SVM", SVC(kernel="rbf", probability=True, random_state=42), "SVM")
-    _sup("ANN (MLP)", MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=500,
-                                    random_state=42), "ANN (MLP)")
-
-    if lib_disponivel("torch"):
-        from src.ml.modelos_anomalia import _score_cnn_torch, _score_rnn_torch
-
-        if progresso:
-            progresso("Sharma: RNN...")
-        sc = _score_rnn_torch(dados)
-        saida["RNN"] = _metricas(
-            y_te, sc, (sc >= 0.5).astype(int),
-            threshold_source="probabilidade_nativa_0.5", limiar=0.5,
-            tipos_te=tipos)
-        if progresso:
-            progresso("Sharma: CNN...")
-        sc = _score_cnn_torch(dados)
-        saida["CNN"] = _metricas(
-            y_te, sc, (sc >= 0.5).astype(int),
-            threshold_source="probabilidade_nativa_0.5", limiar=0.5,
-            tipos_te=tipos)
-    else:
-        saida["RNN"] = _indisponivel("requer torch")
-        saida["CNN"] = _indisponivel("requer torch")
-
-    # — IF + PPO: ajuste em validação temporal, teste congelado —
-    if lib_disponivel("stable_baselines3") and "X_val" in dados:
-        if progresso:
-            progresso("Sharma: PPO ajustando contaminação em validação...")
-        from src.ml.modelos_anomalia import _ppo_buscar_contaminacao
-
-        melhor_cont = _ppo_buscar_contaminacao(
-            dados["Xn_tr"], dados["X_val"], dados["y_val"], metrica="f1")
-        iso_ppo = IsolationForest(n_estimators=200, random_state=42,
-                                  contamination=melhor_cont)
-        iso_ppo.fit(dados["Xn_tr"])
-        m = _metricas(
-            y_te, -iso_ppo.decision_function(X_te),
-            (iso_ppo.predict(X_te) == -1).astype(int),
-            threshold_source="ppo_otimizado_em_validacao_temporal",
-            limiar=float(melhor_cont), tipos_te=tipos,
-        )
-        m["contaminacao_ppo"] = float(melhor_cont)
-        saida["Isolation Forest + PPO"] = m
-    elif "X_val" not in dados:
-        saida["Isolation Forest + PPO"] = _indisponivel(
-            "protocolo exige validação temporal (com_validacao=True)")
-    else:
-        saida["Isolation Forest + PPO"] = _indisponivel("requer stable_baselines3")
-
-    metodologia = {
-        "protocolo": "sharma2026_rl_self_tuning",
-        "fonte": "Sharma et al. (2026)",
-        "decisoes": {
-            "Isolation Forest + PPO": "contaminação otimizada por PPO em "
-                                      "VALIDAÇÃO temporal (F1); teste com "
-                                      "parâmetro congelado",
-            "baselines": "probabilidade nativa ≥ 0,5 (KNN/SVM/ANN/RNN/CNN); "
-                         "IF base com contaminação a priori",
-        },
-        "fidelidade": [
-            "Segue o artigo: IF auto-ajustável por RL contra baselines.",
-            "Adaptação: ambiente PPO de 1 passo (bandit) — o ajuste é de um "
-            "hiperparâmetro contínuo, não um MDP sequencial; documentado.",
-            "Split 60/20/20 temporal com purga: o teste nunca participa do "
-            "ajuste.",
-        ],
-    }
-    return saida, metodologia
-
-
-# ============================================================
 # PROTOCOLO — AHIRWAR & NANDANWAR (2025)
 # ============================================================
 
@@ -698,7 +570,6 @@ def protocolo_ahirwar(dados, progresso=None):
 PROTOCOLOS = {
     "francisti": (protocolo_francisti, False),
     "ibrahim": (protocolo_ibrahim, False),
-    "sharma": (protocolo_sharma, True),
     "ahirwar": (protocolo_ahirwar, False),
 }
 

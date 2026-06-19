@@ -226,26 +226,6 @@ class ExperimentoArtigo:
 # ============================================================
 
 REGISTRO: dict[str, ExperimentoArtigo] = {
-    "ghoneim": ExperimentoArtigo(
-        key="ghoneim",
-        artigo="Fault Detection Algorithms for Service Continuity in PV Farms",
-        referencia="Ghoneim, Rashed & Elkalashy (2021)",
-        ano=2021,
-        dataset="PV Farms",
-        tarefa="classificacao",
-        descricao=(
-            "Classificação supervisionada de falhas CC (Normal, F1 string, "
-            "F2 string-terra, F3 string-string) no dataset rotulado PV Farms."
-        ),
-        modelos=(
-            ModeloSpec("Random Forest", "arvore"),
-            ModeloSpec("AdaBoost", "arvore"),
-            ModeloSpec("Regressão Logística", "linear"),
-            ModeloSpec("Naive Bayes", "bayes"),
-            ModeloSpec("CN2 (indução de regras)", "regras", requer="Orange"),
-        ),
-        runner="executar_classificacao_supervisionada",
-    ),
     "francisti": ExperimentoArtigo(
         key="francisti",
         artigo="Predictive Modeling and Anomaly Detection in Solar PV Inverters",
@@ -260,7 +240,6 @@ REGISTRO: dict[str, ExperimentoArtigo] = {
         ),
         modelos=(
             ModeloSpec("Z-score (estatístico)", "anomalia"),
-            ModeloSpec("Random Forest (anomalia)", "arvore"),
         ),
         runner="executar_anomalia",
     ),
@@ -279,28 +258,6 @@ REGISTRO: dict[str, ExperimentoArtigo] = {
             ModeloSpec("Isolation Forest", "anomalia"),
             ModeloSpec("AE-LSTM", "rede", requer="torch"),
             ModeloSpec("Facebook Prophet", "anomalia", requer="prophet"),
-        ),
-        runner="executar_anomalia",
-    ),
-    "sharma": ExperimentoArtigo(
-        key="sharma",
-        artigo="Self-Tuning RL-Driven Isolation Forest for Anomaly Detection",
-        referencia="Sharma et al. (2026)",
-        ano=2026,
-        dataset="Paderborn",
-        tarefa="anomalia",
-        descricao=(
-            "Isolation Forest auto-ajustável por RL (PPO) frente a baselines "
-            "RNN, ANN, CNN, KNN e SVM, na detecção de anomalia do inversor."
-        ),
-        modelos=(
-            ModeloSpec("Isolation Forest", "anomalia"),
-            ModeloSpec("KNN", "vizinhanca"),
-            ModeloSpec("SVM", "kernel"),
-            ModeloSpec("ANN (MLP)", "rede"),
-            ModeloSpec("RNN", "rede", requer="torch"),
-            ModeloSpec("CNN", "rede", requer="torch"),
-            ModeloSpec("Isolation Forest + PPO", "rl", requer="stable_baselines3"),
         ),
         runner="executar_anomalia",
     ),

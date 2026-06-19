@@ -312,10 +312,8 @@ def _quer_catalogo(pergunta: str) -> bool:
 # --- Experimentos de ML por artigo-base ------------------------------------
 # Sobrenome citado -> chave do experimento no registry.
 _AUTORES_EXP = {
-    "ghoneim": "ghoneim",
     "francisti": "francisti",
     "ibrahim": "ibrahim",
-    "sharma": "sharma",
     "ahirwar": "ahirwar",
     "stender": "stender",
 }
@@ -337,11 +335,9 @@ def _experimentos_alvo(pergunta: str) -> list[str]:
     if alvos:
         return alvos
     if any(t in txt for t in ("anomalia", "anomalias", "anomaly", "anomalies", "anomalie", "anomalies")):
-        return ["francisti", "ibrahim", "sharma", "ahirwar"]
-    if any(t in txt for t in ("classificacao", "supervision", "classification", "clasificacion", "classification")):
-        return ["ghoneim"]
+        return ["francisti", "ibrahim", "ahirwar"]
     if any(t in txt for t in ("todos", "tudo", "compare", "comparar", "todas", "all", "todos", "todas", "tous", "toutes")):
-        return ["ghoneim", "francisti", "ibrahim", "sharma", "ahirwar"]
+        return ["francisti", "ibrahim", "ahirwar"]
     return []
 
 

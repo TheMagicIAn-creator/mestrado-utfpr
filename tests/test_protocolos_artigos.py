@@ -139,10 +139,10 @@ def test_protocolo_francisti_limiar_fixo_sem_oraculo(features_fake):
     assert "deteccao_por_falha" in z
     assert z["auc"] > 0.5  # injeção FMEA é detectável acima do acaso
 
-    rf = saida["Random Forest (anomalia)"]
-    assert rf["threshold_source"] == "probabilidade_nativa_0.5"
-
-    assert met["protocolo"] == "francisti2025_spc_rf"
+    # Curadoria (só núcleo CA): o RF supervisionado foi removido — francisti é
+    # agora um detector NÃO-supervisionado puro (SPC/Z-score).
+    assert "Random Forest (anomalia)" not in saida
+    assert met["protocolo"] == "francisti2025_spc"
     assert "fidelidade" in met
 
 
