@@ -6,7 +6,7 @@
   "tarefa": "anomalia",
   "evidence_level": "E1",
   "evidence_note": "E1 — benchmark exploratório (injeção sintética orientada pelo FMEA no espaço de features, com protocolo de decisão do próprio artigo); não é validação formal nem desempenho industrial.",
-  "data": "2026-06-18 23:42:58",
+  "data": "2026-06-19 00:11:41",
   "metrica_principal": "f1",
   "origem_dados": {
     "tipo": "dataset_local_paderborn_com_falhas_sinteticas",
@@ -54,6 +54,10 @@
       "anomalias_detectadas": 58,
       "anomalias_reais": 182,
       "taxa_anomalias_detectadas": 0.15934065934065933,
+      "prevalencia_raro": 0.05,
+      "fpr_operacao": 0.1043956043956044,
+      "precision_raro": 0.0975,
+      "f1_raro": 0.13402061855670103,
       "deteccao_por_falha": {
         "lcl": 0.34146341463414637,
         "desbalanceamento": 0.0847457627118644,

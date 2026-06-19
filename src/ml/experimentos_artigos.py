@@ -1267,14 +1267,36 @@ def _metricas_anomalia(y_true, score, y_pred=None,
     metricas = _metricas_classificacao(y_true_arr, y_pred, y_score=score)
     if metricas.get("matriz_confusao") and len(metricas["matriz_confusao"]) == 2:
         metricas["classes"] = ["Normal", "Anomalia"]
+
+    # Regime RARO: precision/F1 reprojetados p/ a prevalência realista de falha
+    # CA (eventos raros). O teste é ~50/50 para estimar TPR/FPR; precision/F1 a
+    # 50% inflam. Regra de Bayes no ponto de operação: AUC/recall/specificity
+    # NÃO mudam; precision/F1 sim. Revela o custo de FPR>0 em operação real.
+    y_pred_arr = np.asarray(y_pred).astype(int)
+    tp = int(np.sum((y_true_arr == 1) & (y_pred_arr == 1)))
+    fn = int(np.sum((y_true_arr == 1) & (y_pred_arr == 0)))
+    fp = int(np.sum((y_true_arr == 0) & (y_pred_arr == 1)))
+    tn = int(np.sum((y_true_arr == 0) & (y_pred_arr == 0)))
+    tpr_op = tp / (tp + fn) if (tp + fn) else 0.0
+    fpr_op = fp / (fp + tn) if (fp + tn) else 0.0
+    pi = 0.05
+    denom = pi * tpr_op + (1.0 - pi) * fpr_op
+    prec_raro = (pi * tpr_op / denom) if denom > 0 else 0.0
+    f1_raro = (2 * prec_raro * tpr_op / (prec_raro + tpr_op)
+               if (prec_raro + tpr_op) > 0 else 0.0)
+
     metricas.update({
         "limiar_score": thr,
         "ponto_operacao": ponto,
         "threshold_source": threshold_source,
         "metrica_dependente_de_limiar": dependencia,
-        "anomalias_detectadas": int(np.sum(y_pred == 1)),
+        "anomalias_detectadas": int(np.sum(y_pred_arr == 1)),
         "anomalias_reais": int(np.sum(y_true_arr == 1)),
-        "taxa_anomalias_detectadas": float(np.mean(y_pred == 1)),
+        "taxa_anomalias_detectadas": float(np.mean(y_pred_arr == 1)),
+        "prevalencia_raro": pi,
+        "fpr_operacao": float(fpr_op),
+        "precision_raro": float(prec_raro),
+        "f1_raro": float(f1_raro),
     })
     return metricas
 

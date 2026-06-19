@@ -102,6 +102,12 @@ SEVS_VALIDACAO = [0.30, 0.50, 1.00]
 N_JANELAS_SAUDAVEL = 50
 N_JANELAS_FALHA    = 50
 
+# Prevalência REALISTA de falha em operação (falhas CA são eventos raros).
+# O teste é balanceado (50/50) para estimar TPR/FPR de forma estável, mas
+# precision/F1 a 50% NÃO refletem o campo. Reportamos também precision/F1 na
+# prevalência rara abaixo — recall (TPR), specificity e AUC independem dela.
+PREVALENCIA_RARA = 0.05
+
 
 # ============================================================
 # COLETA DE ERROS (saudável e falhas)
@@ -173,6 +179,19 @@ def metricas_no_limiar(erros_neg: np.ndarray,
 
     cm = confusion_matrix(y_true, y_pred)
 
+    # — Ponto de operação (limiar congelado): TPR/FPR independem da prevalência —
+    tpr_op = float((erros_pos > limiar).mean())   # = recall
+    fpr_op = float((erros_neg > limiar).mean())   # = 1 - specificity
+
+    # — Precision/F1 reprojetados para a prevalência RARA (operação real) —
+    # Bayes no ponto de operação: prec = π·TPR / (π·TPR + (1−π)·FPR).
+    # AUC e recall NÃO mudam; só precision/F1 (que dependem da base rate).
+    pi = PREVALENCIA_RARA
+    denom = pi * tpr_op + (1.0 - pi) * fpr_op
+    precision_raro = float(pi * tpr_op / denom) if denom > 0 else 0.0
+    f1_raro = (float(2 * precision_raro * tpr_op / (precision_raro + tpr_op))
+               if (precision_raro + tpr_op) > 0 else 0.0)
+
     return {
         "precision"  : float(precision_score(y_true, y_pred, zero_division=0)),
         "recall"     : float(recall_score(y_true, y_pred, zero_division=0)),
@@ -180,6 +199,12 @@ def metricas_no_limiar(erros_neg: np.ndarray,
         "accuracy"   : float(accuracy_score(y_true, y_pred)),
         "auc_roc"    : float(roc_auc),
         "auc_pr"     : float(pr_auc),
+        # Regime raro (prevalência realista de falha CA) — precision/F1 honestos:
+        "prevalencia_raro" : pi,
+        "tpr_op"           : tpr_op,
+        "fpr_op"           : fpr_op,
+        "precision_raro"   : precision_raro,
+        "f1_raro"          : f1_raro,
         "confusion"  : cm.tolist(),
         "fpr"        : fpr.tolist(),
         "tpr"        : tpr.tolist(),
@@ -446,6 +471,9 @@ def executar_validacao() -> bool:
                 "precision": res["precision"],
                 "accuracy" : res["accuracy"],
                 "auc_pr"   : res["auc_pr"],
+                # regime raro (prevalência realista)
+                "precision_raro": res["precision_raro"],
+                "f1_raro"       : res["f1_raro"],
             })
 
     # ── 5. Visualizações ─────────────────────────────────────
@@ -475,6 +503,16 @@ def executar_validacao() -> bool:
             "threshold_method": info_limiar.get("threshold_method", "p99"),
             "threshold_source": "congelado_do_limiar_json",
             "limiar_operacional": float(limiar),
+            "prevalencia_teste": 0.5,
+            "prevalencia_raro": PREVALENCIA_RARA,
+            "nota_regime_raro": (
+                "O teste é balanceado (50% falha) para estimar TPR/FPR com "
+                "estabilidade, mas falhas CA são RARAS em operação. Por isso "
+                "reportamos também precision_raro/f1_raro reprojetados para "
+                f"prevalência de {PREVALENCIA_RARA:.0%} (regra de Bayes no ponto "
+                "de operação). AUC, recall (TPR) e specificity independem da "
+                "prevalência; só precision/F1 mudam."
+            ),
         },
     }
     for chave, res in resultados.items():
@@ -489,13 +527,15 @@ def executar_validacao() -> bool:
     # ── 7. Resumo final ──────────────────────────────────────
     _log(f"\n{'='*60}")
     _log(f"  VALIDAÇÃO CONCLUÍDA!")
-    _log(f"\n  {'Falha':<30} {'Sev':>5} {'F1':>7} {'AUC':>7} {'Recall':>8}")
-    _log(f"  {'-'*60}")
+    _log(f"\n  {'Falha':<30} {'Sev':>5} {'AUC':>7} {'Recall':>8} "
+          f"{'F1@50%':>8} {'F1@5%':>8}")
+    _log(f"  {'-'*72}")
     for row in linhas_tabela:
-        npm_str = f"NPR={row['npr']}" if row["npr"] else "  D=10"
         _log(f"  {row['falha']:<30} {row['severidade']:>5.2f} "
-              f"{row['f1']:>7.3f} {row['auc_roc']:>7.3f} "
-              f"{row['recall']:>8.3f}")
+              f"{row['auc_roc']:>7.3f} {row['recall']:>8.3f} "
+              f"{row['f1']:>8.3f} {row['f1_raro']:>8.3f}")
+    _log("\n  AUC/Recall independem da prevalência; F1@50% é o teste balanceado "
+         f"e F1@{PREVALENCIA_RARA:.0%} reflete a raridade real das falhas CA.")
 
     # Melhor AUC geral
     melhor = max(linhas_tabela, key=lambda x: x["auc_roc"])

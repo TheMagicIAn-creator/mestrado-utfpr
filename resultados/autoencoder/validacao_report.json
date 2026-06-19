@@ -4,7 +4,10 @@
     "evidence_note": "Validação sintética orientada pelo FMEA: classe negativa = janelas saudáveis; classe positiva = falhas injetadas (ground truth). Limiar CONGELADO, carregado de limiar.json — NÃO otimizado no teste. Não é prova de desempenho industrial (E3).",
     "threshold_method": "p99",
     "threshold_source": "congelado_do_limiar_json",
-    "limiar_operacional": 2.0784525871276855
+    "limiar_operacional": 2.0784525871276855,
+    "prevalencia_teste": 0.5,
+    "prevalencia_raro": 0.05,
+    "nota_regime_raro": "O teste é balanceado (50% falha) para estimar TPR/FPR com estabilidade, mas falhas CA são RARAS em operação. Por isso reportamos também precision_raro/f1_raro reprojetados para prevalência de 5% (regra de Bayes no ponto de operação). AUC, recall (TPR) e specificity independem da prevalência; só precision/F1 mudam."
   },
   "lcl_sev0.3": {
     "precision": 0.0,
@@ -13,6 +16,11 @@
     "accuracy": 0.5,
     "auc_roc": 0.6716,
     "auc_pr": 0.6606409798072996,
+    "prevalencia_raro": 0.05,
+    "tpr_op": 0.0,
+    "fpr_op": 0.0,
+    "precision_raro": 0.0,
+    "f1_raro": 0.0,
     "confusion": [
       [
         50,
@@ -325,6 +333,11 @@
     "accuracy": 0.57,
     "auc_roc": 0.7976000000000001,
     "auc_pr": 0.8132640853019593,
+    "prevalencia_raro": 0.05,
+    "tpr_op": 0.14,
+    "fpr_op": 0.0,
+    "precision_raro": 1.0,
+    "f1_raro": 0.24561403508771928,
     "confusion": [
       [
         50,
@@ -631,6 +644,11 @@
     "accuracy": 0.74,
     "auc_roc": 0.9428,
     "auc_pr": 0.9358017748218823,
+    "prevalencia_raro": 0.05,
+    "tpr_op": 0.48,
+    "fpr_op": 0.0,
+    "precision_raro": 1.0,
+    "f1_raro": 0.6486486486486487,
     "confusion": [
       [
         50,
@@ -893,6 +911,11 @@
     "accuracy": 0.5,
     "auc_roc": 0.6256,
     "auc_pr": 0.555753501722826,
+    "prevalencia_raro": 0.05,
+    "tpr_op": 0.0,
+    "fpr_op": 0.0,
+    "precision_raro": 0.0,
+    "f1_raro": 0.0,
     "confusion": [
       [
         50,
@@ -1207,6 +1230,11 @@
     "accuracy": 0.5,
     "auc_roc": 0.7956,
     "auc_pr": 0.6697113280218542,
+    "prevalencia_raro": 0.05,
+    "tpr_op": 0.0,
+    "fpr_op": 0.0,
+    "precision_raro": 0.0,
+    "f1_raro": 0.0,
     "confusion": [
       [
         50,
@@ -1485,6 +1513,11 @@
     "accuracy": 0.51,
     "auc_roc": 0.9368,
     "auc_pr": 0.8673983683288916,
+    "prevalencia_raro": 0.05,
+    "tpr_op": 0.02,
+    "fpr_op": 0.0,
+    "precision_raro": 1.0,
+    "f1_raro": 0.0392156862745098,
     "confusion": [
       [
         50,
@@ -1741,6 +1774,11 @@
     "accuracy": 0.56,
     "auc_roc": 0.9508000000000001,
     "auc_pr": 0.9219971373305187,
+    "prevalencia_raro": 0.05,
+    "tpr_op": 0.12,
+    "fpr_op": 0.0,
+    "precision_raro": 1.0,
+    "f1_raro": 0.21428571428571425,
     "confusion": [
       [
         50,
@@ -1991,6 +2029,11 @@
     "accuracy": 0.77,
     "auc_roc": 0.9843999999999999,
     "auc_pr": 0.9816004091383995,
+    "prevalencia_raro": 0.05,
+    "tpr_op": 0.54,
+    "fpr_op": 0.0,
+    "precision_raro": 1.0,
+    "f1_raro": 0.7012987012987013,
     "confusion": [
       [
         50,
@@ -2237,6 +2280,11 @@
     "accuracy": 1.0,
     "auc_roc": 1.0,
     "auc_pr": 1.0,
+    "prevalencia_raro": 0.05,
+    "tpr_op": 1.0,
+    "fpr_op": 0.0,
+    "precision_raro": 1.0,
+    "f1_raro": 1.0,
     "confusion": [
       [
         50,

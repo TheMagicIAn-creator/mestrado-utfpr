@@ -228,6 +228,30 @@ def test_metricas_anomalia_caminhos():
     assert m3["ponto_operacao"] == "protocolo_do_artigo"
 
 
+def test_metricas_regime_raro_colapsa_precision_com_fpr():
+    """Regime raro (prevalência 5%): precisão cai quando há FPR>0; e o recall
+    (TPR) e a marcação independem da prevalência. Detector com FPR=0 mantém
+    precisão alta a qualquer prevalência."""
+    from src.ml.experimentos_artigos import _metricas_anomalia
+
+    # 10 normais, 10 anomalias; y_pred com 8 TP, 2 FN, 3 FP, 7 TN -> FPR=0.3
+    y = [1]*10 + [0]*10
+    yp = [1]*8 + [0]*2 + [1]*3 + [0]*7
+    s = [0.9]*10 + [0.1]*10
+    m = _metricas_anomalia(y, s, y_pred=yp, threshold_source="x", limiar=0.5)
+    assert m["prevalencia_raro"] == 0.05
+    assert m["fpr_operacao"] == pytest.approx(0.3)
+    # a 50% precision ~ 8/11=0.73; a 5% deve ser MUITO menor (FPR alto)
+    assert m["precision_raro"] < m["precision"]
+    assert m["precision_raro"] < 0.2
+
+    # FPR=0 -> precision_raro permanece 1.0 (independe da prevalência)
+    yp0 = [1]*8 + [0]*2 + [0]*10  # 0 FP
+    m0 = _metricas_anomalia(y, s, y_pred=yp0, threshold_source="x", limiar=0.5)
+    assert m0["fpr_operacao"] == pytest.approx(0.0)
+    assert m0["precision_raro"] == pytest.approx(1.0)
+
+
 # ── voto majoritário do Ahirwar ──────────────────────────────────────────────
 
 def test_ahirwar_voto_majoritario(features_fake, monkeypatch):

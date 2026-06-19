@@ -6,7 +6,7 @@
   "tarefa": "anomalia",
   "evidence_level": "E1",
   "evidence_note": "E1 — benchmark exploratório (injeção sintética orientada pelo FMEA no espaço de features, com protocolo de decisão do próprio artigo); não é validação formal nem desempenho industrial.",
-  "data": "2026-06-18 23:43:05",
+  "data": "2026-06-19 00:11:58",
   "metrica_principal": "f1",
   "origem_dados": {
     "tipo": "dataset_local_paderborn_com_falhas_sinteticas",
@@ -54,6 +54,10 @@
       "anomalias_detectadas": 27,
       "anomalias_reais": 182,
       "taxa_anomalias_detectadas": 0.07417582417582418,
+      "prevalencia_raro": 0.05,
+      "fpr_operacao": 0.06593406593406594,
+      "precision_raro": 0.0617283950617284,
+      "f1_raro": 0.07058823529411765,
       "deteccao_por_falha": {
         "lcl": 0.10975609756097561,
         "desbalanceamento": 0.05084745762711865,
@@ -103,6 +107,10 @@
       "anomalias_detectadas": 11,
       "anomalias_reais": 182,
       "taxa_anomalias_detectadas": 0.03021978021978022,
+      "prevalencia_raro": 0.05,
+      "fpr_operacao": 0.027472527472527472,
+      "precision_raro": 0.05940594059405942,
+      "f1_raro": 0.04240282685512367,
       "deteccao_por_falha": {
         "lcl": 0.024390243902439025,
         "desbalanceamento": 0.03389830508474576,
@@ -152,6 +160,10 @@
       "anomalias_detectadas": 6,
       "anomalias_reais": 182,
       "taxa_anomalias_detectadas": 0.016483516483516484,
+      "prevalencia_raro": 0.05,
+      "fpr_operacao": 0.01098901098901099,
+      "precision_raro": 0.09523809523809525,
+      "f1_raro": 0.03571428571428572,
       "deteccao_por_falha": {
         "lcl": 0.024390243902439025,
         "desbalanceamento": 0.0,

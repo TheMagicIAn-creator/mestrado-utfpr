@@ -496,6 +496,20 @@ def executar_rul_weibull() -> bool:
     # ── 6. Salva resultados ──────────────────────────────────
     arq_json = PASTA_AE / "weibull_results.json"
     relatorio = {
+        "__meta__": {
+            "evidence_level": "E2",
+            "evidence_note": (
+                "RUL ILUSTRATIVO — duplamente sintético: (1) os TTF vêm de "
+                "trajetórias de degradação SIMULADAS cruzando o limiar do "
+                "Autoencoder, não de dados run-to-failure reais; (2) a própria "
+                "falha que define o cruzamento é injeção sintética orientada "
+                "pelo FMEA. Demonstra a METODOLOGIA (TTF→Weibull→MTTF/B10/RUL), "
+                "NÃO é estimativa de vida útil de campo (exigiria histórico real "
+                "de falhas). Verificar a adequação do ajuste pelo teste KS abaixo."
+            ),
+            "ttf_origem": "trajetorias_simuladas_cruzando_limiar_AE",
+            "ks_alpha": 0.05,
+        },
         "parametros_simulacao": {
             "n_trajetorias": N_TRAJ,
             "n_steps"      : N_STEPS,
@@ -505,10 +519,18 @@ def executar_rul_weibull() -> bool:
     }
     for falha in FALHAS:
         fid = falha["id"]
+        ks_p = params[fid].get("ks_pval")
+        ajuste_ok = bool(ks_p is not None and ks_p > 0.05)
         relatorio["falhas"][fid] = {
             "nome"  : falha["nome"],
             "npr"   : falha["npr"],
             "weibull": params[fid],
+            "ajuste_weibull_adequado": ajuste_ok,
+            "ressalva_ajuste": (
+                "" if ajuste_ok else
+                "KS rejeita Weibull (p<=0,05): os TTF simulados não seguem bem "
+                "uma Weibull; MTTF/B10 são indicativos, não conclusivos."
+            ),
             "ttfs"  : ttfs_dict[fid].tolist(),
         }
     with open(arq_json, "w", encoding="utf-8") as f:
