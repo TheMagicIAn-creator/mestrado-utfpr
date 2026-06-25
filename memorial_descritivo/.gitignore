@@ -1,0 +1,6 @@
+# marca d'água é derivada automaticamente da logo a cada execução
+assets/marca_dagua.png
+# perfil temporário do LibreOffice (se usado)
+saida/.lo_profile/
+__pycache__/
+*.pyc

@@ -1,0 +1,4 @@
+# Dependências do gerador de memorial descritivo elétrico
+python-docx>=1.1     # geração do .docx
+reportlab>=4.0       # geração do .pdf (sem precisar de Word/LibreOffice)
+Pillow>=10.0         # logo de exemplo e marca d'água
