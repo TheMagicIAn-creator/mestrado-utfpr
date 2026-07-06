@@ -514,22 +514,45 @@ def _resumo_weibull() -> str | None:
 
     linhas = [
         "## RUL / Weibull\n\n",
-        "| Falha | NPR | beta | eta | MTTF | B10 | Interpretação |\n",
-        "|---|---:|---:|---:|---:|---:|---|\n",
+        "| Falha | NPR | beta | eta | MTTF | B10 | Ajuste (KS) | Interpretação |\n",
+        "|---|---:|---:|---:|---:|---:|---|---|\n",
     ]
+    ressalvas = []
     for fid, falha in d.get("falhas", {}).items():
         p = falha.get("weibull", {})
         beta = p.get("beta")
         taxa = "desgaste progressivo" if isinstance(beta, (int, float)) and beta > 1 else "falha aleatória/infantil"
+        adequado = falha.get("ajuste_weibull_adequado")
+        if adequado is None:
+            ks_txt = "n/d"
+        elif adequado:
+            ks_txt = "✅ adequado"
+        else:
+            ks_p = p.get("ks_pval")
+            p_txt = (
+                "p<0.0001" if isinstance(ks_p, (int, float)) and ks_p < 0.0001
+                else f"p={_fmt(ks_p, 4)}"
+            )
+            ks_txt = f"⚠️ rejeitado ({p_txt})"
+            ressalvas.append(
+                f"- **{falha.get('nome', fid)}**: "
+                f"{falha.get('ressalva_ajuste') or 'KS rejeita o ajuste Weibull.'}"
+            )
         linhas.append(
             f"| {falha.get('nome', fid)} | {falha.get('npr') or 'D=10'} | "
             f"{_fmt(beta)} | {_fmt(p.get('eta'), 1)} | {_fmt(p.get('mttf'), 1)} | "
-            f"{_fmt(p.get('b10'), 1)} | {taxa} |\n"
+            f"{_fmt(p.get('b10'), 1)} | {ks_txt} | {taxa} |\n"
         )
     linhas.append(
         "\nLeitura rápida: beta > 1 sustenta a hipótese de degradação progressiva, "
         "coerente com manutenção preditiva."
     )
+    if ressalvas:
+        linhas.append(
+            "\n\n⚠️ **Ressalva estatística**: o teste KS rejeita o ajuste Weibull "
+            "nas falhas abaixo — MTTF/B10 são indicativos, não conclusivos:\n"
+            + "\n".join(ressalvas)
+        )
     return "".join(linhas)
 
 

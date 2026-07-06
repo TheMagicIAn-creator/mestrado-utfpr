@@ -120,7 +120,9 @@ FMEA fornece ground truth para validação.
 Em uso:
 - Random Forest, XGBoost, LightGBM, Gradient Boosting,
   SVM — classificação supervisionada de falhas PV
-  (Random Forest é o melhor até agora: F1 0,87)
+  (melhor modelo e métricas vigentes: consultar sempre
+   resultados/classificacao_pv/metricas.json — nunca
+   citar valor fixado neste arquivo)
 
 Planejados para detecção de anomalias no lado CA:
 - Autoencoder (modelagem de normalidade — principal)
@@ -226,60 +228,87 @@ mestrado-utfpr/
 └── .env.example              → modelo público das variáveis
 
 ## O Orquestrador
-Ao abrir o app.py, o orquestrador verifica o estado e
-executa apenas o que está pendente:
+Ao abrir o app.py, o orquestrador (orquestrador.py)
+executa automaticamente APENAS:
 
 - Sinal REPROCESSAR na raiz → reprocessa toda a literatura
-  (renomeia arquivos, extrai tabelas, reindexa ChromaDB)
+  (renomeia arquivos, reindexa ChromaDB; extração de
+  tabelas só se EXTRAIR_TABELAS_LITERATURA=1)
 - PDFs novos em novos_pdfs/ → indexa automaticamente
-- Acúmulo de sessões → consolida memória
-- Arquivos com "autor-desconhecido" no nome → corrige
-  metadados via LLM e reindexa automaticamente
-- Metadados pendentes → notifica discretamente no app
-- EDA pendente → gera análise exploratória
-- Classificação pendente → treina e avalia modelos
+
+Automação que roda FORA do orquestrador:
+- Consolidação de memória → agendada pelo watcher.py
+  (iniciado em background pelo app; gatilhos: sexta-feira,
+  sessão longa ou dias de acúmulo)
+
+Ações MANUAIS (não são automáticas):
+- Corrigir metadados "autor-desconhecido" → botão
+  "Corrigir metadados ruins" (Manutenção avançada no app)
+- EDA e treino do classificador PV → sob demanda,
+  pelas ferramentas do chat
+
+Limitação conhecida: metadados_pendentes.json é gravado
+pelo processador_pdf.py, mas ainda NÃO é lido/exibido em
+nenhuma tela do app (a notificação está pendente de
+implementação).
 
 Para reprocessar toda a literatura manualmente:
   New-Item REPROCESSAR -ItemType File
   (abrir o app → orquestrador detecta e executa)
 
 ## Pipeline RAG — 3 Camadas
-Quando Rodolfo faz uma pergunta, o sistema executa:
+Quando Rodolfo faz uma pergunta, o sistema executa.
+IMPORTANTE: as camadas 1 e 3 são heurísticas LOCAIS
+(sem chamada de LLM) para não consumir TPM antes da
+resposta; o LLM só é invocado na resposta final.
 
-CAMADA 1 — Expansão de query (Groq LLaMA 3.3 70B)
-  Gera 6 variações da pergunta cobrindo:
-  → Reformulação em português técnico formal
-  → Reformulação em inglês técnico (obrigatório)
-  → Versão com siglas expandidas (NPR → Número de...)
-  → Versão com siglas contraídas (Failure Mode → FMEA)
-  → Versão focada em dados quantitativos se aplicável
-  → Versão com sinônimos do domínio
-  Extrai 8 termos-chave em português E inglês
+CAMADA 1 — Expansão de query (local, por regras)
+  Gera variações da pergunta por gatilhos de domínio
+  (FMEA, NPR, inversor, anomalia etc.), cobrindo
+  reformulações PT/EN, siglas expandidas/contraídas e
+  sinônimos técnicos. Extrai termos de busca de um mapa
+  de sinônimos do domínio (até 12; até 30 em modo
+  revisão bibliográfica).
 
 CAMADA 2 — Busca híbrida
   → Busca semântica: embeddings para cada variação
   → Busca keyword: ChromaDB where_document para cada termo
-  → Pool deduplicado de ~150 candidatos
+  → Pool deduplicado de candidatos
 
-CAMADA 3 — Reranking (Groq LLaMA 3.1 8B)
-  → Avalia cada candidato com janela início+fim do chunk
-  → Seleciona os 25 mais relevantes para o contexto
-  → Garante que tabelas numéricas cheguem ao LLM principal
+CAMADA 3 — Reranking (local, heurístico)
+  → Pontua por sobreposição lexical com a pergunta
+  → Ajusta por pasta temática (PV/ML/manutenção com
+    boost; textbooks fora de domínio penalizados)
+  → Diversifica o top-K com teto de chunks por fonte
+  → Nº final de chunks segue o orçamento do provedor
+    (Groq 10 / Gemini 16 na pergunta normal; 16–28 em
+    modo revisão) — ver ORCAMENTOS_RAG em agente.py
+
+Nota: o perfil injetado no prompt do LLM é o
+PERFIL_COMPACTO hardcoded em agente.py (este CLAUDE.md
+excede o limite de 6000 chars e não entra no prompt).
 
 Sempre citar: autor, título e ano do artigo consultado.
 Nunca inventar referências.
 
-## Indexação Inteligente
-Cada PDF é indexado com 3 tipos de chunks:
-1. Texto corrido: chunks de 500 chars com sobreposição
-2. Seções semânticas: detecta títulos e agrupa por seção
-3. Tabelas estruturadas: pdfplumber extrai tabelas como
+## Indexação
+Cada PDF de literatura é indexado com:
+1. Texto corrido: chunks de ~1800 chars com sobreposição
+   de 200 (TAMANHO_CHUNK_LITERATURA / SOBREPOSICAO_
+   LITERATURA; 500 era o valor antigo, abandonado por
+   granularidade excessiva)
+2. Tabelas estruturadas: pdfplumber extrai tabelas como
    Markdown — preserva valores numéricos (NPR, THD, etc.)
-4. Chunks de página combinada: une tabelas relacionadas
-   da mesma página — preserva contexto entre tabelas
+   OPCIONAL: só roda com EXTRAIR_TABELAS_LITERATURA=1
+   (desligado por padrão)
+Sessões e memórias usam chunks menores (500/50).
 
-Extração de metadados em cascata:
-  LLM (Groq) → regex → metadados internos → pendência
+Extração de metadados em cascata (processador_pdf.py —
+roda APENAS para PDFs novos vindos de novos_pdfs/):
+  LLM (Groq → fallback Gemini) → regex → metadados
+  internos do PDF → registra pendência
+Na reindexação de PDFs já nomeados em literatura/,
+autor/título/ano vêm do NOME do arquivo (regex), sem LLM.
 
 ## Estado Metodológico e Artefatos
 O projeto possui arquitetura para:
@@ -377,10 +406,15 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Versionamento: GitHub (mestrado-utfpr)
 - Interface    : Streamlit (aplicação web local)
 - Memória      : ChromaDB (banco vetorial local)
-- LLM          : multi-provedor — Google Gemini e Groq
-                 (LLaMA 3.3 70B expansão/reranking,
-                  LLaMA 3.1 8B reranking rápido,
-                  Gemini 2.5 Flash resposta principal)
+- LLM          : multi-provedor — usuário escolhe o
+                 provedor da resposta principal:
+                 Google Gemini (gemini-2.5-flash) ou
+                 Groq (llama-3.3-70b-versatile).
+                 Groq também é usado (com fallback
+                 Gemini) na extração de metadados de
+                 PDFs e na consolidação de memória.
+                 Expansão de query e reranking são
+                 locais, sem LLM.
 - Embeddings   : paraphrase-multilingual-MiniLM-L12-v2
 - Extração PDF : pypdf (texto) + pdfplumber (tabelas)
 - Monitoramento: watchdog + schedule
