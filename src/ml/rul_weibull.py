@@ -440,7 +440,7 @@ def executar_rul_weibull() -> bool:
     _log(f"\n⚙️  Gerando trajetórias de degradação...")
     ttfs_dict = {}
 
-    for falha in FALHAS:
+    for idx_falha, falha in enumerate(FALHAS):
         fid  = falha["id"]
         nome = falha["nome"]
         _log(f"\n   🔴 {nome} ({N_TRAJ} trajetórias × {N_STEPS} passos)...")
@@ -457,10 +457,13 @@ def executar_rul_weibull() -> bool:
                       f"{np.mean(ttfs):.1f} passos", end="\r")
 
         ttfs = np.array(ttfs, dtype=float)
-        # Adiciona pequeno jitter nos censurados para evitar spike no max
+        # Adiciona pequeno jitter nos censurados para evitar spike no max.
+        # RNG com semente derivada do índice da falha: o gerador global sem
+        # semente tornava beta/eta irreprodutíveis entre execuções idênticas.
         censurados = ttfs == N_STEPS
         if censurados.sum() > 0:
-            ttfs[censurados] += np.random.uniform(0, 5, censurados.sum())
+            rng_jitter = np.random.default_rng(10_000 + idx_falha)
+            ttfs[censurados] += rng_jitter.uniform(0, 5, censurados.sum())
 
         ttfs_dict[fid] = ttfs
         pct_cens = censurados.mean() * 100

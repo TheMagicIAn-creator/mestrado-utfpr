@@ -29,7 +29,9 @@ etapas para ações destrutivas).
 ```powershell
 python scripts/verificar_ambiente.py    # imports, versões, chaves, datasets, ChromaDB, pipeline
 python scripts/verificar_datasets.py    # SHA-256 + linhas + classes dos datasets
-python -m pytest                        # 50 testes unitários
+python -m pytest                        # suíte completa (contagem: pytest --collect-only -q)
+# O CI (.github/workflows/ci.yml) roda apenas o subconjunto LEVE de testes
+# (sem torch/chromadb/APIs); os demais rodam somente no ambiente local.
 ```
 
 ## Recalcular resultados (exige `dados/brutos/`)

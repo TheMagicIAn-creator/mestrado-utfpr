@@ -14,17 +14,18 @@ Aqui cada artigo tem o SEU protocolo de decisão, fiel ao método do paper e à
 prática da área — e nenhum limiar enxerga os rótulos do teste:
 
 - Francisti et al. (2025)  → Z-score com regra de Shewhart (|z| > 3σ FIXO, a
-  priori, por variável) + Random Forest supervisionado (probabilidade ≥ 0,5).
+  priori, por variável).
 - Ibrahim et al. (2022)    → Isolation Forest com contaminação A PRIORI;
   AE-LSTM com limiar = percentil 99 do erro de reconstrução NO TREINO
   (congelado antes de ver o teste — a mesma disciplina do pipeline principal);
   Prophet com banda de incerteza de 99% (fora da banda = anomalia).
-- Sharma et al. (2026)     → PPO ajusta a contaminação do Isolation Forest em
-  VALIDAÇÃO temporal separada; o teste só é tocado com o parâmetro congelado.
-  Baselines (KNN/SVM/ANN/RNN/CNN) com decisão nativa 0,5.
 - Ahirwar & Nandanwar (2025) → voto MAJORITÁRIO entre membros (IF, AE-LSTM,
   Prophet), cada um decidindo pela SUA regra a priori — não uma média de
   scores normalizados.
+
+Nota de curadoria: os protocolos de Sharma (PPO+IForest, baselines
+supervisionados) e o Random Forest do Francisti foram REMOVIDOS — a decisão
+e o racional estão registrados no CLAUDE.md ("Experimentos por Artigo-Base").
 
 Infraestrutura comum (igual para todos, como num benchmark justo):
 - split TEMPORAL com purga (src/ml/split_temporal.py) — nunca aleatório;
@@ -192,7 +193,8 @@ def preparar_dados_anomalia(com_validacao: bool = False,
     Pacote de dados comum aos protocolos:
 
     - janelas do Paderborn em ordem TEMPORAL, divididas em blocos contíguos
-      com purga (treino/teste, ou treino/val/teste p/ Sharma);
+      com purga (treino/teste; o split treino/val/teste é suportado mas
+      nenhum protocolo ativo o utiliza);
     - StandardScaler ajustado SOMENTE no treino normal;
     - anomalias FMEA injetadas em cópias das janelas de teste (e validação),
       com ground truth por família (tipos);

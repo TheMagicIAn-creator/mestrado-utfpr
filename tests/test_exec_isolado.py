@@ -2,7 +2,7 @@
 Sprint 5 — 10.4: isolamento de experimentos pesados em subprocesso.
 
 Testes COMPORTAMENTAIS e torch-free: usam um ``Popen`` fake (sem spawnar
-processo real, sem importar Orange/RL/torch), cobrindo os caminhos:
+processo real, sem importar torch/prophet), cobrindo os caminhos:
   - opt-out (AL_IADO_SEM_ISOLAMENTO) → in-process;
   - sucesso isolado (lê o JSON do filho + encaminha progresso);
   - returncode != 0 / arquivo ausente → dict ok=False (graceful);

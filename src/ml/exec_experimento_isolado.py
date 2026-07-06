@@ -2,7 +2,7 @@
 exec_experimento_isolado.py — Sprint 5 (10.4): isolamento de cargas pesadas.
 
 Roda um experimento por artigo em um SUBPROCESSO separado, de modo que uma
-falha catastrófica de biblioteca pesada (Orange3, stable-baselines3/RL, torch,
+falha catastrófica de biblioteca pesada (torch,
 prophet — segfault, conflito de OpenMP, estouro de memória) NÃO derrube o app
 Streamlit nem o terminal do agente.
 

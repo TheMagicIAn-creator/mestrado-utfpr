@@ -120,14 +120,24 @@ FMEA fornece ground truth para validação.
 Em uso:
 - Random Forest, XGBoost, LightGBM, Gradient Boosting,
   SVM — classificação supervisionada de falhas PV
-  (Random Forest é o melhor até agora: F1 0,87)
+  (melhor modelo e métricas vigentes: consultar sempre
+   resultados/classificacao_pv/metricas.json — nunca
+   citar valor fixado neste arquivo)
 
-Planejados para detecção de anomalias no lado CA:
+Detecção de anomalias no lado CA — pipeline principal
+(módulos existentes em src/ml/; o estado vigente de cada
+etapa vem dos manifestos ou da ferramenta
+consultar_status_pipeline, nunca deste arquivo):
 - Autoencoder (modelagem de normalidade — principal)
-- Isolation Forest (anomalias não supervisionadas)
-- Processo Gaussiano (prognóstico com incerteza)
-- LSTM / GRU (séries temporais)
+- Injeção de falhas sintéticas FMEA + validação formal
 - Análise de Weibull (confiabilidade e RUL)
+
+Disponíveis via experimentos por artigo (não no pipeline):
+- Isolation Forest, AE-LSTM, Prophet (Ibrahim/Ahirwar)
+
+Planejados (sem implementação no pacote):
+- Processo Gaussiano (prognóstico com incerteza)
+- LSTM/GRU dedicados a séries temporais no pipeline
 
 ## Experimentos por Artigo-Base
 O módulo src/ml/experimentos_artigos.py permite ao Rodolfo
@@ -176,44 +186,50 @@ limiar enxerga os rótulos do teste; F1 não é comparável entre
 protocolos (compare por AUC). O resultado.json carrega o
 bloco "metodologia". Degradação honesta: um modelo cujo
 pacote não está instalado é mostrado como "requer <lib>" em
-vez de sumir. Bibliotecas pesadas já instaladas: prophet,
-stable-baselines3, gymnasium, Orange3.
+vez de sumir. Biblioteca pesada opcional dos experimentos:
+prophet (requirements-extras-prophet.txt). Orange3 e
+stable-baselines3/gymnasium foram descartados junto com os
+experimentos Ghoneim/Sharma (curadoria acima).
 
 ## Arquitetura do Sistema
 O projeto é um pacote Python modular. O ponto de
 entrada único é o app.py, que ao iniciar dispara o
 orquestrador no backend.
 
+Árvore completa e detalhada: docs/arquitetura.md e
+src/README.md (fontes de verdade da estrutura). Resumo:
+
 mestrado-utfpr/
-├── src/                      → pacote principal
-│   ├── core/                 → infraestrutura compartilhada
-│   │   ├── config.py         → configuração central
-│   │   └── utils.py          → funções utilitárias
-│   ├── conhecimento/         → cérebro do agente (RAG)
-│   │   ├── agente.py         → pipeline RAG 3 camadas
-│   │   ├── ferramentas.py    → tool calling unificado (specs+roteador)
-│   │   ├── indexador.py      → indexa PDFs + tabelas
-│   │   ├── provedores.py     → multi-provedor de LLM
-│   │   ├── processador_pdf.py→ processa PDFs novos
-│   │   └── consolidar_memoria.py → consolida sessões
-│   ├── ml/                   → pipeline de ML
-│   │   ├── features_ca.py    → extração de features CA do Paderborn
-│   │   ├── autoencoder.py    → modelo de normalidade
-│   │   ├── injecao_falhas.py → falhas sintéticas (FMEA)
-│   │   ├── validacao.py      → métricas formais no limiar congelado
-│   │   ├── rul_weibull.py    → estimativa de RUL
-│   │   ├── eda.py            → análise exploratória
-│   │   ├── classificador_pv.py → classificação de falhas CC
-│   │   └── experimentos_artigos.py → experimentos de ML por artigo-base
-│   └── orquestrador.py       → coordena fluxo + controle do pipeline ML
-├── scripts/                  → scripts de manutenção (rodar manualmente)
-│   ├── reconstruir_literatura.py → reconstrói ChromaDB de literatura
-│   └── reindexar_sessoes.py  → reindexa sessões e memórias
+├── src/
+│   ├── core/                 → config, utils, logs, seguranca
+│   ├── conhecimento/         → cérebro do agente (RAG):
+│   │     agente.py (pipeline RAG + PERFIL_COMPACTO),
+│   │     ferramentas.py (specs + roteador de 20 tools),
+│   │     indexador.py, provedores.py, processador_pdf.py,
+│   │     consolidar_memoria.py, web_search.py,
+│   │     leitor_anexos.py, retrieval_metrics.py,
+│   │     index_lock.py
+│   ├── ml/                   → pipeline CA + experimentos:
+│   │     features_ca.py, autoencoder.py, injecao_falhas.py,
+│   │     validacao.py, rul_weibull.py, pipeline.py,
+│   │     proveniencia.py, split_temporal.py, resultados.py,
+│   │     eda.py, classificador_pv.py (+_infer),
+│   │     experimentos_artigos.py, protocolos_artigos.py,
+│   │     modelos_anomalia.py, exec_experimento_isolado.py
+│   ├── interface/            → streamlit_app.py
+│   └── orquestrador.py       → automações de startup
+├── scripts/                  → manutenção/avaliação manual
+│     (reconstruir_literatura, reindexar_sessoes,
+│      verificar_ambiente, avaliar_agente_100, etc.)
+├── tests/                    → testes unitários (pytest)
+├── docs/                     → arquitetura, metodologia_ml,
+│     datasets, evidence_levels, reproducibilidade, comandos
 ├── literatura/               → PDFs em 5 subpastas temáticas
 ├── dados/brutos/             → datasets originais
 ├── dados/processados/        → dados pré-processados
 ├── resultados/               → gráficos e relatórios
-├── notas/                    → vault do Obsidian
+├── notas/                    → Obsidian, arquivo de leitura (sessões/memórias;
+│                                não é caderno de escrita nem fonte do RAG)
 ├── novos_pdfs/               → PDFs aguardando indexação
 ├── base_conhecimento/        → ChromaDB local (ignorado Git)
 ├── app.py                    → ponto de entrada (Streamlit)
@@ -225,60 +241,88 @@ mestrado-utfpr/
 └── .env.example              → modelo público das variáveis
 
 ## O Orquestrador
-Ao abrir o app.py, o orquestrador verifica o estado e
-executa apenas o que está pendente:
+Ao abrir o app.py, o orquestrador (orquestrador.py)
+executa automaticamente APENAS:
 
 - Sinal REPROCESSAR na raiz → reprocessa toda a literatura
-  (renomeia arquivos, extrai tabelas, reindexa ChromaDB)
+  (renomeia arquivos, reindexa ChromaDB; extração de
+  tabelas só se EXTRAIR_TABELAS_LITERATURA=1)
 - PDFs novos em novos_pdfs/ → indexa automaticamente
-- Acúmulo de sessões → consolida memória
-- Arquivos com "autor-desconhecido" no nome → corrige
-  metadados via LLM e reindexa automaticamente
-- Metadados pendentes → notifica discretamente no app
-- EDA pendente → gera análise exploratória
-- Classificação pendente → treina e avalia modelos
+
+Automação que roda FORA do orquestrador:
+- Consolidação de memória → agendada pelo watcher.py
+  (iniciado em background pelo app; gatilhos: sexta-feira,
+  sessão longa ou dias de acúmulo)
+
+Ações MANUAIS (não são automáticas):
+- Corrigir metadados "autor-desconhecido" → botão
+  "Corrigir metadados ruins" (Manutenção avançada no app)
+- EDA e treino do classificador PV → sob demanda,
+  pelas ferramentas do chat
+
+Notificação de metadados: metadados_pendentes.json é
+gravado pelo processador_pdf.py e exibido na barra lateral
+do app (aviso discreto + lista completa em Manutenção
+avançada). Conferir autor/ano na fonte antes de citar
+qualquer PDF listado ali.
 
 Para reprocessar toda a literatura manualmente:
   New-Item REPROCESSAR -ItemType File
   (abrir o app → orquestrador detecta e executa)
 
 ## Pipeline RAG — 3 Camadas
-Quando Rodolfo faz uma pergunta, o sistema executa:
+Quando Rodolfo faz uma pergunta, o sistema executa.
+IMPORTANTE: as camadas 1 e 3 são heurísticas LOCAIS
+(sem chamada de LLM) para não consumir TPM antes da
+resposta; o LLM só é invocado na resposta final.
 
-CAMADA 1 — Expansão de query (Groq LLaMA 3.3 70B)
-  Gera 6 variações da pergunta cobrindo:
-  → Reformulação em português técnico formal
-  → Reformulação em inglês técnico (obrigatório)
-  → Versão com siglas expandidas (NPR → Número de...)
-  → Versão com siglas contraídas (Failure Mode → FMEA)
-  → Versão focada em dados quantitativos se aplicável
-  → Versão com sinônimos do domínio
-  Extrai 8 termos-chave em português E inglês
+CAMADA 1 — Expansão de query (local, por regras)
+  Gera variações da pergunta por gatilhos de domínio
+  (FMEA, NPR, inversor, anomalia etc.), cobrindo
+  reformulações PT/EN, siglas expandidas/contraídas e
+  sinônimos técnicos. Extrai termos de busca de um mapa
+  de sinônimos do domínio (até 12; até 30 em modo
+  revisão bibliográfica).
 
 CAMADA 2 — Busca híbrida
   → Busca semântica: embeddings para cada variação
   → Busca keyword: ChromaDB where_document para cada termo
-  → Pool deduplicado de ~150 candidatos
+  → Pool deduplicado de candidatos
 
-CAMADA 3 — Reranking (Groq LLaMA 3.1 8B)
-  → Avalia cada candidato com janela início+fim do chunk
-  → Seleciona os 25 mais relevantes para o contexto
-  → Garante que tabelas numéricas cheguem ao LLM principal
+CAMADA 3 — Reranking (local, heurístico)
+  → Pontua por sobreposição lexical com a pergunta
+  → Ajusta por pasta temática (PV/ML/manutenção com
+    boost; textbooks fora de domínio penalizados)
+  → Diversifica o top-K com teto de chunks por fonte
+  → Nº final de chunks segue o orçamento do provedor
+    (Groq 10 / Gemini 16 na pergunta normal; 16–28 em
+    modo revisão) — ver ORCAMENTOS_RAG em agente.py
+
+Nota: o perfil injetado no prompt do LLM é o
+PERFIL_COMPACTO hardcoded em agente.py (este CLAUDE.md
+excede o limite de 6000 chars e não entra no prompt).
 
 Sempre citar: autor, título e ano do artigo consultado.
 Nunca inventar referências.
 
-## Indexação Inteligente
-Cada PDF é indexado com 3 tipos de chunks:
-1. Texto corrido: chunks de 500 chars com sobreposição
-2. Seções semânticas: detecta títulos e agrupa por seção
-3. Tabelas estruturadas: pdfplumber extrai tabelas como
+## Indexação
+Cada PDF de literatura é indexado com:
+1. Texto corrido: chunks de ~1800 chars com sobreposição
+   de 200 (TAMANHO_CHUNK_LITERATURA / SOBREPOSICAO_
+   LITERATURA; 500 era o valor antigo, abandonado por
+   granularidade excessiva)
+2. Tabelas estruturadas: pdfplumber extrai tabelas como
    Markdown — preserva valores numéricos (NPR, THD, etc.)
-4. Chunks de página combinada: une tabelas relacionadas
-   da mesma página — preserva contexto entre tabelas
+   OPCIONAL: só roda com EXTRAIR_TABELAS_LITERATURA=1
+   (desligado por padrão)
+Sessões e memórias usam chunks menores (500/50).
 
-Extração de metadados em cascata:
-  LLM (Groq) → regex → metadados internos → pendência
+Extração de metadados em cascata (processador_pdf.py —
+roda APENAS para PDFs novos vindos de novos_pdfs/):
+  LLM (Groq → fallback Gemini) → regex → metadados
+  internos do PDF → registra pendência
+Na reindexação de PDFs já nomeados em literatura/,
+autor/título/ano vêm do NOME do arquivo (regex), sem LLM.
 
 ## Estado Metodológico e Artefatos
 O projeto possui arquitetura para:
@@ -376,15 +420,25 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Versionamento: GitHub (mestrado-utfpr)
 - Interface    : Streamlit (aplicação web local)
 - Memória      : ChromaDB (banco vetorial local)
-- LLM          : multi-provedor — Google Gemini e Groq
-                 (LLaMA 3.3 70B expansão/reranking,
-                  LLaMA 3.1 8B reranking rápido,
-                  Gemini 2.5 Flash resposta principal)
+- LLM          : multi-provedor — usuário escolhe o
+                 provedor da resposta principal:
+                 Google Gemini (gemini-2.5-flash) ou
+                 Groq (llama-3.3-70b-versatile).
+                 Groq também é usado (com fallback
+                 Gemini) na extração de metadados de
+                 PDFs e na consolidação de memória.
+                 Expansão de query e reranking são
+                 locais, sem LLM.
 - Embeddings   : paraphrase-multilingual-MiniLM-L12-v2
 - Extração PDF : pypdf (texto) + pdfplumber (tabelas)
 - Monitoramento: watchdog + schedule
 
 ## Fontes de Conhecimento Disponíveis
+- Busca web pontual (ferramenta buscar_web): fonte oficial
+  de normas (IEC/ISO/IEEE/ABNT) → Wikipedia → DuckDuckGo,
+  com nível de confiança A–D; fontes C/D NÃO sustentam
+  afirmação normativa — usar só para lookup factual fora
+  da literatura indexada
 - 39 artigos científicos indexados em 5 temas:
     → ML e predição de falhas em inversores
     → Componentes CA e modos de falha
@@ -396,6 +450,7 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Artigo de descrição do dataset de Paderborn
   (Stender, Wallscheid & Böcker, 2020)
 - Datasets: Paderborn (inversor saudável) e PV Farms
-- Notas e resumos do Obsidian
 - Memória consolidada das sessões de desenvolvimento
+  (vault Obsidian em notas/ é só arquivo de leitura dessas sessões/memórias,
+  não é fonte adicional consultada pelo RAG)
 - Tabelas estruturadas extraídas dos PDFs (pdfplumber)

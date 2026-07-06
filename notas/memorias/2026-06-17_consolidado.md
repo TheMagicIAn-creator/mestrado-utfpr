@@ -7,6 +7,13 @@ periodo: 2026-06-02 a 2026-06-17
 tags: [al-iado-pv, memoria, consolidado, mestrado]
 ---
 
+> [!warning] DIVERGÊNCIA WEIBULL CONHECIDA
+> Os parâmetros Weibull citados nesta memória podem divergir do artefato
+> vigente (weibull_results.json): até 2026-07-06 o jitter dos TTF censurados
+> usava RNG global sem semente, tornando beta/eta irreprodutíveis entre
+> execuções. Corrigido em src/ml/rul_weibull.py (semente derivada do índice
+> da falha). Para valores citáveis, use SEMPRE o JSON vigente.
+
 # Memória Consolidada — 17/06/2026
 
 > 10 sessões | 30 interações | 2026-06-02 a 2026-06-17

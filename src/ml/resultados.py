@@ -424,20 +424,40 @@ def _resumo_injecao() -> str | None:
         "| Falha | NPR | SMD | Erro na SMD | Margem |\n",
         "|---|---:|---:|---:|---:|\n",
     ]
+    nao_detectadas = []
     for fid, falha in d.get("falhas", {}).items():
         smd = d.get("smd", {}).get(fid)
         erro = margem = "-"
+        smd_txt = "⚠️ não detectada"
         if smd is not None:
             res = falha.get("resultados", {}).get(str(smd), {})
             erro = _fmt(res.get("erro"), 4)
             margem = f"{_fmt(res.get('margem'), 2)}x"
+            smd_txt = str(smd)
+        else:
+            resultados_sev = falha.get("resultados", {})
+            if resultados_sev:
+                sev_max = max(resultados_sev, key=lambda s: float(s))
+                pico = resultados_sev[sev_max]
+                nao_detectadas.append(
+                    f"- **{falha.get('nome', fid)}**: erro médio máximo "
+                    f"{_fmt(pico.get('erro'), 4)} na severidade {sev_max} "
+                    f"(margem {_fmt(pico.get('margem'), 2)}x do limiar) — "
+                    "o Autoencoder não cruza o limiar operacional em nenhuma "
+                    "severidade testada."
+                )
         linhas.append(
             f"| {falha.get('nome', fid)} | {falha.get('npr') or '-'} | "
-            f"{smd if smd is not None else '-'} | {erro} | {margem} |\n"
+            f"{smd_txt} | {erro} | {margem} |\n"
         )
     linhas.append(
         "\nLeitura rápida: a SMD é a menor severidade em que o Autoencoder cruza o limiar."
     )
+    if nao_detectadas:
+        linhas.append(
+            "\n\n⚠️ **Falha(s) sem SMD nesta execução** (achado relevante, "
+            "não omitir na dissertação):\n" + "\n".join(nao_detectadas)
+        )
     return "".join(linhas)
 
 
@@ -514,22 +534,45 @@ def _resumo_weibull() -> str | None:
 
     linhas = [
         "## RUL / Weibull\n\n",
-        "| Falha | NPR | beta | eta | MTTF | B10 | Interpretação |\n",
-        "|---|---:|---:|---:|---:|---:|---|\n",
+        "| Falha | NPR | beta | eta | MTTF | B10 | Ajuste (KS) | Interpretação |\n",
+        "|---|---:|---:|---:|---:|---:|---|---|\n",
     ]
+    ressalvas = []
     for fid, falha in d.get("falhas", {}).items():
         p = falha.get("weibull", {})
         beta = p.get("beta")
         taxa = "desgaste progressivo" if isinstance(beta, (int, float)) and beta > 1 else "falha aleatória/infantil"
+        adequado = falha.get("ajuste_weibull_adequado")
+        if adequado is None:
+            ks_txt = "n/d"
+        elif adequado:
+            ks_txt = "✅ adequado"
+        else:
+            ks_p = p.get("ks_pval")
+            p_txt = (
+                "p<0.0001" if isinstance(ks_p, (int, float)) and ks_p < 0.0001
+                else f"p={_fmt(ks_p, 4)}"
+            )
+            ks_txt = f"⚠️ rejeitado ({p_txt})"
+            ressalvas.append(
+                f"- **{falha.get('nome', fid)}**: "
+                f"{falha.get('ressalva_ajuste') or 'KS rejeita o ajuste Weibull.'}"
+            )
         linhas.append(
             f"| {falha.get('nome', fid)} | {falha.get('npr') or 'D=10'} | "
             f"{_fmt(beta)} | {_fmt(p.get('eta'), 1)} | {_fmt(p.get('mttf'), 1)} | "
-            f"{_fmt(p.get('b10'), 1)} | {taxa} |\n"
+            f"{_fmt(p.get('b10'), 1)} | {ks_txt} | {taxa} |\n"
         )
     linhas.append(
         "\nLeitura rápida: beta > 1 sustenta a hipótese de degradação progressiva, "
         "coerente com manutenção preditiva."
     )
+    if ressalvas:
+        linhas.append(
+            "\n\n⚠️ **Ressalva estatística**: o teste KS rejeita o ajuste Weibull "
+            "nas falhas abaixo — MTTF/B10 são indicativos, não conclusivos:\n"
+            + "\n".join(ressalvas)
+        )
     return "".join(linhas)
 
 

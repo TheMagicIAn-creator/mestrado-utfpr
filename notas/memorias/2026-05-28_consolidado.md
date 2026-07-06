@@ -7,6 +7,13 @@ periodo: 2026-05-26 a 2026-05-28
 tags: [al-iado-pv, memoria, consolidado, mestrado]
 ---
 
+> [!warning] MÉTRICAS SUBSTITUÍDAS
+> Os números de pipeline registrados nesta memória (limiar p99 = 2,9103,
+> 84 épocas, parâmetros Weibull etc.) referem-se a uma execução ANTERIOR,
+> substituída pela execução de 2026-06-17 (limiar p99 = 2,0785, 150 épocas).
+> Este arquivo é registro histórico — para valores vigentes, consulte sempre
+> resultados/autoencoder/*.json e resultados/manifestos/*.json.
+
 # Memória Consolidada — 28/05/2026
 
 > 21 sessões | 47 interações | 2026-05-26 a 2026-05-28
