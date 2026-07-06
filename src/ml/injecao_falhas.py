@@ -86,6 +86,9 @@ import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from src.ml.estilo_graficos import TAM, aplicar_estilo
+
+aplicar_estilo()
 import matplotlib
 matplotlib.use("Agg")
 from pathlib import Path
@@ -513,7 +516,7 @@ def executar_injecao_falhas() -> bool:
     PASTA_AE.mkdir(parents=True, exist_ok=True)
 
     # Gráfico 1: Erro vs Severidade por tipo de falha
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5), sharey=False)
+    fig, axes = plt.subplots(1, 3, figsize=TAM["painel_3"], sharey=False)
     fig.suptitle("Injeção de Falhas Sintéticas — Erro de Reconstrução vs Severidade",
                  fontsize=13, fontweight="bold")
 
@@ -553,12 +556,12 @@ def executar_injecao_falhas() -> bool:
 
     plt.tight_layout()
     arq_g1 = PASTA_AE / "injecao_falhas_resultados.png"
-    fig.savefig(arq_g1, dpi=150, bbox_inches="tight")
+    fig.savefig(arq_g1)
     plt.close(fig)
     _log(f"   📊 {arq_g1.name}")
 
     # Gráfico 2: Comparação consolidada em escala log
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=TAM["unico"])
 
     x      = np.arange(len(SEVERIDADES))
     largura = 0.25
@@ -588,7 +591,7 @@ def executar_injecao_falhas() -> bool:
     plt.tight_layout()
 
     arq_g2 = PASTA_AE / "injecao_falhas_comparacao.png"
-    fig.savefig(arq_g2, dpi=150, bbox_inches="tight")
+    fig.savefig(arq_g2)
     plt.close(fig)
     _log(f"   📊 {arq_g2.name}")
 

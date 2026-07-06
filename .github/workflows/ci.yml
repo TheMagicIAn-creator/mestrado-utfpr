@@ -46,6 +46,7 @@ jobs:
         run: |
           python -m pytest -p no:cacheprovider -q -W ignore \
             tests/test_consistencia_docs.py \
+            tests/test_formatacao_estilo.py \
             tests/test_split_temporal.py \
             tests/test_proveniencia.py \
             tests/test_caminhos.py \

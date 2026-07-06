@@ -201,7 +201,8 @@ src/README.md (fontes de verdade da estrutura). Resumo:
 
 mestrado-utfpr/
 ├── src/
-│   ├── core/                 → config, utils, logs, seguranca
+│   ├── core/                 → config, utils, logs, seguranca,
+│   │     formatacao (números/tabelas canônicos do chat)
 │   ├── conhecimento/         → cérebro do agente (RAG):
 │   │     agente.py (pipeline RAG + PERFIL_COMPACTO),
 │   │     ferramentas.py (specs + roteador de 20 tools),
@@ -215,7 +216,8 @@ mestrado-utfpr/
 │   │     proveniencia.py, split_temporal.py, resultados.py,
 │   │     eda.py, classificador_pv.py (+_infer),
 │   │     experimentos_artigos.py, protocolos_artigos.py,
-│   │     modelos_anomalia.py, exec_experimento_isolado.py
+│   │     modelos_anomalia.py, exec_experimento_isolado.py,
+│   │     estilo_graficos.py (estilo/tamanho único dos plots)
 │   ├── interface/            → streamlit_app.py
 │   └── orquestrador.py       → automações de startup
 ├── scripts/                  → manutenção/avaliação manual

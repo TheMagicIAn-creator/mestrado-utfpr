@@ -67,3 +67,16 @@ pip install -r requirements-ui.txt -r requirements-rag.txt -r requirements-ml.tx
 pip install -r requirements-extras-prophet.txt   # Prophet (opcional)
 pip install -r requirements-dev.txt              # testes/lint
 ```
+
+## Padronização visual (tabelas e gráficos)
+- `src/core/formatacao.py` — fonte única de formatação numérica e de
+  tabelas Markdown do chat (política de casas decimais por tipo de valor,
+  p-valores em convenção acadêmica, construtor de tabela com alinhamento
+  uniforme). Todo número exibido ao usuário passa pelos `fmt_*`.
+- `src/ml/estilo_graficos.py` — fonte única de estilo matplotlib:
+  `aplicar_estilo()` fixa DPI (150), bbox, fontes e grade via rcParams;
+  `TAM` define os tamanhos canônicos (unico 12x5, quadrado 7x6,
+  painel_3 15x5, painel_6 15x8) e os helpers `tam_barras_h/v` e
+  `tam_matriz` cobrem gráficos que crescem com N. Nenhum módulo de plot
+  pode fixar figsize numérico ou dpi próprio — o teste
+  `tests/test_formatacao_estilo.py` trava a regressão.

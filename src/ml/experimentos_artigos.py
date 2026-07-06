@@ -380,6 +380,10 @@ def _grafico_auc_anomalia(linhas: list) -> str | None:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+
+    from src.ml.estilo_graficos import aplicar_estilo, tam_barras_h
+
+    aplicar_estilo()
     from src.core.utils import to_project_relative_path
 
     fig = None
@@ -399,7 +403,7 @@ def _grafico_auc_anomalia(linhas: list) -> str | None:
                     valores.append(auc)
                     cores_barra.append(cores[i % len(cores)])
 
-        fig, ax = plt.subplots(figsize=(9, max(4, 0.42 * len(valores))))
+        fig, ax = plt.subplots(figsize=tam_barras_h(len(valores)))
         y = range(len(valores))
         ax.barh(list(y), valores, color=cores_barra)
         ax.set_yticks(list(y))
@@ -419,7 +423,7 @@ def _grafico_auc_anomalia(linhas: list) -> str | None:
             ax.text(v + 0.01, yi, f"{v:.3f}", va="center", fontsize=7)
         fig.tight_layout()
         destino = PASTA_EXPERIMENTOS / "comparacao_auc_anomalia.png"
-        fig.savefig(destino, dpi=120)
+        fig.savefig(destino)
         return to_project_relative_path(destino)
     except Exception as exc:  # noqa: BLE001
         from src.core.logs import get_logger
@@ -606,9 +610,11 @@ def _grafico_metricas_modelo(exp: ExperimentoArtigo, nome: str, modelo: dict, pl
     if not metricas:
         return None
 
+    from src.ml.estilo_graficos import TAM
+
     valores = [float(modelo[met]) for met in metricas]
     cores = ["#2F80ED", "#27AE60", "#F2994A", "#9B51E0", "#EB5757", "#56CCF2"][:len(metricas)]
-    fig, ax = plt.subplots(figsize=(7.4, 4.6))
+    fig, ax = plt.subplots(figsize=TAM["unico"])
     barras = ax.bar(metricas, valores, color=cores)
     ax.set_ylim(0, 1.05)
     ax.set_ylabel("valor")
@@ -648,7 +654,7 @@ def _grafico_metricas_modelo(exp: ExperimentoArtigo, nome: str, modelo: dict, pl
 
     fig.tight_layout(rect=(0, 0.15 if linhas else 0, 1, 1))
     caminho = exp.pasta() / f"modelo_{_slug_modelo(nome)}_metricas.png"
-    fig.savefig(caminho, dpi=120)
+    fig.savefig(caminho)
     plt.close(fig)
     _registrar_grafico_modelo(modelo, "grafico_metricas", caminho)
     return caminho
@@ -662,8 +668,10 @@ def _grafico_matriz_modelo(exp: ExperimentoArtigo, nome: str, modelo: dict, plt,
     if cm.ndim != 2 or cm.size == 0:
         return None
 
+    from src.ml.estilo_graficos import tam_matriz
+
     labels = modelo.get("classes") or [str(i) for i in range(cm.shape[0])]
-    fig, ax = plt.subplots(figsize=(max(5.2, len(labels) * 0.9), max(4.8, len(labels) * 0.8)))
+    fig, ax = plt.subplots(figsize=tam_matriz(len(labels)))
     im = ax.imshow(cm, cmap="Blues")
     ax.set_title(f"Matriz de confusao - {nome}")
     ax.set_xlabel("predito")
@@ -680,7 +688,7 @@ def _grafico_matriz_modelo(exp: ExperimentoArtigo, nome: str, modelo: dict, plt,
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     fig.tight_layout()
     caminho = exp.pasta() / f"modelo_{_slug_modelo(nome)}_matriz_confusao.png"
-    fig.savefig(caminho, dpi=120)
+    fig.savefig(caminho)
     plt.close(fig)
     _registrar_grafico_modelo(modelo, "grafico_matriz_confusao", caminho)
     return caminho
@@ -693,6 +701,10 @@ def _grafico_comparacao(exp: ExperimentoArtigo, resultado: dict) -> list[Path]:
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+
+        from src.ml.estilo_graficos import aplicar_estilo, tam_barras_v
+
+        aplicar_estilo()
     except Exception:
         return []
 
@@ -720,7 +732,7 @@ def _grafico_comparacao(exp: ExperimentoArtigo, resultado: dict) -> list[Path]:
         nomes = [n for n, _ in modelos]
         x = np.arange(len(nomes))
         largura = min(0.16, 0.78 / max(1, len(metricas)))
-        fig, ax = plt.subplots(figsize=(max(9, len(nomes) * 1.25), 5.2))
+        fig, ax = plt.subplots(figsize=tam_barras_v(len(nomes)))
         for i, met in enumerate(metricas):
             vals = [
                 float(m.get(met)) if isinstance(m.get(met), (int, float)) else np.nan
@@ -736,7 +748,7 @@ def _grafico_comparacao(exp: ExperimentoArtigo, resultado: dict) -> list[Path]:
         ax.grid(axis="y", alpha=0.25)
         fig.tight_layout()
         caminho = exp.pasta() / "comparacao_metricas.png"
-        fig.savefig(caminho, dpi=120)
+        fig.savefig(caminho)
         plt.close(fig)
         graficos.append(caminho)
 
@@ -748,7 +760,7 @@ def _grafico_comparacao(exp: ExperimentoArtigo, resultado: dict) -> list[Path]:
     if itens_anomalia:
         nomes = [n for n, _ in itens_anomalia]
         valores = [v for _, v in itens_anomalia]
-        fig, ax = plt.subplots(figsize=(max(8, len(nomes) * 1.1), 4.5))
+        fig, ax = plt.subplots(figsize=tam_barras_v(len(nomes)))
         ax.bar(nomes, valores, color="#7B4CC2")
         ax.set_ylabel("anomalias detectadas")
         ax.set_title(f"{exp.referencia} - anomalias no ponto de operacao")
@@ -757,7 +769,7 @@ def _grafico_comparacao(exp: ExperimentoArtigo, resultado: dict) -> list[Path]:
             ax.text(i, v, str(v), ha="center", va="bottom", fontsize=9)
         fig.tight_layout()
         caminho = exp.pasta() / "anomalias_detectadas.png"
-        fig.savefig(caminho, dpi=120)
+        fig.savefig(caminho)
         plt.close(fig)
         graficos.append(caminho)
 

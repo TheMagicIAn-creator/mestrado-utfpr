@@ -71,6 +71,9 @@ import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from src.ml.estilo_graficos import TAM, aplicar_estilo
+
+aplicar_estilo()
 import matplotlib.gridspec as gridspec
 import matplotlib
 matplotlib.use("Agg")
@@ -221,7 +224,7 @@ def metricas_no_limiar(erros_neg: np.ndarray,
 
 def plotar_roc(resultados: dict, limiar: float, pasta: Path):
     """Curvas ROC para cada combinação falha × severidade."""
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    fig, axes = plt.subplots(1, 3, figsize=TAM["painel_3"])
     fig.suptitle("Curvas ROC — Detecção de Anomalias por Tipo de Falha",
                  fontsize=13, fontweight="bold")
 
@@ -254,7 +257,7 @@ def plotar_roc(resultados: dict, limiar: float, pasta: Path):
 
     plt.tight_layout()
     arq = pasta / "validacao_roc.png"
-    fig.savefig(arq, dpi=150, bbox_inches="tight")
+    fig.savefig(arq)
     plt.close(fig)
     _log(f"   📊 {arq.name}")
 
@@ -262,7 +265,7 @@ def plotar_roc(resultados: dict, limiar: float, pasta: Path):
 def plotar_pr(resultados: dict, pasta: Path):
     """Curvas Precision-Recall por falha × severidade (complementa a ROC,
     importante quando há desbalanceamento entre saudável e falha)."""
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    fig, axes = plt.subplots(1, 3, figsize=TAM["painel_3"])
     fig.suptitle("Curvas Precision-Recall — Detecção de Anomalias por Tipo de Falha",
                  fontsize=13, fontweight="bold")
 
@@ -289,14 +292,14 @@ def plotar_pr(resultados: dict, pasta: Path):
 
     plt.tight_layout()
     arq = pasta / "validacao_pr.png"
-    fig.savefig(arq, dpi=150, bbox_inches="tight")
+    fig.savefig(arq)
     plt.close(fig)
     _log(f"   📊 {arq.name}")
 
 
 def plotar_matrizes(resultados: dict, pasta: Path):
     """Matrizes de confusão para severidade=1.0 de cada falha."""
-    fig, axes = plt.subplots(1, 3, figsize=(13, 4))
+    fig, axes = plt.subplots(1, 3, figsize=TAM["painel_3"])
     fig.suptitle("Matrizes de Confusão — Severidade 1.0 (Limiar Operacional p99)",
                  fontsize=12, fontweight="bold")
 
@@ -335,14 +338,14 @@ def plotar_matrizes(resultados: dict, pasta: Path):
 
     plt.tight_layout()
     arq = pasta / "validacao_matriz.png"
-    fig.savefig(arq, dpi=150, bbox_inches="tight")
+    fig.savefig(arq)
     plt.close(fig)
     _log(f"   📊 {arq.name}")
 
 
 def plotar_tabela_metricas(tabela_df: pd.DataFrame, pasta: Path):
     """Heatmap das métricas F1, AUC, Recall por falha × severidade."""
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+    fig, axes = plt.subplots(1, 3, figsize=TAM["painel_3"])
     fig.suptitle("Métricas por Tipo de Falha e Severidade",
                  fontsize=13, fontweight="bold")
 
@@ -374,7 +377,7 @@ def plotar_tabela_metricas(tabela_df: pd.DataFrame, pasta: Path):
 
     plt.tight_layout()
     arq = pasta / "validacao_metricas.png"
-    fig.savefig(arq, dpi=150, bbox_inches="tight")
+    fig.savefig(arq)
     plt.close(fig)
     _log(f"   📊 {arq.name}")
 

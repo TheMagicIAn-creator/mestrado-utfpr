@@ -51,7 +51,10 @@ def _plotar_matriz_confusao(cm, classes: list[str], destino: Path) -> None:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    fig, ax = plt.subplots(figsize=(6.2, 5.2))
+    from src.ml.estilo_graficos import TAM, aplicar_estilo
+
+    aplicar_estilo()
+    fig, ax = plt.subplots(figsize=TAM["quadrado"])
     im = ax.imshow(cm, cmap="Blues")
     ax.set_title("PV Farms - matriz de confusao (E1)")
     ax.set_xlabel("Predito")
@@ -63,7 +66,7 @@ def _plotar_matriz_confusao(cm, classes: list[str], destino: Path) -> None:
             ax.text(j, i, int(valor), ha="center", va="center")
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     fig.tight_layout()
-    fig.savefig(destino, dpi=140)
+    fig.savefig(destino)
     plt.close(fig)
 
 
@@ -76,14 +79,17 @@ def _plotar_importancia_features(clf, colunas: list[str], destino: Path) -> None
     import matplotlib.pyplot as plt
     import pandas as pd
 
+    from src.ml.estilo_graficos import aplicar_estilo, tam_barras_h
+
+    aplicar_estilo()
     serie = pd.Series(clf.feature_importances_, index=colunas).sort_values(ascending=False).head(20)
-    fig, ax = plt.subplots(figsize=(7.2, max(4.2, 0.28 * len(serie))))
+    fig, ax = plt.subplots(figsize=tam_barras_h(len(serie)))
     serie.sort_values().plot(kind="barh", ax=ax, color="#2F80ED")
     ax.set_title("PV Farms - importancia global de features (E1)")
     ax.set_xlabel("Importancia relativa")
     ax.set_ylabel("")
     fig.tight_layout()
-    fig.savefig(destino, dpi=140)
+    fig.savefig(destino)
     plt.close(fig)
 
 
