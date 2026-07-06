@@ -17,3 +17,14 @@ Regras práticas:
   limiar — se ele foi escolhido no conjunto avaliado, são **exploratórios (E1)**.
 - A falha de **Sensor CA** usa ruído gaussiano como **proxy** → exige calibração
   física; alta sensibilidade observada é E2, não validada em bancada.
+
+- **Ajuste estatístico rejeitado NÃO é omitido**: quando um teste de aderência
+  rejeita o modelo assumido (ex.: KS rejeita Weibull nos TTF simulados —
+  campo `ajuste_weibull_adequado: false` em `weibull_results.json`), os
+  parâmetros derivados (beta, eta, MTTF, B10) são **indicativos, não
+  conclusivos**, e a ressalva deve acompanhar QUALQUER citação deles — no chat,
+  nos gráficos e na dissertação. Reportar o p-valor junto (`p<0,05` rejeita).
+- **Detecção nula também é resultado**: se uma falha injetada não cruza o
+  limiar em nenhuma severidade (SMD nula — ex.: campo `smd: null` no report de
+  injeção), isso é um achado de LIMITAÇÃO do detector e deve ser reportado
+  como tal, nunca suprimido da análise.

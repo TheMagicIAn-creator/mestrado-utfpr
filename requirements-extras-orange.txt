@@ -1,6 +1,0 @@
-# EXTRA — Orange3 (modelo CN2 do experimento Ghoneim).
-# Pesado (puxa Qt e rebaixa xgboost). Sem isto, CN2 degrada para "requer Orange".
-Orange3
-# Orange usa bottleneck para acelerar estatísticas; sem ele o CN2 falha em
-# tempo de execução ("No module named 'bottleneck'").
-bottleneck

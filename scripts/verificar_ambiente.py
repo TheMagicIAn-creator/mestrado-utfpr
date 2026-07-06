@@ -52,9 +52,6 @@ def checar_opcionais() -> None:
     secao("Opcionais (degradação honesta)")
     mapa = {
         "prophet": "Facebook Prophet",
-        "stable_baselines3": "PPO / RL",
-        "gymnasium": "ambientes RL",
-        "Orange": "CN2 (Orange3)",
         "xgboost": "XGBoost",
         "lightgbm": "LightGBM",
     }

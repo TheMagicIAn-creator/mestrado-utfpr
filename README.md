@@ -67,7 +67,12 @@ committed to the repository.
 | 2     | RAG agent             | Done          |
 | 3     | Streamlit interface   | Done          |
 | 4     | Automation            | Done          |
-| 5     | ML pipeline           | In progress   |
+| 5     | ML pipeline           | Implemented (E2) |
+
+Phase 5 status: all five stages (features, autoencoder, fault injection,
+validation, Weibull/RUL) are implemented with provenance manifests.
+Current stage state and metrics live in `resultados/` artifacts (E2 =
+FMEA-guided synthetic validation; field validation E3 not yet performed).
 
 ## Documentação técnica
 

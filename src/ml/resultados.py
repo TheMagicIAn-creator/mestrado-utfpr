@@ -424,20 +424,40 @@ def _resumo_injecao() -> str | None:
         "| Falha | NPR | SMD | Erro na SMD | Margem |\n",
         "|---|---:|---:|---:|---:|\n",
     ]
+    nao_detectadas = []
     for fid, falha in d.get("falhas", {}).items():
         smd = d.get("smd", {}).get(fid)
         erro = margem = "-"
+        smd_txt = "⚠️ não detectada"
         if smd is not None:
             res = falha.get("resultados", {}).get(str(smd), {})
             erro = _fmt(res.get("erro"), 4)
             margem = f"{_fmt(res.get('margem'), 2)}x"
+            smd_txt = str(smd)
+        else:
+            resultados_sev = falha.get("resultados", {})
+            if resultados_sev:
+                sev_max = max(resultados_sev, key=lambda s: float(s))
+                pico = resultados_sev[sev_max]
+                nao_detectadas.append(
+                    f"- **{falha.get('nome', fid)}**: erro médio máximo "
+                    f"{_fmt(pico.get('erro'), 4)} na severidade {sev_max} "
+                    f"(margem {_fmt(pico.get('margem'), 2)}x do limiar) — "
+                    "o Autoencoder não cruza o limiar operacional em nenhuma "
+                    "severidade testada."
+                )
         linhas.append(
             f"| {falha.get('nome', fid)} | {falha.get('npr') or '-'} | "
-            f"{smd if smd is not None else '-'} | {erro} | {margem} |\n"
+            f"{smd_txt} | {erro} | {margem} |\n"
         )
     linhas.append(
         "\nLeitura rápida: a SMD é a menor severidade em que o Autoencoder cruza o limiar."
     )
+    if nao_detectadas:
+        linhas.append(
+            "\n\n⚠️ **Falha(s) sem SMD nesta execução** (achado relevante, "
+            "não omitir na dissertação):\n" + "\n".join(nao_detectadas)
+        )
     return "".join(linhas)
 
 

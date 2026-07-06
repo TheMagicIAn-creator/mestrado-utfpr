@@ -124,12 +124,20 @@ Em uso:
    resultados/classificacao_pv/metricas.json — nunca
    citar valor fixado neste arquivo)
 
-Planejados para detecção de anomalias no lado CA:
+Detecção de anomalias no lado CA — pipeline principal
+(módulos existentes em src/ml/; o estado vigente de cada
+etapa vem dos manifestos ou da ferramenta
+consultar_status_pipeline, nunca deste arquivo):
 - Autoencoder (modelagem de normalidade — principal)
-- Isolation Forest (anomalias não supervisionadas)
-- Processo Gaussiano (prognóstico com incerteza)
-- LSTM / GRU (séries temporais)
+- Injeção de falhas sintéticas FMEA + validação formal
 - Análise de Weibull (confiabilidade e RUL)
+
+Disponíveis via experimentos por artigo (não no pipeline):
+- Isolation Forest, AE-LSTM, Prophet (Ibrahim/Ahirwar)
+
+Planejados (sem implementação no pacote):
+- Processo Gaussiano (prognóstico com incerteza)
+- LSTM/GRU dedicados a séries temporais no pipeline
 
 ## Experimentos por Artigo-Base
 O módulo src/ml/experimentos_artigos.py permite ao Rodolfo
@@ -178,39 +186,44 @@ limiar enxerga os rótulos do teste; F1 não é comparável entre
 protocolos (compare por AUC). O resultado.json carrega o
 bloco "metodologia". Degradação honesta: um modelo cujo
 pacote não está instalado é mostrado como "requer <lib>" em
-vez de sumir. Bibliotecas pesadas já instaladas: prophet,
-stable-baselines3, gymnasium, Orange3.
+vez de sumir. Biblioteca pesada opcional dos experimentos:
+prophet (requirements-extras-prophet.txt). Orange3 e
+stable-baselines3/gymnasium foram descartados junto com os
+experimentos Ghoneim/Sharma (curadoria acima).
 
 ## Arquitetura do Sistema
 O projeto é um pacote Python modular. O ponto de
 entrada único é o app.py, que ao iniciar dispara o
 orquestrador no backend.
 
+Árvore completa e detalhada: docs/arquitetura.md e
+src/README.md (fontes de verdade da estrutura). Resumo:
+
 mestrado-utfpr/
-├── src/                      → pacote principal
-│   ├── core/                 → infraestrutura compartilhada
-│   │   ├── config.py         → configuração central
-│   │   └── utils.py          → funções utilitárias
-│   ├── conhecimento/         → cérebro do agente (RAG)
-│   │   ├── agente.py         → pipeline RAG 3 camadas
-│   │   ├── ferramentas.py    → tool calling unificado (specs+roteador)
-│   │   ├── indexador.py      → indexa PDFs + tabelas
-│   │   ├── provedores.py     → multi-provedor de LLM
-│   │   ├── processador_pdf.py→ processa PDFs novos
-│   │   └── consolidar_memoria.py → consolida sessões
-│   ├── ml/                   → pipeline de ML
-│   │   ├── features_ca.py    → extração de features CA do Paderborn
-│   │   ├── autoencoder.py    → modelo de normalidade
-│   │   ├── injecao_falhas.py → falhas sintéticas (FMEA)
-│   │   ├── validacao.py      → métricas formais no limiar congelado
-│   │   ├── rul_weibull.py    → estimativa de RUL
-│   │   ├── eda.py            → análise exploratória
-│   │   ├── classificador_pv.py → classificação de falhas CC
-│   │   └── experimentos_artigos.py → experimentos de ML por artigo-base
-│   └── orquestrador.py       → coordena fluxo + controle do pipeline ML
-├── scripts/                  → scripts de manutenção (rodar manualmente)
-│   ├── reconstruir_literatura.py → reconstrói ChromaDB de literatura
-│   └── reindexar_sessoes.py  → reindexa sessões e memórias
+├── src/
+│   ├── core/                 → config, utils, logs, seguranca
+│   ├── conhecimento/         → cérebro do agente (RAG):
+│   │     agente.py (pipeline RAG + PERFIL_COMPACTO),
+│   │     ferramentas.py (specs + roteador de 20 tools),
+│   │     indexador.py, provedores.py, processador_pdf.py,
+│   │     consolidar_memoria.py, web_search.py,
+│   │     leitor_anexos.py, retrieval_metrics.py,
+│   │     index_lock.py
+│   ├── ml/                   → pipeline CA + experimentos:
+│   │     features_ca.py, autoencoder.py, injecao_falhas.py,
+│   │     validacao.py, rul_weibull.py, pipeline.py,
+│   │     proveniencia.py, split_temporal.py, resultados.py,
+│   │     eda.py, classificador_pv.py (+_infer),
+│   │     experimentos_artigos.py, protocolos_artigos.py,
+│   │     modelos_anomalia.py, exec_experimento_isolado.py
+│   ├── interface/            → streamlit_app.py
+│   └── orquestrador.py       → automações de startup
+├── scripts/                  → manutenção/avaliação manual
+│     (reconstruir_literatura, reindexar_sessoes,
+│      verificar_ambiente, avaliar_agente_100, etc.)
+├── tests/                    → testes unitários (pytest)
+├── docs/                     → arquitetura, metodologia_ml,
+│     datasets, evidence_levels, reproducibilidade, comandos
 ├── literatura/               → PDFs em 5 subpastas temáticas
 ├── dados/brutos/             → datasets originais
 ├── dados/processados/        → dados pré-processados
@@ -247,10 +260,11 @@ Ações MANUAIS (não são automáticas):
 - EDA e treino do classificador PV → sob demanda,
   pelas ferramentas do chat
 
-Limitação conhecida: metadados_pendentes.json é gravado
-pelo processador_pdf.py, mas ainda NÃO é lido/exibido em
-nenhuma tela do app (a notificação está pendente de
-implementação).
+Notificação de metadados: metadados_pendentes.json é
+gravado pelo processador_pdf.py e exibido na barra lateral
+do app (aviso discreto + lista completa em Manutenção
+avançada). Conferir autor/ano na fonte antes de citar
+qualquer PDF listado ali.
 
 Para reprocessar toda a literatura manualmente:
   New-Item REPROCESSAR -ItemType File
@@ -420,6 +434,11 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Monitoramento: watchdog + schedule
 
 ## Fontes de Conhecimento Disponíveis
+- Busca web pontual (ferramenta buscar_web): fonte oficial
+  de normas (IEC/ISO/IEEE/ABNT) → Wikipedia → DuckDuckGo,
+  com nível de confiança A–D; fontes C/D NÃO sustentam
+  afirmação normativa — usar só para lookup factual fora
+  da literatura indexada
 - 39 artigos científicos indexados em 5 temas:
     → ML e predição de falhas em inversores
     → Componentes CA e modos de falha

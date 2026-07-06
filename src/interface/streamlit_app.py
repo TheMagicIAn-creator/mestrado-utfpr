@@ -9,6 +9,7 @@ para preservar a estetica original — sem overrides de CSS pesados.
 
 from __future__ import annotations
 
+import json
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -220,8 +221,7 @@ def renderizar_diagnostico(colecao, colecao_sessoes) -> None:
     except Exception as exc:  # noqa: BLE001
         st.caption(f"pipeline: {exc}")
 
-    libs = {"prophet": "Prophet", "stable_baselines3": "PPO",
-            "Orange": "CN2", "torch": "torch"}
+    libs = {"prophet": "Prophet", "torch": "torch"}
     marcas = []
     for mod, desc in libs.items():
         try:
@@ -241,6 +241,22 @@ def renderizar_diagnostico(colecao, colecao_sessoes) -> None:
                        else "Sem erros registrados no log.")
     except Exception:  # noqa: BLE001
         pass
+
+
+def _carregar_metadados_pendentes() -> dict:
+    """Itens não resolvidos de metadados_pendentes.json ({} se vazio/ausente)."""
+    caminho = RAIZ_PROJETO / "metadados_pendentes.json"
+    if not caminho.exists():
+        return {}
+    try:
+        dados = json.loads(caminho.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return {
+        nome: info
+        for nome, info in dados.items()
+        if isinstance(info, dict) and not info.get("resolvido")
+    }
 
 
 def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
@@ -325,8 +341,26 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
         with st.expander("🔧 Diagnóstico"):
             renderizar_diagnostico(colecao, colecao_sessoes)
 
+        metadados_pendentes = _carregar_metadados_pendentes()
+        if metadados_pendentes:
+            st.caption(
+                f"⚠️ {len(metadados_pendentes)} PDF(s) com metadados "
+                "pendentes — detalhes em Manutenção avançada."
+            )
+
         with st.expander("Manutenção avançada"):
             st.caption("Use apenas quando quiser forçar tarefas administrativas.")
+            if metadados_pendentes:
+                st.warning(
+                    f"{len(metadados_pendentes)} PDF(s) com autor/ano "
+                    "incompletos. Confira na fonte antes de citar."
+                )
+                for nome, info in metadados_pendentes.items():
+                    st.caption(
+                        f"• {nome} — {info.get('autor_atual') or 'autor ?'} "
+                        f"({info.get('ano_atual') or '????'}) | "
+                        f"registrado em {info.get('registrado', '?')}"
+                    )
             if st.button("Consolidar memória", use_container_width=True):
                 try:
                     from src.conhecimento.consolidar_memoria import consolidar
