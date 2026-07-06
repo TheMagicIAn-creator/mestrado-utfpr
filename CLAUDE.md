@@ -213,7 +213,8 @@ mestrado-utfpr/
 ├── dados/brutos/             → datasets originais
 ├── dados/processados/        → dados pré-processados
 ├── resultados/               → gráficos e relatórios
-├── notas/                    → vault do Obsidian
+├── notas/                    → Obsidian, arquivo de leitura (sessões/memórias;
+│                                não é caderno de escrita nem fonte do RAG)
 ├── novos_pdfs/               → PDFs aguardando indexação
 ├── base_conhecimento/        → ChromaDB local (ignorado Git)
 ├── app.py                    → ponto de entrada (Streamlit)
@@ -396,6 +397,7 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Artigo de descrição do dataset de Paderborn
   (Stender, Wallscheid & Böcker, 2020)
 - Datasets: Paderborn (inversor saudável) e PV Farms
-- Notas e resumos do Obsidian
 - Memória consolidada das sessões de desenvolvimento
+  (vault Obsidian em notas/ é só arquivo de leitura dessas sessões/memórias,
+  não é fonte adicional consultada pelo RAG)
 - Tabelas estruturadas extraídas dos PDFs (pdfplumber)
