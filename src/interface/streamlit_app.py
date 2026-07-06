@@ -501,16 +501,14 @@ def _grupo_imagem(img: dict) -> str:
     return legenda.split(" - ", 1)[0] if " - " in legenda else "Resultados"
 
 
-def _imagem_larga(img: dict) -> bool:
-    tipo = str(img.get("kind", "")).lower()
-    legenda = str(img.get("caption", "")).lower()
-    return (
-        tipo in {"comparacao", "wide"}
-        or "comparacao" in legenda
-        or "anomalias detectadas" in legenda
-        or "curvas" in legenda
-        or "heatmap" in legenda
-    )
+# Exibição PROPORCIONAL: todos os gráficos são gerados a DPI fixo
+# (src/ml/estilo_graficos.DPI), então largura_px/DPI = polegadas físicas.
+# Cada polegada vira um nº fixo de pixels na tela — fontes e elementos
+# aparecem do MESMO tamanho em todos os gráficos, independente do tipo.
+_DPI_GERACAO = 150        # deve casar com src.ml.estilo_graficos.DPI
+_PX_POR_POLEGADA = 72     # escala de exibição (12 pol → 864 px)
+_TETO_EXIBICAO = 1080     # nunca estoura a largura útil do chat
+_LARGURA_PAREAVEL = 560   # só exibe lado a lado o que cabe em meia coluna
 
 
 def _dimensoes_imagem(path: str) -> tuple[int | None, int | None]:
@@ -523,23 +521,35 @@ def _dimensoes_imagem(path: str) -> tuple[int | None, int | None]:
         return None, None
 
 
-def _largura_exibicao_imagem(img: dict) -> int | None:
-    largura_px, _altura_px = _dimensoes_imagem(img["path"])
+def _polegadas_imagem(img: dict) -> float | None:
+    largura_px, _ = _dimensoes_imagem(img["path"])
+    if largura_px:
+        return largura_px / _DPI_GERACAO
+    return None
+
+
+def _largura_exibicao_imagem(img: dict) -> int:
+    pol = _polegadas_imagem(img)
+    if pol is None:
+        return 860  # sem PIL/arquivo: largura neutra
+    return min(_TETO_EXIBICAO, round(pol * _PX_POR_POLEGADA))
+
+
+def _imagem_larga(img: dict) -> bool:
+    """Painéis (>= 13 pol de largura física) sempre sozinhos, em linha cheia."""
+    pol = _polegadas_imagem(img)
+    if pol is not None:
+        return pol >= 13
+    # fallback (imagem ilegível): heurística antiga por legenda
     tipo = str(img.get("kind", "")).lower()
     legenda = str(img.get("caption", "")).lower()
-
-    if tipo in {"comparacao", "wide"} or "comparacao" in legenda:
-        limite = 1080
-    elif tipo == "matriz" or "matriz" in legenda or "confus" in legenda:
-        limite = 620
-    elif tipo == "modelo":
-        limite = 780
-    else:
-        limite = 860
-
-    if largura_px:
-        return min(largura_px, limite)
-    return limite
+    return (
+        tipo in {"comparacao", "wide"}
+        or "comparacao" in legenda
+        or "anomalias detectadas" in legenda
+        or "curvas" in legenda
+        or "heatmap" in legenda
+    )
 
 
 def _ordem_imagem(img: dict, indice: int) -> tuple:
@@ -564,18 +574,27 @@ def _renderizar_imagem_unica(img: dict, coluna=None) -> None:
 
 
 def _renderizar_lote_regular(lote: list[dict]) -> None:
-    if not lote:
-        return
-    if len(lote) == 1:
-        _, centro, _ = st.columns([0.12, 0.76, 0.12], gap="small")
-        _renderizar_imagem_unica(lote[0], centro)
-        return
-
-    for inicio in range(0, len(lote), 2):
-        par = lote[inicio:inicio + 2]
-        cols = st.columns(len(par), gap="small")
-        for col, img in zip(cols, par):
-            _renderizar_imagem_unica(img, col)
+    """
+    Exibe imagens não-panorâmicas. Pareia lado a lado APENAS quando as duas
+    cabem em meia coluna (largura de exibição <= _LARGURA_PAREAVEL) — antes,
+    gráficos de 12 pol eram espremidos em colunas de ~430 px e o tamanho
+    final dependia da paridade do lote.
+    """
+    fila = list(lote)
+    while fila:
+        img = fila.pop(0)
+        cabe_par = (
+            _largura_exibicao_imagem(img) <= _LARGURA_PAREAVEL
+            and fila
+            and _largura_exibicao_imagem(fila[0]) <= _LARGURA_PAREAVEL
+        )
+        if cabe_par:
+            par = [img, fila.pop(0)]
+            cols = st.columns(2, gap="small")
+            for col, item in zip(cols, par):
+                _renderizar_imagem_unica(item, col)
+        else:
+            _renderizar_imagem_unica(img)
 
 
 def _renderizar_grupo_imagens(imagens: list[dict]) -> None:
