@@ -181,6 +181,14 @@ principal usa injeção FMEA no SINAL bruto (E2); os experimentos
 usam injeção no espaço de FEATURES (E1). Não são diretamente
 comparáveis por F1 — só por AUC.
 
+COMPARAÇÃO COM A LITERATURA (ferramenta comparar_experimentos_
+auc; "compare meu método com a literatura"): pontua o Autoencoder
+JÁ TREINADO no MESMO banco de teste dos experimentos (E1, seed 42)
+e monta tabela+gráfico ranqueados por AUC, com a validação E2
+nativa reportada à parte. Nunca treina; sem modelo salvo, avisa
+"rode o pipeline primeiro". Artefatos: resultados/comparacao/
+(src/ml/comparacao_literatura.py).
+
 Anomalia é avaliada com PROTOCOLO PRÓPRIO POR ARTIGO
 (src/ml/protocolos_artigos.py): split temporal com purga,
 injeção sintética orientada pelo FMEA no espaço de features

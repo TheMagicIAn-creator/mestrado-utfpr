@@ -2,15 +2,19 @@
 estilo_graficos.py - Al IAdo PV
 Estilo único para TODOS os gráficos matplotlib do projeto.
 
-Antes, cada módulo escolhia figsize (de 6.2x5.2 a 15x8) e dpi (120/140/150)
-por conta própria — os gráficos chegavam ao chat com proporção e nitidez
-diferentes. Aqui fica a fonte única de verdade:
+Antes, cada módulo escolhia figsize (de 6.2x5.2 a 15x8), dpi (120/140/150)
+e cores por conta própria — os gráficos chegavam ao chat com proporção,
+nitidez e paleta diferentes. Aqui fica a fonte única de verdade:
 
 - DPI fixo (150) e savefig com bbox "tight" via rcParams — os módulos
   chamam fig.savefig(caminho) SEM passar dpi/bbox;
 - tamanhos nomeados (TAM) por tipo de gráfico, em polegadas;
-- helpers para tamanhos dinâmicos (barras/matrizes que crescem com N),
-  com mínimos e passos padronizados.
+- helpers para tamanhos dinâmicos (barras/matrizes que crescem com N);
+- PALETA categórica validada (CVD ΔE adjacente >= 21; ver validação no
+  commit) + papéis de cor fixos: o MÉTODO PROPOSTO é sempre destacado em
+  azul, baselines/concorrentes em cinza neutro. Cores de baixo contraste
+  no fundo branco (aqua/amarelo) exigem rótulo direto nas barras — use
+  rotular_barras().
 
 Todo módulo de plot deve chamar aplicar_estilo() antes de criar figuras
 (uma vez basta; é idempotente).
@@ -22,8 +26,42 @@ import matplotlib
 
 matplotlib.use("Agg", force=False)
 import matplotlib.pyplot as plt  # noqa: E402
+from cycler import cycler  # noqa: E402
 
 DPI = 150
+
+# ── Paleta categórica (ordem FIXA — nunca ciclar/reordenar) ─────────────
+# Validada em fundo branco: pior ΔE adjacente 24.2 (protan), banda de
+# luminosidade e croma OK. Aqua (#1baf7a) e amarelo (#eda100) ficam abaixo
+# de 3:1 de contraste no branco → sempre acompanhar de rótulo direto.
+PALETA = [
+    "#2a78d6",  # 1 azul    — reservado ao MÉTODO PROPOSTO quando presente
+    "#1baf7a",  # 2 aqua
+    "#eda100",  # 3 amarelo
+    "#008300",  # 4 verde
+    "#4a3aa7",  # 5 violeta
+    "#e34948",  # 6 vermelho
+]
+
+# Papéis fixos (cor segue a entidade, nunca o rank)
+COR_METODO = PALETA[0]        # método proposto (Autoencoder do pipeline)
+COR_NEUTRA = "#898781"        # baselines/concorrentes em comparações
+COR_REFERENCIA = "#c3c2b7"    # linhas de referência (ex.: acaso 0,5)
+COR_NAO_DETECTADO = "#d5d4cd" # marcas "apagadas" (ex.: severidade não detectada)
+
+# Tinta e cromo (recessivos — o dado é o protagonista)
+COR_TEXTO = "#0b0b0b"
+COR_TEXTO_SEC = "#52514e"
+COR_GRADE = "#e1e0d9"
+COR_EIXO = "#c3c2b7"
+
+# Cores canônicas por família de falha FMEA (ordem fixa da paleta;
+# consumidas por injecao_falhas.FALHAS e por qualquer gráfico por família)
+CORES_FALHAS = {
+    "lcl": PALETA[0],
+    "desbalanceamento": PALETA[1],
+    "sensor": PALETA[2],
+}
 
 # Tamanhos canônicos (polegadas). Todo gráfico deve usar um destes ou um
 # helper dinâmico abaixo — nunca um figsize avulso.
@@ -36,25 +74,56 @@ TAM = {
 
 
 def aplicar_estilo() -> None:
-    """rcParams uniformes: fonte, grade, bordas e política de salvamento."""
+    """rcParams uniformes: paleta, fonte, grade, bordas e salvamento."""
     plt.rcParams.update({
         "figure.figsize": TAM["unico"],
         "figure.dpi": 100,             # exibição interativa; savefig usa DPI
         "savefig.dpi": DPI,
         "savefig.bbox": "tight",
         "savefig.facecolor": "white",
+        "axes.prop_cycle": cycler(color=PALETA),
         "font.size": 10,
+        "text.color": COR_TEXTO,
         "axes.titlesize": 12,
         "axes.titleweight": "bold",
+        "axes.titlecolor": COR_TEXTO,
         "axes.labelsize": 10,
+        "axes.labelcolor": COR_TEXTO_SEC,
+        "axes.edgecolor": COR_EIXO,
+        "xtick.color": COR_TEXTO_SEC,
+        "ytick.color": COR_TEXTO_SEC,
         "axes.grid": True,
-        "grid.alpha": 0.3,
+        "grid.color": COR_GRADE,
+        "grid.alpha": 1.0,
         "grid.linewidth": 0.6,
         "axes.spines.top": False,
         "axes.spines.right": False,
+        "axes.axisbelow": True,        # grade atrás das marcas, sempre
         "legend.fontsize": 9,
         "legend.framealpha": 0.9,
+        "legend.edgecolor": COR_GRADE,
     })
+
+
+def rotular_barras(ax, barras, fmt: str = "{:.3f}",
+                   horizontal: bool = False, dx: float = 0.01,
+                   fontsize: int = 8) -> None:
+    """
+    Rótulo direto no fim de cada barra (regra de "relevo": cores de baixo
+    contraste só são válidas com o valor visível). Texto em tinta, nunca
+    na cor da série.
+    """
+    for barra in barras:
+        if horizontal:
+            v = barra.get_width()
+            ax.text(v + dx, barra.get_y() + barra.get_height() / 2,
+                    fmt.format(v), va="center", ha="left",
+                    fontsize=fontsize, color=COR_TEXTO_SEC)
+        else:
+            v = barra.get_height()
+            ax.text(barra.get_x() + barra.get_width() / 2, v + dx,
+                    fmt.format(v), ha="center", va="bottom",
+                    fontsize=fontsize, color=COR_TEXTO_SEC)
 
 
 def tam_barras_h(n_itens: int) -> tuple[float, float]:

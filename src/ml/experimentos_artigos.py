@@ -585,7 +585,9 @@ def _grafico_metricas_modelo(exp: ExperimentoArtigo, nome: str, modelo: dict, pl
     from src.ml.estilo_graficos import TAM
 
     valores = [float(modelo[met]) for met in metricas]
-    cores = ["#2F80ED", "#27AE60", "#F2994A", "#9B51E0", "#EB5757", "#56CCF2"][:len(metricas)]
+    from src.ml.estilo_graficos import PALETA
+
+    cores = PALETA[:len(metricas)]
     fig, ax = plt.subplots(figsize=TAM["unico"])
     barras = ax.bar(metricas, valores, color=cores)
     ax.set_ylim(0, 1.05)

@@ -12,7 +12,8 @@ o commit. Nunca editar linhas antigas — este arquivo é só-acréscimo.
 | Data | Limiar p99 | Épocas AE | Motivo da execução | Commit | Observações |
 |---|---:|---:|---|---|---|
 | ~2026-05-24 | 2.9103 | 84 | Primeira execução completa (Fase 5) | — | Números registrados nas memórias de 24–30/05. SUBSTITUÍDA. |
-| 2026-06-17 | 2.0785 | 150 | Reexecução após curadoria/refino do treino | 0ce1e77 | Execução VIGENTE (manifestos de 2026-06-17T20:00). SMD do desbalanceamento = null (não detectada em nenhuma severidade — achado de limitação, ver evidence_levels.md). KS rejeita Weibull nas 3 famílias. |
+| 2026-06-17 | 2.0785 | 150 | Reexecução após curadoria/refino do treino | 0ce1e77 | SUBSTITUÍDA — artefatos removidos no reset de 2026-07-07 (histórico recuperável no git). Achados da execução: SMD do desbalanceamento = null (não detectada em nenhuma severidade — limitação, ver evidence_levels.md); KS rejeitava Weibull nas 3 famílias. |
+| 2026-07-07 | — | — | RESET: artefatos zerados para reexecução com semente determinística do Weibull, estilo gráfico único e comparação com a literatura | — | Próxima execução completa do pipeline + experimentos gera os artefatos vigentes. Registrar aqui ao rodar. |
 
 ## Divergências conhecidas e resolvidas
 
