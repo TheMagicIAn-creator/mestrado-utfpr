@@ -84,6 +84,9 @@ import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from src.ml.estilo_graficos import TAM, aplicar_estilo
+
+aplicar_estilo()
 import matplotlib
 matplotlib.use("Agg")
 from pathlib import Path
@@ -267,7 +270,7 @@ def rul_condicional(t_atual: float, beta: float, eta: float) -> float:
 def plotar_ttf_histogramas(ttfs_dict: dict, params: dict, pasta: Path):
     """Histogramas de TTF com curva de Weibull ajustada."""
     n_falhas = len(FALHAS)
-    fig, axes = plt.subplots(1, n_falhas, figsize=(15, 5))
+    fig, axes = plt.subplots(1, n_falhas, figsize=TAM["painel_3"])
     fig.suptitle("Distribuição do Tempo até Falha (TTF) — Ajuste de Weibull",
                  fontsize=13, fontweight="bold")
 
@@ -299,14 +302,14 @@ def plotar_ttf_histogramas(ttfs_dict: dict, params: dict, pasta: Path):
 
     plt.tight_layout()
     arq = pasta / "weibull_ttf.png"
-    fig.savefig(arq, dpi=150, bbox_inches="tight")
+    fig.savefig(arq)
     plt.close(fig)
     _log(f"   📊 {arq.name}")
 
 
 def plotar_confiabilidade(ttfs_dict: dict, params: dict, pasta: Path):
     """Funções de confiabilidade R(t) e taxa de falha h(t)."""
-    fig, axes = plt.subplots(2, 3, figsize=(15, 8))
+    fig, axes = plt.subplots(2, 3, figsize=TAM["painel_6"])
     fig.suptitle("Análise de Confiabilidade — Funções de Weibull",
                  fontsize=13, fontweight="bold")
 
@@ -350,14 +353,14 @@ def plotar_confiabilidade(ttfs_dict: dict, params: dict, pasta: Path):
 
     plt.tight_layout()
     arq = pasta / "weibull_confiabilidade.png"
-    fig.savefig(arq, dpi=150, bbox_inches="tight")
+    fig.savefig(arq)
     plt.close(fig)
     _log(f"   📊 {arq.name}")
 
 
 def plotar_rul(params: dict, pasta: Path):
     """RUL esperado em função do tempo atual t."""
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=TAM["unico"])
 
     for falha in FALHAS:
         fid  = falha["id"]
@@ -385,7 +388,7 @@ def plotar_rul(params: dict, pasta: Path):
 
     plt.tight_layout()
     arq = pasta / "weibull_rul.png"
-    fig.savefig(arq, dpi=150, bbox_inches="tight")
+    fig.savefig(arq)
     plt.close(fig)
     _log(f"   📊 {arq.name}")
 

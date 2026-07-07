@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 from src.core.config import PASTA_CHROMADB, RAIZ_PROJETO
+from src.core.formatacao import fmt_num, fmt_pvalor
 
 PASTA_AE = RAIZ_PROJETO / "resultados" / "autoencoder"
 PASTA_EXPERIMENTOS = RAIZ_PROJETO / "resultados" / "experimentos"
@@ -26,9 +27,10 @@ def _json(path: Path) -> dict | None:
 
 
 def _fmt(valor, casas: int = 3) -> str:
-    if isinstance(valor, (int, float)):
-        return f"{valor:.{casas}f}"
-    return str(valor)
+    """Formatação canônica — delega a src.core.formatacao (política única)."""
+    if isinstance(valor, str):
+        return valor  # rótulos passam intactos (compatibilidade)
+    return fmt_num(valor, casas)
 
 
 def _normalizar(texto: str) -> str:
@@ -44,10 +46,8 @@ def _normalizar(texto: str) -> str:
 _EXPERIMENTOS_ALIASES = {
     "francisti": "francisti",
     "ibrahim": "ibrahim",
-    "ahirwar": "ahirwar",
-    "stender": "stender",
 }
-_EXPERIMENTOS_ANOMALIA = {"francisti", "ibrahim", "ahirwar"}
+_EXPERIMENTOS_ANOMALIA = {"francisti", "ibrahim"}
 
 
 def _slug_modelo(nome: str) -> str:
@@ -95,7 +95,7 @@ def _experimentos_pedidos(pergunta: str = "") -> list[str]:
     if pedidos:
         return pedidos
     if any(t in txt for t in ("anomalia", "anomalias", "anomaly", "anomalies", "anomalie")):
-        return ["francisti", "ibrahim", "ahirwar"]
+        return ["francisti", "ibrahim"]
     return []
 
 
@@ -548,12 +548,7 @@ def _resumo_weibull() -> str | None:
         elif adequado:
             ks_txt = "✅ adequado"
         else:
-            ks_p = p.get("ks_pval")
-            p_txt = (
-                "p<0.0001" if isinstance(ks_p, (int, float)) and ks_p < 0.0001
-                else f"p={_fmt(ks_p, 4)}"
-            )
-            ks_txt = f"⚠️ rejeitado ({p_txt})"
+            ks_txt = f"⚠️ rejeitado ({fmt_pvalor(p.get('ks_pval'))})"
             ressalvas.append(
                 f"- **{falha.get('nome', fid)}**: "
                 f"{falha.get('ressalva_ajuste') or 'KS rejeita o ajuste Weibull.'}"
@@ -672,7 +667,7 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
             "locais em `resultados/experimentos/<autor>/resultado.json`.\n"
         )
         linhas.append(
-            "- **Dados locais**: Francisti, Ibrahim e Ahirwar usam features "
+            "- **Dados locais**: Francisti e Ibrahim usam features "
             "locais do Paderborn extraidas de "
             "`dados/brutos/Inverter_Data_Set.csv`; como esse dataset e saudavel, "
             "o ground truth de anomalia vem de falhas sinteticas do pipeline.\n"

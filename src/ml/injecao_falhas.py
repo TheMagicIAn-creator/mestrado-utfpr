@@ -86,6 +86,11 @@ import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from src.ml.estilo_graficos import (
+    COR_NAO_DETECTADO, TAM, aplicar_estilo, rotular_barras,
+)
+
+aplicar_estilo()
 import matplotlib
 matplotlib.use("Agg")
 from pathlib import Path
@@ -117,7 +122,7 @@ FALHAS = [
         "nome"    : "Degradação Filtro LCL",
         "npr"     : 210,
         "s"       : 3, "o": 7, "d": 10,
-        "cor"     : "#E53935",
+        "cor"     : "#2a78d6",  # PALETA[0] — ver estilo_graficos.CORES_FALHAS
         "descricao": "Injeção de harmônicos 5°, 7° e 11° nas correntes CA",
         # Schema de proveniência da falha sintética (item 4.4)
         "evidence_level"     : "E2",
@@ -139,7 +144,7 @@ FALHAS = [
         "nome"    : "Desbalanceamento de Fase",
         "npr"     : 150,
         "s"       : 5, "o": 3, "d": 10,
-        "cor"     : "#FB8C00",
+        "cor"     : "#1baf7a",  # PALETA[1]
         "descricao": "Redução de amplitude da fase A",
         "evidence_level"     : "E2",
         "hipotese_fisica"    : (
@@ -159,7 +164,7 @@ FALHAS = [
         "nome"    : "Falha de Sensor CA",
         "npr"     : None,
         "s"       : None, "o": None, "d": 10,
-        "cor"     : "#8E24AA",
+        "cor"     : "#eda100",  # PALETA[2] — baixo contraste: exige rótulo direto
         "descricao": "Ruído gaussiano na corrente da fase A",
         "evidence_level"     : "E2",
         "hipotese_fisica"    : (
@@ -513,7 +518,7 @@ def executar_injecao_falhas() -> bool:
     PASTA_AE.mkdir(parents=True, exist_ok=True)
 
     # Gráfico 1: Erro vs Severidade por tipo de falha
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5), sharey=False)
+    fig, axes = plt.subplots(1, 3, figsize=TAM["painel_3"], sharey=False)
     fig.suptitle("Injeção de Falhas Sintéticas — Erro de Reconstrução vs Severidade",
                  fontsize=13, fontweight="bold")
 
@@ -523,10 +528,12 @@ def executar_injecao_falhas() -> bool:
         erros = [resultados[fid][s]["erro"] for s in sevs]
 
         cores = [falha["cor"] if resultados[fid][s]["detectado"]
-                 else "#BDBDBD" for s in sevs]
+                 else COR_NAO_DETECTADO for s in sevs]
 
-        ax.bar([str(s) for s in sevs], erros, color=cores, alpha=0.85,
-               edgecolor="white", linewidth=0.5)
+        barras = ax.bar([str(s) for s in sevs], erros, color=cores,
+                        edgecolor="white", linewidth=0.5)
+        rotular_barras(ax, barras, fmt="{:.2f}",
+                       dx=max(erros) * 0.02 if max(erros) > 0 else 0.01)
         ax.axhline(limiar, color="red", linestyle="--", linewidth=1.5,
                    label=f"Limiar = {limiar:.2f}")
         ax.axhline(baseline_mean, color="green", linestyle=":",
@@ -553,12 +560,12 @@ def executar_injecao_falhas() -> bool:
 
     plt.tight_layout()
     arq_g1 = PASTA_AE / "injecao_falhas_resultados.png"
-    fig.savefig(arq_g1, dpi=150, bbox_inches="tight")
+    fig.savefig(arq_g1)
     plt.close(fig)
     _log(f"   📊 {arq_g1.name}")
 
     # Gráfico 2: Comparação consolidada em escala log
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=TAM["unico"])
 
     x      = np.arange(len(SEVERIDADES))
     largura = 0.25
@@ -588,7 +595,7 @@ def executar_injecao_falhas() -> bool:
     plt.tight_layout()
 
     arq_g2 = PASTA_AE / "injecao_falhas_comparacao.png"
-    fig.savefig(arq_g2, dpi=150, bbox_inches="tight")
+    fig.savefig(arq_g2)
     plt.close(fig)
     _log(f"   📊 {arq_g2.name}")
 

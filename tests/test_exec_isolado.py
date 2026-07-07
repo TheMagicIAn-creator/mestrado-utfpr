@@ -84,22 +84,22 @@ def test_sucesso_isolado_le_json_e_encaminha_progresso(monkeypatch):
 
 
 def test_ok_false_legitimo_passa_mesmo_com_returncode_nao_zero(monkeypatch):
-    # "cartão de dataset"/"lib faltando": resultado VÁLIDO ok=False; mesmo que o
-    # processo encerre != 0, o JSON gravado deve prevalecer (não vira "crash").
+    # "lib faltando": resultado VÁLIDO ok=False; mesmo que o processo encerre
+    # != 0, o JSON gravado deve prevalecer (não vira "crash").
     _limpa_envs(monkeypatch)
 
     def fake_popen(cmd, **kw):
         Path(cmd[-1]).write_text(
-            json.dumps({"experimento": "stender", "ok": False,
-                        "mensagem": "cartão de dataset — sem modelo"}),
+            json.dumps({"experimento": "ibrahim", "ok": False,
+                        "mensagem": "modelo requer prophet — sem execução"}),
             encoding="utf-8",
         )
         return _FakeProc(["aviso"], returncode=1)
 
     monkeypatch.setattr(ei.subprocess, "Popen", fake_popen)
-    out = ei.executar_experimento_isolado("stender")
+    out = ei.executar_experimento_isolado("ibrahim")
     assert out["ok"] is False
-    assert out["mensagem"] == "cartão de dataset — sem modelo"
+    assert out["mensagem"] == "modelo requer prophet — sem execução"
 
 
 def test_returncode_nao_zero_graceful(monkeypatch):

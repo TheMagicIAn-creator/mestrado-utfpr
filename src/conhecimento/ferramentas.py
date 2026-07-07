@@ -116,8 +116,8 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "listar_experimentos_artigos",
         "description": (
-            "Lista os EXPERIMENTOS de ML por artigo-base (Francisti, Ibrahim, "
-            "Ahirwar, Stender) e o status de cada modelo. Use "
+            "Lista os EXPERIMENTOS de ML por artigo-base (Francisti, Ibrahim) "
+            "e o status de cada modelo. Use "
             "quando o usuario perguntar quais experimentos existem, quais "
             "modelos rodam, ou o que da para testar com base nos artigos."
         ),
@@ -126,7 +126,7 @@ ESPEC_FERRAMENTAS = [
         "name": "limpar_experimentos_artigos",
         "description": (
             "Apaga artefatos/resultados dos experimentos por artigo-base "
-            "(Francisti, Ibrahim, Ahirwar), mediante "
+            "(Francisti, Ibrahim), mediante "
             "confirmacao explicita. Use quando o usuario pedir para apagar, "
             "limpar, excluir ou resetar experimentos por artigo."
         ),
@@ -179,7 +179,7 @@ ESPEC_FERRAMENTAS = [
             "Treina e avalia os modelos de ML de um ou mais artigos-base e "
             "compara os resultados (AUC/F1 ou acuracia). Use quando o usuario "
             "pedir para RODAR/TESTAR um experimento de um artigo: 'rode o "
-            "experimento do Ibrahim', 'teste os modelos do Ahirwar'. Tarefa "
+            "experimento do Ibrahim', 'teste os modelos do Francisti'. Tarefa "
             "pesada (treina modelos). Para comparar resultados ja gerados, use "
             "consultar_resultados."
         ),
@@ -187,9 +187,11 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "comparar_experimentos_auc",
         "description": (
-            "Compara os experimentos de anomalia (Francisti, Ibrahim, "
-            "Ahirwar) pelo AUC — a unica metrica comparavel entre protocolos "
-            "distintos. Exibe tabela ranqueada e grafico. Use quando o usuario "
+            "Compara o METODO PROPOSTO (Autoencoder do pipeline) com a "
+            "literatura (Francisti, Ibrahim) pelo AUC, no MESMO banco de "
+            "teste — a unica metrica comparavel entre protocolos. Exibe "
+            "tabela ranqueada, grafico e a validacao E2 nativa a parte. "
+            "Usa o modelo JA treinado (nunca treina). Use quando o usuario "
             "pedir para COMPARAR os experimentos/modelos de anomalia: 'compare "
             "os experimentos de anomalia', 'compare por AUC', 'qual e o melhor "
             "modelo de anomalia'. NAO usa para rodar — apenas le os resultados "
@@ -314,8 +316,6 @@ def _quer_catalogo(pergunta: str) -> bool:
 _AUTORES_EXP = {
     "francisti": "francisti",
     "ibrahim": "ibrahim",
-    "ahirwar": "ahirwar",
-    "stender": "stender",
 }
 _VERBOS_RODAR_EXP = (
     "rode", "rodar", "roda", "execut", "teste", "testar", "testa",
@@ -335,9 +335,9 @@ def _experimentos_alvo(pergunta: str) -> list[str]:
     if alvos:
         return alvos
     if any(t in txt for t in ("anomalia", "anomalias", "anomaly", "anomalies", "anomalie", "anomalies")):
-        return ["francisti", "ibrahim", "ahirwar"]
+        return ["francisti", "ibrahim"]
     if any(t in txt for t in ("todos", "tudo", "compare", "comparar", "todas", "all", "todos", "todas", "tous", "toutes")):
-        return ["francisti", "ibrahim", "ahirwar"]
+        return ["francisti", "ibrahim"]
     return []
 
 
@@ -527,6 +527,9 @@ def _quer_comparar_auc_experimentos(pergunta: str) -> bool:
         "anomalia", "anomalias",
         "protocolo", "protocolos",
         "auc", "por auc",
+        # comparação do método proposto com a literatura (mesma ferramenta)
+        "literatura", "meu metodo", "metodo proposto", "meu autoencoder",
+        "com os artigos", "estado da arte",
     ))
     return tem_alvo
 
@@ -940,13 +943,11 @@ def limpar_experimentos_artigos(progresso=None, pergunta: str = "") -> dict:
 
     from src.ml.experimentos_artigos import ORDEM_EXPERIMENTOS, PASTA_EXPERIMENTOS
 
-    alvos = _experimentos_alvo(pergunta) or [
-        key for key in ORDEM_EXPERIMENTOS if key != "stender"
-    ]
+    alvos = _experimentos_alvo(pergunta) or list(ORDEM_EXPERIMENTOS)
     alvos = list(dict.fromkeys(alvos))
     rotulo = (
         "TODOS"
-        if len(alvos) >= len([k for k in ORDEM_EXPERIMENTOS if k != "stender"])
+        if len(alvos) >= len(ORDEM_EXPERIMENTOS)
         else " ".join(k.upper() for k in alvos)
     )
     token = (
@@ -1351,54 +1352,105 @@ def classificar_amostra_pv(progresso=None, pergunta: str = "") -> dict:
 
 def comparar_experimentos_auc(progresso=None, pergunta: str = "") -> dict:
     """
-    Compara experimentos de anomalia pelo AUC (tabela ranqueada + gráfico).
-    Lê os resultado.json já salvos — não re-roda. AUC é a métrica comparável
-    entre protocolos distintos; F1 não é (cada protocolo opera em ponto
-    de decisão diferente).
+    Compara o MÉTODO PROPOSTO (Autoencoder do pipeline) com a literatura
+    (Francisti, Ibrahim) pelo AUC, no MESMO banco de teste (injeção FMEA
+    no espaço de features, split temporal com purga, seed 42). Nunca
+    treina: usa o modelo salvo; sem modelo, degrada para a comparação
+    só-experimentos com aviso.
     """
     if progresso:
-        progresso("Comparando experimentos de anomalia por AUC...")
+        progresso("Comparando o método proposto com a literatura (AUC)...")
     try:
-        from src.ml.experimentos_artigos import comparar_anomalia_por_auc
-        cmp = comparar_anomalia_por_auc()
+        from src.ml.comparacao_literatura import comparar_com_literatura
+        cmp = comparar_com_literatura(progresso=progresso)
     except Exception as exc:  # noqa: BLE001
         return {
-            "ok": False, "etapa": "Comparação AUC",
-            "mensagem": f"Não consegui comparar os experimentos: {exc}",
+            "ok": False, "etapa": "Comparação com a literatura",
+            "mensagem": f"Não consegui montar a comparação: {exc}",
             "imagens": [], "resposta_pronta": True, "forcar_resposta_direta": True,
         }
 
     if not cmp.get("ok"):
+        # Degradação honesta: sem o modelo do pipeline, ainda dá para
+        # comparar os experimentos ENTRE SI — com o aviso do que falta.
+        try:
+            from src.ml.experimentos_artigos import comparar_anomalia_por_auc
+            so_exp = comparar_anomalia_por_auc()
+        except Exception:  # noqa: BLE001
+            so_exp = {"ok": False}
+        if so_exp.get("ok"):
+            msg = (
+                "## Comparação dos experimentos de anomalia por AUC\n\n"
+                f"> ⚠️ {cmp.get('mensagem', '')}\n\n"
+                + so_exp.get("tabela_md", "(sem dados)")
+            )
+            imagens = []
+            graf = so_exp.get("grafico")
+            if graf:
+                from pathlib import Path
+                p = Path(graf)
+                if p.exists():
+                    imagens.append({"path": str(p),
+                                    "caption": "Comparação AUC — experimentos"})
+            return {
+                "ok": True, "etapa": "Comparação AUC",
+                "mensagem": msg, "imagens": imagens,
+                "resposta_pronta": True, "forcar_resposta_direta": True,
+            }
         return {
-            "ok": False, "etapa": "Comparação AUC",
-            "mensagem": cmp.get("mensagem", "Sem resultados salvos para comparar. "
-                                "Rode os experimentos primeiro."),
+            "ok": False, "etapa": "Comparação com a literatura",
+            "mensagem": cmp.get("mensagem", "Sem dados para comparar."),
             "imagens": [], "resposta_pronta": True, "forcar_resposta_direta": True,
         }
 
-    nota = (
-        "## Comparação dos experimentos de anomalia por AUC\n\n"
-        "> **Nota metodológica:** AUC é a única métrica comparável entre os "
-        "protocolos (Shewhart 3σ, p99 em calibração temporal, PPO em validação, "
-        "voto majoritário). O F1 **não** é comparável — cada protocolo opera em "
-        "um ponto de decisão diferente.\n\n"
-    )
-    msg = nota + cmp.get("tabela_md", "(sem dados)")
+    partes = [
+        "## Método proposto vs. literatura — AUC no banco comum\n\n",
+        f"> **Banco comum (E1):** {cmp.get('info_banco', '')}. AUC é a única "
+        "métrica comparável entre protocolos; F1 não é (cada método opera em "
+        "ponto de decisão próprio).\n\n",
+        cmp.get("tabela_md", "(sem dados)"),
+    ]
+
+    por_falha = cmp.get("auc_por_falha_metodo") or {}
+    if por_falha:
+        from src.core.formatacao import fmt_metrica, tabela_markdown
+        partes.append("\n**Método proposto por família de falha (banco comum):**\n\n")
+        partes.append(tabela_markdown(
+            ["Família", "AUC"],
+            [[fam, fmt_metrica(v)] for fam, v in por_falha.items()],
+        ))
+
+    if cmp.get("e2_nativo"):
+        from src.core.formatacao import fmt_metrica, tabela_markdown
+        partes.append(
+            "\n**Validação nativa do método (E2 — injeção no SINAL, teste "
+            "mais forte; não comparável com a tabela acima):**\n\n"
+        )
+        partes.append(tabela_markdown(
+            ["Falha × severidade", "AUC"],
+            [[caso, fmt_metrica(v)]
+             for caso, v in sorted(cmp["e2_nativo"].items())],
+        ))
+
+    for aviso in cmp.get("avisos", []):
+        partes.append(f"\n> ⚠️ {aviso}")
 
     imagens = []
     graf = cmp.get("grafico")
     if graf:
         from pathlib import Path
-        p = Path(graf)
+
+        from src.core.utils import resolve_project_path
+        p = resolve_project_path(graf) if not Path(graf).is_absolute() else Path(graf)
         if p.exists():
             imagens.append({
                 "path": str(p),
-                "caption": "Comparação AUC — experimentos de anomalia",
+                "caption": "Comparação — método proposto vs. literatura (AUC, banco comum)",
             })
 
     return {
-        "ok": True, "etapa": "Comparação AUC",
-        "mensagem": msg, "imagens": imagens,
+        "ok": True, "etapa": "Comparação com a literatura",
+        "mensagem": "".join(partes), "imagens": imagens,
         "resposta_pronta": True,
         "forcar_resposta_direta": True,  # não passa pelo LLM; já é direto e completo
     }

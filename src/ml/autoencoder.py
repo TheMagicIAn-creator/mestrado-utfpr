@@ -71,6 +71,9 @@ import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from src.ml.estilo_graficos import PALETA, TAM, aplicar_estilo
+
+aplicar_estilo()
 import matplotlib
 matplotlib.use("Agg")   # sem display — salva direto em arquivo
 
@@ -295,10 +298,10 @@ def calcular_limiar(erros_treino: np.ndarray,
 def plotar_curvas(hist_treino: list, hist_val: list,
                   epoca_melhor: int, pasta: Path):
     """Curvas de loss por época."""
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=TAM["unico"])
     epocas = range(1, len(hist_treino) + 1)
-    ax.plot(epocas, hist_treino, label="Treino",     color="#2196F3")
-    ax.plot(epocas, hist_val,   label="Validação",   color="#FF9800")
+    ax.plot(epocas, hist_treino, label="Treino",     color=PALETA[0])
+    ax.plot(epocas, hist_val,   label="Validação",   color=PALETA[1])
     ax.axvline(epoca_melhor, color="green", linestyle="--",
                alpha=0.7, label=f"Melhor época ({epoca_melhor})")
     ax.set_xlabel("Época")
@@ -308,7 +311,7 @@ def plotar_curvas(hist_treino: list, hist_val: list,
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
     caminho = pasta / "curva_treino.png"
-    fig.savefig(caminho, dpi=150)
+    fig.savefig(caminho)
     plt.close(fig)
     _log(f"   📊 {caminho.name}")
 
@@ -317,12 +320,12 @@ def plotar_distribuicao(erros_treino: np.ndarray,
                         erros_val: np.ndarray,
                         info_limiar: dict, pasta: Path):
     """Distribuição do erro de reconstrução + limiar de anomalia."""
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=TAM["unico"])
 
     ax.hist(erros_treino, bins=30, alpha=0.6,
-            color="#2196F3", label="Treino (saudável)")
+            color=PALETA[0], label="Treino (saudável)")
     ax.hist(erros_val, bins=20, alpha=0.6,
-            color="#FF9800", label="Validação (saudável)")
+            color=PALETA[1], label="Validação (saudável)")
 
     limiar = info_limiar["limiar"]
     ax.axvline(limiar, color="red", linewidth=2, linestyle="--",
@@ -341,7 +344,7 @@ def plotar_distribuicao(erros_treino: np.ndarray,
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
     caminho = pasta / "distribuicao_erro.png"
-    fig.savefig(caminho, dpi=150)
+    fig.savefig(caminho)
     plt.close(fig)
     _log(f"   📊 {caminho.name}")
 
@@ -350,8 +353,8 @@ def plotar_erro_temporal(erros: np.ndarray,
                          tempos: np.ndarray,
                          info_limiar: dict, pasta: Path):
     """Erro de reconstrução ao longo do tempo."""
-    fig, ax = plt.subplots(figsize=(12, 4))
-    ax.plot(tempos, erros, color="#2196F3", alpha=0.8, linewidth=0.8)
+    fig, ax = plt.subplots(figsize=TAM["unico"])
+    ax.plot(tempos, erros, color=PALETA[0], alpha=0.8, linewidth=0.8)
     ax.axhline(info_limiar["limiar"], color="red", linestyle="--",
                linewidth=1.5, label=f"Limiar = {info_limiar['limiar']:.4f}")
     ax.fill_between(tempos, erros, info_limiar["limiar"],
@@ -364,7 +367,7 @@ def plotar_erro_temporal(erros: np.ndarray,
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
     caminho = pasta / "erro_temporal.png"
-    fig.savefig(caminho, dpi=150)
+    fig.savefig(caminho)
     plt.close(fig)
     _log(f"   📊 {caminho.name}")
 
