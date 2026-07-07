@@ -19,13 +19,14 @@ prática da área — e nenhum limiar enxerga os rótulos do teste:
   AE-LSTM com limiar = percentil 99 do erro de reconstrução NO TREINO
   (congelado antes de ver o teste — a mesma disciplina do pipeline principal);
   Prophet com banda de incerteza de 99% (fora da banda = anomalia).
-- Ahirwar & Nandanwar (2025) → voto MAJORITÁRIO entre membros (IF, AE-LSTM,
-  Prophet), cada um decidindo pela SUA regra a priori — não uma média de
-  scores normalizados.
 
-Nota de curadoria: os protocolos de Sharma (PPO+IForest, baselines
-supervisionados) e o Random Forest do Francisti foram REMOVIDOS — a decisão
-e o racional estão registrados no CLAUDE.md ("Experimentos por Artigo-Base").
+Nota de curadoria: o núcleo comparativo foi enxugado para DOIS protocolos —
+Francisti (baseline ingênuo Shewhart) e Ibrahim (concorrentes diretos do
+Autoencoder). Removidos: Sharma (PPO+IForest, baselines supervisionados), o
+Random Forest do Francisti, o voto híbrido de Ahirwar (derivativo do Ibrahim)
+e Stender (cartão de dataset, não é experimento). A decisão e o racional estão
+no CLAUDE.md ("Experimentos por Artigo-Base"). Ahirwar e Stender seguem
+citáveis como literatura indexada — apenas não são experimentos executáveis.
 
 Infraestrutura comum (igual para todos, como num benchmark justo):
 - split TEMPORAL com purga (src/ml/split_temporal.py) — nunca aleatório;
@@ -50,7 +51,7 @@ log = get_logger("protocolos_artigos")
 # ── constantes dos protocolos (a priori, documentadas) ──────────────────────
 SEVERIDADE_PADRAO = 1.0          # escala global da injeção (1.0 = moderada)
 LIMIAR_SIGMA = 3.0               # regra de Shewhart (Francisti)
-CONTAMINACAO_A_PRIORI = 0.05     # Isolation Forest (Ibrahim/Ahirwar)
+CONTAMINACAO_A_PRIORI = 0.05     # Isolation Forest (Ibrahim)
 PERCENTIL_TREINO = 99            # AE-LSTM: limiar congelado no treino
 INTERVALO_PROPHET = 0.99         # banda de incerteza do Prophet
 PURGA_JANELAS = 2                # janelas com 50% de sobreposição → purga 2
@@ -384,8 +385,8 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
     Prophet com banda de 99% (fora da banda = anomalia). Nenhuma decisão
     enxerga os rótulos do teste.
 
-    Com ``retornar_predicoes=True`` devolve também ``{modelo: y_pred}`` para
-    o ensemble do Ahirwar REUTILIZAR as mesmas decisões (sem refazer fits).
+    Com ``retornar_predicoes=True`` devolve também ``{modelo: y_pred}`` (as
+    decisões por membro, sem refazer fits) — gancho para eventual ensemble.
     """
     import numpy as np
 
@@ -489,82 +490,6 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
 
 
 # ============================================================
-# PROTOCOLO — AHIRWAR & NANDANWAR (2025)
-# ============================================================
-
-def protocolo_ahirwar(dados, progresso=None):
-    """
-    Híbrido por VOTO MAJORITÁRIO: cada membro (IF, AE-LSTM, Prophet) decide
-    pela SUA regra a priori e o ensemble rotula anomalia quando a maioria dos
-    membros disponíveis concorda. Fiel à ideia central do artigo (combinação
-    de detectores heterogêneos), sem média artificial de scores.
-    """
-    import numpy as np
-
-    # Reusa o protocolo do Ibrahim para os MEMBROS, recebendo as MESMAS
-    # predições que geraram as métricas individuais — o voto decide sobre
-    # exatamente o que foi reportado (sem refazer fits).
-    saida, _met_ibrahim, preds = protocolo_ibrahim(
-        dados, progresso=progresso, retornar_predicoes=True)
-
-    y_te = dados["y_te"]
-    tipos = dados["tipos_te"]
-
-    if len(preds) >= 2:
-        if progresso:
-            progresso("Ahirwar: voto majoritário dos membros...")
-        matriz = np.vstack(list(preds.values()))
-        votos = matriz.sum(axis=0)
-        maioria = len(preds) // 2 + 1
-        y_pred_h = (votos >= maioria).astype(int)
-        score_h = votos / len(preds)
-
-        m_h = _metricas(
-            y_te, score_h, y_pred_h,
-            threshold_source=f"voto_majoritario_{maioria}_de_{len(preds)}",
-            tipos_te=tipos,
-        )
-        # concordância média entre pares de membros (estatística do ensemble)
-        n_m = len(preds)
-        if n_m > 1:
-            pares = [
-                float((matriz[a] == matriz[b]).mean())
-                for a in range(n_m) for b in range(a + 1, n_m)
-            ]
-            m_h["concordancia_media_membros"] = float(np.mean(pares))
-        m_h["membros"] = list(preds)
-        saida["Híbrido (voto)"] = m_h
-    else:
-        saida["Híbrido (voto)"] = _indisponivel(
-            "precisa de ≥2 membros disponíveis (IF/AE-LSTM/Prophet)")
-
-    metodologia = {
-        "protocolo": "ahirwar2025_voto_hibrido",
-        "fonte": "Ahirwar & Nandanwar (2025)",
-        "decisoes": {
-            "membros": "cada um pela própria regra a priori (IF contaminação; "
-                       f"AE-LSTM p{PERCENTIL_TREINO} em calibração temporal; "
-                       f"Prophet banda {INTERVALO_PROPHET:.0%}) — o voto usa "
-                       "as MESMAS predições das métricas individuais",
-            "Híbrido (voto)": "anomalia quando a MAIORIA dos membros "
-                              "disponíveis vota anomalia",
-        },
-        "fidelidade": [
-            "Segue o artigo: ensemble heterogêneo AE-LSTM + Prophet + IF.",
-            "Adaptação: voto majoritário simples no lugar da otimização "
-            "bayesiana de hiperparâmetros (documentado como simplificação).",
-            "Membros em pontos de operação conservadores tornam o voto "
-            "majoritário ainda mais conservador (recall baixo por construção) "
-            "— achado metodológico a discutir, não defeito de implementação.",
-        ],
-    }
-    if dados.get("col_prophet_nome"):
-        metodologia["decisoes"]["membros"] += (
-            f"; Prophet monitora '{dados['col_prophet_nome']}'")
-    return saida, metodologia
-
-
-# ============================================================
 # DISPATCH
 # ============================================================
 
@@ -572,7 +497,6 @@ def protocolo_ahirwar(dados, progresso=None):
 PROTOCOLOS = {
     "francisti": (protocolo_francisti, False),
     "ibrahim": (protocolo_ibrahim, False),
-    "ahirwar": (protocolo_ahirwar, False),
 }
 
 

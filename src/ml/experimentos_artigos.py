@@ -13,16 +13,22 @@ Princípios:
   fica registrado e é reportado como "requer <lib>" em vez de quebrar a corrida.
 - Métricas e artefatos padronizados para permitir comparação entre artigos.
 
-Artigos-base do NÚCLEO (curadoria "só anomalia CA por modelagem de normalidade"):
-  1. Francisti et al. (2025)             — Z-score (Shewhart/SPC), não-supervisionado
-  2. Ibrahim et al. (2022)               — AE-LSTM, Prophet, Isolation Forest
-  3. Ahirwar & Nandanwar (2025)          — híbrido AE-LSTM + Prophet + IForest (voto)
-  4. Stender, Wallscheid & Böcker (2020) — descrição do dataset (Paderborn)
+Artigos-base do NÚCLEO comparativo (enxugado para 2: baseline + concorrentes):
+  1. Francisti et al. (2025) — Z-score (Shewhart/SPC), baseline ingênuo
+  2. Ibrahim et al. (2022)   — AE-LSTM, Prophet, Isolation Forest (concorrentes
+                               diretos do Autoencoder do pipeline principal)
 
-Removidos da curadoria (treinavam nos rótulos da injeção sintética ou
-inadequados): Ghoneim (classificação CC supervisionada — segue no
-classificador_pv, não como experimento), Sharma (baselines supervisionados +
-RNN/CNN + IForest+PPO degenerado) e o Random Forest supervisionado do Francisti.
+O papel destes experimentos é COMPARAÇÃO com a literatura, não é o método da
+dissertação (esse é o pipeline principal: Autoencoder no sinal → injeção FMEA
+→ validação → Weibull). Os experimentos usam injeção FMEA no espaço de
+features (E1); o pipeline principal usa injeção no sinal bruto (E2). Não são
+diretamente comparáveis por F1 — só por AUC.
+
+Removidos da curadoria: Ghoneim (classificação CC supervisionada — segue no
+classificador_pv), Sharma (baselines supervisionados + RNN/CNN + IForest+PPO
+degenerado), o Random Forest do Francisti, Ahirwar (voto híbrido — derivativo
+do Ibrahim) e Stender (cartão de dataset, não é experimento). Ahirwar e Stender
+seguem citáveis como literatura indexada, apenas não como experimentos.
 
 Autor: Rodolfo Torres (UTFPR)
 """
@@ -255,40 +261,6 @@ REGISTRO: dict[str, ExperimentoArtigo] = {
             ModeloSpec("Isolation Forest", "anomalia"),
             ModeloSpec("AE-LSTM", "rede", requer="torch"),
             ModeloSpec("Facebook Prophet", "anomalia", requer="prophet"),
-        ),
-        runner="executar_anomalia",
-    ),
-    "stender": ExperimentoArtigo(
-        key="stender",
-        artigo="Data Set Description: Three-Phase IGBT Two-Level Inverter",
-        referencia="Stender, Wallscheid & Böcker (2020)",
-        ano=2020,
-        dataset="Paderborn",
-        tarefa="dataset",
-        descricao=(
-            "Artigo de descrição do dataset de Paderborn (inversor IGBT "
-            "trifásico saudável, 10 kHz). É a referência de normalidade — "
-            "não propõe modelo, fornece os dados de treino do detector."
-        ),
-        modelos=(),
-        runner="",
-    ),
-    "ahirwar": ExperimentoArtigo(
-        key="ahirwar",
-        artigo="Enhanced Anomaly Detection Using Hybrid ML Techniques",
-        referencia="Ahirwar & Nandanwar (2025)",
-        ano=2025,
-        dataset="Paderborn",
-        tarefa="anomalia",
-        descricao=(
-            "Abordagem híbrida: combina Autoencoder-LSTM, Facebook Prophet e "
-            "Isolation Forest, com otimização bayesiana de hiperparâmetros."
-        ),
-        modelos=(
-            ModeloSpec("Isolation Forest", "anomalia"),
-            ModeloSpec("AE-LSTM", "rede", requer="torch"),
-            ModeloSpec("Facebook Prophet", "anomalia", requer="prophet"),
-            ModeloSpec("Híbrido (voto)", "ensemble"),
         ),
         runner="executar_anomalia",
     ),
@@ -1050,7 +1022,7 @@ def executar_anomalia(exp: ExperimentoArtigo, progresso=None) -> dict:
     # cada experimento; o harness generico legado foi removido na curadoria.
     raise ValueError(
         f"Experimento '{exp.key}' nao tem protocolo de anomalia registrado "
-        f"(nucleo: francisti, ibrahim, ahirwar)."
+        f"(nucleo: francisti, ibrahim)."
     )
 _DISPATCH_RUNNERS: dict[str, Callable] = {
     "executar_anomalia": executar_anomalia,

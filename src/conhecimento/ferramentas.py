@@ -116,8 +116,8 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "listar_experimentos_artigos",
         "description": (
-            "Lista os EXPERIMENTOS de ML por artigo-base (Francisti, Ibrahim, "
-            "Ahirwar, Stender) e o status de cada modelo. Use "
+            "Lista os EXPERIMENTOS de ML por artigo-base (Francisti, Ibrahim) "
+            "e o status de cada modelo. Use "
             "quando o usuario perguntar quais experimentos existem, quais "
             "modelos rodam, ou o que da para testar com base nos artigos."
         ),
@@ -126,7 +126,7 @@ ESPEC_FERRAMENTAS = [
         "name": "limpar_experimentos_artigos",
         "description": (
             "Apaga artefatos/resultados dos experimentos por artigo-base "
-            "(Francisti, Ibrahim, Ahirwar), mediante "
+            "(Francisti, Ibrahim), mediante "
             "confirmacao explicita. Use quando o usuario pedir para apagar, "
             "limpar, excluir ou resetar experimentos por artigo."
         ),
@@ -179,7 +179,7 @@ ESPEC_FERRAMENTAS = [
             "Treina e avalia os modelos de ML de um ou mais artigos-base e "
             "compara os resultados (AUC/F1 ou acuracia). Use quando o usuario "
             "pedir para RODAR/TESTAR um experimento de um artigo: 'rode o "
-            "experimento do Ibrahim', 'teste os modelos do Ahirwar'. Tarefa "
+            "experimento do Ibrahim', 'teste os modelos do Francisti'. Tarefa "
             "pesada (treina modelos). Para comparar resultados ja gerados, use "
             "consultar_resultados."
         ),
@@ -187,8 +187,8 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "comparar_experimentos_auc",
         "description": (
-            "Compara os experimentos de anomalia (Francisti, Ibrahim, "
-            "Ahirwar) pelo AUC — a unica metrica comparavel entre protocolos "
+            "Compara os experimentos de anomalia (Francisti, Ibrahim) "
+            "pelo AUC — a unica metrica comparavel entre protocolos "
             "distintos. Exibe tabela ranqueada e grafico. Use quando o usuario "
             "pedir para COMPARAR os experimentos/modelos de anomalia: 'compare "
             "os experimentos de anomalia', 'compare por AUC', 'qual e o melhor "
@@ -314,8 +314,6 @@ def _quer_catalogo(pergunta: str) -> bool:
 _AUTORES_EXP = {
     "francisti": "francisti",
     "ibrahim": "ibrahim",
-    "ahirwar": "ahirwar",
-    "stender": "stender",
 }
 _VERBOS_RODAR_EXP = (
     "rode", "rodar", "roda", "execut", "teste", "testar", "testa",
@@ -335,9 +333,9 @@ def _experimentos_alvo(pergunta: str) -> list[str]:
     if alvos:
         return alvos
     if any(t in txt for t in ("anomalia", "anomalias", "anomaly", "anomalies", "anomalie", "anomalies")):
-        return ["francisti", "ibrahim", "ahirwar"]
+        return ["francisti", "ibrahim"]
     if any(t in txt for t in ("todos", "tudo", "compare", "comparar", "todas", "all", "todos", "todas", "tous", "toutes")):
-        return ["francisti", "ibrahim", "ahirwar"]
+        return ["francisti", "ibrahim"]
     return []
 
 
@@ -940,13 +938,11 @@ def limpar_experimentos_artigos(progresso=None, pergunta: str = "") -> dict:
 
     from src.ml.experimentos_artigos import ORDEM_EXPERIMENTOS, PASTA_EXPERIMENTOS
 
-    alvos = _experimentos_alvo(pergunta) or [
-        key for key in ORDEM_EXPERIMENTOS if key != "stender"
-    ]
+    alvos = _experimentos_alvo(pergunta) or list(ORDEM_EXPERIMENTOS)
     alvos = list(dict.fromkeys(alvos))
     rotulo = (
         "TODOS"
-        if len(alvos) >= len([k for k in ORDEM_EXPERIMENTOS if k != "stender"])
+        if len(alvos) >= len(ORDEM_EXPERIMENTOS)
         else " ".join(k.upper() for k in alvos)
     )
     token = (

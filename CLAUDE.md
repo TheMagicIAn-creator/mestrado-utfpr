@@ -149,31 +149,37 @@ de anomalia"). Cada artigo é um experimento reproduzível;
 os resultados são salvos em resultados/experimentos/<key>/
 (resultado.json, relatorio.txt, comparacao.png).
 
-CURADORIA (foco do mestrado — só núcleo de anomalia CA por
-modelagem de NORMALIDADE, sem rótulos de falha): mantidos
-apenas os detectores não-supervisionados. Removidos da
-vitrine (registry) os experimentos e modelos que treinavam
-nos rótulos da injeção sintética (superestimam o desempenho
-real) ou que eram inadequados/degenerados:
-- CORTADO Ghoneim (2021) — classificação supervisionada CC
-  (PV Farms). Domínio CC, fora do foco CA. (A classificação
-  CC segue acessível pelo classificador_pv, não como
-  experimento.)
-- CORTADO Sharma (2026) — baselines supervisionados
-  (KNN/SVM/ANN), RNN/CNN (arquitetura inadequada a vetor de
-  features) e IForest+PPO (degenerou: recall 1.0 /
-  especificidade 0.0).
-- Francisti (2025) — mantido SÓ o Z-score (Shewhart/SPC,
-  não-supervisionado); o Random Forest supervisionado foi
-  removido.
+PAPEL DOS EXPERIMENTOS: são COMPARAÇÃO com a literatura, não
+são o método da dissertação (esse é o pipeline principal —
+Autoencoder no sinal → injeção FMEA → validação → Weibull).
+Servem para mostrar que a abordagem escolhida se sustenta
+frente às alternativas. Nunca confundir os dois na dissertação.
 
-Experimentos registrados (núcleo CA):
-- Francisti (2025) — Paderborn, anomalia: Z-score (Shewhart 3σ)
-- Ibrahim (2022) — Paderborn, anomalia: Isolation Forest,
-  AE-LSTM, Facebook Prophet
-- Ahirwar (2025) — Paderborn, anomalia: híbrido AE-LSTM +
-  Prophet + Isolation Forest (voto)
-- Stender (2020) — cartão de dataset (Paderborn), sem modelo
+CURADORIA — núcleo comparativo enxugado para DOIS experimentos
+(um baseline ingênuo + os concorrentes diretos do Autoencoder):
+- Francisti (2025) — Z-score (Shewhart 3σ), baseline ingênuo:
+  se o Autoencoder não vence uma carta de controle 3σ, há
+  problema. (O Random Forest supervisionado do artigo foi
+  removido.)
+- Ibrahim (2022) — Isolation Forest, AE-LSTM, Prophet: os
+  concorrentes não-supervisionados diretos; o AE-LSTM é primo
+  arquitetural do Autoencoder do pipeline.
+
+CORTADOS (não são mais experimentos executáveis):
+- Ghoneim (2021) — classificação supervisionada CC (PV Farms),
+  fora do foco CA (segue acessível pelo classificador_pv).
+- Sharma (2026) — baselines supervisionados, RNN/CNN e
+  IForest+PPO (degenerou: recall 1.0 / especificidade 0.0).
+- Ahirwar (2025) — voto híbrido; derivativo do Ibrahim (só
+  combina os membros que o Ibrahim já roda).
+- Stender (2020) — cartão de dataset, não é experimento.
+Ahirwar e Stender seguem CITÁVEIS como literatura indexada;
+apenas não são experimentos executáveis.
+
+Assimetria de evidência (importante para a banca): o pipeline
+principal usa injeção FMEA no SINAL bruto (E2); os experimentos
+usam injeção no espaço de FEATURES (E1). Não são diretamente
+comparáveis por F1 — só por AUC.
 
 Anomalia é avaliada com PROTOCOLO PRÓPRIO POR ARTIGO
 (src/ml/protocolos_artigos.py): split temporal com purga,
@@ -181,15 +187,14 @@ injeção sintética orientada pelo FMEA no espaço de features
 (famílias LCL/desbalanceamento/sensor, com detecção por
 falha) e a regra de decisão do próprio artigo — Shewhart 3σ
 (Francisti), contaminação a priori + p99 do treino + banda
-do Prophet (Ibrahim), voto majoritário (Ahirwar). Nenhum
-limiar enxerga os rótulos do teste; F1 não é comparável entre
-protocolos (compare por AUC). O resultado.json carrega o
-bloco "metodologia". Degradação honesta: um modelo cujo
-pacote não está instalado é mostrado como "requer <lib>" em
-vez de sumir. Biblioteca pesada opcional dos experimentos:
-prophet (requirements-extras-prophet.txt). Orange3 e
-stable-baselines3/gymnasium foram descartados junto com os
-experimentos Ghoneim/Sharma (curadoria acima).
+do Prophet (Ibrahim). Nenhum limiar enxerga os rótulos do
+teste; F1 não é comparável entre protocolos (compare por AUC).
+O resultado.json carrega o bloco "metodologia". Degradação
+honesta: um modelo cujo pacote não está instalado é mostrado
+como "requer <lib>" em vez de sumir. Biblioteca pesada opcional
+dos experimentos: prophet (requirements-extras-prophet.txt).
+Orange3 e stable-baselines3/gymnasium foram descartados junto
+com os experimentos Ghoneim/Sharma.
 
 ## Arquitetura do Sistema
 O projeto é um pacote Python modular. O ponto de

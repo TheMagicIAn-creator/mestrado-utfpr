@@ -57,8 +57,8 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `eda.py` | Análise exploratória do Paderborn (Plotly). |
 | **Experimentos por artigo** | |
 | `experimentos_artigos.py` | Registry de experimentos, métricas, artefatos, runners de classificação e anomalia. |
-| `protocolos_artigos.py` | Protocolo de decisão **por artigo** (Francisti/Ibrahim/Sharma/Ahirwar) + injeção FMEA no espaço de features. |
-| `modelos_anomalia.py` | **Módulo folha**: zoo de scorers de anomalia (AE-LSTM, RNN, CNN, Prophet, PPO-IForest). Existe para quebrar o ciclo `experimentos`↔`protocolos`. |
+| `protocolos_artigos.py` | Protocolo de decisão **por artigo** (Francisti/Ibrahim) + injeção FMEA no espaço de features. |
+| `modelos_anomalia.py` | **Módulo folha**: scorers de anomalia não-supervisionados (AE-LSTM, Prophet). Existe para quebrar o ciclo `experimentos`↔`protocolos`. |
 | `exec_experimento_isolado.py` | Roda experimento em subprocesso isolado (crash de lib pesada não derruba o app). |
 | **Classificação PV (CC)** | |
 | `classificador_pv.py` | Pipeline CLI de classificação PV Farms (Ghoneim) + carregamento de dados. |

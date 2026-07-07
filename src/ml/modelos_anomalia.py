@@ -1,8 +1,8 @@
 """
 modelos_anomalia.py — Al IAdo PV
 
-Scorers de detecção de anomalia NÃO-supervisionada usados pelos protocolos por
-artigo do núcleo (Ibrahim e Ahirwar). Cada função recebe o dict ``dados`` e
+Scorers de detecção de anomalia NÃO-supervisionada usados pelo protocolo por
+artigo do núcleo (Ibrahim). Cada função recebe o dict ``dados`` e
 devolve um vetor de score por janela do teste — quanto maior, mais anômalo.
 
 Restam dois, ambos por modelagem de NORMALIDADE (sem rótulo de falha):
@@ -88,7 +88,7 @@ def _score_prophet(dados, interval_width: float = 0.80):
     Prophet aplicado à feature de maior variância no normal: aprende o nível e
     a banda de incerteza; o score é o desvio do valor em relação à banda
     (score > 1 ⇒ fora da banda — decisão NATIVA do modelo, sem oráculo).
-    ``interval_width`` controla a banda (protocolo Ibrahim/Ahirwar usa 0,99).
+    ``interval_width`` controla a banda (protocolo Ibrahim usa 0,99).
     Univariado por natureza — resultado honesto e mais modesto que o multivar.
     """
     import logging

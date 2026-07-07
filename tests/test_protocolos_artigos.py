@@ -9,7 +9,6 @@ Garante que:
 - Francisti decide por Shewhart 3σ FIXO (nunca limiar-oráculo no teste);
 - métricas com threshold_source explícito são marcadas "a_priori_ou_congelada"
   e os caminhos legados continuam intactos;
-- o voto do Ahirwar é majoritário sobre as decisões dos membros;
 - artigos sem protocolo caem no harness legado (executar_protocolo → None).
 
 CI-leve: sem torch/prophet/sb3 — só numpy + scikit-learn, com features
@@ -252,37 +251,11 @@ def test_metricas_regime_raro_colapsa_precision_com_fpr():
     assert m0["precision_raro"] == pytest.approx(1.0)
 
 
-# ── voto majoritário do Ahirwar ──────────────────────────────────────────────
+# ── curadoria: Ahirwar/Stender não são mais protocolos executáveis ───────────
 
-def test_ahirwar_voto_majoritario(features_fake, monkeypatch):
-    dados = P.preparar_dados_anomalia()
-    y_te = dados["y_te"]
-
-    # membros fake: 2 acertam tudo, 1 erra tudo → maioria (2/3) acerta tudo.
-    # O voto recebe as MESMAS predições devolvidas pelo protocolo do Ibrahim
-    # (retornar_predicoes=True) — sem refazer fits.
-    perfeito = np.asarray(y_te).astype(int)
-    invertido = 1 - perfeito
-    fake_preds = {
-        "Isolation Forest": perfeito,
-        "AE-LSTM": perfeito,
-        "Facebook Prophet": invertido,
-    }
-    base = {"anomalias_detectadas": 1}  # marca membro como disponível
-
-    def fake_ibrahim(dados, progresso=None, retornar_predicoes=False):
-        saida = {"Isolation Forest": dict(base), "AE-LSTM": dict(base),
-                 "Facebook Prophet": dict(base)}
-        if retornar_predicoes:
-            return saida, {}, fake_preds
-        return saida, {}
-
-    monkeypatch.setattr(P, "protocolo_ibrahim", fake_ibrahim)
-
-    saida, met = P.protocolo_ahirwar(dados)
-    h = saida["Híbrido (voto)"]
-    assert h["threshold_source"] == "voto_majoritario_2_de_3"
-    assert h["recall"] == pytest.approx(1.0)
-    assert h["precision"] == pytest.approx(1.0)
-    assert 0.0 < h["concordancia_media_membros"] < 1.0
-    assert met["protocolo"] == "ahirwar2025_voto_hibrido"
+def test_ahirwar_stender_nao_estao_no_dispatch():
+    """Cortados do núcleo comparativo; restam só Francisti e Ibrahim."""
+    assert set(P.PROTOCOLOS) == {"francisti", "ibrahim"}
+    assert not hasattr(P, "protocolo_ahirwar")
+    assert P.executar_protocolo("ahirwar") is None
+    assert P.executar_protocolo("stender") is None

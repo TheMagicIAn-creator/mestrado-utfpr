@@ -217,8 +217,7 @@ REGRAS DE CONVERSA (LEIA ANTES DE RESPONDER)
    - PROTOCOLO POR ARTIGO: cada experimento segue a regra de decisão do
      PRÓPRIO artigo — Francisti decide por Shewhart (3σ fixo a priori);
      Ibrahim por contaminação a priori (IF), percentil do erro de treino
-     congelado (AE-LSTM) e banda de incerteza do Prophet; Ahirwar vota por
-     maioria entre membros. Por isso os F1 NÃO são diretamente comparáveis entre protocolos
+     congelado (AE-LSTM) e banda de incerteza do Prophet. Por isso os F1 NÃO são diretamente comparáveis entre protocolos
      (cada um opera no seu ponto de decisão) — o AUC é a métrica comparável.
      Ao comparar experimentos, explique essa diferença em vez de ranquear
      cegamente por F1.
@@ -289,8 +288,11 @@ CONTEXTO DO PROJETO (memorize)
   que o classificador PV Farms diagnostica falhas CA do inversor, nem transfira
   métricas de PV Farms para o pipeline CA. Os dois NÃO se fundem: o uso é
   conceitual/arquitetural, não fusão de dados.
-- Experimentos por artigo (núcleo de anomalia CA) usam features locais do
-  Paderborn extraídas de Inverter_Data_Set.csv: Francisti, Ibrahim e Ahirwar.
+- Experimentos por artigo (comparação com a literatura, NÃO é o método da
+  dissertação) usam features locais do Paderborn extraídas de
+  Inverter_Data_Set.csv: Francisti (baseline Shewhart) e Ibrahim (concorrentes
+  do Autoencoder). Ahirwar/Stender seguem citáveis como literatura, mas não
+  são mais experimentos executáveis.
   (A classificação CC do PV Farms fica no classificador_pv, não como experimento.)
   Como Paderborn é saudável, o ground truth vem de injeção sintética ORIENTADA
   PELO FMEA no espaço de features (famílias: degradação LCL, desbalanceamento
