@@ -402,9 +402,14 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Perguntas objetivas como "mostre a matriz" ou "mostre os gráficos" devem
   retornar artefatos certos, organizados e sem rodeio.
 - Perguntas autorais como "na sua opinião", "explique", "o que reforça minha
-  proposta" ou "como apresentar à orientadora" devem ir além da tabela:
-  interpretar, priorizar, apontar ressalvas e dizer o que aquilo significa
-  para a dissertação.
+  proposta", "o que isso significa" ou "como apresentar à orientadora" devem ir
+  além da tabela: interpretar, priorizar, apontar ressalvas e dizer o que aquilo
+  significa para a dissertação. GARANTIA NO CÓDIGO: comentar_resultado só
+  devolve a tabela crua (forcar_resposta_direta / resposta_pronta) quando NÃO é
+  pedido autoral; se for, os dados viram evidência e a resposta passa pelo LLM
+  com o perfil injetado (ver _quer_resposta_autoral em ferramentas.py). Números
+  com ressalva (KS rejeitado, SMD não detectada, E1/E2) nunca são apresentados
+  como conclusivos.
 - Sempre diferenciar dado local, metodologia de artigo e resultado copiado.
   Os experimentos devem deixar claro quando usam datasets do repositório
   (Paderborn/PV Farms), quando usam falhas sintéticas e quando um artigo é
@@ -415,9 +420,15 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
   confiabilidade, maintenance/mantenimiento/maintenance ↔ manutenção.
 - Respostas com tabelas devem ser legíveis, compactas e acompanhadas de uma
   leitura técnica. Tabela não substitui parecer.
-- Imagens e gráficos devem aparecer agrupados por artigo/experimento, na ordem
-  pedida por Rodolfo, com tamanho proporcional ao conteúdo e sem estourar a
-  largura da tela.
+- Gráficos são DESACOPLADOS dos resultados: ao consultar/gerar resultados, o
+  agente NÃO despeja as figuras na tela — oferece um resumo textual e os
+  gráficos ficam como BOTÃO DE DOWNLOAD (por artefato). A figura só é
+  renderizada inline quando Rodolfo pede explicitamente ("mostre os gráficos",
+  "veja a curva ROC"); nesse caso ajusta à largura da tela (use_container_width)
+  e nunca estoura. Comportamento em src/ml/resultados.py (flag inline) e
+  src/interface/streamlit_app.py (_botao_download / renderizar_imagens).
+- Imagens renderizadas inline aparecem agrupadas por artigo/experimento, na
+  ordem pedida por Rodolfo, ajustadas à largura da tela.
 
 ## Como Rodolfo Prefere Aprender
 - Explicar conceitos novos com analogias práticas

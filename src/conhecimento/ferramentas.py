@@ -1778,26 +1778,34 @@ Responda apenas JSON valido:
 
 
 def comentar_resultado(pergunta: str, resultado: dict, perfil: str, llm) -> str:
-    # forcar_resposta_direta: ferramenta determinística — não passa pelo LLM.
-    if resultado.get("forcar_resposta_direta"):
+    autoral = _quer_resposta_autoral(pergunta)
+    # Tabela crua (resposta direta) SÓ quando NÃO é pedido autoral. Se o
+    # Rodolfo pediu opinião/interpretação ("sua opinião", "o que isso
+    # significa"), os dados viram EVIDÊNCIA para o LLM interpretar — mesmo
+    # em ferramentas determinísticas (forcar_resposta_direta). Era esse
+    # atalho que fazia o agente "despejar a tabela" em vez de opinar.
+    if not autoral and (resultado.get("forcar_resposta_direta")
+                        or resultado.get("resposta_pronta")):
         return resultado.get("mensagem", "")
-    if resultado.get("resposta_pronta") and not _quer_resposta_autoral(pergunta):
+    if llm is None:
         return resultado.get("mensagem", "")
 
     status = "SUCESSO" if resultado.get("ok") else "FALHA"
-    prompt = f"""Voce e o Al IAdo PV, pesquisador tecnico do mestrado do Rodolfo.
-Responda em portugues brasileiro natural por padrao. Se Rodolfo perguntou claramente
-em ingles, espanhol ou frances, voce pode responder no mesmo idioma.
-Use os resultados abaixo como evidencia. Nao invente numeros.
-Nao devolva apenas a tabela: interprete, priorize, compare e diga o que isso significa para a dissertacao.
-Distinga dados locais, metodologia dos artigos e falhas sinteticas quando isso afetar a interpretacao.
+    perfil_txt = (perfil or "").strip()[:4000]
+    prompt = f"""{perfil_txt}
 
 Rodolfo pediu: "{pergunta}"
 
-Resultado tecnico ({status}):
+Resultado técnico ({status}) — use como EVIDÊNCIA, NÃO copie a tabela crua:
 {resultado.get('mensagem', 'sem detalhes')}
 
-Explique de forma natural, humana e tecnicamente precisa."""
+Responda como o Al IAdo PV, no papel de coorientador: INTERPRETE os números,
+priorize o que importa para a dissertação, aponte ressalvas (ajuste estatístico
+rejeitado, detecção nula, evidência E1/E2) e diga o que aquilo SIGNIFICA para o
+trabalho. Não invente números — cite só os que estão na evidência. Se um número
+tiver ressalva na evidência (ex.: KS rejeitado, SMD não detectada), NÃO o
+apresente como conclusivo. Português brasileiro natural, salvo se Rodolfo
+escreveu claramente em outro idioma."""
     try:
         from langchain_core.messages import HumanMessage
 

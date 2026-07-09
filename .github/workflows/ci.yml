@@ -48,6 +48,7 @@ jobs:
             tests/test_consistencia_docs.py \
             tests/test_formatacao_estilo.py \
             tests/test_comparacao_literatura.py \
+            tests/test_inteligencia_agente.py \
             tests/test_split_temporal.py \
             tests/test_proveniencia.py \
             tests/test_caminhos.py \

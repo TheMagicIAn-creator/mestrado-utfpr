@@ -726,13 +726,26 @@ def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> d
             "resposta_pronta": True,
         }
 
-    imagens = imagens_relevantes(pergunta) if incluir_imagens and _quer_imagens(pergunta) else []
+    # Gráficos SEMPRE ficam disponíveis (para download), mas só são
+    # renderizados inline quando o Rodolfo pede explicitamente ("mostre os
+    # gráficos"). Antes, gerar resultados despejava todas as figuras na tela.
+    imagens = imagens_relevantes(pergunta) if incluir_imagens else []
+    mostrar_inline = _quer_imagens(pergunta)
+    for img in imagens:
+        img["inline"] = mostrar_inline
+
     mensagem = (
         "Aqui está o que já existe nos artefatos do pipeline.\n\n"
         + "\n\n".join(secoes)
     )
     if imagens:
-        mensagem += "\n\nVou exibir os gráficos relevantes logo abaixo da resposta."
+        if mostrar_inline:
+            mensagem += "\n\nGráficos relevantes logo abaixo."
+        else:
+            mensagem += (
+                f"\n\n📊 {len(imagens)} gráfico(s) disponível(is) para download "
+                'logo abaixo. Peça "mostre os gráficos" para vê-los aqui na tela.'
+            )
 
     return {
         "ok": True,
