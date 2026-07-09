@@ -321,6 +321,27 @@ def _indisponivel(motivo: str) -> dict:
     return {"disponivel": False, "motivo": motivo}
 
 
+def _rodar_modelo(nome: str, fn, saida: dict, preds: dict | None = None):
+    """
+    Executa o scoring de UM modelo com isolamento de falha. Se ``fn`` estourar
+    em runtime (lib instalada mas quebrada — ex.: Prophet 'stan_backend', torch
+    sem backend), o modelo degrada para indisponível com o motivo do erro, sem
+    derrubar os demais modelos do experimento. ``fn`` deve devolver
+    ``(metricas, y_pred | None)``.
+    """
+    try:
+        metricas, y_pred = fn()
+        saida[nome] = metricas
+        if preds is not None and y_pred is not None:
+            preds[nome] = y_pred
+    except Exception as exc:  # noqa: BLE001 — robustez: um modelo não derruba o resto
+        from src.core.logs import get_logger
+
+        get_logger("protocolos_artigos").warning(
+            "Modelo '%s' falhou em runtime: %s", nome, exc)
+        saida[nome] = _indisponivel(f"erro de execução: {type(exc).__name__}: {exc}")
+
+
 # ============================================================
 # PROTOCOLO — FRANCISTI et al. (2025)
 # ============================================================
@@ -399,61 +420,70 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
 
     if progresso:
         progresso("Ibrahim: Isolation Forest (contaminação a priori)...")
-    from sklearn.ensemble import IsolationForest
 
-    iso = IsolationForest(n_estimators=200, random_state=42,
-                          contamination=CONTAMINACAO_A_PRIORI)
-    iso.fit(dados["Xn_tr"])
-    score_if = -iso.decision_function(X_te)
-    y_pred_if = (iso.predict(X_te) == -1).astype(int)
-    preds["Isolation Forest"] = y_pred_if
-    saida["Isolation Forest"] = _metricas(
-        y_te, score_if, y_pred_if,
-        threshold_source=f"contaminacao_a_priori_{CONTAMINACAO_A_PRIORI}",
-        tipos_te=tipos,
-    )
+    def _rodar_if():
+        from sklearn.ensemble import IsolationForest
+
+        iso = IsolationForest(n_estimators=200, random_state=42,
+                              contamination=CONTAMINACAO_A_PRIORI)
+        iso.fit(dados["Xn_tr"])
+        score_if = -iso.decision_function(X_te)
+        y_pred_if = (iso.predict(X_te) == -1).astype(int)
+        return _metricas(
+            y_te, score_if, y_pred_if,
+            threshold_source=f"contaminacao_a_priori_{CONTAMINACAO_A_PRIORI}",
+            tipos_te=tipos,
+        ), y_pred_if
+
+    _rodar_modelo("Isolation Forest", _rodar_if, saida, preds)
 
     if lib_disponivel("torch"):
         if progresso:
             progresso("Ibrahim: AE-LSTM (calibração temporal do limiar)...")
-        from src.ml.modelos_anomalia import _score_ae_lstm
 
-        # Fatia de CALIBRAÇÃO: bloco final do treino normal (com purga) fica
-        # FORA do ajuste do AE e fornece o erro "não visto" para o percentil.
-        # Calibrar no erro de treino subestimaria o erro real (modelo decora).
-        Xn_tr = dados["Xn_tr"]
-        corte = max(10, int(len(Xn_tr) * 0.8))
-        Xn_fit = Xn_tr[:max(1, corte - PURGA_JANELAS)]
-        X_calib = Xn_tr[corte:]
-        dados_ae = {**dados, "Xn_tr": Xn_fit,
-                    "X_te": np.vstack([X_calib, X_te])}
-        score_all = _score_ae_lstm(dados_ae)
-        score_calib = score_all[:len(X_calib)]
-        score_te = score_all[len(X_calib):]
-        limiar = float(np.percentile(score_calib, PERCENTIL_TREINO))
-        y_pred_ae = (score_te > limiar).astype(int)
-        preds["AE-LSTM"] = y_pred_ae
-        saida["AE-LSTM"] = _metricas(
-            y_te, score_te, y_pred_ae,
-            threshold_source=f"p{PERCENTIL_TREINO}_erro_em_calibracao_temporal",
-            limiar=limiar, tipos_te=tipos,
-        )
+        def _rodar_ae():
+            from src.ml.modelos_anomalia import _score_ae_lstm
+
+            # Fatia de CALIBRAÇÃO: bloco final do treino normal (com purga)
+            # fica FORA do ajuste do AE e fornece o erro "não visto" para o
+            # percentil. Calibrar no erro de treino subestimaria o erro real.
+            Xn_tr = dados["Xn_tr"]
+            corte = max(10, int(len(Xn_tr) * 0.8))
+            Xn_fit = Xn_tr[:max(1, corte - PURGA_JANELAS)]
+            X_calib = Xn_tr[corte:]
+            dados_ae = {**dados, "Xn_tr": Xn_fit,
+                        "X_te": np.vstack([X_calib, X_te])}
+            score_all = _score_ae_lstm(dados_ae)
+            score_calib = score_all[:len(X_calib)]
+            score_te = score_all[len(X_calib):]
+            limiar = float(np.percentile(score_calib, PERCENTIL_TREINO))
+            y_pred_ae = (score_te > limiar).astype(int)
+            return _metricas(
+                y_te, score_te, y_pred_ae,
+                threshold_source=f"p{PERCENTIL_TREINO}_erro_em_calibracao_temporal",
+                limiar=limiar, tipos_te=tipos,
+            ), y_pred_ae
+
+        _rodar_modelo("AE-LSTM", _rodar_ae, saida, preds)
     else:
         saida["AE-LSTM"] = _indisponivel("requer torch")
 
     if lib_disponivel("prophet"):
         if progresso:
             progresso("Ibrahim: Prophet (banda de 99%)...")
-        from src.ml.modelos_anomalia import _score_prophet
 
-        score_p = _score_prophet(dados, interval_width=INTERVALO_PROPHET)
-        y_pred_p = (score_p > 1.0).astype(int)  # >1 = fora da banda
-        preds["Facebook Prophet"] = y_pred_p
-        saida["Facebook Prophet"] = _metricas(
-            y_te, score_p, y_pred_p,
-            threshold_source=f"intervalo_prophet_{INTERVALO_PROPHET}",
-            limiar=1.0, tipos_te=tipos,
-        )
+        def _rodar_prophet():
+            from src.ml.modelos_anomalia import _score_prophet
+
+            score_p = _score_prophet(dados, interval_width=INTERVALO_PROPHET)
+            y_pred_p = (score_p > 1.0).astype(int)  # >1 = fora da banda
+            return _metricas(
+                y_te, score_p, y_pred_p,
+                threshold_source=f"intervalo_prophet_{INTERVALO_PROPHET}",
+                limiar=1.0, tipos_te=tipos,
+            ), y_pred_p
+
+        _rodar_modelo("Facebook Prophet", _rodar_prophet, saida, preds)
     else:
         saida["Facebook Prophet"] = _indisponivel("requer prophet")
 

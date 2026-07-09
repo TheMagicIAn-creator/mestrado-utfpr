@@ -259,3 +259,25 @@ def test_ahirwar_stender_nao_estao_no_dispatch():
     assert not hasattr(P, "protocolo_ahirwar")
     assert P.executar_protocolo("ahirwar") is None
     assert P.executar_protocolo("stender") is None
+
+
+# ── robustez: um modelo quebrado não derruba os demais ───────────────────────
+
+def test_rodar_modelo_isola_falha_de_runtime():
+    """Modelo que estoura em runtime vira indisponível; os outros seguem."""
+    saida, preds = {}, {}
+
+    def ok():
+        return {"disponivel": True, "auc": 0.7}, "y_pred_fake"
+
+    def quebra():
+        raise AttributeError("'Prophet' object has no attribute 'stan_backend'")
+
+    P._rodar_modelo("Isolation Forest", ok, saida, preds)
+    P._rodar_modelo("Facebook Prophet", quebra, saida, preds)
+
+    assert saida["Isolation Forest"]["disponivel"] is True
+    assert preds["Isolation Forest"] == "y_pred_fake"
+    assert saida["Facebook Prophet"]["disponivel"] is False
+    assert "stan_backend" in saida["Facebook Prophet"]["motivo"]
+    assert "Facebook Prophet" not in preds  # sem predição = fora do voto/ensemble
