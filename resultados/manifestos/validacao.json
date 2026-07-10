@@ -1,0 +1,28 @@
+{
+  "stage": "validacao",
+  "created_at": "2026-07-09T13:21:40.545132",
+  "git_commit": "ea00b07695ce49c073093ea25bb5a69492ed285d",
+  "code_sha256": "69f8d044393c78aefd240c3706b771b94444989382efdbabd24550934108e380",
+  "parameters": {
+    "sevs_validacao": [
+      0.3,
+      0.5,
+      1.0
+    ],
+    "n_janelas_saudavel": 50,
+    "n_janelas_falha": 50
+  },
+  "input_artifacts": {
+    "injecao_falhas:0:injecao_falhas_resultados.png": "45bf02e243e9da5db8fbbc9091f2fc39f8426b68b3ec348bc0627015c5c4ad84",
+    "injecao_falhas:1:injecao_falhas_comparacao.png": "8d04b8267c0659c1760128e0163760bf56e6caaf73ad7f0fddce3787e123e437",
+    "injecao_falhas:2:injecao_falhas_report.json": "2eec7abad400e784047b9b4319bad2f0ef79087dd7f1007689937267af3dca21"
+  },
+  "outputs": [
+    "resultados/autoencoder/validacao_roc.png",
+    "resultados/autoencoder/validacao_pr.png",
+    "resultados/autoencoder/validacao_matriz.png",
+    "resultados/autoencoder/validacao_metricas.png",
+    "resultados/autoencoder/validacao_tabela.csv",
+    "resultados/autoencoder/validacao_report.json"
+  ]
+}

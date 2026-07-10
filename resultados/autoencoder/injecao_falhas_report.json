@@ -1,0 +1,178 @@
+{
+  "evidence_level": "E2",
+  "evidence_note": "Falhas sintéticas orientadas pelo FMEA (ground truth para validar o detector). Não é validação experimental externa (E3). A injeção de ruído do sensor é um PROXY e exige calibração física.",
+  "threshold_method": "p99",
+  "limiar": 2.0784525871276855,
+  "baseline_mean": 0.20518224835395812,
+  "baseline_std": 0.24334519970544455,
+  "smd": {
+    "lcl": 1.0,
+    "desbalanceamento": null,
+    "sensor": 0.7
+  },
+  "falhas": {
+    "lcl": {
+      "nome": "Degradação Filtro LCL",
+      "npr": 210,
+      "descricao": "Injeção de harmônicos 5°, 7° e 11° nas correntes CA",
+      "evidence_level": "E2",
+      "hipotese_fisica": "Capacitor com ESR elevado / indutor degradado no filtro LCL reduz a atenuação do chaveamento, elevando harmônicos ímpares nas correntes.",
+      "sinais": [
+        "i_a",
+        "i_b",
+        "i_c"
+      ],
+      "formula": "i += sev·(0,30·h5 + 0,20·h7 + h11)·amplitude",
+      "severity_definition": "fração [0..1] da amplitude harmônica injetada",
+      "source": "Torres (2024) FMECA CEAMAZON (NPR=210)",
+      "limitations": [
+        "amplitudes harmônicas são plausíveis, não medidas em bancada",
+        "não modela envelhecimento térmico real do capacitor"
+      ],
+      "resultados": {
+        "0.05": {
+          "erro": 0.1017963394522667,
+          "detectado": false,
+          "margem": 0.04897698416731459
+        },
+        "0.1": {
+          "erro": 0.10994307398796081,
+          "detectado": false,
+          "margem": 0.052896599455220905
+        },
+        "0.2": {
+          "erro": 0.16617952585220336,
+          "detectado": false,
+          "margem": 0.07995348408782078
+        },
+        "0.3": {
+          "erro": 0.27518391609191895,
+          "detectado": false,
+          "margem": 0.13239845729279248
+        },
+        "0.5": {
+          "erro": 0.6147990942001342,
+          "detectado": false,
+          "margem": 0.2957965449910767
+        },
+        "0.7": {
+          "erro": 1.1152299404144288,
+          "detectado": false,
+          "margem": 0.536567419108472
+        },
+        "1.0": {
+          "erro": 2.2238253116607667,
+          "detectado": true,
+          "margem": 1.0699427667647587
+        }
+      }
+    },
+    "desbalanceamento": {
+      "nome": "Desbalanceamento de Fase",
+      "npr": 150,
+      "descricao": "Redução de amplitude da fase A",
+      "evidence_level": "E2",
+      "hipotese_fisica": "Assimetria entre fases (perda parcial de fase ou carga desbalanceada) reduz a amplitude de uma das correntes.",
+      "sinais": [
+        "i_a"
+      ],
+      "formula": "i_a ·= (1 − sev·0,12)  (reduz amplitude da fase A; máx 12%)",
+      "severity_definition": "fração de redução da amplitude da fase A (calibrada: máx 12%)",
+      "source": "Torres (2024) FMECA, subsistema CA (NPR=150)",
+      "limitations": [
+        "modelo simplificado; desbalanceamento real afeta fase E amplitude"
+      ],
+      "resultados": {
+        "0.05": {
+          "erro": 0.1048747405409813,
+          "detectado": false,
+          "margem": 0.05045808655462898
+        },
+        "0.1": {
+          "erro": 0.11034862399101257,
+          "detectado": false,
+          "margem": 0.053091720578292666
+        },
+        "0.2": {
+          "erro": 0.11805750876665115,
+          "detectado": false,
+          "margem": 0.05680067445262273
+        },
+        "0.3": {
+          "erro": 0.1393589898943901,
+          "detectado": false,
+          "margem": 0.06704939566938933
+        },
+        "0.5": {
+          "erro": 0.22846291065216065,
+          "detectado": false,
+          "margem": 0.10991971241830666
+        },
+        "0.7": {
+          "erro": 0.3885187923908234,
+          "detectado": false,
+          "margem": 0.186926944976761
+        },
+        "1.0": {
+          "erro": 0.7743686556816101,
+          "detectado": false,
+          "margem": 0.3725697956631032
+        }
+      }
+    },
+    "sensor": {
+      "nome": "Falha de Sensor CA",
+      "npr": null,
+      "descricao": "Ruído gaussiano na corrente da fase A",
+      "evidence_level": "E2",
+      "hipotese_fisica": "Degradação do sensor Hall / circuito de condicionamento introduz ruído de medição na corrente.",
+      "sinais": [
+        "i_a"
+      ],
+      "formula": "i_a += N(0, sev·σ_sinal)  (ruído gaussiano; ×1.0, calibrado p/ D=10)",
+      "severity_definition": "desvio do ruído ≈ sev·σ_sinal (calibrado: a falha MAIS difícil, D=10)",
+      "source": "FMEA (D=10 — alta dificuldade de detecção)",
+      "limitations": [
+        "RUÍDO GAUSSIANO É UM PROXY — exige CALIBRAÇÃO FÍSICA do sensor real",
+        "a alta sensibilidade observada é E2 (sintética): NÃO afirmar alta sensibilidade da falha de sensor sem esta ressalva"
+      ],
+      "resultados": {
+        "0.05": {
+          "erro": 0.19047521352767943,
+          "detectado": false,
+          "margem": 0.0916427994111265
+        },
+        "0.1": {
+          "erro": 0.3544494271278381,
+          "detectado": false,
+          "margem": 0.1705352478680637
+        },
+        "0.2": {
+          "erro": 0.6147481799125671,
+          "detectado": false,
+          "margem": 0.29577204874426194
+        },
+        "0.3": {
+          "erro": 0.8131985783576965,
+          "detectado": false,
+          "margem": 0.39125192626188077
+        },
+        "0.5": {
+          "erro": 1.44577054977417,
+          "detectado": false,
+          "margem": 0.6955994852748363
+        },
+        "0.7": {
+          "erro": 3.2743335723876954,
+          "detectado": true,
+          "margem": 1.575370827637043
+        },
+        "1.0": {
+          "erro": 11.635859107971191,
+          "detectado": true,
+          "margem": 5.598327900301709
+        }
+      }
+    }
+  }
+}

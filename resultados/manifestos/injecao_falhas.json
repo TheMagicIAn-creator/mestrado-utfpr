@@ -1,0 +1,32 @@
+{
+  "stage": "injecao_falhas",
+  "created_at": "2026-07-09T13:21:32.109535",
+  "git_commit": "ea00b07695ce49c073093ea25bb5a69492ed285d",
+  "code_sha256": "4d8a501ec601b257ac6d179615f651d2d565144d63045d459a558788fbcaa3d9",
+  "parameters": {
+    "t_inicio_estavel": 10.0,
+    "t_fim_estavel": 20.0,
+    "severidades": [
+      0.05,
+      0.1,
+      0.2,
+      0.3,
+      0.5,
+      0.7,
+      1.0
+    ]
+  },
+  "input_artifacts": {
+    "autoencoder:0:modelo_autoencoder.pt": "777f08e5566bc532892c4cfb52abd3d28e35d283ac5e607d686b1a5cd67809d4",
+    "autoencoder:1:scaler.pkl": "83307da2ee76a4fe1f59921eba9eb5b03f30ded786e7fa49423c92e8b771c4f1",
+    "autoencoder:2:limiar.json": "de8629541d247ea3bddc4262b99d010ee982195cda075d97a48c1558964ef9c7",
+    "autoencoder:3:curva_treino.png": "71277be06adcff34d91aa562710918507754623fbc18d4d8d760551adc67341b",
+    "autoencoder:4:distribuicao_erro.png": "879a4a4c99f29eb26b29c068b68767eb835228669630df4abb644e5f080e28b2",
+    "autoencoder:5:erro_temporal.png": "736efa7fdd750722e2133a0273d1d9ff8a4e8d1c3489d8edf49ff3a3a54c6f16"
+  },
+  "outputs": [
+    "resultados/autoencoder/injecao_falhas_resultados.png",
+    "resultados/autoencoder/injecao_falhas_comparacao.png",
+    "resultados/autoencoder/injecao_falhas_report.json"
+  ]
+}
