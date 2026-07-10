@@ -1,40 +1,37 @@
 """
 injecao_falhas.py — Al IAdo PV / Fase 5
-Injeção de falhas sintéticas fundamentada no FMEA do TCC (Torres, 2024).
+Injeção de falhas sintéticas fundamentada na FMECA do TCC (Torres, 2024).
+FONTE ÚNICA dos componentes/modos/índices: docs/fmeca.md.
 
 Fundamentação metodológica:
-  O FMEA aplicado ao sistema fotovoltaico do CEAMAZON identificou:
-    NPR=210 → Inversor: "Problema de conexão com a rede" (S=3, O=7, D=10)
-    NPR=150 → Subsistema CA: "Curto-circuito em dispositivos de proteção"
-                              (S=5, O=3, D=10)
+  A FMECA (FMEA + Criticidade; NPR = S×O×D) aponta o inversor como o
+  componente mais crítico do SFV. Pela Tab. 3.3 do TCC (Cristaldi et al.,
+  2017), os componentes CA-elétricos do inversor que mais falham — e são
+  detectáveis no sinal — são Contator AC, IGBT e Fusível AC.
 
   A prioridade NPR define a ordem de injeção: primeiro as falhas de maior
   criticidade. Cada falha é modelada pela sua assinatura elétrica esperada
-  nos sinais de corrente e tensão CA (Francisti, 2025; Ibrahim, 2022).
+  nos sinais de corrente CA.
 
-Falhas implementadas (em ordem de NPR):
-  FALHA 1 — Degradação do Filtro LCL (NPR=210, relacionada ao inversor)
-    Assinatura: aumento de THD, elevação dos harmônicos 5° e 7°
-    Modelagem: injeção aditiva de componentes harmônicas nas correntes CA
-    Física: redução da indutância ou capacitância do filtro LCL diminui
-            a atenuação dos harmônicos de chaveamento
+Falhas implementadas (em ordem de NPR; índices S/O/D e NPR em docs/fmeca.md):
+  Id.1 — Contator AC (NPR=315, S=5·O=7·D=9 — mais crítico)
+    Assinatura: transiente/ruído de comutação na corrente CA (proxy)
+    Física: contatos desgastados/soldados (chattering) → comutação deficiente
 
-  FALHA 2 — Desbalanceamento de Fase (NPR=150, subsistema CA)
-    Assinatura: assimetria de corrente entre fases (desbalanceamento > 5%)
-    Modelagem: redução proporcional da amplitude de uma fase
-    Física: curto-circuito em proteção ou falha de IGBT em uma fase
+  Id.2 — IGBT (NPR=90, S=5·O=6·D=3)
+    Assinatura: elevação de THD e harmônicos 5°/7°/11°/13°
+    Física: IGBT envelhecido (bond wire, Vce↑) → chaveamento imperfeito
 
-  FALHA 3 — Ruído de Sensor de Corrente (D=10 — alta dificuldade de detecção)
-    Assinatura: ruído gaussiano elevado em uma fase
-    Modelagem: sobreposição de ruído branco com std proporcional ao sinal
-    Física: degradação do sensor Hall ou circuito de condicionamento
+  Id.3 — Fusível AC (NPR=30, S=5·O=3·D=2)
+    Assinatura: redução de amplitude de uma fase (desbalanceamento)
+    Física: fusível degradado/rompido → perda parcial de fase
 
 Estratégia de severidade:
   Cada falha é injetada em 7 níveis de severidade [0.05→1.0] para
   identificar a severidade mínima detectável (SMD) — ponto onde o erro
   de reconstrução cruza o limiar do Autoencoder.
-  Isso conecta diretamente com o índice D (detecção) do FMEA:
-  D=10 → falha muito difícil de detectar → SMD esperada mais alta.
+  ATENÇÃO: o índice D da FMECA (detecção EM CAMPO) e a detectabilidade
+  empírica do Autoencoder são conceitos distintos (ver docs/fmeca.md).
 
 Entrada:
   dados/brutos/Inverter_Data_Set.csv
@@ -115,70 +112,101 @@ T_FIM_ESTAVEL    = 20.0   # segundos
 # Severidades: de muito leve a severa
 SEVERIDADES = [0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0]
 
-# Definição das falhas (nome, descrição, cor para gráfico)
+# ── Falhas FMECA — FONTE ÚNICA: docs/fmeca.md ────────────────
+# Componentes CA-elétricos do inversor que mais falham (Tab. 3.3 do TCC,
+# Cristaldi et al. 2017). NPR = S×O×D (índice da FMECA; D NUNCA é o NPR).
+# Índices S/O/D estipulados pelo pesquisador (Torres, 2024) — ver docs/fmeca.md.
+# Modo de falha / efeito / causa: reservados para preenchimento por Rodolfo.
+# Ordenadas por criticidade (NPR): Contator AC > IGBT > Fusível AC.
 FALHAS = [
     {
-        "id"      : "lcl",
-        "nome"    : "Degradação Filtro LCL",
-        "npr"     : 210,
-        "s"       : 3, "o": 7, "d": 10,
+        "id"      : "contator_ac",
+        "nome"    : "Contator AC",
+        "componente": "Contator AC",
+        "s"       : 5, "o": 7, "d": 9, "npr": 5 * 7 * 9,   # = 315
+        "criticidade": 5 + 7,                               # C = S+O = 12
+        "modo_falha": "",  # a preencher (Rodolfo)
+        "efeito"    : "",  # a preencher
+        "causa"     : "",  # a preencher
         "cor"     : "#2a78d6",  # PALETA[0] — ver estilo_graficos.CORES_FALHAS
-        "descricao": "Injeção de harmônicos 5°, 7° e 11° nas correntes CA",
+        "descricao": "Transiente/ruído de comutação na corrente CA",
         # Schema de proveniência da falha sintética (item 4.4)
         "evidence_level"     : "E2",
         "hipotese_fisica"    : (
-            "Capacitor com ESR elevado / indutor degradado no filtro LCL reduz a "
-            "atenuação do chaveamento, elevando harmônicos ímpares nas correntes."
+            "Contatos do contator CA desgastados/soldados (chattering) causam "
+            "comutação deficiente, introduzindo transientes e conteúdo de alta "
+            "frequência na corrente CA — modelado como ruído no sinal medido."
         ),
-        "sinais"             : ["i_a", "i_b", "i_c"],
-        "formula"            : "i += sev·(0,30·h5 + 0,20·h7 + h11)·amplitude",
-        "severity_definition": "fração [0..1] da amplitude harmônica injetada",
-        "source"             : "Torres (2024) FMECA CEAMAZON (NPR=210)",
+        "sinais"             : ["i_a"],
+        "formula"            : "i_a += N(0, sev·σ_sinal·0,3)  (proxy do transiente de comutação)",
+        "severity_definition": "desvio do ruído ≈ sev·σ_sinal·0,3 (componente mais crítico, NPR=315)",
+        "source"             : (
+            "Torres (2024) TCC — Tab. 3.3 (Cristaldi et al., 2017: Contator AC "
+            "= 12% dos tickets); Golnas (2012); Voss et al. (2009). "
+            "S/O/D estipulados pelo pesquisador; NPR=S×O×D=315."
+        ),
         "limitations"        : [
-            "amplitudes harmônicas são plausíveis, não medidas em bancada",
-            "não modela envelhecimento térmico real do capacitor",
+            "RUÍDO GAUSSIANO É UM PROXY do transiente — exige CALIBRAÇÃO FÍSICA "
+            "do contator real",
+            "a detectabilidade observada é E2 (sintética); o índice D=9 da FMECA "
+            "refere-se à detecção EM CAMPO, não à do Autoencoder (ver docs/fmeca.md)",
         ],
     },
     {
-        "id"      : "desbalanceamento",
-        "nome"    : "Desbalanceamento de Fase",
-        "npr"     : 150,
-        "s"       : 5, "o": 3, "d": 10,
+        "id"      : "igbt",
+        "nome"    : "IGBT",
+        "componente": "IGBT",
+        "s"       : 5, "o": 6, "d": 3, "npr": 5 * 6 * 3,   # = 90
+        "criticidade": 5 + 6,                               # C = 11
+        "modo_falha": "",  # a preencher
+        "efeito"    : "",  # a preencher
+        "causa"     : "",  # a preencher
         "cor"     : "#1baf7a",  # PALETA[1]
-        "descricao": "Redução de amplitude da fase A",
+        "descricao": "Injeção de harmônicos 5°, 7°, 11° e 13° nas correntes CA",
         "evidence_level"     : "E2",
         "hipotese_fisica"    : (
-            "Assimetria entre fases (perda parcial de fase ou carga "
-            "desbalanceada) reduz a amplitude de uma das correntes."
+            "IGBT envelhecido (lift-off de bond wire, Vce(sat) elevado) comuta de "
+            "forma imperfeita, elevando os harmônicos ímpares e o THD das correntes."
+        ),
+        "sinais"             : ["i_a", "i_b", "i_c"],
+        "formula"            : "i += sev·(0,30·h5 + 0,20·h7 + 0,10·h11 + 0,05·h13)·amplitude",
+        "severity_definition": "fração [0..1] da amplitude harmônica injetada",
+        "source"             : (
+            "Torres (2024) TCC — Tab. 3.3 (IGBT = 6% dos tickets); harmônicos "
+            "característicos de VSI (Francisti, 2025; Smith, 1999). "
+            "S/O/D estipulados pelo pesquisador; NPR=S×O×D=90."
+        ),
+        "limitations"        : [
+            "amplitudes harmônicas são plausíveis, não medidas em bancada",
+            "não modela envelhecimento térmico real do IGBT",
+        ],
+    },
+    {
+        "id"      : "fusivel_ac",
+        "nome"    : "Fusível AC",
+        "componente": "Fusível AC",
+        "s"       : 5, "o": 3, "d": 2, "npr": 5 * 3 * 2,   # = 30
+        "criticidade": 5 + 3,                               # C = 8
+        "modo_falha": "",  # a preencher
+        "efeito"    : "",  # a preencher
+        "causa"     : "",  # a preencher
+        "cor"     : "#eda100",  # PALETA[2] — baixo contraste: exige rótulo direto
+        "descricao": "Redução de amplitude de uma fase (perda parcial)",
+        "evidence_level"     : "E2",
+        "hipotese_fisica"    : (
+            "Fusível CA degradado/rompido causa perda parcial de uma fase, "
+            "reduzindo a amplitude da corrente dessa fase (desbalanceamento)."
         ),
         "sinais"             : ["i_a"],
         "formula"            : "i_a ·= (1 − sev·0,12)  (reduz amplitude da fase A; máx 12%)",
         "severity_definition": "fração de redução da amplitude da fase A (calibrada: máx 12%)",
-        "source"             : "Torres (2024) FMECA, subsistema CA (NPR=150)",
-        "limitations"        : [
-            "modelo simplificado; desbalanceamento real afeta fase E amplitude",
-        ],
-    },
-    {
-        "id"      : "sensor",
-        "nome"    : "Falha de Sensor CA",
-        "npr"     : None,
-        "s"       : None, "o": None, "d": 10,
-        "cor"     : "#eda100",  # PALETA[2] — baixo contraste: exige rótulo direto
-        "descricao": "Ruído gaussiano na corrente da fase A",
-        "evidence_level"     : "E2",
-        "hipotese_fisica"    : (
-            "Degradação do sensor Hall / circuito de condicionamento introduz "
-            "ruído de medição na corrente."
+        "source"             : (
+            "Torres (2024) TCC — Tab. 3.3 (Fusíveis AC = 4% dos tickets, 12% "
+            "da energia perdida). S/O/D estipulados pelo pesquisador; NPR=S×O×D=30."
         ),
-        "sinais"             : ["i_a"],
-        "formula"            : "i_a += N(0, sev·σ_sinal)  (ruído gaussiano; ×1.0, calibrado p/ D=10)",
-        "severity_definition": "desvio do ruído ≈ sev·σ_sinal (calibrado: a falha MAIS difícil, D=10)",
-        "source"             : "FMEA (D=10 — alta dificuldade de detecção)",
         "limitations"        : [
-            "RUÍDO GAUSSIANO É UM PROXY — exige CALIBRAÇÃO FÍSICA do sensor real",
-            "a alta sensibilidade observada é E2 (sintética): NÃO afirmar alta "
-            "sensibilidade da falha de sensor sem esta ressalva",
+            "modelo simplificado; perda de fase real pode desarmar a proteção",
+            "redução máx de 12% p/ manter a curva severidade↔detecção plausível",
         ],
     },
 ]
@@ -220,17 +248,16 @@ def smd_probabilistico(deteccoes_por_severidade: dict, alvo: float = 0.95) -> di
 # MODELOS DE FALHA (assinaturas elétricas)
 # ============================================================
 
-def falha_degradacao_lcl(janela_df: pd.DataFrame,
+def falha_harmonicos_igbt(janela_df: pd.DataFrame,
                           severidade: float,
                           f0: float = F0,
                           fs: int   = FS) -> pd.DataFrame:
     """
-    FALHA 1 — Degradação do Filtro LCL (NPR=210)
+    FALHA — IGBT (NPR=90)
 
-    Um filtro LCL degradado (capacitor com ESR elevado ou indutor
-    com indutância reduzida) atenua menos os harmônicos de chaveamento.
-    O resultado é um aumento do THD e elevação específica dos harmônicos
-    de ordem 5, 7 e 11 (dominantes em inversores VSI trifásicos).
+    Um IGBT envelhecido (lift-off de bond wire, Vce(sat) elevado) comuta de
+    forma imperfeita. O resultado é um aumento do THD e elevação específica
+    dos harmônicos de ordem 5, 7 e 11 (dominantes em inversores VSI trifásicos).
 
     Modelagem aditiva: sinal_falha = sinal_saudável + Σ Ak·sin(k·ω₀·t + φk)
 
@@ -247,7 +274,7 @@ def falha_degradacao_lcl(janela_df: pd.DataFrame,
         sinal     = janela_falha[col].values
         amplitude = np.std(sinal)  # referência de amplitude do sinal
 
-        # Harmônicos característicos de inversores VSI com filtro LCL degradado
+        # Harmônicos característicos de inversores VSI com IGBT degradado
         # Amplitudes relativas baseadas em Francisti (2025) e Smith (1999)
         h5  = severidade * 0.30 * amplitude * np.sin(2 * np.pi * 5  * f0 * t)
         h7  = severidade * 0.20 * amplitude * np.sin(2 * np.pi * 7  * f0 * t)
@@ -259,27 +286,27 @@ def falha_degradacao_lcl(janela_df: pd.DataFrame,
     return janela_falha
 
 
-def falha_desbalanceamento_fase(janela_df: pd.DataFrame,
-                                 severidade: float) -> pd.DataFrame:
+def falha_perda_fase_fusivel(janela_df: pd.DataFrame,
+                             severidade: float) -> pd.DataFrame:
     """
-    FALHA 2 — Desbalanceamento de Fase (NPR=150)
+    FALHA — Fusível AC (NPR=30)
 
-    Curto-circuito em dispositivo de proteção ou falha de IGBT em uma fase
-    causa assimetria nas correntes trifásicas. A fase afetada tem amplitude
-    reduzida. O desbalanceamento é medido pela feature inter-fase:
+    Um fusível CA degradado/rompido causa perda parcial de uma fase, reduzindo
+    a amplitude da corrente dessa fase (desbalanceamento). Medido pela feature
+    inter-fase:
       desbalanceamento = (max_rms - min_rms) / media_rms
 
     Fator de redução CALIBRADO p/ curva severidade↔detecção realista
     (fator = 1 - severidade × 0.12):
       severidade=0.3 → ~3,6% de redução (incipiente, ~limiar FMEA de 5%, DIFÍCIL)
       severidade=0.5 → 6% de redução (perceptível)
-      severidade=1.0 → 12% de redução (desbalanceamento severo, mas plausível)
+      severidade=1.0 → 12% de redução (perda severa, mas plausível)
 
     Antes usava ×0.7 (até 70% de redução) → o detector separava com erro ZERO
-    em qualquer severidade (validacao_report perfeito = artificial). Um
-    desbalanceamento real raramente passa de ~10–15% sem desarme de proteção.
+    em qualquer severidade (validacao_report perfeito = artificial). Uma perda
+    parcial real raramente passa de ~10–15% sem desarme de proteção.
 
-    A fase A é escolhida por ser a referência do FMEA (Id.1 do Apêndice E).
+    A fase A é a referência (Id.3 da FMECA consolidada — docs/fmeca.md).
     """
     janela_falha = janela_df.copy()
     fator        = 1.0 - severidade * 0.12
@@ -292,31 +319,29 @@ def falha_desbalanceamento_fase(janela_df: pd.DataFrame,
     return janela_falha
 
 
-def falha_sensor_corrente(janela_df: pd.DataFrame,
-                           severidade: float,
-                           seed: int = 0) -> pd.DataFrame:
+def falha_transiente_contator(janela_df: pd.DataFrame,
+                              severidade: float,
+                              seed: int = 0) -> pd.DataFrame:
     """
-    FALHA 3 — Falha de Sensor de Corrente (D=10)
+    FALHA — Contator AC (NPR=315, componente mais crítico)
 
-    Degradação do sensor Hall ou do circuito de condicionamento
-    introduz ruído gaussiano no sinal medido. É a falha com maior
-    índice D (dificuldade de detecção = 10) — o ruído se confunde
-    com variações normais do sinal.
+    Contatos do contator CA desgastados/soldados (chattering) causam comutação
+    deficiente, introduzindo transientes e conteúdo de alta frequência na
+    corrente CA — modelado aqui como ruído gaussiano no sinal medido (proxy).
 
     Modelagem: sinal_falha = sinal + N(0, σ_ruído)
-    onde σ_ruído = severidade × std(sinal) × 0.3 (CALIBRADO para D=10).
+    onde σ_ruído = severidade × std(sinal) × 0.3.
 
-    Como o FMEA atribui D=10 (a MAIOR dificuldade de detecção), esta deve ser a
-    falha MAIS difícil — não a mais fácil. O multiplicador caiu de ×3 para ×0.3,
-    o que produz uma curva severidade↔detecção real (varredura empírica):
-      severidade=0.30 → σ_ruído ≈ 0,09·σ_sinal (SNR ~21 dB) — NÃO detectada (difícil)
+    O multiplicador ×0.3 produz uma curva severidade↔detecção realista
+    (varredura empírica):
+      severidade=0.30 → σ_ruído ≈ 0,09·σ_sinal (SNR ~21 dB) — difícil
       severidade=0.50 → σ_ruído ≈ 0,15·σ_sinal — limítrofe
       severidade=1.00 → σ_ruído ≈ 0,30·σ_sinal (SNR ~10 dB) — detectada
 
-    Antes (×3) o ruído era enorme já em sev=0.3 → detecção trivial PERFEITA em
-    todas as severidades, contradizendo o índice D=10 do próprio FMEA.
     Nota: features espectrais (THD/harmônicos/kurtosis) são naturalmente
     sensíveis a ruído branco — por isso o multiplicador precisa ser pequeno.
+    O índice D=9 da FMECA (docs/fmeca.md) refere-se à detecção EM CAMPO,
+    distinta da detectabilidade empírica do Autoencoder.
     """
     rng          = np.random.default_rng(seed)
     janela_falha = janela_df.copy()
@@ -329,11 +354,11 @@ def falha_sensor_corrente(janela_df: pd.DataFrame,
     return janela_falha
 
 
-# Mapa de funções de falha
+# Mapa de funções de falha (id da FMECA → assinatura elétrica)
 FUNCOES_FALHA = {
-    "lcl"             : falha_degradacao_lcl,
-    "desbalanceamento": falha_desbalanceamento_fase,
-    "sensor"          : falha_sensor_corrente,
+    "contator_ac": falha_transiente_contator,
+    "igbt"       : falha_harmonicos_igbt,
+    "fusivel_ac" : falha_perda_fase_fusivel,
 }
 
 
@@ -381,10 +406,10 @@ def executar_injecao_falhas() -> bool:
     _log("=" * 60)
     _log("  AL IADO PV — INJEÇÃO DE FALHAS SINTÉTICAS")
     _log("=" * 60)
-    _log("\n  Fundamentação: FMEA Torres (2024)")
-    _log("  NPR=210 → Degradação Filtro LCL")
-    _log("  NPR=150 → Desbalanceamento de Fase")
-    _log("  D=10    → Falha de Sensor CA")
+    _log("\n  Fundamentação: FMECA Torres (2024) — docs/fmeca.md")
+    _log("  NPR=315 → Contator AC (S=5·O=7·D=9)")
+    _log("  NPR=90  → IGBT (S=5·O=6·D=3)")
+    _log("  NPR=30  → Fusível AC (S=5·O=3·D=2)")
 
     # ── 1. Carrega artefatos do Autoencoder ──────────────────
     _log(f"\n📂 Carregando Autoencoder...")
@@ -539,8 +564,7 @@ def executar_injecao_falhas() -> bool:
         ax.axhline(baseline_mean, color="green", linestyle=":",
                    linewidth=1.2, label=f"Baseline = {baseline_mean:.4f}")
 
-        npm_str = f"NPR={falha['npr']}" if falha['npr'] else "D=10"
-        ax.set_title(f"{falha['nome']}\n({npm_str})", fontsize=10)
+        ax.set_title(f"{falha['nome']}\n(NPR={falha['npr']})", fontsize=10)
         ax.set_xlabel("Severidade")
         ax.set_ylabel("Erro de Reconstrução (MSE)")
         ax.legend(fontsize=8)
@@ -619,7 +643,14 @@ def executar_injecao_falhas() -> bool:
         fid = falha["id"]
         relatorio["falhas"][fid] = {
             "nome": falha["nome"],
+            "componente": falha.get("componente", falha["nome"]),
+            # Índices FMECA (fonte única: docs/fmeca.md). NPR = S×O×D.
+            "s": falha["s"], "o": falha["o"], "d": falha["d"],
             "npr": falha["npr"],
+            "criticidade": falha.get("criticidade"),
+            "modo_falha": falha.get("modo_falha", ""),
+            "efeito": falha.get("efeito", ""),
+            "causa": falha.get("causa", ""),
             "descricao": falha["descricao"],
             # Schema de proveniência da falha sintética (item 4.4)
             "evidence_level": falha.get("evidence_level", "E2"),

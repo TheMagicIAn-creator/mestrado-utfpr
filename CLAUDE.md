@@ -45,41 +45,60 @@ dinâmica a partir de sinais elétricos reais via ML.
 O TCC está indexado na base de conhecimento e deve ser
 usado como fonte primária de fundamentação metodológica.
 
-## Resultados FMECA do TCC — Apêndice E (Torres, 2024)
-Análise aplicada ao sistema fotovoltaico do CEAMAZON:
+## FMEA × FMECA e a FMECA consolidada (fonte única: docs/fmeca.md)
+FMEA = Failure Mode and Effects Analysis. FMECA = FMEA +
+Criticidade. NPR = S×O×D é índice da **FMECA** (nunca
+atribuído genericamente à FMEA; D isolado NUNCA é o NPR).
+C (criticidade) = S+O. Escalas do TCC: S 1–5, O e D 1–10.
 
-| Id | Componente    | Modo de Falha                    | S | O  | D  | NPR | NPR pós-manutenção |
-|----|---------------|----------------------------------|---|----|----|-----|--------------------|
-| 1  | Inversor      | Problema de conexão com a rede   | 3 | 7  | 10 | 210 | 18                 |
-| 2  | Subsistema CA | Curto-circuito em proteção       | 5 | 3  | 10 | 150 | 10                 |
+FMECA aplicada no TCC (Apêndice E — CEAMAZON), 2 linhas:
+inversor "problema de conexão com a rede" (S3·O7·D10=210) e
+subsistema AC "curto-circuito na proteção" (S5·O3·D10=150).
+Esses modos NÃO são detectáveis em sinais elétricos CA.
 
-A redução expressiva do NPR após manutenção (210→18 e
-150→10) demonstra a eficácia do plano de manutenção.
-O inversor responde por 43% dos tickets de falha e 36%
-da perda de energia em SFVs (Golnas, 2012 apud Torres).
+FMECA CONSOLIDADA da dissertação (docs/fmeca.md) — os 3
+componentes CA-elétricos do inversor que mais falham pela
+Tab. 3.3 do TCC (Cristaldi et al., 2017), com S/O/D
+estipulados pelo pesquisador (modo/efeito/causa a preencher):
+
+| Id | Componente  | S | O | D | NPR | C  | Assinatura elétrica injetada |
+|----|-------------|---|---|---|-----|----|------------------------------|
+| 1  | Contator AC | 5 | 7 | 9 | 315 | 12 | transiente/ruído de comutação|
+| 2  | IGBT        | 5 | 6 | 3 | 90  | 11 | harmônicos 5/7/11/13 + THD ↑  |
+| 3  | Fusível AC  | 5 | 3 | 2 | 30  | 8  | perda parcial de fase        |
+
+Ordem de criticidade (NPR): Contator AC > IGBT > Fusível AC.
+O inversor responde por 43% dos tickets e 36% da energia
+perdida em SFVs (Golnas, 2012 apud Torres). São ESTAS as
+falhas injetadas — não LCL/desbalanceamento/sensor.
+
+Ressalva: o índice D da FMECA (detecção EM CAMPO) e a
+detectabilidade empírica do Autoencoder são distintos — a
+relação entre eles é resultado a discutir (docs/fmeca.md).
 
 ## Metodologia da Dissertação
 Detecção de anomalias por modelagem de normalidade:
-1. FMEA do lado CA — mapeia modos de falha de cada
-   componente e a assinatura elétrica de cada falha
+1. FMECA do lado CA — componentes, modos e a assinatura
+   elétrica de cada falha (fonte única: docs/fmeca.md)
 2. Treinar modelo do inversor saudável (Autoencoder)
    no dataset de operação normal (Paderborn)
-3. Injeção de falhas sintéticas fundamentada no FMEA
+3. Injeção de falhas sintéticas fundamentada na FMECA
 4. Validar se o detector identifica as falhas injetadas
-5. Estimativa de RUL (Weibull) e decisão de manutenção 
-6. Critério de seleção das falhas: prioridade pelo NPR do FMEA (NPR=210 inversor → primeira falha a injetar)
+5. Estimativa de RUL (Weibull) e decisão de manutenção
+6. Critério de seleção das falhas: prioridade pelo NPR da
+   FMECA (Contator AC NPR=315 → primeira falha a injetar)
 7. TTF para Weibull: derivado das falhas sintéticas injetadas no Paderborn — tempo até o Autoencoder cruzar o limiar operacional de anomalia (percentil 99 do erro de reconstrução saudável; μ+3σ é apenas referência comparativa)
 
 Justificativa: na manutenção preditiva real raramente
 há dados de falha; modela-se o comportamento saudável
-e detectam-se desvios. A injeção sintética baseada em
-FMEA fornece ground truth para validação.
+e detectam-se desvios. A injeção sintética baseada na
+FMECA fornece ground truth para validação.
 
 ## Contexto Técnico do Problema
 - Tipo de inversor  : On-grid trifásico
-- Componentes foco : Lado CA do inversor
-                     (filtro LCL, IGBTs, contactores,
-                      sensores, transformadores)
+- Componentes foco : Lado CA do inversor — 3 da FMECA
+                     consolidada: Contator AC, IGBT,
+                     Fusível AC (docs/fmeca.md)
 - Linguagem        : Python 3.13.3
 - IDE              : PyCharm
 - Ambiente         : .venv (ambiente virtual Python)
@@ -129,7 +148,7 @@ Detecção de anomalias no lado CA — pipeline principal
 etapa vem dos manifestos ou da ferramenta
 consultar_status_pipeline, nunca deste arquivo):
 - Autoencoder (modelagem de normalidade — principal)
-- Injeção de falhas sintéticas FMEA + validação formal
+- Injeção de falhas sintéticas FMECA + validação formal
 - Análise de Weibull (confiabilidade e RUL)
 
 Disponíveis via experimentos por artigo (não no pipeline):
@@ -151,7 +170,7 @@ os resultados são salvos em resultados/experimentos/<key>/
 
 PAPEL DOS EXPERIMENTOS: são COMPARAÇÃO com a literatura, não
 são o método da dissertação (esse é o pipeline principal —
-Autoencoder no sinal → injeção FMEA → validação → Weibull).
+Autoencoder no sinal → injeção FMECA → validação → Weibull).
 Servem para mostrar que a abordagem escolhida se sustenta
 frente às alternativas. Nunca confundir os dois na dissertação.
 
@@ -180,7 +199,7 @@ Ahirwar, Stender e Prophet seguem CITÁVEIS como literatura;
 apenas não são experimentos/modelos executáveis.
 
 Assimetria de evidência (importante para a banca): o pipeline
-principal usa injeção FMEA no SINAL bruto (E2); os experimentos
+principal usa injeção FMECA no SINAL bruto (E2); os experimentos
 usam injeção no espaço de FEATURES (E1). Não são diretamente
 comparáveis por F1 — só por AUC.
 
@@ -194,8 +213,8 @@ nativa reportada à parte. Nunca treina; sem modelo salvo, avisa
 
 Anomalia é avaliada com PROTOCOLO PRÓPRIO POR ARTIGO
 (src/ml/protocolos_artigos.py): split temporal com purga,
-injeção sintética orientada pelo FMEA no espaço de features
-(famílias LCL/desbalanceamento/sensor, com detecção por
+injeção sintética orientada pela FMECA no espaço de features
+(famílias Contator AC/IGBT/Fusível AC, com detecção por
 falha) e a regra de decisão do próprio artigo — Shewhart 3σ
 (Francisti), contaminação a priori + p99 do treino congelado
 (Ibrahim: IF + AE-LSTM). Nenhum limiar enxerga os rótulos do
@@ -361,7 +380,7 @@ validada. Status e métricas devem vir de:
 
 IMPORTANTE: nunca cite métricas de memória. Consulte sempre o artefato JSON
 vigente e informe o nível de evidência. Resultado de injeção/validação é E2
-(sintético orientado pelo FMEA), não prova de desempenho industrial.
+(sintético orientado pela FMECA), não prova de desempenho industrial.
 
 ## Como Devo Me Comportar
 - Responder por padrão em português brasileiro, salvo quando Rodolfo escrever

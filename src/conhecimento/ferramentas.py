@@ -1108,14 +1108,14 @@ def _md_experimento(res: dict) -> tuple[str, list[dict]]:
     }
     if com_falhas:
         linhas.append("\n**Detecção por família de falha (recall):**")
-        linhas.append("| Modelo | LCL (NPR 210) | Desbalanceamento (NPR 150) | Sensor |")
+        linhas.append("| Modelo | Contator AC (NPR 315) | IGBT (NPR 90) | Fusível AC (NPR 30) |")
         linhas.append("|---|---:|---:|---:|")
         for nome, det in com_falhas.items():
             def _pct(v):
                 return f"{v:.0%}" if isinstance(v, (int, float)) else "—"
             linhas.append(
-                f"| {nome} | {_pct(det.get('lcl'))} | "
-                f"{_pct(det.get('desbalanceamento'))} | {_pct(det.get('sensor'))} |")
+                f"| {nome} | {_pct(det.get('contator_ac'))} | "
+                f"{_pct(det.get('igbt'))} | {_pct(det.get('fusivel_ac'))} |")
 
     from src.core.utils import resolve_project_path
 

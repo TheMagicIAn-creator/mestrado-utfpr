@@ -50,7 +50,7 @@ tempo com zona de **purga** na fronteira.
 |---|---|
 | **E0** | Hipótese |
 | **E1** | Benchmark exploratório (perturbação genérica / dataset rotulado) |
-| **E2** | Validação sintética orientada pelo FMEA (injeção/validação do pipeline) |
+| **E2** | Validação sintética orientada pela FMECA (injeção/validação do pipeline) |
 | **E3** | Validação experimental externa (bancada / campo) |
 
 O agente **sempre** informa o nível e **nunca** trata E1/E2 como prova de
@@ -60,8 +60,8 @@ desempenho industrial.
 
 Cada falha injetada (`FALHAS` em `injecao_falhas.py`) declara: `evidence_level`
 (E2), `hipotese_fisica`, `sinais`, `formula`, `severity_definition`, `source` e
-`limitations`. **Falha de Sensor CA:** o ruído gaussiano é um **proxy** e exige
-**calibração física** — não afirmar alta sensibilidade sem essa ressalva.
+`limitations`. **Contator AC:** o ruído gaussiano é um **proxy** do transiente de comutação
+e exige **calibração física** — não afirmar alta sensibilidade sem essa ressalva.
 
 **SMD probabilística:** `smd_probabilistico` calcula a taxa de detecção por
 severidade sobre repetições e a **SMD₉₅** (menor severidade com detecção ≥ 95%).
@@ -105,10 +105,10 @@ Ibrahim), o Random Forest do Francisti e o Prophet do Ibrahim (pior detector
 
 Infraestrutura comum (benchmark justo):
 - **Split temporal com purga** (`split_temporal.py`) — nunca aleatório;
-- **Injeção orientada pelo FMEA no espaço de features**: cada anomalia pertence
-  a uma família do FMECA de Torres (2024) — degradação LCL (NPR=210),
-  desbalanceamento de fase (NPR=150), falha de sensor — perturbando apenas as
-  features que a física daquela falha afeta. O resultado reporta **detecção
+- **Injeção orientada pela FMECA no espaço de features**: cada anomalia pertence
+  a uma família da FMECA de Torres (2024) — Contator AC (NPR=315), IGBT (NPR=90),
+  Fusível AC (NPR=30) — perturbando apenas as features que a física daquela
+  falha afeta (fonte única: docs/fmeca.md). O resultado reporta **detecção
   por família** (`deteccao_por_falha`).
 - O `resultado.json` carrega o bloco **`metodologia`** (split, injeção, decisão
   por modelo, notas de fidelidade ao artigo).

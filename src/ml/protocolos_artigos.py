@@ -32,8 +32,8 @@ citáveis como literatura indexada — apenas não são experimentos executávei
 Infraestrutura comum (igual para todos, como num benchmark justo):
 - split TEMPORAL com purga (src/ml/split_temporal.py) — nunca aleatório;
 - injeção sintética ORIENTADA PELO FMEA no espaço de features: cada anomalia
-  pertence a uma família de falha do FMECA de Torres (2024) — degradação LCL
-  (NPR=210), desbalanceamento de fase (NPR=150), falha de sensor — perturbando
+  pertence a uma família de falha da FMECA de Torres (2024) — Contator AC
+  (NPR=315), IGBT (NPR=90), Fusível AC (NPR=30) — perturbando
   apenas as features que a física daquela falha afeta. Continua E1 (proxy
   sintético em espaço de features), mas com ground truth fisicamente motivado
   e relatório de detecção POR FALHA.
@@ -56,53 +56,50 @@ CONTAMINACAO_A_PRIORI = 0.05     # Isolation Forest (Ibrahim)
 PERCENTIL_TREINO = 99            # AE-LSTM: limiar congelado no treino
 PURGA_JANELAS = 2                # janelas com 50% de sobreposição → purga 2
 
-# Pesos de amostragem das famílias de falha (ordem de criticidade do FMECA:
-# NPR 210 > NPR 150 > sensor sem NPR mas D=10).
-PESOS_FALHAS = {"lcl": 0.40, "desbalanceamento": 0.35, "sensor": 0.25}
+# Pesos de amostragem das famílias de falha (ordem de criticidade da FMECA —
+# docs/fmeca.md: NPR Contator AC 315 > IGBT 90 > Fusível AC 30).
+PESOS_FALHAS = {"contator_ac": 0.40, "igbt": 0.35, "fusivel_ac": 0.25}
 
-# Assinaturas FMEA no ESPAÇO DE FEATURES (features_ca.py):
+# Assinaturas FMECA no ESPAÇO DE FEATURES (features_ca.py) — mesma física da
+# injeção no sinal (src/ml/injecao_falhas.py), no domínio das features:
 # cada item: (padrão regex do nome da coluna, modo, intensidade min, max).
 # modo "soma_std"  → coluna += U(min,max) · severidade · σ_treino
 # modo "mult"      → coluna ·= (1 − U(min,max) · severidade)  [redução]
 ASSINATURAS_FMEA = {
-    "lcl": [
-        # harmônicos 5/7/11 das correntes ↑ (filtro atenua menos) + THD ↑
+    # Contator AC (NPR=315): transiente/ruído de comutação → dispersão e
+    # conteúdo de alta frequência sobem no canal medido.
+    "contator_ac": [
+        (r"^i_a_desvio$", "soma_std", 0.8, 1.5),
+        (r"^i_a_largura_banda$", "soma_std", 1.0, 2.0),
+        (r"^i_a_energia_chaveamento$", "soma_std", 1.0, 2.5),
+        (r"^i_a_centroide$", "soma_std", 0.8, 1.5),
+        (r"^i_a_thd$", "soma_std", 0.5, 1.0),
+    ],
+    # IGBT (NPR=90): chaveamento imperfeito → harmônicos 5/7/11 e THD ↑.
+    "igbt": [
         (r"^i_[abc]_harm_5$", "soma_std", 1.5, 3.0),
         (r"^i_[abc]_harm_7$", "soma_std", 1.0, 2.0),
         (r"^i_[abc]_harm_11$", "soma_std", 1.5, 3.0),
         (r"^i_[abc]_thd$", "soma_std", 1.0, 2.5),
         (r"^i_[abc]_energia_media$", "soma_std", 0.8, 1.5),
     ],
-    # HIPÓTESE (E1, não verdade universal): modelamos perda parcial/assimetria
-    # na fase A em que o CONTROLE do inversor (malha de potência) redistribui
-    # corrente para B/C, mantendo a potência total — cenário comum em inversores
-    # com controle de tensão/corrente. NÃO cobre o caso em que A cai E B/C
-    # também caem (perda de linha, carga severamente desbalanceada sem
-    # compensação). A assinatura central (sempre presente) é a fase A enfraquecer
-    # e a métrica de desbalanceamento subir; a compensação B/C é a parte
-    # dependente do controle. Magnitudes plausíveis, não medidas em bancada.
-    "desbalanceamento": [
-        # Fase A ENFRAQUECE (rms, pico, desvio, energia da fundamental, potência)
+    # Fusível AC (NPR=30): perda parcial de fase.
+    # HIPÓTESE (E1, não verdade universal): a fase A enfraquece e o CONTROLE do
+    # inversor redistribui corrente para B/C, mantendo a potência total —
+    # comum em inversores com controle de tensão/corrente. NÃO cobre o caso em
+    # que A cai E B/C também caem. Assinatura central: fase A enfraquece e a
+    # métrica de desbalanceamento sobe; a compensação B/C depende do controle.
+    # Magnitudes plausíveis, não medidas em bancada.
+    "fusivel_ac": [
         (r"^i_a_rms$", "mult", 0.15, 0.35),
         (r"^i_a_pico_a_pico$", "mult", 0.15, 0.35),
         (r"^i_a_desvio$", "mult", 0.15, 0.35),
         (r"^i_a_energia_baixa$", "mult", 0.15, 0.35),
         (r"^potencia_a$", "mult", 0.15, 0.35),
-        # Fases B e C COMPENSAM parcialmente (hipótese dependente do controle)
         (r"^i_[bc]_rms$", "soma_std", 0.6, 1.2),
         (r"^i_[bc]_energia_baixa$", "soma_std", 0.6, 1.2),
         (r"^potencia_[bc]$", "soma_std", 0.6, 1.2),
-        # Métrica de desbalanceamento de corrente — assinatura central.
         (r"^desbalanceamento_corrente$", "soma_std", 2.0, 4.0),
-    ],
-    "sensor": [
-        # ruído de medição na fase A → dispersão e conteúdo de alta
-        # frequência sobem no canal medido
-        (r"^i_a_desvio$", "soma_std", 0.8, 1.5),
-        (r"^i_a_largura_banda$", "soma_std", 1.0, 2.0),
-        (r"^i_a_energia_chaveamento$", "soma_std", 1.0, 2.5),
-        (r"^i_a_centroide$", "soma_std", 0.8, 1.5),
-        (r"^i_a_thd$", "soma_std", 0.5, 1.0),
     ],
 }
 
@@ -124,8 +121,8 @@ def injetar_falhas_fmea(X, nomes: list[str], rng, severidade: float = SEVERIDADE
     falha do FMEA por janela e perturbando SOMENTE as features que a física
     daquela falha afeta (em unidades do desvio-padrão do próprio conjunto).
 
-    Retorna ``(X_anom, tipos)`` onde ``tipos[i]`` ∈ {"lcl",
-    "desbalanceamento", "sensor"} é o ground truth da família injetada.
+    Retorna ``(X_anom, tipos)`` onde ``tipos[i]`` ∈ {"contator_ac",
+    "igbt", "fusivel_ac"} é o ground truth da família injetada.
 
     E1/proxy: as intensidades são plausíveis (fundamentadas nas fórmulas de
     src/ml/injecao_falhas.py, que opera no sinal bruto), não medidas em
@@ -256,8 +253,9 @@ def preparar_dados_anomalia(com_validacao: bool = False,
             "falhas": list(PESOS_FALHAS),
             "pesos": dict(PESOS_FALHAS),
             "severidade": float(severidade),
-            "fonte": "Torres (2024) — FMECA CEAMAZON (NPR 210/150) via "
-                     "assinaturas de src/ml/injecao_falhas.py",
+            "fonte": "Torres (2024) — FMECA consolidada (docs/fmeca.md): "
+                     "Contator AC/IGBT/Fusível AC, via assinaturas de "
+                     "src/ml/injecao_falhas.py",
             "nota": "E1 — proxy sintético no espaço de features; ground truth "
                     "por família de falha, não medição de bancada.",
         },

@@ -58,9 +58,9 @@ COR_EIXO = "#c3c2b7"
 # Cores canônicas por família de falha FMEA (ordem fixa da paleta;
 # consumidas por injecao_falhas.FALHAS e por qualquer gráfico por família)
 CORES_FALHAS = {
-    "lcl": PALETA[0],
-    "desbalanceamento": PALETA[1],
-    "sensor": PALETA[2],
+    "contator_ac": PALETA[0],
+    "igbt": PALETA[1],
+    "fusivel_ac": PALETA[2],
 }
 
 # Tamanhos canônicos (polegadas). Todo gráfico deve usar um destes ou um

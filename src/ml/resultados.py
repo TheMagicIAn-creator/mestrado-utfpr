@@ -463,9 +463,9 @@ def _resumo_injecao() -> str | None:
 def _nome_falha(chave: str) -> str:
     base = re.sub(r"_sev.*$", "", chave)
     nomes = {
-        "lcl": "Degradação Filtro LCL",
-        "desbalanceamento": "Desbalanceamento de Fase",
-        "sensor": "Falha de Sensor CA",
+        "contator_ac": "Contator AC",
+        "igbt": "IGBT",
+        "fusivel_ac": "Fusível AC",
     }
     return nomes.get(base, base)
 

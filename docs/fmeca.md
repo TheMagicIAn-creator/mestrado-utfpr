@@ -1,0 +1,85 @@
+# FMECA consolidada — FONTE ÚNICA DE VERDADE
+
+> **Esta tabela é a fonte única da análise de falhas do projeto.** Todos os
+> arquivos (injeção de falhas, assinaturas, CLAUDE.md, gráficos, respostas do
+> agente) devem usar EXATAMENTE estes componentes, modos, índices e NPR.
+> Em caso de conflito entre arquivos, vale esta tabela. Alterou aqui →
+> propague a `src/ml/injecao_falhas.py`, `src/ml/protocolos_artigos.py`,
+> `docs/assinaturas_fmea.md` e `CLAUDE.md`.
+
+## Distinção FMEA × FMECA (Torres, 2024, Seção 2.2 e Eq. 4.19–4.21)
+
+- **FMEA** = Failure Mode and Effects Analysis — modos e efeitos de falha.
+- **FMECA** = FMEA + **C**riticidade. `FMECA = FMEA + C`.
+- **NPR** (Número de Prioridade de Risco) = **S × O × D** — índice da **FMECA**
+  (criticidade quantitativa), **nunca** atribuído genericamente à FMEA nem
+  igualado a um índice isolado (D não é NPR).
+- **C** (criticidade, Eq. 4.20) = **S + O**.
+
+## Escalas (Torres, 2024, Tabelas 4.6, 4.7, 4.8)
+
+- **S — Severidade** (escala 1–5): 1 = dificilmente detectada, sem influência;
+  2 = leve deterioração; 3 = deterioração de peças/desempenho; 4 = deterioração
+  extensa + perda relevante; 5 = não-operação ou perda severa.
+- **O — Ocorrência** (escala 1–10): 1 = remota (10⁻⁷/ano); 2–3 = baixa (10⁻⁶);
+  4–5 = moderada (10⁻⁵); 6–7 = alta (10⁻⁴); 8–10 = muito alta (10⁻²).
+- **D — Detecção** (escala 1–10): 1 = remota (0–5% de não detectar) …
+  10 = muito alta (86–100% de não detectar).
+
+## Seleção dos componentes (justificativa bibliográfica)
+
+Os três componentes abaixo são os **componentes internos CA-elétricos do
+inversor que mais contribuem para falhas**, segundo a **Tabela 3.3 do TCC**
+(adaptada de Cristaldi, Khalil & Soulatintork, 2017), reforçada por Golnas
+(2012, Tab. 3.2 — inversor = 43% dos tickets, 36% da energia perdida) e Voss
+et al. (2009, Fig. 3.16–3.17 — inversor como componente crítico):
+
+| Componente | % tickets (Tab. 3.3) | % kWh perdidos | Detectável no sinal CA? |
+|---|---:|---:|---|
+| Contator AC | 12% | 13% | Sim (transientes de comutação) |
+| IGBT | 6% | 6% | Sim (harmônicos de chaveamento) |
+| Fusível AC | 4% | 12% | Sim (perda parcial de fase) |
+
+Software de Controle (28%) e Placa de Circuito/PCB (13%), embora liderem a
+Tab. 3.3, **não se manifestam em sinais elétricos CA** (lógica/placa) — por
+isso ficam fora do escopo de detecção por Autoencoder no sinal.
+
+## Tabela FMECA consolidada
+
+Modo de falha / Efeito / Causa: **campos reservados para preenchimento por
+Rodolfo Torres** (deixados em branco por decisão do autor).
+
+| Id | Componente | Função | Modo de falha | Efeito | Causa | S | O | D | **NPR** | **C** |
+|----|-----------|--------|---------------|--------|-------|:-:|:-:|:-:|:---:|:-:|
+| 1 | **Contator AC** | Chavear/conectar a saída CA do inversor à rede | *(a preencher)* | *(a preencher)* | *(a preencher)* | 5 | 7 | 9 | **315** | 12 |
+| 2 | **IGBT** | Comutar a conversão CC→CA (chaveamento PWM) | *(a preencher)* | *(a preencher)* | *(a preencher)* | 5 | 6 | 3 | **90** | 11 |
+| 3 | **Fusível AC** | Proteger o lado CA contra sobrecorrente | *(a preencher)* | *(a preencher)* | *(a preencher)* | 5 | 3 | 2 | **30** | 8 |
+
+**Ordem de criticidade (NPR): Contator AC (315) > IGBT (90) > Fusível AC (30).**
+
+- Fonte dos índices S/O/D: **estipulados pelo pesquisador (Rodolfo Torres)**
+  com base no TCC (Torres, 2024) e nas suas referências cruzadas — Tab. 3.3
+  (Cristaldi et al., 2017), Golnas (2012), Voss et al. (2009) — seguindo as
+  escalas das Tabelas 4.6/4.7/4.8. NPR = S×O×D calculado.
+- Nível de evidência: **E1/E2** (fundamentação bibliográfica + engenharia +
+  injeção sintética), **não** medição de campo (E3).
+
+## Assinatura elétrica de cada falha (ponte FMECA → injeção sintética)
+
+A injeção sintética (`src/ml/injecao_falhas.py`) perturba o sinal saudável do
+Paderborn com a assinatura elétrica coerente com cada componente:
+
+| Componente | Assinatura elétrica injetada | Mecanismo no código |
+|---|---|---|
+| Contator AC | Transiente/ruído de comutação (contatos desgastados/chattering) na corrente CA | ruído gaussiano em `i_a` (proxy do transiente) |
+| IGBT | Harmônicos 5ª/7ª/11ª/13ª + THD ↑ (chaveamento imperfeito) | harmônicos aditivos nas correntes CA |
+| Fusível AC | Redução de amplitude de uma fase (perda parcial) → desbalanceamento ↑ | redução multiplicativa da amplitude de `i_a` |
+
+## Ressalva metodológica (importante para a banca)
+
+O índice **D da FMECA** (dificuldade de detecção **em campo/manutenção**, Tab.
+4.8) e a **detectabilidade empírica do Autoencoder** são conceitos distintos.
+Um componente pode ter D baixo (fácil de detectar em campo) e, ainda assim, o
+Autoencoder ter dificuldade com sua assinatura no sinal — ou vice-versa. Essa
+relação (o detector proposto melhora, iguala ou fica aquém do D de campo?) é
+um resultado a discutir na dissertação, não uma inconsistência.

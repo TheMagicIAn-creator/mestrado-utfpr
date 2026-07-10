@@ -7,7 +7,7 @@ Toda afirmação sobre resultados **deve** informar o nível de evidência. O ag
 |---|---|---|
 | **E0** | Hipótese | proposições ainda não testadas |
 | **E1** | Benchmark **exploratório** — perturbação genérica ou dataset rotulado | `experimentos_artigos.py` (anomalia com perturbação genérica; classificação PV Farms). Limiar escolhido no próprio conjunto avaliado = E1 |
-| **E2** | Validação **sintética orientada pelo FMEA** — ground truth de falhas injetadas | `injecao_falhas.py` (schema por falha) e `validacao.py` (limiar congelado, `__meta__.evidence_level = E2`) |
+| **E2** | Validação **sintética orientada pela FMECA** — ground truth de falhas injetadas | `injecao_falhas.py` (schema por falha) e `validacao.py` (limiar congelado, `__meta__.evidence_level = E2`) |
 | **E3** | Validação **experimental externa** (bancada / campo) | ainda não realizada |
 
 Regras práticas:
