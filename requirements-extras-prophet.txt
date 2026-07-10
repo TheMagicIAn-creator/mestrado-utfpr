@@ -1,3 +1,0 @@
-# EXTRA — Facebook Prophet (experimentos Ibrahim/Ahirwar).
-# Sem isto, o modelo Prophet degrada para "requer prophet".
-prophet

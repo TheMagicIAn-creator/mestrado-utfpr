@@ -7,7 +7,7 @@ Antes, todos os experimentos de anomalia compartilhavam UM único harness:
 split aleatório de janelas temporais sobrepostas (vazamento temporal) e limiar
 escolhido maximizando F1 NO PRÓPRIO conjunto de teste (oráculo) para os
 modelos sem decisão nativa — exatamente os modelos que definem cada artigo
-(Z-score, AE-LSTM, Prophet). Isso é o "erro de simulação": todos os métodos
+(Z-score, AE-LSTM). Isso é o "erro de simulação": todos os métodos
 pareciam iguais porque eram avaliados pela mesma régua artificial.
 
 Aqui cada artigo tem o SEU protocolo de decisão, fiel ao método do paper e à
@@ -17,8 +17,9 @@ prática da área — e nenhum limiar enxerga os rótulos do teste:
   priori, por variável).
 - Ibrahim et al. (2022)    → Isolation Forest com contaminação A PRIORI;
   AE-LSTM com limiar = percentil 99 do erro de reconstrução NO TREINO
-  (congelado antes de ver o teste — a mesma disciplina do pipeline principal);
-  Prophet com banda de incerteza de 99% (fora da banda = anomalia).
+  (congelado antes de ver o teste — a mesma disciplina do pipeline principal).
+  O Prophet do artigo foi removido da curadoria (pior detector + dependência
+  instável em runtime).
 
 Nota de curadoria: o núcleo comparativo foi enxugado para DOIS protocolos —
 Francisti (baseline ingênuo Shewhart) e Ibrahim (concorrentes diretos do
@@ -53,7 +54,6 @@ SEVERIDADE_PADRAO = 1.0          # escala global da injeção (1.0 = moderada)
 LIMIAR_SIGMA = 3.0               # regra de Shewhart (Francisti)
 CONTAMINACAO_A_PRIORI = 0.05     # Isolation Forest (Ibrahim)
 PERCENTIL_TREINO = 99            # AE-LSTM: limiar congelado no treino
-INTERVALO_PROPHET = 0.99         # banda de incerteza do Prophet
 PURGA_JANELAS = 2                # janelas com 50% de sobreposição → purga 2
 
 # Pesos de amostragem das famílias de falha (ordem de criticidade do FMECA:
@@ -235,28 +235,9 @@ def preparar_dados_anomalia(com_validacao: bool = False,
 
     scaler = StandardScaler().fit(Xn_tr)
 
-    # Variável monitorada pelo Prophet: a feature MAIS INFORMATIVA entre as
-    # que as famílias FMEA afetam (maior coeficiente de variação no treino
-    # BRUTO). Equivale a monitorar a série de processo sensível à falha —
-    # proxy da série de potência usada no artigo do Ibrahim. Sem isso, o
-    # Prophet vigiaria uma feature intocada pelas falhas (cego por projeto).
-    cols_afetadas = sorted({
-        j for regras in ASSINATURAS_FMEA.values()
-        for padrao, _, _, _ in regras
-        for j in _colunas_por_padrao(nomes, padrao)
-    })
-    if cols_afetadas:
-        sub = Xn_tr[:, cols_afetadas]
-        cv = sub.std(axis=0) / (np.abs(sub.mean(axis=0)) + 1e-9)
-        col_prophet = int(cols_afetadas[int(np.argmax(cv))])
-    else:
-        col_prophet = None
-
     dados = {
         "nomes": nomes,
         "scaler": scaler,
-        "col_prophet": col_prophet,
-        "col_prophet_nome": nomes[col_prophet] if col_prophet is not None else None,
         "Xn_tr": scaler.transform(Xn_tr),
         "X_tr_sup": np.vstack([scaler.transform(Xn_tr), scaler.transform(Xa_tr)]),
         "y_tr_sup": np.r_[np.zeros(len(Xn_tr)), np.ones(len(Xa_tr))],
@@ -402,9 +383,8 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
     """
     IF com contaminação A PRIORI; AE-LSTM com limiar = percentil do erro de
     reconstrução numa fatia de CALIBRAÇÃO temporal do treino (o AE não vê a
-    calibração no ajuste — evita o limiar otimista do erro de treino);
-    Prophet com banda de 99% (fora da banda = anomalia). Nenhuma decisão
-    enxerga os rótulos do teste.
+    calibração no ajuste — evita o limiar otimista do erro de treino).
+    Nenhuma decisão enxerga os rótulos do teste.
 
     Com ``retornar_predicoes=True`` devolve também ``{modelo: y_pred}`` (as
     decisões por membro, sem refazer fits) — gancho para eventual ensemble.
@@ -468,25 +448,6 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
     else:
         saida["AE-LSTM"] = _indisponivel("requer torch")
 
-    if lib_disponivel("prophet"):
-        if progresso:
-            progresso("Ibrahim: Prophet (banda de 99%)...")
-
-        def _rodar_prophet():
-            from src.ml.modelos_anomalia import _score_prophet
-
-            score_p = _score_prophet(dados, interval_width=INTERVALO_PROPHET)
-            y_pred_p = (score_p > 1.0).astype(int)  # >1 = fora da banda
-            return _metricas(
-                y_te, score_p, y_pred_p,
-                threshold_source=f"intervalo_prophet_{INTERVALO_PROPHET}",
-                limiar=1.0, tipos_te=tipos,
-            ), y_pred_p
-
-        _rodar_modelo("Facebook Prophet", _rodar_prophet, saida, preds)
-    else:
-        saida["Facebook Prophet"] = _indisponivel("requer prophet")
-
     metodologia = {
         "protocolo": "ibrahim2022_series_temporais",
         "fonte": "Ibrahim et al. (2022)",
@@ -495,25 +456,21 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
             "AE-LSTM": f"limiar = p{PERCENTIL_TREINO} do erro numa fatia de "
                        "CALIBRAÇÃO temporal do treino (fora do ajuste do AE; "
                        "congelado antes do teste)",
-            "Facebook Prophet": f"fora da banda de incerteza de "
-                                f"{INTERVALO_PROPHET:.0%}",
         },
         "fidelidade": [
-            "Segue o artigo: trio IF / AE-LSTM / Prophet para anomalia.",
+            "Segue o artigo no par não-supervisionado IF + AE-LSTM.",
             "AE-LSTM usa a disciplina de limiar congelado do pipeline "
             "principal, com calibração em bloco temporal NÃO visto no ajuste "
             "(o erro de treino subestimaria o erro real).",
-            "Adaptação: Prophet univariado monitorando a feature mais "
-            "sensível às famílias FMEA (proxy da série de potência do artigo).",
+            "Curadoria: o Facebook Prophet do artigo foi removido — era o pior "
+            "detector do trio e sua dependência quebra em runtime; a base "
+            "comparativa fica com IF + AE-LSTM, que bastam.",
             "Leitura correta: a contaminação a priori de 5% reflete a "
             "prevalência esperada em operação; no teste BALANCEADO (50% "
             "anômalo) ela limita o recall por construção — compare métodos "
             "pelo AUC e pela precisão, não pelo F1 entre protocolos.",
         ],
     }
-    if dados.get("col_prophet_nome"):
-        metodologia["decisoes"]["Facebook Prophet"] += (
-            f" — monitora '{dados['col_prophet_nome']}'")
     if retornar_predicoes:
         return saida, metodologia, preds
     return saida, metodologia

@@ -217,7 +217,7 @@ REGRAS DE CONVERSA (LEIA ANTES DE RESPONDER)
    - PROTOCOLO POR ARTIGO: cada experimento segue a regra de decisão do
      PRÓPRIO artigo — Francisti decide por Shewhart (3σ fixo a priori);
      Ibrahim por contaminação a priori (IF), percentil do erro de treino
-     congelado (AE-LSTM) e banda de incerteza do Prophet. Por isso os F1 NÃO são diretamente comparáveis entre protocolos
+     congelado (AE-LSTM). Por isso os F1 NÃO são diretamente comparáveis entre protocolos
      (cada um opera no seu ponto de decisão) — o AUC é a métrica comparável.
      Ao comparar experimentos, explique essa diferença em vez de ranquear
      cegamente por F1.

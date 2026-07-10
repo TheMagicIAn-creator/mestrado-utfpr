@@ -1132,7 +1132,7 @@ def _md_experimento(res: dict) -> tuple[str, list[dict]]:
 def rodar_experimento_artigo(progresso=None, pergunta: str = "") -> dict:
     """Roda um ou mais experimentos por artigo e devolve a comparação."""
     from src.ml.experimentos_artigos import catalogo_experimentos_md
-    # 10.4 — isola cargas pesadas (Orange/RL/torch/prophet) em subprocesso para
+    # 10.4 — isola cargas pesadas (torch) em subprocesso para
     # que um segfault/conflito de OpenMP não derrube o app. Cai para in-process
     # se o subprocesso não puder ser lançado.
     from src.ml.exec_experimento_isolado import (
@@ -1260,7 +1260,7 @@ def comparar_abordagens_ml(progresso=None, pergunta: str = "") -> dict:
         "não diagnostica falhas CA do inversor, nem transfere suas métricas ao "
         "pipeline CA.\n"
         "- Cada experimento por artigo segue o PROTOCOLO do próprio artigo "
-        "(Shewhart 3σ, contaminação a priori, p99 do treino, banda do Prophet, "
+        "(Shewhart 3σ, contaminação a priori, p99 do treino congelado, "
         "PPO em validação temporal, voto majoritário) — por isso o F1 não é "
         "comparável entre protocolos; compare métodos pelo AUC."
     )

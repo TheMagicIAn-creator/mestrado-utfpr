@@ -133,7 +133,7 @@ consultar_status_pipeline, nunca deste arquivo):
 - Análise de Weibull (confiabilidade e RUL)
 
 Disponíveis via experimentos por artigo (não no pipeline):
-- Isolation Forest, AE-LSTM, Prophet (Ibrahim/Ahirwar)
+- Isolation Forest, AE-LSTM (Ibrahim)
 
 Planejados (sem implementação no pacote):
 - Processo Gaussiano (prognóstico com incerteza)
@@ -161,11 +161,12 @@ CURADORIA — núcleo comparativo enxugado para DOIS experimentos
   se o Autoencoder não vence uma carta de controle 3σ, há
   problema. (O Random Forest supervisionado do artigo foi
   removido.)
-- Ibrahim (2022) — Isolation Forest, AE-LSTM, Prophet: os
-  concorrentes não-supervisionados diretos; o AE-LSTM é primo
-  arquitetural do Autoencoder do pipeline.
+- Ibrahim (2022) — Isolation Forest e AE-LSTM: os concorrentes
+  não-supervisionados diretos; o AE-LSTM é primo arquitetural
+  do Autoencoder do pipeline. (O Prophet do artigo foi cortado:
+  pior detector + dependência instável em runtime.)
 
-CORTADOS (não são mais experimentos executáveis):
+CORTADOS (não são mais experimentos/modelos executáveis):
 - Ghoneim (2021) — classificação supervisionada CC (PV Farms),
   fora do foco CA (segue acessível pelo classificador_pv).
 - Sharma (2026) — baselines supervisionados, RNN/CNN e
@@ -173,8 +174,10 @@ CORTADOS (não são mais experimentos executáveis):
 - Ahirwar (2025) — voto híbrido; derivativo do Ibrahim (só
   combina os membros que o Ibrahim já roda).
 - Stender (2020) — cartão de dataset, não é experimento.
-Ahirwar e Stender seguem CITÁVEIS como literatura indexada;
-apenas não são experimentos executáveis.
+- Facebook Prophet (modelo do Ibrahim) — pior detector do trio
+  e dependência que quebra em runtime ('stan_backend').
+Ahirwar, Stender e Prophet seguem CITÁVEIS como literatura;
+apenas não são experimentos/modelos executáveis.
 
 Assimetria de evidência (importante para a banca): o pipeline
 principal usa injeção FMEA no SINAL bruto (E2); os experimentos
@@ -194,14 +197,14 @@ Anomalia é avaliada com PROTOCOLO PRÓPRIO POR ARTIGO
 injeção sintética orientada pelo FMEA no espaço de features
 (famílias LCL/desbalanceamento/sensor, com detecção por
 falha) e a regra de decisão do próprio artigo — Shewhart 3σ
-(Francisti), contaminação a priori + p99 do treino + banda
-do Prophet (Ibrahim). Nenhum limiar enxerga os rótulos do
+(Francisti), contaminação a priori + p99 do treino congelado
+(Ibrahim: IF + AE-LSTM). Nenhum limiar enxerga os rótulos do
 teste; F1 não é comparável entre protocolos (compare por AUC).
-O resultado.json carrega o bloco "metodologia". Degradação
-honesta: um modelo cujo pacote não está instalado é mostrado
-como "requer <lib>" em vez de sumir. Biblioteca pesada opcional
-dos experimentos: prophet (requirements-extras-prophet.txt).
-Orange3 e stable-baselines3/gymnasium foram descartados junto
+O resultado.json carrega o bloco "metodologia". Robustez: um
+modelo cujo pacote não está instalado vira "requer <lib>"; um
+modelo instalado que quebra em runtime vira "erro de execução"
+sem derrubar os demais (helper _rodar_modelo). Prophet, Orange3
+e stable-baselines3/gymnasium foram descartados junto
 com os experimentos Ghoneim/Sharma.
 
 ## Arquitetura do Sistema

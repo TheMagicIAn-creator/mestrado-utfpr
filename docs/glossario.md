@@ -51,8 +51,8 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
   tempo, descartando janelas na fronteira (janelas com 50% de sobreposição →
   purga de 2) para impedir vazamento temporal.
 - **Protocolo por artigo**: cada experimento usa a regra de decisão do
-  próprio paper (Shewhart 3σ; contaminação a priori + p99 + banda do
-  Prophet; voto majoritário). F1 NÃO é comparável entre protocolos; AUC é.
+  próprio paper (Francisti: Shewhart 3σ; Ibrahim: contaminação a priori +
+  p99 do treino congelado). F1 NÃO é comparável entre protocolos; AUC é.
 - **Degradação honesta**: modelo cuja dependência não está instalada aparece
   como "requer <lib>" em vez de sumir silenciosamente do resultado.
 

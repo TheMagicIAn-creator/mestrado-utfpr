@@ -58,7 +58,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | **Experimentos por artigo** | |
 | `experimentos_artigos.py` | Registry de experimentos, métricas, artefatos, runners de classificação e anomalia. |
 | `protocolos_artigos.py` | Protocolo de decisão **por artigo** (Francisti/Ibrahim) + injeção FMEA no espaço de features. |
-| `modelos_anomalia.py` | **Módulo folha**: scorers de anomalia não-supervisionados (AE-LSTM, Prophet). Existe para quebrar o ciclo `experimentos`↔`protocolos`. |
+| `modelos_anomalia.py` | **Módulo folha**: scorer de anomalia não-supervisionado (AE-LSTM). Existe para quebrar o ciclo `experimentos`↔`protocolos`. |
 | `exec_experimento_isolado.py` | Roda experimento em subprocesso isolado (crash de lib pesada não derruba o app). |
 | **Classificação PV (CC)** | |
 | `classificador_pv.py` | Pipeline CLI de classificação PV Farms (Ghoneim) + carregamento de dados. |

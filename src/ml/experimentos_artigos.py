@@ -15,8 +15,9 @@ Princípios:
 
 Artigos-base do NÚCLEO comparativo (enxugado para 2: baseline + concorrentes):
   1. Francisti et al. (2025) — Z-score (Shewhart/SPC), baseline ingênuo
-  2. Ibrahim et al. (2022)   — AE-LSTM, Prophet, Isolation Forest (concorrentes
-                               diretos do Autoencoder do pipeline principal)
+  2. Ibrahim et al. (2022)   — Isolation Forest e AE-LSTM (concorrentes
+                               não-supervisionados diretos do Autoencoder;
+                               o Prophet do artigo foi cortado da curadoria)
 
 O papel destes experimentos é COMPARAÇÃO com a literatura, não é o método da
 dissertação (esse é o pipeline principal: Autoencoder no sinal → injeção FMEA
@@ -254,13 +255,14 @@ REGISTRO: dict[str, ExperimentoArtigo] = {
         dataset="Paderborn",
         tarefa="anomalia",
         descricao=(
-            "Esquemas de detecção de anomalia: Isolation Forest, Autoencoder "
-            "LSTM e Facebook Prophet, avaliados contra falhas injetadas."
+            "Esquemas de detecção de anomalia não-supervisionada: Isolation "
+            "Forest e Autoencoder-LSTM, avaliados contra falhas injetadas. "
+            "(O Facebook Prophet do artigo foi removido da curadoria: era o "
+            "pior detector e sua dependência é frágil/instável em runtime.)"
         ),
         modelos=(
             ModeloSpec("Isolation Forest", "anomalia"),
             ModeloSpec("AE-LSTM", "rede", requer="torch"),
-            ModeloSpec("Facebook Prophet", "anomalia", requer="prophet"),
         ),
         runner="executar_anomalia",
     ),

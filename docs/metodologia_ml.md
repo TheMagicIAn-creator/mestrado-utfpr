@@ -95,10 +95,13 @@ e **nenhum limiar enxerga os rótulos do teste**:
 
 | Artigo | Decisão de cada modelo | `threshold_source` |
 |---|---|---|
-| **Francisti (2025)** | Shewhart: alarme se alguma feature sai de ±3σ do treino (fixo a priori); RF probabilidade ≥ 0,5 | `shewhart_3sigma_a_priori` |
-| **Ibrahim (2022)** | IF contaminação a priori (5%); AE-LSTM limiar = p99 do erro **no treino** (congelado); Prophet fora da banda de 99% | `contaminacao_a_priori_0.05`, `p99_erro_reconstrucao_treino`, `intervalo_prophet_0.99` |
-| **Sharma (2026)** | PPO otimiza a contaminação do IF em **validação temporal** separada (split 60/20/20 com purga); teste só com o parâmetro congelado; baselines em 0,5 nativo | `ppo_otimizado_em_validacao_temporal` |
-| **Ahirwar (2025)** | Voto **majoritário** entre membros (IF/AE-LSTM/Prophet), cada um na sua regra a priori | `voto_majoritario_K_de_N` |
+| **Francisti (2025)** | Shewhart: alarme se alguma feature sai de ±3σ do treino (fixo a priori) | `shewhart_3sigma_a_priori` |
+| **Ibrahim (2022)** | IF contaminação a priori (5%); AE-LSTM limiar = p99 do erro **no treino** (congelado) | `contaminacao_a_priori_0.05`, `p99_erro_em_calibracao_temporal` |
+
+Cortados da curadoria (não são experimentos executáveis): Sharma (PPO+IF,
+baselines supervisionados, RNN/CNN), Ahirwar (voto híbrido — derivativo do
+Ibrahim), o Random Forest do Francisti e o Prophet do Ibrahim (pior detector
++ dependência instável em runtime).
 
 Infraestrutura comum (benchmark justo):
 - **Split temporal com purga** (`split_temporal.py`) — nunca aleatório;

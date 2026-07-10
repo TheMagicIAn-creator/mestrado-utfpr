@@ -9,7 +9,7 @@ protocolo de decisão usado e onde o resultado foi salvo — sem abrir o app.
 IMPORTANTE — isto NÃO muda a metodologia nem os números:
   - cada experimento JÁ tem o seu protocolo próprio em
     src/ml/protocolos_artigos.py (Shewhart, p99 em calibração, banda do
-    Prophet, PPO em validação temporal, voto majoritário);
+    congelado; voto majoritário);
   - este arquivo é só um ATALHO de execução/reprodutibilidade. O resultado é
     idêntico ao do chat ("rode o experimento do Ghoneim") ou do
     `executar_experimento(key)`.

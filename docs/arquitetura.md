@@ -43,8 +43,8 @@ src/
   rul_weibull`, cada etapa com manifesto de proveniência.
 
 ## Isolamento de cargas pesadas (subprocesso)
-Experimentos por artigo que carregam bibliotecas pesadas (`torch`,
-`prophet`) rodam em **subprocesso** via
+Experimentos por artigo que carregam bibliotecas pesadas (`torch`)
+rodam em **subprocesso** via
 `exec_experimento_isolado.executar_experimento_isolado(key)`. Um segfault,
 conflito de OpenMP ou estouro de memória derruba apenas o filho — o app
 Streamlit segue de pé e recebe uma mensagem de falha legível. O progresso é
@@ -64,7 +64,6 @@ Os dois **não se fundem** — ver `docs/datasets.md` e `docs/metodologia_ml.md`
 pip install -r requirements.txt              # ambiente completo (pins exatos)
 # ou por grupo:
 pip install -r requirements-ui.txt -r requirements-rag.txt -r requirements-ml.txt
-pip install -r requirements-extras-prophet.txt   # Prophet (opcional)
 pip install -r requirements-dev.txt              # testes/lint
 ```
 

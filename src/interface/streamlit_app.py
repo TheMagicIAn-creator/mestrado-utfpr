@@ -221,7 +221,7 @@ def renderizar_diagnostico(colecao, colecao_sessoes) -> None:
     except Exception as exc:  # noqa: BLE001
         st.caption(f"pipeline: {exc}")
 
-    libs = {"prophet": "Prophet", "torch": "torch"}
+    libs = {"torch": "torch"}
     marcas = []
     for mod, desc in libs.items():
         try:

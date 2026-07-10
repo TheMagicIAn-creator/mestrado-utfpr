@@ -167,7 +167,6 @@ def _modelo_citado(txt: str, modelo: str) -> bool:
         "random forest": ("random forest", "rf", "bosque aleatorio", "foret aleatoire", "forêt aléatoire"),
         "z-score": ("z-score", "z score", "zscore"),
         "ae-lstm": ("ae-lstm", "ae lstm", "autoencoder lstm"),
-        "facebook prophet": ("facebook prophet", "prophet"),
         "hibrido": ("hibrido", "voto"),
         "svm": ("svm",),
         "knn": ("knn",),
@@ -657,7 +656,7 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
         linhas.append("\nSeparacao entre artigo e recalculo local:\n")
         linhas.append(
             "- **Metodologia dos artigos**: define quais familias de modelos entram "
-            "no benchmark (por exemplo, Isolation Forest, AE-LSTM, Prophet, SVM, "
+            "no benchmark (por exemplo, Isolation Forest, AE-LSTM, SVM, "
             "RNN/CNN ou hibrido). Isso e inspiracao metodologica, nao copia de "
             "metricas publicadas.\n"
         )
