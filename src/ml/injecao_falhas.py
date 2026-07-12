@@ -125,9 +125,14 @@ FALHAS = [
         "componente": "Contator AC",
         "s"       : 5, "o": 7, "d": 9, "npr": 5 * 7 * 9,   # = 315
         "criticidade": 5 + 7,                               # C = S+O = 12
-        "modo_falha": "",  # a preencher (Rodolfo)
-        "efeito"    : "",  # a preencher
-        "causa"     : "",  # a preencher
+        # Modo/efeito/causa: FMECA preenchida por Rodolfo (docs/fmeca.md).
+        "modo_falha": ("Fuga de corrente; injeção contínua de energia ainda "
+                       "com a falta de energia da concessionária ou oscilação "
+                       "severa"),
+        "efeito"    : ("Paralisação do sistema por falha no isolamento; riscos "
+                       "de eletrocussão em técnicos operando na rede externa"),
+        "causa"     : ("Arco elétrico e desgaste mecânico; degradação da bobina "
+                       "e do isolamento"),
         "cor"     : "#2a78d6",  # PALETA[0] — ver estilo_graficos.CORES_FALHAS
         "descricao": "Transiente/ruído de comutação na corrente CA",
         # Schema de proveniência da falha sintética (item 4.4)
@@ -158,9 +163,12 @@ FALHAS = [
         "componente": "IGBT",
         "s"       : 5, "o": 6, "d": 3, "npr": 5 * 6 * 3,   # = 90
         "criticidade": 5 + 6,                               # C = 11
-        "modo_falha": "",  # a preencher
-        "efeito"    : "",  # a preencher
-        "causa"     : "",  # a preencher
+        # Modo/efeito/causa: FMECA preenchida por Rodolfo (docs/fmeca.md).
+        "modo_falha": ("Não comutação CC→CA; curto-circuito permanente entre "
+                       "os terminais"),
+        "efeito"    : ("Interrupção imediata no fornecimento de energia e "
+                       "(possível) disparo de alarme de hardware no display"),
+        "causa"     : "Estresse termodinâmico e surtos de sobretensão",
         "cor"     : "#1baf7a",  # PALETA[1]
         "descricao": "Injeção de harmônicos 5°, 7°, 11° e 13° nas correntes CA",
         "evidence_level"     : "E2",
@@ -187,9 +195,12 @@ FALHAS = [
         "componente": "Fusível AC",
         "s"       : 5, "o": 3, "d": 2, "npr": 5 * 3 * 2,   # = 30
         "criticidade": 5 + 3,                               # C = 8
-        "modo_falha": "",  # a preencher
-        "efeito"    : "",  # a preencher
-        "causa"     : "",  # a preencher
+        # Modo/efeito/causa: FMECA preenchida por Rodolfo (docs/fmeca.md).
+        "modo_falha": "Interrupção da condução de corrente (abertura do elo fusível)",
+        "efeito"    : ("Isolamento de uma ou mais fases da saída CA; interrupção "
+                       "no fornecimento de energia; desarme do inversor por "
+                       "desbalanceamento de fases"),
+        "causa"     : "Fadiga térmica por ciclos de carga; surtos de rede",
         "cor"     : "#eda100",  # PALETA[2] — baixo contraste: exige rótulo direto
         "descricao": "Redução de amplitude de uma fase (perda parcial)",
         "evidence_level"     : "E2",
