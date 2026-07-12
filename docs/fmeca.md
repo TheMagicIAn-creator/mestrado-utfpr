@@ -75,6 +75,18 @@ Paderborn com a assinatura elétrica coerente com cada componente:
 | IGBT | Harmônicos 5ª/7ª/11ª/13ª + THD ↑ (chaveamento imperfeito) | harmônicos aditivos nas correntes CA |
 | Fusível AC | Redução de amplitude de uma fase (perda parcial) → desbalanceamento ↑ | redução multiplicativa da amplitude de `i_a` |
 
+**Modo incipiente vs. modo terminal (declaração metodológica).** Os modos de
+falha da tabela FMECA acima são **terminais/catastróficos** (IGBT em curto
+permanente, contator com fuga/injeção indevida, fusível aberto). A injeção
+sintética, porém, modela deliberadamente a **assinatura elétrica INCIPIENTE**
+— o precursor de degradação que ANTECEDE o modo terminal (harmônicos
+crescentes do IGBT, transientes de comutação do contator, perda parcial de
+fase do fusível). Isso é intencional e alinhado ao propósito da manutenção
+preditiva: **detectar a degradação antes da falha catastrófica**, quando ainda
+há RUL a estimar. Não há, portanto, contradição entre a FMECA (que classifica
+a criticidade do modo terminal) e a injeção (que treina o detector na fase
+incipiente) — são estágios distintos e complementares do mesmo modo de falha.
+
 ## Ressalva metodológica (importante para a banca)
 
 O índice **D da FMECA** (dificuldade de detecção **em campo/manutenção**, Tab.
