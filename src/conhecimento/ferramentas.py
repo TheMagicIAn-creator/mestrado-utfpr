@@ -317,6 +317,15 @@ _AUTORES_EXP = {
     "francisti": "francisti",
     "ibrahim": "ibrahim",
 }
+
+# Autores CITÁVEIS na literatura indexada (superset dos de experimento):
+# usados como guarda para NÃO desviar uma pergunta autoral ("o que o Stender
+# diz...") para a ferramenta de catálogo de datasets. Stender/Ahirwar/etc.
+# não são mais experimentos executáveis, mas seguem sendo papers indexados.
+_AUTORES_CITAVEIS = set(_AUTORES_EXP) | {
+    "stender", "ahirwar", "ghoneim", "sharma", "cristaldi", "golnas",
+    "voss", "torres",
+}
 _VERBOS_RODAR_EXP = (
     "rode", "rodar", "roda", "execut", "teste", "testar", "testa",
     "treine", "treinar", "treina", "rodar os modelos",
@@ -421,7 +430,9 @@ def _quer_consultar_datasets(pergunta: str) -> bool:
     txt = _normalizar(pergunta)
     if _quer_rodar_experimento(pergunta):
         return False
-    if any(autor in txt for autor in _AUTORES_EXP):
+    # Pergunta que cita um autor da literatura ("o que o Stender diz...") é
+    # consulta bibliográfica → RAG, não catálogo de datasets.
+    if any(autor in txt for autor in _AUTORES_CITAVEIS):
         return False
     if any(t in txt for t in (
         "resultado", "resultados", "replicacao", "replicacoes",
