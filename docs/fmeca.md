@@ -49,11 +49,11 @@ isso ficam fora do escopo de detecção por Autoencoder no sinal.
 Modo de falha / Efeito / Causa: **campos reservados para preenchimento por
 Rodolfo Torres** (deixados em branco por decisão do autor).
 
-| Id | Componente | Função | Modo de falha | Efeito | Causa | S | O | D | **NPR** | **C** |
-|----|-----------|--------|---------------|--------|-------|:-:|:-:|:-:|:---:|:-:|
-| 1 | **Contator AC** | Chavear/conectar a saída CA do inversor à rede | *(a preencher)* | *(a preencher)* | *(a preencher)* | 5 | 7 | 9 | **315** | 12 |
-| 2 | **IGBT** | Comutar a conversão CC→CA (chaveamento PWM) | *(a preencher)* | *(a preencher)* | *(a preencher)* | 5 | 6 | 3 | **90** | 11 |
-| 3 | **Fusível AC** | Proteger o lado CA contra sobrecorrente | *(a preencher)* | *(a preencher)* | *(a preencher)* | 5 | 3 | 2 | **30** | 8 |
+| Id | Componente | Função | Modo de falha                                                                                                   | Efeito                                                                                                        | Causa                                                                    | S | O | D | **NPR** | **C** |
+|----|-----------|--------|-----------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|:-:|:-:|:-:|:---:|:-:|
+| 1 | **Contator AC** | Chavear/conectar a saída CA do inversor à rede | Fuga de corrente; Injeção contínua de energia ainda com a falta de energia da concessionária ou oscilação severa. | Paralisação do sistema por falha no isolamento; Riscos de eletrocussão em técnicos operando na rede externa.| Arco elétrico e desgaste mecânico; Degradação da bobina e do isolamento. | 5 | 7 | 9 | **315** | 12 |
+| 2 | **IGBT** | Comutar a conversão CC→CA (chaveamento PWM) | Não comutação CC→CA; Curto-circuito permanente entre os terminais.                          | Interrupção imediata no forncecimento de energia e (possível) disparo de alarme de hardware no display.       | Estresse termodinâmico e Surtos de sobretensão.                          | 5 | 6 | 3 | **90** | 11 |
+| 3 | **Fusível AC** | Proteger o lado CA contra sobrecorrente | Interrupção da condução de corrente (abertura do elo fusível).  | Isolamento de uma ou mais fases da saída AC; Interrupção no fornecimento de energia; Desarme do inversor por desbalanceamento de fases. | Fadiga Térmica por ciclos de carga; Surtos de rede.                      | 5 | 3 | 2 | **30** | 8 |
 
 **Ordem de criticidade (NPR): Contator AC (315) > IGBT (90) > Fusível AC (30).**
 
