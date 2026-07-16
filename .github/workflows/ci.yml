@@ -51,6 +51,7 @@ jobs:
             tests/test_inteligencia_agente.py \
             tests/test_split_temporal.py \
             tests/test_proveniencia.py \
+            tests/test_pipeline_stale.py \
             tests/test_caminhos.py \
             tests/test_metricas.py \
             tests/test_abordagens.py \

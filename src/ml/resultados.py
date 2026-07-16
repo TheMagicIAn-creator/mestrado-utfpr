@@ -553,7 +553,7 @@ def _resumo_weibull() -> str | None:
                 f"{falha.get('ressalva_ajuste') or 'KS rejeita o ajuste Weibull.'}"
             )
         linhas.append(
-            f"| {falha.get('nome', fid)} | {falha.get('npr') or 'D=10'} | "
+            f"| {falha.get('nome', fid)} | {falha.get('npr')} | "
             f"{_fmt(beta)} | {_fmt(p.get('eta'), 1)} | {_fmt(p.get('mttf'), 1)} | "
             f"{_fmt(p.get('b10'), 1)} | {ks_txt} | {taxa} |\n"
         )

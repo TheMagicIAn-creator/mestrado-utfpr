@@ -291,7 +291,7 @@ def plotar_ttf_histogramas(ttfs_dict: dict, params: dict, pasta: Path):
         ax.axvline(p["b10"],  color="blue", linestyle=":",
                    linewidth=1.5, label=f"B10={p['b10']:.1f}")
 
-        npm_str = f"NPR={falha['npr']}" if falha['npr'] else "D=10"
+        npm_str = f"NPR={falha['npr']}"
         ax.set_title(f"{nome} ({npm_str})\n"
                      f"β={p['beta']:.2f}  η={p['eta']:.1f}  "
                      f"KS p={p['ks_pval']:.3f}", fontsize=9)
@@ -331,7 +331,7 @@ def plotar_confiabilidade(ttfs_dict: dict, params: dict, pasta: Path):
         ax_r.set_ylim([0, 1.05])
         ax_r.set_xlabel("t (passos)")
         ax_r.set_ylabel("R(t) = P(T > t)")
-        npm_str = f"NPR={falha['npr']}" if falha['npr'] else "D=10"
+        npm_str = f"NPR={falha['npr']}"
         ax_r.set_title(f"{falha['nome']}\nβ={p['beta']:.2f}, η={p['eta']:.1f} ({npm_str})",
                         fontsize=9)
         ax_r.legend(fontsize=8)
@@ -372,7 +372,7 @@ def plotar_rul(params: dict, pasta: Path):
         ruls     = [rul_condicional(t, p["beta"], p["eta"])
                     for t in t_pontos]
 
-        npm_str = f"NPR={falha['npr']}" if falha['npr'] else "D=10"
+        npm_str = f"NPR={falha['npr']}"
         ax.plot(t_pontos / mttf * 100, ruls,
                 color=falha["cor"], linewidth=2.5,
                 label=f"{falha['nome']} ({npm_str}) — MTTF={mttf:.1f}")
@@ -481,7 +481,7 @@ def executar_rul_weibull() -> bool:
         fid = falha["id"]
         p   = ajustar_weibull(ttfs_dict[fid])
         params[fid] = p
-        npm_str = f"NPR={falha['npr']}" if falha['npr'] else "  D=10"
+        npm_str = f"NPR={falha['npr']}"
         _log(f"\n   {falha['nome']} ({npm_str})")
         _log(f"      β={p['beta']:.3f}  η={p['eta']:.1f}  "
               f"MTTF={p['mttf']:.1f}  B10={p['b10']:.1f}")
