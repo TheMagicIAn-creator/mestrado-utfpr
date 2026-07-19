@@ -302,6 +302,27 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
         c2.metric("Sessões", colecao_sessoes.count())
         st.caption("Literatura, memória e resultados são acessados pelo chat.")
 
+        # Indexação da literatura sob demanda. Os PDFs vão no repositório, mas o
+        # banco vetorial (base_conhecimento/) é EFÊMERO em nuvem (ex.: Streamlit
+        # Cloud): some no restart do app. Este botão reconstrói a base a partir
+        # dos PDFs de literatura/. Só aparece quando a base está vazia.
+        if colecao.count() == 0:
+            st.caption("⚠️ Literatura não indexada (base vazia).")
+            if st.button(
+                "🔄 Indexar literatura",
+                use_container_width=True,
+                help="Reconstrói a base a partir dos PDFs de literatura/. "
+                     "Leva alguns minutos; em nuvem, some quando o app reinicia.",
+            ):
+                try:
+                    from src.conhecimento.indexador import indexar_literatura
+                    with st.spinner("Indexando literatura… alguns minutos."):
+                        indexar_literatura()
+                    st.success("Literatura indexada! Atualizando…")
+                    st.rerun()
+                except Exception as exc:  # noqa: BLE001
+                    st.error(f"Falha ao indexar: {exc}")
+
         st.divider()
         st.markdown("**Comandos por prompt**")
         st.caption(
