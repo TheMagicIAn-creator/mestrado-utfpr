@@ -1,0 +1,33 @@
+{
+  "stage": "autoencoder",
+  "created_at": "2026-07-20T08:54:55.519215",
+  "git_commit": "cba51a34a0b150ba3ca8b1335c404fca80b7253a",
+  "code_sha256": "dfde397c1d70fdfae5858adad70dcfe420dfc3e3a9a9d0737d73496cba3347ba",
+  "parameters": {
+    "latente_dim": 16,
+    "epochs": 150,
+    "batch_size": 32,
+    "lr": 0.001,
+    "sigma": 3.0,
+    "threshold_method": "p99",
+    "seed": 42,
+    "train_ratio": 0.6,
+    "calib_ratio": 0.2,
+    "test_ratio": 0.2
+  },
+  "input_artifacts": {
+    "features_ca:0:features_paderborn.parquet": "f9811859094731d5267d8c95173eac3267a8c1f8fe091ab3fe46db7b5a497cca",
+    "features_ca:1:features_paderborn_stats.csv": "3b5e00091be20c67c738462ce147087c984e69ff563596107ca42b61b72bb9dd",
+    "features_ca:2:features_paderborn_qualidade.json": "d1c137fe231531170ffd550b9c3aecc112d4cbe08d68b3ec9d6c005b5006d4b8",
+    "features_ca:3:features_paderborn_qualidade.png": "e57ab1c19d8a21594290a8b23e6853fcc05f13c93dc6e87ef9624195d1056650"
+  },
+  "outputs": [
+    "resultados/autoencoder/modelo_autoencoder.pt",
+    "resultados/autoencoder/scaler.pkl",
+    "resultados/autoencoder/limiar.json",
+    "resultados/autoencoder/diagnostico_autoencoder.npz",
+    "resultados/autoencoder/curva_treino.png",
+    "resultados/autoencoder/distribuicao_erro.png",
+    "resultados/autoencoder/erro_temporal.png"
+  ]
+}

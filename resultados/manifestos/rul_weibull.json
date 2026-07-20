@@ -1,0 +1,31 @@
+{
+  "stage": "rul_weibull",
+  "created_at": "2026-07-20T08:57:42.143010",
+  "git_commit": "cba51a34a0b150ba3ca8b1335c404fca80b7253a",
+  "code_sha256": "7ca4c3886998e9a086bdd3c5deba10e7bf248eb2839099cf9482dd753e0d5e31",
+  "parameters": {
+    "n_traj": 100,
+    "n_steps": 120,
+    "batch_inferencia": 16,
+    "n_bootstrap": 250,
+    "min_eventos_weibull": 10,
+    "max_censura_rul_pct": 50.0
+  },
+  "input_artifacts": {
+    "validacao:0:validacao_roc.png": "dc0804a254656960061d0ec0b49bb1c1227e871ea0f97df9063a9624f62615e0",
+    "validacao:1:validacao_pr.png": "bef1d060ccefbf97dec8da93b74ad88af8db7259ca845766aaaef74dcef44a9f",
+    "validacao:2:validacao_matriz.png": "0f788f49956d776b9a698272b02b35e60c262668afd555a7a3c33c09ee928ee8",
+    "validacao:3:validacao_matrizes_severidades.png": "49ccb712dd846885f2a7d7ca694e61584c2c0dcad8272cfc1189eb9e2158e2c3",
+    "validacao:4:validacao_metricas.png": "fbd9d85fdf2f5050bbe48863635a6bd66fb8930083eb2d841a67134be3e648a2",
+    "validacao:5:validacao_tabela.csv": "19ed12467194dd9037e89e45ca0294fbbca3a3c8bd7eff3e351796076b51f2b3",
+    "validacao:6:validacao_tabela.md": "8c16c84cf37092d5c7737e84114d538d43b6013b72b1fa549abfece7e51fa0ea",
+    "validacao:7:validacao_report.json": "43e3e0f0183b58e3bb7fbbb421c1079d1279ede5894626a120b51a9e99c4b5b6"
+  },
+  "outputs": [
+    "resultados/autoencoder/weibull_ttf.png",
+    "resultados/autoencoder/weibull_confiabilidade.png",
+    "resultados/autoencoder/weibull_rul.png",
+    "resultados/autoencoder/weibull_results.json",
+    "resultados/autoencoder/weibull_tabela.csv"
+  ]
+}

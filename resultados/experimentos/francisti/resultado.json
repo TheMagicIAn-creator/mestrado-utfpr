@@ -1,0 +1,119 @@
+{
+  "experimento": "francisti",
+  "referencia": "Francisti et al. (2025)",
+  "artigo": "Predictive Modeling and Anomaly Detection in Solar PV Inverters",
+  "dataset": "Paderborn",
+  "tarefa": "anomalia",
+  "evidence_level": "E1",
+  "evidence_note": "E1 — benchmark exploratório (injeção sintética orientada pelo FMEA no espaço de features, com protocolo de decisão do próprio artigo); não é validação formal nem desempenho industrial.",
+  "data": "2026-07-20 08:58:13",
+  "metrica_principal": "f1",
+  "origem_dados": {
+    "tipo": "dataset_local_paderborn_com_falhas_sinteticas",
+    "descricao": "Usa features locais do Paderborn extraidas de Inverter_Data_Set.csv. Como o Paderborn e saudavel, as anomalias avaliadas sao sinteticas, geradas no pipeline para criar ground truth. O artigo inspira os modelos e a metodologia; os dados avaliados sao os do repositorio.",
+    "arquivos": [
+      "dados/brutos/Inverter_Data_Set.csv",
+      "dados/processados/features_paderborn.parquet"
+    ]
+  },
+  "modelos": {
+    "Z-score (estatístico)": {
+      "accuracy": 0.510989010989011,
+      "balanced_accuracy": 0.510989010989011,
+      "precision": 0.5476190476190477,
+      "recall": 0.12637362637362637,
+      "f1": 0.20535714285714285,
+      "mcc": 0.034395958024505485,
+      "auc": 0.5721682163989856,
+      "specificity": 0.8956043956043956,
+      "specificity_macro_ovr": 0.510989010989011,
+      "specificity_tipo": "binaria_TN/(TN+FP)",
+      "false_positive_rate": 0.1043956043956044,
+      "false_negative_rate": 0.8736263736263736,
+      "amostras": 364,
+      "n_classes": 2,
+      "classes": [
+        "Normal",
+        "Anomalia"
+      ],
+      "matriz_confusao": [
+        [
+          163,
+          19
+        ],
+        [
+          159,
+          23
+        ]
+      ],
+      "disponivel": true,
+      "limiar_score": 3.0,
+      "ponto_operacao": "protocolo_do_artigo",
+      "threshold_source": "shewhart_3sigma_a_priori",
+      "metrica_dependente_de_limiar": "a_priori_ou_congelada",
+      "anomalias_detectadas": 42,
+      "anomalias_reais": 182,
+      "taxa_anomalias_detectadas": 0.11538461538461539,
+      "prevalencia_raro": 0.05,
+      "fpr_operacao": 0.1043956043956044,
+      "precision_raro": 0.059895833333333336,
+      "f1_raro": 0.0812720848056537,
+      "deteccao_por_falha": {
+        "contator_ac": 0.15853658536585366,
+        "igbt": 0.061224489795918366,
+        "fusivel_ac": 0.13725490196078433
+      },
+      "graficos": [
+        "resultados/experimentos/francisti/modelo_z_score_estatistico_metricas.png",
+        "resultados/experimentos/francisti/modelo_z_score_estatistico_matriz_confusao.png"
+      ],
+      "grafico_metricas": "resultados/experimentos/francisti/modelo_z_score_estatistico_metricas.png",
+      "grafico_matriz_confusao": "resultados/experimentos/francisti/modelo_z_score_estatistico_matriz_confusao.png"
+    }
+  },
+  "melhor_modelo": "Z-score (estatístico)",
+  "melhor_valor": 0.20535714285714285,
+  "metodologia": {
+    "protocolo": "francisti2025_spc",
+    "fonte": "Francisti et al. (2025)",
+    "decisoes": {
+      "Z-score (estatístico)": "|z| > 3.0σ por variável (Shewhart, fixo a priori)"
+    },
+    "fidelidade": [
+      "Segue o artigo no detector estatístico (Z-score / SPC).",
+      "O Random Forest supervisionado do artigo foi removido: treina nos rótulos da injeção sintética e superestima o desempenho real (em operação não há rótulos de falha).",
+      "Adaptação: alarme por variável (máx |z|) — prática padrão de SPC multivariável simples; o artigo não detalha a agregação."
+    ],
+    "split": {
+      "tipo": "temporal_com_purga",
+      "purga_janelas": 2,
+      "n_janelas": 457,
+      "treino": 273,
+      "teste": 182
+    },
+    "injecao": {
+      "tipo": "fmea_espaco_features",
+      "falhas": [
+        "contator_ac",
+        "igbt",
+        "fusivel_ac"
+      ],
+      "pesos": {
+        "contator_ac": 0.4,
+        "igbt": 0.35,
+        "fusivel_ac": 0.25
+      },
+      "severidade": 1.0,
+      "fonte": "Torres (2024) — FMECA consolidada (docs/fmeca.md): Contator AC/IGBT/Fusível AC, via assinaturas de src/ml/injecao_falhas.py",
+      "nota": "E1 — proxy sintético no espaço de features; ground truth por família de falha, não medição de bancada."
+    }
+  },
+  "graficos": [
+    "resultados/experimentos/francisti/modelo_z_score_estatistico_metricas.png",
+    "resultados/experimentos/francisti/modelo_z_score_estatistico_matriz_confusao.png",
+    "resultados/experimentos/francisti/comparacao_metricas.png",
+    "resultados/experimentos/francisti/anomalias_detectadas.png",
+    "resultados/experimentos/francisti/matriz_confusao.png"
+  ],
+  "grafico": "resultados/experimentos/francisti/modelo_z_score_estatistico_metricas.png"
+}
