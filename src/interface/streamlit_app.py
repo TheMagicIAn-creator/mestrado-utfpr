@@ -216,7 +216,7 @@ def carregar_base():
                 estado_obsidian = sincronizar_obsidian(colecao_obsidian, modelo)
                 relatorio.append(
                     "Obsidian: "
-                    f"{estado_obsidian['notas_ativas']} notas curadas prontas."
+                    f"{estado_obsidian['notas_ativas']} notas do vault prontas."
                 )
             else:
                 relatorio.append(
@@ -480,7 +480,7 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian) -> No
 
         notas_obsidian = contar_notas_indexadas(colecao_obsidian)
         st.caption(
-            f"Cérebro Obsidian: {notas_obsidian} notas curadas · "
+            f"Vault Obsidian: {notas_obsidian} notas pesquisáveis · "
             f"memórias validadas: {memorias}. Literatura, memória e resultados "
             "são acessados pelo chat."
         )
@@ -1089,8 +1089,8 @@ def responder_com_rag(pergunta: str,
     )
 
     with st.spinner(mensagem_busca):
-        # Uma edição no vault passa a valer no próximo turno. A sincronização
-        # é incremental e, sem alterações, não recalcula embeddings.
+        # Qualquer Markdown novo ou editado no vault vale no próximo turno.
+        # A sincronização é incremental e não recalcula embeddings sem mudanças.
         try:
             from src.conhecimento.obsidian import sincronizar_obsidian
 

@@ -58,10 +58,16 @@ PASTA_RESULTADOS   = RAIZ_PROJETO / "resultados"
 PASTA_NOTAS        = RAIZ_PROJETO / "notas"
 PASTA_SESSOES      = PASTA_NOTAS / "sessoes"
 PASTA_MEMORIAS     = PASTA_NOTAS / "memorias"
+PASTA_VAULT_OBSIDIAN = Path(
+    os.getenv(
+        "AL_IADO_OBSIDIAN_VAULT_DIR",
+        str(PASTA_NOTAS),
+    )
+).expanduser().resolve()
 PASTA_CEREBRO_OBSIDIAN = Path(
     os.getenv(
         "AL_IADO_OBSIDIAN_DIR",
-        str(PASTA_NOTAS / "Cerebro"),
+        str(PASTA_VAULT_OBSIDIAN / "Cerebro"),
     )
 ).expanduser().resolve()
 PASTA_MEMORIA_AGENTES = Path(

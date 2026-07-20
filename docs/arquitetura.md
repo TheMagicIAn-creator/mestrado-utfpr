@@ -15,7 +15,7 @@ src/
 │   ├── provedores.py     adaptadores leves e papéis fixos Gemini / Groq
 │   ├── multiagente.py    coordenação: Gemini conversa, Groq audita
 │   ├── memoria_persistente.py memória validada entre sessões
-│   ├── obsidian.py       notas curadas, sync incremental e espelho da memória
+│   ├── obsidian.py       vault completo, busca híbrida e espelho da memória
 │   ├── indexador.py      indexa PDFs/tabelas no ChromaDB
 │   ├── indice_lexical.py índice BM25 em SQLite FTS5
 │   ├── indice_portatil.py exporta/importa snapshot gzip do índice
@@ -47,18 +47,20 @@ src/
 - **Init nuvem:** `app.py` → restauração do snapshot portátil → encoder ONNX
   sob demanda → perfil. O deploy não inicia watcher nem orquestrador.
 - **RAG:** pergunta → expansão local → embeddings + BM25 → fusão RRF →
-  reranking → notas curadas do Obsidian → auditoria compacta do Groq → prompt
+  reranking → memória classificada do Obsidian → auditoria compacta do Groq → prompt
   com memória validada → síntese final do Gemini.
 - **Memória:** o Groq só avalia turnos com correção, preferência ou decisão
   explícita. Itens aprovados são gravados atomicamente em JSON, com evidência,
   proveniência e status, e espelhados como Markdown; o Gemini recebe apenas os
   itens pertinentes.
-- **Obsidian:** `notas/Cerebro/` é uma coleção vetorial independente. Apenas
-  notas com opt-in e schema válido entram; alterações são sincronizadas no
-  próximo turno. `notas/Literatura/`, sessões e configuração do vault não são
-  ingeridas. O bloco recuperado é contexto interno e nunca compõe o rodapé de
-  fontes científicas. O snapshot `artefatos/obsidian_indexado.jsonl.gz` deixa
-  as notas disponíveis na nuvem sem materializar o encoder no startup.
+- **Obsidian:** todo Markdown útil sob a raiz configurada do vault entra na
+  coleção independente `obsidian_pv`. O indexador classifica notas curadas,
+  sessões atuais/arquivadas, memórias consolidadas, conceitos, experimentos e
+  notas de leitura. Diretórios técnicos, templates, segredos aparentes e notas
+  explicitamente privadas ficam de fora. O bloco recuperado é contexto interno
+  e nunca compõe o rodapé de fontes científicas; uma resposta antiga registra o
+  que foi dito, não o que continua correto. O snapshot
+  `artefatos/obsidian_indexado.jsonl.gz` leva esse histórico à nuvem.
 - **Ferramentas (chat):** `decidir_acao` roteia para pipeline ML, experimentos,
   catálogo de literatura, `consultar_datasets`, `comparar_abordagens_ml`, etc.
 - **Pipeline ML:** `features_ca → autoencoder → injecao_falhas → validacao →
@@ -78,8 +80,9 @@ src/
 - `AL_IADO_CHROMADB_DIR` permite redirecionar o ChromaDB sem alterar o código;
   `AL_IADO_INDICE_LITERATURA` permite apontar para outro snapshot portátil,
   `AL_IADO_INDICE_LEXICAL` redireciona o SQLite FTS5,
-  `AL_IADO_MEMORIA_VALIDADA` redireciona a memória estruturada e
-  `AL_IADO_OBSIDIAN_DIR` aponta para a área curada do vault;
+  `AL_IADO_MEMORIA_VALIDADA` redireciona a memória estruturada,
+  `AL_IADO_OBSIDIAN_VAULT_DIR` aponta para a raiz pesquisável do vault e
+  `AL_IADO_OBSIDIAN_DIR` aponta para sua subpasta curada;
   `AL_IADO_INDICE_OBSIDIAN` redireciona seu snapshot portátil. O arquivo
   versionado é durável entre deploys; gravações feitas dentro do Community
   Cloud duram somente até o próximo reinício/redeploy. Já
