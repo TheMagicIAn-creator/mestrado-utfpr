@@ -37,8 +37,11 @@ src/
 ```
 
 ## Fluxos
-- **Init:** `app.py` → `configurar_saida_utf8` + `KMP_DUPLICATE_LIB_OK` →
-  `carregar_base` (embeddings, ChromaDB, perfil) → orquestrador.
+- **Init local:** `app.py` → `configurar_saida_utf8` +
+  `KMP_DUPLICATE_LIB_OK` → `carregar_base` (ChromaDB, embeddings, perfil) →
+  watcher + orquestrador.
+- **Init nuvem:** `app.py` → restauração do snapshot portátil → encoder ONNX
+  sob demanda → perfil. O deploy não inicia watcher nem orquestrador.
 - **RAG:** pergunta → expansão de query → busca híbrida → reranking → prompt
   (com `PERFIL_COMPACTO`) → LLM.
 - **Ferramentas (chat):** `decidir_acao` roteia para pipeline ML, experimentos,
@@ -52,10 +55,17 @@ src/
 - **Streamlit Cloud:** restaura `artefatos/literatura_indexada.jsonl.gz` em um
   ChromaDB efêmero e consulta os JSONs, CSVs e PNGs versionados em `resultados/`.
   Sem os datasets brutos, não tenta representar uma execução de treino como
-  concluída na nuvem.
+  concluída na nuvem. Para manter a memória dentro do limite do serviço, usa a
+  variante ONNX quantizada do mesmo MiniLM do índice, carrega a sessão apenas
+  na primeira busca e libera o tokenizer antes da inferência. Gemini e Groq
+  usam adaptadores diretos dos SDKs oficiais; as integrações LangChain, que
+  carregavam PyTorch indiretamente, não entram no processo web.
 - `AL_IADO_CHROMADB_DIR` permite redirecionar o ChromaDB sem alterar o código;
   `AL_IADO_INDICE_LITERATURA` permite apontar para outro snapshot portátil e
   `AL_IADO_DATASET_PADERBORN` permite simular o modo de consulta em testes.
+  `AL_IADO_EMBEDDINGS_BACKEND` aceita `auto`, `onnx` ou
+  `sentence-transformers`; `AL_IADO_ONNX_THREADS` limita threads do backend
+  leve. Em `auto`, ausência do dataset ativa ONNX.
 
 ## Isolamento de cargas pesadas (subprocesso)
 Experimentos por artigo que carregam bibliotecas pesadas (`torch`)

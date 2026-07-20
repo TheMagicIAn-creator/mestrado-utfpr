@@ -24,7 +24,6 @@ import streamlit as st
 from langchain_core.messages import HumanMessage
 
 from src.core.config import RAIZ_PROJETO
-from watcher import iniciar_em_background
 
 sys.path.insert(0, str(RAIZ_PROJETO))
 
@@ -143,31 +142,22 @@ TIPOS_ANEXO = [
 
 @st.cache_resource
 def carregar_base():
-    from sentence_transformers import SentenceTransformer
     import chromadb
     from src.conhecimento.agente import carregar_perfil
+    from src.conhecimento.embeddings import (
+        backend_embeddings,
+        criar_modelo_embeddings,
+    )
     from src.core.config import (
-        MODELO_EMBEDDINGS,
         NOME_COLECAO,
         NOME_COLECAO_SESSOES,
         ARQUIVO_INDICE_LITERATURA,
         PASTA_CHROMADB,
     )
+    from src.ml.pipeline import capacidade_recalculo_pipeline
 
-    with st.spinner("Carregando embeddings e base de conhecimento..."):
-        modelo = SentenceTransformer(MODELO_EMBEDDINGS)
-        try:
-            iniciar_em_background(modelo)
-        except Exception:
-            pass
-
+    with st.spinner("Carregando a base de conhecimento..."):
         relatorio = []
-        try:
-            from src.orquestrador import executar_pipeline
-            relatorio = executar_pipeline(modelo)
-        except Exception as exc:
-            print(f"[Orquestrador] Erro: {exc}")
-
         client = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
         colecao = client.get_or_create_collection(name=NOME_COLECAO)
         colecao_sessoes = client.get_or_create_collection(name=NOME_COLECAO_SESSOES)
@@ -185,6 +175,29 @@ def carregar_base():
                 )
             except Exception as exc:
                 relatorio.append(f"Literatura: snapshot inválido - {exc}")
+
+        capacidade = capacidade_recalculo_pipeline()
+        modo_consulta = not capacidade["disponivel"]
+        modelo = criar_modelo_embeddings(modo_consulta=modo_consulta)
+        relatorio.append(
+            "Embeddings: "
+            f"backend {backend_embeddings(modo_consulta=modo_consulta)}."
+        )
+
+        if not modo_consulta:
+            try:
+                from watcher import iniciar_em_background
+
+                iniciar_em_background(modelo)
+            except Exception:
+                pass
+
+            try:
+                from src.orquestrador import executar_pipeline
+
+                relatorio.extend(executar_pipeline(modelo))
+            except Exception as exc:
+                print(f"[Orquestrador] Erro: {exc}")
         perfil = carregar_perfil()
 
     return perfil, modelo, colecao, colecao_sessoes, relatorio
