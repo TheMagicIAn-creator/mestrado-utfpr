@@ -14,16 +14,20 @@ src/
 │   ├── ferramentas.py    tool calling (specs + roteador + execução)
 │   ├── provedores.py     multi-provedor de LLM (Gemini / Groq)
 │   ├── indexador.py      indexa PDFs/tabelas no ChromaDB
+│   ├── indice_portatil.py exporta/importa snapshot gzip do índice
 │   ├── leitor_anexos.py  leitura de anexos (PDF/CSV/Office/imagem)
 │   └── web_search.py     busca leve + níveis de confiança A-D
 ├── ml/                   pipeline e experimentos de ML
 │   ├── pipeline.py       registry das etapas + estado ready/stale/pending
 │   ├── proveniencia.py   manifesto + hash + detecção de stale
 │   ├── split_temporal.py divisão temporal com purga (anti-vazamento)
+│   ├── dados_avaliacao.py banco E1 comum para comparações locais
+│   ├── estatistica.py    ICs, bootstrap e métricas metodológicas
+│   ├── exec_etapa_isolada.py executa etapa pesada em subprocesso
 │   ├── features_ca.py    features CA do Paderborn
 │   ├── autoencoder.py    modelo de normalidade (limiar p99)
 │   ├── injecao_falhas.py falhas sintéticas FMEA (schema E2) + SMD_95
-│   ├── validacao.py      validação formal (limiar congelado, ROC+PR, E2)
+│   ├── validacao.py      validação interna E2 (holdout, ROC+PR, ICs)
 │   ├── rul_weibull.py    RUL / Weibull
 │   ├── classificador_pv.py classificação supervisionada PV Farms (CC)
 │   ├── experimentos_artigos.py experimentos de ML por artigo-base
@@ -41,6 +45,17 @@ src/
   catálogo de literatura, `consultar_datasets`, `comparar_abordagens_ml`, etc.
 - **Pipeline ML:** `features_ca → autoencoder → injecao_falhas → validacao →
   rul_weibull`, cada etapa com manifesto de proveniência.
+
+## Execução local e nuvem
+- **PC:** possui `dados/brutos/`, treina os modelos, regenera os experimentos e
+  publica apenas os artefatos científicos verificáveis.
+- **Streamlit Cloud:** restaura `artefatos/literatura_indexada.jsonl.gz` em um
+  ChromaDB efêmero e consulta os JSONs, CSVs e PNGs versionados em `resultados/`.
+  Sem os datasets brutos, não tenta representar uma execução de treino como
+  concluída na nuvem.
+- `AL_IADO_CHROMADB_DIR` permite redirecionar o ChromaDB sem alterar o código;
+  `AL_IADO_INDICE_LITERATURA` permite apontar para outro snapshot portátil e
+  `AL_IADO_DATASET_PADERBORN` permite simular o modo de consulta em testes.
 
 ## Isolamento de cargas pesadas (subprocesso)
 Experimentos por artigo que carregam bibliotecas pesadas (`torch`)

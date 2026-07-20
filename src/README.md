@@ -25,12 +25,13 @@ ninguém). `conhecimento/` e `ml/` são irmãos e quase não se cruzam. A
 | `seguranca.py` | Cibersegurança stdlib-only: máscara de segredos, anti path-traversal, pickle verificado por SHA-256, guarda anti-injeção. |
 | `utils.py` | Caminhos projeto-relativos, UTF-8 no Windows, parse de `autor_titulo_ano.pdf`. |
 
-## `conhecimento/` — o cérebro do agente / RAG (10 arquivos)
+## `conhecimento/` — o cérebro do agente / RAG
 | Arquivo | O que faz |
 |---|---|
 | `agente.py` | **Maior arquivo.** Pipeline RAG de 3 camadas, montagem do prompt, perfil, chamada ao LLM. |
 | `ferramentas.py` | **Tool calling.** Specs, roteador determinístico (linguagem→ferramenta) e a implementação de cada ferramenta do chat. |
 | `indexador.py` | Indexa PDFs e sessões no ChromaDB (chunking por página, dedupe SHA-256). |
+| `indice_portatil.py` | Exporta e restaura um snapshot gzip versionável do índice literário. |
 | `processador_pdf.py` | Ingestão de PDF novo: metadados, nome padrão, tema, cópia, indexa, nota Obsidian. |
 | `consolidar_memoria.py` | Consolida sessões `.md` em memória via LLM, reindexa e arquiva. |
 | `leitor_anexos.py` | Leitura **efêmera** de anexos da conversa (PDF/CSV/XLSX/DOCX/imagem). |
@@ -39,7 +40,7 @@ ninguém). `conhecimento/` e `ml/` são irmãos e quase não se cruzam. A
 | `retrieval_metrics.py` | Métricas puras de **recuperação** RAG (Recall@k, MRR, nDCG). |
 | `index_lock.py` | Lock in-process que serializa escritas concorrentes no ChromaDB. |
 
-## `ml/` — pipeline e experimentos (16 arquivos)
+## `ml/` — pipeline e experimentos
 **Pipeline CA principal** (em ordem; cada etapa alimenta a seguinte):
 `features_ca` → `autoencoder` → `injecao_falhas` → `validacao` → `rul_weibull`,
 coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
@@ -54,6 +55,9 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `pipeline.py` | Coordena estado/execução das etapas e grava manifestos. |
 | `proveniencia.py` | Manifestos de proveniência e estado ready/stale/pending. |
 | `split_temporal.py` | Split temporal com purga (anti-vazamento), compartilhado. |
+| `dados_avaliacao.py` | Constrói o banco E1 comum usado nas comparações entre detectores. |
+| `estatistica.py` | ICs, bootstrap e métricas estatísticas compartilhadas. |
+| `exec_etapa_isolada.py` | Executa uma etapa pesada do pipeline em subprocesso. |
 | `eda.py` | Análise exploratória do Paderborn (Plotly). |
 | **Experimentos por artigo** | |
 | `experimentos_artigos.py` | Registry de experimentos, métricas, artefatos, runners de classificação e anomalia. |

@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 from src.core.config import PASTA_CHROMADB, RAIZ_PROJETO
-from src.core.formatacao import fmt_num, fmt_pvalor
+from src.core.formatacao import fmt_num
 
 PASTA_AE = RAIZ_PROJETO / "resultados" / "autoencoder"
 PASTA_EXPERIMENTOS = RAIZ_PROJETO / "resultados" / "experimentos"
@@ -300,16 +300,19 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
 
     imagens = []
     if "autoencoder" in focos:
+        caminho_qualidade = RAIZ_PROJETO / "dados" / "processados" / "features_paderborn_qualidade.png"
+        _add_img(imagens, caminho_qualidade, "Features - diagnostico espectral e F0", grupo="Qualidade dos dados", ordem=5, ordem_grupo=5)
         _add_img(imagens, "curva_treino.png", "Autoencoder - curva de treinamento", grupo="Autoencoder", ordem=10, ordem_grupo=10)
         _add_img(imagens, "distribuicao_erro.png", "Autoencoder - distribuicao do erro", grupo="Autoencoder", ordem=20, ordem_grupo=10)
         _add_img(imagens, "erro_temporal.png", "Autoencoder - erro temporal", grupo="Autoencoder", ordem=30, ordem_grupo=10)
     if "injecao" in focos:
         _add_img(imagens, "injecao_falhas_resultados.png", "Falhas sinteticas - erro por severidade", grupo="Injecao de falhas", ordem=10, tipo="comparacao", ordem_grupo=20)
-        _add_img(imagens, "injecao_falhas_comparacao.png", "Falhas sinteticas - comparacao em escala log", grupo="Injecao de falhas", ordem=20, tipo="comparacao", ordem_grupo=20)
+        _add_img(imagens, "injecao_falhas_comparacao.png", "Falhas sinteticas - taxa de deteccao e IC95%", grupo="Injecao de falhas", ordem=20, tipo="comparacao", ordem_grupo=20)
     if "validacao" in focos:
         _add_img(imagens, "validacao_roc.png", "Validacao - curvas ROC", grupo="Validacao", ordem=10, tipo="comparacao", ordem_grupo=30)
         _add_img(imagens, "validacao_pr.png", "Validacao - curvas Precision-Recall", grupo="Validacao", ordem=15, tipo="comparacao", ordem_grupo=30)
         _add_img(imagens, "validacao_matriz.png", "Validacao - matrizes de confusao", grupo="Validacao", ordem=20, tipo="matriz", ordem_grupo=30)
+        _add_img(imagens, "validacao_matrizes_severidades.png", "Validacao - matrizes por falha e severidade", grupo="Validacao", ordem=25, tipo="comparacao", ordem_grupo=30)
         _add_img(imagens, "validacao_metricas.png", "Validacao - heatmap de metricas", grupo="Validacao", ordem=30, tipo="comparacao", ordem_grupo=30)
     if "weibull" in focos:
         _add_img(imagens, "weibull_ttf.png", "Weibull - distribuicao TTF", grupo="Weibull / RUL", ordem=10, ordem_grupo=40)
@@ -404,7 +407,10 @@ def _resumo_autoencoder() -> str | None:
         f"| Limiar p99 | {_fmt(d.get('limiar'), 4)} |\n"
         f"| Média baseline | {_fmt(d.get('mu'), 4)} |\n"
         f"| Desvio baseline | {_fmt(d.get('sigma'), 4)} |\n"
-        f"| Falsos positivos validação | {_fmt(d.get('fp_val_pct'), 2)}% |\n"
+        f"| Janelas de treino | {d.get('n_janelas_treino', '-')} |\n"
+        f"| Janelas de calibração | {d.get('n_janelas_calibracao', '-')} |\n"
+        f"| Janelas de teste | {d.get('n_janelas_teste', '-')} |\n"
+        f"| Falsos positivos no teste isolado | {_fmt(d.get('fp_test_pct', d.get('fp_val_pct')), 2)}% |\n"
         f"| Épocas treinadas | {d.get('epochs_treinadas', '-')} |\n\n"
         "Leitura rápida: o detector está calibrado por erro de reconstrução. "
         "Quanto maior a distância entre erro de falha e limiar, mais clara é a anomalia."
@@ -420,18 +426,22 @@ def _resumo_injecao() -> str | None:
         "## Injeção de falhas sintéticas\n",
         f"Limiar: **{_fmt(d.get('limiar'), 4)}**. "
         f"Baseline: **{_fmt(d.get('baseline_mean'), 4)} ± {_fmt(d.get('baseline_std'), 4)}**.\n",
-        "| Falha | NPR | SMD | Erro na SMD | Margem |\n",
-        "|---|---:|---:|---:|---:|\n",
+        "| Falha | NPR | SMD95 | Taxa (IC95%) | n | Erro mediano |\n",
+        "|---|---:|---:|---:|---:|---:|\n",
     ]
     nao_detectadas = []
     for fid, falha in d.get("falhas", {}).items():
         smd = d.get("smd", {}).get(fid)
-        erro = margem = "-"
-        smd_txt = "⚠️ não detectada"
+        erro = taxa_txt = n_txt = "-"
+        smd_txt = "⚠️ alvo não atingido"
         if smd is not None:
             res = falha.get("resultados", {}).get(str(smd), {})
-            erro = _fmt(res.get("erro"), 4)
-            margem = f"{_fmt(res.get('margem'), 2)}x"
+            erro = _fmt(res.get("erro_mediano", res.get("erro")), 4)
+            taxa_txt = (
+                f"{_fmt(res.get('taxa_deteccao'), 3)} "
+                f"[{_fmt(res.get('taxa_ci_low'), 3)}; {_fmt(res.get('taxa_ci_high'), 3)}]"
+            )
+            n_txt = str(res.get("n", "-"))
             smd_txt = str(smd)
         else:
             resultados_sev = falha.get("resultados", {})
@@ -439,18 +449,17 @@ def _resumo_injecao() -> str | None:
                 sev_max = max(resultados_sev, key=lambda s: float(s))
                 pico = resultados_sev[sev_max]
                 nao_detectadas.append(
-                    f"- **{falha.get('nome', fid)}**: erro médio máximo "
-                    f"{_fmt(pico.get('erro'), 4)} na severidade {sev_max} "
-                    f"(margem {_fmt(pico.get('margem'), 2)}x do limiar) — "
-                    "o Autoencoder não cruza o limiar operacional em nenhuma "
-                    "severidade testada."
+                    f"- **{falha.get('nome', fid)}**: taxa máxima de detecção "
+                    f"{_fmt(pico.get('taxa_deteccao'), 3)} na severidade {sev_max}; "
+                    "o alvo probabilístico de 95% não foi atingido."
                 )
         linhas.append(
             f"| {falha.get('nome', fid)} | {falha.get('npr') or '-'} | "
-            f"{smd_txt} | {erro} | {margem} |\n"
+            f"{smd_txt} | {taxa_txt} | {n_txt} | {erro} |\n"
         )
     linhas.append(
-        "\nLeitura rápida: a SMD é a menor severidade em que o Autoencoder cruza o limiar."
+        "\nLeitura rápida: SMD95 é a menor severidade cuja taxa pontual de detecção "
+        "atinge 95%; o intervalo de Wilson mostra a incerteza dessa estimativa."
     )
     if nao_detectadas:
         linhas.append(
@@ -480,31 +489,36 @@ def _resumo_validacao() -> str | None:
     if not d:
         return None
 
-    meta = d.get("__meta__", {})
-    melhores = {}
+    itens = []
+    ordem_falhas = {"Contator AC": 0, "IGBT": 1, "Fusível AC": 2}
     for chave, res in d.items():
         if chave.startswith("__"):
-            continue  # bloco de metadados (evidence_level, limiar), não é falha
-        falha = _nome_falha(chave)
-        if falha not in melhores or res.get("auc_roc", 0) > melhores[falha].get("auc_roc", 0):
-            item = dict(res)
-            item["chave"] = chave
-            melhores[falha] = item
+            continue
+        item = dict(res)
+        item["chave"] = chave
+        item["falha"] = _nome_falha(chave)
+        itens.append(item)
+    itens.sort(key=lambda item: (
+        ordem_falhas.get(item["falha"], 99), float(_sev(item["chave"])),
+    ))
 
     linhas = [
-        "## Validação formal\n\n",
-        "| Falha | Severidade | AUC-ROC | Recall | F1 (50%) | F1 (raro 5%) |\n",
-        "|---|---:|---:|---:|---:|---:|\n",
+        "## Validação sintética interna E2\n\n",
+        "| Falha | Sev. | AUC-ROC (IC95%) | Recall (IC95%) | FNR | Especificidade | n/classe |\n",
+        "|---|---:|---:|---:|---:|---:|---:|\n",
     ]
     cego = []
-    for falha, res in melhores.items():
+    for res in itens:
+        falha = res["falha"]
         rec = res.get("recall")
         if isinstance(rec, (int, float)) and rec < 0.1:
-            cego.append(falha)
+            cego.append(f"{falha} (sev. {_sev(res['chave'])})")
         linhas.append(
-            f"| {falha} | {_sev(res['chave'])} | {_fmt(res.get('auc_roc'))} | "
-            f"{_fmt(rec)} | {_fmt(res.get('f1'))} | "
-            f"{_fmt(res.get('f1_raro'))} |\n"
+            f"| {falha} | {_sev(res['chave'])} | {_fmt(res.get('auc_roc'))} "
+            f"[{_fmt(res.get('auc_roc_ci_low'))}; {_fmt(res.get('auc_roc_ci_high'))}] | "
+            f"{_fmt(rec)} [{_fmt(res.get('recall_ci_low'))}; {_fmt(res.get('recall_ci_high'))}] | "
+            f"{_fmt(res.get('fnr'))} | {_fmt(res.get('specificity'))} | "
+            f"{res.get('n_pos', '-')} |\n"
         )
     leitura = [
         "\n**Leitura honesta:** a AUC mede a separação por *ranking* (independe "
@@ -513,14 +527,13 @@ def _resumo_validacao() -> str | None:
     ]
     if cego:
         leitura.append(
-            f" Atenção: **{', '.join(cego)}** tem AUC alta mas recall ~0 — é bem "
-            "ranqueada, mas o limiar conservador a deixa passar (praticamente "
-            "cega no ponto de operação)."
+            f" Atenção ao baixo recall em **{', '.join(cego)}**: o limiar "
+            "conservador perde a maior parte dessas falhas."
         )
     leitura.append(
-        " F1 (50%) é o teste balanceado; F1 (raro 5%) reflete a raridade real "
-        "das falhas CA. Evidência E2 (falha sintética orientada pelo FMEA), não "
-        "desempenho industrial."
+        " As linhas mostram todas as severidades, sem escolher apenas a melhor "
+        "AUC. O bloco de teste é temporalmente isolado e sem sobreposição, mas a "
+        "falha continua sintética: não é desempenho industrial."
     )
     linhas.append("".join(leitura))
     return "".join(linhas)
@@ -533,40 +546,38 @@ def _resumo_weibull() -> str | None:
 
     linhas = [
         "## RUL / Weibull\n\n",
-        "| Falha | NPR | beta | eta | MTTF | B10 | Ajuste (KS) | Interpretação |\n",
-        "|---|---:|---:|---:|---:|---:|---|---|\n",
+        "| Falha | NPR | Eventos/Censura | beta (IC95%) | eta (IC95%) | MTTF (IC95%) | B10 (IC95%) | Status |\n",
+        "|---|---:|---:|---:|---:|---:|---:|---|\n",
     ]
-    ressalvas = []
     for fid, falha in d.get("falhas", {}).items():
         p = falha.get("weibull", {})
         beta = p.get("beta")
-        taxa = "desgaste progressivo" if isinstance(beta, (int, float)) and beta > 1 else "falha aleatória/infantil"
-        adequado = falha.get("ajuste_weibull_adequado")
-        if adequado is None:
-            ks_txt = "n/d"
-        elif adequado:
-            ks_txt = "✅ adequado"
-        else:
-            ks_txt = f"⚠️ rejeitado ({fmt_pvalor(p.get('ks_pval'))})"
-            ressalvas.append(
-                f"- **{falha.get('nome', fid)}**: "
-                f"{falha.get('ressalva_ajuste') or 'KS rejeita o ajuste Weibull.'}"
-            )
+        def valor_ci(nome: str, casas: int = 1) -> str:
+            valor = p.get(nome)
+            ci = p.get(f"{nome}_ci95") or [None, None]
+            return f"{_fmt(valor, casas)} [{_fmt(ci[0], casas)}; {_fmt(ci[1], casas)}]"
+
+        status_mapa = {
+            "exploratorio_descritivo": "exploratório",
+            "exploratorio_alta_censura": "alta censura; RUL omitida",
+            "nao_estimavel": "não estimável",
+        }
+        status = status_mapa.get(
+            falha.get("status_ajuste"),
+            "exploratório" if p.get("fit_converged") else "não estimável",
+        )
         linhas.append(
             f"| {falha.get('nome', fid)} | {falha.get('npr')} | "
-            f"{_fmt(beta)} | {_fmt(p.get('eta'), 1)} | {_fmt(p.get('mttf'), 1)} | "
-            f"{_fmt(p.get('b10'), 1)} | {ks_txt} | {taxa} |\n"
+            f"{p.get('n_eventos', '-')}/{p.get('n_censurados', '-')} | "
+            f"{valor_ci('beta', 2)} | {valor_ci('eta')} | {valor_ci('mttf')} | "
+            f"{valor_ci('b10')} | {status} |\n"
         )
     linhas.append(
-        "\nLeitura rápida: beta > 1 sustenta a hipótese de degradação progressiva, "
-        "coerente com manutenção preditiva."
+        "\n**Leitura obrigatória:** a censura agora é preservada e os intervalos "
+        "vêm de bootstrap, mas os tempos continuam sendo passos de degradação "
+        "sintética E2. MTTF, B10 e RUL descrevem o experimento computacional e "
+        "não podem ser apresentados como vida útil física ou de campo."
     )
-    if ressalvas:
-        linhas.append(
-            "\n\n⚠️ **Ressalva estatística**: o teste KS rejeita o ajuste Weibull "
-            "nas falhas abaixo — MTTF/B10 são indicativos, não conclusivos:\n"
-            + "\n".join(ressalvas)
-        )
     return "".join(linhas)
 
 
@@ -725,9 +736,8 @@ def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> d
             "resposta_pronta": True,
         }
 
-    # Gráficos SEMPRE ficam disponíveis (para download), mas só são
-    # renderizados inline quando o Rodolfo pede explicitamente ("mostre os
-    # gráficos"). Antes, gerar resultados despejava todas as figuras na tela.
+    # Gráficos sempre ficam disponíveis em antevisão sob demanda + download,
+    # mas só são renderizados inline quando o pedido exige vê-los no chat.
     imagens = imagens_relevantes(pergunta) if incluir_imagens else []
     mostrar_inline = _quer_imagens(pergunta)
     for img in imagens:
@@ -742,8 +752,9 @@ def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> d
             mensagem += "\n\nGráficos relevantes logo abaixo."
         else:
             mensagem += (
-                f"\n\n📊 {len(imagens)} gráfico(s) disponível(is) para download "
-                'logo abaixo. Peça "mostre os gráficos" para vê-los aqui na tela.'
+                f"\n\n{len(imagens)} gráfico(s) disponível(is) logo abaixo. "
+                "Use **Visualizar** para abrir uma antevisão responsiva sem baixar, "
+                'ou peça "mostre os gráficos" para inseri-los na conversa.'
             )
 
     return {

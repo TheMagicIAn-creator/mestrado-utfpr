@@ -84,7 +84,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from src.ml.estilo_graficos import (
-    COR_NAO_DETECTADO, TAM, aplicar_estilo, rotular_barras,
+    COR_ALERTA, TAM, aplicar_estilo, salvar_figura,
 )
 
 aplicar_estilo()
@@ -98,6 +98,8 @@ from src.ml.features_ca import (
     COLUNAS_CORRENTE, COLUNAS_TENSAO, COLUNA_DC, FASES
 )
 from src.ml.autoencoder import Autoencoder
+from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas_holdout
+from src.ml.estatistica import intervalo_wilson
 
 # ── Caminhos ─────────────────────────────────────────────────
 RAIZ          = Path(__file__).parent.parent.parent
@@ -105,12 +107,10 @@ ARQUIVO_CSV   = RAIZ / "dados" / "brutos" / "Inverter_Data_Set.csv"
 PASTA_AE      = RAIZ / "resultados" / "autoencoder"
 
 # ── Parâmetros de injeção ────────────────────────────────────
-# Janela de análise: t=10-20s (período estável do Paderborn, pós-transiente)
-T_INICIO_ESTAVEL = 10.0   # segundos
-T_FIM_ESTAVEL    = 20.0   # segundos
-
 # Severidades: de muito leve a severa
 SEVERIDADES = [0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0]
+ALVO_SMD = 0.95
+N_JANELAS_SMD = 100  # limitado pelo numero de janelas nao sobrepostas do holdout
 
 # ── Falhas FMECA — FONTE ÚNICA: docs/fmeca.md ────────────────
 # Componentes CA-elétricos do inversor que mais falham (Tab. 3.3 do TCC,
@@ -237,19 +237,26 @@ def smd_probabilistico(deteccoes_por_severidade: dict, alvo: float = 0.95) -> di
     """
     import numpy as np
 
-    taxas, n_rep = {}, {}
+    taxas, n_rep, intervalos = {}, {}, {}
     for sev, dets in deteccoes_por_severidade.items():
         arr = np.asarray(list(dets), dtype=float)
         taxas[float(sev)] = float(arr.mean()) if arr.size else 0.0
         n_rep[float(sev)] = int(arr.size)
+        low, high = intervalo_wilson(int(arr.sum()), int(arr.size))
+        intervalos[float(sev)] = {"low": low, "high": high}
 
     sevs = sorted(taxas)
     smd_pontual = next((s for s in sevs if taxas[s] > 0.0), None)
     smd_95 = next((s for s in sevs if taxas[s] >= alvo), None)
+    smd_95_conservadora = next(
+        (s for s in sevs if intervalos[s]["low"] >= alvo), None
+    )
     return {
         "taxa_deteccao": taxas,
+        "intervalo_wilson_95": intervalos,
         "smd_pontual": smd_pontual,
         "smd_95": smd_95,
+        "smd_95_conservadora": smd_95_conservadora,
         "alvo": alvo,
         "n_repeticoes": n_rep,
     }
@@ -458,24 +465,20 @@ def executar_injecao_falhas() -> bool:
 
     # ── 2. Carrega dataset e seleciona janelas estáveis ──────
     _log(f"\n📂 Carregando dataset de Paderborn...")
-    df = pd.read_csv(ARQUIVO_CSV)
-
-    # Período estável: t=10-20s (pós-transiente de velocidade)
-    idx_inicio = int(T_INICIO_ESTAVEL * FS)
-    idx_fim    = int(T_FIM_ESTAVEL * FS)
-    df_estavel = df.iloc[idx_inicio:idx_fim].reset_index(drop=True)
-    _log(f"   ✅ Período estável: t={T_INICIO_ESTAVEL}-{T_FIM_ESTAVEL}s "
-          f"({len(df_estavel):,} amostras)")
+    df = carregar_paderborn_compacto(ARQUIVO_CSV)
+    janelas_holdout, meta_holdout = preparar_janelas_holdout(
+        df, n_max=N_JANELAS_SMD
+    )
+    del df
+    _log(
+        f"   ✅ {len(janelas_holdout)} janelas não sobrepostas do bloco de teste "
+        "(treino/calibração excluídos)"
+    )
 
     # ── 3. Erro baseline (comportamento saudável) ─────────────
     _log(f"\n⚕️  Calculando erro baseline (saudável)...")
-    n_janelas_baseline = 20
     erros_baseline = []
-    for i in range(n_janelas_baseline):
-        inicio = i * (JANELA // 2)
-        if inicio + JANELA > len(df_estavel):
-            break
-        janela = df_estavel.iloc[inicio:inicio + JANELA]
+    for janela in janelas_holdout:
         erro   = calcular_erro_reconstrucao(
             janela, modelo, scaler, device, colunas_feat
         )
@@ -490,148 +493,153 @@ def executar_injecao_falhas() -> bool:
     # ── 4. Injeção de falhas por severidade ──────────────────
     _log(f"\n💉 Injetando falhas (3 tipos × {len(SEVERIDADES)} severidades)...")
 
-    resultados = {}   # {id_falha: {severidade: erro_medio}}
-
-    # Janela de referência para injeção
-    janela_ref = df_estavel.iloc[0:JANELA].copy()
+    resultados = {}
+    smd_detalhado = {}
 
     for falha in FALHAS:
         fid  = falha["id"]
         fn   = FUNCOES_FALHA[fid]
         erros_por_sev = {}
+        deteccoes_por_sev = {}
 
         _log(f"\n   🔴 {falha['nome']} (NPR={falha['npr']})")
 
         for sev in SEVERIDADES:
-            # Injeta falha em 5 janelas diferentes e faz média
             erros_sev = []
-            for j in range(5):
-                inicio  = j * (JANELA // 4)
-                if inicio + JANELA > len(df_estavel):
-                    inicio = 0
-                janela_base  = df_estavel.iloc[inicio:inicio + JANELA].copy()
-                janela_falha = fn(janela_base, sev)
+            for j, janela_base in enumerate(janelas_holdout):
+                if fid == "contator_ac":
+                    janela_falha = fn(janela_base, sev, seed=10_000 + j)
+                else:
+                    janela_falha = fn(janela_base, sev)
                 erro = calcular_erro_reconstrucao(
                     janela_falha, modelo, scaler, device, colunas_feat
                 )
                 erros_sev.append(erro)
 
-            erro_medio    = np.mean(erros_sev)
-            detectado     = erro_medio > limiar
-            margem        = erro_medio / limiar
+            erros_arr = np.asarray(erros_sev, dtype=float)
+            deteccoes = erros_arr > limiar
+            taxa = float(deteccoes.mean())
+            ci_low, ci_high = intervalo_wilson(
+                int(deteccoes.sum()), len(deteccoes)
+            )
+            erro_medio = float(erros_arr.mean())
+            erro_mediano = float(np.median(erros_arr))
+            detectado = taxa >= ALVO_SMD
+            margem = erro_mediano / limiar
+            deteccoes_por_sev[sev] = deteccoes.tolist()
 
             erros_por_sev[sev] = {
                 "erro"      : erro_medio,
+                "erro_mediano": erro_mediano,
+                "erro_q25"  : float(np.percentile(erros_arr, 25)),
+                "erro_q75"  : float(np.percentile(erros_arr, 75)),
                 "detectado" : detectado,
                 "margem"    : margem,
+                "taxa_deteccao": taxa,
+                "taxa_ci_low": ci_low,
+                "taxa_ci_high": ci_high,
+                "n": len(erros_arr),
             }
 
-            status = "✅ DETECTADA" if detectado else "⬜ não detectada"
-            _log(f"      sev={sev:.2f} | erro={erro_medio:.4f} | "
-                  f"margem={margem:.2f}× | {status}")
+            status = "✅ alvo atingido" if detectado else "⬜ abaixo do alvo"
+            _log(
+                f"      sev={sev:.2f} | erro mediano={erro_mediano:.4f} | "
+                f"detecção={taxa:.1%} (IC95% {ci_low:.1%}–{ci_high:.1%}) | {status}"
+            )
 
         resultados[fid] = erros_por_sev
+        smd_detalhado[fid] = smd_probabilistico(
+            deteccoes_por_sev, alvo=ALVO_SMD
+        )
 
     # ── 5. Severidade mínima detectável (SMD) ────────────────
     _log(f"\n🎯 Severidade Mínima Detectável (SMD):")
     smd_report = {}
     for falha in FALHAS:
         fid = falha["id"]
-        smd = None
-        for sev in SEVERIDADES:
-            if resultados[fid][sev]["detectado"]:
-                smd = sev
-                break
+        smd = smd_detalhado[fid]["smd_95"]
         smd_report[fid] = smd
         if smd:
-            _log(f"   {falha['nome']:<30}: SMD = {smd:.2f} "
-                  f"(erro = {resultados[fid][smd]['erro']:.4f})")
+            _log(f"   {falha['nome']:<30}: SMD95 = {smd:.2f} "
+                  f"(taxa = {resultados[fid][smd]['taxa_deteccao']:.1%})")
         else:
-            _log(f"   {falha['nome']:<30}: não detectada em nenhuma severidade")
+            _log(f"   {falha['nome']:<30}: nenhuma severidade atingiu {ALVO_SMD:.0%}")
 
     # ── 6. Visualizações ─────────────────────────────────────
     _log(f"\n📊 Gerando gráficos...")
     PASTA_AE.mkdir(parents=True, exist_ok=True)
 
-    # Gráfico 1: Erro vs Severidade por tipo de falha
-    fig, axes = plt.subplots(1, 3, figsize=TAM["painel_3"], sharey=False)
-    fig.suptitle("Injeção de Falhas Sintéticas — Erro de Reconstrução vs Severidade",
-                 fontsize=13, fontweight="bold")
+    # Gráfico 1: mediana e intervalo interquartil do erro por falha.
+    fig, axes = plt.subplots(
+        1, 3, figsize=TAM["painel_3"], sharey=True, layout="constrained"
+    )
+    fig.suptitle("Injeção sintética — distribuição do erro no holdout temporal")
 
     for ax, falha in zip(axes, FALHAS):
         fid   = falha["id"]
-        sevs  = SEVERIDADES
-        erros = [resultados[fid][s]["erro"] for s in sevs]
+        sevs = np.asarray(SEVERIDADES, dtype=float)
+        medianas = np.asarray([resultados[fid][s]["erro_mediano"] for s in SEVERIDADES])
+        q25 = np.asarray([resultados[fid][s]["erro_q25"] for s in SEVERIDADES])
+        q75 = np.asarray([resultados[fid][s]["erro_q75"] for s in SEVERIDADES])
 
-        cores = [falha["cor"] if resultados[fid][s]["detectado"]
-                 else COR_NAO_DETECTADO for s in sevs]
-
-        barras = ax.bar([str(s) for s in sevs], erros, color=cores,
-                        edgecolor="white", linewidth=0.5)
-        rotular_barras(ax, barras, fmt="{:.2f}",
-                       dx=max(erros) * 0.02 if max(erros) > 0 else 0.01)
-        ax.axhline(limiar, color="red", linestyle="--", linewidth=1.5,
+        ax.plot(sevs, medianas, marker="o", color=falha["cor"], label="Mediana")
+        ax.fill_between(sevs, q25, q75, color=falha["cor"], alpha=0.18,
+                        label="Intervalo interquartil")
+        ax.axhline(limiar, color=COR_ALERTA, linestyle="--", linewidth=1.5,
                    label=f"Limiar = {limiar:.2f}")
-        ax.axhline(baseline_mean, color="green", linestyle=":",
+        ax.axhline(baseline_mean, color="#147a3d", linestyle=":",
                    linewidth=1.2, label=f"Baseline = {baseline_mean:.4f}")
 
         ax.set_title(f"{falha['nome']}\n(NPR={falha['npr']})", fontsize=10)
         ax.set_xlabel("Severidade")
-        ax.set_ylabel("Erro de Reconstrução (MSE)")
+        ax.set_ylabel("Erro de reconstrução (MSE, escala log)")
+        ax.set_yscale("log")
         ax.legend(fontsize=8)
-        ax.grid(True, alpha=0.3, axis="y")
 
-        # Marca SMD
         smd = smd_report[fid]
         if smd:
-            idx_smd = sevs.index(smd)
-            ax.bar([str(smd)], [resultados[fid][smd]["erro"]],
-                   color=falha["cor"], edgecolor="black", linewidth=2,
-                   alpha=1.0)
-            ax.annotate(f"SMD={smd}",
-                        xy=(idx_smd, resultados[fid][smd]["erro"]),
-                        xytext=(idx_smd, resultados[fid][smd]["erro"] * 1.05),
-                        fontsize=8, ha="center", fontweight="bold")
+            y_smd = resultados[fid][smd]["erro_mediano"]
+            ax.scatter([smd], [y_smd], s=90, facecolors="none",
+                       edgecolors="black", linewidths=1.5, zorder=4)
+            ax.annotate(f"SMD95={smd}", xy=(smd, y_smd), xytext=(0, 12),
+                        textcoords="offset points", ha="center", fontsize=8)
 
-    plt.tight_layout()
     arq_g1 = PASTA_AE / "injecao_falhas_resultados.png"
-    fig.savefig(arq_g1)
-    plt.close(fig)
+    salvar_figura(
+        fig,
+        arq_g1,
+        "E2 sintético. Cada ponto resume janelas não sobrepostas do teste; a faixa mostra Q25–Q75.",
+    )
     _log(f"   📊 {arq_g1.name}")
 
-    # Gráfico 2: Comparação consolidada em escala log
-    fig, ax = plt.subplots(figsize=TAM["unico"])
+    # Gráfico 2: probabilidade de detecção e IC de Wilson.
+    fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
+    for falha in FALHAS:
+        fid = falha["id"]
+        taxas = np.asarray([resultados[fid][s]["taxa_deteccao"] for s in SEVERIDADES])
+        lows = np.asarray([resultados[fid][s]["taxa_ci_low"] for s in SEVERIDADES])
+        highs = np.asarray([resultados[fid][s]["taxa_ci_high"] for s in SEVERIDADES])
+        erros_y = np.vstack([taxas - lows, highs - taxas])
+        ax.errorbar(
+            SEVERIDADES, taxas, yerr=erros_y, color=falha["cor"], marker="o",
+            capsize=3, label=f"{falha['nome']} (NPR={falha['npr']})",
+        )
 
-    x      = np.arange(len(SEVERIDADES))
-    largura = 0.25
-    offsets = [-largura, 0, largura]
-
-    for i, falha in enumerate(FALHAS):
-        fid   = falha["id"]
-        erros = [resultados[fid][s]["erro"] for s in SEVERIDADES]
-        ax.bar(x + offsets[i], erros, largura, label=falha["nome"],
-               color=falha["cor"], alpha=0.85, edgecolor="white")
-
-    ax.axhline(limiar, color="red", linestyle="--", linewidth=2,
-               label=f"Limiar anomalia = {limiar:.4f}")
-    ax.axhline(baseline_mean, color="green", linestyle=":",
-               linewidth=1.5, label=f"Baseline saudável = {baseline_mean:.4f}")
-
-    ax.set_xticks(x)
-    ax.set_xticklabels([str(s) for s in SEVERIDADES])
-    ax.set_xlabel("Severidade da Falha")
-    ax.set_ylabel("Erro de Reconstrução (MSE)")
-    ax.set_title("Comparação das Falhas Sintéticas\n"
-                 "(barras acima da linha vermelha = anomalia detectada)",
-                 fontsize=12)
-    ax.legend(loc="upper left")
-    ax.set_yscale("log")
-    ax.grid(True, alpha=0.3, axis="y")
-    plt.tight_layout()
+    ax.axhline(ALVO_SMD, color=COR_ALERTA, linestyle="--",
+               label=f"Alvo SMD = {ALVO_SMD:.0%}")
+    ax.set_xlabel("Severidade da falha")
+    ax.set_ylabel("Taxa de detecção no limiar p99")
+    ax.set_ylim(-0.03, 1.03)
+    ax.set_yticks(np.linspace(0, 1, 6), labels=[f"{v:.0%}" for v in np.linspace(0, 1, 6)])
+    ax.set_title("Detectabilidade por severidade\nIntervalos de Wilson de 95%")
+    ax.legend(loc="best")
 
     arq_g2 = PASTA_AE / "injecao_falhas_comparacao.png"
-    fig.savefig(arq_g2)
-    plt.close(fig)
+    salvar_figura(
+        fig,
+        arq_g2,
+        "SMD95 é a menor severidade cuja taxa pontual atinge 95%; consulte o IC antes de concluir detectabilidade.",
+    )
     _log(f"   📊 {arq_g2.name}")
 
     # ── 7. Salva relatório JSON ───────────────────────────────
@@ -643,11 +651,17 @@ def executar_injecao_falhas() -> bool:
             "ruído do sensor é um PROXY e exige calibração física."
         ),
         "threshold_method": "p99",
+        "threshold_source": info_limiar.get(
+            "threshold_source", "bloco_calibracao_temporal"
+        ),
         "limiar": float(limiar),
         "baseline_mean": float(baseline_mean),
         "baseline_std": float(baseline_std),
+        "protocolo_avaliacao": meta_holdout,
+        "alvo_smd": ALVO_SMD,
         "smd": {k: float(v) if v is not None else None
                 for k, v in smd_report.items()},
+        "smd_probabilistica": smd_detalhado,
         "falhas": {}
     }
     for falha in FALHAS:
@@ -674,8 +688,15 @@ def executar_injecao_falhas() -> bool:
             "resultados": {
                 str(s): {
                     "erro": float(resultados[fid][s]["erro"]),
+                    "erro_mediano": float(resultados[fid][s]["erro_mediano"]),
+                    "erro_q25": float(resultados[fid][s]["erro_q25"]),
+                    "erro_q75": float(resultados[fid][s]["erro_q75"]),
                     "detectado": bool(resultados[fid][s]["detectado"]),
                     "margem": float(resultados[fid][s]["margem"]),
+                    "taxa_deteccao": float(resultados[fid][s]["taxa_deteccao"]),
+                    "taxa_ci_low": float(resultados[fid][s]["taxa_ci_low"]),
+                    "taxa_ci_high": float(resultados[fid][s]["taxa_ci_high"]),
+                    "n": int(resultados[fid][s]["n"]),
                 }
                 for s in SEVERIDADES
             }
@@ -685,6 +706,30 @@ def executar_injecao_falhas() -> bool:
     with open(arq_report, "w", encoding="utf-8") as f:
         json.dump(relatorio, f, indent=2, ensure_ascii=False)
     _log(f"   ✅ {arq_report.name}")
+
+    linhas_smd = []
+    for falha in FALHAS:
+        fid = falha["id"]
+        for sev in SEVERIDADES:
+            res = resultados[fid][sev]
+            linhas_smd.append({
+                "falha": falha["nome"],
+                "falha_id": fid,
+                "npr": falha["npr"],
+                "severidade": sev,
+                "n": res["n"],
+                "erro_mediano": res["erro_mediano"],
+                "erro_q25": res["erro_q25"],
+                "erro_q75": res["erro_q75"],
+                "taxa_deteccao": res["taxa_deteccao"],
+                "taxa_ci_low": res["taxa_ci_low"],
+                "taxa_ci_high": res["taxa_ci_high"],
+                "atinge_alvo_smd": res["detectado"],
+                "evidence_level": "E2",
+            })
+    arq_tabela = PASTA_AE / "injecao_smd_tabela.csv"
+    pd.DataFrame(linhas_smd).to_csv(arq_tabela, index=False)
+    _log(f"   📋 {arq_tabela.name}")
 
     # ── 8. Resumo final ───────────────────────────────────────
     _log(f"\n{'='*60}")

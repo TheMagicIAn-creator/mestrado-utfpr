@@ -68,6 +68,7 @@ def _log(*args, sep=" ", end="\n", flush=None):
 
 
 
+import json
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -75,6 +76,13 @@ from scipy.signal import windows
 from pathlib import Path
 import warnings
 warnings.filterwarnings("ignore")
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from src.ml.estilo_graficos import PALETA, TAM, aplicar_estilo, salvar_figura
+
+aplicar_estilo()
 
 # ── Configuração ──────────────────────────────────────────────
 FS           = 10_000      # Hz — taxa de amostragem
@@ -151,18 +159,46 @@ def estimar_f0(freqs: np.ndarray, amps: np.ndarray,
                f0_nominal: float = F0,
                faixa_hz: float = 40.0) -> float:
     """
-    Estima a frequência fundamental real buscando o pico máximo
-    na faixa [f0_nominal - faixa, f0_nominal + faixa] Hz.
+    Estima a fundamental por evidência harmônica e interpolação parabólica.
+
+    O pico máximo simples confundia, em algumas janelas, a fundamental com
+    sub-harmônicos ou o segundo harmônico e devolvia apenas centros de bins
+    (29,30/48,83/97,66 Hz). O escore abaixo favorece candidatos que também
+    explicam energia em 2*f e 3*f; a interpolação reduz a quantização da FFT.
 
     Necessário para datasets de acionamento de motor (Paderborn)
     onde F0 varia com a velocidade do motor.
     """
     f_min   = max(5.0, f0_nominal - faixa_hz)
     f_max   = f0_nominal + faixa_hz
-    mascara = (freqs >= f_min) & (freqs <= f_max)
-    if not np.any(mascara):
+    candidatos = np.flatnonzero((freqs >= f_min) & (freqs <= f_max))
+    if not len(candidatos):
         return f0_nominal
-    return float(freqs[mascara][np.argmax(amps[mascara])])
+
+    def amp_proxima(alvo: float) -> float:
+        idx = int(np.argmin(np.abs(freqs - alvo)))
+        return float(amps[idx])
+
+    escores = []
+    for idx in candidatos:
+        f = float(freqs[idx])
+        escore = float(amps[idx])
+        if 2.0 * f <= freqs[-1]:
+            escore += 0.50 * amp_proxima(2.0 * f)
+        if 3.0 * f <= freqs[-1]:
+            escore += 0.25 * amp_proxima(3.0 * f)
+        escores.append(escore)
+
+    k = int(candidatos[int(np.argmax(escores))])
+    if 0 < k < len(amps) - 1:
+        y_ant, y_pico, y_pos = np.log(np.maximum(amps[k - 1:k + 2], 1e-12))
+        denom = y_ant - 2.0 * y_pico + y_pos
+        if abs(denom) > 1e-12:
+            deslocamento = 0.5 * (y_ant - y_pos) / denom
+            deslocamento = float(np.clip(deslocamento, -0.5, 0.5))
+            passo_hz = float(freqs[1] - freqs[0])
+            return float(freqs[k] + deslocamento * passo_hz)
+    return float(freqs[k])
 
 
 # ============================================================
@@ -381,7 +417,14 @@ def executar_features_ca(
         _log(f"   ❌ Não encontrado: {arquivo_csv}")
         return False
 
-    df = pd.read_csv(arquivo_csv, nrows=limite_linhas)
+    colunas_necessarias = COLUNAS_CORRENTE + COLUNAS_TENSAO + [COLUNA_DC]
+    df = pd.read_csv(
+        arquivo_csv,
+        nrows=limite_linhas,
+        usecols=colunas_necessarias,
+        dtype={coluna: np.float32 for coluna in colunas_necessarias},
+        memory_map=True,
+    )
     _log(f"   ✅ {len(df):,} amostras | {df.shape[1]} colunas")
 
     faltando = [c for c in COLUNAS_CORRENTE + COLUNAS_TENSAO + [COLUNA_DC]
@@ -435,10 +478,63 @@ def executar_features_ca(
     df_feat.describe().T.to_csv(arq_stats)
     _log(f"   {arq_stats.name}")
 
-    # 6. Resumo
-    meta     = ["janela_idx", "amostra_inicio", "tempo_s"]
+    # Diagnóstico de qualidade persistido: permite auditar a elaboração das
+    # features sem inferir qualidade apenas pela ausência de exceções.
+    meta = ["janela_idx", "amostra_inicio", "tempo_s"]
     col_feat = [c for c in df_feat.columns if c not in meta]
+    matriz = df_feat[col_feat].to_numpy(dtype=float)
+    qualidade = {
+        "n_amostras_brutas": int(len(df)),
+        "n_janelas": int(len(df_feat)),
+        "n_features": int(len(col_feat)),
+        "n_nan": int(np.isnan(matriz).sum()),
+        "n_inf": int(np.isinf(matriz).sum()),
+        "n_duplicadas": int(df_feat.duplicated().sum()),
+        "janela_amostras": JANELA,
+        "sobreposicao_amostras": SOBREPOSICAO,
+        "resolucao_fft_hz": float(FS / JANELA),
+        "f0": {
+            "metodo": "escore_harmonico_com_interpolacao_parabolica",
+            "media_hz": float(df_feat["f0_estimado"].mean()),
+            "desvio_hz": float(df_feat["f0_estimado"].std()),
+            "min_hz": float(df_feat["f0_estimado"].min()),
+            "mediana_hz": float(df_feat["f0_estimado"].median()),
+            "max_hz": float(df_feat["f0_estimado"].max()),
+            "nota": (
+                "A variacao de F0 deve ser confrontada com o regime de velocidade "
+                "descrito pelo dataset; nao e, isoladamente, falha do inversor."
+            ),
+        },
+    }
+    arq_qualidade = pasta_saida / "features_paderborn_qualidade.json"
+    arq_qualidade.write_text(
+        json.dumps(qualidade, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
+    fig, (ax_t, ax_h) = plt.subplots(
+        1, 2, figsize=TAM["painel_2"], layout="constrained"
+    )
+    ax_t.plot(df_feat["tempo_s"], df_feat["f0_estimado"], color=PALETA[0])
+    ax_t.set_xlabel("Tempo (s)")
+    ax_t.set_ylabel("F0 estimada (Hz)")
+    ax_t.set_title("Frequência fundamental ao longo do ensaio")
+    ax_h.hist(df_feat["f0_estimado"], bins=24, color=PALETA[1], alpha=0.85)
+    ax_h.axvline(
+        df_feat["f0_estimado"].median(), color=PALETA[0], linestyle="--",
+        label=f"Mediana = {df_feat['f0_estimado'].median():.2f} Hz",
+    )
+    ax_h.set_xlabel("F0 estimada (Hz)")
+    ax_h.set_ylabel("Número de janelas")
+    ax_h.set_title("Distribuição da frequência estimada")
+    ax_h.legend()
+    fig.suptitle("Diagnóstico espectral das features de Paderborn")
+    salvar_figura(
+        fig,
+        pasta_saida / "features_paderborn_qualidade.png",
+        "Estimativa por evidência harmônica e interpolação; validar a faixa com o regime de velocidade do ensaio.",
+    )
+
+    # 6. Resumo
     grupos = {
         "Tempo — corrente" : [c for c in col_feat if c.startswith("i_") and
                               any(s in c for s in ["rms","desvio","kurtosis",

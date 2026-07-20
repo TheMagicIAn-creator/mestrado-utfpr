@@ -19,19 +19,24 @@ Pipeline principal: `features_ca → autoencoder → injecao_falhas → validaca
 
 ## 2. Limiar do Autoencoder
 
-- **Limiar operacional = percentil 99** do erro de reconstrução saudável
+- **Limiar operacional = percentil 99** do erro de reconstrução saudável no
+  bloco temporal de **calibração**
   (controla FP ≈ 1%, robusto a distribuições assimétricas).
 - **μ + 3σ = referência comparativa** (assume normalidade) — **nunca** o limiar
   em uso.
 - **p95 = referência adicional.**
 - O artefato `limiar.json` registra `threshold_method = "p99"` + os três valores.
 
-## 3. Validação formal (limiar congelado)
+## 3. Validação sintética interna E2 (limiar congelado)
 
 `src/ml/validacao.py` carrega o limiar de `limiar.json` (**congelado**) e calcula
 as métricas nesse limiar fixo — **não** otimiza o limiar no conjunto de teste.
 Gera ROC, **Precision-Recall**, matriz de confusão e `validacao_report.json`
-com `evidence_level = E2` e `threshold_source = congelado_do_limiar_json`.
+com `evidence_level = E2` e `threshold_source = bloco_calibracao_temporal`.
+O protocolo canônico é `treino 60% → calibração 20% → teste 20%`, com purga
+nas fronteiras. Injeção e validação usam apenas janelas **não sobrepostas** do
+bloco final. Isso remove vazamento de treino, mas não transforma E2 em
+validação externa: as falhas continuam sintéticas.
 
 Benchmarks exploratórios (ex.: `experimentos_artigos.py`) que escolhem o limiar
 no próprio conjunto avaliado são rotulados `threshold_source =
@@ -64,16 +69,30 @@ Cada falha injetada (`FALHAS` em `injecao_falhas.py`) declara: `evidence_level`
 e exige **calibração física** — não afirmar alta sensibilidade sem essa ressalva.
 
 **SMD probabilística:** `smd_probabilistico` calcula a taxa de detecção por
-severidade sobre repetições e a **SMD₉₅** (menor severidade com detecção ≥ 95%).
+severidade em janelas não sobrepostas do holdout, o intervalo de Wilson de 95%
+e a **SMD₉₅** (menor severidade cuja taxa pontual é ≥ 95%). O campo
+`smd_95_conservadora` exige também limite inferior do IC ≥ 95%; quando n é
+insuficiente, permanece nulo em vez de transmitir certeza artificial.
 
-## 7. Métricas
+## 7. Weibull e RUL sintéticos
+
+- Uma trajetória mantém a **mesma janela-base** enquanto a severidade cresce;
+  não mistura ativos/regimes operacionais a cada passo.
+- Cruzamentos do limiar são eventos; trajetórias sem cruzamento permanecem
+  **censuradas à direita**. Censura nunca recebe jitter nem vira falha.
+- O ajuste de dois parâmetros usa máxima verossimilhança censurada e intervalos
+  bootstrap por trajetória. Kaplan-Meier é exibido junto da curva paramétrica.
+- MTTF, B10 e RUL estão em **passos sintéticos E2**. Mesmo com ajuste
+  convergente, não equivalem a horas, ciclos ou vida física de campo.
+
+## 8. Métricas
 
 Schema único (`_metricas_classificacao`): accuracy, **balanced_accuracy**,
 precision, recall, f1, **MCC**, AUC, **specificity** (= TN/(TN+FP) no binário) +
 **specificity_macro_ovr** (média one-vs-rest) + `specificity_tipo`,
 **FPR/FNR** (binário), matriz de confusão.
 
-## 8. Proveniência e reprodutibilidade
+## 9. Proveniência e reprodutibilidade
 
 - **Manifesto por etapa** (`proveniencia.py`): `code_sha256`, `parameters`,
   hash dos artefatos upstream, outputs, `git_commit`. Estados **ready / stale /
@@ -85,7 +104,7 @@ precision, recall, f1, **MCC**, AUC, **specificity** (= TN/(TN+FP) no binário) 
 - **Datasets** validados por `scripts/verificar_datasets.py` (SHA-256, linhas);
   dados brutos não são versionados.
 
-## 9. Protocolos de avaliação POR ARTIGO (anti "erro de simulação")
+## 10. Protocolos de avaliação POR ARTIGO (anti "erro de simulação")
 
 Antes, todos os experimentos de anomalia compartilhavam um harness único:
 split **aleatório** de janelas sobrepostas (vazamento temporal) e limiar

@@ -1,8 +1,8 @@
 """
 rodar_experimentos.py — Al IAdo PV / runner CLI dos experimentos por artigo.
 
-Dá aos experimentos por artigo (Ghoneim, Francisti, Ibrahim, Sharma, Ahirwar)
-a MESMA ergonomia de linha de comando que o `python src/ml/autoencoder.py`
+Dá aos experimentos locais implementados (Francisti e Ibrahim) a MESMA
+ergonomia de linha de comando que o `python src/ml/autoencoder.py`
 tem para o pipeline principal: rodar standalone, ver a tabela de métricas, o
 protocolo de decisão usado e onde o resultado foi salvo — sem abrir o app.
 
@@ -17,7 +17,7 @@ IMPORTANTE — isto NÃO muda a metodologia nem os números:
 Uso:
   python scripts/rodar_experimentos.py                 # lista os experimentos
   python scripts/rodar_experimentos.py francisti       # roda um
-  python scripts/rodar_experimentos.py ibrahim sharma  # roda vários
+  python scripts/rodar_experimentos.py francisti ibrahim  # roda vários
   python scripts/rodar_experimentos.py --todos         # roda todos
 """
 
