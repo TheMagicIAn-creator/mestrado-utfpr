@@ -43,8 +43,8 @@ src/
 ## Tech stack
 
 - Python 3.13
-- Streamlit — local web interface
-- ChromaDB — local vector database
+- Streamlit — local and cloud web interface
+- ChromaDB — local vector database restored from a portable cloud snapshot
 - sentence-transformers — multilingual embeddings
 - LLM providers — Google Gemini and Groq
 - scikit-learn, XGBoost, LightGBM — Machine Learning

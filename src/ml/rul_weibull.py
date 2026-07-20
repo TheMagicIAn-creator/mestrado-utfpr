@@ -84,7 +84,9 @@ import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from src.ml.estilo_graficos import TAM, aplicar_estilo
+from src.ml.estilo_graficos import (
+    COR_ALERTA, COR_TEXTO_SEC, TAM, aplicar_estilo, salvar_figura,
+)
 
 aplicar_estilo()
 import matplotlib
@@ -92,13 +94,14 @@ matplotlib.use("Agg")
 from pathlib import Path
 from scipy.stats import weibull_min
 from scipy.special import gamma as gamma_func, gammaincc
+from scipy.optimize import minimize
 
 import torch
 from src.ml.features_ca   import extrair_janela, JANELA, FS
 from src.ml.autoencoder   import Autoencoder
+from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas_holdout
 from src.ml.injecao_falhas import (
     FUNCOES_FALHA, FALHAS,
-    T_INICIO_ESTAVEL, T_FIM_ESTAVEL
 )
 
 # ── Caminhos ─────────────────────────────────────────────────
@@ -107,11 +110,25 @@ ARQUIVO_CSV = RAIZ / "dados" / "brutos" / "Inverter_Data_Set.csv"
 PASTA_AE    = RAIZ / "resultados" / "autoencoder"
 
 # ── Parâmetros de simulação ───────────────────────────────────
-N_TRAJ  = 100    # trajetórias de degradação por tipo de falha
+N_TRAJ  = 100    # teto; o n efetivo não excede janelas independentes do holdout
 N_STEPS = 120    # passos de degradação por trajetória (sev 0→1,0)
 # Cada passo representa um intervalo de monitoramento
 # Em deployment real: ajustar conforme a frequência de aquisição
 BATCH_INFERENCIA = 16
+N_BOOTSTRAP = 250
+MIN_EVENTOS_WEIBULL = 10
+MAX_CENSURA_RUL_PCT = 50.0
+
+
+def _json_seguro(valor):
+    """Converte NaN/inf em null para manter o relatório JSON estrito."""
+    if isinstance(valor, dict):
+        return {k: _json_seguro(v) for k, v in valor.items()}
+    if isinstance(valor, list):
+        return [_json_seguro(v) for v in valor]
+    if isinstance(valor, (float, np.floating)) and not np.isfinite(valor):
+        return None
+    return valor
 
 
 def calcular_erros_batch(vetores: np.ndarray,
@@ -140,24 +157,30 @@ def gerar_ttf(df_estavel: pd.DataFrame,
               tipo_falha: str,
               n_steps: int,
               seed: int,
-              batch_size: int = BATCH_INFERENCIA) -> int:
+              batch_size: int = BATCH_INFERENCIA) -> tuple[int, bool]:
     """
     Simula uma trajetória de degradação progressiva e retorna o TTF.
 
     A severidade aumenta linearmente de 0 a 1,0 em n_steps passos.
     O TTF é o passo em que o erro de reconstrução cruza o limiar.
-    Se não cruzar, retorna n_steps (censurado à direita).
+    Se não cruzar, retorna (n_steps, False), preservando a censura à direita.
 
     Parâmetros:
         seed : garante variabilidade entre trajetórias (diferentes
-               janelas são selecionadas do período estável)
+               janelas-base e ruído sintético são reproduzíveis
     """
     fn          = FUNCOES_FALHA[tipo_falha]
     rng         = np.random.default_rng(seed)
     severidades = np.linspace(0.0, 1.0, n_steps)
-    n_disp      = len(df_estavel) - JANELA
-    if n_disp <= 0:
+    n_disp = len(df_estavel) - JANELA
+    if n_disp < 0:
         raise ValueError("Periodo estavel menor que a janela de extracao.")
+
+    # Uma trajetória representa um único ativo: escolhe a janela-base uma vez
+    # e aplica severidade crescente sobre ela. A versão anterior sorteava uma
+    # nova janela em cada passo e confundia degradação com variação operacional.
+    inicio_base = int(rng.integers(0, n_disp + 1)) if n_disp else 0
+    janela_base = df_estavel.iloc[inicio_base:inicio_base + JANELA].copy()
 
     modelo.eval()
 
@@ -168,12 +191,13 @@ def gerar_ttf(df_estavel: pd.DataFrame,
         for step in range(inicio_batch, fim_batch):
             sev = severidades[step]
 
-            # Seleciona janela aleatória do período estável
-            inicio = int(rng.integers(0, n_disp))
-            janela = df_estavel.iloc[inicio:inicio + JANELA]
+            janela = janela_base.copy()
 
             if sev > 0.01:
-                janela = fn(janela, float(sev))
+                if tipo_falha == "contator_ac":
+                    janela = fn(janela, float(sev), seed=seed * 10_000 + step)
+                else:
+                    janela = fn(janela, float(sev))
 
             feats = extrair_janela(janela)
             vetores.append([feats.get(c, 0.0) for c in colunas_feat])
@@ -184,51 +208,143 @@ def gerar_ttf(df_estavel: pd.DataFrame,
         )
         cruzamentos = np.flatnonzero(erros > limiar)
         if len(cruzamentos) > 0:
-            return inicio_batch + int(cruzamentos[0])
+            return inicio_batch + int(cruzamentos[0]), True
 
-    return n_steps  # censurado: não detectado no horizonte
+    return n_steps, False
 
 
 # ============================================================
 # AJUSTE DE WEIBULL
 # ============================================================
 
-def ajustar_weibull(ttfs: np.ndarray) -> dict:
-    """
-    Ajusta distribuição de Weibull de 2 parâmetros (MLE).
-    Retorna parâmetros e métricas de ajuste.
+def curva_kaplan_meier(
+    ttfs: np.ndarray, eventos: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Curva de Kaplan-Meier simples, preservando censura à direita."""
+    tempos = np.asarray(ttfs, dtype=float)
+    obs = np.asarray(eventos, dtype=bool)
+    pontos_t = [0.0]
+    pontos_s = [1.0]
+    sobrevivencia = 1.0
+    for t in np.unique(tempos):
+        em_risco = int(np.sum(tempos >= t))
+        falhas = int(np.sum((tempos == t) & obs))
+        if em_risco and falhas:
+            sobrevivencia *= 1.0 - falhas / em_risco
+        pontos_t.append(float(t))
+        pontos_s.append(float(sobrevivencia))
+    return np.asarray(pontos_t), np.asarray(pontos_s)
 
-    floc=0 fixa a localização em zero (origem) — padrão para
-    análise de confiabilidade de componentes sem período de garantia.
-    """
-    # MLE com localização fixada em 0
-    shape, loc, scale = weibull_min.fit(ttfs, floc=0)
-    beta = shape   # parâmetro de forma
-    eta  = scale   # parâmetro de escala (vida característica)
 
-    # MTTF = η × Γ(1 + 1/β)
-    mttf = eta * gamma_func(1 + 1 / beta)
+def _ajuste_weibull_censurado(
+    ttfs: np.ndarray, eventos: np.ndarray
+) -> tuple[float, float, bool]:
+    """MLE Weibull de dois parâmetros com contribuição de sobrevivência."""
+    tempos = np.asarray(ttfs, dtype=float)
+    obs = np.asarray(eventos, dtype=bool)
+    tempos = np.clip(tempos, 1e-6, None)
+    if int(obs.sum()) < MIN_EVENTOS_WEIBULL:
+        return float("nan"), float("nan"), False
 
-    # B10: tempo em que 10% das unidades falham
-    b10  = eta * (-np.log(0.90)) ** (1 / beta)
+    def neg_log_likelihood(log_params: np.ndarray) -> float:
+        beta, eta = np.exp(log_params)
+        z = np.power(tempos / eta, beta)
+        log_f_evento = (
+            np.log(beta) + (beta - 1.0) * np.log(tempos)
+            - beta * np.log(eta) - z
+        )
+        log_s_censura = -z
+        ll = np.where(obs, log_f_evento, log_s_censura).sum()
+        return float(-ll) if np.isfinite(ll) else 1e30
 
-    # Bondade de ajuste: KS test
-    from scipy.stats import kstest
-    ks_stat, ks_pval = kstest(ttfs, "weibull_min",
-                               args=(shape, loc, scale))
+    observados = tempos[obs]
+    beta_ini = 2.0
+    eta_ini = max(float(np.median(observados)), 1.0)
+    ajuste = minimize(
+        neg_log_likelihood,
+        x0=np.log([beta_ini, eta_ini]),
+        method="L-BFGS-B",
+        bounds=[(np.log(0.05), np.log(50.0)), (np.log(0.1), np.log(1e5))],
+    )
+    beta, eta = np.exp(ajuste.x)
+    convergiu = bool(ajuste.success and np.isfinite(beta) and np.isfinite(eta))
+    return float(beta), float(eta), convergiu
+
+
+def ajustar_weibull(
+    ttfs: np.ndarray,
+    eventos: np.ndarray | None = None,
+    n_boot: int = 250,
+    seed: int = 42,
+) -> dict:
+    """Ajusta Weibull censurada e estima incerteza por bootstrap de trajetórias."""
+    tempos = np.asarray(ttfs, dtype=float)
+    obs = (
+        np.ones(len(tempos), dtype=bool)
+        if eventos is None else np.asarray(eventos, dtype=bool)
+    )
+    if len(tempos) != len(obs):
+        raise ValueError("ttfs e eventos devem ter o mesmo comprimento.")
+
+    beta, eta, convergiu = _ajuste_weibull_censurado(tempos, obs)
+    if convergiu:
+        mttf = eta * gamma_func(1 + 1 / beta)
+        b10 = eta * (-np.log(0.90)) ** (1 / beta)
+        km_t, km_s = curva_kaplan_meier(tempos, obs)
+        weibull_s = weibull_min.sf(km_t, beta, loc=0, scale=eta)
+        km_rmse = float(np.sqrt(np.mean((km_s - weibull_s) ** 2)))
+    else:
+        mttf = b10 = km_rmse = float("nan")
+
+    amostras_boot: list[tuple[float, float, float, float]] = []
+    if convergiu and n_boot > 0:
+        rng = np.random.default_rng(seed)
+        for _ in range(n_boot):
+            idx = rng.integers(0, len(tempos), size=len(tempos))
+            b, e, ok = _ajuste_weibull_censurado(tempos[idx], obs[idx])
+            if ok:
+                amostras_boot.append((
+                    b,
+                    e,
+                    e * gamma_func(1 + 1 / b),
+                    e * (-np.log(0.90)) ** (1 / b),
+                ))
+
+    nomes = ("beta", "eta", "mttf", "b10")
+    cis = {}
+    if amostras_boot:
+        matriz = np.asarray(amostras_boot)
+        for i, nome in enumerate(nomes):
+            cis[f"{nome}_ci95"] = [
+                float(np.percentile(matriz[:, i], 2.5)),
+                float(np.percentile(matriz[:, i], 97.5)),
+            ]
+    else:
+        cis = {f"{nome}_ci95": [None, None] for nome in nomes}
 
     return {
-        "beta"    : float(beta),
-        "eta"     : float(eta),
-        "mttf"    : float(mttf),
-        "b10"     : float(b10),
-        "ks_stat" : float(ks_stat),
-        "ks_pval" : float(ks_pval),
-        "n_traj"  : len(ttfs),
-        "ttf_mean": float(np.mean(ttfs)),
-        "ttf_std" : float(np.std(ttfs)),
-        "ttf_min" : float(np.min(ttfs)),
-        "ttf_max" : float(np.max(ttfs)),
+        "beta": float(beta),
+        "eta": float(eta),
+        "mttf": float(mttf),
+        "b10": float(b10),
+        "fit_converged": convergiu,
+        "adequacy_method": "RMSE descritivo entre Kaplan-Meier e Weibull",
+        "km_rmse": km_rmse,
+        "n_traj": int(len(tempos)),
+        "n_eventos": int(obs.sum()),
+        "n_censurados": int((~obs).sum()),
+        "censura_pct": float((~obs).mean() * 100.0),
+        "min_eventos_exigidos": MIN_EVENTOS_WEIBULL,
+        "rul_reportavel": bool(
+            convergiu and ((~obs).mean() * 100.0) <= MAX_CENSURA_RUL_PCT
+        ),
+        "ttf_mean_observado": (
+            float(np.mean(tempos[obs])) if obs.any() else None
+        ),
+        "ttf_min": float(np.min(tempos)),
+        "ttf_max": float(np.max(tempos)),
+        "bootstrap_validos": len(amostras_boot),
+        **cis,
     }
 
 
@@ -267,104 +383,137 @@ def rul_condicional(t_atual: float, beta: float, eta: float) -> float:
 # VISUALIZAÇÕES
 # ============================================================
 
-def plotar_ttf_histogramas(ttfs_dict: dict, params: dict, pasta: Path):
-    """Histogramas de TTF com curva de Weibull ajustada."""
+def plotar_ttf_histogramas(
+    ttfs_dict: dict, eventos_dict: dict, params: dict, pasta: Path
+):
+    """TTFs observados e censurados com ajuste Weibull, quando estimável."""
     n_falhas = len(FALHAS)
-    fig, axes = plt.subplots(1, n_falhas, figsize=TAM["painel_3"])
-    fig.suptitle("Distribuição do Tempo até Falha (TTF) — Ajuste de Weibull",
-                 fontsize=13, fontweight="bold")
+    fig, axes = plt.subplots(
+        1, n_falhas, figsize=TAM["painel_3"], layout="constrained"
+    )
+    fig.suptitle("TTF sintético — falhas observadas e censura à direita")
 
     for ax, falha in zip(axes, FALHAS):
         fid  = falha["id"]
         nome = falha["nome"]
         ttfs = ttfs_dict[fid]
+        eventos = eventos_dict[fid]
         p    = params[fid]
+        observados = ttfs[eventos]
+        censurados = ttfs[~eventos]
 
-        ax.hist(ttfs, bins=20, density=True, alpha=0.6,
-                color=falha["cor"], label="TTF simulados")
+        if len(observados):
+            ax.hist(observados, bins=16, density=True, alpha=0.55,
+                    color=falha["cor"], label=f"Falhas observadas (n={len(observados)})")
+        if len(censurados):
+            ax.scatter(
+                censurados, np.zeros_like(censurados), marker="|", s=100,
+                color=COR_ALERTA, label=f"Censurados (n={len(censurados)})", zorder=4,
+            )
 
-        t_lin = np.linspace(0.1, max(ttfs) * 1.1, 200)
-        pdf   = weibull_min.pdf(t_lin, p["beta"], loc=0, scale=p["eta"])
-        ax.plot(t_lin, pdf, "k-", linewidth=2, label="Weibull ajustada")
-        ax.axvline(p["mttf"], color="red", linestyle="--",
-                   label=f"MTTF={p['mttf']:.1f}")
-        ax.axvline(p["b10"],  color="blue", linestyle=":",
-                   linewidth=1.5, label=f"B10={p['b10']:.1f}")
+        if p["fit_converged"]:
+            t_lin = np.linspace(0.1, max(ttfs) * 1.1, 200)
+            pdf = weibull_min.pdf(t_lin, p["beta"], loc=0, scale=p["eta"])
+            ax.plot(t_lin, pdf, color="black", linewidth=2, label="Weibull censurada")
+            ax.axvline(p["mttf"], color=COR_ALERTA, linestyle="--",
+                       label=f"MTTF={p['mttf']:.1f}")
+            ax.axvline(p["b10"], color="#2a78d6", linestyle=":",
+                       linewidth=1.5, label=f"B10={p['b10']:.1f}")
 
         npm_str = f"NPR={falha['npr']}"
-        ax.set_title(f"{nome} ({npm_str})\n"
-                     f"β={p['beta']:.2f}  η={p['eta']:.1f}  "
-                     f"KS p={p['ks_pval']:.3f}", fontsize=9)
+        ajuste = (
+            f"β={p['beta']:.2f} · η={p['eta']:.1f} · "
+            f"censura={p['censura_pct']:.0f}%"
+            + ("\nALTA CENSURA — RUL omitida" if not p["rul_reportavel"] else "")
+            if p["fit_converged"] else "ajuste não estimável"
+        )
+        ax.set_title(f"{nome} ({npm_str})\n{ajuste}", fontsize=9)
         ax.set_xlabel("TTF (passos de degradação)")
-        ax.set_ylabel("Densidade de Probabilidade")
+        ax.set_ylabel("Densidade / marcas de censura")
         ax.legend(fontsize=8)
-        ax.grid(True, alpha=0.3)
 
-    plt.tight_layout()
     arq = pasta / "weibull_ttf.png"
-    fig.savefig(arq)
-    plt.close(fig)
+    salvar_figura(
+        fig, arq,
+        "E2 ilustrativo: trajetórias sintéticas, sem equivalência com tempo físico ou vida útil de campo.",
+    )
     _log(f"   📊 {arq.name}")
 
 
-def plotar_confiabilidade(ttfs_dict: dict, params: dict, pasta: Path):
+def plotar_confiabilidade(
+    ttfs_dict: dict, eventos_dict: dict, params: dict, pasta: Path
+):
     """Funções de confiabilidade R(t) e taxa de falha h(t)."""
-    fig, axes = plt.subplots(2, 3, figsize=TAM["painel_6"])
-    fig.suptitle("Análise de Confiabilidade — Funções de Weibull",
-                 fontsize=13, fontweight="bold")
+    fig, axes = plt.subplots(
+        2, 3, figsize=TAM["painel_6"], layout="constrained"
+    )
+    fig.suptitle("Confiabilidade sintética — Kaplan-Meier e Weibull censurada")
 
     for col, falha in enumerate(FALHAS):
         fid  = falha["id"]
         p    = params[fid]
         ttfs = ttfs_dict[fid]
+        eventos = eventos_dict[fid]
         t    = np.linspace(0.1, max(ttfs) * 1.2, 300)
 
         # Confiabilidade R(t)
         ax_r = axes[0][col]
-        R    = weibull_min.sf(t, p["beta"], loc=0, scale=p["eta"])
-        ax_r.plot(t, R, color=falha["cor"], linewidth=2)
-        ax_r.axhline(0.368, color="gray", linestyle="--",
-                     alpha=0.7, label=f"R=36,8% → η={p['eta']:.1f}")
-        ax_r.axhline(0.90, color="blue", linestyle=":",
-                     alpha=0.7, label=f"R=90% → B10={p['b10']:.1f}")
-        ax_r.fill_between(t, R, alpha=0.15, color=falha["cor"])
+        km_t, km_s = curva_kaplan_meier(ttfs, eventos)
+        ax_r.step(km_t, km_s, where="post", color="black", linewidth=1.5,
+                  label="Kaplan-Meier")
+        if p["fit_converged"]:
+            R = weibull_min.sf(t, p["beta"], loc=0, scale=p["eta"])
+            ax_r.plot(t, R, color=falha["cor"], linewidth=2, label="Weibull")
+            ax_r.fill_between(t, R, alpha=0.12, color=falha["cor"])
         ax_r.set_ylim([0, 1.05])
         ax_r.set_xlabel("t (passos)")
         ax_r.set_ylabel("R(t) = P(T > t)")
         npm_str = f"NPR={falha['npr']}"
-        ax_r.set_title(f"{falha['nome']}\nβ={p['beta']:.2f}, η={p['eta']:.1f} ({npm_str})",
-                        fontsize=9)
+        titulo_ajuste = (
+            f"β={p['beta']:.2f}, η={p['eta']:.1f}, RMSE-KM={p['km_rmse']:.3f}"
+            + ("\nALTA CENSURA — extrapolação" if not p["rul_reportavel"] else "")
+            if p["fit_converged"] else "ajuste não estimável"
+        )
+        ax_r.set_title(f"{falha['nome']} ({npm_str})\n{titulo_ajuste}", fontsize=9)
         ax_r.legend(fontsize=8)
-        ax_r.grid(True, alpha=0.3)
 
         # Taxa de falha h(t)
         ax_h = axes[1][col]
-        H    = weibull_min.pdf(t, p["beta"], loc=0, scale=p["eta"]) / \
-               np.maximum(weibull_min.sf(t, p["beta"], loc=0, scale=p["eta"]), 1e-10)
-        ax_h.plot(t, H, color=falha["cor"], linewidth=2)
-        beta_desc = ("crescente ↑" if p["beta"] > 1.1
-                     else "constante →" if p["beta"] > 0.9
-                     else "decrescente ↓")
-        ax_h.set_title(f"Taxa de Falha h(t)\n(β={p['beta']:.2f} — {beta_desc})",
-                        fontsize=9)
+        if p["fit_converged"]:
+            H = weibull_min.pdf(t, p["beta"], loc=0, scale=p["eta"]) / np.maximum(
+                weibull_min.sf(t, p["beta"], loc=0, scale=p["eta"]), 1e-10
+            )
+            ax_h.plot(t, H, color=falha["cor"], linewidth=2)
+            beta_desc = ("crescente ↑" if p["beta"] > 1.1
+                         else "constante →" if p["beta"] > 0.9
+                         else "decrescente ↓")
+            ax_h.set_title(f"Taxa de falha sintética h(t)\nβ={p['beta']:.2f} — {beta_desc}", fontsize=9)
+        else:
+            ax_h.text(0.5, 0.5, "Sem eventos suficientes\npara estimar h(t)",
+                      transform=ax_h.transAxes, ha="center", va="center",
+                      color=COR_TEXTO_SEC)
+            ax_h.set_title("Taxa de falha não estimável")
         ax_h.set_xlabel("t (passos)")
         ax_h.set_ylabel("h(t)")
-        ax_h.grid(True, alpha=0.3)
 
-    plt.tight_layout()
     arq = pasta / "weibull_confiabilidade.png"
-    fig.savefig(arq)
-    plt.close(fig)
+    salvar_figura(
+        fig, arq,
+        "Curvas em passos sintéticos; o ajuste descreve o experimento computacional, não confiabilidade de campo.",
+    )
     _log(f"   📊 {arq.name}")
 
 
 def plotar_rul(params: dict, pasta: Path):
     """RUL esperado em função do tempo atual t."""
-    fig, ax = plt.subplots(figsize=TAM["unico"])
+    fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
 
+    n_curvas = 0
     for falha in FALHAS:
         fid  = falha["id"]
         p    = params[fid]
+        if not p["rul_reportavel"]:
+            continue
         mttf = p["mttf"]
 
         # Avalia RUL em 20 pontos de t_atual (0 a 80% do MTTF)
@@ -376,20 +525,27 @@ def plotar_rul(params: dict, pasta: Path):
         ax.plot(t_pontos / mttf * 100, ruls,
                 color=falha["cor"], linewidth=2.5,
                 label=f"{falha['nome']} ({npm_str}) — MTTF={mttf:.1f}")
+        n_curvas += 1
 
-    ax.set_xlabel("Tempo atual (% do MTTF)")
-    ax.set_ylabel("RUL esperado (passos de degradação)")
-    ax.set_title("Vida Útil Remanescente (RUL) Condicional\n"
-                 "E[T − t | T > t] estimado pela Distribuição de Weibull",
-                 fontsize=11)
-    ax.legend(fontsize=9)
-    ax.grid(True, alpha=0.3)
+    ax.set_xlabel("Posição na trajetória sintética (% do MTTF ajustado)")
+    ax.set_ylabel("RUL ilustrativa (passos sintéticos)")
+    ax.set_title("RUL condicional do experimento computacional\n"
+                 "Não representa horas, ciclos ou vida útil física do componente")
+    if n_curvas:
+        ax.legend(fontsize=9)
+    else:
+        ax.text(
+            0.5, 0.5, "Nenhum ajuste estimável com os eventos observados",
+            transform=ax.transAxes, ha="center", va="center",
+            color=COR_TEXTO_SEC,
+        )
     ax.set_xlim([0, 80])
 
-    plt.tight_layout()
     arq = pasta / "weibull_rul.png"
-    fig.savefig(arq)
-    plt.close(fig)
+    salvar_figura(
+        fig, arq,
+        "E2 ilustrativo. Para RUL de campo são necessários dados run-to-failure ou calibração física longitudinal.",
+    )
     _log(f"   📊 {arq.name}")
 
 
@@ -401,7 +557,7 @@ def executar_rul_weibull() -> bool:
     _log("=" * 60)
     _log("  AL IADO PV — RUL COM WEIBULL")
     _log("=" * 60)
-    _log(f"\n  Trajetórias por falha: {N_TRAJ}")
+    _log(f"\n  Teto de trajetórias por falha: {N_TRAJ}")
     _log(f"  Passos de degradação : {N_STEPS} (sev 0→1,0)")
 
     # ── 1. Carrega artefatos ─────────────────────────────────
@@ -432,43 +588,44 @@ def executar_rul_weibull() -> bool:
     modelo.eval()
     _log(f"   ✅ Limiar={limiar:.4f} | device={device}")
 
-    # ── 2. Dataset estável ───────────────────────────────────
+    # ── 2. Holdout temporal isolado ───────────────────────────
     _log(f"\n📂 Carregando dataset...")
-    df = pd.read_csv(ARQUIVO_CSV)
-    df_estavel = df.iloc[int(T_INICIO_ESTAVEL*FS):
-                          int(T_FIM_ESTAVEL*FS)].reset_index(drop=True)
-    _log(f"   ✅ {len(df_estavel):,} amostras estáveis")
+    df = carregar_paderborn_compacto(ARQUIVO_CSV)
+    janelas_holdout, meta_holdout = preparar_janelas_holdout(df)
+    del df
+    n_traj_real = min(N_TRAJ, len(janelas_holdout))
+    _log(f"   ✅ {len(janelas_holdout)} janelas não sobrepostas do teste")
+    _log(f"   ✅ {n_traj_real} trajetórias independentes serão usadas")
 
     # ── 3. Gera TTFs por tipo de falha ───────────────────────
     _log(f"\n⚙️  Gerando trajetórias de degradação...")
     ttfs_dict = {}
+    eventos_dict = {}
 
     for idx_falha, falha in enumerate(FALHAS):
         fid  = falha["id"]
         nome = falha["nome"]
-        _log(f"\n   🔴 {nome} ({N_TRAJ} trajetórias × {N_STEPS} passos)...")
+        _log(f"\n   🔴 {nome} ({n_traj_real} trajetórias × {N_STEPS} passos)...")
 
         ttfs = []
-        for i in range(N_TRAJ):
-            ttf = gerar_ttf(
-                df_estavel, modelo, scaler, device,
+        eventos = []
+        for i in range(n_traj_real):
+            janela_base = janelas_holdout[i]
+            ttf, evento = gerar_ttf(
+                janela_base, modelo, scaler, device,
                 colunas_feat, limiar, fid, N_STEPS, seed=i
             )
             ttfs.append(ttf)
+            eventos.append(evento)
             if (i + 1) % 20 == 0:
-                _log(f"      [{i+1:>3}/{N_TRAJ}] TTF médio até agora: "
+                _log(f"      [{i+1:>3}/{n_traj_real}] TTF médio até agora: "
                       f"{np.mean(ttfs):.1f} passos", end="\r")
 
         ttfs = np.array(ttfs, dtype=float)
-        # Adiciona pequeno jitter nos censurados para evitar spike no max.
-        # RNG com semente derivada do índice da falha: o gerador global sem
-        # semente tornava beta/eta irreprodutíveis entre execuções idênticas.
-        censurados = ttfs == N_STEPS
-        if censurados.sum() > 0:
-            rng_jitter = np.random.default_rng(10_000 + idx_falha)
-            ttfs[censurados] += rng_jitter.uniform(0, 5, censurados.sum())
-
+        eventos = np.asarray(eventos, dtype=bool)
+        censurados = ~eventos
         ttfs_dict[fid] = ttfs
+        eventos_dict[fid] = eventos
         pct_cens = censurados.mean() * 100
         _log(f"\n      TTF: μ={ttfs.mean():.1f} ± {ttfs.std():.1f} | "
               f"min={ttfs.min():.0f} | max={ttfs.max():.0f} | "
@@ -479,24 +636,25 @@ def executar_rul_weibull() -> bool:
     params = {}
     for falha in FALHAS:
         fid = falha["id"]
-        p   = ajustar_weibull(ttfs_dict[fid])
+        p = ajustar_weibull(
+            ttfs_dict[fid], eventos_dict[fid], n_boot=N_BOOTSTRAP,
+            seed=42 + len(params),
+        )
         params[fid] = p
         npm_str = f"NPR={falha['npr']}"
         _log(f"\n   {falha['nome']} ({npm_str})")
-        _log(f"      β={p['beta']:.3f}  η={p['eta']:.1f}  "
-              f"MTTF={p['mttf']:.1f}  B10={p['b10']:.1f}")
-        _log(f"      KS p-value={p['ks_pval']:.3f} "
-              + ("✅ ajuste adequado" if p['ks_pval'] > 0.05
-                 else "⚠️  ajuste pode ser melhorado"))
-        tipo_beta = ("crescente (desgaste)" if p["beta"] > 1.1
-                     else "constante (aleatório)" if p["beta"] > 0.9
-                     else "decrescente (mortalidade infantil)")
-        _log(f"      Taxa de falha: {tipo_beta}")
+        if p["fit_converged"]:
+            _log(f"      β={p['beta']:.3f}  η={p['eta']:.1f}  "
+                  f"MTTF={p['mttf']:.1f}  B10={p['b10']:.1f}")
+            _log(f"      Censura={p['censura_pct']:.0f}% | "
+                 f"RMSE(KM)={p['km_rmse']:.4f} | bootstrap={p['bootstrap_validos']}")
+        else:
+            _log("      ⚠️ Ajuste não estimável: menos de dois eventos observados")
 
     # ── 5. Visualizações ─────────────────────────────────────
     _log(f"\n📊 Gerando gráficos...")
-    plotar_ttf_histogramas(ttfs_dict, params, PASTA_AE)
-    plotar_confiabilidade(ttfs_dict, params, PASTA_AE)
+    plotar_ttf_histogramas(ttfs_dict, eventos_dict, params, PASTA_AE)
+    plotar_confiabilidade(ttfs_dict, eventos_dict, params, PASTA_AE)
     plotar_rul(params, PASTA_AE)
 
     # ── 6. Salva resultados ──────────────────────────────────
@@ -511,37 +669,83 @@ def executar_rul_weibull() -> bool:
                 "falha que define o cruzamento é injeção sintética orientada "
                 "pelo FMEA. Demonstra a METODOLOGIA (TTF→Weibull→MTTF/B10/RUL), "
                 "NÃO é estimativa de vida útil de campo (exigiria histórico real "
-                "de falhas). Verificar a adequação do ajuste pelo teste KS abaixo."
+                "de falhas). A censura à direita é preservada no MLE; os "
+                "intervalos vêm de bootstrap de trajetórias."
             ),
             "ttf_origem": "trajetorias_simuladas_cruzando_limiar_AE",
-            "ks_alpha": 0.05,
+            "adequacy_note": (
+                "O RMSE entre Kaplan-Meier e Weibull é descritivo, não prova "
+                "adequação nem substitui validação com dados run-to-failure."
+            ),
+            "protocolo_avaliacao": meta_holdout,
         },
         "parametros_simulacao": {
-            "n_trajetorias": N_TRAJ,
+            "n_trajetorias_max": N_TRAJ,
+            "n_trajetorias_efetivas": n_traj_real,
             "n_steps"      : N_STEPS,
             "limiar"       : float(limiar),
+            "min_eventos_weibull": MIN_EVENTOS_WEIBULL,
+            "max_censura_rul_pct": MAX_CENSURA_RUL_PCT,
         },
         "falhas": {}
     }
     for falha in FALHAS:
         fid = falha["id"]
-        ks_p = params[fid].get("ks_pval")
-        ajuste_ok = bool(ks_p is not None and ks_p > 0.05)
         relatorio["falhas"][fid] = {
             "nome"  : falha["nome"],
             "npr"   : falha["npr"],
-            "weibull": params[fid],
-            "ajuste_weibull_adequado": ajuste_ok,
+            "weibull": _json_seguro(params[fid]),
+            "ajuste_weibull_adequado": None,
+            "status_ajuste": (
+                "nao_estimavel"
+                if not params[fid]["fit_converged"]
+                else "exploratorio_alta_censura"
+                if not params[fid]["rul_reportavel"]
+                else "exploratorio_descritivo"
+            ),
             "ressalva_ajuste": (
-                "" if ajuste_ok else
-                "KS rejeita Weibull (p<=0,05): os TTF simulados não seguem bem "
-                "uma Weibull; MTTF/B10 são indicativos, não conclusivos."
+                "Ajuste censurado do experimento sintético; adequação externa "
+                "não demonstrada. MTTF/B10 não equivalem a vida física."
             ),
             "ttfs"  : ttfs_dict[fid].tolist(),
+            "eventos_observados": eventos_dict[fid].tolist(),
         }
     with open(arq_json, "w", encoding="utf-8") as f:
         json.dump(relatorio, f, indent=2, ensure_ascii=False)
     _log(f"   ✅ {arq_json.name}")
+
+    linhas_weibull = []
+    for falha in FALHAS:
+        fid = falha["id"]
+        p = params[fid]
+        linhas_weibull.append({
+            "falha": falha["nome"],
+            "npr": falha["npr"],
+            "n_traj": p["n_traj"],
+            "n_eventos": p["n_eventos"],
+            "n_censurados": p["n_censurados"],
+            "censura_pct": p["censura_pct"],
+            "beta": p["beta"],
+            "beta_ci_low": p["beta_ci95"][0],
+            "beta_ci_high": p["beta_ci95"][1],
+            "eta": p["eta"],
+            "eta_ci_low": p["eta_ci95"][0],
+            "eta_ci_high": p["eta_ci95"][1],
+            "mttf": p["mttf"],
+            "mttf_ci_low": p["mttf_ci95"][0],
+            "mttf_ci_high": p["mttf_ci95"][1],
+            "b10": p["b10"],
+            "b10_ci_low": p["b10_ci95"][0],
+            "b10_ci_high": p["b10_ci95"][1],
+            "km_rmse": p["km_rmse"],
+            "fit_converged": p["fit_converged"],
+            "rul_reportavel": p["rul_reportavel"],
+            "status_ajuste": relatorio["falhas"][fid]["status_ajuste"],
+            "evidence_level": "E2",
+        })
+    arq_tabela = PASTA_AE / "weibull_tabela.csv"
+    pd.DataFrame(linhas_weibull).to_csv(arq_tabela, index=False)
+    _log(f"   📋 {arq_tabela.name}")
 
     # ── 7. Resumo final ──────────────────────────────────────
     _log(f"\n{'='*60}")

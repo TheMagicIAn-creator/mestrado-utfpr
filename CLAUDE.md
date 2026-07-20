@@ -148,7 +148,7 @@ Detecção de anomalias no lado CA — pipeline principal
 etapa vem dos manifestos ou da ferramenta
 consultar_status_pipeline, nunca deste arquivo):
 - Autoencoder (modelagem de normalidade — principal)
-- Injeção de falhas sintéticas FMECA + validação formal
+- Injeção de falhas sintéticas FMECA + validação sintética interna E2
 - Análise de Weibull (confiabilidade e RUL)
 
 Disponíveis via experimentos por artigo (não no pipeline):
@@ -241,14 +241,16 @@ mestrado-utfpr/
 │   ├── conhecimento/         → cérebro do agente (RAG):
 │   │     agente.py (pipeline RAG + PERFIL_COMPACTO),
 │   │     ferramentas.py (specs + roteador de 20 tools),
-│   │     indexador.py, provedores.py, processador_pdf.py,
+│   │     indexador.py, indice_portatil.py, provedores.py,
+│   │     processador_pdf.py,
 │   │     consolidar_memoria.py, web_search.py,
 │   │     leitor_anexos.py, retrieval_metrics.py,
 │   │     index_lock.py
 │   ├── ml/                   → pipeline CA + experimentos:
 │   │     features_ca.py, autoencoder.py, injecao_falhas.py,
 │   │     validacao.py, rul_weibull.py, pipeline.py,
-│   │     proveniencia.py, split_temporal.py, resultados.py,
+│   │     proveniencia.py, split_temporal.py, dados_avaliacao.py,
+│   │     estatistica.py, exec_etapa_isolada.py, resultados.py,
 │   │     eda.py, classificador_pv.py (+_infer),
 │   │     experimentos_artigos.py, protocolos_artigos.py,
 │   │     modelos_anomalia.py, exec_experimento_isolado.py,
@@ -265,6 +267,7 @@ mestrado-utfpr/
 ├── dados/brutos/             → datasets originais
 ├── dados/processados/        → dados pré-processados
 ├── resultados/               → gráficos e relatórios
+├── artefatos/                → snapshots portáteis para o deploy
 ├── notas/                    → Obsidian, arquivo de leitura (sessões/memórias;
 │                                não é caderno de escrita nem fonte do RAG)
 ├── novos_pdfs/               → PDFs aguardando indexação
@@ -378,6 +381,12 @@ validada. Status e métricas devem vir de:
 - ferramentas de consulta do agente;
 - scripts de verificação.
 
+Execução local e nuvem são capacidades diferentes. O pipeline pesado é
+recalculado no PC, onde `dados/brutos/` está disponível e permanece ignorado
+pelo Git. O Streamlit Cloud restaura o índice portátil da literatura e consulta
+os artefatos versionados de `resultados/`; sem o dataset bruto, nunca deve
+afirmar que treinou ou recalculou modelos na nuvem.
+
 IMPORTANTE: nunca cite métricas de memória. Consulte sempre o artefato JSON
 vigente e informe o nível de evidência. Resultado de injeção/validação é E2
 (sintético orientado pela FMECA), não prova de desempenho industrial.
@@ -430,7 +439,7 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
   devolve a tabela crua (forcar_resposta_direta / resposta_pronta) quando NÃO é
   pedido autoral; se for, os dados viram evidência e a resposta passa pelo LLM
   com o perfil injetado (ver _quer_resposta_autoral em ferramentas.py). Números
-  com ressalva (KS rejeitado, SMD não detectada, E1/E2) nunca são apresentados
+  com ressalva (Weibull/RUL sintético, SMD não detectada, E1/E2) nunca são apresentados
   como conclusivos.
 - Sempre diferenciar dado local, metodologia de artigo e resultado copiado.
   Os experimentos devem deixar claro quando usam datasets do repositório
@@ -443,12 +452,11 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Respostas com tabelas devem ser legíveis, compactas e acompanhadas de uma
   leitura técnica. Tabela não substitui parecer.
 - Gráficos são DESACOPLADOS dos resultados: ao consultar/gerar resultados, o
-  agente NÃO despeja as figuras na tela — oferece um resumo textual e os
-  gráficos ficam como BOTÃO DE DOWNLOAD (por artefato). A figura só é
-  renderizada inline quando Rodolfo pede explicitamente ("mostre os gráficos",
-  "veja a curva ROC"); nesse caso ajusta à largura da tela (use_container_width)
-  e nunca estoura. Comportamento em src/ml/resultados.py (flag inline) e
-  src/interface/streamlit_app.py (_botao_download / renderizar_imagens).
+  agente NÃO despeja as figuras na tela. Cada artefato oferece antevisão
+  responsiva sob demanda e download; a imagem só é renderizada inline quando
+  Rodolfo pede explicitamente ("mostre os gráficos", "veja a curva ROC").
+  Comportamento em src/ml/resultados.py (flag inline) e
+  src/interface/streamlit_app.py (_controles_antevisao / renderizar_imagens).
 - Imagens renderizadas inline aparecem agrupadas por artigo/experimento, na
   ordem pedida por Rodolfo, ajustadas à largura da tela.
 
@@ -466,8 +474,8 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Linguagem    : Python 3.13.3
 - IDE          : PyCharm
 - Versionamento: GitHub (mestrado-utfpr)
-- Interface    : Streamlit (aplicação web local)
-- Memória      : ChromaDB (banco vetorial local)
+- Interface    : Streamlit (aplicação web local e em nuvem)
+- Memória      : ChromaDB local + snapshot portátil no deploy
 - LLM          : multi-provedor — usuário escolhe o
                  provedor da resposta principal:
                  Google Gemini (gemini-2.5-flash) ou

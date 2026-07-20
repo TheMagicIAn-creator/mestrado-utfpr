@@ -37,8 +37,8 @@ de que o D_novo é MEDIDO (E2), não julgado.
 - O recálculo herda o nível de evidência do detector: **E2** (sintético
   orientado pela FMECA). Apresentar como "NPR projetado sob validação
   sintética", nunca como NPR de campo.
-- Falha com ajuste Weibull rejeitado (KS): usar apenas o recall/SMD na
-  conversão de D; não usar MTTF/B10 rejeitados como argumento de O.
+- Weibull/RUL sintético: usar apenas recall/SMD na conversão de D; não usar
+  MTTF/B10 em passos sintéticos como argumento de O, mesmo quando o MLE converge.
 - A conversão recall→D deve ser definida ANTES de olhar os números (regra a
   priori), para não calibrar a régua no resultado.
 

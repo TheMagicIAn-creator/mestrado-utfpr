@@ -41,9 +41,11 @@ st.set_page_config(
 # Settings -> Theme para alternar entre claro/escuro nativo do Streamlit.
 _CSS_MINIMO = """
 <style>
-.stDeployButton  { display: none; }
+.stDeployButton,
+[data-testid="stAppDeployButton"] { display: none; }
 .block-container {
     max-width: min(1680px, calc(100vw - 2.5rem));
+    padding-top: 4rem;
     padding-left: 1.25rem;
     padding-right: 1.25rem;
 }
@@ -111,6 +113,9 @@ _CSS_MINIMO = """
         padding-left: 0.5rem;
         padding-right: 0.5rem;
     }
+    .block-container {
+        padding-top: 3.5rem;
+    }
     [data-testid="stMarkdownContainer"] table {
         font-size: 0.82rem;
     }
@@ -145,6 +150,7 @@ def carregar_base():
         MODELO_EMBEDDINGS,
         NOME_COLECAO,
         NOME_COLECAO_SESSOES,
+        ARQUIVO_INDICE_LITERATURA,
         PASTA_CHROMADB,
     )
 
@@ -165,6 +171,20 @@ def carregar_base():
         client = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
         colecao = client.get_or_create_collection(name=NOME_COLECAO)
         colecao_sessoes = client.get_or_create_collection(name=NOME_COLECAO_SESSOES)
+        if colecao.count() == 0 and ARQUIVO_INDICE_LITERATURA.is_file():
+            try:
+                from src.conhecimento.indice_portatil import importar_colecao
+
+                with st.spinner("Restaurando o índice portátil da literatura..."):
+                    restauracao = importar_colecao(
+                        colecao, ARQUIVO_INDICE_LITERATURA
+                    )
+                relatorio.append(
+                    "Literatura: "
+                    f"{restauracao['n_chunks']} chunks restaurados do snapshot."
+                )
+            except Exception as exc:
+                relatorio.append(f"Literatura: snapshot inválido - {exc}")
         perfil = carregar_perfil()
 
     return perfil, modelo, colecao, colecao_sessoes, relatorio
@@ -187,7 +207,18 @@ def inicializar_estado() -> None:
 
 def renderizar_pipeline_status() -> None:
     """Status do pipeline no sidebar: ready / stale / pending."""
-    from src.ml.pipeline import NOMES_ETAPAS, estado_pipeline
+    from src.ml.pipeline import (
+        NOMES_ETAPAS,
+        capacidade_recalculo_pipeline,
+        estado_pipeline,
+        estado_resultados_publicados,
+    )
+
+    if not capacidade_recalculo_pipeline()["disponivel"]:
+        for key, info in estado_resultados_publicados().items():
+            marcador = "✅" if info["disponivel"] else "⚪"
+            st.markdown(f"{marcador} {NOMES_ETAPAS[key]} _(publicado)_")
+        return
 
     for key, info in estado_pipeline().items():
         nome = NOMES_ETAPAS[key]
@@ -212,12 +243,23 @@ def renderizar_diagnostico(colecao, colecao_sessoes) -> None:
         st.warning(f"ChromaDB indisponível: {exc}")
 
     try:
-        from src.ml.pipeline import NOMES_ETAPAS, estado_pipeline
+        from src.ml.pipeline import (
+            NOMES_ETAPAS,
+            capacidade_recalculo_pipeline,
+            estado_pipeline,
+            estado_resultados_publicados,
+        )
 
-        rot = {"ready": "✅", "stale": "⚠️", "pending": "⬜"}
-        for key, info in estado_pipeline().items():
-            st.caption(f"{rot.get(info['estado'], '?')} {NOMES_ETAPAS[key]} "
-                       f"— {info['estado']}")
+        if capacidade_recalculo_pipeline()["disponivel"]:
+            rot = {"ready": "✅", "stale": "⚠️", "pending": "⬜"}
+            for key, info in estado_pipeline().items():
+                st.caption(f"{rot.get(info['estado'], '?')} {NOMES_ETAPAS[key]} "
+                           f"— {info['estado']}")
+        else:
+            st.caption("Modo consulta: cálculo pesado indisponível neste servidor.")
+            for key, info in estado_resultados_publicados().items():
+                marcador = "✅" if info["disponivel"] else "⬜"
+                st.caption(f"{marcador} {NOMES_ETAPAS[key]} — publicado")
     except Exception as exc:  # noqa: BLE001
         st.caption(f"pipeline: {exc}")
 
@@ -283,7 +325,7 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
         )
         escolha = opcoes[escolha_label]
         st.caption(PROVEDORES[escolha]["limite"])
-        if st.button("Conectar", use_container_width=True, type="primary"):
+        if st.button("Conectar", width="stretch", type="primary"):
             try:
                 from src.conhecimento.provedores import eh_multimodal
 
@@ -296,28 +338,31 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
                 st.error(f"Erro ao conectar: {exc}")
 
         st.divider()
-        st.markdown("**Base local**")
+        st.markdown("**Base de conhecimento**")
         c1, c2 = st.columns(2)
         c1.metric("Literatura", colecao.count())
         c2.metric("Sessões", colecao_sessoes.count())
         st.caption("Literatura, memória e resultados são acessados pelo chat.")
 
-        # Indexação da literatura sob demanda. Os PDFs vão no repositório, mas o
-        # banco vetorial (base_conhecimento/) é EFÊMERO em nuvem (ex.: Streamlit
-        # Cloud): some no restart do app. Este botão reconstrói a base a partir
-        # dos PDFs de literatura/. Só aparece quando a base está vazia.
+        # Fallback: o caminho normal da nuvem restaura o snapshot portátil no
+        # carregamento. O botão só aparece se o snapshot estiver ausente/inválido.
         if colecao.count() == 0:
             st.caption("⚠️ Literatura não indexada (base vazia).")
             if st.button(
-                "🔄 Indexar literatura",
-                use_container_width=True,
+                "Indexar literatura",
+                icon=":material/sync:",
+                width="stretch",
                 help="Reconstrói a base a partir dos PDFs de literatura/. "
-                     "Leva alguns minutos; em nuvem, some quando o app reinicia.",
+                     "Use apenas se a restauração automática não estiver disponível.",
             ):
                 try:
                     from src.conhecimento.indexador import indexar_literatura
                     with st.spinner("Indexando literatura… alguns minutos."):
-                        indexar_literatura()
+                        resumo = indexar_literatura(modelo=modelo)
+                    if resumo["erros"]:
+                        st.warning(
+                            f"Indexação concluída com {resumo['erros']} erro(s)."
+                        )
                     st.success("Literatura indexada! Atualizando…")
                     st.rerun()
                 except Exception as exc:  # noqa: BLE001
@@ -325,10 +370,18 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
 
         st.divider()
         st.markdown("**Comandos por prompt**")
-        st.caption(
-            "Use o chat para rodar pipeline, comparar artigos, recalcular, "
-            "apagar artefatos, pedir gráficos ou discutir resultados."
-        )
+        from src.ml.pipeline import capacidade_recalculo_pipeline
+
+        if capacidade_recalculo_pipeline()["disponivel"]:
+            st.caption(
+                "Use o chat para rodar pipeline, comparar artigos, recalcular, "
+                "apagar artefatos, pedir gráficos ou discutir resultados."
+            )
+        else:
+            st.caption(
+                "Modo consulta: peça resultados, tabelas, gráficos, comparações "
+                "e interpretação. O recálculo permanece no PC com os datasets."
+            )
 
         st.divider()
         st.markdown("**Documentos**")
@@ -338,7 +391,7 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
             label_visibility="collapsed",
         )
         if arquivo_pdf is not None:
-            if st.button("Enviar para processamento", use_container_width=True):
+            if st.button("Enviar para processamento", width="stretch"):
                 # Sanitiza o nome vindo do navegador (anti path-traversal) e
                 # confirma que o destino fica DENTRO de novos_pdfs/.
                 from src.core.seguranca import (
@@ -354,7 +407,7 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
 
         st.divider()
         st.markdown("**Sessão**")
-        if st.button("Limpar conversa", use_container_width=True):
+        if st.button("Limpar conversa", width="stretch"):
             st.session_state.mensagens = []
             st.session_state.caminho_sessao = None
             st.rerun()
@@ -382,7 +435,7 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
                         f"({info.get('ano_atual') or '????'}) | "
                         f"registrado em {info.get('registrado', '?')}"
                     )
-            if st.button("Consolidar memória", use_container_width=True):
+            if st.button("Consolidar memória", width="stretch"):
                 try:
                     from src.conhecimento.consolidar_memoria import consolidar
 
@@ -391,7 +444,7 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
                 except Exception as exc:
                     st.error(f"Erro: {exc}")
 
-            if st.button("Corrigir metadados ruins", use_container_width=True):
+            if st.button("Corrigir metadados ruins", width="stretch"):
                 try:
                     from src.orquestrador import reprocessar_metadados_ruins
 
@@ -431,19 +484,31 @@ def renderizar_topo(relatorio: list) -> None:
 
 def renderizar_boas_vindas() -> None:
     from src.conhecimento.agente import _saudacao_pelo_horario
+    from src.ml.pipeline import capacidade_recalculo_pipeline
 
     saudacao = _saudacao_pelo_horario()
+    calculo_local = capacidade_recalculo_pipeline()["disponivel"]
+    capacidade = (
+        "posso rodar etapas do pipeline, comparar experimentos"
+        if calculo_local else
+        "posso consultar os resultados publicados e comparar experimentos"
+    )
     st.info(
         f"**{saudacao}, Rodolfo.**\n\n"
-        "Peça em linguagem natural: posso rodar etapas do pipeline, comparar "
-        "experimentos, explicar métricas, mostrar gráficos ou discutir decisões "
+        f"Peça em linguagem natural: {capacidade}, explicar métricas, "
+        "mostrar gráficos ou discutir decisões "
         "metodológicas da dissertação."
     )
 
     st.markdown("##### Exemplos de prompt")
+    acao_weibull = (
+        "Rode a análise de Weibull e depois interprete MTTF e B10."
+        if calculo_local else
+        "Interprete os resultados publicados de Weibull, MTTF e B10."
+    )
     exemplos = [
         "Explique os resultados de validação e mostre as curvas ROC.",
-        "Rode a análise de Weibull e depois interprete MTTF e B10.",
+        acao_weibull,
         "Compare os experimentos de anomalia por AUC.",
         "What does the literature say about LCL filter faults?",
         "Explique en español qué modelo parece más confiable.",
@@ -590,7 +655,7 @@ def _ordem_imagem(img: dict, indice: int) -> tuple:
 _DL_KEY = [0]
 
 
-def _botao_download(img: dict, alvo=None) -> None:
+def _botao_download(img: dict, alvo=None, *, compacto: bool = False) -> None:
     """Botão de download da figura (PNG). Não renderiza a imagem, só o botão."""
     destino = alvo if alvo is not None else st
     p = Path(img["path"])
@@ -603,23 +668,56 @@ def _botao_download(img: dict, alvo=None) -> None:
     _DL_KEY[0] += 1
     legenda = img.get("caption") or p.name
     destino.download_button(
-        label=f"⬇ Baixar — {legenda}",
+        label="Baixar PNG" if compacto else f"Baixar — {legenda}",
         data=dados,
         file_name=p.name,
         mime="image/png",
         key=f"dl_{_DL_KEY[0]}",
-        use_container_width=True,
+        icon=":material/download:",
+        help=f"Salvar {p.name}",
+        on_click="ignore",
+        width="stretch",
     )
+
+
+def _controles_antevisao(img: dict, alvo=None) -> None:
+    """Antevisão sob demanda: a figura não ocupa o fluxo normal do chat."""
+    destino = alvo if alvo is not None else st
+    p = Path(img["path"])
+    if not p.is_file():
+        return
+
+    legenda = img.get("caption") or p.name
+    destino.markdown(f"**{legenda}**")
+    col_ver, col_baixar = destino.columns(2, gap="small")
+    _DL_KEY[0] += 1
+    with col_ver.popover(
+        "Visualizar",
+        icon=":material/visibility:",
+        help="Abrir antevisão responsiva sem baixar o arquivo",
+        width="stretch",
+        key=f"preview_{_DL_KEY[0]}",
+    ):
+        st.image(
+            str(p),
+            caption=legenda,
+            width="stretch",
+        )
+        largura, altura = _dimensoes_imagem(str(p))
+        tamanho_kb = p.stat().st_size / 1024
+        dimensoes = f"{largura} × {altura} px" if largura and altura else "dimensões indisponíveis"
+        st.caption(f"{dimensoes} · {tamanho_kb:.0f} KB · PNG")
+    _botao_download(img, col_baixar, compacto=True)
 
 
 def _renderizar_imagem_unica(img: dict, coluna=None) -> None:
     alvo = coluna if coluna is not None else st
-    # use_container_width: a figura se ajusta à largura da tela/coluna — nunca
+    # width="stretch": a figura se ajusta à largura da tela/coluna — nunca
     # estoura nem fica minúscula (substitui a largura fixa em px).
     alvo.image(
         img["path"],
         caption=img.get("caption", ""),
-        use_container_width=True,
+        width="stretch",
     )
     _botao_download(img, alvo)
 
@@ -706,12 +804,14 @@ def renderizar_imagens(imagens: list[dict]) -> None:
         _renderizar_grupo_imagens(itens)
 
     if download_only:
-        st.caption("📊 Gráficos disponíveis para download:")
+        st.caption(
+            "Gráficos disponíveis. Abra a antevisão para inspecionar antes de baixar."
+        )
         for inicio in range(0, len(download_only), 2):
             par = download_only[inicio:inicio + 2]
             cols = st.columns(len(par), gap="small")
             for col, img in zip(cols, par):
-                _botao_download(img, col)
+                _controles_antevisao(img, col)
 
     if invalidas:
         st.caption(

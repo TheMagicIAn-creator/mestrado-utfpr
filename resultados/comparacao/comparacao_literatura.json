@@ -1,0 +1,73 @@
+{
+  "gerado_em": "2026-07-20T08:58:45",
+  "evidence_level": "E1",
+  "evidence_note": "Comparação no banco comum (injeção no espaço de features). Para o método proposto este é um teste MAIS FRACO que o E2 nativo (injeção no sinal) — reportado à parte em e2_nativo.",
+  "banco_comum": {
+    "tipo": "fmea_espaco_features",
+    "purga_janelas": 2,
+    "n_janelas": 457,
+    "treino": 273,
+    "teste": 182,
+    "falhas": [
+      "contator_ac",
+      "igbt",
+      "fusivel_ac"
+    ],
+    "pesos": {
+      "contator_ac": 0.4,
+      "igbt": 0.35,
+      "fusivel_ac": 0.25
+    },
+    "severidade": 1.0,
+    "fonte": "Torres (2024) — FMECA consolidada (docs/fmeca.md): Contator AC/IGBT/Fusível AC, via assinaturas de src/ml/injecao_falhas.py",
+    "nota": "E1 — proxy sintético no espaço de features; ground truth por família de falha, não medição de bancada.",
+    "seed": 42
+  },
+  "linhas": [
+    {
+      "metodo": "Autoencoder (método proposto)",
+      "papel": "proposto",
+      "fonte": "pipeline principal (este trabalho)",
+      "auc": 0.7366562009419153,
+      "evidencia": "E1"
+    },
+    {
+      "metodo": "Z-score (estatístico)",
+      "papel": "baseline",
+      "fonte": "Francisti et al. (2025)",
+      "auc": 0.5721682163989856,
+      "evidencia": "E1"
+    },
+    {
+      "metodo": "Isolation Forest",
+      "papel": "concorrente",
+      "fonte": "Ibrahim et al. (2022)",
+      "auc": 0.5893309986716581,
+      "evidencia": "E1"
+    },
+    {
+      "metodo": "AE-LSTM",
+      "papel": "concorrente",
+      "fonte": "Ibrahim et al. (2022)",
+      "auc": 0.6592199009781428,
+      "evidencia": "E1"
+    }
+  ],
+  "auc_por_falha_metodo": {
+    "contator_ac": 0.7638702760653979,
+    "fusivel_ac": 0.5457875457875458,
+    "igbt": 0.8897734918143082
+  },
+  "e2_nativo": {
+    "contator_ac_sev0.3": 0.9531250000000001,
+    "contator_ac_sev0.5": 0.975,
+    "contator_ac_sev1.0": 0.9974999999999999,
+    "igbt_sev0.3": 0.6018749999999999,
+    "igbt_sev0.5": 0.835625,
+    "igbt_sev1.0": 0.9443750000000001,
+    "fusivel_ac_sev0.3": 0.5518749999999999,
+    "fusivel_ac_sev0.5": 0.750625,
+    "fusivel_ac_sev1.0": 0.9031249999999998
+  },
+  "avisos": []
+}

@@ -10,6 +10,7 @@ python main.py              # chat no terminal
 ```powershell
 python scripts/verificar_ambiente.py    # imports, versões, chaves, datasets, ChromaDB, pipeline
 python scripts/verificar_datasets.py    # presença + SHA-256 + linhas dos datasets
+python scripts/verificar_resultados_fmeca.py  # cruza JSON, CSV, PNG e critérios metodológicos
 python -m pytest                        # bateria de testes unitários (rápida, com fixtures)
 python -m pytest -W ignore -q           # idem, sem warnings de limpeza de tmp
 ```
@@ -19,7 +20,7 @@ python -m pytest -W ignore -q           # idem, sem warnings de limpeza de tmp
 python src/ml/features_ca.py        # extrai features CA (Paderborn) + manifesto
 python src/ml/autoencoder.py        # treina o AE; grava limiar.json (p99) + manifesto
 python src/ml/injecao_falhas.py     # injeta falhas FMEA (E2) + schema no report
-python src/ml/validacao.py          # validação formal: ROC + PR + matriz, limiar congelado
+python src/ml/validacao.py          # validação interna E2: ROC + PR + matrizes, limiar congelado
 python src/ml/rul_weibull.py        # RUL / Weibull
 ```
 
@@ -29,12 +30,23 @@ o runner abaixo é só o atalho de execução — não muda a metodologia nem os
 ```powershell
 python scripts/rodar_experimentos.py              # lista os experimentos
 python scripts/rodar_experimentos.py francisti    # roda um (tabela + protocolo + detecção por falha)
-python scripts/rodar_experimentos.py ibrahim sharma   # roda vários
+python scripts/rodar_experimentos.py francisti ibrahim  # roda vários
 python scripts/rodar_experimentos.py --todos      # roda todos
 python src/ml/classificador_pv.py       # benchmark supervisionado PV Farms (CC)
 python -c "from src.ml.classificador_pv_infer import treinar_e_salvar; treinar_e_salvar()"  # salva modelo/scaler/manifests/PNGs
 ```
 Também pelo chat: "rode o experimento do Ghoneim", "compare os experimentos de anomalia".
+
+## Literatura local e snapshot da nuvem
+```powershell
+python scripts/reconstruir_literatura.py       # reconstrói o ChromaDB local a partir dos PDFs
+python scripts/exportar_indice_literatura.py   # gera artefatos/literatura_indexada.jsonl.gz
+```
+
+O diretório `base_conhecimento/` é local, incremental e ignorado pelo Git. O
+snapshot gzip é portátil e versionável: quando a coleção está vazia, o
+Streamlit o restaura automaticamente. O botão de indexação da interface é
+apenas um fallback para deploys sem snapshot válido.
 
 ## Bateria determinística do agente (RAG/roteamento)
 ```powershell
@@ -46,6 +58,8 @@ python scripts/avaliar_agente_100.py --com-memoria   # grava a avaliação na co
 - No Windows, `streamlit run app.py` (não `python app.py`, que roda em "bare mode" e sai sem servir).
 - `KMP_DUPLICATE_LIB_OK=TRUE` é definido cedo (config/app/main) para evitar crash de OpenMP duplicado.
 - Etapas aparecem como **stale/pending** até serem recalculadas com o código atual (cria o manifesto).
+- O pipeline pesado roda no PC porque `dados/brutos/` não é publicado. Na
+  nuvem, o app consulta os resultados versionados e não afirma ter retreinado modelos.
 - O progresso do ML vai para `logs/al_iado_pv.log` (terminal silencioso no app);
   scripts rodados à mão reativam o eco automaticamente. Leia o log em UTF-8:
   `Get-Content logs\al_iado_pv.log -Tail 20 -Encoding utf8` (sem `-Encoding utf8`

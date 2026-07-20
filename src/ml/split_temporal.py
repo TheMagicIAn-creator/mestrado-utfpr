@@ -34,13 +34,16 @@ import numpy as np
 # Sobreposição padrão das janelas (50% em features_ca → 1 vizinho compartilha
 # metade das amostras). purge >= overlap_janelas garante fronteira limpa.
 PURGA_PADRAO = 2
+TRAIN_RATIO_PADRAO = 0.60
+CALIB_RATIO_PADRAO = 0.20
+TEST_RATIO_PADRAO = 0.20
 
 
 def split_temporal_com_purga(
     n_janelas: int,
-    train_ratio: float = 0.60,
-    val_ratio: float = 0.20,
-    test_ratio: float = 0.20,
+    train_ratio: float = TRAIN_RATIO_PADRAO,
+    val_ratio: float = CALIB_RATIO_PADRAO,
+    test_ratio: float = TEST_RATIO_PADRAO,
     purge_janelas: int = PURGA_PADRAO,
 ) -> dict:
     """
@@ -104,6 +107,17 @@ def split_temporal_com_purga(
         "ratios": {"train": train_ratio, "val": val_ratio, "test": test_ratio},
         "n_janelas": n_janelas,
     }
+
+
+def split_padrao_paderborn(n_janelas: int) -> dict:
+    """Split canonico usado por treino, calibracao e avaliacao do pipeline CA."""
+    return split_temporal_com_purga(
+        n_janelas=n_janelas,
+        train_ratio=TRAIN_RATIO_PADRAO,
+        val_ratio=CALIB_RATIO_PADRAO,
+        test_ratio=TEST_RATIO_PADRAO,
+        purge_janelas=PURGA_PADRAO,
+    )
 
 
 def split_treino_val(n_janelas: int, val_frac: float = 0.2,

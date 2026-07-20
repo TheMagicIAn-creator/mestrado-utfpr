@@ -1,0 +1,629 @@
+{
+  "evidence_level": "E2",
+  "evidence_note": "Falhas sintéticas orientadas pelo FMEA (ground truth para validar o detector). Não é validação experimental externa (E3). A injeção de ruído do sensor é um PROXY e exige calibração física.",
+  "threshold_method": "p99",
+  "threshold_source": "bloco_calibracao_temporal",
+  "limiar": 2.5454330444335938,
+  "baseline_mean": 0.5021786750717596,
+  "baseline_std": 0.9813460718110855,
+  "protocolo_avaliacao": {
+    "protocolo": "holdout_temporal_60_20_20_com_purga",
+    "split_limites": {
+      "treino": [
+        0,
+        274
+      ],
+      "val": [
+        276,
+        367
+      ],
+      "teste": [
+        369,
+        457
+      ]
+    },
+    "purga_janelas": 2,
+    "sem_sobreposicao": true,
+    "n_janelas_disponiveis": 44,
+    "n_janelas_usadas": 44,
+    "indices_features": [
+      369,
+      371,
+      373,
+      375,
+      377,
+      379,
+      381,
+      383,
+      385,
+      387,
+      389,
+      391,
+      393,
+      395,
+      397,
+      399,
+      401,
+      403,
+      405,
+      407,
+      409,
+      411,
+      413,
+      415,
+      417,
+      419,
+      421,
+      423,
+      425,
+      427,
+      429,
+      431,
+      433,
+      435,
+      437,
+      439,
+      441,
+      443,
+      445,
+      447,
+      449,
+      451,
+      453,
+      455
+    ],
+    "amostras_inicio": [
+      188928,
+      189952,
+      190976,
+      192000,
+      193024,
+      194048,
+      195072,
+      196096,
+      197120,
+      198144,
+      199168,
+      200192,
+      201216,
+      202240,
+      203264,
+      204288,
+      205312,
+      206336,
+      207360,
+      208384,
+      209408,
+      210432,
+      211456,
+      212480,
+      213504,
+      214528,
+      215552,
+      216576,
+      217600,
+      218624,
+      219648,
+      220672,
+      221696,
+      222720,
+      223744,
+      224768,
+      225792,
+      226816,
+      227840,
+      228864,
+      229888,
+      230912,
+      231936,
+      232960
+    ]
+  },
+  "alvo_smd": 0.95,
+  "smd": {
+    "contator_ac": 0.7,
+    "igbt": null,
+    "fusivel_ac": null
+  },
+  "smd_probabilistica": {
+    "contator_ac": {
+      "taxa_deteccao": {
+        "0.05": 0.022727272727272728,
+        "0.1": 0.022727272727272728,
+        "0.2": 0.045454545454545456,
+        "0.3": 0.09090909090909091,
+        "0.5": 0.6363636363636364,
+        "0.7": 0.9545454545454546,
+        "1.0": 0.9772727272727273
+      },
+      "intervalo_wilson_95": {
+        "0.05": {
+          "low": 0.004023252060053224,
+          "high": 0.11807709698213287
+        },
+        "0.1": {
+          "low": 0.004023252060053224,
+          "high": 0.11807709698213287
+        },
+        "0.2": {
+          "low": 0.012555109949594967,
+          "high": 0.15134998437629657
+        },
+        "0.3": {
+          "low": 0.03592219322731624,
+          "high": 0.21159239166598612
+        },
+        "0.5": {
+          "low": 0.4886637687904344,
+          "high": 0.762164702911798
+        },
+        "0.7": {
+          "low": 0.8486500156237035,
+          "high": 0.987444890050405
+        },
+        "1.0": {
+          "low": 0.8819229030178671,
+          "high": 0.9959767479399467
+        }
+      },
+      "smd_pontual": 0.05,
+      "smd_95": 0.7,
+      "smd_95_conservadora": null,
+      "alvo": 0.95,
+      "n_repeticoes": {
+        "0.05": 44,
+        "0.1": 44,
+        "0.2": 44,
+        "0.3": 44,
+        "0.5": 44,
+        "0.7": 44,
+        "1.0": 44
+      }
+    },
+    "igbt": {
+      "taxa_deteccao": {
+        "0.05": 0.022727272727272728,
+        "0.1": 0.022727272727272728,
+        "0.2": 0.022727272727272728,
+        "0.3": 0.022727272727272728,
+        "0.5": 0.022727272727272728,
+        "0.7": 0.09090909090909091,
+        "1.0": 0.3409090909090909
+      },
+      "intervalo_wilson_95": {
+        "0.05": {
+          "low": 0.004023252060053224,
+          "high": 0.11807709698213287
+        },
+        "0.1": {
+          "low": 0.004023252060053224,
+          "high": 0.11807709698213287
+        },
+        "0.2": {
+          "low": 0.004023252060053224,
+          "high": 0.11807709698213287
+        },
+        "0.3": {
+          "low": 0.004023252060053224,
+          "high": 0.11807709698213287
+        },
+        "0.5": {
+          "low": 0.004023252060053224,
+          "high": 0.11807709698213287
+        },
+        "0.7": {
+          "low": 0.03592219322731624,
+          "high": 0.21159239166598612
+        },
+        "1.0": {
+          "low": 0.21875819519344444,
+          "high": 0.48860858782061756
+        }
+      },
+      "smd_pontual": 0.05,
+      "smd_95": null,
+      "smd_95_conservadora": null,
+      "alvo": 0.95,
+      "n_repeticoes": {
+        "0.05": 44,
+        "0.1": 44,
+        "0.2": 44,
+        "0.3": 44,
+        "0.5": 44,
+        "0.7": 44,
+        "1.0": 44
+      }
+    },
+    "fusivel_ac": {
+      "taxa_deteccao": {
+        "0.05": 0.022727272727272728,
+        "0.1": 0.022727272727272728,
+        "0.2": 0.022727272727272728,
+        "0.3": 0.022727272727272728,
+        "0.5": 0.022727272727272728,
+        "0.7": 0.045454545454545456,
+        "1.0": 0.045454545454545456
+      },
+      "intervalo_wilson_95": {
+        "0.05": {
+          "low": 0.004023252060053224,
+          "high": 0.11807709698213287
+        },
+        "0.1": {
+          "low": 0.004023252060053224,
+          "high": 0.11807709698213287
+        },
+        "0.2": {
+          "low": 0.004023252060053224,
+          "high": 0.11807709698213287
+        },
+        "0.3": {
+          "low": 0.004023252060053224,
+          "high": 0.11807709698213287
+        },
+        "0.5": {
+          "low": 0.004023252060053224,
+          "high": 0.11807709698213287
+        },
+        "0.7": {
+          "low": 0.012555109949594967,
+          "high": 0.15134998437629657
+        },
+        "1.0": {
+          "low": 0.012555109949594967,
+          "high": 0.15134998437629657
+        }
+      },
+      "smd_pontual": 0.05,
+      "smd_95": null,
+      "smd_95_conservadora": null,
+      "alvo": 0.95,
+      "n_repeticoes": {
+        "0.05": 44,
+        "0.1": 44,
+        "0.2": 44,
+        "0.3": 44,
+        "0.5": 44,
+        "0.7": 44,
+        "1.0": 44
+      }
+    }
+  },
+  "falhas": {
+    "contator_ac": {
+      "nome": "Contator AC",
+      "componente": "Contator AC",
+      "s": 5,
+      "o": 7,
+      "d": 9,
+      "npr": 315,
+      "criticidade": 12,
+      "modo_falha": "Fuga de corrente; injeção contínua de energia ainda com a falta de energia da concessionária ou oscilação severa",
+      "efeito": "Paralisação do sistema por falha no isolamento; riscos de eletrocussão em técnicos operando na rede externa",
+      "causa": "Arco elétrico e desgaste mecânico; degradação da bobina e do isolamento",
+      "descricao": "Transiente/ruído de comutação na corrente CA",
+      "evidence_level": "E2",
+      "hipotese_fisica": "Contatos do contator CA desgastados/soldados (chattering) causam comutação deficiente, introduzindo transientes e conteúdo de alta frequência na corrente CA — modelado como ruído no sinal medido.",
+      "sinais": [
+        "i_a"
+      ],
+      "formula": "i_a += N(0, sev·σ_sinal·0,3)  (proxy do transiente de comutação)",
+      "severity_definition": "desvio do ruído ≈ sev·σ_sinal·0,3 (componente mais crítico, NPR=315)",
+      "source": "Torres (2024) TCC — Tab. 3.3 (Cristaldi et al., 2017: Contator AC = 12% dos tickets); Golnas (2012); Voss et al. (2009). S/O/D estipulados pelo pesquisador; NPR=S×O×D=315.",
+      "limitations": [
+        "RUÍDO GAUSSIANO É UM PROXY do transiente — exige CALIBRAÇÃO FÍSICA do contator real",
+        "a detectabilidade observada é E2 (sintética); o índice D=9 da FMECA refere-se à detecção EM CAMPO, não à do Autoencoder (ver docs/fmeca.md)"
+      ],
+      "resultados": {
+        "0.05": {
+          "erro": 0.6320292021740567,
+          "erro_mediano": 0.36959460377693176,
+          "erro_q25": 0.35140982270240784,
+          "erro_q75": 0.42158230394124985,
+          "detectado": false,
+          "margem": 0.14519910652734275,
+          "taxa_deteccao": 0.022727272727272728,
+          "taxa_ci_low": 0.004023252060053224,
+          "taxa_ci_high": 0.11807709698213287,
+          "n": 44
+        },
+        "0.1": {
+          "erro": 0.856735882433978,
+          "erro_mediano": 0.6271337568759918,
+          "erro_q25": 0.595281258225441,
+          "erro_q75": 0.6849090903997421,
+          "detectado": false,
+          "margem": 0.246376057012154,
+          "taxa_deteccao": 0.022727272727272728,
+          "taxa_ci_low": 0.004023252060053224,
+          "taxa_ci_high": 0.11807709698213287,
+          "n": 44
+        },
+        "0.2": {
+          "erro": 1.2747329080646688,
+          "erro_mediano": 1.0729872584342957,
+          "erro_q25": 1.0193316042423248,
+          "erro_q75": 1.144076645374298,
+          "detectado": false,
+          "margem": 0.4215342692987846,
+          "taxa_deteccao": 0.045454545454545456,
+          "taxa_ci_low": 0.012555109949594967,
+          "taxa_ci_high": 0.15134998437629657,
+          "n": 44
+        },
+        "0.3": {
+          "erro": 1.7931252257390455,
+          "erro_mediano": 1.5320518612861633,
+          "erro_q25": 1.3829664587974548,
+          "erro_q75": 1.8411709368228912,
+          "detectado": false,
+          "margem": 0.6018826009336551,
+          "taxa_deteccao": 0.09090909090909091,
+          "taxa_ci_low": 0.03592219322731624,
+          "taxa_ci_high": 0.21159239166598612,
+          "n": 44
+        },
+        "0.5": {
+          "erro": 4.4479580061002215,
+          "erro_mediano": 3.463833451271057,
+          "erro_q25": 2.379254639148712,
+          "erro_q75": 5.025080919265747,
+          "detectado": false,
+          "margem": 1.3608032074722376,
+          "taxa_deteccao": 0.6363636363636364,
+          "taxa_ci_low": 0.4886637687904344,
+          "taxa_ci_high": 0.762164702911798,
+          "n": 44
+        },
+        "0.7": {
+          "erro": 12.442189010706814,
+          "erro_mediano": 9.453650951385498,
+          "erro_q25": 4.062572956085205,
+          "erro_q75": 13.1223783493042,
+          "detectado": true,
+          "margem": 3.7139656735654234,
+          "taxa_deteccao": 0.9545454545454546,
+          "taxa_ci_low": 0.8486500156237035,
+          "taxa_ci_high": 0.987444890050405,
+          "n": 44
+        },
+        "1.0": {
+          "erro": 46.44251652197404,
+          "erro_mediano": 29.571895599365234,
+          "erro_q25": 9.581815719604492,
+          "erro_q75": 50.45754623413086,
+          "detectado": true,
+          "margem": 11.61762854616572,
+          "taxa_deteccao": 0.9772727272727273,
+          "taxa_ci_low": 0.8819229030178671,
+          "taxa_ci_high": 0.9959767479399467,
+          "n": 44
+        }
+      }
+    },
+    "igbt": {
+      "nome": "IGBT",
+      "componente": "IGBT",
+      "s": 5,
+      "o": 6,
+      "d": 3,
+      "npr": 90,
+      "criticidade": 11,
+      "modo_falha": "Não comutação CC→CA; curto-circuito permanente entre os terminais",
+      "efeito": "Interrupção imediata no fornecimento de energia e (possível) disparo de alarme de hardware no display",
+      "causa": "Estresse termodinâmico e surtos de sobretensão",
+      "descricao": "Injeção de harmônicos 5°, 7°, 11° e 13° nas correntes CA",
+      "evidence_level": "E2",
+      "hipotese_fisica": "IGBT envelhecido (lift-off de bond wire, Vce(sat) elevado) comuta de forma imperfeita, elevando os harmônicos ímpares e o THD das correntes.",
+      "sinais": [
+        "i_a",
+        "i_b",
+        "i_c"
+      ],
+      "formula": "i += sev·(0,30·h5 + 0,20·h7 + 0,10·h11 + 0,05·h13)·amplitude",
+      "severity_definition": "fração [0..1] da amplitude harmônica injetada",
+      "source": "Torres (2024) TCC — Tab. 3.3 (IGBT = 6% dos tickets); harmônicos característicos de VSI (Francisti, 2025; Smith, 1999). S/O/D estipulados pelo pesquisador; NPR=S×O×D=90.",
+      "limitations": [
+        "amplitudes harmônicas são plausíveis, não medidas em bancada",
+        "não modela envelhecimento térmico real do IGBT"
+      ],
+      "resultados": {
+        "0.05": {
+          "erro": 0.49320456554943864,
+          "erro_mediano": 0.22302491962909698,
+          "erro_q25": 0.19276970997452736,
+          "erro_q75": 0.24937545508146286,
+          "detectado": false,
+          "margem": 0.0876176728029883,
+          "taxa_deteccao": 0.022727272727272728,
+          "taxa_ci_low": 0.004023252060053224,
+          "taxa_ci_high": 0.11807709698213287,
+          "n": 44
+        },
+        "0.1": {
+          "erro": 0.48717436600815167,
+          "erro_mediano": 0.21622014045715332,
+          "erro_q25": 0.1862010695040226,
+          "erro_q75": 0.25852517038583755,
+          "detectado": false,
+          "margem": 0.0849443441185727,
+          "taxa_deteccao": 0.022727272727272728,
+          "taxa_ci_low": 0.004023252060053224,
+          "taxa_ci_high": 0.11807709698213287,
+          "n": 44
+        },
+        "0.2": {
+          "erro": 0.500799818133766,
+          "erro_mediano": 0.23392585664987564,
+          "erro_q25": 0.17939722910523415,
+          "erro_q75": 0.33512497693300247,
+          "detectado": false,
+          "margem": 0.09190021994938331,
+          "taxa_deteccao": 0.022727272727272728,
+          "taxa_ci_low": 0.004023252060053224,
+          "taxa_ci_high": 0.11807709698213287,
+          "n": 44
+        },
+        "0.3": {
+          "erro": 0.5555084706707434,
+          "erro_mediano": 0.3109690994024277,
+          "erro_q25": 0.20091915503144264,
+          "erro_q75": 0.4447418376803398,
+          "detectado": false,
+          "margem": 0.12216746383585356,
+          "taxa_deteccao": 0.022727272727272728,
+          "taxa_ci_low": 0.004023252060053224,
+          "taxa_ci_high": 0.11807709698213287,
+          "n": 44
+        },
+        "0.5": {
+          "erro": 0.8051692443815145,
+          "erro_mediano": 0.547950029373169,
+          "erro_q25": 0.36853940784931183,
+          "erro_q75": 0.8314522504806519,
+          "detectado": false,
+          "margem": 0.2152679012993241,
+          "taxa_deteccao": 0.022727272727272728,
+          "taxa_ci_low": 0.004023252060053224,
+          "taxa_ci_high": 0.11807709698213287,
+          "n": 44
+        },
+        "0.7": {
+          "erro": 1.2432600120929154,
+          "erro_mediano": 0.8620287775993347,
+          "erro_q25": 0.5306056290864944,
+          "erro_q75": 1.4716627597808838,
+          "detectado": false,
+          "margem": 0.3386570232064981,
+          "taxa_deteccao": 0.09090909090909091,
+          "taxa_ci_low": 0.03592219322731624,
+          "taxa_ci_high": 0.21159239166598612,
+          "n": 44
+        },
+        "1.0": {
+          "erro": 2.2554700814864854,
+          "erro_mediano": 1.722900390625,
+          "erro_q25": 1.096523642539978,
+          "erro_q75": 2.894556939601898,
+          "detectado": false,
+          "margem": 0.6768594422048047,
+          "taxa_deteccao": 0.3409090909090909,
+          "taxa_ci_low": 0.21875819519344444,
+          "taxa_ci_high": 0.48860858782061756,
+          "n": 44
+        }
+      }
+    },
+    "fusivel_ac": {
+      "nome": "Fusível AC",
+      "componente": "Fusível AC",
+      "s": 5,
+      "o": 3,
+      "d": 2,
+      "npr": 30,
+      "criticidade": 8,
+      "modo_falha": "Interrupção da condução de corrente (abertura do elo fusível)",
+      "efeito": "Isolamento de uma ou mais fases da saída CA; interrupção no fornecimento de energia; desarme do inversor por desbalanceamento de fases",
+      "causa": "Fadiga térmica por ciclos de carga; surtos de rede",
+      "descricao": "Redução de amplitude de uma fase (perda parcial)",
+      "evidence_level": "E2",
+      "hipotese_fisica": "Fusível CA degradado/rompido causa perda parcial de uma fase, reduzindo a amplitude da corrente dessa fase (desbalanceamento).",
+      "sinais": [
+        "i_a"
+      ],
+      "formula": "i_a ·= (1 − sev·0,12)  (reduz amplitude da fase A; máx 12%)",
+      "severity_definition": "fração de redução da amplitude da fase A (calibrada: máx 12%)",
+      "source": "Torres (2024) TCC — Tab. 3.3 (Fusíveis AC = 4% dos tickets, 12% da energia perdida). S/O/D estipulados pelo pesquisador; NPR=S×O×D=30.",
+      "limitations": [
+        "modelo simplificado; perda de fase real pode desarmar a proteção",
+        "redução máx de 12% p/ manter a curva severidade↔detecção plausível"
+      ],
+      "resultados": {
+        "0.05": {
+          "erro": 0.5025655678050085,
+          "erro_mediano": 0.22666054964065552,
+          "erro_q25": 0.20266912505030632,
+          "erro_q75": 0.26867325603961945,
+          "detectado": false,
+          "margem": 0.08904596808638182,
+          "taxa_deteccao": 0.022727272727272728,
+          "taxa_ci_low": 0.004023252060053224,
+          "taxa_ci_high": 0.11807709698213287,
+          "n": 44
+        },
+        "0.1": {
+          "erro": 0.5039051679724996,
+          "erro_mediano": 0.22524819523096085,
+          "erro_q25": 0.20889132469892502,
+          "erro_q75": 0.26724937558174133,
+          "detectado": false,
+          "margem": 0.08849110988149475,
+          "taxa_deteccao": 0.022727272727272728,
+          "taxa_ci_low": 0.004023252060053224,
+          "taxa_ci_high": 0.11807709698213287,
+          "n": 44
+        },
+        "0.2": {
+          "erro": 0.5096848579970273,
+          "erro_mediano": 0.23179762810468674,
+          "erro_q25": 0.20287808775901794,
+          "erro_q75": 0.2743784710764885,
+          "detectado": false,
+          "margem": 0.09106412310140573,
+          "taxa_deteccao": 0.022727272727272728,
+          "taxa_ci_low": 0.004023252060053224,
+          "taxa_ci_high": 0.11807709698213287,
+          "n": 44
+        },
+        "0.3": {
+          "erro": 0.5264676954935897,
+          "erro_mediano": 0.25475189089775085,
+          "erro_q25": 0.21077369526028633,
+          "erro_q75": 0.3073406517505646,
+          "detectado": false,
+          "margem": 0.10008194537068953,
+          "taxa_deteccao": 0.022727272727272728,
+          "taxa_ci_low": 0.004023252060053224,
+          "taxa_ci_high": 0.11807709698213287,
+          "n": 44
+        },
+        "0.5": {
+          "erro": 0.6098849827593024,
+          "erro_mediano": 0.3495629280805588,
+          "erro_q25": 0.2637634128332138,
+          "erro_q75": 0.41246388107538223,
+          "detectado": false,
+          "margem": 0.13732945317300344,
+          "taxa_deteccao": 0.022727272727272728,
+          "taxa_ci_low": 0.004023252060053224,
+          "taxa_ci_high": 0.11807709698213287,
+          "n": 44
+        },
+        "0.7": {
+          "erro": 0.7661551988937638,
+          "erro_mediano": 0.5242433249950409,
+          "erro_q25": 0.387028232216835,
+          "erro_q75": 0.6021965891122818,
+          "detectado": false,
+          "margem": 0.20595447448184392,
+          "taxa_deteccao": 0.045454545454545456,
+          "taxa_ci_low": 0.012555109949594967,
+          "taxa_ci_high": 0.15134998437629657,
+          "n": 44
+        },
+        "1.0": {
+          "erro": 1.1520988670262424,
+          "erro_mediano": 0.941621869802475,
+          "erro_q25": 0.7331225425004959,
+          "erro_q75": 1.0183985531330109,
+          "detectado": false,
+          "margem": 0.36992600212432747,
+          "taxa_deteccao": 0.045454545454545456,
+          "taxa_ci_low": 0.012555109949594967,
+          "taxa_ci_high": 0.15134998437629657,
+          "n": 44
+        }
+      }
+    }
+  }
+}

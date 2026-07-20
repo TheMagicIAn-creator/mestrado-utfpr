@@ -60,7 +60,16 @@ PASTA_SESSOES      = PASTA_NOTAS / "sessoes"
 PASTA_MEMORIAS     = PASTA_NOTAS / "memorias"
 PASTA_ARQUIVO      = PASTA_NOTAS / "sessoes_arquivadas"
 PASTA_NOVOS_PDFS   = RAIZ_PROJETO / "novos_pdfs"
-PASTA_CHROMADB     = RAIZ_PROJETO / "base_conhecimento"
+PASTA_CHROMADB     = Path(
+    os.getenv("AL_IADO_CHROMADB_DIR", str(RAIZ_PROJETO / "base_conhecimento"))
+).expanduser().resolve()
+PASTA_ARTEFATOS    = RAIZ_PROJETO / "artefatos"
+ARQUIVO_INDICE_LITERATURA = Path(
+    os.getenv(
+        "AL_IADO_INDICE_LITERATURA",
+        str(PASTA_ARTEFATOS / "literatura_indexada.jsonl.gz"),
+    )
+).expanduser().resolve()
 ARQUIVO_PERFIL     = RAIZ_PROJETO / "CLAUDE.md"
 
 

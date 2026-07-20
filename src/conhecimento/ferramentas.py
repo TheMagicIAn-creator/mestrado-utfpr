@@ -19,7 +19,9 @@ from src.ml.pipeline import (
     NOMES_ETAPAS,
     ORDEM_ETAPAS_ML,
     artefatos_a_partir,
+    capacidade_recalculo_pipeline,
     estado_pipeline,
+    estado_resultados_publicados,
     executar_etapa,
     executar_pipeline_ml,
     limpar_artefatos,
@@ -651,6 +653,31 @@ def consultar_status_pipeline(progresso=None, pergunta: str = "") -> dict:
     if progresso:
         progresso("Lendo status do pipeline...")
 
+    capacidade = capacidade_recalculo_pipeline()
+    if not capacidade["disponivel"]:
+        publicados = estado_resultados_publicados()
+        linhas = [
+            "## Pipeline de ML — modo de consulta\n",
+            "O site não contém o dataset bruto de Paderborn, portanto não "
+            "executa treinamento na nuvem. Ele consulta a última execução "
+            "local publicada no repositório.\n",
+        ]
+        for key in ORDEM_ETAPAS_ML:
+            info = publicados[key]
+            marcador = "✅ disponível" if info["disponivel"] else "⬜ ausente"
+            linhas.append(f"- **{NOMES_ETAPAS[key]}**: {marcador}")
+        linhas.append(
+            "\n_Esses itens são artefatos recalculados no PC e publicados para "
+            "consulta; não representam uma nova execução no servidor._"
+        )
+        return {
+            "ok": True,
+            "etapa": "Status do pipeline",
+            "mensagem": "\n".join(linhas),
+            "imagens": [],
+            "resposta_pronta": True,
+        }
+
     estados = estado_pipeline()
     rotulo = {"ready": "✅ pronto", "stale": "⚠️ desatualizado (stale)",
               "pending": "⬜ pendente"}
@@ -788,6 +815,22 @@ def _resultado_pos_execucao(stage_key: str, pergunta: str) -> dict:
 
 
 def _rodar_stage(stage_key: str, progresso=None, pergunta: str = "") -> dict:
+    if not capacidade_recalculo_pipeline()["disponivel"]:
+        resumo = _resultado_pos_execucao(stage_key, pergunta)
+        return {
+            "ok": True,
+            "etapa": NOMES_ETAPAS[stage_key],
+            "mensagem": (
+                "## Cálculo indisponível neste ambiente\n\n"
+                "O dataset bruto de Paderborn não é publicado no Streamlit "
+                "Cloud. Por isso, o site não pode retreinar esta etapa. Abaixo "
+                "está a última execução local publicada.\n\n"
+                + resumo["mensagem"]
+            ),
+            "imagens": resumo.get("imagens", []),
+            "resposta_pronta": True,
+        }
+
     force = _deve_forcar(pergunta)
     res = executar_etapa(stage_key, force=force, progresso=progresso)
 
@@ -832,6 +875,25 @@ def rodar_weibull(progresso=None, pergunta: str = "") -> dict:
 
 
 def rodar_pipeline_completo(progresso=None, pergunta: str = "") -> dict:
+    if not capacidade_recalculo_pipeline()["disponivel"]:
+        status = consultar_status_pipeline(pergunta=pergunta)
+        return {
+            "ok": True,
+            "etapa": "Pipeline completo",
+            "mensagem": (
+                "## Cálculo indisponível neste ambiente\n\n"
+                "O pipeline pesado só pode ser recalculado no PC que contém "
+                "`dados/brutos/Inverter_Data_Set.csv`. O site está em modo de "
+                "consulta e preserva a última execução local publicada.\n\n"
+                + status["mensagem"]
+                + "\n\nConsulte uma parte por vez, por exemplo: `mostre os "
+                  "resultados de validação`, `compare os experimentos de "
+                  "anomalia` ou `interprete a análise de Weibull`."
+            ),
+            "imagens": [],
+            "resposta_pronta": True,
+        }
+
     force = _deve_forcar(pergunta)
     resultados = executar_pipeline_ml("features_ca", force=force, progresso=progresso)
     ok = all(not r.startswith("ERRO") for r in resultados)
@@ -1142,6 +1204,21 @@ def _md_experimento(res: dict) -> tuple[str, list[dict]]:
 
 def rodar_experimento_artigo(progresso=None, pergunta: str = "") -> dict:
     """Roda um ou mais experimentos por artigo e devolve a comparação."""
+    if not capacidade_recalculo_pipeline()["disponivel"]:
+        resumo = resumir_resultados(pergunta)
+        return {
+            "ok": True,
+            "etapa": "Experimentos por artigo",
+            "mensagem": (
+                "## Experimento indisponível neste ambiente\n\n"
+                "Os experimentos exigem os dados locais de Paderborn. O site "
+                "não os recalcula, mas pode consultar os resultados publicados.\n\n"
+                + resumo["mensagem"]
+            ),
+            "imagens": resumo.get("imagens", []),
+            "resposta_pronta": True,
+        }
+
     from src.ml.experimentos_artigos import catalogo_experimentos_md
     # 10.4 — isola cargas pesadas (torch) em subprocesso para
     # que um segfault/conflito de OpenMP não derrube o app. Cai para in-process

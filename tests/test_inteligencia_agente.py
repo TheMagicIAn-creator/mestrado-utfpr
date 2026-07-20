@@ -2,8 +2,8 @@
 Reforma de comportamento do agente (2026-07):
 - perguntas AUTORAIS interpretam via LLM, mesmo em ferramentas de resposta
   direta (antes o forcar_resposta_direta despejava a tabela crua);
-- gráficos ficam desacoplados dos resultados: por padrão só ficam
-  disponíveis para download; renderizam inline só sob pedido explícito.
+- gráficos ficam desacoplados: por padrão oferecem antevisão sob demanda e
+  download; renderizam inline só sob pedido explícito.
 
 CI-leve: stub de langchain_core; nada de LLM/torch reais.
 """
