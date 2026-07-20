@@ -246,7 +246,7 @@ def plotar_roc(resultados: dict, limiar: float, pasta: Path):
                     color=cores_sev[sev], linewidth=2,
                     label=f"sev={sev} (AUC={res['auc_roc']:.3f})")
 
-        npm_str = f"NPR={npr}" if npr else "D=10"
+        npm_str = f"NPR={npr}"
         ax.set_title(f"{nome}\n({npm_str})", fontsize=10)
         ax.set_xlabel("Taxa de Falso Positivo")
         ax.set_ylabel("Taxa de Verdadeiro Positivo (Recall)")
@@ -281,7 +281,7 @@ def plotar_pr(resultados: dict, pasta: Path):
             ax.plot(res["rec_arr"], res["prec_arr"],
                     color=cores_sev[sev], linewidth=2,
                     label=f"sev={sev} (AUC-PR={res['auc_pr']:.3f})")
-        npm_str = f"NPR={npr}" if npr else "D=10"
+        npm_str = f"NPR={npr}"
         ax.set_title(f"{nome}\n({npm_str})", fontsize=10)
         ax.set_xlabel("Recall")
         ax.set_ylabel("Precision")
@@ -330,7 +330,7 @@ def plotar_matrizes(resultados: dict, pasta: Path):
 
         f1  = resultados[chave]["f1"]
         auc = resultados[chave]["auc_roc"]
-        npm_str = f"NPR={falha['npr']}" if falha['npr'] else "D=10"
+        npm_str = f"NPR={falha['npr']}"
         ax.set_title(f"{falha['nome']}\n({npm_str}) | F1={f1:.3f} | AUC={auc:.3f}",
                      fontsize=9)
         ax.set_ylabel("Real")

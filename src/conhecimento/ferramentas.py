@@ -317,6 +317,15 @@ _AUTORES_EXP = {
     "francisti": "francisti",
     "ibrahim": "ibrahim",
 }
+
+# Autores CITÁVEIS na literatura indexada (superset dos de experimento):
+# usados como guarda para NÃO desviar uma pergunta autoral ("o que o Stender
+# diz...") para a ferramenta de catálogo de datasets. Stender/Ahirwar/etc.
+# não são mais experimentos executáveis, mas seguem sendo papers indexados.
+_AUTORES_CITAVEIS = set(_AUTORES_EXP) | {
+    "stender", "ahirwar", "ghoneim", "sharma", "cristaldi", "golnas",
+    "voss", "torres",
+}
 _VERBOS_RODAR_EXP = (
     "rode", "rodar", "roda", "execut", "teste", "testar", "testa",
     "treine", "treinar", "treina", "rodar os modelos",
@@ -421,7 +430,9 @@ def _quer_consultar_datasets(pergunta: str) -> bool:
     txt = _normalizar(pergunta)
     if _quer_rodar_experimento(pergunta):
         return False
-    if any(autor in txt for autor in _AUTORES_EXP):
+    # Pergunta que cita um autor da literatura ("o que o Stender diz...") é
+    # consulta bibliográfica → RAG, não catálogo de datasets.
+    if any(autor in txt for autor in _AUTORES_CITAVEIS):
         return False
     if any(t in txt for t in (
         "resultado", "resultados", "replicacao", "replicacoes",
@@ -1108,14 +1119,14 @@ def _md_experimento(res: dict) -> tuple[str, list[dict]]:
     }
     if com_falhas:
         linhas.append("\n**Detecção por família de falha (recall):**")
-        linhas.append("| Modelo | LCL (NPR 210) | Desbalanceamento (NPR 150) | Sensor |")
+        linhas.append("| Modelo | Contator AC (NPR 315) | IGBT (NPR 90) | Fusível AC (NPR 30) |")
         linhas.append("|---|---:|---:|---:|")
         for nome, det in com_falhas.items():
             def _pct(v):
                 return f"{v:.0%}" if isinstance(v, (int, float)) else "—"
             linhas.append(
-                f"| {nome} | {_pct(det.get('lcl'))} | "
-                f"{_pct(det.get('desbalanceamento'))} | {_pct(det.get('sensor'))} |")
+                f"| {nome} | {_pct(det.get('contator_ac'))} | "
+                f"{_pct(det.get('igbt'))} | {_pct(det.get('fusivel_ac'))} |")
 
     from src.core.utils import resolve_project_path
 
@@ -1132,7 +1143,7 @@ def _md_experimento(res: dict) -> tuple[str, list[dict]]:
 def rodar_experimento_artigo(progresso=None, pergunta: str = "") -> dict:
     """Roda um ou mais experimentos por artigo e devolve a comparação."""
     from src.ml.experimentos_artigos import catalogo_experimentos_md
-    # 10.4 — isola cargas pesadas (Orange/RL/torch/prophet) em subprocesso para
+    # 10.4 — isola cargas pesadas (torch) em subprocesso para
     # que um segfault/conflito de OpenMP não derrube o app. Cai para in-process
     # se o subprocesso não puder ser lançado.
     from src.ml.exec_experimento_isolado import (
@@ -1260,7 +1271,7 @@ def comparar_abordagens_ml(progresso=None, pergunta: str = "") -> dict:
         "não diagnostica falhas CA do inversor, nem transfere suas métricas ao "
         "pipeline CA.\n"
         "- Cada experimento por artigo segue o PROTOCOLO do próprio artigo "
-        "(Shewhart 3σ, contaminação a priori, p99 do treino, banda do Prophet, "
+        "(Shewhart 3σ, contaminação a priori, p99 do treino congelado, "
         "PPO em validação temporal, voto majoritário) — por isso o F1 não é "
         "comparável entre protocolos; compare métodos pelo AUC."
     )
@@ -1778,26 +1789,34 @@ Responda apenas JSON valido:
 
 
 def comentar_resultado(pergunta: str, resultado: dict, perfil: str, llm) -> str:
-    # forcar_resposta_direta: ferramenta determinística — não passa pelo LLM.
-    if resultado.get("forcar_resposta_direta"):
+    autoral = _quer_resposta_autoral(pergunta)
+    # Tabela crua (resposta direta) SÓ quando NÃO é pedido autoral. Se o
+    # Rodolfo pediu opinião/interpretação ("sua opinião", "o que isso
+    # significa"), os dados viram EVIDÊNCIA para o LLM interpretar — mesmo
+    # em ferramentas determinísticas (forcar_resposta_direta). Era esse
+    # atalho que fazia o agente "despejar a tabela" em vez de opinar.
+    if not autoral and (resultado.get("forcar_resposta_direta")
+                        or resultado.get("resposta_pronta")):
         return resultado.get("mensagem", "")
-    if resultado.get("resposta_pronta") and not _quer_resposta_autoral(pergunta):
+    if llm is None:
         return resultado.get("mensagem", "")
 
     status = "SUCESSO" if resultado.get("ok") else "FALHA"
-    prompt = f"""Voce e o Al IAdo PV, pesquisador tecnico do mestrado do Rodolfo.
-Responda em portugues brasileiro natural por padrao. Se Rodolfo perguntou claramente
-em ingles, espanhol ou frances, voce pode responder no mesmo idioma.
-Use os resultados abaixo como evidencia. Nao invente numeros.
-Nao devolva apenas a tabela: interprete, priorize, compare e diga o que isso significa para a dissertacao.
-Distinga dados locais, metodologia dos artigos e falhas sinteticas quando isso afetar a interpretacao.
+    perfil_txt = (perfil or "").strip()[:4000]
+    prompt = f"""{perfil_txt}
 
 Rodolfo pediu: "{pergunta}"
 
-Resultado tecnico ({status}):
+Resultado técnico ({status}) — use como EVIDÊNCIA, NÃO copie a tabela crua:
 {resultado.get('mensagem', 'sem detalhes')}
 
-Explique de forma natural, humana e tecnicamente precisa."""
+Responda como o Al IAdo PV, no papel de coorientador: INTERPRETE os números,
+priorize o que importa para a dissertação, aponte ressalvas (ajuste estatístico
+rejeitado, detecção nula, evidência E1/E2) e diga o que aquilo SIGNIFICA para o
+trabalho. Não invente números — cite só os que estão na evidência. Se um número
+tiver ressalva na evidência (ex.: KS rejeitado, SMD não detectada), NÃO o
+apresente como conclusivo. Português brasileiro natural, salvo se Rodolfo
+escreveu claramente em outro idioma."""
     try:
         from langchain_core.messages import HumanMessage
 

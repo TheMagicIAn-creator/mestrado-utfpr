@@ -319,7 +319,13 @@ def plotar_curvas(hist_treino: list, hist_val: list,
 def plotar_distribuicao(erros_treino: np.ndarray,
                         erros_val: np.ndarray,
                         info_limiar: dict, pasta: Path):
-    """Distribuição do erro de reconstrução + limiar de anomalia."""
+    """
+    CALIBRAÇÃO DO DETECTOR (não é análise de falha): histograma do erro de
+    reconstrução (MSE) do Autoencoder em dados SAUDÁVEIS (treino + validação),
+    usado para fixar o limiar operacional p99. Uma anomalia real cairia à
+    DIREITA do limiar; a fração da validação saudável acima do limiar é a taxa
+    de falsos positivos. Não representa nenhum componente/modo da FMECA.
+    """
     fig, ax = plt.subplots(figsize=TAM["unico"])
 
     ax.hist(erros_treino, bins=30, alpha=0.6,
@@ -328,20 +334,25 @@ def plotar_distribuicao(erros_treino: np.ndarray,
             color=PALETA[1], label="Validação (saudável)")
 
     limiar = info_limiar["limiar"]
-    ax.axvline(limiar, color="red", linewidth=2, linestyle="--",
-               label=f"Limiar operacional (p99) = {limiar:.4f}")
+    ax.axvline(limiar, color="#d03b3b", linewidth=2, linestyle="--",
+               label=f"Limiar operacional p99 = {limiar:.4f}")
 
     # μ+kσ entra apenas como REFERÊNCIA comparativa (não é o limiar em uso).
     mu3s = info_limiar.get("limiar_mu3sigma", info_limiar.get("limiar_mu3s"))
     if mu3s is not None:
-        ax.axvline(mu3s, color="gray", linewidth=1.5, linestyle=":",
+        ax.axvline(mu3s, color="#898781", linewidth=1.5, linestyle=":",
                    label=f"Referência μ+{info_limiar['k']:.0f}σ = {mu3s:.4f}")
 
-    ax.set_xlabel("Erro de Reconstrução (MSE)")
-    ax.set_ylabel("Frequência")
-    ax.set_title("Distribuição do Erro — Comportamento Saudável")
+    fp = info_limiar.get("fp_val_pct")
+    subt = "anomalias cairiam à direita do limiar"
+    if isinstance(fp, (int, float)):
+        subt += f" · FP validação = {fp:.2f}%"
+
+    ax.set_xlabel("Erro de reconstrução (MSE) — dados SAUDÁVEIS")
+    ax.set_ylabel("Frequência (nº de janelas)")
+    ax.set_title("Calibração do detector — distribuição do erro saudável\n"
+                 f"({subt})", fontsize=11)
     ax.legend()
-    ax.grid(True, alpha=0.3)
     fig.tight_layout()
     caminho = pasta / "distribuicao_erro.png"
     fig.savefig(caminho)

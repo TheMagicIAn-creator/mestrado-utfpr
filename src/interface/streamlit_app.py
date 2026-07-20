@@ -221,7 +221,7 @@ def renderizar_diagnostico(colecao, colecao_sessoes) -> None:
     except Exception as exc:  # noqa: BLE001
         st.caption(f"pipeline: {exc}")
 
-    libs = {"prophet": "Prophet", "torch": "torch"}
+    libs = {"torch": "torch"}
     marcas = []
     for mod, desc in libs.items():
         try:
@@ -585,13 +585,43 @@ def _ordem_imagem(img: dict, indice: int) -> tuple:
     return ordem_grupo, ordem, indice
 
 
+# Contador monotônico p/ chaves únicas dos download_button (Streamlit exige
+# key única por widget; monotônico garante unicidade dentro e entre reruns).
+_DL_KEY = [0]
+
+
+def _botao_download(img: dict, alvo=None) -> None:
+    """Botão de download da figura (PNG). Não renderiza a imagem, só o botão."""
+    destino = alvo if alvo is not None else st
+    p = Path(img["path"])
+    if not p.is_file():
+        return
+    try:
+        dados = p.read_bytes()
+    except OSError:
+        return
+    _DL_KEY[0] += 1
+    legenda = img.get("caption") or p.name
+    destino.download_button(
+        label=f"⬇ Baixar — {legenda}",
+        data=dados,
+        file_name=p.name,
+        mime="image/png",
+        key=f"dl_{_DL_KEY[0]}",
+        use_container_width=True,
+    )
+
+
 def _renderizar_imagem_unica(img: dict, coluna=None) -> None:
     alvo = coluna if coluna is not None else st
+    # use_container_width: a figura se ajusta à largura da tela/coluna — nunca
+    # estoura nem fica minúscula (substitui a largura fixa em px).
     alvo.image(
         img["path"],
         caption=img.get("caption", ""),
-        width=_largura_exibicao_imagem(img),
+        use_container_width=True,
     )
+    _botao_download(img, alvo)
 
 
 def _renderizar_lote_regular(lote: list[dict]) -> None:
@@ -659,8 +689,14 @@ def renderizar_imagens(imagens: list[dict]) -> None:
         return
 
     validas.sort(key=lambda img: _ordem_imagem(img, int(img.get("_idx", 0))))
+
+    # inline=True → renderiza na tela (com botão de download embaixo);
+    # inline=False → só botão de download (não ocupa a tela com a figura).
+    inline = [img for img in validas if img.get("inline", True)]
+    download_only = [img for img in validas if not img.get("inline", True)]
+
     grupos: dict[str, list[dict]] = {}
-    for img in validas:
+    for img in inline:
         grupos.setdefault(_grupo_imagem(img), []).append(img)
 
     mostrar_titulos = len(grupos) > 1
@@ -668,6 +704,14 @@ def renderizar_imagens(imagens: list[dict]) -> None:
         if mostrar_titulos:
             st.markdown(f"**{grupo}**")
         _renderizar_grupo_imagens(itens)
+
+    if download_only:
+        st.caption("📊 Gráficos disponíveis para download:")
+        for inicio in range(0, len(download_only), 2):
+            par = download_only[inicio:inicio + 2]
+            cols = st.columns(len(par), gap="small")
+            for col, img in zip(cols, par):
+                _botao_download(img, col)
 
     if invalidas:
         st.caption(

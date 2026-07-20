@@ -35,7 +35,7 @@ de que o D_novo é MEDIDO (E2), não julgado.
 ## Salvaguardas obrigatórias
 
 - O recálculo herda o nível de evidência do detector: **E2** (sintético
-  orientado pelo FMEA). Apresentar como "NPR projetado sob validação
+  orientado pela FMECA). Apresentar como "NPR projetado sob validação
   sintética", nunca como NPR de campo.
 - Falha com ajuste Weibull rejeitado (KS): usar apenas o recall/SMD na
   conversão de D; não usar MTTF/B10 rejeitados como argumento de O.

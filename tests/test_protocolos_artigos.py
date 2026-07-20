@@ -60,7 +60,7 @@ def test_injecao_perturba_somente_assinatura():
     X_anom, tipos = P.injetar_falhas_fmea(X, NOMES, rng)
 
     assert len(tipos) == len(X)
-    assert set(tipos) <= {"lcl", "desbalanceamento", "sensor"}
+    assert set(tipos) <= {"contator_ac", "igbt", "fusivel_ac"}
 
     # colunas que NENHUMA assinatura toca devem permanecer idênticas
     # (tensões u_* não são afetadas por nenhuma falha de corrente; kurtosis e
@@ -69,20 +69,20 @@ def test_injecao_perturba_somente_assinatura():
                   NOMES.index("tensao_dc_media")]
     assert np.allclose(X_anom[:, intocaveis], X[:, intocaveis])
 
-    # numa janela LCL: harmônicos sobem, rms da fase A fica intacto
-    idx_lcl = np.where(tipos == "lcl")[0]
-    assert len(idx_lcl) > 0
+    # numa janela IGBT: harmônicos sobem, rms da fase A fica intacto
+    idx_igbt = np.where(tipos == "igbt")[0]
+    assert len(idx_igbt) > 0
     j_h5 = NOMES.index("i_a_harm_5")
     j_rms = NOMES.index("i_a_rms")
-    assert np.all(X_anom[idx_lcl, j_h5] > X[idx_lcl, j_h5])
-    assert np.allclose(X_anom[idx_lcl, j_rms], X[idx_lcl, j_rms])
+    assert np.all(X_anom[idx_igbt, j_h5] > X[idx_igbt, j_h5])
+    assert np.allclose(X_anom[idx_igbt, j_rms], X[idx_igbt, j_rms])
 
-    # numa janela de desbalanceamento: fase A CAI e fases B/C COMPENSAM (sobem)
-    idx_db = np.where(tipos == "desbalanceamento")[0]
-    assert len(idx_db) > 0
+    # numa janela de Fusível AC (perda de fase): fase A CAI e B/C COMPENSAM
+    idx_fus = np.where(tipos == "fusivel_ac")[0]
+    assert len(idx_fus) > 0
     j_rms_b = NOMES.index("i_b_rms")
-    assert np.all(X_anom[idx_db, j_rms] < X[idx_db, j_rms])
-    assert np.all(X_anom[idx_db, j_rms_b] > X[idx_db, j_rms_b])
+    assert np.all(X_anom[idx_fus, j_rms] < X[idx_fus, j_rms])
+    assert np.all(X_anom[idx_fus, j_rms_b] > X[idx_fus, j_rms_b])
 
 
 def test_injecao_deterministica_com_mesma_semente():
@@ -96,11 +96,11 @@ def test_injecao_deterministica_com_mesma_semente():
 def test_deteccao_por_falha():
     y_true = [0, 0, 1, 1, 1, 1]
     y_pred = [0, 1, 1, 0, 1, 0]
-    tipos = ["normal", "normal", "lcl", "lcl", "sensor", "desbalanceamento"]
+    tipos = ["normal", "normal", "igbt", "igbt", "contator_ac", "fusivel_ac"]
     d = P.deteccao_por_falha(y_true, y_pred, tipos)
-    assert d["lcl"] == pytest.approx(0.5)
-    assert d["sensor"] == pytest.approx(1.0)
-    assert d["desbalanceamento"] == pytest.approx(0.0)
+    assert d["igbt"] == pytest.approx(0.5)
+    assert d["contator_ac"] == pytest.approx(1.0)
+    assert d["fusivel_ac"] == pytest.approx(0.0)
 
 
 # ── preparo de dados (split temporal + scaler honesto) ──────────────────────
@@ -259,3 +259,25 @@ def test_ahirwar_stender_nao_estao_no_dispatch():
     assert not hasattr(P, "protocolo_ahirwar")
     assert P.executar_protocolo("ahirwar") is None
     assert P.executar_protocolo("stender") is None
+
+
+# ── robustez: um modelo quebrado não derruba os demais ───────────────────────
+
+def test_rodar_modelo_isola_falha_de_runtime():
+    """Modelo que estoura em runtime vira indisponível; os outros seguem."""
+    saida, preds = {}, {}
+
+    def ok():
+        return {"disponivel": True, "auc": 0.7}, "y_pred_fake"
+
+    def quebra():
+        raise AttributeError("'Prophet' object has no attribute 'stan_backend'")
+
+    P._rodar_modelo("Isolation Forest", ok, saida, preds)
+    P._rodar_modelo("Facebook Prophet", quebra, saida, preds)
+
+    assert saida["Isolation Forest"]["disponivel"] is True
+    assert preds["Isolation Forest"] == "y_pred_fake"
+    assert saida["Facebook Prophet"]["disponivel"] is False
+    assert "stan_backend" in saida["Facebook Prophet"]["motivo"]
+    assert "Facebook Prophet" not in preds  # sem predição = fora do voto/ensemble

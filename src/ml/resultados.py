@@ -167,7 +167,6 @@ def _modelo_citado(txt: str, modelo: str) -> bool:
         "random forest": ("random forest", "rf", "bosque aleatorio", "foret aleatoire", "forêt aléatoire"),
         "z-score": ("z-score", "z score", "zscore"),
         "ae-lstm": ("ae-lstm", "ae lstm", "autoencoder lstm"),
-        "facebook prophet": ("facebook prophet", "prophet"),
         "hibrido": ("hibrido", "voto"),
         "svm": ("svm",),
         "knn": ("knn",),
@@ -464,9 +463,9 @@ def _resumo_injecao() -> str | None:
 def _nome_falha(chave: str) -> str:
     base = re.sub(r"_sev.*$", "", chave)
     nomes = {
-        "lcl": "Degradação Filtro LCL",
-        "desbalanceamento": "Desbalanceamento de Fase",
-        "sensor": "Falha de Sensor CA",
+        "contator_ac": "Contator AC",
+        "igbt": "IGBT",
+        "fusivel_ac": "Fusível AC",
     }
     return nomes.get(base, base)
 
@@ -554,7 +553,7 @@ def _resumo_weibull() -> str | None:
                 f"{falha.get('ressalva_ajuste') or 'KS rejeita o ajuste Weibull.'}"
             )
         linhas.append(
-            f"| {falha.get('nome', fid)} | {falha.get('npr') or 'D=10'} | "
+            f"| {falha.get('nome', fid)} | {falha.get('npr')} | "
             f"{_fmt(beta)} | {_fmt(p.get('eta'), 1)} | {_fmt(p.get('mttf'), 1)} | "
             f"{_fmt(p.get('b10'), 1)} | {ks_txt} | {taxa} |\n"
         )
@@ -657,7 +656,7 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
         linhas.append("\nSeparacao entre artigo e recalculo local:\n")
         linhas.append(
             "- **Metodologia dos artigos**: define quais familias de modelos entram "
-            "no benchmark (por exemplo, Isolation Forest, AE-LSTM, Prophet, SVM, "
+            "no benchmark (por exemplo, Isolation Forest, AE-LSTM, SVM, "
             "RNN/CNN ou hibrido). Isso e inspiracao metodologica, nao copia de "
             "metricas publicadas.\n"
         )
@@ -726,13 +725,26 @@ def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> d
             "resposta_pronta": True,
         }
 
-    imagens = imagens_relevantes(pergunta) if incluir_imagens and _quer_imagens(pergunta) else []
+    # Gráficos SEMPRE ficam disponíveis (para download), mas só são
+    # renderizados inline quando o Rodolfo pede explicitamente ("mostre os
+    # gráficos"). Antes, gerar resultados despejava todas as figuras na tela.
+    imagens = imagens_relevantes(pergunta) if incluir_imagens else []
+    mostrar_inline = _quer_imagens(pergunta)
+    for img in imagens:
+        img["inline"] = mostrar_inline
+
     mensagem = (
         "Aqui está o que já existe nos artefatos do pipeline.\n\n"
         + "\n\n".join(secoes)
     )
     if imagens:
-        mensagem += "\n\nVou exibir os gráficos relevantes logo abaixo da resposta."
+        if mostrar_inline:
+            mensagem += "\n\nGráficos relevantes logo abaixo."
+        else:
+            mensagem += (
+                f"\n\n📊 {len(imagens)} gráfico(s) disponível(is) para download "
+                'logo abaixo. Peça "mostre os gráficos" para vê-los aqui na tela.'
+            )
 
     return {
         "ok": True,

@@ -314,9 +314,17 @@ def limpar_artefatos(etapa_inicial: str) -> list[Path]:
     return removidos
 
 
+def _precisa_rodar(key: str) -> bool:
+    """True se a etapa NÃO está ready (pending OU stale) — precisa (re)rodar."""
+    try:
+        return estado_etapa_completo(key).get("estado") != "ready"
+    except Exception:
+        return etapa_pendente(key)
+
+
 def dependencias_pendentes(etapa: str) -> list[str]:
     stage = get_stage(etapa)
-    return [dep for dep in stage.depends_on if etapa_pendente(dep)]
+    return [dep for dep in stage.depends_on if _precisa_rodar(dep)]
 
 
 def executar_etapa(etapa: str,
@@ -333,15 +341,25 @@ def executar_etapa(etapa: str,
     """
     stage = get_stage(etapa)
 
+    # Só pula quando a etapa está READY (artefatos presentes E manifesto
+    # compatível: código, parâmetros e artefatos upstream inalterados). Se
+    # estiver STALE (ex.: código da injeção/validação mudou após um git pull),
+    # RE-EXECUTA — senão os artefatos/gráficos ficariam defasados. `pending`
+    # também roda. Ver src/ml/proveniencia.estado_etapa.
     if force:
         limpar_artefatos(etapa)
-    elif stage.is_complete():
-        return {
-            "ok": True,
-            "etapa": stage.label,
-            "executou": False,
-            "mensagem": f"{stage.label} ja esta pronto.",
-        }
+    else:
+        estado_atual = estado_etapa_completo(etapa).get("estado")
+        if estado_atual == "ready":
+            return {
+                "ok": True,
+                "etapa": stage.label,
+                "executou": False,
+                "mensagem": f"{stage.label} ja esta pronto.",
+            }
+        if estado_atual == "stale":
+            # limpa a etapa (e o downstream, que também precisa regenerar).
+            limpar_artefatos(etapa)
 
     pendentes = dependencias_pendentes(etapa)
     if pendentes:
@@ -359,7 +377,7 @@ def executar_etapa(etapa: str,
         for dep_key in ORDEM_ETAPAS_ML:
             if dep_key == etapa:
                 break
-            if etapa_pendente(dep_key):
+            if _precisa_rodar(dep_key):
                 if progresso:
                     progresso(f"Pré-requisito: rodando {NOMES_ETAPAS[dep_key]}...")
                 dep_stage = get_stage(dep_key)

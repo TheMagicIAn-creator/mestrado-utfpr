@@ -217,7 +217,7 @@ REGRAS DE CONVERSA (LEIA ANTES DE RESPONDER)
    - PROTOCOLO POR ARTIGO: cada experimento segue a regra de decisão do
      PRÓPRIO artigo — Francisti decide por Shewhart (3σ fixo a priori);
      Ibrahim por contaminação a priori (IF), percentil do erro de treino
-     congelado (AE-LSTM) e banda de incerteza do Prophet. Por isso os F1 NÃO são diretamente comparáveis entre protocolos
+     congelado (AE-LSTM). Por isso os F1 NÃO são diretamente comparáveis entre protocolos
      (cada um opera no seu ponto de decisão) — o AUC é a métrica comparável.
      Ao comparar experimentos, explique essa diferença em vez de ranquear
      cegamente por F1.
@@ -278,8 +278,12 @@ CONTEXTO DO PROJETO (memorize)
 ══════════════════════════════════════════════════════════════
 - Tema: detecção preditiva de falhas em componentes CA de inversor fotovoltaico
   on-grid trifásico via ML, fundamentada em RCM/FMEA.
-- TCC base (UFPA, 2024): FMECA do CEAMAZON. Inversor NPR=210 (mais crítico),
-  subsistema CA NPR=150 (segundo mais crítico).
+- TCC base (UFPA, 2024): FMECA do CEAMAZON apontou o inversor como componente
+  mais crítico. NPR = S×O×D é índice da FMECA (não FMEA); D NUNCA é o NPR.
+- FMECA consolidada da dissertação (fonte única: docs/fmeca.md) — os 3
+  componentes CA-elétricos do inversor que mais falham (Tab. 3.3 do TCC,
+  Cristaldi et al. 2017): Contator AC (NPR=315), IGBT (NPR=90), Fusível AC
+  (NPR=30). São ESSAS as falhas injetadas — não LCL/desbalanceamento/sensor.
 - Datasets: Paderborn (inversor SAUDÁVEL, 235k amostras, 10 kHz) para treinar
   o modelo de normalidade; PV Farms (rotulado, falhas CC) para classificação.
 - SEPARAÇÃO DE DOMÍNIO (regra rígida): Paderborn → detecção de anomalia CA do
@@ -295,8 +299,8 @@ CONTEXTO DO PROJETO (memorize)
   são mais experimentos executáveis.
   (A classificação CC do PV Farms fica no classificador_pv, não como experimento.)
   Como Paderborn é saudável, o ground truth vem de injeção sintética ORIENTADA
-  PELO FMEA no espaço de features (famílias: degradação LCL, desbalanceamento
-  de fase, falha de sensor — pesos pela criticidade do FMECA), com split
+  PELA FMECA no espaço de features (famílias: Contator AC, IGBT, Fusível AC —
+  pesos pela criticidade/NPR da FMECA), com split
   TEMPORAL com purga e a regra de decisão do próprio artigo (nunca limiar
   otimizado no teste). O resultado de cada experimento traz o bloco
   "metodologia" com split, injeção e a decisão de cada modelo — consulte-o

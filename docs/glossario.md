@@ -11,9 +11,10 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
 - **FMEA / FMECA**: análise de modos e efeitos de falha; a variante FMECA
   adiciona a análise de criticidade (NPR). O FMECA de referência do projeto
   é o do CEAMAZON (Torres, 2024, Apêndice E).
-- **NPR** (Número de Prioridade de Risco): S × O × D. Valores de referência
-  do projeto: inversor 210, subsistema CA 150 (fonte estática: TCC — não são
-  medições do pipeline).
+- **NPR** (Número de Prioridade de Risco): S × O × D — índice da **FMECA**
+  (nunca da FMEA; D isolado NUNCA é o NPR). FMECA aplicada do TCC (Apêndice E):
+  inversor 210, subsistema CA 150. FMECA consolidada da dissertação
+  (docs/fmeca.md, fonte única): Contator AC 315, IGBT 90, Fusível AC 30.
 - **S / O / D**: Severidade, Ocorrência, Detecção (1–10; D=10 significa
   falha muito difícil de detectar).
 - **Weibull (2 parâmetros)**: distribuição de vida com forma **beta** (β>1 →
@@ -44,22 +45,22 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
   severidade testada (achado de limitação, não erro de execução).
 - **Severidade**: fator 0–1 que escala a intensidade da falha injetada
   (grade do pipeline: 0.05–1.0 em 7 níveis).
-- **Injeção sintética orientada pelo FMEA**: perturbação apenas das
+- **Injeção sintética orientada pela FMECA**: perturbação apenas das
   grandezas que a física de cada modo de falha afeta (ver
   docs/assinaturas_fmea.md) — fornece ground truth para validar o detector.
 - **Split temporal com purga**: divisão treino/teste por blocos contíguos no
   tempo, descartando janelas na fronteira (janelas com 50% de sobreposição →
   purga de 2) para impedir vazamento temporal.
 - **Protocolo por artigo**: cada experimento usa a regra de decisão do
-  próprio paper (Shewhart 3σ; contaminação a priori + p99 + banda do
-  Prophet; voto majoritário). F1 NÃO é comparável entre protocolos; AUC é.
+  próprio paper (Francisti: Shewhart 3σ; Ibrahim: contaminação a priori +
+  p99 do treino congelado). F1 NÃO é comparável entre protocolos; AUC é.
 - **Degradação honesta**: modelo cuja dependência não está instalada aparece
   como "requer <lib>" em vez de sumir silenciosamente do resultado.
 
 ## Níveis de evidência (ver docs/evidence_levels.md)
 
 - **E0** hipótese · **E1** benchmark exploratório · **E2** validação
-  sintética orientada pelo FMEA · **E3** validação experimental externa
+  sintética orientada pela FMECA · **E3** validação experimental externa
   (ainda não realizada). Nenhum resultado E1/E2 é prova de desempenho
   industrial.
 

@@ -51,7 +51,6 @@ def checar_nucleo() -> None:
 def checar_opcionais() -> None:
     secao("Opcionais (degradação honesta)")
     mapa = {
-        "prophet": "Facebook Prophet",
         "xgboost": "XGBoost",
         "lightgbm": "LightGBM",
     }
