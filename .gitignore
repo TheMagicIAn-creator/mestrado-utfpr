@@ -37,7 +37,9 @@ venv_mestrado/
 # ========================
 # CHROMADB (memória local)
 # ========================
-base_conhecimento/
+# base_conhecimento/ agora É versionada: persiste a literatura indexada
+# no deploy em nuvem (Streamlit Cloud tem disco efêmero). Reindexações
+# locais devem ser commitadas para atualizar a nuvem.
 
 # ========================
 # LOGS
