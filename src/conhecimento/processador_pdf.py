@@ -29,7 +29,7 @@ from src.core.config import (
 )
 
 # Pasta de notas de literatura dentro do vault Obsidian
-PASTA_NOTAS_LIT = PASTA_NOTAS / "literatura"
+PASTA_NOTAS_LIT = PASTA_NOTAS / "Literatura"
 
 
 # ============================================================

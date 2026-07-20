@@ -90,3 +90,10 @@ def test_experimentos_do_claude_md_existem_no_registry():
     )
     for cortado in ("ghoneim", "sharma", "ahirwar", "stender"):
         assert cortado not in chaves, f"experimento cortado voltou: {cortado}"
+
+
+def test_obsidian_documentado_com_governanca_e_sem_status_bibliografico():
+    assert "notas/Cerebro/" in CLAUDE
+    assert "obsidian_pv" in CLAUDE
+    assert "nunca vira citação bibliográfica" in CLAUDE
+    assert "al_iado: true" in CLAUDE

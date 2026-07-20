@@ -15,3 +15,4 @@ pypdf
 pdfplumber
 watchdog
 schedule
+PyYAML

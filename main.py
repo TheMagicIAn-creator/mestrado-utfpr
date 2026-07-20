@@ -119,9 +119,14 @@ def main():
 
     # Inicializa agente
     try:
-        perfil, modelo_embeddings, colecao, colecao_sessoes, _ = inicializar_agente(
-            llm_externo=llm
-        )
+        (
+            perfil,
+            modelo_embeddings,
+            colecao,
+            colecao_sessoes,
+            colecao_obsidian,
+            _,
+        ) = inicializar_agente(llm_externo=llm)
     except Exception as e:
         print(f"\n❌ Erro ao inicializar: {e}")
         return
@@ -167,6 +172,7 @@ def main():
                 streaming         = True,
                 colecao_sessoes   = colecao_sessoes,
                 nome_provedor     = nome_provedor,
+                colecao_obsidian  = colecao_obsidian,
             )
 
             print("\n" + "-" * 60)
