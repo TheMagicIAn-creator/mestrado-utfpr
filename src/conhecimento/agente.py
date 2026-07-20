@@ -32,13 +32,11 @@ except Exception:
 
 from pathlib import Path
 from dotenv import load_dotenv
-from sentence_transformers import SentenceTransformer
 import chromadb
-from langchain_google_genai import ChatGoogleGenerativeAI
 from src.core.utils import parsear_nome_arquivo
 from src.core.config import (
     PASTA_CHROMADB, ARQUIVO_PERFIL, NOME_COLECAO,
-    NOME_COLECAO_SESSOES, MODELO_EMBEDDINGS, MODELO_GEMINI,
+    NOME_COLECAO_SESSOES, MODELO_EMBEDDINGS,
     N_RESULTADOS,
 )
 from langchain_core.messages import HumanMessage
@@ -359,6 +357,8 @@ def inicializar_agente(llm_externo=None):
     perfil = carregar_perfil()
 
     print("\n🔄 Carregando modelo de embeddings...")
+    from sentence_transformers import SentenceTransformer
+
     modelo_embeddings = SentenceTransformer(MODELO_EMBEDDINGS)
     print("   ✅ Modelo de embeddings pronto!")
 
@@ -391,15 +391,9 @@ def inicializar_agente(llm_externo=None):
         print("\n🤖 LLM externo recebido!")
     else:
         print("\n🤖 Inicializando Gemini (padrão)...")
-        api_key = os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            raise ValueError("GOOGLE_API_KEY não encontrada no .env")
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        llm = ChatGoogleGenerativeAI(
-            model          = MODELO_GEMINI,
-            google_api_key = api_key,
-            temperature    = 0.3
-        )
+        from src.conhecimento.provedores import inicializar_provedor
+
+        llm, _ = inicializar_provedor("1")
         print("   ✅ Gemini pronto!")
 
     print("\n" + "=" * 60)
@@ -1538,11 +1532,15 @@ def _busca_hibrida(
     # Busca semântica para cada variação da query
     n_por_variacao = max(10, n_pool // max(len(variacoes), 1))
 
-    for variacao in variacoes:
+    try:
+        vetores_semanticos = modelo_embeddings.encode(variacoes).tolist()
+    except Exception:
+        vetores_semanticos = []
+
+    for variacao, vetor in zip(variacoes, vetores_semanticos):
         try:
-            vetor      = modelo_embeddings.encode([variacao]).tolist()
             resultados = colecao.query(
-                query_embeddings = vetor,
+                query_embeddings = [vetor],
                 n_results        = min(n_por_variacao, 50)
             )
             docs  = resultados.get("documents", [[]])[0]

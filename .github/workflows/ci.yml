@@ -63,6 +63,8 @@ jobs:
             tests/test_classificador_infer.py \
             tests/test_classificador_tools.py \
             tests/test_retrieval_metrics.py \
+            tests/test_embeddings.py \
+            tests/test_provedores_leves.py \
             tests/test_exec_isolado.py \
             tests/test_seguranca.py \
             tests/test_protocolos_artigos.py

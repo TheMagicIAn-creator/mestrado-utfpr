@@ -2,6 +2,9 @@
 -r requirements-core.txt
 chromadb
 sentence-transformers
+onnxruntime
+tokenizers
+huggingface-hub
 langchain
 langchain-core
 langchain-google-genai
