@@ -1,0 +1,173 @@
+from __future__ import annotations
+
+from types import SimpleNamespace
+
+from src.conhecimento.memoria_persistente import MemoriaPersistente
+from src.conhecimento.multiagente import (
+    AgenteAuditorGroq,
+    criar_equipe_agentes,
+    filtrar_citacoes_auditadas,
+    RelatorioAuditoria,
+)
+
+
+class _LLMJson:
+    def __init__(self, respostas):
+        self.respostas = list(respostas)
+        self.chamadas = []
+
+    def invoke_json(self, mensagens, max_tokens=700):
+        self.chamadas.append((mensagens, max_tokens))
+        return self.respostas.pop(0)
+
+
+class _LLMGemini:
+    def invoke(self, mensagens):
+        return SimpleNamespace(content="resposta")
+
+    def stream(self, mensagens):
+        yield SimpleNamespace(content="res")
+        yield SimpleNamespace(content="posta")
+
+
+def test_groq_audita_pacote_compacto_sem_responder_pergunta(tmp_path):
+    llm = _LLMJson([{
+        "status": "com_ressalvas",
+        "restricoes": ["Falta o terceiro autor."],
+        "orientacao": "Compare somente os dois autores cobertos.",
+        "fontes_utilizaveis": ["F1", "F2"],
+    }])
+    auditor = AgenteAuditorGroq(llm, MemoriaPersistente(tmp_path / "m.json"))
+    citacoes = {f"c{i}": "Fonte " + ("x" * 1200) for i in range(12)}
+
+    resultado = auditor.auditar_evidencias("Compare os autores.", citacoes)
+
+    assert resultado.status == "com_ressalvas"
+    assert resultado.fontes_utilizaveis == ("F1", "F2")
+    prompt = llm.chamadas[0][0][0]["content"]
+    assert len(prompt) < 8000
+    assert "F8:" in prompt
+    assert "F9:" not in prompt
+
+
+def test_groq_so_avalia_memoria_com_gatilho_explicito(tmp_path):
+    llm = _LLMJson([])
+    auditor = AgenteAuditorGroq(llm, MemoriaPersistente(tmp_path / "m.json"))
+
+    resultado = auditor.aprender_da_interacao(
+        "Explique FMEA.", "FMEA e uma analise..."
+    )
+
+    assert resultado.avaliou is False
+    assert llm.chamadas == []
+
+
+def test_groq_aprova_e_persiste_preferencia_do_pesquisador(tmp_path):
+    llm = _LLMJson([{
+        "salvar": True,
+        "motivo": "Preferencia duravel.",
+        "candidatos": [{
+            "tipo": "preferencia",
+            "escopo": "conversa",
+            "conteudo": "Prefere respostas objetivas em portugues.",
+            "evidencia_usuario": "Daqui em diante, prefiro respostas objetivas em portugues.",
+            "confianca": 0.96,
+        }],
+    }])
+    memoria = MemoriaPersistente(tmp_path / "m.json")
+    auditor = AgenteAuditorGroq(llm, memoria)
+
+    resultado = auditor.aprender_da_interacao(
+        "Daqui em diante, prefiro respostas objetivas em portugues.",
+        "Entendido.",
+    )
+
+    assert resultado.avaliou is True
+    assert resultado.salvas == 1
+    assert memoria.contar() == 1
+
+
+def test_gemini_recebe_memoria_validada_e_parecer_do_groq(tmp_path):
+    memoria = MemoriaPersistente(tmp_path / "m.json")
+    memoria.registrar(
+        {
+            "tipo": "preferencia",
+            "escopo": "conversa",
+            "conteudo": "Prefere respostas objetivas em portugues.",
+            "evidencia_usuario": "Prefiro respostas objetivas em portugues.",
+        },
+        origem="teste",
+        validado_por="Groq",
+        confianca=0.9,
+    )
+    groq = _LLMJson([{
+        "status": "aprovado",
+        "restricoes": [],
+        "orientacao": "Use F1.",
+        "fontes_utilizaveis": ["F1"],
+    }])
+    equipe = criar_equipe_agentes(
+        memoria=memoria,
+        llm_gemini=_LLMGemini(),
+        llm_groq=groq,
+    )
+    auditoria = equipe.auditoria.auditar_evidencias("Resposta objetiva", {"a": "Fonte"})
+    prompt = equipe.conversa.contextualizar_prompt(
+        "PROMPT BASE", "Resposta objetiva", auditoria
+    )
+
+    assert "MEMORIA VALIDADA ENTRE SESSOES" in prompt
+    assert "Prefere respostas objetivas" in prompt
+    assert "PARECER DO AUDITOR" in prompt
+    assert "Status da auditoria: aprovado" in prompt
+
+
+def test_rodape_mantem_apenas_fontes_aprovadas_pelo_auditor():
+    citacoes = {"a": "Stender", "b": "Francisti", "c": "Torres"}
+    auditoria = RelatorioAuditoria(
+        status="aprovado",
+        fontes_utilizaveis=("F1", "F3"),
+    )
+
+    assert filtrar_citacoes_auditadas(citacoes, auditoria) == {
+        "a": "Stender",
+        "c": "Torres",
+    }
+
+
+def test_correcao_pode_superar_memoria_anterior(tmp_path):
+    memoria = MemoriaPersistente(tmp_path / "m.json")
+    anterior = memoria.registrar(
+        {
+            "tipo": "preferencia",
+            "escopo": "conversa",
+            "conteudo": "Prefere respostas curtas em portugues.",
+            "evidencia_usuario": "Prefiro respostas curtas em portugues.",
+        },
+        origem="teste",
+        validado_por="Groq",
+        confianca=0.9,
+    ).item
+    llm = _LLMJson([{
+        "salvar": True,
+        "motivo": "Correcao explicita.",
+        "candidatos": [{
+            "tipo": "correcao",
+            "escopo": "conversa",
+            "conteudo": "Prefere respostas detalhadas em portugues.",
+            "evidencia_usuario": "Corrigindo: agora prefiro respostas detalhadas em portugues.",
+            "substitui_id": anterior["id"],
+            "confianca": 0.95,
+        }],
+    }])
+    auditor = AgenteAuditorGroq(llm, memoria)
+
+    resultado = auditor.aprender_da_interacao(
+        "Corrigindo: agora prefiro respostas detalhadas em portugues.",
+        "Entendido.",
+    )
+
+    assert resultado.salvas == 1
+    assert memoria.contar() == 1
+    assert memoria.listar()[0]["conteudo"].startswith("Prefere respostas detalhadas")
+    assert anterior["id"] in llm.chamadas[0][0][0]["content"]

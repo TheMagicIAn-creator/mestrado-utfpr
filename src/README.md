@@ -28,15 +28,18 @@ ninguém). `conhecimento/` e `ml/` são irmãos e quase não se cruzam. A
 ## `conhecimento/` — o cérebro do agente / RAG
 | Arquivo | O que faz |
 |---|---|
-| `agente.py` | **Maior arquivo.** Pipeline RAG de 3 camadas, montagem do prompt, perfil, chamada ao LLM. |
+| `agente.py` | **Maior arquivo.** Expansão, recuperação híbrida, fusão RRF, reranking e montagem do prompt. |
 | `ferramentas.py` | **Tool calling.** Specs, roteador determinístico (linguagem→ferramenta) e a implementação de cada ferramenta do chat. |
 | `indexador.py` | Indexa PDFs e sessões no ChromaDB (chunking por página, dedupe SHA-256). |
+| `indice_lexical.py` | Índice lexical BM25 em SQLite FTS5, derivado da literatura. |
 | `indice_portatil.py` | Exporta e restaura um snapshot gzip versionável do índice literário. |
+| `multiagente.py` | Contratos da equipe: Gemini conversa/sintetiza; Groq audita evidências e memória. |
+| `memoria_persistente.py` | Memória JSON validada, atômica, deduplicada e recuperada por relevância. |
 | `processador_pdf.py` | Ingestão de PDF novo: metadados, nome padrão, tema, cópia, indexa, nota Obsidian. |
 | `consolidar_memoria.py` | Consolida sessões `.md` em memória via LLM, reindexa e arquiva. |
 | `leitor_anexos.py` | Leitura **efêmera** de anexos da conversa (PDF/CSV/XLSX/DOCX/imagem). |
 | `web_search.py` | Busca web sem API, com classificação de confiança A–D da fonte. |
-| `provedores.py` | Catálogo/factory de provedores de LLM (Gemini, Groq). |
+| `provedores.py` | Adaptadores leves dos SDKs e papéis fixos de Gemini/Groq. |
 | `retrieval_metrics.py` | Métricas puras de **recuperação** RAG (Recall@k, MRR, nDCG). |
 | `index_lock.py` | Lock in-process que serializa escritas concorrentes no ChromaDB. |
 
@@ -81,8 +84,9 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 
 **1. Pergunta no chat** (`streamlit_app` → `agente`/`ferramentas`):
 `ferramentas.decidir_acao` decide se é caso de **ferramenta** (rodar/consultar ML)
-ou de **RAG**. Se RAG: `agente` expande a query → busca híbrida no ChromaDB →
-reranking → resposta do LLM com citações por página.
+ou de **RAG**. Se RAG: `agente` expande a query → combina ChromaDB semântico e
+BM25 por RRF → reranking → Groq audita a cobertura → Gemini responde com
+citações por página e memória validada pertinente.
 
 **2. Experimento de ML** (`ferramentas` → `experimentos_artigos`):
 roda em subprocesso isolado; cada artigo usa seu **protocolo próprio**

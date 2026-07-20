@@ -431,13 +431,23 @@ def pedido_sem_literatura(pergunta: str) -> bool:
         "bibliography", "fuentes", "referencias", "bibliografia",
         "litterature", "littérature", "bibliographie",
     )
-    negacoes = (
+    negacoes_fortes = (
         "nao use", "nao consulte", "nao buscar", "nao busque", "nao cite",
-        "sem", "dispense", "ignore",
-        "do not use", "dont use", "without", "do not cite",
-        "no use", "no consultes", "sin", "ne pas utiliser", "sans",
+        "dispense", "ignore", "do not use", "dont use", "do not cite",
+        "no use", "no consultes", "ne pas utiliser",
     )
-    if any(n in txt for n in negacoes) and any(a in txt for a in alvos):
+    if any(n in txt for n in negacoes_fortes) and any(a in txt for a in alvos):
+        return True
+    # Preposicoes amplas so negam a literatura quando aparecem imediatamente
+    # ligadas ao alvo. "cite a fonte sem inventar" deve continuar consultando.
+    negacoes_diretas = (
+        "sem literatura", "sem fontes", "sem fonte", "sem referencias",
+        "sem artigos", "without literature", "without sources",
+        "without references", "sin literatura", "sin fuentes",
+        "sin referencias", "sans litterature", "sans sources",
+        "sans references",
+    )
+    if any(frase in txt for frase in negacoes_diretas):
         return True
     return any(t in txt for t in (
         "somente com base no projeto",
@@ -1520,14 +1530,22 @@ def _busca_hibrida(
     termos          : list,
     colecao,
     modelo_embeddings,
-    n_pool          : int = 60
+    n_pool          : int = 60,
+    indice_lexical  = None,
 ) -> list:
     """
     CAMADA 2 — Busca híbrida.
     Combina busca semântica (embeddings) com busca por palavras-chave.
     Retorna pool deduplicado de candidatos como lista de (doc, meta).
     """
-    pool = {}  # chunk_id → (documento, metadado)
+    pool = {}  # chunk_id -> (documento, metadado)
+    rrf = {}   # Reciprocal Rank Fusion entre semantica e BM25
+
+    def adicionar(chunk_id, documento, metadata, rank: int) -> None:
+        chave = str(chunk_id)
+        if chave not in pool:
+            pool[chave] = (documento, dict(metadata or {}))
+        rrf[chave] = rrf.get(chave, 0.0) + 1.0 / (60.0 + max(1, rank))
 
     # Busca semântica para cada variação da query
     n_por_variacao = max(10, n_pool // max(len(variacoes), 1))
@@ -1547,13 +1565,35 @@ def _busca_hibrida(
             metas = resultados.get("metadatas",  [[]])[0]
             ids   = resultados.get("ids",        [[]])[0]
 
-            for id_, doc, meta in zip(ids, docs, metas):
-                if id_ not in pool:
-                    pool[id_] = (doc, meta)
+            for rank, (id_, doc, meta) in enumerate(zip(ids, docs, metas), 1):
+                adicionar(id_, doc, meta, rank)
         except Exception:
             continue
 
-    # Busca por palavras-chave (keyword search).
+    # O BM25 forma uma segunda lista de candidatos. A RRF combina posicoes
+    # sem comparar diretamente distancia vetorial e score lexical.
+    indice_disponivel = bool(
+        indice_lexical is not None
+        and getattr(indice_lexical, "disponivel", False)
+    )
+    if indice_disponivel:
+        try:
+            resultados_lexicais = indice_lexical.buscar(
+                variacoes,
+                termos=termos,
+                limite=max(n_pool, 60),
+            )
+            for item in resultados_lexicais:
+                adicionar(
+                    item.chunk_id,
+                    item.documento,
+                    item.metadata,
+                    item.rank,
+                )
+        except Exception:
+            indice_disponivel = False
+
+    # Fallback de busca por palavras-chave quando SQLite FTS5 nao existe.
     # IMPORTANTE: ChromaDB where_document $contains e CASE-SENSITIVE. Como
     # os tokens vem normalizados em minusculas mas o texto dos PDFs tem
     # autores/siglas em title-case ('Karim', 'NASA', 'Torres'), tentamos
@@ -1563,23 +1603,26 @@ def _busca_hibrida(
         if not termo or len(termo) < 2:
             continue
 
-        variantes = {termo, termo.title(), termo.upper(), termo.capitalize()}
-        for variante in variantes:
-            try:
-                resultados = colecao.get(
-                    where_document = {"$contains": variante},
-                    include        = ["documents", "metadatas"],
-                    limit          = 60,
-                )
-                docs  = resultados.get("documents", [])
-                metas = resultados.get("metadatas", [])
-                ids   = resultados.get("ids",       [])
+        # Fallback para instalacoes de SQLite sem FTS5.
+        if not indice_disponivel:
+            variantes = {termo, termo.title(), termo.upper(), termo.capitalize()}
+            for variante in variantes:
+                try:
+                    resultados = colecao.get(
+                        where_document = {"$contains": variante},
+                        include        = ["documents", "metadatas"],
+                        limit          = 60,
+                    )
+                    docs  = resultados.get("documents", [])
+                    metas = resultados.get("metadatas", [])
+                    ids   = resultados.get("ids",       [])
 
-                for id_, doc, meta in zip(ids, docs, metas):
-                    if id_ not in pool:
-                        pool[id_] = (doc, meta)
-            except Exception:
-                continue
+                    for rank, (id_, doc, meta) in enumerate(
+                        zip(ids, docs, metas), 1
+                    ):
+                        adicionar(id_, doc, meta, rank)
+                except Exception:
+                    continue
 
         # Se o termo bate um autor conhecido, busca pelas formas canonicas
         # do metadado autor — cobre autores compostos (Puc Rio), capitalizacao
@@ -1615,13 +1658,20 @@ def _busca_hibrida(
                         docs  = resultados.get("documents", [])
                         metas = resultados.get("metadatas", [])
                         ids   = resultados.get("ids",       [])
-                        for id_, doc, meta in zip(ids, docs, metas):
-                            if id_ not in pool:
-                                pool[id_] = (doc, meta)
+                        for rank, (id_, doc, meta) in enumerate(
+                            zip(ids, docs, metas), 1
+                        ):
+                            adicionar(id_, doc, meta, rank)
                     except Exception:
                         continue
 
-    return list(pool.values())
+    saida = []
+    for chunk_id, (documento, metadata) in pool.items():
+        meta = dict(metadata)
+        meta["_rrf_score"] = float(rrf.get(chunk_id, 0.0))
+        saida.append((documento, meta))
+    saida.sort(key=lambda item: item[1].get("_rrf_score", 0.0), reverse=True)
+    return saida
 
 
 def _ajuste_textbook(arquivo: str, texto_pergunta_norm: str) -> float:
@@ -1749,6 +1799,7 @@ def _rerankar(
         arquivo_norm = _normalizar_texto(arquivo)
 
         score = 0.0
+        score += 30.0 * float(meta.get("_rrf_score", 0.0) or 0.0)
 
         for termo in termos:
             if termo in texto_norm:
@@ -1827,7 +1878,7 @@ def _rerankar(
 
 
 # ============================================================
-# BUSCA DE CONTEXTO — PIPELINE RAG 3 CAMADAS
+# BUSCA DE CONTEXTO — RECUPERACAO LOCAL EM 3 CAMADAS
 # ============================================================
 
 def buscar_contexto(
@@ -1842,9 +1893,11 @@ def buscar_contexto(
     consultar_literatura: bool = True,
     n_resultados_revisao: int | None = None,
     max_chunks_por_fonte: int = 2,
+    indice_lexical = None,
 ) -> tuple:
     """
-    Pipeline RAG de 3 camadas para literatura, mantendo memória sempre ativa.
+    Recuperacao local em 3 camadas para literatura, mantendo memoria ativa.
+    A auditoria Groq e a sintese Gemini sao aplicadas pelo invocador web.
     Quando consultar_literatura=False, pula expansão/busca/reranking da base
     bibliográfica e usa apenas a memória de sessões.
 
@@ -1873,6 +1926,7 @@ def buscar_contexto(
             colecao,
             modelo_embeddings,
             n_pool=n_pool or 30,
+            indice_lexical=indice_lexical,
         )
 
         # ── CAMADA 3 — Reranking ─────────────────────────────
@@ -2116,6 +2170,7 @@ def preparar_prompt(
     colecao_sessoes    = None,
     nome_provedor: str | None = None,
     anexos: list | None = None,
+    indice_lexical = None,
 ) -> tuple:
     """
     Prepara o prompt completo sem invocar o LLM.
@@ -2145,6 +2200,7 @@ def preparar_prompt(
         contexto_chars=orcamento["contexto_chars"],
         sessao_chars=orcamento["sessao_chars"],
         consultar_literatura=consultar_literatura,
+        indice_lexical=indice_lexical,
     )
 
     suporta_imagem = eh_multimodal(nome_provedor)

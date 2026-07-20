@@ -55,6 +55,14 @@ def test_stender_sobre_paderborn_vai_para_rag_nao_catalogo_dataset():
     )
 
 
+def test_citar_fonte_sem_inventar_nao_desliga_literatura():
+    pergunta = (
+        "O que Stender diz sobre Paderborn? Cite a fonte e a página exata, "
+        "sem inventar."
+    )
+    assert deve_consultar_literatura(pergunta)
+
+
 def test_compare_autores_com_artefatos_consulta_resultados_sem_treinar():
     pergunta = (
         "Compare Sharma, Ibrahim e Ahirwar usando somente os artefatos "

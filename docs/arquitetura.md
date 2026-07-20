@@ -10,10 +10,13 @@ src/
 │   ├── utils.py          UTF-8 seguro, caminhos relativos
 │   └── logs.py           logging estruturado (logs/al_iado_pv.log)
 ├── conhecimento/         cérebro do agente (RAG + ferramentas)
-│   ├── agente.py         pipeline RAG 3 camadas, PERFIL_COMPACTO, prompt
+│   ├── agente.py         expansão, busca híbrida, RRF, reranking e prompt
 │   ├── ferramentas.py    tool calling (specs + roteador + execução)
-│   ├── provedores.py     multi-provedor de LLM (Gemini / Groq)
+│   ├── provedores.py     adaptadores leves e papéis fixos Gemini / Groq
+│   ├── multiagente.py    coordenação: Gemini conversa, Groq audita
+│   ├── memoria_persistente.py memória validada entre sessões
 │   ├── indexador.py      indexa PDFs/tabelas no ChromaDB
+│   ├── indice_lexical.py índice BM25 em SQLite FTS5
 │   ├── indice_portatil.py exporta/importa snapshot gzip do índice
 │   ├── leitor_anexos.py  leitura de anexos (PDF/CSV/Office/imagem)
 │   └── web_search.py     busca leve + níveis de confiança A-D
@@ -42,8 +45,12 @@ src/
   watcher + orquestrador.
 - **Init nuvem:** `app.py` → restauração do snapshot portátil → encoder ONNX
   sob demanda → perfil. O deploy não inicia watcher nem orquestrador.
-- **RAG:** pergunta → expansão de query → busca híbrida → reranking → prompt
-  (com `PERFIL_COMPACTO`) → LLM.
+- **RAG:** pergunta → expansão local → embeddings + BM25 → fusão RRF →
+  reranking → auditoria compacta do Groq → prompt com memória validada →
+  síntese final do Gemini.
+- **Memória:** o Groq só avalia turnos com correção, preferência ou decisão
+  explícita. Itens aprovados são gravados atomicamente em JSON, com evidência,
+  proveniência e status; o Gemini recebe apenas os itens pertinentes.
 - **Ferramentas (chat):** `decidir_acao` roteia para pipeline ML, experimentos,
   catálogo de literatura, `consultar_datasets`, `comparar_abordagens_ml`, etc.
 - **Pipeline ML:** `features_ca → autoencoder → injecao_falhas → validacao →
@@ -61,7 +68,11 @@ src/
   usam adaptadores diretos dos SDKs oficiais; as integrações LangChain, que
   carregavam PyTorch indiretamente, não entram no processo web.
 - `AL_IADO_CHROMADB_DIR` permite redirecionar o ChromaDB sem alterar o código;
-  `AL_IADO_INDICE_LITERATURA` permite apontar para outro snapshot portátil e
+  `AL_IADO_INDICE_LITERATURA` permite apontar para outro snapshot portátil,
+  `AL_IADO_INDICE_LEXICAL` redireciona o SQLite FTS5 e
+  `AL_IADO_MEMORIA_VALIDADA` redireciona a memória estruturada. O arquivo
+  versionado é durável entre deploys; gravações feitas dentro do Community
+  Cloud duram somente até o próximo reinício/redeploy. Já
   `AL_IADO_DATASET_PADERBORN` permite simular o modo de consulta em testes.
   `AL_IADO_EMBEDDINGS_BACKEND` aceita `auto`, `onnx` ou
   `sentence-transformers`; `AL_IADO_ONNX_THREADS` limita threads do backend

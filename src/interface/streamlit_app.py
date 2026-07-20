@@ -200,13 +200,63 @@ def carregar_base():
                 print(f"[Orquestrador] Erro: {exc}")
         perfil = carregar_perfil()
 
-    return perfil, modelo, colecao, colecao_sessoes, relatorio
+        from src.conhecimento.indice_lexical import IndiceLexicalSQLite
+
+        indice_lexical = IndiceLexicalSQLite()
+        versao_lexical = f"chroma:{colecao.count()}"
+        if modo_consulta and ARQUIVO_INDICE_LITERATURA.is_file():
+            try:
+                from src.conhecimento.indice_portatil import ler_manifesto
+
+                manifesto = ler_manifesto(ARQUIVO_INDICE_LITERATURA)
+                versao_lexical = str(
+                    manifesto.get("hash_corpus_sha256") or versao_lexical
+                )
+            except Exception:
+                pass
+        elif colecao.count():
+            # No PC, o Chroma pode ter sido reindexado sem regenerar ainda o
+            # snapshot portatil. IDs amostrados detectam essa troca sem ler o
+            # corpus inteiro na inicializacao.
+            ids_amostra = []
+            for offset in sorted({0, colecao.count() // 2, colecao.count() - 1}):
+                try:
+                    lote = colecao.get(
+                        limit=1,
+                        offset=offset,
+                        include=["metadatas"],
+                    )
+                    ids_amostra.extend(lote.get("ids") or [])
+                except Exception:
+                    pass
+            versao_lexical += ":" + ":".join(map(str, ids_amostra))
+        try:
+            with st.spinner("Preparando a busca lexical BM25..."):
+                estado_lexical = indice_lexical.sincronizar(
+                    colecao,
+                    versao=versao_lexical,
+                )
+        except Exception as exc:
+            estado_lexical = {"reconstruido": False}
+            relatorio.append(
+                f"Busca lexical indisponivel; busca semantica mantida: {exc}"
+            )
+        if estado_lexical.get("reconstruido"):
+            relatorio.append(
+                "Busca lexical: "
+                f"{estado_lexical['n_chunks']} chunks preparados em SQLite FTS5."
+            )
+
+    return perfil, modelo, colecao, colecao_sessoes, indice_lexical, relatorio
 
 
 def inicializar_estado() -> None:
     defaults = {
         "mensagens": [],
         "llm": None,
+        "equipe": None,
+        "auditor": None,
+        "erro_equipe": None,
         "nome_provedor": "Nenhum",
         "caminho_sessao": None,
         "pergunta_pendente": None,
@@ -216,6 +266,37 @@ def inicializar_estado() -> None:
     for chave, valor in defaults.items():
         if chave not in st.session_state:
             st.session_state[chave] = valor
+
+
+def conectar_equipe(*, forcar: bool = False) -> bool:
+    """Ativa Gemini e Groq nos papeis fixos da arquitetura."""
+    if st.session_state.get("equipe") is not None:
+        return True
+    if st.session_state.get("erro_equipe") and not forcar:
+        return False
+    try:
+        from src.conhecimento.multiagente import criar_equipe_agentes
+
+        equipe = criar_equipe_agentes()
+        st.session_state.equipe = equipe
+        st.session_state.llm = equipe.conversa
+        st.session_state.auditor = equipe.auditoria
+        # O orcamento do prompt e a capacidade multimodal seguem o agente que
+        # produz a resposta final; o Groq recebe seu proprio pacote compacto.
+        st.session_state.nome_provedor = "Google Gemini"
+        st.session_state.multimodal = True
+        st.session_state.erro_equipe = None
+        return True
+    except Exception as exc:
+        from src.core.seguranca import mascarar_segredos
+
+        st.session_state.equipe = None
+        st.session_state.llm = None
+        st.session_state.auditor = None
+        st.session_state.nome_provedor = "Nenhum"
+        st.session_state.multimodal = False
+        st.session_state.erro_equipe = mascarar_segredos(str(exc))
+        return False
 
 
 def renderizar_pipeline_status() -> None:
@@ -319,43 +400,30 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
         st.markdown("## Al IAdo PV")
         st.caption("Assistente de pesquisa | Mestrado UTFPR")
 
-        provedor = st.session_state.get("nome_provedor", "Nenhum")
-        if provedor == "Nenhum":
-            st.warning("LLM desconectado")
-        else:
-            st.success(f"LLM ativo: {provedor}")
-
-        st.divider()
-        st.markdown("**Provedor**")
-        from src.conhecimento.provedores import PROVEDORES, inicializar_provedor
-
-        opcoes = {info["nome"]: chave for chave, info in PROVEDORES.items()}
-        escolha_label = st.selectbox(
-            "Modelo",
-            options=list(opcoes.keys()),
-            index=0,
-            label_visibility="collapsed",
-        )
-        escolha = opcoes[escolha_label]
-        st.caption(PROVEDORES[escolha]["limite"])
-        if st.button("Conectar", width="stretch", type="primary"):
-            try:
-                from src.conhecimento.provedores import eh_multimodal
-
-                llm, nome = inicializar_provedor(escolha)
-                st.session_state.llm = llm
-                st.session_state.nome_provedor = nome
-                st.session_state.multimodal = eh_multimodal(nome)
+        equipe = st.session_state.get("equipe")
+        if equipe is None:
+            st.warning("Equipe de IA desconectada")
+            erro = st.session_state.get("erro_equipe")
+            if erro:
+                st.caption(erro)
+            if st.button("Ativar equipe", width="stretch", type="primary"):
+                conectar_equipe(forcar=True)
                 st.rerun()
-            except Exception as exc:
-                st.error(f"Erro ao conectar: {exc}")
+        else:
+            st.success("Equipe de IA ativa")
+            st.caption("Gemini: conversa e sintese final")
+            st.caption("Groq: auditoria de evidencias e memoria")
 
         st.divider()
         st.markdown("**Base de conhecimento**")
         c1, c2 = st.columns(2)
         c1.metric("Literatura", colecao.count())
         c2.metric("Sessões", colecao_sessoes.count())
-        st.caption("Literatura, memória e resultados são acessados pelo chat.")
+        memorias = equipe.memoria.contar() if equipe is not None else 0
+        st.caption(
+            f"Memórias validadas: {memorias}. Literatura, memória e resultados "
+            "são acessados pelo chat."
+        )
 
         # Fallback: o caminho normal da nuvem restaura o snapshot portátil no
         # carregamento. O botão só aparece se o snapshot estiver ausente/inválido.
@@ -469,7 +537,7 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
 
 
 def renderizar_topo(relatorio: list) -> None:
-    provedor = st.session_state.get("nome_provedor", "Nenhum")
+    equipe_ativa = st.session_state.get("equipe") is not None
 
     col_titulo, col_status = st.columns([4, 1.1])
     with col_titulo:
@@ -479,10 +547,10 @@ def renderizar_topo(relatorio: list) -> None:
             "em inversores fotovoltaicos | UTFPR"
         )
     with col_status:
-        if provedor != "Nenhum":
-            st.success(f"{provedor}")
+        if equipe_ativa:
+            st.success("Gemini + Groq")
         else:
-            st.warning("Conecte um LLM")
+            st.warning("Ative a equipe")
 
     novidades = [
         str(item)
@@ -919,6 +987,7 @@ def responder_com_rag(pergunta: str,
                       modelo,
                       colecao,
                       colecao_sessoes,
+                      indice_lexical=None,
                       anexos: list | None = None) -> str:
     from src.conhecimento.agente import (
         deve_consultar_literatura,
@@ -930,7 +999,7 @@ def responder_com_rag(pergunta: str,
 
     # ── Atalho: cumprimento/casual responde local sem RAG ────
     # Nunca atalhar quando ha anexos: o pesquisador quer o arquivo lido.
-    if not anexos:
+    if not anexos and st.session_state.llm is None:
         resposta_simples = resposta_interacao_simples(pergunta)
         if resposta_simples:
             with st.chat_message("assistant", avatar="⚡"):
@@ -968,6 +1037,24 @@ def responder_com_rag(pergunta: str,
             colecao_sessoes=colecao_sessoes,
             nome_provedor=st.session_state.get("nome_provedor", ""),
             anexos=anexos,
+            indice_lexical=indice_lexical,
+        )
+
+    auditoria = None
+    auditor = st.session_state.get("auditor")
+    if consultar_literatura and auditor is not None and citacoes:
+        with st.spinner("Auditando a cobertura das evidencias..."):
+            auditoria = auditor.auditar_evidencias(pergunta, citacoes)
+        from src.conhecimento.multiagente import filtrar_citacoes_auditadas
+
+        citacoes = filtrar_citacoes_auditadas(citacoes, auditoria)
+
+    coordenador = st.session_state.llm
+    if hasattr(coordenador, "contextualizar_prompt"):
+        prompt = coordenador.contextualizar_prompt(
+            prompt,
+            pergunta,
+            auditoria,
         )
 
     # Quando ha imagem anexada E o provedor e multimodal, o conteudo vira uma
@@ -1001,7 +1088,13 @@ def responder_com_rag(pergunta: str,
     return resposta
 
 
-def renderizar_chat(perfil, modelo, colecao, colecao_sessoes) -> None:
+def renderizar_chat(
+    perfil,
+    modelo,
+    colecao,
+    colecao_sessoes,
+    indice_lexical=None,
+) -> None:
     for msg in st.session_state.mensagens:
         renderizar_mensagem(msg)
 
@@ -1036,7 +1129,13 @@ def renderizar_chat(perfil, modelo, colecao, colecao_sessoes) -> None:
     # ferramentas evita misrotear "o que tem nesse arquivo?" para o pipeline ML.
     if anexos:
         resposta = responder_com_rag(
-            pergunta, perfil, modelo, colecao, colecao_sessoes, anexos=anexos
+            pergunta,
+            perfil,
+            modelo,
+            colecao,
+            colecao_sessoes,
+            indice_lexical,
+            anexos=anexos,
         )
         imagens = []
     else:
@@ -1045,7 +1144,12 @@ def renderizar_chat(perfil, modelo, colecao, colecao_sessoes) -> None:
         )
         if not resposta:
             resposta = responder_com_rag(
-                pergunta, perfil, modelo, colecao, colecao_sessoes
+                pergunta,
+                perfil,
+                modelo,
+                colecao,
+                colecao_sessoes,
+                indice_lexical,
             )
             imagens = []
 
@@ -1067,13 +1171,29 @@ def renderizar_chat(perfil, modelo, colecao, colecao_sessoes) -> None:
         modelo,
     )
 
+    auditor = st.session_state.get("auditor")
+    if auditor is not None:
+        aprendizado = auditor.aprender_da_interacao(pergunta, resposta)
+        if aprendizado.salvas:
+            st.toast(
+                f"{aprendizado.salvas} memoria(s) validada(s) para as proximas sessoes."
+            )
+
 
 def main() -> None:
     inicializar_estado()
     st.markdown(_CSS_MINIMO, unsafe_allow_html=True)
+    conectar_equipe()
 
     try:
-        perfil, modelo, colecao, colecao_sessoes, relatorio = carregar_base()
+        (
+            perfil,
+            modelo,
+            colecao,
+            colecao_sessoes,
+            indice_lexical,
+            relatorio,
+        ) = carregar_base()
     except Exception as exc:
         st.error(f"Erro ao carregar o agente: {exc}")
         return
@@ -1081,7 +1201,13 @@ def main() -> None:
     renderizar_sidebar(modelo, colecao, colecao_sessoes)
     renderizar_topo(relatorio)
 
-    renderizar_chat(perfil, modelo, colecao, colecao_sessoes)
+    renderizar_chat(
+        perfil,
+        modelo,
+        colecao,
+        colecao_sessoes,
+        indice_lexical,
+    )
 
     entrada = st.chat_input(
         "Peça uma análise ou anexe um arquivo (PDF, CSV, imagem, código...)",

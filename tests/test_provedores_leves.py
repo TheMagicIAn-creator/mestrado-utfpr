@@ -51,3 +51,23 @@ def test_groq_remove_imagem_de_provedor_textual():
     assert llm.invoke([_Mensagem(conteudo)]).content == "resposta"
     assert next(llm.stream([_Mensagem(conteudo)])).content == "fluxo"
     assert chamadas[0]["messages"] == [{"role": "user", "content": "pergunta"}]
+
+
+def test_groq_invoke_json_limita_saida_e_exige_objeto():
+    chamadas = []
+
+    class Completions:
+        def create(self, **kwargs):
+            chamadas.append(kwargs)
+            mensagem = SimpleNamespace(content='{"status": "aprovado"}')
+            return SimpleNamespace(choices=[SimpleNamespace(message=mensagem)])
+
+    cliente = SimpleNamespace(chat=SimpleNamespace(completions=Completions()))
+    llm = GroqLeve("chave", "modelo", client=cliente)
+
+    assert llm.invoke_json([_Mensagem("audite")], max_tokens=321) == {
+        "status": "aprovado"
+    }
+    assert chamadas[0]["temperature"] == 0.0
+    assert chamadas[0]["max_completion_tokens"] == 321
+    assert chamadas[0]["response_format"] == {"type": "json_object"}
