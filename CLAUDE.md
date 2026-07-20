@@ -243,7 +243,7 @@ mestrado-utfpr/
 │   │     ferramentas.py (specs + roteador de 20 tools),
 │   │     indexador.py, indice_portatil.py, indice_lexical.py,
 │   │     provedores.py, multiagente.py, memoria_persistente.py,
-│   │     obsidian.py (notas curadas + espelho de memória), processador_pdf.py,
+│   │     obsidian.py (vault completo + memória histórica), processador_pdf.py,
 │   │     consolidar_memoria.py, web_search.py,
 │   │     leitor_anexos.py, retrieval_metrics.py,
 │   │     index_lock.py
@@ -270,10 +270,11 @@ mestrado-utfpr/
 ├── resultados/               → gráficos e relatórios
 ├── artefatos/                → snapshots portáteis para o deploy
 ├── notas/                    → vault Obsidian
-│   ├── Cerebro/              → notas curadas opt-in consultadas pelo RAG
-│   ├── Literatura/           → navegação dos PDFs; não duplica evidência
+│   ├── Cerebro/              → notas curadas e memórias validadas
+│   ├── Literatura/           → notas auxiliares pesquisáveis; não são citação
 │   ├── memorias/agentes/     → JSON auditável da memória validada
-│   └── sessoes/              → registro conversacional bruto
+│   ├── sessoes/              → registro conversacional atual pesquisável
+│   └── sessoes_arquivadas/   → histórico conversacional pesquisável
 ├── novos_pdfs/               → PDFs aguardando indexação
 ├── base_conhecimento/        → ChromaDB local (ignorado Git)
 ├── app.py                    → ponto de entrada (Streamlit)
@@ -373,14 +374,18 @@ Nunca inventar referências.
 - Cada item aprovado também recebe uma projeção Markdown em
   `notas/Cerebro/Memorias validadas/`. Essa projeção torna a memória navegável
   no grafo do Obsidian; o JSON continua sendo a fonte de verdade.
-- Notas manuais só entram na coleção `obsidian_pv` quando estão sob
-  `notas/Cerebro/` e declaram `al_iado: true`, `status: ativo`, tipo, confiança
-  e nível de evidência. Rascunhos, sessões, plugins e notas de literatura são
-  excluídos. Uma edição é sincronizada incrementalmente no próximo turno.
+- Todo Markdown útil do vault entra por padrão na coleção `obsidian_pv`, com
+  classe de origem: curada, sessão atual/arquivada, memória consolidada,
+  conceito, experimento, nota de literatura ou nota geral. Frontmatter refina
+  confiança/status; `al_iado: false` ou `privado: true` exclui deliberadamente.
+  Plugins, templates, diretórios técnicos e segredos aparentes são ignorados.
+  Arquivos novos ou editados são sincronizados no próximo turno.
 - Contexto Obsidian nunca vira citação bibliográfica. Em conflito, prevalecem
-  artefatos atuais e fontes primárias; a nota serve para conexões e decisões.
+  artefatos atuais, notas curadas ativas e fontes primárias conforme o tipo de
+  afirmação. Sessões antigas registram o que foi dito, inclusive respostas do
+  modelo possivelmente superadas; servem para memória, não para provar fatos.
 - O deploy restaura `artefatos/obsidian_indexado.jsonl.gz`, evitando carregar o
-  encoder só para preparar essas notas. Mudanças versionadas no cérebro exigem
+  encoder só para preparar essas notas. Mudanças versionadas no vault exigem
   `python scripts/reconstruir_cerebro_obsidian.py` antes do push.
 - No PC, o arquivo pode ser versionado no Git. No Streamlit Community Cloud,
   novas gravações no disco são efêmeras até o próximo redeploy; a base inicial
@@ -543,9 +548,8 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Artigo de descrição do dataset de Paderborn
   (Stender, Wallscheid & Böcker, 2020)
 - Datasets: Paderborn (inversor saudável) e PV Farms
-- Cérebro Obsidian curado (`notas/Cerebro/`): decisões, conceitos, conexões e
-  espelho legível da memória validada; é contexto interno, nunca evidência
-  bibliográfica nem substituto dos artefatos atuais
-- Memória bruta/consolidada das sessões de desenvolvimento, mantida separada
-  da coleção curada para não perpetuar decisões antigas ou conteúdo do modelo
+- Vault Obsidian completo (`notas/`): decisões, conceitos, notas de leitura,
+  sessões atuais/arquivadas, memórias consolidadas e espelho da memória
+  validada. Tudo é pesquisável com proveniência e classe de origem, mas nunca
+  vira evidência bibliográfica nem substitui artefatos atuais.
 - Tabelas estruturadas extraídas dos PDFs (pdfplumber)

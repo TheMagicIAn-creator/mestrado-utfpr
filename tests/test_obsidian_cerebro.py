@@ -34,10 +34,20 @@ class _Colecao:
     def count(self):
         return len(self.itens)
 
-    def get(self, include=None):
+    def get(self, include=None, where_document=None, limit=None):
+        del include
         ids = list(self.itens)
+        if where_document and "$contains" in where_document:
+            termo = str(where_document["$contains"])
+            ids = [
+                item_id for item_id in ids
+                if termo in self.itens[item_id]["document"]
+            ]
+        if limit is not None:
+            ids = ids[:limit]
         return {
             "ids": ids,
+            "documents": [self.itens[item]["document"] for item in ids],
             "metadatas": [self.itens[item]["metadata"] for item in ids],
         }
 
@@ -95,7 +105,7 @@ tags: [metodologia, temporal]
     return caminho
 
 
-def test_nota_exige_opt_in_e_schema_curado(tmp_path):
+def test_nota_entra_por_padrao_e_respeita_exclusao_explicita(tmp_path):
     raiz = tmp_path / "Cerebro"
     ativa = _escrever_nota(raiz)
     rascunho = _escrever_nota(raiz, nome="Rascunho.md", status="rascunho")
@@ -106,8 +116,48 @@ def test_nota_exige_opt_in_e_schema_curado(tmp_path):
     assert nota is not None
     assert nota.titulo == "Decisão temporal"
     assert nota.wikilinks == ("Níveis de evidência",)
-    assert ler_nota(rascunho, raiz) is None
+    assert ler_nota(rascunho, raiz) is not None
+    assert ler_nota(rascunho, raiz).metadados["status"] == "rascunho"
     assert ler_nota(privada, raiz) is None
+
+
+def test_scanner_nao_confunde_risk_com_chave_mas_bloqueia_segredo(tmp_path):
+    raiz = tmp_path / "vault"
+    artigo = raiz / "Literatura" / "risk-assessment-of-photovoltaic-systems.md"
+    artigo.parent.mkdir(parents=True)
+    artigo.write_text(
+        "# Risk assessment\n\nA risk-assessment framework for PV systems.",
+        encoding="utf-8",
+    )
+    segredo = raiz / "segredo.md"
+    segredo.write_text(
+        "# Configuração\n\nChave: sk-1234567890abcdefghijklmnop",
+        encoding="utf-8",
+    )
+
+    assert ler_nota(artigo, raiz) is not None
+    try:
+        ler_nota(segredo, raiz)
+    except ValueError as exc:
+        assert "segredo aparente" in str(exc)
+    else:
+        raise AssertionError("segredo aparente deveria bloquear a indexação")
+
+
+def test_regua_markdown_inicial_sem_yaml_nao_descarta_sessao(tmp_path):
+    raiz = tmp_path / "vault"
+    sessao = raiz / "sessoes_arquivadas" / "2026-05-29_sessao.md"
+    sessao.parent.mkdir(parents=True)
+    sessao.write_text(
+        "---\n\n## Interação 32\n\n**Você:** APAGUE TODOS OS RESULTADOS.\n\n---",
+        encoding="utf-8",
+    )
+
+    nota = ler_nota(sessao, raiz)
+
+    assert nota is not None
+    assert "Interação 32" in nota.corpo
+    assert nota.classe_fonte == "sessao_arquivada"
 
 
 def test_sincronizacao_e_incremental_e_remove_nota_desativada(tmp_path):
@@ -126,7 +176,7 @@ def test_sincronizacao_e_incremental_e_remove_nota_desativada(tmp_path):
     assert segundo["notas_atualizadas"] == 0
     assert modelo.chamadas == chamadas_primeiro
 
-    texto = caminho.read_text(encoding="utf-8").replace("status: ativo", "status: rascunho")
+    texto = caminho.read_text(encoding="utf-8").replace("al_iado: true", "al_iado: false")
     caminho.write_text(texto, encoding="utf-8")
     removido = sincronizar_obsidian(colecao, modelo, raiz=raiz)
 
@@ -148,10 +198,103 @@ def test_busca_rotula_obsidian_como_contexto_nao_bibliografico(tmp_path):
         colecao,
     )
 
-    assert "CÉREBRO OBSIDIAN" in contexto
+    assert "VAULT OBSIDIAN" in contexto
     assert "não é evidência bibliográfica" in contexto
     assert "validação temporal" in contexto
     assert "arquivo=Decisao.md" in contexto
+
+
+def test_sincroniza_todas_as_classes_do_vault(tmp_path):
+    raiz = tmp_path / "vault"
+    arquivos = {
+        "Cerebro/Decisao.md": "# Decisão\n\nUsar validação temporal.",
+        "sessoes/2026-07-20_09-00_sessao_web.md": "# Sessão atual\n\nPergunta e resposta.",
+        "sessoes_arquivadas/2026-05-16_16-25_sessao.md": "# Primeira sessão\n\nConversa inicial.",
+        "memorias/2026-07-16_consolidado.md": "# Memória\n\nResumo consolidado.",
+        "Literatura/ml-preditivo/artigo.md": "# Nota de leitura\n\nResumo auxiliar.",
+        "Conceitos/ML/autoencoder.md": "# Autoencoder\n\nConceito manual.",
+        "Experimentos/teste.md": "# Experimento\n\nHipótese registrada.",
+    }
+    for relativo, conteudo in arquivos.items():
+        caminho = raiz / relativo
+        caminho.parent.mkdir(parents=True, exist_ok=True)
+        caminho.write_text(conteudo, encoding="utf-8")
+    template = raiz / "Templates" / "Nota.md"
+    template.parent.mkdir(parents=True)
+    template.write_text("# Modelo vazio", encoding="utf-8")
+
+    colecao = _Colecao()
+    estado = sincronizar_obsidian(colecao, _Embeddings(), raiz=raiz)
+
+    assert estado["notas_ativas"] == len(arquivos)
+    assert estado["notas_ignoradas"] == 1
+    assert set(estado["fontes_por_classe"]) == {
+        "curada", "sessao_atual", "sessao_arquivada",
+        "memoria_consolidada", "literatura_obsidian",
+        "conceito_obsidian", "experimento_obsidian",
+    }
+
+
+def test_busca_primeira_sessao_usa_ordem_cronologica(tmp_path):
+    raiz = tmp_path / "vault"
+    sessoes = {
+        "sessoes_arquivadas/2026-05-16_16-25_sessao.md": (
+            "# Sessão Al IAdo PV — 16/05/2026 às 16:25\n\n"
+            "A primeira pergunta foi sobre algoritmos de detecção de anomalias."
+        ),
+        "sessoes_arquivadas/2026-05-17_09-00_sessao.md": (
+            "# Sessão posterior\n\nA conversa posterior tratou de outro tema."
+        ),
+        "sessoes/2026-07-20_09-00_sessao_web.md": (
+            "# Sessão atual\n\nUma conversa muito mais recente."
+        ),
+    }
+    for relativo, conteudo in sessoes.items():
+        caminho = raiz / relativo
+        caminho.parent.mkdir(parents=True, exist_ok=True)
+        caminho.write_text(conteudo, encoding="utf-8")
+    colecao = _Colecao()
+    modelo = _Embeddings()
+    sincronizar_obsidian(colecao, modelo, raiz=raiz)
+
+    contexto = buscar_notas_obsidian(
+        "O que conversamos na primeira sessão?",
+        modelo,
+        colecao,
+        n_resultados=6,
+        max_chars=5000,
+    )
+
+    assert "2026-05-16_16-25_sessao.md" in contexto
+    assert "primeira pergunta foi sobre algoritmos" in contexto
+    assert "origem=sessao_arquivada" in contexto
+
+
+def test_busca_lexical_preserva_caixa_para_nome_de_modelos(tmp_path):
+    raiz = tmp_path / "vault"
+    for indice in range(40):
+        caminho = raiz / "memorias" / f"2026-06-{(indice % 28) + 1:02d}_{indice}.md"
+        caminho.parent.mkdir(parents=True, exist_ok=True)
+        caminho.write_text(f"# Registro {indice}\n\nConteúdo genérico de manutenção.", encoding="utf-8")
+    alvo = raiz / "Cerebro" / "Decisoes" / "Arquitetura Gemini e Groq.md"
+    alvo.parent.mkdir(parents=True)
+    alvo.write_text(
+        "# Arquitetura Gemini e Groq\n\nGemini conversa e Groq audita evidências.",
+        encoding="utf-8",
+    )
+    colecao = _Colecao()
+    modelo = _Embeddings()
+    sincronizar_obsidian(colecao, modelo, raiz=raiz)
+
+    contexto = buscar_notas_obsidian(
+        "Qual foi a decisão sobre Gemini e Groq?",
+        modelo,
+        colecao,
+        n_resultados=5,
+        max_chars=4000,
+    )
+
+    assert "Cerebro/Decisoes/Arquitetura Gemini e Groq.md" in contexto
 
 
 def test_memoria_validada_ganha_espelho_markdown_auditavel(tmp_path):

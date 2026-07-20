@@ -63,20 +63,27 @@ O JSON é a memória normativa e o Markdown é uma visão derivada. Editar a not
 gerada não altera a memória aprovada; correções devem ser declaradas no chat e
 passar novamente pelo Groq.
 
-Notas manuais podem participar do cérebro quando ficam em `notas/Cerebro/` e
-usam o schema do template `notas/Templates/Nota do Al IAdo.md`. O opt-in exige:
+Todo Markdown útil do vault participa da coleção `obsidian_pv` por padrão. A
+origem é inferida pela pasta e preservada nos metadados:
 
-| Campo | Regra |
+| Pasta | Classe de memória |
 |---|---|
-| `al_iado` | `true` para permitir a leitura |
-| `status` | apenas `ativo` é indexado |
-| `tipo` | conceito, contexto, decisão, experimento, hipótese, correção ou preferência |
-| `confianca` | alta, média ou baixa |
-| `nivel_evidencia` | E0, E1, E2, E3, projeto ou usuário |
+| `Cerebro/` | nota curada ou memória validada |
+| `sessoes/` | conversa atual |
+| `sessoes_arquivadas/` | registro conversacional histórico |
+| `memorias/` | memória consolidada |
+| `Conceitos/` e `Experimentos/` | conhecimento manual do projeto |
+| `Literatura/` | nota auxiliar de leitura, nunca fonte científica |
 
-Esse conteúdo recebe coleção própria (`obsidian_pv`) e não gera citação no
-rodapé. Literatura continua vindo dos PDFs; números continuam vindo dos
-artefatos e manifestos vigentes. Após alterar notas versionadas, execute
-`python scripts/reconstruir_cerebro_obsidian.py` para atualizar o snapshot que
-alimenta o Streamlit Cloud; no PC, mudanças também são percebidas no próximo
-turno do chat.
+Frontmatter é recomendado, mas não obrigatório. `tipo`, `confianca`,
+`nivel_evidencia`, `status`, data e tags refinam o reranking. Para excluir uma
+nota deliberadamente, use `al_iado: false` ou `privado: true`; diretórios
+técnicos, templates e segredos aparentes também são ignorados.
+
+Esse conteúdo nunca gera citação no rodapé. Literatura citável continua vindo
+dos PDFs e números continuam vindo dos artefatos e manifestos vigentes. Uma
+sessão arquivada prova somente que algo foi dito naquele momento. No PC,
+qualquer arquivo novo ou alterado é percebido no próximo turno. Para atualizar
+o snapshot que alimenta o Streamlit Cloud, execute
+`python scripts/reconstruir_cerebro_obsidian.py`; uma raiz externa pode ser
+informada com `--vault` ou `AL_IADO_OBSIDIAN_VAULT_DIR`.

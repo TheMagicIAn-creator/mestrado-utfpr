@@ -35,7 +35,7 @@ ninguém). `conhecimento/` e `ml/` são irmãos e quase não se cruzam. A
 | `indice_portatil.py` | Exporta e restaura um snapshot gzip versionável do índice literário. |
 | `multiagente.py` | Contratos da equipe: Gemini conversa/sintetiza; Groq audita evidências e memória. |
 | `memoria_persistente.py` | Memória JSON validada, atômica, deduplicada e recuperada por relevância. |
-| `obsidian.py` | Coleção curada opt-in, sincronização incremental e espelho Markdown da memória validada. |
+| `obsidian.py` | Indexação do vault completo, busca híbrida histórica e espelho Markdown da memória validada. |
 | `processador_pdf.py` | Ingestão de PDF novo: metadados, nome padrão, tema, cópia, indexa, nota Obsidian. |
 | `consolidar_memoria.py` | Consolida sessões `.md` em memória via LLM, reindexa e arquiva. |
 | `leitor_anexos.py` | Leitura **efêmera** de anexos da conversa (PDF/CSV/XLSX/DOCX/imagem). |
@@ -87,7 +87,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 `ferramentas.decidir_acao` decide se é caso de **ferramenta** (rodar/consultar ML)
 ou de **RAG**. Se RAG: `agente` expande a query → combina ChromaDB semântico e
 BM25 por RRF → reranking → Groq audita a cobertura → Gemini responde com
-citações por página, notas curadas do Obsidian e memória validada pertinente.
+citações por página, memória classificada do Obsidian e memória validada pertinente.
 
 **2. Experimento de ML** (`ferramentas` → `experimentos_artigos`):
 roda em subprocesso isolado; cada artigo usa seu **protocolo próprio**

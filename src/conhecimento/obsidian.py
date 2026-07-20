@@ -1,9 +1,12 @@
-"""Integracao governada entre o Al IAdo PV e o vault Obsidian.
+"""Integração governada entre o Al IAdo PV e todo o vault Obsidian.
 
-O Obsidian e a camada navegavel do conhecimento do projeto, nao uma fonte
-cientifica por si so. Apenas notas dentro de ``notas/Cerebro`` com
-``al_iado: true`` e ``status: ativo`` entram nesta colecao. Literatura em PDF,
-sessoes brutas e memorias consolidadas antigas permanecem fora dela.
+Todo Markdown útil do vault entra na coleção ``obsidian_pv`` por padrão. Cada
+nota recebe uma classe de origem para que sessões, memórias consolidadas,
+rascunhos, notas de literatura e conhecimento curado sejam recuperáveis sem
+serem confundidos com evidência científica ou artefatos recalculáveis.
+
+Diretórios técnicos, templates, segredos aparentes e notas explicitamente
+marcadas com ``al_iado: false`` ou ``privado: true`` não são indexados.
 """
 
 from __future__ import annotations
@@ -18,6 +21,7 @@ from typing import Any
 
 from src.core.config import (
     PASTA_CEREBRO_OBSIDIAN,
+    PASTA_VAULT_OBSIDIAN,
     TAMANHO_LOTE,
 )
 
@@ -32,20 +36,33 @@ TIPOS_NOTA = {
     "correcao",
     "preferencia",
     "memoria_validada",
+    "memoria_consolidada",
+    "sessao",
+    "avaliacao",
+    "nota_literatura",
+    "nota_vault",
 }
-STATUS_INDEXADO = "ativo"
 CONFIANCAS = {"alta", "media", "baixa"}
 NIVEIS_EVIDENCIA = {"e0", "e1", "e2", "e3", "projeto", "usuario"}
+DIRETORIOS_IGNORADOS = {".obsidian", ".smart-env", "templates"}
+STATUS_PRIVADOS = {"privado", "excluido", "excluir", "ignorar"}
 
 _SEGREDOS = (
-    re.compile(r"AIza[A-Za-z0-9_-]{25,}"),
-    re.compile(r"gsk_[A-Za-z0-9_-]{15,}"),
-    re.compile(r"sk-[A-Za-z0-9_-]{15,}"),
+    re.compile(r"(?<![A-Za-z0-9])AIza[A-Za-z0-9_-]{25,}"),
+    re.compile(r"(?<![A-Za-z0-9])gsk_[A-Za-z0-9_-]{15,}"),
+    re.compile(r"(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{15,}"),
     re.compile(r"(?i)(api[_ -]?key|token|senha|password)\s*[:=]\s*\S{8,}"),
 )
 _WIKILINK = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|[^\]]+)?\]\]")
 _CABECALHO = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 _TOKEN = re.compile(r"[a-z0-9][a-z0-9_-]{2,}")
+_DATA_ARQUIVO = re.compile(r"(?<!\d)(20\d{2}-\d{2}-\d{2})(?!\d)")
+_INTENCAO_HISTORICA = re.compile(
+    r"(?i)\b(sess(?:a|ã)o|sess(?:o|õ)es|conversa(?:s)?|conversamos|"
+    r"lembr(?:a|e|ar|ança)|mem[oó]ria|hist[oó]rico|anterior(?:es)?)\b"
+)
+_PRIMEIRO_REGISTRO = re.compile(r"(?i)\b(primeir[ao]|mais antig[ao]|inicial)\b")
+_ULTIMO_REGISTRO = re.compile(r"(?i)\b([uú]ltim[ao]|mais recent[ea]|atual)\b")
 
 
 @dataclass(frozen=True)
@@ -57,6 +74,9 @@ class NotaObsidian:
     metadados: dict[str, Any]
     wikilinks: tuple[str, ...]
     hash_conteudo: str
+    classe_fonte: str
+    data_registro: str
+    arquivada: bool
 
 
 @dataclass
@@ -66,6 +86,7 @@ class RelatorioSincronizacao:
     notas_atualizadas: int = 0
     notas_removidas: int = 0
     notas_ignoradas: int = 0
+    fontes_por_classe: dict[str, int] = field(default_factory=dict)
     erros: list[str] = field(default_factory=list)
 
     def para_dict(self) -> dict:
@@ -75,6 +96,7 @@ class RelatorioSincronizacao:
             "notas_atualizadas": self.notas_atualizadas,
             "notas_removidas": self.notas_removidas,
             "notas_ignoradas": self.notas_ignoradas,
+            "fontes_por_classe": dict(self.fontes_por_classe),
             "erros": list(self.erros),
         }
 
@@ -105,12 +127,24 @@ def separar_frontmatter(texto: str) -> tuple[dict, str]:
     linhas = texto.lstrip("\ufeff").splitlines()
     if not linhas or linhas[0].strip() != "---":
         return {}, texto
+    primeira_util = next((linha.strip() for linha in linhas[1:] if linha.strip()), "")
+    if primeira_util.startswith(("#", "**", "- ", "> ")):
+        # Régua horizontal no início de um documento Markdown. Uma régua muito
+        # posterior não deve ser confundida com fechamento de frontmatter.
+        return {}, texto
     fim = next(
         (i for i, linha in enumerate(linhas[1:], 1) if linha.strip() == "---"),
         None,
     )
     if fim is None:
-        raise ValueError("frontmatter sem delimitador de fechamento")
+        # Sessões antigas às vezes começam com uma régua Markdown ``---``.
+        # Sem delimitador final não há frontmatter; preserve o texto integral.
+        cabecalho_incompleto = "\n".join(linhas[1:20])
+        if re.search(r"(?im)^\s*al_iado\s*:\s*false\s*$", cabecalho_incompleto):
+            return {"al_iado": False}, texto
+        if re.search(r"(?im)^\s*privado\s*:\s*true\s*$", cabecalho_incompleto):
+            return {"privado": True}, texto
+        return {}, texto
     return _carregar_yaml("\n".join(linhas[1:fim])), "\n".join(linhas[fim + 1:]).strip()
 
 
@@ -128,37 +162,90 @@ def _lista(valor: Any) -> list[str]:
     return [item.strip() for item in str(valor).split(",") if item.strip()]
 
 
-def ler_nota(caminho: Path, raiz: Path = PASTA_CEREBRO_OBSIDIAN) -> NotaObsidian | None:
-    """Le uma nota elegivel; retorna ``None`` quando ela nao e opt-in/ativa."""
+def _classe_da_nota(relativo: str, meta: dict[str, Any]) -> tuple[str, str, bool]:
+    partes = Path(relativo).parts
+    topo = _normalizar(partes[0]) if len(partes) > 1 else ""
+    nome = _normalizar(Path(relativo).name)
+    tipo_declarado = _normalizar(str(meta.get("tipo", ""))).replace("-", "_")
+
+    if topo == "cerebro":
+        if tipo_declarado == "memoria_validada" or "memorias validadas" in _normalizar(relativo):
+            return "memoria_validada", "memoria_validada", False
+        tipo = tipo_declarado if tipo_declarado in TIPOS_NOTA else "contexto"
+        return "curada", tipo, False
+    if topo == "sessoes_arquivadas":
+        tipo = "avaliacao" if "avaliacao" in nome else "sessao"
+        return "sessao_arquivada", tipo, True
+    if topo == "sessoes":
+        tipo = "avaliacao" if "avaliacao" in nome else "sessao"
+        return "sessao_atual", tipo, False
+    if topo == "memorias":
+        return "memoria_consolidada", "memoria_consolidada", False
+    if topo == "literatura":
+        return "literatura_obsidian", "nota_literatura", False
+    if topo == "experimentos":
+        return "experimento_obsidian", "experimento", False
+    if topo == "conceitos":
+        return "conceito_obsidian", "conceito", False
+    tipo = tipo_declarado if tipo_declarado in TIPOS_NOTA else "nota_vault"
+    return "nota_vault", tipo, False
+
+
+def _confianca_padrao(classe_fonte: str) -> str:
+    return {
+        "curada": "media",
+        "memoria_validada": "alta",
+        "memoria_consolidada": "media",
+        "experimento_obsidian": "media",
+        "conceito_obsidian": "media",
+    }.get(classe_fonte, "baixa")
+
+
+def _nivel_padrao(classe_fonte: str) -> str:
+    if classe_fonte in {"sessao_atual", "sessao_arquivada", "memoria_validada"}:
+        return "usuario"
+    return "projeto"
+
+
+def _data_nota(caminho: Path, meta: dict[str, Any]) -> str:
+    declarada = str(meta.get("data", meta.get("date", ""))).strip()
+    match = _DATA_ARQUIVO.search(declarada) or _DATA_ARQUIVO.search(caminho.name)
+    return match.group(1) if match else ""
+
+
+def ler_nota(caminho: Path, raiz: Path = PASTA_VAULT_OBSIDIAN) -> NotaObsidian | None:
+    """Lê uma nota do vault; ``None`` representa exclusão explícita ou técnica."""
     raiz = Path(raiz).resolve()
     caminho = Path(caminho)
     resolvido = caminho.resolve()
     try:
         relativo = resolvido.relative_to(raiz).as_posix()
     except ValueError as exc:
-        raise ValueError("nota fora da area curada do Obsidian") from exc
+        raise ValueError("nota fora do vault Obsidian configurado") from exc
     if caminho.is_symlink() or caminho.suffix.lower() != ".md":
+        return None
+    if any(_normalizar(parte) in DIRETORIOS_IGNORADOS for parte in Path(relativo).parts):
         return None
 
     texto = caminho.read_text(encoding="utf-8", errors="strict")
     meta, corpo = separar_frontmatter(texto)
-    if not _booleano(meta.get("al_iado")):
+    if "al_iado" in meta and not _booleano(meta.get("al_iado")):
         return None
-    status = str(meta.get("status", "")).strip().lower()
-    if status != STATUS_INDEXADO:
+    if _booleano(meta.get("privado")):
+        return None
+    status = str(meta.get("status", "ativo")).strip().lower() or "ativo"
+    if status in STATUS_PRIVADOS:
         return None
 
-    tipo = str(meta.get("tipo", "")).strip().lower()
-    if tipo not in TIPOS_NOTA:
-        raise ValueError(f"tipo de nota nao permitido: {tipo or '(vazio)'}")
-    confianca = str(meta.get("confianca", "media")).strip().lower()
+    classe_fonte, tipo, arquivada = _classe_da_nota(relativo, meta)
+    confianca = str(meta.get("confianca", _confianca_padrao(classe_fonte))).strip().lower()
     if confianca not in CONFIANCAS:
-        raise ValueError(f"confianca invalida: {confianca}")
-    nivel = str(meta.get("nivel_evidencia", "projeto")).strip().lower()
+        confianca = _confianca_padrao(classe_fonte)
+    nivel = str(meta.get("nivel_evidencia", _nivel_padrao(classe_fonte))).strip().lower()
     if nivel not in NIVEIS_EVIDENCIA:
-        raise ValueError(f"nivel_evidencia invalido: {nivel}")
+        nivel = _nivel_padrao(classe_fonte)
     if not corpo.strip():
-        raise ValueError("nota ativa sem conteudo")
+        return None
     if any(p.search(texto) for p in _SEGREDOS):
         raise ValueError("nota contem segredo aparente e nao pode ser indexada")
 
@@ -177,6 +264,9 @@ def ler_nota(caminho: Path, raiz: Path = PASTA_CEREBRO_OBSIDIAN) -> NotaObsidian
         "confianca": confianca,
         "nivel_evidencia": nivel,
         "tags": _lista(meta.get("tags")),
+        "classe_fonte": classe_fonte,
+        "data_registro": _data_nota(caminho, meta),
+        "arquivada": arquivada,
     }
     return NotaObsidian(
         caminho=resolvido,
@@ -186,6 +276,9 @@ def ler_nota(caminho: Path, raiz: Path = PASTA_CEREBRO_OBSIDIAN) -> NotaObsidian
         metadados=normalizados,
         wikilinks=links,
         hash_conteudo=hash_conteudo,
+        classe_fonte=classe_fonte,
+        data_registro=normalizados["data_registro"],
+        arquivada=arquivada,
     )
 
 
@@ -241,9 +334,15 @@ def dividir_nota(nota: NotaObsidian) -> list[tuple[str, str]]:
     fechar()
 
     chunks: list[tuple[str, str]] = []
+    if nota.classe_fonte in {"sessao_atual", "sessao_arquivada"}:
+        limite, sobreposicao = 900, 100
+    elif nota.classe_fonte in {"memoria_consolidada", "memoria_validada"}:
+        limite, sobreposicao = 1200, 120
+    else:
+        limite, sobreposicao = 1600, 160
     for cabecalho, linhas in secoes:
         texto = "\n".join(linhas).strip()
-        for parte in _quebrar_texto(texto):
+        for parte in _quebrar_texto(texto, limite=limite, sobreposicao=sobreposicao):
             chunks.append((cabecalho, parte))
     return chunks
 
@@ -270,9 +369,9 @@ def sincronizar_obsidian(
     colecao,
     modelo_embeddings,
     *,
-    raiz: Path = PASTA_CEREBRO_OBSIDIAN,
+    raiz: Path = PASTA_VAULT_OBSIDIAN,
 ) -> dict:
-    """Sincroniza incrementalmente as notas curadas com a colecao vetorial."""
+    """Sincroniza incrementalmente todos os Markdown elegíveis do vault."""
     raiz = Path(raiz)
     raiz.mkdir(parents=True, exist_ok=True)
     relatorio = RelatorioSincronizacao()
@@ -280,7 +379,11 @@ def sincronizar_obsidian(
     ativos: dict[str, tuple[NotaObsidian, list[tuple[str, str]]]] = {}
 
     for caminho in sorted(raiz.rglob("*.md")):
-        if any(parte.startswith(".") for parte in caminho.relative_to(raiz).parts):
+        partes = caminho.relative_to(raiz).parts
+        if any(
+            parte.startswith(".") or _normalizar(parte) in DIRETORIOS_IGNORADOS
+            for parte in partes
+        ):
             relatorio.notas_ignoradas += 1
             continue
         relativo = caminho.resolve().relative_to(raiz.resolve()).as_posix()
@@ -293,6 +396,9 @@ def sincronizar_obsidian(
             if not chunks:
                 raise ValueError("nota sem chunks indexaveis")
             ativos[relativo] = (nota, chunks)
+            relatorio.fontes_por_classe[nota.classe_fonte] = (
+                relatorio.fontes_por_classe.get(nota.classe_fonte, 0) + 1
+            )
         except Exception as exc:
             relatorio.erros.append(f"{relativo}: {exc}")
 
@@ -341,6 +447,10 @@ def sincronizar_obsidian(
                 "status": str(meta["status"]),
                 "confianca": str(meta["confianca"]),
                 "nivel_evidencia": str(meta["nivel_evidencia"]),
+                "classe_fonte": nota.classe_fonte,
+                "data_registro": nota.data_registro,
+                "arquivada": nota.arquivada,
+                "citavel": False,
                 "tags": ";".join(meta.get("tags", []))[:800],
                 "wikilinks": ";".join(nota.wikilinks)[:1200],
                 "conteudo_hash": nota.hash_conteudo,
@@ -375,14 +485,18 @@ def contar_notas_indexadas(colecao) -> int:
         return 0
 
 
-def hash_corpus_obsidian(raiz: Path = PASTA_CEREBRO_OBSIDIAN) -> str:
-    """Hash deterministico dos Markdown da area curada para o snapshot."""
+def hash_corpus_obsidian(raiz: Path = PASTA_VAULT_OBSIDIAN) -> str:
+    """Hash determinístico dos Markdown elegíveis do vault para o snapshot."""
     raiz = Path(raiz)
     digest = hashlib.sha256()
     if not raiz.is_dir():
         return digest.hexdigest()
     for caminho in sorted(raiz.rglob("*.md")):
-        if caminho.is_symlink():
+        partes = caminho.relative_to(raiz).parts
+        if caminho.is_symlink() or any(
+            parte.startswith(".") or _normalizar(parte) in DIRETORIOS_IGNORADOS
+            for parte in partes
+        ):
             continue
         relativo = caminho.resolve().relative_to(raiz.resolve()).as_posix()
         digest.update(relativo.encode("utf-8"))
@@ -390,6 +504,101 @@ def hash_corpus_obsidian(raiz: Path = PASTA_CEREBRO_OBSIDIAN) -> str:
         digest.update(caminho.read_bytes())
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+_STOPWORDS_BUSCA = {
+    "ainda", "algo", "aquele", "aquela", "como", "com", "das", "dos",
+    "ele", "ela", "entre", "essa", "esse", "esta", "este", "isso",
+    "mais", "para", "pela", "pelo", "por", "qual", "que", "sobre",
+    "uma", "uns", "nas", "nos", "the", "and", "from", "what", "when",
+}
+
+
+def _termos_busca(texto: str) -> list[str]:
+    return sorted(
+        (token for token in _tokens(texto) if token not in _STOPWORDS_BUSCA),
+        key=lambda token: (-len(token), token),
+    )
+
+
+def _variacoes_lexicais(texto: str) -> list[str]:
+    # Preserva caixa para o $contains case-sensitive do ChromaDB.
+    candidatos = []
+    vistos = set()
+    for termo in re.findall(r"[^\W_][\w-]{2,}", texto, flags=re.UNICODE):
+        normalizado = _normalizar(termo)
+        if normalizado in _STOPWORDS_BUSCA or normalizado in vistos:
+            continue
+        vistos.add(normalizado)
+        candidatos.append(termo)
+    candidatos.sort(key=lambda termo: (-len(_normalizar(termo)), _normalizar(termo)))
+    saida = []
+    for termo in candidatos:
+        for variante in (termo, termo.lower(), termo.capitalize(), termo.upper()):
+            if variante not in saida:
+                saida.append(variante)
+    return saida
+
+
+def _adicionar_candidato(
+    candidatos: dict[tuple[str, int], dict],
+    doc: str,
+    meta: dict | None,
+    *,
+    semantico: float = 0.0,
+    lexical: float = 0.0,
+    temporal: float = 0.0,
+) -> None:
+    meta = meta or {}
+    caminho = str(meta.get("caminho_obsidian", "?"))
+    indice = int(meta.get("chunk_index", 0) or 0)
+    chave = (caminho, indice)
+    item = candidatos.setdefault(chave, {"doc": str(doc), "meta": meta, "score": 0.0})
+    item["score"] = max(float(item["score"]), semantico + lexical + temporal)
+
+
+def _registros_historicos(colecao, pergunta: str) -> list[tuple[str, dict, float]]:
+    """Seleciona registros por data para consultas como 'primeira sessão'."""
+    if not _INTENCAO_HISTORICA.search(pergunta) and not _DATA_ARQUIVO.search(pergunta):
+        return []
+    try:
+        dados = colecao.get(include=["documents", "metadatas"])
+    except Exception:
+        return []
+    ids = dados.get("ids") or []
+    docs = dados.get("documents") or []
+    metas = dados.get("metadatas") or []
+    itens = []
+    for ordem, (doc, meta) in enumerate(zip(docs, metas)):
+        meta = meta or {}
+        classe = str(meta.get("classe_fonte", ""))
+        if classe not in {"sessao_atual", "sessao_arquivada", "memoria_consolidada"}:
+            continue
+        caminho = str(meta.get("caminho_obsidian", ids[ordem] if ordem < len(ids) else ""))
+        itens.append((caminho, int(meta.get("chunk_index", 0) or 0), str(doc), meta))
+    if not itens:
+        return []
+
+    data_pedida = _DATA_ARQUIVO.search(pergunta)
+    if data_pedida:
+        alvo = data_pedida.group(1)
+        filtrados = [item for item in itens if str(item[3].get("data_registro", "")) == alvo]
+    elif _PRIMEIRO_REGISTRO.search(pergunta):
+        sessoes = [item for item in itens if "sessao" in str(item[3].get("classe_fonte", ""))]
+        if not sessoes:
+            return []
+        primeiro = min(sessoes, key=lambda item: Path(item[0]).name)[0]
+        filtrados = [item for item in itens if item[0] == primeiro]
+    elif _ULTIMO_REGISTRO.search(pergunta):
+        sessoes = [item for item in itens if "sessao" in str(item[3].get("classe_fonte", ""))]
+        if not sessoes:
+            return []
+        ultimo = max(sessoes, key=lambda item: Path(item[0]).name)[0]
+        filtrados = [item for item in itens if item[0] == ultimo]
+    else:
+        return []
+    filtrados.sort(key=lambda item: (item[0], item[1]))
+    return [(doc, meta, 1.2) for _, _, doc, meta in filtrados]
 
 
 def buscar_notas_obsidian(
@@ -400,58 +609,104 @@ def buscar_notas_obsidian(
     n_resultados: int = 5,
     max_chars: int = 3200,
 ) -> str:
-    """Recupera notas curadas sem transforma-las em citacoes cientificas."""
+    """Busca híbrida em todo o vault, preservando classe e proveniência."""
     try:
         total = int(colecao.count())
     except Exception:
         return ""
     if total <= 0:
         return ""
+
+    candidatos: dict[tuple[str, int], dict] = {}
     vetor = modelo_embeddings.encode([pergunta])
     if hasattr(vetor, "tolist"):
         vetor = vetor.tolist()
     resultado = colecao.query(
         query_embeddings=vetor,
-        n_results=min(total, max(n_resultados * 3, n_resultados)),
+        n_results=min(total, max(n_resultados * 6, n_resultados)),
         include=["documents", "metadatas", "distances"],
     )
     docs = (resultado.get("documents") or [[]])[0]
     metas = (resultado.get("metadatas") or [[]])[0]
     distancias = (resultado.get("distances") or [[]])[0]
-    termos = _tokens(pergunta)
-    pontuados = []
     for ordem, (doc, meta) in enumerate(zip(docs, metas)):
-        meta = meta or {}
         distancia = float(distancias[ordem]) if ordem < len(distancias) else 1.0
+        _adicionar_candidato(
+            candidatos,
+            doc,
+            meta,
+            semantico=1.0 / (1.0 + max(0.0, distancia)),
+        )
+
+    # Complemento lexical: nomes, siglas e frases exatas não dependem apenas
+    # da geometria dos embeddings. Chroma limita cada busca por termo.
+    for termo in _variacoes_lexicais(pergunta)[:16]:
+        try:
+            exatos = colecao.get(
+                where_document={"$contains": termo},
+                limit=max(8, n_resultados * 4),
+                include=["documents", "metadatas"],
+            )
+        except Exception:
+            continue
+        for doc, meta in zip(exatos.get("documents") or [], exatos.get("metadatas") or []):
+            _adicionar_candidato(candidatos, doc, meta, lexical=0.72)
+
+    for doc, meta, bonus in _registros_historicos(colecao, pergunta):
+        _adicionar_candidato(candidatos, doc, meta, temporal=bonus)
+
+    termos = set(_termos_busca(pergunta))
+    historica = bool(
+        _INTENCAO_HISTORICA.search(pergunta) or _DATA_ARQUIVO.search(pergunta)
+    )
+    pontuados = []
+    for ordem, item in enumerate(candidatos.values()):
+        doc = item["doc"]
+        meta = item["meta"]
         campos = " ".join([
-            str(meta.get("titulo", "")),
-            str(meta.get("secao", "")),
-            str(meta.get("tags", "")),
-            str(meta.get("wikilinks", "")),
+            str(meta.get("titulo", "")), str(meta.get("secao", "")),
+            str(meta.get("tags", "")), str(meta.get("wikilinks", "")),
+            str(meta.get("caminho_obsidian", "")), doc,
         ])
         sobreposicao = len(termos & _tokens(campos))
         confianca = {"alta": 0.12, "media": 0.06, "baixa": 0.0}.get(
-            str(meta.get("confianca", "media")), 0.0
+            str(meta.get("confianca", "baixa")), 0.0
         )
-        score = (1.0 / (1.0 + max(0.0, distancia))) + 0.08 * sobreposicao + confianca
+        classe = str(meta.get("classe_fonte", "nota_vault"))
+        classe_bonus = {
+            "curada": 0.10,
+            "memoria_validada": 0.12,
+            "memoria_consolidada": 0.08,
+            "conceito_obsidian": 0.05,
+            "experimento_obsidian": 0.05,
+            "literatura_obsidian": -0.04,
+            "sessao_atual": 0.24 if historica else -0.08,
+            "sessao_arquivada": 0.24 if historica else -0.10,
+        }.get(classe, 0.0)
+        status_penalidade = -0.18 if str(meta.get("status", "ativo")) in {"rascunho", "superado"} else 0.0
+        score = float(item["score"]) + 0.08 * sobreposicao + confianca + classe_bonus + status_penalidade
         pontuados.append((score, -ordem, doc, meta))
     pontuados.sort(reverse=True)
 
     linhas = [
-        "\n🧠 DO CÉREBRO OBSIDIAN — NOTAS CURADAS DO PROJETO ",
-        "(contexto interno; não é evidência bibliográfica nem substitui os artefatos):\n",
+        "\n🧠 DO VAULT OBSIDIAN — MEMÓRIA PESQUISÁVEL DO PROJETO ",
+        "(contexto interno; não é evidência bibliográfica. Sessões registram falas e respostas antigas, que podem conter hipóteses ou erros já superados):\n",
     ]
     usados = sum(len(item) for item in linhas)
     por_nota: dict[str, int] = {}
     incluidos = 0
+    limite_por_nota = 5 if historica else 2
     for _, _, doc, meta in pontuados:
         caminho = str(meta.get("caminho_obsidian", "?"))
-        if por_nota.get(caminho, 0) >= 2:
+        if por_nota.get(caminho, 0) >= limite_por_nota:
             continue
+        classe = str(meta.get("classe_fonte", "nota_vault"))
         cabecalho = (
-            f"\n[Nota curada: {meta.get('titulo', '?')} > {meta.get('secao', '?')} | "
-            f"tipo={meta.get('tipo', '?')} | confiança={meta.get('confianca', '?')} | "
-            f"evidência={str(meta.get('nivel_evidencia', '?')).upper()} | arquivo={caminho}]\n"
+            f"\n[Registro Obsidian: {meta.get('titulo', '?')} > {meta.get('secao', '?')} | "
+            f"origem={classe} | tipo={meta.get('tipo', '?')} | "
+            f"confiança={meta.get('confianca', '?')} | "
+            f"evidência={str(meta.get('nivel_evidencia', '?')).upper()} | "
+            f"data={meta.get('data_registro', '') or '?'} | arquivo={caminho}]\n"
         )
         restante = max_chars - usados - len(cabecalho)
         if restante <= 180:
