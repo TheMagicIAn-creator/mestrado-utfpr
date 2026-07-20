@@ -130,8 +130,9 @@ def test_scanner_nao_confunde_risk_com_chave_mas_bloqueia_segredo(tmp_path):
         encoding="utf-8",
     )
     segredo = raiz / "segredo.md"
+    chave_ficticia = "sk-" + "1234567890abcdefghijklmnop"
     segredo.write_text(
-        "# Configuração\n\nChave: sk-1234567890abcdefghijklmnop",
+        f"# Configuração\n\nChave: {chave_ficticia}",
         encoding="utf-8",
     )
 
