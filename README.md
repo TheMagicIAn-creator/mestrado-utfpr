@@ -34,7 +34,7 @@ src/
 ```
 
 - **core** — central configuration and shared utilities
-- **conhecimento** — PDF indexing, RAG agent, multi-LLM provider,
+- **conhecimento** — PDF indexing, semantic + BM25 RAG, fixed-role Gemini/Groq team,
   memory consolidation
 - **ml** — exploratory data analysis and fault classification
 - **orquestrador** — runs pending steps on startup, skips
@@ -80,6 +80,7 @@ FMEA-guided synthetic validation; field validation E3 not yet performed).
 - [`docs/datasets.md`](docs/datasets.md) — Paderborn (CA) vs PV Farms (CC) e separação de domínio.
 - [`docs/evidence_levels.md`](docs/evidence_levels.md) — níveis de evidência E0–E3.
 - [`docs/reproducibilidade.md`](docs/reproducibilidade.md) — manifestos, estados, memória, recálculo.
+- [`docs/memoria_agentes.md`](docs/memoria_agentes.md) — aprendizado validado entre sessões e limites de persistência.
 - [`docs/comandos.md`](docs/comandos.md) — todos os comandos.
 
 ## Verificação rápida

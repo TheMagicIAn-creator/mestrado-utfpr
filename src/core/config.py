@@ -58,6 +58,18 @@ PASTA_RESULTADOS   = RAIZ_PROJETO / "resultados"
 PASTA_NOTAS        = RAIZ_PROJETO / "notas"
 PASTA_SESSOES      = PASTA_NOTAS / "sessoes"
 PASTA_MEMORIAS     = PASTA_NOTAS / "memorias"
+PASTA_MEMORIA_AGENTES = Path(
+    os.getenv(
+        "AL_IADO_MEMORIA_DIR",
+        str(PASTA_MEMORIAS / "agentes"),
+    )
+).expanduser().resolve()
+ARQUIVO_MEMORIA_VALIDADA = Path(
+    os.getenv(
+        "AL_IADO_MEMORIA_VALIDADA",
+        str(PASTA_MEMORIA_AGENTES / "memoria_validada.json"),
+    )
+).expanduser().resolve()
 PASTA_ARQUIVO      = PASTA_NOTAS / "sessoes_arquivadas"
 PASTA_NOVOS_PDFS   = RAIZ_PROJETO / "novos_pdfs"
 PASTA_CHROMADB     = Path(
@@ -68,6 +80,12 @@ ARQUIVO_INDICE_LITERATURA = Path(
     os.getenv(
         "AL_IADO_INDICE_LITERATURA",
         str(PASTA_ARTEFATOS / "literatura_indexada.jsonl.gz"),
+    )
+).expanduser().resolve()
+ARQUIVO_INDICE_LEXICAL = Path(
+    os.getenv(
+        "AL_IADO_INDICE_LEXICAL",
+        str(PASTA_CHROMADB / "literatura_fts.sqlite3"),
     )
 ).expanduser().resolve()
 ARQUIVO_PERFIL     = RAIZ_PROJETO / "CLAUDE.md"

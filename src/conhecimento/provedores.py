@@ -11,6 +11,7 @@ Autor: Rodolfo Torres (UTFPR)
 """
 
 import os
+import json
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
@@ -38,6 +39,20 @@ PROVEDORES = {
         "emoji"     : "🟢",
         "multimodal": False,  # texto puro (não lê imagens)
     }
+}
+
+# Os papeis sao fixos por arquitetura. A interface nao permite trocar os
+# modelos entre si porque cada um tem contrato, orcamento e responsabilidade
+# diferentes.
+PAPEIS_AGENTES = {
+    "conversa": {
+        "provedor": "1",
+        "rotulo": "Gemini - conversa e sintese",
+    },
+    "auditoria": {
+        "provedor": "2",
+        "rotulo": "Groq - auditoria e memoria",
+    },
 }
 
 
@@ -176,6 +191,21 @@ class GroqLeve:
         texto = resposta.choices[0].message.content or ""
         return RespostaLLM(content=texto)
 
+    def invoke_json(self, mensagens, max_tokens: int = 700) -> dict:
+        """Executa uma chamada curta e exige um objeto JSON do Groq."""
+        resposta = self._obter_client().chat.completions.create(
+            model=self.model,
+            messages=self._mensagens(mensagens),
+            temperature=0.0,
+            max_completion_tokens=max(100, int(max_tokens)),
+            response_format={"type": "json_object"},
+        )
+        texto = resposta.choices[0].message.content or "{}"
+        payload = json.loads(texto)
+        if not isinstance(payload, dict):
+            raise ValueError("O auditor Groq nao retornou um objeto JSON.")
+        return payload
+
     def stream(self, mensagens):
         fluxo = self._obter_client().chat.completions.create(
             model=self.model,
@@ -267,6 +297,15 @@ def inicializar_provedor(escolha: str):
 
     print(f"  ✅ {info['nome']} pronto! (limite: {info['limite']})")
     return llm, info["nome"]
+
+
+def inicializar_papel(papel: str):
+    """Inicializa o provedor fixado para um papel da equipe."""
+    if papel not in PAPEIS_AGENTES:
+        raise ValueError(f"Papel de agente desconhecido: {papel}")
+    escolha = PAPEIS_AGENTES[papel]["provedor"]
+    llm, nome = inicializar_provedor(escolha)
+    return llm, nome, PAPEIS_AGENTES[papel]["rotulo"]
 
 
 def selecionar_provedor() -> tuple:

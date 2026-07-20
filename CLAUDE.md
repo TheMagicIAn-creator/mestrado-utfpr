@@ -241,7 +241,8 @@ mestrado-utfpr/
 │   ├── conhecimento/         → cérebro do agente (RAG):
 │   │     agente.py (pipeline RAG + PERFIL_COMPACTO),
 │   │     ferramentas.py (specs + roteador de 20 tools),
-│   │     indexador.py, indice_portatil.py, provedores.py,
+│   │     indexador.py, indice_portatil.py, indice_lexical.py,
+│   │     provedores.py, multiagente.py, memoria_persistente.py,
 │   │     processador_pdf.py,
 │   │     consolidar_memoria.py, web_search.py,
 │   │     leitor_anexos.py, retrieval_metrics.py,
@@ -310,11 +311,11 @@ Para reprocessar toda a literatura manualmente:
   New-Item REPROCESSAR -ItemType File
   (abrir o app → orquestrador detecta e executa)
 
-## Pipeline RAG — 3 Camadas
+## Pipeline RAG — Recuperação Híbrida e Auditoria
 Quando Rodolfo faz uma pergunta, o sistema executa.
-IMPORTANTE: as camadas 1 e 3 são heurísticas LOCAIS
-(sem chamada de LLM) para não consumir TPM antes da
-resposta; o LLM só é invocado na resposta final.
+IMPORTANTE: expansão, recuperação, fusão e reranking são
+LOCAIS. O Groq só é chamado com um pacote compacto quando
+há literatura recuperada; o Gemini produz a resposta final.
 
 CAMADA 1 — Expansão de query (local, por regras)
   Gera variações da pergunta por gatilhos de domínio
@@ -326,17 +327,23 @@ CAMADA 1 — Expansão de query (local, por regras)
 
 CAMADA 2 — Busca híbrida
   → Busca semântica: embeddings para cada variação
-  → Busca keyword: ChromaDB where_document para cada termo
-  → Pool deduplicado de candidatos
+  → Busca lexical: BM25 em SQLite FTS5
+  → Fusão das duas listas por Reciprocal Rank Fusion (RRF)
+  → ChromaDB where_document é apenas fallback sem FTS5
 
 CAMADA 3 — Reranking (local, heurístico)
   → Pontua por sobreposição lexical com a pergunta
   → Ajusta por pasta temática (PV/ML/manutenção com
     boost; textbooks fora de domínio penalizados)
   → Diversifica o top-K com teto de chunks por fonte
-  → Nº final de chunks segue o orçamento do provedor
-    (Groq 10 / Gemini 16 na pergunta normal; 16–28 em
-    modo revisão) — ver ORCAMENTOS_RAG em agente.py
+  → Nº final de chunks segue o orçamento do Gemini,
+    que é o agente responsável pela resposta final
+
+CAMADA 4 — Auditoria e síntese
+  → Groq verifica cobertura, lacunas e fontes utilizáveis
+    em JSON estrito; não responde à pergunta
+  → Gemini recebe contexto, parecer de auditoria e memória
+    validada, então conversa e produz a síntese final
 
 Nota: o perfil injetado no prompt do LLM é o
 PERFIL_COMPACTO hardcoded em agente.py (este CLAUDE.md
@@ -344,6 +351,25 @@ excede o limite de 6000 chars e não entra no prompt).
 
 Sempre citar: autor, título e ano do artigo consultado.
 Nunca inventar referências.
+
+## Equipe Multiagente e Aprendizado
+- Gemini tem o papel fixo de conversa, interpretação de ferramentas,
+  multimodalidade e síntese final. É a única voz do chat.
+- Groq tem o papel fixo de auditor de evidências e porteiro da memória. Recebe
+  entradas curtas e estruturadas para respeitar o limite de 12k TPM.
+- Python continua responsável por cálculos, ferramentas, indexação, gráficos,
+  tabelas e artefatos. Nenhum LLM recalcula ou aprova o próprio resultado.
+- Os modelos não são retreinados durante a conversa. O aprendizado entre
+  sessões ocorre por memória externa validada em
+  `notas/memorias/agentes/memoria_validada.json`.
+- Só podem ser memorizadas preferências, decisões metodológicas, correções e
+  contexto estável declarado pelo pesquisador. Segredos, métricas e resultados
+  recalculáveis são rejeitados; estes permanecem nos artefatos atuais.
+- Cada item tem evidência do pesquisador, proveniência, confiança, status e id.
+  O Gemini recupera no máximo seis itens pertinentes por pergunta.
+- No PC, o arquivo pode ser versionado no Git. No Streamlit Community Cloud,
+  novas gravações no disco são efêmeras até o próximo redeploy; a base inicial
+  versionada continua disponível em toda implantação.
 
 ## Indexação
 Cada PDF de literatura é indexado com:
@@ -475,16 +501,12 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - IDE          : PyCharm
 - Versionamento: GitHub (mestrado-utfpr)
 - Interface    : Streamlit (aplicação web local e em nuvem)
-- Memória      : ChromaDB local + snapshot portátil no deploy
-- LLM          : multi-provedor — usuário escolhe o
-                 provedor da resposta principal:
-                 Google Gemini (gemini-2.5-flash) ou
-                 Groq (llama-3.3-70b-versatile).
-                 Groq também é usado (com fallback
-                 Gemini) na extração de metadados de
-                 PDFs e na consolidação de memória.
-                 Expansão de query e reranking são
-                 locais, sem LLM.
+- Memória      : sessões no ChromaDB + memória validada em JSON versionável
+- LLM          : equipe de papéis fixos — Gemini `gemini-2.5-flash` (conversa
+                 e síntese final) e Groq `llama-3.3-70b-versatile` (auditoria
+                 de evidências e validação da memória).
+                 Extração de metadados mantém seu fluxo especializado existente.
+                 Expansão, BM25, RRF, reranking, cálculos e ferramentas são locais.
 - Embeddings   : paraphrase-multilingual-MiniLM-L12-v2
 - Extração PDF : pypdf (texto) + pdfplumber (tabelas)
 - Monitoramento: watchdog + schedule
