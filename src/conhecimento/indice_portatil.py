@@ -1,10 +1,10 @@
-"""Snapshot portátil da coleção de literatura do ChromaDB.
+"""Snapshot portátil de coleções curadas do ChromaDB.
 
 O diretório interno do ChromaDB não é um artefato adequado para Git: ele
 acumula segmentos, mistura coleções locais e depende da implementação do
-banco. Este módulo exporta somente ids, chunks, metadados e embeddings da
-literatura para JSONL comprimido, permitindo restauração determinística no
-Streamlit Cloud sem reprocessar os PDFs.
+banco. Este módulo exporta somente ids, chunks, metadados e embeddings para
+JSONL comprimido, permitindo restauração determinística no Streamlit Cloud.
+O schema antigo da literatura continua aceito para preservar os snapshots.
 """
 
 from __future__ import annotations
@@ -18,8 +18,10 @@ from pathlib import Path
 
 
 SCHEMA_VERSION = 1
-TIPO_MANIFESTO = "manifesto_indice_literatura"
-TIPO_CHUNK = "chunk_literatura"
+TIPO_MANIFESTO = "manifesto_indice_portatil"
+TIPO_CHUNK = "chunk_indice_portatil"
+TIPOS_MANIFESTO_COMPATIVEIS = {TIPO_MANIFESTO, "manifesto_indice_literatura"}
+TIPOS_CHUNK_COMPATIVEIS = {TIPO_CHUNK, "chunk_literatura"}
 
 
 class IndicePortatilInvalido(ValueError):
@@ -50,7 +52,7 @@ def ler_manifesto(caminho: Path) -> dict:
     except (OSError, json.JSONDecodeError) as exc:
         raise IndicePortatilInvalido(f"Snapshot ilegível: {exc}") from exc
 
-    if manifesto.get("tipo") != TIPO_MANIFESTO:
+    if manifesto.get("tipo") not in TIPOS_MANIFESTO_COMPATIVEIS:
         raise IndicePortatilInvalido("Cabeçalho do snapshot não reconhecido.")
     if manifesto.get("schema_version") != SCHEMA_VERSION:
         raise IndicePortatilInvalido(
@@ -188,7 +190,7 @@ def importar_colecao(colecao, origem: Path, *, tamanho_lote: int = 250) -> dict:
                 raise IndicePortatilInvalido(
                     f"JSON inválido na linha {numero_linha}."
                 ) from exc
-            if item.get("tipo") != TIPO_CHUNK:
+            if item.get("tipo") not in TIPOS_CHUNK_COMPATIVEIS:
                 raise IndicePortatilInvalido(
                     f"Registro inesperado na linha {numero_linha}."
                 )

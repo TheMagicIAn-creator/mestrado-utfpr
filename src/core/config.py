@@ -58,6 +58,12 @@ PASTA_RESULTADOS   = RAIZ_PROJETO / "resultados"
 PASTA_NOTAS        = RAIZ_PROJETO / "notas"
 PASTA_SESSOES      = PASTA_NOTAS / "sessoes"
 PASTA_MEMORIAS     = PASTA_NOTAS / "memorias"
+PASTA_CEREBRO_OBSIDIAN = Path(
+    os.getenv(
+        "AL_IADO_OBSIDIAN_DIR",
+        str(PASTA_NOTAS / "Cerebro"),
+    )
+).expanduser().resolve()
 PASTA_MEMORIA_AGENTES = Path(
     os.getenv(
         "AL_IADO_MEMORIA_DIR",
@@ -82,6 +88,12 @@ ARQUIVO_INDICE_LITERATURA = Path(
         str(PASTA_ARTEFATOS / "literatura_indexada.jsonl.gz"),
     )
 ).expanduser().resolve()
+ARQUIVO_INDICE_OBSIDIAN = Path(
+    os.getenv(
+        "AL_IADO_INDICE_OBSIDIAN",
+        str(PASTA_ARTEFATOS / "obsidian_indexado.jsonl.gz"),
+    )
+).expanduser().resolve()
 ARQUIVO_INDICE_LEXICAL = Path(
     os.getenv(
         "AL_IADO_INDICE_LEXICAL",
@@ -99,6 +111,7 @@ MODELO_EMBEDDINGS      = "paraphrase-multilingual-MiniLM-L12-v2"
 MODELO_GEMINI          = "gemini-2.5-flash"
 NOME_COLECAO           = "literatura_pv"
 NOME_COLECAO_SESSOES   = "sessoes_pv"
+NOME_COLECAO_OBSIDIAN  = "obsidian_pv"
 # Memória de AVALIAÇÃO (baterias/harness) — SEPARADA da memória de produção,
 # para que testes automatizados nunca contaminem as sessões reais (item 8.2/18).
 NOME_COLECAO_AVALIACOES = "avaliacoes_agente"

@@ -20,7 +20,9 @@ conversa em cada prompt.
    sem ancoragem no texto do pesquisador.
 5. O item aprovado é gravado atomicamente em
    `notas/memorias/agentes/memoria_validada.json`.
-6. Em uma pergunta futura, somente os itens lexicalmente pertinentes entram no
+6. Uma projeção Markdown é atualizada em
+   `notas/Cerebro/Memorias validadas/<id>.md` para navegação no Obsidian.
+7. Em uma pergunta futura, somente os itens lexicalmente pertinentes entram no
    prompt do Gemini, identificados como dados e acompanhados de proveniência.
 
 ## Schema
@@ -54,3 +56,27 @@ commitado no JSON reaparece em toda implantação.
 Para persistência de escrita contínua na nuvem, será necessário conectar no
 futuro um armazenamento externo transacional. A interface atual não simula essa
 garantia.
+
+## Relação com o Obsidian
+
+O JSON é a memória normativa e o Markdown é uma visão derivada. Editar a nota
+gerada não altera a memória aprovada; correções devem ser declaradas no chat e
+passar novamente pelo Groq.
+
+Notas manuais podem participar do cérebro quando ficam em `notas/Cerebro/` e
+usam o schema do template `notas/Templates/Nota do Al IAdo.md`. O opt-in exige:
+
+| Campo | Regra |
+|---|---|
+| `al_iado` | `true` para permitir a leitura |
+| `status` | apenas `ativo` é indexado |
+| `tipo` | conceito, contexto, decisão, experimento, hipótese, correção ou preferência |
+| `confianca` | alta, média ou baixa |
+| `nivel_evidencia` | E0, E1, E2, E3, projeto ou usuário |
+
+Esse conteúdo recebe coleção própria (`obsidian_pv`) e não gera citação no
+rodapé. Literatura continua vindo dos PDFs; números continuam vindo dos
+artefatos e manifestos vigentes. Após alterar notas versionadas, execute
+`python scripts/reconstruir_cerebro_obsidian.py` para atualizar o snapshot que
+alimenta o Streamlit Cloud; no PC, mudanças também são percebidas no próximo
+turno do chat.

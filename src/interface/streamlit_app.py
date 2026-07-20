@@ -151,7 +151,10 @@ def carregar_base():
     from src.core.config import (
         NOME_COLECAO,
         NOME_COLECAO_SESSOES,
+        NOME_COLECAO_OBSIDIAN,
         ARQUIVO_INDICE_LITERATURA,
+        ARQUIVO_INDICE_OBSIDIAN,
+        ARQUIVO_MEMORIA_VALIDADA,
         PASTA_CHROMADB,
     )
     from src.ml.pipeline import capacidade_recalculo_pipeline
@@ -161,6 +164,24 @@ def carregar_base():
         client = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
         colecao = client.get_or_create_collection(name=NOME_COLECAO)
         colecao_sessoes = client.get_or_create_collection(name=NOME_COLECAO_SESSOES)
+        colecao_obsidian = client.get_or_create_collection(
+            name=NOME_COLECAO_OBSIDIAN,
+            metadata={"hnsw:space": "cosine"},
+        )
+        if colecao_obsidian.count() == 0 and ARQUIVO_INDICE_OBSIDIAN.is_file():
+            try:
+                from src.conhecimento.indice_portatil import importar_colecao
+
+                restauracao_obsidian = importar_colecao(
+                    colecao_obsidian,
+                    ARQUIVO_INDICE_OBSIDIAN,
+                )
+                relatorio.append(
+                    "Obsidian: "
+                    f"{restauracao_obsidian['n_chunks']} chunks restaurados."
+                )
+            except Exception as exc:
+                relatorio.append(f"Obsidian: snapshot inválido - {exc}")
         if colecao.count() == 0 and ARQUIVO_INDICE_LITERATURA.is_file():
             try:
                 from src.conhecimento.indice_portatil import importar_colecao
@@ -183,6 +204,27 @@ def carregar_base():
             "Embeddings: "
             f"backend {backend_embeddings(modo_consulta=modo_consulta)}."
         )
+
+        try:
+            from src.conhecimento.obsidian import (
+                espelhar_memoria_validada,
+                sincronizar_obsidian,
+            )
+
+            espelhar_memoria_validada(ARQUIVO_MEMORIA_VALIDADA)
+            if not modo_consulta:
+                estado_obsidian = sincronizar_obsidian(colecao_obsidian, modelo)
+                relatorio.append(
+                    "Obsidian: "
+                    f"{estado_obsidian['notas_ativas']} notas curadas prontas."
+                )
+            else:
+                relatorio.append(
+                    "Obsidian: notas portáteis prontas; alterações locais "
+                    "sincronizadas sob demanda no chat."
+                )
+        except Exception as exc:
+            relatorio.append(f"Obsidian: integração indisponível - {exc}")
 
         if not modo_consulta:
             try:
@@ -247,7 +289,15 @@ def carregar_base():
                 f"{estado_lexical['n_chunks']} chunks preparados em SQLite FTS5."
             )
 
-    return perfil, modelo, colecao, colecao_sessoes, indice_lexical, relatorio
+    return (
+        perfil,
+        modelo,
+        colecao,
+        colecao_sessoes,
+        colecao_obsidian,
+        indice_lexical,
+        relatorio,
+    )
 
 
 def inicializar_estado() -> None:
@@ -326,13 +376,19 @@ def renderizar_pipeline_status() -> None:
             st.markdown(f"⚪ {nome} _(pendente)_")
 
 
-def renderizar_diagnostico(colecao, colecao_sessoes) -> None:
+def renderizar_diagnostico(colecao, colecao_sessoes, colecao_obsidian) -> None:
     """Painel de diagnóstico (13.4): ChromaDB, pipeline, libs opcionais, log."""
     import importlib.util
 
     try:
-        st.caption(f"ChromaDB · literatura: {colecao.count()} · "
-                   f"sessões: {colecao_sessoes.count()}")
+        from src.conhecimento.obsidian import contar_notas_indexadas
+
+        st.caption(
+            f"ChromaDB · literatura: {colecao.count()} · "
+            f"sessões: {colecao_sessoes.count()} · "
+            f"Obsidian: {contar_notas_indexadas(colecao_obsidian)} notas / "
+            f"{colecao_obsidian.count()} chunks"
+        )
     except Exception as exc:  # noqa: BLE001
         st.warning(f"ChromaDB indisponível: {exc}")
 
@@ -395,7 +451,7 @@ def _carregar_metadados_pendentes() -> dict:
     }
 
 
-def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
+def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian) -> None:
     with st.sidebar:
         st.markdown("## Al IAdo PV")
         st.caption("Assistente de pesquisa | Mestrado UTFPR")
@@ -420,8 +476,12 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
         c1.metric("Literatura", colecao.count())
         c2.metric("Sessões", colecao_sessoes.count())
         memorias = equipe.memoria.contar() if equipe is not None else 0
+        from src.conhecimento.obsidian import contar_notas_indexadas
+
+        notas_obsidian = contar_notas_indexadas(colecao_obsidian)
         st.caption(
-            f"Memórias validadas: {memorias}. Literatura, memória e resultados "
+            f"Cérebro Obsidian: {notas_obsidian} notas curadas · "
+            f"memórias validadas: {memorias}. Literatura, memória e resultados "
             "são acessados pelo chat."
         )
 
@@ -494,7 +554,7 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
             st.rerun()
 
         with st.expander("🔧 Diagnóstico"):
-            renderizar_diagnostico(colecao, colecao_sessoes)
+            renderizar_diagnostico(colecao, colecao_sessoes, colecao_obsidian)
 
         metadados_pendentes = _carregar_metadados_pendentes()
         if metadados_pendentes:
@@ -987,6 +1047,7 @@ def responder_com_rag(pergunta: str,
                       modelo,
                       colecao,
                       colecao_sessoes,
+                      colecao_obsidian,
                       indice_lexical=None,
                       anexos: list | None = None) -> str:
     from src.conhecimento.agente import (
@@ -1028,6 +1089,14 @@ def responder_com_rag(pergunta: str,
     )
 
     with st.spinner(mensagem_busca):
+        # Uma edição no vault passa a valer no próximo turno. A sincronização
+        # é incremental e, sem alterações, não recalcula embeddings.
+        try:
+            from src.conhecimento.obsidian import sincronizar_obsidian
+
+            sincronizar_obsidian(colecao_obsidian, modelo)
+        except Exception:
+            pass
         prompt, citacoes = preparar_prompt(
             pergunta=pergunta,
             perfil=perfil,
@@ -1038,6 +1107,7 @@ def responder_com_rag(pergunta: str,
             nome_provedor=st.session_state.get("nome_provedor", ""),
             anexos=anexos,
             indice_lexical=indice_lexical,
+            colecao_obsidian=colecao_obsidian,
         )
 
     auditoria = None
@@ -1093,6 +1163,7 @@ def renderizar_chat(
     modelo,
     colecao,
     colecao_sessoes,
+    colecao_obsidian,
     indice_lexical=None,
 ) -> None:
     for msg in st.session_state.mensagens:
@@ -1134,6 +1205,7 @@ def renderizar_chat(
             modelo,
             colecao,
             colecao_sessoes,
+            colecao_obsidian,
             indice_lexical,
             anexos=anexos,
         )
@@ -1149,6 +1221,7 @@ def renderizar_chat(
                 modelo,
                 colecao,
                 colecao_sessoes,
+                colecao_obsidian,
                 indice_lexical,
             )
             imagens = []
@@ -1191,6 +1264,7 @@ def main() -> None:
             modelo,
             colecao,
             colecao_sessoes,
+            colecao_obsidian,
             indice_lexical,
             relatorio,
         ) = carregar_base()
@@ -1198,7 +1272,7 @@ def main() -> None:
         st.error(f"Erro ao carregar o agente: {exc}")
         return
 
-    renderizar_sidebar(modelo, colecao, colecao_sessoes)
+    renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian)
     renderizar_topo(relatorio)
 
     renderizar_chat(
@@ -1206,6 +1280,7 @@ def main() -> None:
         modelo,
         colecao,
         colecao_sessoes,
+        colecao_obsidian,
         indice_lexical,
     )
 

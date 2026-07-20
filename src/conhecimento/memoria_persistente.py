@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from src.core.config import ARQUIVO_MEMORIA_VALIDADA
+from src.core.config import ARQUIVO_MEMORIA_VALIDADA, PASTA_CEREBRO_OBSIDIAN
 
 
 SCHEMA_VERSION = 1
@@ -87,8 +87,32 @@ def _vazio() -> dict:
 class MemoriaPersistente:
     """Repositorio JSON atomico de memorias aprovadas pelo Groq."""
 
-    def __init__(self, caminho: str | Path | None = None) -> None:
+    def __init__(
+        self,
+        caminho: str | Path | None = None,
+        *,
+        pasta_obsidian: str | Path | None = None,
+    ) -> None:
+        caminho_padrao = caminho is None
         self.caminho = Path(caminho or ARQUIVO_MEMORIA_VALIDADA)
+        self.pasta_obsidian = Path(
+            pasta_obsidian or PASTA_CEREBRO_OBSIDIAN
+        ) if (caminho_padrao or pasta_obsidian is not None) else None
+
+    def _espelhar_obsidian(self) -> None:
+        if self.pasta_obsidian is None:
+            return
+        try:
+            from src.conhecimento.obsidian import espelhar_memoria_validada
+
+            espelhar_memoria_validada(
+                self.caminho,
+                raiz=self.pasta_obsidian,
+            )
+        except Exception:
+            # O Markdown e uma visao derivada. Falha no espelho nunca pode
+            # invalidar o JSON atomico que acabou de ser aprovado.
+            pass
 
     def _ler(self, *, estrito: bool = False) -> dict:
         if not self.caminho.is_file():
@@ -177,35 +201,41 @@ class MemoriaPersistente:
         )
         item_id = hashlib.sha256(assinatura.encode("utf-8")).hexdigest()[:20]
 
+        resultado = None
         with _LOCK:
             dados = self._ler(estrito=True)
             for item in dados["itens"]:
                 if item.get("id") == item_id and item.get("status") == STATUS_ATIVO:
-                    return ResultadoRegistro(item=dict(item), criado=False)
+                    resultado = ResultadoRegistro(item=dict(item), criado=False)
+                    break
 
-            agora = _agora()
-            substitui_id = validado.pop("substitui_id")
-            if substitui_id:
-                for item in dados["itens"]:
-                    if item.get("id") == substitui_id and item.get("status") == STATUS_ATIVO:
-                        item["status"] = STATUS_SUPERADO
-                        item["superado_em_utc"] = agora
+            if resultado is None:
+                agora = _agora()
+                substitui_id = validado.pop("substitui_id")
+                if substitui_id:
+                    for item in dados["itens"]:
+                        if item.get("id") == substitui_id and item.get("status") == STATUS_ATIVO:
+                            item["status"] = STATUS_SUPERADO
+                            item["superado_em_utc"] = agora
 
-            item = {
-                "id": item_id,
-                **validado,
-                "origem": str(origem)[:160],
-                "validado_por": str(validado_por)[:120],
-                "confianca": round(confianca, 3),
-                "status": STATUS_ATIVO,
-                "versao": 1,
-                "criado_em_utc": agora,
-                "substitui_id": substitui_id,
-            }
-            dados["itens"].append(item)
-            dados["atualizado_em_utc"] = agora
-            self._salvar(dados)
-            return ResultadoRegistro(item=dict(item), criado=True)
+                item = {
+                    "id": item_id,
+                    **validado,
+                    "origem": str(origem)[:160],
+                    "validado_por": str(validado_por)[:120],
+                    "confianca": round(confianca, 3),
+                    "status": STATUS_ATIVO,
+                    "versao": 1,
+                    "criado_em_utc": agora,
+                    "substitui_id": substitui_id,
+                }
+                dados["itens"].append(item)
+                dados["atualizado_em_utc"] = agora
+                self._salvar(dados)
+                resultado = ResultadoRegistro(item=dict(item), criado=True)
+        self._espelhar_obsidian()
+        assert resultado is not None
+        return resultado
 
     def listar(self, *, somente_ativas: bool = True) -> list[dict]:
         with _LOCK:

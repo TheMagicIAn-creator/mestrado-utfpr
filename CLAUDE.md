@@ -243,7 +243,7 @@ mestrado-utfpr/
 │   │     ferramentas.py (specs + roteador de 20 tools),
 │   │     indexador.py, indice_portatil.py, indice_lexical.py,
 │   │     provedores.py, multiagente.py, memoria_persistente.py,
-│   │     processador_pdf.py,
+│   │     obsidian.py (notas curadas + espelho de memória), processador_pdf.py,
 │   │     consolidar_memoria.py, web_search.py,
 │   │     leitor_anexos.py, retrieval_metrics.py,
 │   │     index_lock.py
@@ -269,8 +269,11 @@ mestrado-utfpr/
 ├── dados/processados/        → dados pré-processados
 ├── resultados/               → gráficos e relatórios
 ├── artefatos/                → snapshots portáteis para o deploy
-├── notas/                    → Obsidian, arquivo de leitura (sessões/memórias;
-│                                não é caderno de escrita nem fonte do RAG)
+├── notas/                    → vault Obsidian
+│   ├── Cerebro/              → notas curadas opt-in consultadas pelo RAG
+│   ├── Literatura/           → navegação dos PDFs; não duplica evidência
+│   ├── memorias/agentes/     → JSON auditável da memória validada
+│   └── sessoes/              → registro conversacional bruto
 ├── novos_pdfs/               → PDFs aguardando indexação
 ├── base_conhecimento/        → ChromaDB local (ignorado Git)
 ├── app.py                    → ponto de entrada (Streamlit)
@@ -367,6 +370,18 @@ Nunca inventar referências.
   recalculáveis são rejeitados; estes permanecem nos artefatos atuais.
 - Cada item tem evidência do pesquisador, proveniência, confiança, status e id.
   O Gemini recupera no máximo seis itens pertinentes por pergunta.
+- Cada item aprovado também recebe uma projeção Markdown em
+  `notas/Cerebro/Memorias validadas/`. Essa projeção torna a memória navegável
+  no grafo do Obsidian; o JSON continua sendo a fonte de verdade.
+- Notas manuais só entram na coleção `obsidian_pv` quando estão sob
+  `notas/Cerebro/` e declaram `al_iado: true`, `status: ativo`, tipo, confiança
+  e nível de evidência. Rascunhos, sessões, plugins e notas de literatura são
+  excluídos. Uma edição é sincronizada incrementalmente no próximo turno.
+- Contexto Obsidian nunca vira citação bibliográfica. Em conflito, prevalecem
+  artefatos atuais e fontes primárias; a nota serve para conexões e decisões.
+- O deploy restaura `artefatos/obsidian_indexado.jsonl.gz`, evitando carregar o
+  encoder só para preparar essas notas. Mudanças versionadas no cérebro exigem
+  `python scripts/reconstruir_cerebro_obsidian.py` antes do push.
 - No PC, o arquivo pode ser versionado no Git. No Streamlit Community Cloud,
   novas gravações no disco são efêmeras até o próximo redeploy; a base inicial
   versionada continua disponível em toda implantação.
@@ -528,7 +543,9 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Artigo de descrição do dataset de Paderborn
   (Stender, Wallscheid & Böcker, 2020)
 - Datasets: Paderborn (inversor saudável) e PV Farms
-- Memória consolidada das sessões de desenvolvimento
-  (vault Obsidian em notas/ é só arquivo de leitura dessas sessões/memórias,
-  não é fonte adicional consultada pelo RAG)
+- Cérebro Obsidian curado (`notas/Cerebro/`): decisões, conceitos, conexões e
+  espelho legível da memória validada; é contexto interno, nunca evidência
+  bibliográfica nem substituto dos artefatos atuais
+- Memória bruta/consolidada das sessões de desenvolvimento, mantida separada
+  da coleção curada para não perpetuar decisões antigas ou conteúdo do modelo
 - Tabelas estruturadas extraídas dos PDFs (pdfplumber)

@@ -1,3 +1,4 @@
+import gzip
 import json
 
 import pytest
@@ -99,3 +100,30 @@ def test_manifesto_rejeita_arquivo_que_nao_e_gzip(tmp_path):
     caminho.write_text(json.dumps({"tipo": "qualquer"}), encoding="utf-8")
     with pytest.raises(IndicePortatilInvalido, match="ilegível"):
         ler_manifesto(caminho)
+
+
+def test_importador_preserva_compatibilidade_com_snapshot_legado(tmp_path):
+    caminho = tmp_path / "legado.jsonl.gz"
+    manifesto = {
+        "tipo": "manifesto_indice_literatura",
+        "schema_version": 1,
+        "colecao": "literatura_pv",
+        "n_chunks": 1,
+        "n_documentos": 1,
+    }
+    chunk = {
+        "tipo": "chunk_literatura",
+        "id": "legado-1",
+        "documento": "Conteúdo legado.",
+        "metadata": {"arquivo": "legado.pdf"},
+        "embedding": [0.1, 0.2],
+    }
+    with gzip.open(caminho, "wt", encoding="utf-8") as arquivo:
+        arquivo.write(json.dumps(manifesto) + "\n")
+        arquivo.write(json.dumps(chunk) + "\n")
+
+    colecao = ColecaoFalsa()
+    resultado = importar_colecao(colecao, caminho)
+
+    assert resultado["importados"] == 1
+    assert colecao.count() == 1
