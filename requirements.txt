@@ -187,7 +187,7 @@ truststore==0.10.4
 typer==0.25.1
 typing-inspection==0.4.2
 typing_extensions==4.15.0
-tzdata==2026.2
+tzdata==2026.2; python_version >= "3.9"
 url-normalize==3.0.0
 urllib3==2.7.0
 uuid_utils==0.15.0
