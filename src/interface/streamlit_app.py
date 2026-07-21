@@ -1078,9 +1078,11 @@ def responder_com_rag(pergunta: str,
             st.markdown(resposta_cronologica)
         return resposta_cronologica
 
-    # ── Atalho: cumprimento/casual responde local sem RAG ────
-    # Nunca atalhar quando ha anexos: o pesquisador quer o arquivo lido.
-    if not anexos and st.session_state.llm is None:
+    # ── Atalho: cumprimento/casual responde local sem RAG/LLM ────
+    # Vale MESMO com o LLM conectado: um "olá" não deve acionar o modelo pesado
+    # (lento e sujeito a 503). Nunca atalha com anexos: o pesquisador quer o
+    # arquivo lido.
+    if not anexos:
         resposta_simples = resposta_interacao_simples(pergunta)
         if resposta_simples:
             with st.chat_message("assistant", avatar="⚡"):
