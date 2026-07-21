@@ -24,6 +24,11 @@ from langchain_core.messages import HumanMessage
 
 from src.core.config import RAIZ_PROJETO
 from src.core.tempo import agora_local
+from src.core.conversa_export import (
+    montar_transcricao,
+    nome_arquivo_conversa,
+    quer_exportar_conversa,
+)
 
 sys.path.insert(0, str(RAIZ_PROJETO))
 
@@ -826,6 +831,22 @@ def _botao_download(img: dict, alvo=None, *, compacto: bool = False) -> None:
     )
 
 
+def _botao_download_texto(texto: str, nome: str, alvo=None) -> None:
+    """Botão de download de um texto puro (ex.: transcrito da conversa em .txt)."""
+    destino = alvo if alvo is not None else st
+    _DL_KEY[0] += 1
+    destino.download_button(
+        label=f"Baixar {nome}",
+        data=(texto or "").encode("utf-8"),
+        file_name=nome,
+        mime="text/plain",
+        key=f"dl_txt_{_DL_KEY[0]}",
+        icon=":material/download:",
+        on_click="ignore",
+        width="stretch",
+    )
+
+
 def _controles_antevisao(img: dict, alvo=None) -> None:
     """Antevisão sob demanda: a figura não ocupa o fluxo normal do chat."""
     destino = alvo if alvo is not None else st
@@ -970,6 +991,11 @@ def renderizar_mensagem(msg: dict) -> None:
     avatar = "🔬" if msg["role"] == "user" else "⚡"
     with st.chat_message(msg["role"], avatar=avatar):
         st.markdown(msg["content"])
+        # Botão de download da conversa exportada — re-renderizado a cada rerun
+        # para o download continuar disponível (o Streamlit exige isso).
+        exportado = msg.get("export_txt")
+        if exportado:
+            _botao_download_texto(exportado["data"], exportado["file_name"])
         renderizar_imagens(msg.get("imagens", []))
 
 
@@ -1229,6 +1255,38 @@ def renderizar_chat(
 
     with st.chat_message("user", avatar="🔬"):
         st.markdown(conteudo_usuario)
+
+    # Atalho: exportar a conversa em .txt. Intercepta ANTES do LLM — o modelo
+    # não cria arquivos (só alucinaria "gerei"); aqui montamos o transcrito real
+    # e oferecemos o download, que persiste via renderizar_mensagem.
+    if not anexos and quer_exportar_conversa(pergunta):
+        carimbo = f"{agora_local():%Y-%m-%d_%H-%M}"
+        transcricao = montar_transcricao(
+            st.session_state.mensagens,
+            exportado_em=f"{agora_local():%d/%m/%Y às %H:%M} (America/Sao_Paulo)",
+        )
+        nome_arq = nome_arquivo_conversa(carimbo)
+        trocas = sum(1 for m in st.session_state.mensagens if m.get("role") == "user")
+        resposta = (
+            f"📄 Preparei o histórico completo desta conversa "
+            f"({trocas} {'troca' if trocas == 1 else 'trocas'}) em **{nome_arq}**. "
+            "Clique no botão abaixo para baixar — o texto traz cada mensagem na íntegra."
+        )
+        with st.chat_message("assistant", avatar="⚡"):
+            st.markdown(resposta)
+            _botao_download_texto(transcricao, nome_arq)
+        st.session_state.mensagens.append({
+            "role": "user", "content": conteudo_usuario, "imagens": [],
+        })
+        st.session_state.mensagens.append({
+            "role": "assistant", "content": resposta, "imagens": [],
+            "export_txt": {"data": transcricao, "file_name": nome_arq},
+        })
+        salvar_sessao(
+            conteudo_usuario, resposta, [],
+            len(st.session_state.mensagens) // 2, modelo,
+        )
+        return
 
     # Com anexos, ir direto ao RAG (que le o arquivo). Pular o roteador de
     # ferramentas evita misrotear "o que tem nesse arquivo?" para o pipeline ML.
