@@ -1632,6 +1632,72 @@ _ETAPA_ORDEM = [
 ]
 
 
+def _quer_codigo_snippet(pergunta: str) -> bool:
+    """
+    Rodolfo pediu para o agente ESCREVER código — um trecho Python, um script,
+    "como plotar ..." — e NÃO para rodar o pipeline nem devolver artefatos já
+    gerados. Nesse caso quem responde é o LLM (que redige o código); nenhuma
+    ferramenta de execução ou de consulta de resultados deve interceptar.
+
+    Bug corrigido: "gere um código de um gráfico da TTF/distribuição" caía em
+    `termos_executar`/`consultar_resultados` e o agente trazia as figuras já
+    criadas, em vez de escrever o código pedido.
+
+    Exemplos que passam a ir para o LLM:
+      "gere um código para plotar a distribuição do erro do autoencoder"
+      "me dê o script em Python do gráfico da TTF"
+      "como plotar a curva de Weibull no matplotlib?"
+      "escreva a função que desenha o histograma do erro de reconstrução"
+    """
+    txt = _normalizar(pergunta)
+
+    # Sinais fortes e inequívocos de pedido de código, isoladamente suficientes.
+    # "code"/"script"/"snippet" exigem fronteira de palavra: "code" é substring
+    # de "autoencoder", "decode" etc. — usar \b evita esses falsos positivos.
+    if "codigo" in txt or "pseudocodigo" in txt or "pseudo codigo" in txt:
+        return True
+    if any(re.search(rf"\b{t}\b", txt) for t in ("code", "script", "snippet")):
+        return True
+    if any(t in txt for t in (
+        "matplotlib", "seaborn", "plotly", "pyplot", "plt.", "sns.",
+        "ggplot", "bokeh",
+    )):
+        return True
+
+    # "escreva/implemente a função/classe/método ..." é pedido de código. Gate
+    # em SUBSTANTIVOS de código (função/classe/...), nunca em palavras de plot
+    # como "distribuição/curva" — senão "escreva um resumo da distribuição"
+    # (discursivo) seria confundido com código.
+    verbo_escrever = any(t in txt for t in (
+        "escreva", "escreve", "escrever", "implemente", "implementar",
+        "programe", "programar", "codar", "coda ",
+    ))
+    if verbo_escrever and any(t in txt for t in (
+        "funcao", "classe", "metodo", "rotina", "trecho",
+    )):
+        return True
+    if any(t in txt for t in (
+        "como plot", "como faco para plot", "como desenh", "como trac",
+        "how to plot", "como gerar o grafico", "como fazer o grafico",
+        "como criar o grafico", "como monto o grafico", "como plotar",
+        "como ploto", "como codar", "como programar",
+    )):
+        return True
+
+    # "... em Python ..." combinado com um pedido de visualização também é
+    # pedido de código (o usuário quer o programa, não o artefato pronto).
+    tem_python = any(t in txt for t in (
+        "em python", "in python", "com python", "usando python",
+        "no matplotlib", "em py ", "codigo python", "funcao python",
+    ))
+    quer_plot = any(t in txt for t in (
+        "grafico", "graficos", "plot", "plotar", "curva", "distribuicao",
+        "histograma", "figura", "chart", "ttf", "weibull", "roc",
+        "dispersao", "scatter", "boxplot", "heatmap",
+    ))
+    return tem_python and quer_plot
+
+
 def _etapa_mais_avancada_mencionada(txt_normalizado: str) -> str | None:
     """
     Retorna o nome da ferramenta correspondente à etapa MAIS AVANÇADA
@@ -1717,6 +1783,12 @@ def _decisao_rapida(pergunta: str) -> dict | None:
     # Busca na web — atalho prioritário quando gatilho explícito aparece
     if any(g in txt for g in _GATILHOS_WEB):
         return {"usar_ferramenta": True, "ferramenta": "buscar_web"}
+
+    # Pedido de CÓDIGO ("gere um código do gráfico da TTF", "como plotar ...")
+    # vai para o LLM, que ESCREVE o código — nunca para execução do pipeline
+    # nem para devolver os artefatos já criados.
+    if _quer_codigo_snippet(pergunta):
+        return {"usar_ferramenta": False, "ferramenta": None}
 
     if _quer_limpar_experimentos(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "limpar_experimentos_artigos"}

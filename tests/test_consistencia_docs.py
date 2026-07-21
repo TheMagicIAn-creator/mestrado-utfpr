@@ -45,7 +45,8 @@ def test_modelos_citados_existem_no_codigo():
     for texto, nome in ((CLAUDE, "CLAUDE.md"), (ENV_EXAMPLE, ".env.example")):
         for p in proibidos:
             assert p not in texto, f"{nome} cita modelo inexistente no código: {p!r}"
-    for modelo in ("gemini-2.5-flash", "llama-3.3-70b-versatile"):
+    # gemini-2.5-pro = conversa principal; gemini-2.5-flash = tarefas de fundo.
+    for modelo in ("gemini-2.5-pro", "gemini-2.5-flash", "llama-3.3-70b-versatile"):
         assert modelo in PROVEDORES, f"provedores.py não define {modelo}"
         assert modelo in CLAUDE, f"CLAUDE.md não documenta o modelo real {modelo}"
 
