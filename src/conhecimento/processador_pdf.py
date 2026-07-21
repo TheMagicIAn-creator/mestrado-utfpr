@@ -24,7 +24,7 @@ from pypdf import PdfReader
 from src.core.config import (
     PASTA_LITERATURA, PASTA_NOTAS, PASTA_NOVOS_PDFS,
     PASTA_CHROMADB, RAIZ_PROJETO,
-    GROQ_API_KEY, GOOGLE_API_KEY,
+    GOOGLE_API_KEY,
 )
 from src.core.tempo import agora_local
 
@@ -140,22 +140,9 @@ Nome do arquivo (pode ajudar): {nome_arquivo}
 
     resposta = None
 
-    # Groq primeiro — mais rápido
-    if GROQ_API_KEY:
-        try:
-            from langchain_groq import ChatGroq
-            from langchain_core.messages import HumanMessage
-            llm      = ChatGroq(
-                model        = "llama-3.3-70b-versatile",
-                groq_api_key = GROQ_API_KEY,
-                temperature  = 0
-            )
-            resposta = llm.invoke([HumanMessage(content=prompt)]).content
-        except Exception:
-            pass
-
-    # Gemini como fallback
-    if not resposta and GOOGLE_API_KEY:
+    # Tarefa de fundo → Gemini econômico (MODELO_GEMINI_FUNDO). O fallback
+    # seguinte continua sendo regex + metadados internos do PDF.
+    if GOOGLE_API_KEY:
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
             from langchain_core.messages import HumanMessage

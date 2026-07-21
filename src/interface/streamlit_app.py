@@ -322,7 +322,7 @@ def inicializar_estado() -> None:
 
 
 def conectar_equipe(*, forcar: bool = False) -> bool:
-    """Ativa Gemini e Groq nos papeis fixos da arquitetura."""
+    """Ativa a equipe Gemini (Pro conversa + Flash auditoria) nos papeis fixos."""
     if st.session_state.get("equipe") is not None:
         return True
     if st.session_state.get("erro_equipe") and not forcar:
@@ -335,7 +335,7 @@ def conectar_equipe(*, forcar: bool = False) -> bool:
         st.session_state.llm = equipe.conversa
         st.session_state.auditor = equipe.auditoria
         # O orcamento do prompt e a capacidade multimodal seguem o agente que
-        # produz a resposta final; o Groq recebe seu proprio pacote compacto.
+        # produz a resposta final; o auditor recebe seu proprio pacote compacto.
         st.session_state.nome_provedor = "Google Gemini"
         st.session_state.multimodal = True
         st.session_state.erro_equipe = None
@@ -470,8 +470,8 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian) -> No
                 st.rerun()
         else:
             st.success("Equipe de IA ativa")
-            st.caption("Gemini: conversa e sintese final")
-            st.caption("Groq: auditoria de evidencias e memoria")
+            st.caption("Gemini Pro: conversa, sintese final e imagens")
+            st.caption("Gemini Flash: auditoria de evidencias e memoria")
 
         st.divider()
         st.markdown("**Base de conhecimento**")
@@ -611,7 +611,7 @@ def renderizar_topo(relatorio: list) -> None:
         )
     with col_status:
         if equipe_ativa:
-            st.success("Gemini + Groq")
+            st.success("Equipe Gemini")
         else:
             st.warning("Ative a equipe")
 
@@ -668,7 +668,7 @@ def stream_resposta(prompt: str, llm):
 
 # ── Cadência de "digitação" do streaming ────────────────────────────────────
 # A resposta é revelada palavra a palavra com uma pequena pausa, em vez de
-# "estourar" blocos inteiros de texto (efeito comum com o Groq, que entrega
+# "estourar" blocos inteiros de texto (efeito comum quando o provedor entrega
 # muitos tokens de uma vez). Deixa a leitura mais natural, como se o agente
 # estivesse escrevendo na hora.
 #   VELOCIDADE_DIGITACAO   = segundos por palavra (MAIOR = mais devagar).
@@ -1168,7 +1168,7 @@ def responder_com_rag(pergunta: str,
             if "413" in erro or "Request too large" in erro:
                 st.error(
                     "A solicitação ficou grande demais para o limite do provedor. "
-                    "Tente pedir uma resposta mais focada ou troque para Gemini."
+                    "Tente pedir uma resposta mais focada."
                 )
             elif "429" in erro:
                 st.error("Limite da API atingido. Aguarde ou troque o provedor.")

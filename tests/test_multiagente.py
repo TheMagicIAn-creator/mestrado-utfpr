@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 from src.conhecimento.memoria_persistente import MemoriaPersistente
 from src.conhecimento.multiagente import (
-    AgenteAuditorGroq,
+    AgenteAuditorGemini,
     criar_equipe_agentes,
     filtrar_citacoes_auditadas,
     RelatorioAuditoria,
@@ -30,14 +30,14 @@ class _LLMGemini:
         yield SimpleNamespace(content="posta")
 
 
-def test_groq_audita_pacote_compacto_sem_responder_pergunta(tmp_path):
+def test_auditor_audita_pacote_compacto_sem_responder_pergunta(tmp_path):
     llm = _LLMJson([{
         "status": "com_ressalvas",
         "restricoes": ["Falta o terceiro autor."],
         "orientacao": "Compare somente os dois autores cobertos.",
         "fontes_utilizaveis": ["F1", "F2"],
     }])
-    auditor = AgenteAuditorGroq(llm, MemoriaPersistente(tmp_path / "m.json"))
+    auditor = AgenteAuditorGemini(llm, MemoriaPersistente(tmp_path / "m.json"))
     citacoes = {f"c{i}": "Fonte " + ("x" * 1200) for i in range(12)}
 
     resultado = auditor.auditar_evidencias("Compare os autores.", citacoes)
@@ -50,9 +50,9 @@ def test_groq_audita_pacote_compacto_sem_responder_pergunta(tmp_path):
     assert "F9:" not in prompt
 
 
-def test_groq_so_avalia_memoria_com_gatilho_explicito(tmp_path):
+def test_auditor_so_avalia_memoria_com_gatilho_explicito(tmp_path):
     llm = _LLMJson([])
-    auditor = AgenteAuditorGroq(llm, MemoriaPersistente(tmp_path / "m.json"))
+    auditor = AgenteAuditorGemini(llm, MemoriaPersistente(tmp_path / "m.json"))
 
     resultado = auditor.aprender_da_interacao(
         "Explique FMEA.", "FMEA e uma analise..."
@@ -62,7 +62,7 @@ def test_groq_so_avalia_memoria_com_gatilho_explicito(tmp_path):
     assert llm.chamadas == []
 
 
-def test_groq_aprova_e_persiste_preferencia_do_pesquisador(tmp_path):
+def test_auditor_aprova_e_persiste_preferencia_do_pesquisador(tmp_path):
     llm = _LLMJson([{
         "salvar": True,
         "motivo": "Preferencia duravel.",
@@ -75,7 +75,7 @@ def test_groq_aprova_e_persiste_preferencia_do_pesquisador(tmp_path):
         }],
     }])
     memoria = MemoriaPersistente(tmp_path / "m.json")
-    auditor = AgenteAuditorGroq(llm, memoria)
+    auditor = AgenteAuditorGemini(llm, memoria)
 
     resultado = auditor.aprender_da_interacao(
         "Daqui em diante, prefiro respostas objetivas em portugues.",
@@ -87,7 +87,7 @@ def test_groq_aprova_e_persiste_preferencia_do_pesquisador(tmp_path):
     assert memoria.contar() == 1
 
 
-def test_gemini_recebe_memoria_validada_e_parecer_do_groq(tmp_path):
+def test_gemini_recebe_memoria_validada_e_parecer_do_auditor(tmp_path):
     memoria = MemoriaPersistente(tmp_path / "m.json")
     memoria.registrar(
         {
@@ -97,10 +97,10 @@ def test_gemini_recebe_memoria_validada_e_parecer_do_groq(tmp_path):
             "evidencia_usuario": "Prefiro respostas objetivas em portugues.",
         },
         origem="teste",
-        validado_por="Groq",
+        validado_por="Gemini Flash",
         confianca=0.9,
     )
-    groq = _LLMJson([{
+    auditor_llm = _LLMJson([{
         "status": "aprovado",
         "restricoes": [],
         "orientacao": "Use F1.",
@@ -109,7 +109,7 @@ def test_gemini_recebe_memoria_validada_e_parecer_do_groq(tmp_path):
     equipe = criar_equipe_agentes(
         memoria=memoria,
         llm_gemini=_LLMGemini(),
-        llm_groq=groq,
+        llm_auditor=auditor_llm,
     )
     auditoria = equipe.auditoria.auditar_evidencias("Resposta objetiva", {"a": "Fonte"})
     prompt = equipe.conversa.contextualizar_prompt(
@@ -145,7 +145,7 @@ def test_correcao_pode_superar_memoria_anterior(tmp_path):
             "evidencia_usuario": "Prefiro respostas curtas em portugues.",
         },
         origem="teste",
-        validado_por="Groq",
+        validado_por="Gemini Flash",
         confianca=0.9,
     ).item
     llm = _LLMJson([{
@@ -160,7 +160,7 @@ def test_correcao_pode_superar_memoria_anterior(tmp_path):
             "confianca": 0.95,
         }],
     }])
-    auditor = AgenteAuditorGroq(llm, memoria)
+    auditor = AgenteAuditorGemini(llm, memoria)
 
     resultado = auditor.aprender_da_interacao(
         "Corrigindo: agora prefiro respostas detalhadas em portugues.",

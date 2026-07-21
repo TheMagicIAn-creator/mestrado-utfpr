@@ -833,7 +833,7 @@ tags: [al-iado, memoria-validada, {tipo_nota}]
 # {titulo}
 
 > [!info] Memória externa auditável
-> Esta nota é uma projeção legível da memória validada pelo Groq. O arquivo JSON continua sendo a fonte de verdade.
+> Esta nota é uma projeção legível da memória validada pelo auditor. O arquivo JSON continua sendo a fonte de verdade.
 
 ## Conteúdo aprovado
 

@@ -2,9 +2,9 @@
 
 ## O que significa "aprender"
 
-Gemini e Groq não alteram os próprios pesos durante uma sessão. O aprendizado
+Os modelos Gemini não alteram os próprios pesos durante uma sessão. O aprendizado
 do Al IAdo PV é externo e auditável: uma informação durável declarada pelo
-pesquisador pode ser transformada em um item estruturado, validada pelo Groq e
+pesquisador pode ser transformada em um item estruturado, validada pelo auditor (Gemini Flash) e
 recuperada pelo Gemini em conversas futuras.
 
 Isso evita três problemas de uma memória livre: transformar resposta do modelo
@@ -14,8 +14,8 @@ conversa em cada prompt.
 ## Fluxo
 
 1. O pesquisador declara uma preferência, correção, decisão ou contexto estável.
-2. Uma heurística local detecta o gatilho. Perguntas comuns não chamam o Groq.
-3. O Groq recebe a mensagem e um resumo curto da resposta, retornando JSON.
+2. Uma heurística local detecta o gatilho. Perguntas comuns não chamam o auditor.
+3. O auditor (Gemini Flash) recebe a mensagem e um resumo curto da resposta, retornando JSON.
 4. Regras locais rejeitam segredo, métrica volátil, baixa confiança ou conteúdo
    sem ancoragem no texto do pesquisador.
 5. O item aprovado é gravado atomicamente em
@@ -61,7 +61,7 @@ garantia.
 
 O JSON é a memória normativa e o Markdown é uma visão derivada. Editar a nota
 gerada não altera a memória aprovada; correções devem ser declaradas no chat e
-passar novamente pelo Groq.
+passar novamente pelo auditor.
 
 Todo Markdown útil do vault participa da coleção `obsidian_pv` por padrão. A
 origem é inferida pela pasta e preservada nos metadados:

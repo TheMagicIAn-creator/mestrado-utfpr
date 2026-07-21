@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from src.conhecimento.provedores import GeminiLeve, GroqLeve
+from src.conhecimento.provedores import GeminiLeve
 
 
 class _Mensagem:
@@ -32,47 +32,37 @@ def test_gemini_invoke_e_stream_preservam_contrato():
     assert all(chamada["config"]["max_output_tokens"] == 8192 for chamada in chamadas)
 
 
-def test_groq_remove_imagem_de_provedor_textual():
+def test_gemini_invoke_json_forca_json_e_limita_saida():
+    """O papel de auditor (antes Groq) agora roda no GeminiLeve.invoke_json:
+    temperatura 0, mime-type JSON e teto de tokens do parametro."""
     chamadas = []
 
-    class Completions:
-        def create(self, **kwargs):
+    class Models:
+        def generate_content(self, **kwargs):
             chamadas.append(kwargs)
-            if kwargs.get("stream"):
-                delta = SimpleNamespace(content="fluxo")
-                return iter([SimpleNamespace(choices=[SimpleNamespace(delta=delta)])])
-            mensagem = SimpleNamespace(content="resposta")
-            return SimpleNamespace(choices=[SimpleNamespace(message=mensagem)])
+            return SimpleNamespace(text='{"status": "aprovado"}')
 
-    cliente = SimpleNamespace(
-        chat=SimpleNamespace(completions=Completions())
-    )
-    llm = GroqLeve("chave", "modelo", client=cliente)
-    conteudo = [
-        {"type": "text", "text": "pergunta"},
-        {"type": "image_url", "image_url": {"url": "data:image/png;base64,AA=="}},
-    ]
-
-    assert llm.invoke([_Mensagem(conteudo)]).content == "resposta"
-    assert next(llm.stream([_Mensagem(conteudo)])).content == "fluxo"
-    assert chamadas[0]["messages"] == [{"role": "user", "content": "pergunta"}]
-
-
-def test_groq_invoke_json_limita_saida_e_exige_objeto():
-    chamadas = []
-
-    class Completions:
-        def create(self, **kwargs):
-            chamadas.append(kwargs)
-            mensagem = SimpleNamespace(content='{"status": "aprovado"}')
-            return SimpleNamespace(choices=[SimpleNamespace(message=mensagem)])
-
-    cliente = SimpleNamespace(chat=SimpleNamespace(completions=Completions()))
-    llm = GroqLeve("chave", "modelo", client=cliente)
+    cliente = SimpleNamespace(models=Models())
+    llm = GeminiLeve("chave", "modelo", client=cliente)
 
     assert llm.invoke_json([_Mensagem("audite")], max_tokens=321) == {
         "status": "aprovado"
     }
-    assert chamadas[0]["temperature"] == 0.0
-    assert chamadas[0]["max_completion_tokens"] == 321
-    assert chamadas[0]["response_format"] == {"type": "json_object"}
+    assert chamadas[0]["config"]["temperature"] == 0.0
+    assert chamadas[0]["config"]["max_output_tokens"] == 321
+    assert chamadas[0]["config"]["response_mime_type"] == "application/json"
+
+
+def test_gemini_invoke_json_rejeita_nao_objeto():
+    class Models:
+        def generate_content(self, **kwargs):
+            return SimpleNamespace(text="[1, 2, 3]")
+
+    cliente = SimpleNamespace(models=Models())
+    llm = GeminiLeve("chave", "modelo", client=cliente)
+
+    try:
+        llm.invoke_json([_Mensagem("audite")])
+    except ValueError:
+        return
+    raise AssertionError("invoke_json deveria rejeitar JSON que nao e objeto")

@@ -8,9 +8,7 @@ huggingface-hub
 langchain
 langchain-core
 langchain-google-genai
-langchain-groq
 google-genai
-groq
 pypdf
 pdfplumber
 watchdog

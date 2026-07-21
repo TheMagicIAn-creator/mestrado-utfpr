@@ -318,8 +318,9 @@ Para reprocessar toda a literatura manualmente:
 ## Pipeline RAG — Recuperação Híbrida e Auditoria
 Quando Rodolfo faz uma pergunta, o sistema executa.
 IMPORTANTE: expansão, recuperação, fusão e reranking são
-LOCAIS. O Groq só é chamado com um pacote compacto quando
-há literatura recuperada; o Gemini produz a resposta final.
+LOCAIS. O Gemini Flash (auditor) só é chamado com um pacote
+compacto quando há literatura recuperada; o Gemini Pro produz
+a resposta final.
 
 CAMADA 1 — Expansão de query (local, por regras)
   Gera variações da pergunta por gatilhos de domínio
@@ -344,9 +345,9 @@ CAMADA 3 — Reranking (local, heurístico)
     que é o agente responsável pela resposta final
 
 CAMADA 4 — Auditoria e síntese
-  → Groq verifica cobertura, lacunas e fontes utilizáveis
-    em JSON estrito; não responde à pergunta
-  → Gemini recebe contexto, parecer de auditoria e memória
+  → Gemini Flash (auditor) verifica cobertura, lacunas e
+    fontes utilizáveis em JSON estrito; não responde à pergunta
+  → Gemini Pro recebe contexto, parecer de auditoria e memória
     validada, então conversa e produz a síntese final
 
 Nota: o perfil injetado no prompt do LLM é o
@@ -357,12 +358,18 @@ Sempre citar: autor, título e ano do artigo consultado.
 Nunca inventar referências.
 
 ## Equipe Multiagente e Aprendizado
-- Gemini tem o papel fixo de conversa, interpretação de ferramentas,
-  multimodalidade e síntese final. É a única voz do chat.
-- Groq tem o papel fixo de auditor de evidências e porteiro da memória. Recebe
-  entradas estruturadas e independentes da conversa. Os limites seguem o plano
-  contratado e podem ser configurados por variáveis `AL_IADO_*`; não há no
-  código pressuposto fixo de tier gratuito.
+A equipe é 100% Gemini, um modelo por nível de tarefa — a escolha segue os
+limites de taxa por modelo do plano pago (quanto mais barato o modelo, maior o
+RPM/TPM, então o trabalho repetitivo desce de nível):
+- Gemini Pro (`gemini-2.5-pro`) tem o papel fixo de conversa, interpretação de
+  ferramentas, multimodalidade (imagens) e síntese final. É a única voz do chat.
+- Gemini Flash (`gemini-2.5-flash`) tem o papel fixo de auditor de evidências e
+  porteiro da memória. Recebe entradas estruturadas e independentes da conversa,
+  em JSON. Os limites seguem o plano contratado e podem ser configurados por
+  variáveis `AL_IADO_*`.
+- Gemini Flash-Lite (`gemini-2.5-flash-lite`) roda as tarefas de fundo em lote
+  (metadados de PDF e consolidação de memória): o modelo mais barato/veloz, com
+  o maior limite de taxa.
 - Python continua responsável por cálculos, ferramentas, indexação, gráficos,
   tabelas e artefatos. Nenhum LLM recalcula ou aprova o próprio resultado.
 - Os modelos não são retreinados durante a conversa. O aprendizado entre
@@ -411,7 +418,7 @@ Sessões e memórias usam chunks menores (500/50).
 
 Extração de metadados em cascata (processador_pdf.py —
 roda APENAS para PDFs novos vindos de novos_pdfs/):
-  LLM (Groq → fallback Gemini) → regex → metadados
+  LLM de fundo (gemini-2.5-flash-lite) → regex → metadados
   internos do PDF → registra pendência
 Na reindexação de PDFs já nomeados em literatura/,
 autor/título/ano vêm do NOME do arquivo (regex), sem LLM.
@@ -535,14 +542,15 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Versionamento: GitHub (mestrado-utfpr)
 - Interface    : Streamlit (aplicação web local e em nuvem)
 - Memória      : sessões no ChromaDB + memória validada em JSON versionável
-- LLM          : equipe de papéis fixos, uma IA por tarefa — Gemini
-                 `gemini-2.5-pro` (conversa e síntese final ao Rodolfo, o
-                 modelo mais capaz) e Groq `llama-3.3-70b-versatile` (auditoria
-                 de evidências e validação da memória). Tarefas de fundo em
-                 Gemini (fallback de metadados de PDF e consolidação de memória)
-                 usam o modelo econômico `gemini-2.5-flash` (MODELO_GEMINI_FUNDO),
-                 para não gastar o pro em bastidor. Modelos configuráveis por env
-                 (AL_IADO_GEMINI_MODEL / AL_IADO_GROQ_MODEL / AL_IADO_GEMINI_MODEL_FUNDO).
+- LLM          : equipe 100% Gemini, um modelo por nível de tarefa (escolha
+                 guiada pelos limites de taxa por modelo do plano pago) — Nível 1
+                 `gemini-2.5-pro` (conversa, síntese final e imagens, o modelo
+                 mais capaz), Nível 2 `gemini-2.5-flash` (auditoria de evidências
+                 e validação da memória, em JSON) e Nível 3 `gemini-2.5-flash-lite`
+                 (tarefas de fundo em lote: metadados de PDF e consolidação de
+                 memória — o mais barato/veloz, maior limite de taxa). Modelos
+                 configuráveis por env (AL_IADO_GEMINI_MODEL /
+                 AL_IADO_GEMINI_MODEL_AUDITOR / AL_IADO_GEMINI_MODEL_FUNDO).
                  Expansão, BM25, RRF, reranking, cálculos e ferramentas são locais.
 - Embeddings   : paraphrase-multilingual-MiniLM-L12-v2
 - Extração PDF : pypdf (texto) + pdfplumber (tabelas)

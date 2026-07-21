@@ -1,21 +1,22 @@
 """
 provedores.py — Al IAdo PV
 Gerencia os provedores de LLM disponíveis.
-Permite escolher e trocar de provedor durante a sessão.
 
-Provedores suportados:
-  1. Google Gemini (modelo configurável) — conversa e síntese
-  2. Groq (modelo configurável)          — auditoria e memória
+Equipe 100% Gemini, um modelo por nível de tarefa (a escolha segue os limites
+de taxa por modelo do plano pago da API Gemini: quanto mais barato o modelo,
+maior o RPM/TPM disponível — então o trabalho repetitivo desce de nível):
 
-Divisão de trabalho por tarefa (cada IA no que faz melhor):
-  • Conversa / síntese final ao Rodolfo → Gemini principal (gemini-2.5-pro):
-    o modelo mais capaz, reservado para a resposta que o usuário lê.
-  • Auditoria de evidências / memória    → Groq (llama-3.3-70b-versatile):
-    rápido e barato para validação e consolidação.
-  • Tarefas de fundo em Gemini (fallback de metadados de PDF e consolidação
-    de memória)                          → Gemini econômico (gemini-2.5-flash),
-    exposto em MODELO_GEMINI_FUNDO — barato e veloz, sem gastar o pro.
-  • Expansão de query e reranking        → heurísticas locais, sem LLM.
+  • NÍVEL 1 — conversa, síntese final e interpretação de imagens
+      gemini-2.5-pro (o mais capaz; limite de requisições menor, por isso é
+      reservado à ÚNICA chamada que o Rodolfo lê por turno).
+  • NÍVEL 2 — auditoria de evidências e porteiro da memória validada
+      gemini-2.5-flash (rápido, JSON estruturado nativo, RPM alto; roda a cada
+      turno com literatura sem competir com o orçamento do pro).
+  • NÍVEL 3 — tarefas de fundo em lote: metadados de PDF e consolidação
+      gemini-2.5-flash-lite (o mais barato/veloz, maior limite de taxa; ideal
+      para varrer 39 PDFs ou resumir sessões sem custo relevante).
+  • SEM LLM — expansão de query, BM25, RRF, reranking, cálculos e ferramentas
+      continuam heurísticas locais determinísticas.
 
 Autor: Rodolfo Torres (UTFPR)
 """
@@ -28,10 +29,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# Modelo econômico do Gemini para tarefas de FUNDO (extração de metadados de
-# PDF e consolidação de memória). Fica separado do modelo principal de conversa
-# (gemini-2.5-pro) para não gastar o modelo caro em trabalho de bastidor.
-MODELO_GEMINI_FUNDO = os.getenv("AL_IADO_GEMINI_MODEL_FUNDO", "gemini-2.5-flash")
+# NÍVEL 3 — modelo de FUNDO (extração de metadados de PDF e consolidação de
+# memória): o mais econômico da família, com o maior limite de taxa.
+MODELO_GEMINI_FUNDO = os.getenv("AL_IADO_GEMINI_MODEL_FUNDO", "gemini-2.5-flash-lite")
 
 
 # ============================================================
@@ -48,12 +48,14 @@ PROVEDORES = {
         "multimodal": True,   # entende imagens (visão)
     },
     "2": {
-        "nome"      : "Groq (LLaMA 3.3)",
-        "modelo"    : os.getenv("AL_IADO_GROQ_MODEL", "llama-3.3-70b-versatile"),
-        "env_key"   : "GROQ_API_KEY",
+        "nome"      : "Google Gemini (auditor)",
+        "modelo"    : os.getenv("AL_IADO_GEMINI_MODEL_AUDITOR", "gemini-2.5-flash"),
+        "env_key"   : "GOOGLE_API_KEY",
         "limite"    : "conforme o plano da API",
         "emoji"     : "🟢",
-        "multimodal": False,  # texto puro (não lê imagens)
+        # O modelo até enxerga imagens, mas o PAPEL é textual por contrato:
+        # o auditor só recebe pacotes compactos de texto, nunca anexos.
+        "multimodal": False,
     }
 }
 
@@ -67,7 +69,7 @@ PAPEIS_AGENTES = {
     },
     "auditoria": {
         "provedor": "2",
-        "rotulo": "Groq - auditoria e memoria",
+        "rotulo": "Gemini Flash - auditoria e memoria",
     },
 }
 
@@ -83,18 +85,6 @@ def _conteudo_da_mensagem(mensagem):
     if isinstance(mensagem, dict):
         return mensagem.get("content", "")
     return getattr(mensagem, "content", mensagem)
-
-
-def _texto_do_conteudo(conteudo) -> str:
-    if isinstance(conteudo, str):
-        return conteudo
-    partes = []
-    for item in conteudo or []:
-        if isinstance(item, str):
-            partes.append(item)
-        elif isinstance(item, dict) and item.get("type") == "text":
-            partes.append(str(item.get("text", "")))
-    return "\n".join(parte for parte in partes if parte)
 
 
 class GeminiLeve:
@@ -164,6 +154,23 @@ class GeminiLeve:
         )
         return RespostaLLM(content=getattr(resposta, "text", "") or "")
 
+    def invoke_json(self, mensagens, max_tokens: int = 700) -> dict:
+        """Executa uma chamada curta e exige um objeto JSON (papel de auditor)."""
+        resposta = self._obter_client().models.generate_content(
+            model=self.model,
+            contents=self._conteudos(mensagens),
+            config={
+                "temperature": 0.0,
+                "max_output_tokens": max(100, int(max_tokens)),
+                "response_mime_type": "application/json",
+            },
+        )
+        texto = getattr(resposta, "text", "") or "{}"
+        payload = json.loads(texto)
+        if not isinstance(payload, dict):
+            raise ValueError("O auditor nao retornou um objeto JSON.")
+        return payload
+
     def stream(self, mensagens):
         fluxo = self._obter_client().models.generate_content_stream(
             model=self.model,
@@ -179,73 +186,11 @@ class GeminiLeve:
                 yield RespostaLLM(content=texto)
 
 
-class GroqLeve:
-    """Adaptador do SDK Groq sem carregar a integração LangChain."""
-
-    def __init__(self, api_key: str, model: str, temperature: float = 0.3,
-                 client=None) -> None:
-        self.api_key = api_key
-        self.model = model
-        self.temperature = float(temperature)
-        self._client = client
-
-    def _obter_client(self):
-        if self._client is None:
-            from groq import Groq
-
-            self._client = Groq(api_key=self.api_key)
-        return self._client
-
-    @staticmethod
-    def _mensagens(mensagens) -> list[dict]:
-        return [
-            {"role": "user", "content": _texto_do_conteudo(
-                _conteudo_da_mensagem(mensagem)
-            )}
-            for mensagem in mensagens
-        ]
-
-    def invoke(self, mensagens) -> RespostaLLM:
-        resposta = self._obter_client().chat.completions.create(
-            model=self.model,
-            messages=self._mensagens(mensagens),
-            temperature=self.temperature,
-        )
-        texto = resposta.choices[0].message.content or ""
-        return RespostaLLM(content=texto)
-
-    def invoke_json(self, mensagens, max_tokens: int = 700) -> dict:
-        """Executa uma chamada curta e exige um objeto JSON do Groq."""
-        resposta = self._obter_client().chat.completions.create(
-            model=self.model,
-            messages=self._mensagens(mensagens),
-            temperature=0.0,
-            max_completion_tokens=max(100, int(max_tokens)),
-            response_format={"type": "json_object"},
-        )
-        texto = resposta.choices[0].message.content or "{}"
-        payload = json.loads(texto)
-        if not isinstance(payload, dict):
-            raise ValueError("O auditor Groq nao retornou um objeto JSON.")
-        return payload
-
-    def stream(self, mensagens):
-        fluxo = self._obter_client().chat.completions.create(
-            model=self.model,
-            messages=self._mensagens(mensagens),
-            temperature=self.temperature,
-            stream=True,
-        )
-        for item in fluxo:
-            texto = item.choices[0].delta.content or ""
-            if texto:
-                yield RespostaLLM(content=texto)
-
-
 def eh_multimodal(nome_ou_chave: str) -> bool:
     """
     Diz se um provedor entende imagens (visão), aceitando tanto a chave
-    ("1"/"2") quanto o nome exibido ("Google Gemini", "Groq (LLaMA 3.3)").
+    ("1"/"2") quanto o nome exibido ("Google Gemini", "Google Gemini (auditor)").
+    O papel de auditor é textual por contrato, então responde False.
 
     Default conservador: False (assume texto puro se não reconhecer).
     """
@@ -302,7 +247,7 @@ def inicializar_provedor(escolha: str):
 
     print(f"\n  {info['emoji']} Inicializando {info['nome']}...")
 
-    # Google Gemini
+    # NÍVEL 1 — Gemini Pro: conversa, síntese e imagens
     if escolha == "1":
         llm = GeminiLeve(
             model=info["modelo"],
@@ -313,12 +258,14 @@ def inicializar_provedor(escolha: str):
             ),
         )
 
-    # Groq
+    # NÍVEL 2 — Gemini Flash: auditor de evidências e porteiro da memória.
+    # Temperatura baixa; as chamadas JSON do papel forçam 0.0 no invoke_json.
     elif escolha == "2":
-        llm = GroqLeve(
+        llm = GeminiLeve(
             model=info["modelo"],
             api_key=api_key,
-            temperature=0.3,
+            temperature=0.2,
+            max_output_tokens=2048,
         )
 
     print(f"  ✅ {info['nome']} pronto! (limite: {info['limite']})")
