@@ -321,6 +321,107 @@ Retorne apenas JSON:
             erros=tuple(erros),
         )
 
+    def consolidar_memoria_das_sessoes(
+        self,
+        texto_sessoes: str,
+        *,
+        origem: str = "consolidacao_automatica",
+        max_itens: int = 5,
+    ) -> ResultadoAprendizado:
+        """Extrai memoria duravel de um LOTE de sessoes, SEM exigir gatilho.
+
+        Diferente de ``aprender_da_interacao`` (que so dispara com um gatilho
+        explicito por turno), este metodo roda na consolidacao periodica e varre
+        o transcript inteiro atras de decisoes metodologicas, preferencias e
+        correcoes que o PESQUISADOR declarou ao longo das sessoes. O auditor
+        continua sendo o filtro: nada de pedidos pontuais, segredos, metricas ou
+        resultados recalculaveis. E ``MemoriaPersistente.registrar`` reforca as
+        mesmas regras (confianca minima, sem segredos/metricas).
+        """
+        texto = str(texto_sessoes or "").strip()
+        if not texto:
+            return ResultadoAprendizado(avaliou=False)
+
+        memorias_existentes = self.memoria.formatar_para_prompt(
+            texto[:1500], limite=8, max_chars=2200,
+        ) or "(nenhuma memoria pertinente)"
+        prompt = f"""
+Voce e o porteiro da memoria persistente do Al IAdo PV. A seguir esta o
+REGISTRO de uma ou mais sessoes de trabalho (conversa entre o pesquisador
+Rodolfo e o assistente). Extraia SOMENTE fatos DURAVEIS que o PESQUISADOR
+declarou ou decidiu: preferencias estaveis, decisoes metodologicas, correcoes e
+contexto de projeto. A fala do assistente serve apenas de contexto e NUNCA prova
+um fato.
+
+<sessoes>
+{texto[:14000]}
+</sessoes>
+
+MEMORIAS JA ATIVAS (nao duplique; use substitui_id se a sessao corrige uma):
+{memorias_existentes}
+
+Regras rigidas:
+- Salve apenas o que for reutilizavel em sessoes futuras.
+- NAO salve: pedidos pontuais, saudacoes, duvidas, segredos/API keys, metricas
+  ou resultados recalculaveis (AUC/F1/MTTF/limiar), nem citacoes cientificas
+  inferidas.
+- So inclua um item se houver evidencia LITERAL na fala do pesquisador.
+- No maximo {max_itens} candidatos, os de maior valor.
+
+Retorne apenas JSON:
+{{
+  "salvar": true,
+  "motivo": "curto",
+  "candidatos": [{{
+    "tipo": "preferencia|decisao_metodologica|correcao|contexto_projeto",
+    "escopo": "conversa|literatura|ml|compartilhado",
+    "conteudo": "formulacao autocontida",
+    "evidencia_usuario": "trecho literal curto da fala do pesquisador",
+    "substitui_id": "id anterior, apenas quando corrige um existente",
+    "confianca": 0.0
+  }}]
+}}
+""".strip()
+        try:
+            dados = _json_da_resposta(self.llm, prompt, max_tokens=1100)
+        except Exception as exc:
+            return ResultadoAprendizado(
+                avaliou=True,
+                motivo="Auditor indisponivel na consolidacao; nada persistido.",
+                erros=(str(exc)[:300],),
+            )
+
+        if not dados.get("salvar"):
+            return ResultadoAprendizado(
+                avaliou=True, motivo=str(dados.get("motivo", "Nada duravel."))[:300]
+            )
+
+        salvas = 0
+        rejeitadas = 0
+        erros = []
+        for candidato in (dados.get("candidatos") or [])[:max_itens]:
+            if not isinstance(candidato, dict):
+                rejeitadas += 1
+                continue
+            try:
+                resultado = self.memoria.registrar(
+                    candidato,
+                    origem=origem,
+                    validado_por=self.nome,
+                    confianca=float(candidato.get("confianca", 0.0)),
+                )
+                salvas += int(resultado.criado)
+            except (MemoriaInvalida, ValueError, OSError) as exc:
+                rejeitadas += 1
+                erros.append(str(exc)[:300])
+        return ResultadoAprendizado(
+            avaliou=True,
+            salvas=salvas,
+            rejeitadas=rejeitadas,
+            motivo=str(dados.get("motivo", ""))[:300],
+            erros=tuple(erros),
+        )
+
 
 @dataclass
 class EquipeAgentes:

@@ -234,6 +234,51 @@ Artigos e documentos mais relevantes mencionados, com contexto de uso.
 
 
 # ============================================================
+# MEMÓRIA VALIDADA (estruturada) — extração automática
+# ============================================================
+
+def consolidar_memoria_validada(sessoes: list) -> None:
+    """Extrai decisões/preferências metodológicas das sessões para a memória
+    validada (``memoria_validada.json``), com o auditor (Gemini Flash) filtrando
+    ruído — sem depender do gatilho manual ("lembre…").
+
+    Best-effort: qualquer falha (sem chave de API, erro de rede) é reportada e
+    ignorada, para nunca derrubar a consolidação narrativa que já rodou.
+    """
+    try:
+        from src.conhecimento.memoria_persistente import MemoriaPersistente
+        from src.conhecimento.multiagente import AgenteAuditorGemini
+        from src.conhecimento.provedores import inicializar_papel
+    except Exception as e:
+        print(f"   ⚠️  Memória validada indisponível (import): {e}")
+        return
+
+    try:
+        llm, _nome, _rotulo = inicializar_papel("auditoria")
+    except Exception as e:
+        print(f"   ⏭️  Sem auditor (chave ausente?) — memória validada intacta: {e}")
+        return
+
+    auditor = AgenteAuditorGemini(llm, MemoriaPersistente())
+    texto = ""
+    for s in sessoes:
+        texto += f"\n\n=== SESSÃO {s['data']} ===\n{s['conteudo'][:12000]}"
+
+    try:
+        resultado = auditor.consolidar_memoria_das_sessoes(texto[:70000])
+    except Exception as e:
+        print(f"   ⚠️  Extração de memória validada falhou: {e}")
+        return
+
+    if not resultado.avaliou:
+        print("   ℹ️  Nada durável a memorizar das sessões.")
+    elif resultado.salvas:
+        print(f"   ✅ Memória validada: +{resultado.salvas} item(ns) — {resultado.motivo}")
+    else:
+        print(f"   ℹ️  Memória validada inalterada — {resultado.motivo}")
+
+
+# ============================================================
 # SALVA MEMÓRIA CONSOLIDADA
 # ============================================================
 
@@ -381,6 +426,10 @@ def consolidar(forcar: bool = False) -> bool:
     print(f"\n💾 Salvando memória consolidada...")
     caminho = salvar_consolidado(resumo, sessoes)
     print(f"   ✅ Salvo: {caminho.name}")
+
+    # 4.5. Extrai memória VALIDADA (estruturada) das mesmas sessões
+    print(f"\n🧠 Atualizando memória validada (decisões/preferências)...")
+    consolidar_memoria_validada(sessoes)
 
     # 5. Atualiza ChromaDB
     print(f"\n🗄️  Atualizando ChromaDB...")
