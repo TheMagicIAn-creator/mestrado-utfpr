@@ -1112,7 +1112,8 @@ def responder_com_ferramenta(pergunta: str, perfil: str, llm) -> tuple[str, list
 
             aviso = alerta_citacao_infundada(resposta, {})
             if aviso:
-                resposta = resposta + aviso
+                # Aviso no TOPO: o pesquisador vê antes de ler o palpite.
+                resposta = aviso.strip() + "\n\n" + resposta
         st.markdown(resposta)
         renderizar_imagens(imagens)
     return resposta, imagens
@@ -1255,8 +1256,9 @@ def responder_com_rag(pergunta: str,
 
             aviso = alerta_citacao_infundada(resposta, citacoes if consultar_literatura else {})
             if aviso:
-                placeholder.markdown(resposta + aviso)
-                resposta = resposta + aviso
+                # Aviso no TOPO: o pesquisador vê antes de ler o palpite.
+                resposta = aviso.strip() + "\n\n" + resposta
+                placeholder.markdown(resposta)
         except Exception as exc:
             erro = str(exc)
             erro_baixo = erro.lower()
