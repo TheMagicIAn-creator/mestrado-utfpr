@@ -1874,6 +1874,66 @@ Responda apenas JSON valido:
     return {"usar_ferramenta": False, "ferramenta": None}
 
 
+def _corrigir_descricao_visual(resposta: str, imagens: list[dict] | None) -> str:
+    """Remove afirmações visuais que não correspondem aos artefatos exibidos."""
+    imagens = imagens or []
+    if not resposta or not imagens:
+        return resposta
+
+    inventario = " ".join(
+        f"{imagem.get('caption', '')} {imagem.get('path', '')}"
+        for imagem in imagens
+    )
+    inventario_norm = _normalizar(inventario)
+    # Quando o pedido realmente inclui esse tipo de figura, a interpretação é
+    # permitida. A proteção atua apenas nos conjuntos de métricas/contagens.
+    if any(termo in inventario_norm for termo in (
+        "score", "curva roc", "temporal", "limiar", "distribuicao",
+    )):
+        return resposta
+
+    termos_nao_suportados = (
+        "distribuicao de score",
+        "distribuicoes de score",
+        "curva roc",
+        "curvas roc",
+        "ao longo do tempo",
+        "separacao entre classes",
+        "separacao entre os dados",
+        "localizacao das deteccoes",
+    )
+    partes = re.split(r"(\n\s*\n)", resposta)
+    filtradas: list[str] = []
+    removeu = False
+    for parte in partes:
+        normalizada = _normalizar(parte)
+        descreve_figura = "grafico" in normalizada or "figura" in normalizada
+        incompativel = descreve_figura and any(
+            termo in normalizada for termo in termos_nao_suportados
+        )
+        if incompativel:
+            removeu = True
+            continue
+        filtradas.append(parte)
+
+    if not removeu:
+        return resposta
+
+    corrigida = "".join(filtradas).strip()
+    descricoes = []
+    if "comparacao por pontos" in inventario_norm:
+        descricoes.append("a comparação das métricas por pontos")
+    if "anomalias detectadas" in inventario_norm:
+        descricoes.append("as contagens de detecções e a cobertura percentual")
+    if descricoes:
+        corrigida += (
+            "\n\nOs gráficos exibidos abaixo mostram "
+            + " e ".join(descricoes)
+            + ", organizadas por artigo."
+        )
+    return corrigida
+
+
 def comentar_resultado(pergunta: str, resultado: dict, perfil: str, llm) -> str:
     autoral = _quer_resposta_autoral(pergunta)
     # Tabela crua (resposta direta) SÓ quando NÃO é pedido autoral. Se o
@@ -1940,7 +2000,8 @@ proporcional. Se o resultado mencionar imagens, elas serão renderizadas no chat
     try:
         from langchain_core.messages import HumanMessage
 
-        return llm.invoke([HumanMessage(content=prompt)]).content
+        resposta = llm.invoke([HumanMessage(content=prompt)]).content
+        return _corrigir_descricao_visual(resposta, resultado.get("imagens"))
     except Exception:
         return resultado.get("mensagem", "")
 

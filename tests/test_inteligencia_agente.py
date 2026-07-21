@@ -25,6 +25,7 @@ if "langchain_core" not in sys.modules:
     sys.modules["langchain_core.messages"] = _lcm
 
 from src.conhecimento.ferramentas import (  # noqa: E402
+    _corrigir_descricao_visual,
     _quer_resposta_autoral,
     comentar_resultado,
 )
@@ -109,3 +110,24 @@ def test_comentador_recebe_inventario_visual_e_proibe_descricao_inventada():
     assert "Francisti - comparação por pontos" in prompt
     assert "Ibrahim - anomalias detectadas" in prompt
     assert "Nenhum dos dois mostra distribuição de scores" in prompt
+
+
+def test_corretor_remove_descricao_visual_incompativel_com_as_legendas():
+    resposta = (
+        "O AE-LSTM lidera por AUC.\n\n"
+        "Os gráficos mostram distribuições de scores, curvas ROC e detecções "
+        "ao longo do tempo.\n\n"
+        "A comparação deve considerar também o ponto de operação."
+    )
+    imagens = [
+        {"caption": "Francisti - comparação por pontos", "path": "comparacao_metricas_pontos.png"},
+        {"caption": "Ibrahim - anomalias detectadas", "path": "anomalias_detectadas.png"},
+    ]
+
+    corrigida = _corrigir_descricao_visual(resposta, imagens)
+
+    assert "distribuições de scores" not in corrigida
+    assert "curvas ROC" not in corrigida
+    assert "O AE-LSTM lidera por AUC." in corrigida
+    assert "comparação das métricas por pontos" in corrigida
+    assert "contagens de detecções e a cobertura percentual" in corrigida
