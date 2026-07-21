@@ -965,6 +965,11 @@ def deve_consultar_literatura(pergunta: str, colecao=None) -> bool:
         "literature", "source", "sources", "reference", "references",
         "citation", "citations", "author", "authors", "bibliography",
         "indexed", "indexing",
+        # Normas técnicas: pedir norma/cláusula é pedido de referência — engata
+        # o retrieval + restrição + guard (a norma quase nunca está indexada, e
+        # o agente deve dizer isso em vez de inventar página/cláusula).
+        "norma", "normas", "norm", "standard", "standards", "clausula",
+        "clausulas", "norme", "normes",
         "articulo", "articulos", "fuente", "fuentes", "referencia",
         "referencias", "bibliografia", "autor", "autores", "revision",
         "indexado", "indexada",

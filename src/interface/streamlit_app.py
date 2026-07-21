@@ -1237,14 +1237,16 @@ def responder_com_rag(pergunta: str,
             )
             # Trava estrutural: sinaliza citações sem lastro (normas fora do
             # rodapé, páginas sem fonte recuperada) que o prompt sozinho não
-            # segura. O aviso vira parte da resposta (exibida e exportada).
-            if consultar_literatura:
-                from src.core.citacao_guarda import alerta_citacao_infundada
+            # segura. Roda SEMPRE — a fabricação mais grave (ex.: inventar
+            # "IEC 60812, Clause 7.3.3, p.27") acontece justamente quando a
+            # literatura NÃO foi consultada e o LLM responde de cabeça. Sem
+            # citação real na resposta, o guard fica silencioso (alta precisão).
+            from src.core.citacao_guarda import alerta_citacao_infundada
 
-                aviso = alerta_citacao_infundada(resposta, citacoes)
-                if aviso:
-                    placeholder.markdown(resposta + aviso)
-                    resposta = resposta + aviso
+            aviso = alerta_citacao_infundada(resposta, citacoes if consultar_literatura else {})
+            if aviso:
+                placeholder.markdown(resposta + aviso)
+                resposta = resposta + aviso
         except Exception as exc:
             erro = str(exc)
             erro_baixo = erro.lower()
