@@ -119,6 +119,13 @@ def _conteudo_da_mensagem(mensagem):
 # chamada cai aqui e o app nunca trava por 404 de modelo.
 MODELO_GEMINI_FALLBACK = os.getenv("AL_IADO_GEMINI_FALLBACK", "gemini-flash-latest")
 
+# Modelo ALTERNATIVO de último recurso quando o principal está sobrecarregado
+# (503): pool de capacidade diferente do Flash, para não só re-bater no mesmo
+# modelo lotado. Qualidade menor, mas responde em vez de estourar erro.
+MODELO_GEMINI_ALTERNATIVO = os.getenv(
+    "AL_IADO_GEMINI_ALTERNATIVO", "gemini-flash-lite-latest"
+)
+
 
 def _erro_de_modelo_indisponivel(exc) -> bool:
     """True quando a exceção indica modelo inexistente/aposentado (404 etc.).
@@ -379,7 +386,9 @@ def inicializar_provedor(escolha: str):
 
     print(f"\n  {info['emoji']} Inicializando {info['nome']}...")
 
-    # NÍVEL 1 — Gemini Pro: conversa, síntese e imagens
+    # NÍVEL 1 — conversa, síntese e imagens. Fallbacks dão um modelo ALTERNATIVO
+    # de verdade (Flash → Flash-Lite): num 503 de alta demanda, escapar para um
+    # pool de capacidade diferente responde em vez de só bater no modelo lotado.
     if escolha == "1":
         llm = GeminiLeve(
             model=info["modelo"],
@@ -388,6 +397,7 @@ def inicializar_provedor(escolha: str):
             max_output_tokens=int(
                 os.getenv("AL_IADO_GEMINI_MAX_OUTPUT_TOKENS", "8192")
             ),
+            fallbacks=(MODELO_GEMINI_FALLBACK, MODELO_GEMINI_ALTERNATIVO),
         )
 
     # NÍVEL 2 — Gemini Flash: auditor de evidências e porteiro da memória.
@@ -398,6 +408,7 @@ def inicializar_provedor(escolha: str):
             api_key=api_key,
             temperature=0.2,
             max_output_tokens=2048,
+            fallbacks=(MODELO_GEMINI_ALTERNATIVO,),
         )
 
     print(f"  ✅ {info['nome']} pronto! (limite: {info['limite']})")
