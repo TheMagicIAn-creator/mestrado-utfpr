@@ -7,8 +7,9 @@ sempre apontam para a versão vigente de cada tier — a família Gemini 2.5 foi
 aposentada em 2026 e versões explícitas giram rápido, então fixar número quebra:
 
   • NÍVEL 1 — conversa, síntese final e interpretação de imagens
-      gemini-pro-latest (o mais capaz; reservado à ÚNICA chamada que o Rodolfo
-      lê por turno). Se o Pro não estiver liberado, cai para o Flash (fallback).
+      gemini-flash-latest por padrão (GA, rápido, estável). O Pro é opt-in via
+      AL_IADO_GEMINI_MODEL=gemini-pro-latest para máximo raciocínio — mas é lento
+      no trivial e sofre 503 de alta demanda, por isso não é o default.
   • NÍVEL 2 — auditoria de evidências e porteiro da memória validada
       gemini-flash-latest (rápido, JSON estruturado nativo, GA; roda a cada
       turno com literatura sem competir com o orçamento do pro).
@@ -27,10 +28,22 @@ Autor: Rodolfo Torres (UTFPR)
 
 import os
 import json
+import time
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
+# Retentativas em erro TRANSITÓRIO (503/sobrecarga, 429/limite): o mesmo modelo
+# é tentado de novo com backoff curto; se esgotar, cai para o próximo candidato.
+_MAX_RETENTATIVAS = int(os.getenv("AL_IADO_GEMINI_RETENTATIVAS", "2"))
+_BACKOFF_BASE_S = float(os.getenv("AL_IADO_GEMINI_BACKOFF_S", "1.2"))
+
+
+def _dormir(segundos: float) -> None:
+    if segundos > 0:
+        time.sleep(segundos)
 
 
 # NÍVEL 3 — modelo de FUNDO (extração de metadados de PDF e consolidação de
@@ -47,7 +60,11 @@ MODELO_GEMINI_FUNDO = os.getenv("AL_IADO_GEMINI_MODEL_FUNDO", "gemini-flash-lite
 PROVEDORES = {
     "1": {
         "nome"      : "Google Gemini",
-        "modelo"    : os.getenv("AL_IADO_GEMINI_MODEL", "gemini-pro-latest"),
+        # Default = Flash GA: rápido e estável (o Pro/preview é lento no trivial
+        # e sujeito a 503 de alta demanda). Para máximo raciocínio, o pesquisador
+        # sobe para gemini-pro-latest via AL_IADO_GEMINI_MODEL (cai no Flash se
+        # o Pro não estiver liberado/estiver sobrecarregado).
+        "modelo"    : os.getenv("AL_IADO_GEMINI_MODEL", "gemini-flash-latest"),
         "env_key"   : "GOOGLE_API_KEY",
         "limite"    : "conforme o plano da API",
         "emoji"     : "🔵",
@@ -117,6 +134,20 @@ def _erro_de_modelo_indisponivel(exc) -> bool:
     ))
 
 
+def _erro_transitorio(exc) -> bool:
+    """True para erros TEMPORÁRIOS de disponibilidade/limite — vale retentar.
+
+    Ex.: '503 UNAVAILABLE ... experiencing high demand', '429 RESOURCE_EXHAUSTED',
+         'overloaded', 'try again later'. NÃO inclui 500/erro interno, que é
+         tratado como falha dura (propaga).
+    """
+    txt = str(exc).lower()
+    return any(s in txt for s in (
+        "503", "unavailable", "high demand", "overloaded",
+        "429", "resource_exhausted", "rate limit", "try again",
+    ))
+
+
 class GeminiLeve:
     """Adaptador do SDK Google Gen AI sem carregar a integração LangChain.
 
@@ -154,38 +185,48 @@ class GeminiLeve:
         return ordem
 
     def _gerar(self, contents, config, *, stream: bool = False):
-        """Executa generate_content(_stream) com fallback de modelo.
+        """Executa generate_content(_stream) com retry transitório + fallback.
 
+        Para cada modelo candidato: retenta em erro TRANSITÓRIO (503/429) com
+        backoff curto; se esgotar, ou se o modelo estiver INDISPONÍVEL (404),
+        passa ao próximo candidato. Erro d/outro tipo (ex.: 500) propaga.
         Retorna a resposta (não-stream) ou um gerador de itens (stream).
         """
         erro_final = None
         for modelo in self._candidatos():
-            try:
-                cliente = self._obter_client()
-                if stream:
-                    fluxo = cliente.models.generate_content_stream(
+            for tentativa in range(1, _MAX_RETENTATIVAS + 2):
+                try:
+                    cliente = self._obter_client()
+                    if stream:
+                        fluxo = cliente.models.generate_content_stream(
+                            model=modelo, contents=contents, config=config,
+                        )
+                        iterador = iter(fluxo)
+                        primeiro = next(iterador, _SEM_ITEM)  # força a chamada
+                        self._fixar_modelo(modelo)
+
+                        def _fluxo():
+                            if primeiro is not _SEM_ITEM:
+                                yield primeiro
+                            yield from iterador
+
+                        return _fluxo()
+                    resposta = cliente.models.generate_content(
                         model=modelo, contents=contents, config=config,
                     )
-                    iterador = iter(fluxo)
-                    primeiro = next(iterador, _SEM_ITEM)  # força a chamada aqui
                     self._fixar_modelo(modelo)
-
-                    def _fluxo():
-                        if primeiro is not _SEM_ITEM:
-                            yield primeiro
-                        yield from iterador
-
-                    return _fluxo()
-                resposta = cliente.models.generate_content(
-                    model=modelo, contents=contents, config=config,
-                )
-                self._fixar_modelo(modelo)
-                return resposta
-            except Exception as exc:  # noqa: BLE001 — só cai p/ fallback se for de modelo
-                if _erro_de_modelo_indisponivel(exc):
-                    erro_final = exc
-                    continue
-                raise
+                    return resposta
+                except Exception as exc:  # noqa: BLE001
+                    if _erro_de_modelo_indisponivel(exc):
+                        erro_final = exc
+                        break  # modelo aposentado → próximo candidato, sem retry
+                    if _erro_transitorio(exc):
+                        erro_final = exc
+                        if tentativa <= _MAX_RETENTATIVAS:
+                            _dormir(_BACKOFF_BASE_S * tentativa)
+                            continue  # retenta o MESMO modelo
+                        break  # esgotou retries → próximo candidato
+                    raise  # erro não-transitório e não-de-modelo → propaga
         if erro_final is not None:
             raise erro_final
         raise RuntimeError("Nenhum modelo Gemini candidato disponível.")

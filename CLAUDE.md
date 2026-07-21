@@ -361,12 +361,19 @@ Nunca inventar referências.
 A equipe é 100% Gemini, um modelo por nível de tarefa — a escolha segue os
 limites de taxa por modelo do plano pago (quanto mais barato o modelo, maior o
 RPM/TPM, então o trabalho repetitivo desce de nível):
-- Gemini Pro (`gemini-pro-latest`, alias -latest) tem o papel fixo de conversa, interpretação de
-  ferramentas, multimodalidade (imagens) e síntese final. É a única voz do chat.
+- Conversa, interpretação de ferramentas, multimodalidade (imagens) e síntese
+  final: por padrão `gemini-flash-latest` (GA, rápido e estável). É a única voz
+  do chat. O `gemini-pro-latest` é opt-in via `AL_IADO_GEMINI_MODEL` para máximo
+  raciocínio — mas é lento no trivial e sofre 503 de alta demanda, por isso não
+  é o default. Saudações/reações casuais nem chegam ao modelo (atalho local
+  `resposta_interacao_simples`).
 - Gemini Flash (`gemini-flash-latest`, alias -latest) tem o papel fixo de auditor de evidências e
   porteiro da memória. Recebe entradas estruturadas e independentes da conversa,
   em JSON. Os limites seguem o plano contratado e podem ser configurados por
   variáveis `AL_IADO_*`.
+- Resiliência a modelos: chamadas retentam em erro transitório (503/429) com
+  backoff e caem para o modelo de fallback (`gemini-flash-latest`) se o
+  configurado estiver aposentado (404) — o chat não trava por rotação/sobrecarga.
 - Gemini Flash-Lite (`gemini-flash-lite-latest`, alias -latest) roda as tarefas de fundo em lote
   (metadados de PDF e consolidação de memória): o modelo mais barato/veloz, com
   o maior limite de taxa.
@@ -556,10 +563,11 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Versionamento: GitHub (mestrado-utfpr)
 - Interface    : Streamlit (aplicação web local e em nuvem)
 - Memória      : sessões no ChromaDB + memória validada em JSON versionável
-- LLM          : equipe 100% Gemini, um modelo por nível de tarefa (escolha
-                 guiada pelos limites de taxa por modelo do plano pago) — Nível 1
-                 `gemini-pro-latest` (conversa, síntese final e imagens, o modelo
-                 mais capaz), Nível 2 `gemini-flash-latest` (auditoria de evidências
+- LLM          : equipe 100% Gemini, aliases -latest (a família 2.5 foi
+                 aposentada em 2026) — Nível 1 conversa/síntese/imagens em
+                 `gemini-flash-latest` por padrão (GA, estável; `gemini-pro-latest`
+                 é opt-in via AL_IADO_GEMINI_MODEL para máximo raciocínio),
+                 Nível 2 `gemini-flash-latest` (auditoria de evidências
                  e validação da memória, em JSON) e Nível 3 `gemini-flash-lite-latest`
                  (tarefas de fundo em lote: metadados de PDF e consolidação de
                  memória — o mais barato/veloz, maior limite de taxa). Modelos

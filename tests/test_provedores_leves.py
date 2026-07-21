@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import src.conhecimento.provedores as pv
 from src.conhecimento.provedores import GeminiLeve
 
 
@@ -78,6 +79,47 @@ def test_gemini_cai_para_fallback_quando_modelo_indisponivel():
     usados.clear()
     assert llm.invoke([_Mensagem("de novo")]).content == "ok"
     assert usados == ["gemini-flash-latest"]
+
+
+def test_gemini_retenta_em_503_e_depois_cai_para_fallback(monkeypatch):
+    """503 (alta demanda) retenta o mesmo modelo e, esgotando, cai p/ fallback."""
+    monkeypatch.setattr(pv, "_dormir", lambda s: None)  # sem esperar de verdade
+    tentativas = []
+
+    class Models:
+        def generate_content(self, **kwargs):
+            tentativas.append(kwargs["model"])
+            if kwargs["model"] == "gemini-pro-latest":
+                raise RuntimeError("503 UNAVAILABLE: currently experiencing high demand")
+            return SimpleNamespace(text="ok")
+
+    llm = GeminiLeve("chave", "gemini-pro-latest",
+                     client=SimpleNamespace(models=Models()),
+                     fallbacks=("gemini-flash-latest",))
+    assert llm.invoke([_Mensagem("q")]).content == "ok"
+    # pro tentado (1 + retentativas) vezes antes de cair; flash resolve.
+    assert tentativas.count("gemini-pro-latest") >= 2
+    assert tentativas[-1] == "gemini-flash-latest"
+    assert llm.model == "gemini-flash-latest"
+
+
+def test_gemini_503_transitorio_que_se_resolve_no_retry(monkeypatch):
+    """Se o 503 passar (spike temporário), o retry no MESMO modelo resolve."""
+    monkeypatch.setattr(pv, "_dormir", lambda s: None)
+    estado = {"n": 0}
+
+    class Models:
+        def generate_content(self, **kwargs):
+            estado["n"] += 1
+            if estado["n"] == 1:
+                raise RuntimeError("503 UNAVAILABLE: high demand, try again later")
+            return SimpleNamespace(text="ok")
+
+    llm = GeminiLeve("chave", "gemini-flash-latest",
+                     client=SimpleNamespace(models=Models()))
+    assert llm.invoke([_Mensagem("q")]).content == "ok"
+    assert estado["n"] == 2  # 1 falha + 1 sucesso, mesmo modelo
+    assert llm.model == "gemini-flash-latest"
 
 
 def test_gemini_erro_que_nao_e_de_modelo_nao_faz_fallback():
