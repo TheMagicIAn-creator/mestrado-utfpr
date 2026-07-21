@@ -1037,6 +1037,22 @@ def salvar_sessao(pergunta: str, resposta: str, imagens: list[dict], n: int, mod
     if caminhos_img:
         bloco += f"**Imagens exibidas:**\n{caminhos_img}\n\n"
 
+    # Liga a sessão a memórias validadas relacionadas — sem isto, a sessão só
+    # existia isolada no vault, sem nenhuma aresta no grafo do Obsidian.
+    try:
+        equipe = st.session_state.get("equipe")
+        if equipe is not None:
+            from src.conhecimento.vault_links import (
+                bloco_notas_relacionadas,
+                notas_relacionadas,
+            )
+
+            itens_memoria = equipe.memoria.listar()
+            relacionadas = notas_relacionadas(f"{pergunta}\n{resposta}", itens_memoria)
+            bloco += bloco_notas_relacionadas(relacionadas)
+    except Exception:
+        pass
+
     with open(st.session_state.caminho_sessao, "a", encoding="utf-8") as f:
         f.write(bloco)
 
@@ -1044,6 +1060,21 @@ def salvar_sessao(pergunta: str, resposta: str, imagens: list[dict], n: int, mod
         indexar_sessao(st.session_state.caminho_sessao, modelo_embeddings, PASTA_CHROMADB)
     except Exception:
         pass
+
+
+def _cadencia_atingida() -> int:
+    """Nº de interações atual quando bate um múltiplo de AL_IADO_CONSOLIDAR_A_CADA
+    (default 6), ou 0 caso contrário. Cadência única compartilhada pelo
+    aprendizado automático e pela persistência de sessão na nuvem."""
+    import os
+
+    mensagens = st.session_state.get("mensagens") or []
+    n = len(mensagens) // 2
+    try:
+        passo = max(1, int(os.getenv("AL_IADO_CONSOLIDAR_A_CADA", "6")))
+    except ValueError:
+        passo = 6
+    return n if (n > 0 and n % passo == 0) else 0
 
 
 def aprender_da_sessao_web() -> None:
@@ -1056,24 +1087,48 @@ def aprender_da_sessao_web() -> None:
     foi conversado. Best-effort; persiste no GitHub se AL_IADO_PERSISTIR_NUVEM
     estiver ligado (senão vale durante a instância). Deduplica via registrar().
     """
-    import os
-
     auditor = st.session_state.get("auditor")
     if auditor is None or not hasattr(auditor, "consolidar_memoria_das_sessoes"):
         return
-    mensagens = st.session_state.get("mensagens") or []
-    n = len(mensagens) // 2
-    try:
-        passo = max(1, int(os.getenv("AL_IADO_CONSOLIDAR_A_CADA", "6")))
-    except ValueError:
-        passo = 6
-    if n <= 0 or n % passo != 0:
+    if not _cadencia_atingida():
         return
     try:
         from src.core.conversa_export import montar_transcricao
 
+        mensagens = st.session_state.get("mensagens") or []
         transcrito = montar_transcricao(mensagens)
         auditor.consolidar_memoria_das_sessoes(transcrito, origem="chat_web_auto")
+    except Exception:
+        pass
+
+
+def persistir_sessao_web() -> None:
+    """Commita o arquivo de sessão atual (notas/sessoes/*.md) no GitHub, no
+    MESMO ritmo do aprendizado automático (a cada N interações).
+
+    Sem isto, o transcrito da conversa na nuvem só existe no disco EFÊMERO do
+    container: qualquer reboot/redeploy o apaga por completo — foi exatamente
+    o que aconteceu com as sessões do dia (só a memória validada, um resumo
+    curado, sobrevivia). Best-effort; no-op se a persistência não estiver
+    ligada (AL_IADO_PERSISTIR_NUVEM) ou se ainda não houver sessão salva.
+    """
+    caminho = st.session_state.get("caminho_sessao")
+    if caminho is None:
+        return
+    n = _cadencia_atingida()
+    if not n:
+        return
+    try:
+        from src.conhecimento.persistencia_nuvem import (
+            persistencia_ativa,
+            persistir_arquivo,
+        )
+
+        if persistencia_ativa():
+            persistir_arquivo(
+                caminho,
+                mensagem=f"chore(sessao): atualiza sessao web ({n} interacoes)",
+            )
     except Exception:
         pass
 
@@ -1407,6 +1462,9 @@ def renderizar_chat(
     # interações), independente do modo_consulta/watcher. É o que faz o agente
     # acumular conhecimento entre sessões.
     aprender_da_sessao_web()
+    # Mesmo ritmo: commita o transcrito da sessão no GitHub, para sobreviver
+    # a reboots/redeploys do container efêmero da nuvem.
+    persistir_sessao_web()
 
     auditor = st.session_state.get("auditor")
     if auditor is not None:

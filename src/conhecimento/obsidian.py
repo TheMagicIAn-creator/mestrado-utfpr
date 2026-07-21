@@ -816,6 +816,19 @@ def espelhar_memoria_validada(
             "contexto_projeto": "contexto",
         }.get(tipo_original, tipo_original)
         titulo = f"Memoria validada - {item_id}"
+        from src.conhecimento.vault_links import notas_relacionadas
+
+        relacionadas = notas_relacionadas(
+            str(item.get("conteudo", "")), itens, excluir_id=item_id
+        )
+        links_relacionados = "\n".join(
+            f"- [[Memoria validada - {r['id']}]] — "
+            + str(r.get("conteudo", ""))[:90]
+            for r in relacionadas
+        )
+        secao_relacionadas = (
+            f"\n## Notas relacionadas\n{links_relacionados}\n" if links_relacionados else ""
+        )
         conteudo = f"""---
 al_iado: true
 titulo: {_yaml_string(titulo)}
@@ -853,7 +866,7 @@ tags: [al-iado, memoria-validada, {tipo_nota}]
 ## Conexões
 
 - [[00 - Painel do cerebro]]
-"""
+{secao_relacionadas}"""
         destino = pasta / f"{item_id}.md"
         anterior = destino.read_text(encoding="utf-8") if destino.is_file() else None
         if anterior == conteudo:
