@@ -104,3 +104,27 @@ def test_conflito_de_sha_faz_um_retry(monkeypatch):
     monkeypatch.setattr(pn, "_requisitar", fake)
     assert pn.persistir_arquivo(alvo, mensagem="msg") is True
     assert puts["n"] == 2  # 1 conflito + 1 sucesso
+
+
+def test_diagnostico_desligado_por_padrao(monkeypatch):
+    _limpar_env(monkeypatch)
+    d = pn.diagnostico()
+    assert d["ativa"] is False and "desligada" in d["resumo"]
+
+
+def test_diagnostico_sem_token(monkeypatch):
+    _limpar_env(monkeypatch)
+    monkeypatch.setenv("AL_IADO_PERSISTIR_NUVEM", "1")
+    monkeypatch.setenv("AL_IADO_GITHUB_REPO", "dono/repo")
+    d = pn.diagnostico()
+    assert d["ativa"] is False and "token" in d["resumo"].lower()
+
+
+def test_diagnostico_ativa_aguardando(monkeypatch):
+    _limpar_env(monkeypatch)
+    monkeypatch.setenv("AL_IADO_PERSISTIR_NUVEM", "1")
+    monkeypatch.setenv("GITHUB_TOKEN", "ghp_x" * 8)
+    monkeypatch.setenv("AL_IADO_GITHUB_REPO", "dono/repo")
+    pn._ULTIMO_STATUS["estado"] = "sem_tentativa"
+    d = pn.diagnostico()
+    assert d["ativa"] is True

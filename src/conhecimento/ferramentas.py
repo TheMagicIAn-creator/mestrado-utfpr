@@ -1777,12 +1777,52 @@ def _quer_resposta_discursiva_sem_ferramenta(pergunta: str) -> bool:
     return any(v in txt for v in verbos_discursivos) and any(c in txt for c in conceitos)
 
 
+_GATILHOS_DECLARACAO_MEMORIA = (
+    "lembre", "lembra", "lembrar", "memorize", "memoriza", "anote", "anota",
+    "considere que", "corrigindo", "correcao", "decidi", "decidimos",
+    "combinamos", "a partir de agora", "daqui em diante", "de agora em diante",
+    "prefiro", "quero que voce lembre",
+)
+
+
+def _e_declaracao_memoria(pergunta: str) -> bool:
+    """Declaração para o agente LEMBRAR ('Lembre-se: ...', 'Decidimos que ...',
+    'Corrigindo: ...'). Deve ir ao LLM — que responde e o auditor memoriza —
+    NUNCA virar comando de pipeline só porque menciona 'pipeline'/'injetar'."""
+    txt = _normalizar(pergunta)
+    return any(re.match(rf"\s*{re.escape(g)}\b", txt) for g in _GATILHOS_DECLARACAO_MEMORIA)
+
+
+_INTERROGATIVOS = (
+    "qual", "quais", "quanto", "quantos", "quanta", "quantas",
+    "o que", "por que", "porque", "pq", "como", "quando", "onde",
+    "cade", "quem", "sera que",
+    "what", "which", "how", "when", "where", "who", "why",
+)
+
+
+def _e_pergunta(pergunta: str) -> bool:
+    """Pergunta (recall/consulta), não comando. Detecta '?' no texto original ou
+    palavra interrogativa no início. Uma PERGUNTA nunca deve DISPARAR execução do
+    pipeline (ex.: 'Qual falha decidimos injetar?' não é 'injete a falha')."""
+    if "?" in (pergunta or ""):
+        return True
+    txt = _normalizar(pergunta)
+    return any(re.match(rf"\s*{re.escape(w)}\b", txt) for w in _INTERROGATIVOS)
+
+
 def _decisao_rapida(pergunta: str) -> dict | None:
     txt = _normalizar(pergunta)
 
     # Busca na web — atalho prioritário quando gatilho explícito aparece
     if any(g in txt for g in _GATILHOS_WEB):
         return {"usar_ferramenta": True, "ferramenta": "buscar_web"}
+
+    # Declaração de memória ("Lembre-se: decidimos que...") → LLM. Sem isto,
+    # "injetada"/"pipeline" na frase faziam a declaração virar comando de
+    # pipeline, e a memória nunca era criada.
+    if _e_declaracao_memoria(pergunta):
+        return {"usar_ferramenta": False, "ferramenta": None}
 
     # Pedido de CÓDIGO ("gere um código do gráfico da TTF", "como plotar ...")
     # vai para o LLM, que ESCREVE o código — nunca para execução do pipeline
@@ -1842,7 +1882,8 @@ def _decisao_rapida(pergunta: str) -> dict | None:
         return {"usar_ferramenta": True, "ferramenta": "limpar_resultados_ml"}
 
     # "Recalcule", "refaça", "rode tudo de novo", "do zero" → pipeline completo.
-    if any(t in txt for t in _TERMOS_PIPELINE_IMPLICITO):
+    # Perguntas ("qual falha decidimos injetar?") nunca EXECUTAM o pipeline.
+    if not _e_pergunta(pergunta) and any(t in txt for t in _TERMOS_PIPELINE_IMPLICITO):
         # Quando há ETAPAS específicas mencionadas, roteia para a mais AVANÇADA
         # (com auto_deps=True a etapa puxa todas anteriores que faltarem).
         etapa_mais_avancada = _etapa_mais_avancada_mencionada(txt)
@@ -1857,17 +1898,21 @@ def _decisao_rapida(pergunta: str) -> dict | None:
         "graficos", "auc", "f1", "mttf", "b10", "smd", "limiar",
         "metrica", "metricas", "imagem", "imagens", "figura", "figuras",
         "curva", "curvas", "plot", "plots", "visualizacao", "matriz",
-        "heatmap", "roc", "tabela",
+        "heatmap", "roc",
         "result", "results", "show", "display", "chart", "charts",
         "threshold", "metric", "metrics", "image", "images", "figure",
-        "figures", "curve", "curves", "visualization", "matrix", "table",
+        "figures", "curve", "curves", "visualization", "matrix",
         "resultado", "resultados", "muestra", "mostrar", "grafico",
         "graficos", "umbral", "metrica", "metricas", "imagen", "imagenes",
-        "figura", "curva", "visualizacion", "matriz", "tabla",
+        "figura", "curva", "visualizacion", "matriz",
         "resultat", "resultats", "montre", "affiche", "graphique",
         "seuil", "metrique", "metriques", "image", "figure", "courbe",
-        "visualisation", "matrice", "tableau",
+        "visualisation", "matrice",
     )
+    # NOTA: "tabela"/"table"/"tabla"/"tableau" foram REMOVIDOS dos gatilhos de
+    # consulta — eram ambíguos demais ("quais as tabelas de S/O/D da FMECA?" é
+    # conceitual, não um pedido do artefato de resultados). Para ver a tabela de
+    # resultados, "mostre os resultados"/"matriz"/"métricas" continuam valendo.
     termos_acao_ativa = (
         "rodar", "execut", "trein", "gerar", "gere", "calcular",
         "injetar", "refazer", "regerar", "recalc",
@@ -1907,7 +1952,8 @@ def _decisao_rapida(pergunta: str) -> dict | None:
         "execut", "exécut", "entrain", "entraîn", "gener", "génér",
         "calcul", "valid", "inject", "estim",
     )
-    if any(t in txt for t in termos_executar):
+    # Perguntas ("qual falha decidimos injetar?") não EXECUTAM — só comandos.
+    if not _e_pergunta(pergunta) and any(t in txt for t in termos_executar):
         if "pipeline" in txt or "tudo" in txt or "todos" in txt:
             return {"usar_ferramenta": True, "ferramenta": "rodar_pipeline_completo"}
         # Roteia para a etapa mais avançada mencionada (auto_deps roda o resto)

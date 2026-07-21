@@ -191,3 +191,32 @@ def test_consulta_legitima_de_resultados_preservada():
     assert _ferramenta("cadê as imagens da roc?") == "consultar_resultados"
     # 'geral' NAO pode ser confundido com verbo de geracao
     assert _ferramenta("de modo geral, mostre a matriz") == "consultar_resultados"
+
+
+def test_declaracao_de_memoria_nao_vira_comando_de_pipeline():
+    """'Lembre-se: decidimos... injetada no pipeline...' e uma DECLARACAO para
+    memorizar, nao um comando para rodar o pipeline."""
+    d = _decisao_rapida(
+        "Lembre-se: decidimos que a primeira falha a ser injetada no pipeline "
+        "e o Contator AC, por causa do NPR mais alto."
+    )
+    assert d == {"usar_ferramenta": False, "ferramenta": None}
+
+
+def test_pergunta_de_recall_nao_executa_pipeline():
+    """'Qual falha decidimos injetar primeiro?' e recall, nao 'injete a falha'."""
+    assert _ferramenta(
+        "Qual falha a gente decidiu injetar primeiro no pipeline, o Contator AC?"
+    ) != "rodar_pipeline_completo"
+
+
+def test_tabelas_conceituais_nao_despejam_resultados():
+    """'quais as tabelas de S/O/D da FMECA' e conceitual, nao o artefato."""
+    assert _ferramenta("quais as tabelas para cada uma das variaveis (S O e D)?") \
+        != "consultar_resultados"
+
+
+def test_comandos_e_consultas_legitimos_preservados():
+    assert _ferramenta("rode o pipeline completo") == "rodar_pipeline_completo"
+    assert _ferramenta("gere os resultados") == "rodar_pipeline_completo"
+    assert _ferramenta("mostre os resultados do weibull") == "consultar_resultados"

@@ -30,7 +30,12 @@ _PADRAO_NORMA = re.compile(
     r"\b(?:IEC|ISO|IEEE|ABNT|NBR|ASTM|DIN|EN|MIL-STD|MIL-HDBK|SAE|API)\s*[-:]?\s*\d{2,6}",
     re.I,
 )
-_PADRAO_PAGINA = re.compile(r"\bp(?:á|a)?g?\.?\s*\d+", re.I)
+# Página de citação: exige separador real ("p. 27", "pág 27", "pagina 27",
+# "page 27"). NÃO casa "p99"/"p95" (percentil) nem "p1"/"p2" (pontos) — que são
+# notação técnica, não referência de página. Evita falso positivo do guard.
+_PADRAO_PAGINA = re.compile(
+    r"\b(?:p\.\s*|p[áa]gs?\.?\s+|p[áa]ginas?\s+|pages?\s+)\d+", re.I
+)
 
 
 def _norm(texto: str) -> str:

@@ -84,3 +84,15 @@ def test_iec_inventada_sem_retrieval_e_sinalizada():
     aviso = alerta_citacao_infundada(resposta, {})  # {} = literatura nao consultada
     assert aviso
     assert "IEC 60812" in aviso
+
+
+def test_p99_percentil_nao_e_confundido_com_pagina():
+    """'p99'/'p95' (percentil) e notacao tecnica, nao referencia de pagina —
+    o guard nao pode alarmar por isso (era falso positivo)."""
+    for r in (
+        "O limiar operacional e o percentil 99 (p99) do erro saudavel.",
+        "Usamos p95 e p99 como referencia; NPR=315.",
+    ):
+        assert alerta_citacao_infundada(r, {}) == "", r
+    # pagina real ainda dispara
+    assert alerta_citacao_infundada("Sakurada (1998), p. 28, define FMECA.", {}) != ""
