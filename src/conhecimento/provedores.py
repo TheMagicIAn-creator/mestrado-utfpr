@@ -7,6 +7,16 @@ Provedores suportados:
   1. Google Gemini (modelo configurável) — conversa e síntese
   2. Groq (modelo configurável)          — auditoria e memória
 
+Divisão de trabalho por tarefa (cada IA no que faz melhor):
+  • Conversa / síntese final ao Rodolfo → Gemini principal (gemini-2.5-pro):
+    o modelo mais capaz, reservado para a resposta que o usuário lê.
+  • Auditoria de evidências / memória    → Groq (llama-3.3-70b-versatile):
+    rápido e barato para validação e consolidação.
+  • Tarefas de fundo em Gemini (fallback de metadados de PDF e consolidação
+    de memória)                          → Gemini econômico (gemini-2.5-flash),
+    exposto em MODELO_GEMINI_FUNDO — barato e veloz, sem gastar o pro.
+  • Expansão de query e reranking        → heurísticas locais, sem LLM.
+
 Autor: Rodolfo Torres (UTFPR)
 """
 
@@ -18,6 +28,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+# Modelo econômico do Gemini para tarefas de FUNDO (extração de metadados de
+# PDF e consolidação de memória). Fica separado do modelo principal de conversa
+# (gemini-2.5-pro) para não gastar o modelo caro em trabalho de bastidor.
+MODELO_GEMINI_FUNDO = os.getenv("AL_IADO_GEMINI_MODEL_FUNDO", "gemini-2.5-flash")
+
+
 # ============================================================
 # DEFINIÇÃO DOS PROVEDORES
 # ============================================================
@@ -25,7 +41,7 @@ load_dotenv()
 PROVEDORES = {
     "1": {
         "nome"      : "Google Gemini",
-        "modelo"    : os.getenv("AL_IADO_GEMINI_MODEL", "gemini-2.5-flash"),
+        "modelo"    : os.getenv("AL_IADO_GEMINI_MODEL", "gemini-2.5-pro"),
         "env_key"   : "GOOGLE_API_KEY",
         "limite"    : "conforme o plano da API",
         "emoji"     : "🔵",

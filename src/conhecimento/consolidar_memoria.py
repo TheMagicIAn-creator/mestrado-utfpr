@@ -234,8 +234,9 @@ Artigos e documentos mais relevantes mencionados, com contexto de uso.
             try:
                 from langchain_google_genai import ChatGoogleGenerativeAI
                 from langchain_core.messages import HumanMessage
+                from src.conhecimento.provedores import MODELO_GEMINI_FUNDO
                 llm = ChatGoogleGenerativeAI(
-                    model        = "gemini-2.5-flash",
+                    model        = MODELO_GEMINI_FUNDO,
                     google_api_key = gemini_key,
                     temperature  = 0.2
                 )

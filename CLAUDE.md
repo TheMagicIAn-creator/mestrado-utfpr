@@ -535,10 +535,14 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Versionamento: GitHub (mestrado-utfpr)
 - Interface    : Streamlit (aplicação web local e em nuvem)
 - Memória      : sessões no ChromaDB + memória validada em JSON versionável
-- LLM          : equipe de papéis fixos — Gemini `gemini-2.5-flash` (conversa
-                 e síntese final) e Groq `llama-3.3-70b-versatile` (auditoria
-                 de evidências e validação da memória).
-                 Extração de metadados mantém seu fluxo especializado existente.
+- LLM          : equipe de papéis fixos, uma IA por tarefa — Gemini
+                 `gemini-2.5-pro` (conversa e síntese final ao Rodolfo, o
+                 modelo mais capaz) e Groq `llama-3.3-70b-versatile` (auditoria
+                 de evidências e validação da memória). Tarefas de fundo em
+                 Gemini (fallback de metadados de PDF e consolidação de memória)
+                 usam o modelo econômico `gemini-2.5-flash` (MODELO_GEMINI_FUNDO),
+                 para não gastar o pro em bastidor. Modelos configuráveis por env
+                 (AL_IADO_GEMINI_MODEL / AL_IADO_GROQ_MODEL / AL_IADO_GEMINI_MODEL_FUNDO).
                  Expansão, BM25, RRF, reranking, cálculos e ferramentas são locais.
 - Embeddings   : paraphrase-multilingual-MiniLM-L12-v2
 - Extração PDF : pypdf (texto) + pdfplumber (tabelas)

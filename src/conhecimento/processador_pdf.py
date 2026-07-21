@@ -159,8 +159,9 @@ Nome do arquivo (pode ajudar): {nome_arquivo}
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
             from langchain_core.messages import HumanMessage
+            from src.conhecimento.provedores import MODELO_GEMINI_FUNDO
             llm      = ChatGoogleGenerativeAI(
-                model          = "gemini-2.5-flash",
+                model          = MODELO_GEMINI_FUNDO,
                 google_api_key = GOOGLE_API_KEY,
                 temperature    = 0
             )

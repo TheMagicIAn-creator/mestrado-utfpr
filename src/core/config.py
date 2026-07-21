@@ -114,7 +114,9 @@ ARQUIVO_PERFIL     = RAIZ_PROJETO / "CLAUDE.md"
 # ============================================================
 
 MODELO_EMBEDDINGS      = "paraphrase-multilingual-MiniLM-L12-v2"
-MODELO_GEMINI          = "gemini-2.5-flash"
+# Modelo principal de conversa (fonte de verdade: provedores.PROVEDORES / env
+# AL_IADO_GEMINI_MODEL). O de fundo (metadados/memória) é gemini-2.5-flash.
+MODELO_GEMINI          = "gemini-2.5-pro"
 NOME_COLECAO           = "literatura_pv"
 NOME_COLECAO_SESSOES   = "sessoes_pv"
 NOME_COLECAO_OBSIDIAN  = "obsidian_pv"
