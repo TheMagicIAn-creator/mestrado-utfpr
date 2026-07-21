@@ -34,9 +34,11 @@ from src.ml.resultados import _quer_imagens  # noqa: E402
 class _FakeLLM:
     def __init__(self):
         self.chamado = False
+        self.mensagens = None
 
-    def invoke(self, _msgs):
+    def invoke(self, msgs):
         self.chamado = True
+        self.mensagens = msgs
         return types.SimpleNamespace(content="[INTERPRETAÇÃO]")
 
 
@@ -85,3 +87,25 @@ def test_intencao_de_imagens_distingue_mostrar_de_gerar():
     assert _quer_imagens("veja a curva ROC")
     assert not _quer_imagens("quero os resultados do pipeline")
     assert not _quer_imagens("qual a situação geral do trabalho")
+
+
+def test_comentador_recebe_inventario_visual_e_proibe_descricao_inventada():
+    llm = _FakeLLM()
+    resultado = {
+        "ok": True,
+        "mensagem": "AUC e contagens recalculadas.",
+        "imagens": [
+            {"caption": "Francisti - comparação por pontos", "grupo": "Francisti"},
+            {"caption": "Ibrahim - anomalias detectadas", "grupo": "Ibrahim"},
+        ],
+        "resposta_pronta": False,
+    }
+
+    comentar_resultado("compare e interprete os modelos", resultado, "perfil", llm)
+
+    mensagem = llm.mensagens[0]
+    prompt = mensagem.get("content") if isinstance(mensagem, dict) else mensagem.content
+    assert "inventário autoritativo" in prompt
+    assert "Francisti - comparação por pontos" in prompt
+    assert "Ibrahim - anomalias detectadas" in prompt
+    assert "Nenhum dos dois mostra distribuição de scores" in prompt

@@ -1889,12 +1889,30 @@ def comentar_resultado(pergunta: str, resultado: dict, perfil: str, llm) -> str:
 
     status = "SUCESSO" if resultado.get("ok") else "FALHA"
     perfil_txt = (perfil or "").strip()[:4000]
+    legendas_visuais = []
+    for imagem in resultado.get("imagens") or []:
+        legenda = str(imagem.get("caption", "")).strip()
+        if not legenda:
+            continue
+        grupo = str(imagem.get("grupo", "")).strip()
+        tipo = str(imagem.get("tipo", "")).strip()
+        qualificadores = ", ".join(item for item in (grupo, tipo) if item)
+        sufixo = f" ({qualificadores})" if qualificadores else ""
+        legendas_visuais.append(f"- {legenda}{sufixo}")
+    inventario_visual = (
+        "ARTEFATOS VISUAIS QUE SERÃO EXIBIDOS (inventário autoritativo):\n"
+        + "\n".join(legendas_visuais)
+        if legendas_visuais
+        else "ARTEFATOS VISUAIS QUE SERÃO EXIBIDOS: nenhum."
+    )
     prompt = f"""{perfil_txt}
 
 Rodolfo pediu: "{pergunta}"
 
 Resultado técnico ({status}) — use como EVIDÊNCIA, NÃO copie a tabela crua:
 {resultado.get('mensagem', 'sem detalhes')}
+
+{inventario_visual}
 
 Responda como o Al IAdo PV, no papel de coorientador: INTERPRETE os números,
 priorize o que importa para a dissertação, aponte ressalvas (ajuste estatístico
@@ -1911,7 +1929,11 @@ proporcional. Se o resultado mencionar imagens, elas serão renderizadas no chat
     não diga que não pode vê-las. Comece diretamente pela análise, sem
     vocativos como "Prezado Rodolfo". Descreva cada gráfico somente pelo que a
     evidência e sua legenda dizem; não atribua distribuições, limiares ou curvas a
-    uma figura de métricas, contagens ou cobertura. Em Weibull/RUL, preserve
+    uma figura de métricas, contagens ou cobertura. Uma "comparação por pontos"
+    compara métricas dos modelos; um gráfico de "anomalias detectadas" compara
+    contagens e cobertura. Nenhum dos dois mostra distribuição de scores,
+    limiares ou separação amostra a amostra, salvo se isso estiver explicitamente
+    nomeado no inventário. Em Weibull/RUL, preserve
     rigorosamente o rótulo:
 "RUL restrita" é Kaplan-Meier não paramétrica; não a chame de paramétrica. NPR
 é criticidade FMECA e não causa a frequência de eventos simulados."""
