@@ -13,6 +13,11 @@ conversa em cada prompt.
 
 ## Fluxo
 
+A memória validada é alimentada por dois caminhos, ambos com o auditor (Gemini
+Flash) como porteiro e sujeitos às mesmas regras de rejeição.
+
+### Caminho A — tempo real (gatilho explícito)
+
 1. O pesquisador declara uma preferência, correção, decisão ou contexto estável.
 2. Uma heurística local detecta o gatilho. Perguntas comuns não chamam o auditor.
 3. O auditor (Gemini Flash) recebe a mensagem e um resumo curto da resposta, retornando JSON.
@@ -24,6 +29,18 @@ conversa em cada prompt.
    `notas/Cerebro/Memorias validadas/<id>.md` para navegação no Obsidian.
 7. Em uma pergunta futura, somente os itens lexicalmente pertinentes entram no
    prompt do Gemini, identificados como dados e acompanhados de proveniência.
+
+### Caminho B — consolidação automática (sem gatilho)
+
+Na consolidação periódica de sessões (`consolidar_memoria.py`, disparada pelo
+watcher em sexta-feira / sessão longa / acúmulo de dias), além do resumo
+narrativo, `consolidar_memoria_validada` entrega o transcrito inteiro ao auditor
+(`AgenteAuditorGemini.consolidar_memoria_das_sessoes`). O auditor varre as
+sessões atrás de decisões metodológicas, preferências e correções que o
+pesquisador **declarou**, mesmo sem gatilho, e grava os aprovados pelas etapas
+4–7 acima. É best-effort: qualquer falha (sem chave, erro de rede) é reportada e
+ignorada, sem derrubar a consolidação narrativa. A fala do assistente é apenas
+contexto e nunca prova um fato.
 
 ## Schema
 

@@ -378,6 +378,14 @@ RPM/TPM, então o trabalho repetitivo desce de nível):
 - Só podem ser memorizadas preferências, decisões metodológicas, correções e
   contexto estável declarado pelo pesquisador. Segredos, métricas e resultados
   recalculáveis são rejeitados; estes permanecem nos artefatos atuais.
+- A memória validada é alimentada por DOIS caminhos, ambos filtrados pelo
+  auditor (Gemini Flash): (a) em tempo real, quando o pesquisador usa um gatilho
+  explícito ("lembre", "prefiro", "daqui em diante", "decidi", "corrigindo"); e
+  (b) automaticamente, na consolidação periódica de sessões
+  (`consolidar_memoria.consolidar_memoria_validada`), que varre o transcrito e
+  extrai decisões/preferências duráveis mesmo sem gatilho. O segundo caminho é
+  best-effort: nunca derruba a consolidação narrativa e obedece às mesmas regras
+  de rejeição (confiança mínima, sem segredos/métricas).
 - Cada item tem evidência do pesquisador, proveniência, confiança, status e id.
   O Gemini recupera no máximo seis itens pertinentes por pergunta.
 - Cada item aprovado também recebe uma projeção Markdown em

@@ -87,6 +87,48 @@ def test_auditor_aprova_e_persiste_preferencia_do_pesquisador(tmp_path):
     assert memoria.contar() == 1
 
 
+def test_consolidacao_automatica_persiste_decisao_sem_gatilho(tmp_path):
+    """Consolidacao automatica: extrai decisao metodologica de um transcript
+    inteiro SEM o pesquisador ter usado gatilho ("lembre/decidi")."""
+    llm = _LLMJson([{
+        "salvar": True,
+        "motivo": "Decisao metodologica declarada na sessao.",
+        "candidatos": [{
+            "tipo": "decisao_metodologica",
+            "escopo": "ml",
+            "conteudo": "A primeira falha a injetar e o Contator AC (NPR=315).",
+            "evidencia_usuario": "vamos comecar a injecao pelo Contator AC",
+            "confianca": 0.93,
+        }],
+    }])
+    memoria = MemoriaPersistente(tmp_path / "m.json")
+    auditor = AgenteAuditorGemini(llm, memoria)
+
+    transcrito = (
+        "## Interacao 1\n🔬 Voce: qual falha injetamos primeiro?\n"
+        "🤖 Agente: pela FMECA, o Contator AC tem o maior NPR.\n"
+        "## Interacao 2\n🔬 Voce: entao vamos comecar a injecao pelo Contator AC.\n"
+    )
+    resultado = auditor.consolidar_memoria_das_sessoes(transcrito)
+
+    assert resultado.avaliou is True
+    assert resultado.salvas == 1
+    assert memoria.contar() == 1
+    assert "Contator AC" in memoria.listar()[0]["conteudo"]
+
+
+def test_consolidacao_automatica_ignora_sessao_sem_nada_duravel(tmp_path):
+    llm = _LLMJson([{"salvar": False, "motivo": "So duvidas pontuais."}])
+    memoria = MemoriaPersistente(tmp_path / "m.json")
+    auditor = AgenteAuditorGemini(llm, memoria)
+
+    resultado = auditor.consolidar_memoria_das_sessoes("🔬 Voce: o que e FMEA?")
+
+    assert resultado.avaliou is True
+    assert resultado.salvas == 0
+    assert memoria.contar() == 0
+
+
 def test_gemini_recebe_memoria_validada_e_parecer_do_auditor(tmp_path):
     memoria = MemoriaPersistente(tmp_path / "m.json")
     memoria.registrar(
