@@ -1,5 +1,20 @@
 {
   "schema_version": 1,
-  "atualizado_em_utc": null,
-  "itens": []
+  "atualizado_em_utc": "2026-07-21T23:20:28.937070+00:00",
+  "itens": [
+    {
+      "id": "1a08c0bc82b79ceb39b9",
+      "tipo": "decisao_metodologica",
+      "escopo": "ml",
+      "conteudo": "A primeira falha a ser injetada no pipeline é o Contator AC, devido ao seu maior Número de Prioridade de Risco (NPR).",
+      "evidencia_usuario": "Lembre-se: decidimos que a primeira falha a ser injetada no pipeline é o Contator AC, por causa do NPR mais alto.",
+      "origem": "chat_web_auto",
+      "validado_por": "Gemini Flash - auditoria e memoria",
+      "confianca": 0.95,
+      "status": "ativo",
+      "versao": 1,
+      "criado_em_utc": "2026-07-21T23:20:28.937070+00:00",
+      "substitui_id": null
+    }
+  ]
 }
