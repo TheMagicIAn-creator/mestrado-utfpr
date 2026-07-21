@@ -1178,6 +1178,15 @@ def responder_com_rag(pergunta: str,
             auditoria,
         )
 
+    # Coerencia prosa x rodape: o contexto do prompt nao e filtrado, mas o
+    # rodape sim (o auditor roda depois). Sem isto, a prosa pode citar uma fonte
+    # que o rodape nao mostra. Restringe as citacoes ao MESMO conjunto do rodape
+    # (e, se vazio, proibe citar) — como ultima instrucao, a mais saliente.
+    if consultar_literatura:
+        from src.core.citacao_guarda import montar_restricao_fontes
+
+        prompt = prompt + "\n\n" + montar_restricao_fontes(citacoes)
+
     # Quando ha imagem anexada E o provedor e multimodal, o conteudo vira uma
     # lista (texto + image_url); caso contrario, segue como string.
     conteudo_humano = montar_conteudo_humano(
