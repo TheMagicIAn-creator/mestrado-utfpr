@@ -139,6 +139,40 @@ def test_gemini_erro_que_nao_e_de_modelo_nao_faz_fallback():
     raise AssertionError("erro nao-de-modelo deveria propagar")
 
 
+def test_conversa_e_auditor_tem_modelo_alternativo_de_verdade(monkeypatch):
+    """Fallback deve incluir um modelo de POOL DIFERENTE (flash-lite), senão um
+    503 do Flash só re-bateria no mesmo modelo lotado."""
+    monkeypatch.setenv("GOOGLE_API_KEY", "fake")
+    monkeypatch.delenv("AL_IADO_GEMINI_MODEL", raising=False)
+    conversa, _ = pv.inicializar_provedor("1")
+    auditor, _ = pv.inicializar_provedor("2")
+    assert "gemini-flash-lite-latest" in conversa._candidatos()
+    assert "gemini-flash-lite-latest" in auditor._candidatos()
+    # o alternativo vem por último (último recurso), não na frente.
+    assert conversa._candidatos()[-1] == "gemini-flash-lite-latest"
+
+
+def test_503_persistente_no_flash_escapa_para_flash_lite(monkeypatch):
+    """Cenário real do usuário: 503 no gemini-flash-latest deve cair para o
+    gemini-flash-lite-latest e responder, em vez de estourar erro."""
+    monkeypatch.setattr(pv, "_dormir", lambda s: None)
+    usados = []
+
+    class Models:
+        def generate_content(self, **kwargs):
+            usados.append(kwargs["model"])
+            if kwargs["model"] == "gemini-flash-latest":
+                raise RuntimeError("503 UNAVAILABLE: experiencing high demand")
+            return SimpleNamespace(text="resposta do lite")
+
+    llm = GeminiLeve("chave", "gemini-flash-latest",
+                     client=SimpleNamespace(models=Models()),
+                     fallbacks=("gemini-flash-lite-latest",))
+    assert llm.invoke([_Mensagem("q")]).content == "resposta do lite"
+    assert usados[-1] == "gemini-flash-lite-latest"
+    assert llm.model == "gemini-flash-lite-latest"
+
+
 def test_gemini_invoke_json_rejeita_nao_objeto():
     class Models:
         def generate_content(self, **kwargs):

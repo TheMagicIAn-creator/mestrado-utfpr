@@ -1167,16 +1167,28 @@ def responder_com_rag(pergunta: str,
             )
         except Exception as exc:
             erro = str(exc)
+            erro_baixo = erro.lower()
             if "413" in erro or "Request too large" in erro:
                 st.error(
                     "A solicitação ficou grande demais para o limite do provedor. "
                     "Tente pedir uma resposta mais focada."
                 )
-            elif "429" in erro:
-                st.error("Limite da API atingido. Aguarde ou troque o provedor.")
+                resposta = f"[Erro: {exc}]"
+            elif "503" in erro or "unavailable" in erro_baixo or "high demand" in erro_baixo:
+                msg = (
+                    "⏳ Os modelos do Gemini estão com alta demanda no momento "
+                    "(503). Já tentei repetir e usar um modelo alternativo sem "
+                    "sucesso — costuma ser passageiro. Reenvie a pergunta em "
+                    "alguns segundos."
+                )
+                st.warning(msg)
+                resposta = msg
+            elif "429" in erro or "resource_exhausted" in erro_baixo:
+                st.warning("Limite de taxa da API atingido. Aguarde alguns instantes e reenvie.")
+                resposta = "[Limite de taxa atingido — reenvie em instantes.]"
             else:
                 st.error(f"Erro: {exc}")
-            resposta = f"[Erro: {exc}]"
+                resposta = f"[Erro: {exc}]"
     return resposta
 
 
