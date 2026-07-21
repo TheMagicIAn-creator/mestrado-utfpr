@@ -54,22 +54,28 @@ COR_TEXTO = "#0b0b0b"
 COR_TEXTO_SEC = "#52514e"
 COR_GRADE = "#e1e0d9"
 COR_EIXO = "#c3c2b7"
+COR_ALERTA = "#c43d3d"
+COR_SUCESSO = "#147a3d"
+COR_INFO = "#2a78d6"
 
 # Cores canônicas por família de falha FMEA (ordem fixa da paleta;
 # consumidas por injecao_falhas.FALHAS e por qualquer gráfico por família)
 CORES_FALHAS = {
-    "lcl": PALETA[0],
-    "desbalanceamento": PALETA[1],
-    "sensor": PALETA[2],
+    "contator_ac": PALETA[0],
+    "igbt": PALETA[1],
+    "fusivel_ac": PALETA[2],
 }
 
 # Tamanhos canônicos (polegadas). Todo gráfico deve usar um destes ou um
 # helper dinâmico abaixo — nunca um figsize avulso.
 TAM = {
     "unico":    (12, 5),   # painel único: séries, curvas, distribuições
+    "painel_2": (14, 5.5), # 1 linha x 2 colunas
     "quadrado": (7, 6),    # matriz de confusão / heatmap pequeno
     "painel_3": (15, 5),   # 1 linha x 3 colunas
+    "painel_4": (14, 9),   # 2 linhas x 2 colunas
     "painel_6": (15, 8),   # 2 linhas x 3 colunas
+    "painel_9": (15, 13),  # 3 linhas x 3 colunas
 }
 
 
@@ -102,7 +108,32 @@ def aplicar_estilo() -> None:
         "legend.fontsize": 9,
         "legend.framealpha": 0.9,
         "legend.edgecolor": COR_GRADE,
+        "lines.linewidth": 2.0,
+        "axes.titlepad": 10,
+        "figure.titlesize": 14,
+        "figure.titleweight": "bold",
     })
+
+
+def adicionar_nota(fig, texto: str) -> None:
+    """Inclui uma nota metodológica visível dentro da própria figura."""
+    fig.text(
+        0.5,
+        -0.055,
+        texto,
+        ha="center",
+        va="bottom",
+        fontsize=8,
+        color=COR_TEXTO_SEC,
+    )
+
+
+def salvar_figura(fig, caminho, nota: str | None = None) -> None:
+    """Salva com acabamento consistente e libera recursos do Matplotlib."""
+    if nota:
+        adicionar_nota(fig, nota)
+    fig.savefig(caminho, facecolor="white")
+    plt.close(fig)
 
 
 def rotular_barras(ax, barras, fmt: str = "{:.3f}",

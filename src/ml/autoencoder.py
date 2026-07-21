@@ -19,7 +19,7 @@ Arquitetura:
   Latente : 16 dimensões
   Decoder : 16 → 32 → 64 → n_features  (ReLU + saída Linear)
   Loss    : MSE — erro de reconstrução por janela
-  Limiar  : percentil 99 do erro de reconstrução saudável (operacional);
+  Limiar  : percentil 99 do erro saudável no bloco de calibração (operacional);
             μ + 3σ é referência comparativa, não o limiar em uso
 
 Entrada : dados/processados/features_paderborn.parquet
@@ -71,20 +71,21 @@ import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from src.ml.estilo_graficos import PALETA, TAM, aplicar_estilo
+from src.ml.estilo_graficos import (
+    COR_ALERTA, COR_SUCESSO, PALETA, TAM, aplicar_estilo, salvar_figura,
+)
 
 aplicar_estilo()
 import matplotlib
 matplotlib.use("Agg")   # sem display — salva direto em arquivo
 
 from pathlib import Path
-from datetime import datetime
+from src.core.tempo import agora_local
 
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import RobustScaler
-from sklearn.model_selection import train_test_split
 
 # ── Caminhos ─────────────────────────────────────────────────
 RAIZ           = Path(__file__).parent.parent.parent
@@ -97,7 +98,9 @@ EPOCHS         = 150    # épocas de treinamento
 BATCH_SIZE     = 32     # amostras por batch
 LR             = 1e-3   # taxa de aprendizado (Adam)
 DROPOUT        = 0.2    # regularização
-VAL_FRAC       = 0.2    # fração de validação
+TRAIN_RATIO    = 0.60   # treino do modelo
+CALIB_RATIO    = 0.20   # early stopping + calibracao do limiar
+TEST_RATIO     = 0.20   # avaliacao saudavel final, nunca usada no ajuste
 PACIENCIA      = 20     # early stopping: épocas sem melhora
 SIGMA          = 3.0    # fator k da REFERÊNCIA μ+kσ (comparativa); o limiar
                         # operacional é o percentil 99, não μ+kσ
@@ -256,13 +259,14 @@ def calcular_erros(modelo, X_tensor: torch.Tensor,
     return np.array(erros)
 
 
-def calcular_limiar(erros_treino: np.ndarray,
+def calcular_limiar(erros_calibracao: np.ndarray,
                     sigma: float = SIGMA) -> dict:
     """
     Define o limiar de anomalia do Autoencoder.
 
     DEFINIÇÃO OFICIAL (não confundir):
-    - Limiar OPERACIONAL = percentil 99 do erro de reconstrução saudável.
+    - Limiar OPERACIONAL = percentil 99 do erro de reconstrução saudável no
+      bloco temporal de calibração.
       Controla diretamente a taxa de falso positivo (~1%) e é robusto a
       distribuições assimétricas com poucas janelas.
     - Referência COMPARATIVA = μ + 3σ (assume normalidade; só para comparação
@@ -271,10 +275,10 @@ def calcular_limiar(erros_treino: np.ndarray,
 
     O campo `threshold_method` registra explicitamente o método em uso.
     """
-    mu      = float(erros_treino.mean())
-    sig     = float(erros_treino.std())
-    p99     = float(np.percentile(erros_treino, 99))
-    p95     = float(np.percentile(erros_treino, 95))
+    mu      = float(erros_calibracao.mean())
+    sig     = float(erros_calibracao.std())
+    p99     = float(np.percentile(erros_calibracao, 99))
+    p95     = float(np.percentile(erros_calibracao, 95))
     mu_3sig = mu + sigma * sig
 
     return {
@@ -288,6 +292,7 @@ def calcular_limiar(erros_treino: np.ndarray,
         "limiar_p95"        : p95,          # referência adicional
         "limiar_mu3sigma"   : mu_3sig,      # referência teórica comparativa
         "limiar_mu3s"       : mu_3sig,      # alias de compat. retroativa
+        "threshold_source"  : "bloco_calibracao_temporal",
     }
 
 
@@ -298,78 +303,150 @@ def calcular_limiar(erros_treino: np.ndarray,
 def plotar_curvas(hist_treino: list, hist_val: list,
                   epoca_melhor: int, pasta: Path):
     """Curvas de loss por época."""
-    fig, ax = plt.subplots(figsize=TAM["unico"])
+    fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
     epocas = range(1, len(hist_treino) + 1)
-    ax.plot(epocas, hist_treino, label="Treino",     color=PALETA[0])
-    ax.plot(epocas, hist_val,   label="Validação",   color=PALETA[1])
-    ax.axvline(epoca_melhor, color="green", linestyle="--",
-               alpha=0.7, label=f"Melhor época ({epoca_melhor})")
+    ax.plot(epocas, hist_treino, label="Treino", color=PALETA[0], alpha=0.5)
+    ax.plot(epocas, hist_val, label="Calibração", color=PALETA[1], alpha=0.55)
+    if len(hist_treino) >= 7:
+        treino_suave = pd.Series(hist_treino).rolling(7, center=True, min_periods=1).median()
+        val_suave = pd.Series(hist_val).rolling(7, center=True, min_periods=1).median()
+        ax.plot(epocas, treino_suave, color=PALETA[0], label="Treino (mediana móvel)")
+        ax.plot(epocas, val_suave, color=PALETA[1], label="Calibração (mediana móvel)")
+    ax.axvline(epoca_melhor, color=COR_SUCESSO, linestyle="--",
+               alpha=0.85, label=f"Melhor época ({epoca_melhor})")
     ax.set_xlabel("Época")
     ax.set_ylabel("MSE Loss")
-    ax.set_title("Autoencoder — Curva de Treinamento")
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-    fig.tight_layout()
+    ax.set_title("Autoencoder — convergência do treinamento\n"
+                 "A calibração orienta o early stopping; o teste permanece isolado")
+    ax.legend(ncol=2)
     caminho = pasta / "curva_treino.png"
-    fig.savefig(caminho)
-    plt.close(fig)
+    salvar_figura(
+        fig,
+        caminho,
+        "Loss de treino pode superar a calibração porque o dropout atua somente durante o treino.",
+    )
     _log(f"   📊 {caminho.name}")
 
 
 def plotar_distribuicao(erros_treino: np.ndarray,
-                        erros_val: np.ndarray,
+                        erros_calibracao: np.ndarray,
+                        erros_teste: np.ndarray,
                         info_limiar: dict, pasta: Path):
-    """Distribuição do erro de reconstrução + limiar de anomalia."""
-    fig, ax = plt.subplots(figsize=TAM["unico"])
-
-    ax.hist(erros_treino, bins=30, alpha=0.6,
-            color=PALETA[0], label="Treino (saudável)")
-    ax.hist(erros_val, bins=20, alpha=0.6,
-            color=PALETA[1], label="Validação (saudável)")
+    """
+    CALIBRAÇÃO DO DETECTOR (não é análise de falha): histograma do erro de
+    reconstrução (MSE) do Autoencoder em dados SAUDÁVEIS (treino + validação),
+    usado para fixar o limiar operacional p99. Uma anomalia real cairia à
+    DIREITA do limiar; a fração da validação saudável acima do limiar é a taxa
+    de falsos positivos. Não representa nenhum componente/modo da FMECA.
+    """
+    fig, (ax_hist, ax_ecdf) = plt.subplots(
+        1, 2, figsize=TAM["painel_2"], layout="constrained"
+    )
+    conjuntos = [
+        ("Treino", np.asarray(erros_treino), PALETA[0]),
+        ("Calibração", np.asarray(erros_calibracao), PALETA[1]),
+        ("Teste isolado", np.asarray(erros_teste), PALETA[2]),
+    ]
+    positivos = np.concatenate([v[v > 0] for _, v, _ in conjuntos])
+    minimo = max(float(positivos.min()), 1e-8)
+    maximo = float(max(v.max() for _, v, _ in conjuntos))
+    bins = np.geomspace(minimo, max(maximo, minimo * 10), 28)
+    for nome, valores, cor in conjuntos:
+        ax_hist.hist(
+            np.clip(valores, minimo, None), bins=bins, density=True,
+            histtype="step", linewidth=2, color=cor, label=f"{nome} (n={len(valores)})",
+        )
+        ordenados = np.sort(valores)
+        ecdf = np.arange(1, len(ordenados) + 1) / len(ordenados)
+        ax_ecdf.step(ordenados, ecdf, where="post", color=cor, label=nome)
 
     limiar = info_limiar["limiar"]
-    ax.axvline(limiar, color="red", linewidth=2, linestyle="--",
-               label=f"Limiar operacional (p99) = {limiar:.4f}")
+    for ax in (ax_hist, ax_ecdf):
+        ax.axvline(limiar, color=COR_ALERTA, linewidth=2, linestyle="--",
+                   label=f"p99 calibração = {limiar:.4f}")
 
     # μ+kσ entra apenas como REFERÊNCIA comparativa (não é o limiar em uso).
     mu3s = info_limiar.get("limiar_mu3sigma", info_limiar.get("limiar_mu3s"))
     if mu3s is not None:
-        ax.axvline(mu3s, color="gray", linewidth=1.5, linestyle=":",
-                   label=f"Referência μ+{info_limiar['k']:.0f}σ = {mu3s:.4f}")
+        ax_hist.axvline(mu3s, color="#898781", linewidth=1.5, linestyle=":",
+                        label=f"μ+{info_limiar['k']:.0f}σ = {mu3s:.4f}")
 
-    ax.set_xlabel("Erro de Reconstrução (MSE)")
-    ax.set_ylabel("Frequência")
-    ax.set_title("Distribuição do Erro — Comportamento Saudável")
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-    fig.tight_layout()
+    fp = info_limiar.get("fp_test_pct")
+    ax_hist.set_xscale("log")
+    ax_hist.set_xlabel("Erro de reconstrução (MSE, escala log)")
+    ax_hist.set_ylabel("Densidade")
+    ax_hist.set_title("Distribuição do erro saudável")
+    ax_hist.legend(fontsize=8)
+    ax_ecdf.set_xscale("log")
+    ax_ecdf.set_ylim(0.80, 1.005)
+    ax_ecdf.set_xlabel("Erro de reconstrução (MSE, escala log)")
+    ax_ecdf.set_ylabel("Probabilidade acumulada")
+    ax_ecdf.set_title("Cauda superior — ECDF")
+    ax_ecdf.legend(fontsize=8)
+    fig.suptitle(
+        "Calibração do detector em dados saudáveis"
+        + (f" — falsos positivos no teste: {fp:.2f}%" if isinstance(fp, (int, float)) else "")
+    )
     caminho = pasta / "distribuicao_erro.png"
-    fig.savefig(caminho)
-    plt.close(fig)
+    salvar_figura(
+        fig,
+        caminho,
+        "O limiar é estimado somente na calibração; o bloco de teste não participa do ajuste.",
+    )
     _log(f"   📊 {caminho.name}")
 
 
 def plotar_erro_temporal(erros: np.ndarray,
                          tempos: np.ndarray,
-                         info_limiar: dict, pasta: Path):
+                         info_limiar: dict, pasta: Path,
+                         indices_teste: np.ndarray | None = None):
     """Erro de reconstrução ao longo do tempo."""
-    fig, ax = plt.subplots(figsize=TAM["unico"])
+    fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
     ax.plot(tempos, erros, color=PALETA[0], alpha=0.8, linewidth=0.8)
-    ax.axhline(info_limiar["limiar"], color="red", linestyle="--",
+    ax.axhline(info_limiar["limiar"], color=COR_ALERTA, linestyle="--",
                linewidth=1.5, label=f"Limiar = {info_limiar['limiar']:.4f}")
-    ax.fill_between(tempos, erros, info_limiar["limiar"],
-                    where=erros > info_limiar["limiar"],
-                    color="red", alpha=0.3, label="Anomalia detectada")
+    alarmes = erros > info_limiar["limiar"]
+    ax.scatter(tempos[alarmes], erros[alarmes], color=COR_ALERTA, s=22,
+               zorder=3, label="Alarme em dado saudável")
+    if indices_teste is not None and len(indices_teste):
+        inicio_teste = float(tempos[int(indices_teste[0])])
+        ax.axvspan(inicio_teste, float(tempos[-1]), color=PALETA[2], alpha=0.08,
+                   label="Bloco de teste isolado")
     ax.set_xlabel("Tempo (s)")
     ax.set_ylabel("Erro de Reconstrução (MSE)")
-    ax.set_title("Erro Temporal — Dataset de Paderborn (saudável)")
+    ax.set_yscale("log")
+    ax.set_title("Erro temporal — Paderborn saudável\n"
+                 "Pontos vermelhos são falsos alarmes, não falhas confirmadas")
     ax.legend()
-    ax.grid(True, alpha=0.3)
-    fig.tight_layout()
     caminho = pasta / "erro_temporal.png"
-    fig.savefig(caminho)
-    plt.close(fig)
+    salvar_figura(fig, caminho)
     _log(f"   📊 {caminho.name}")
+
+
+def regenerar_graficos_autoencoder(pasta: Path = PASTA_SAIDA) -> bool:
+    """Refaz somente as figuras a partir dos vetores diagnósticos persistidos."""
+    arq_diag = pasta / "diagnostico_autoencoder.npz"
+    arq_limiar = pasta / "limiar.json"
+    if not arq_diag.exists() or not arq_limiar.exists():
+        return False
+    with np.load(arq_diag) as diag:
+        info = json.loads(arq_limiar.read_text(encoding="utf-8"))
+        plotar_curvas(
+            diag["historico_treino"].tolist(),
+            diag["historico_calibracao"].tolist(),
+            int(diag["epoca_melhor"][0]),
+            pasta,
+        )
+        plotar_distribuicao(
+            diag["erros_treino"], diag["erros_calibracao"],
+            diag["erros_teste"], info, pasta,
+        )
+        if len(diag["tempos"]):
+            plotar_erro_temporal(
+                diag["erros_todos"], diag["tempos"], info, pasta,
+                indices_teste=diag["indices_teste"],
+            )
+    return True
 
 
 # ============================================================
@@ -421,22 +498,32 @@ def executar_autoencoder(
     # RobustScaler usa mediana e IQR — resistente a outliers
     # (THD alto em transientes não distorce a escala geral)
     _log(f"\n⚖️  Normalizando com RobustScaler...")
-    # Divisão TEMPORAL com purga (NÃO aleatória): janelas com 50% de
-    # sobreposição não podem vazar entre treino e validação (item 3.4).
-    from src.ml.split_temporal import split_treino_val
+    # Divisão temporal canônica: treino -> calibração -> teste, com purga.
+    # O teste final nunca participa do scaler, early stopping ou limiar.
+    from src.ml.split_temporal import PURGA_PADRAO, split_temporal_com_purga
 
-    idx_tr, idx_val = split_treino_val(len(X), val_frac=VAL_FRAC, purge_janelas=2)
-    X_treino_raw, X_val_raw = X[idx_tr], X[idx_val]
+    split = split_temporal_com_purga(
+        len(X), train_ratio=TRAIN_RATIO, val_ratio=CALIB_RATIO,
+        test_ratio=TEST_RATIO, purge_janelas=PURGA_PADRAO,
+    )
+    idx_tr = split["treino"]
+    idx_calib = split["val"]
+    idx_teste = split["teste"]
+    X_treino_raw = X[idx_tr]
+    X_calib_raw = X[idx_calib]
+    X_teste_raw = X[idx_teste]
     scaler = RobustScaler()
     X_treino = scaler.fit_transform(X_treino_raw).astype(np.float32)
-    X_val    = scaler.transform(X_val_raw).astype(np.float32)
+    X_calib = scaler.transform(X_calib_raw).astype(np.float32)
+    X_teste = scaler.transform(X_teste_raw).astype(np.float32)
     X_all    = scaler.transform(X).astype(np.float32)
     _log(f"   Treino : {len(X_treino)} janelas")
-    _log(f"   Val    : {len(X_val)} janelas")
+    _log(f"   Calib. : {len(X_calib)} janelas")
+    _log(f"   Teste  : {len(X_teste)} janelas (isolado)")
 
     # ── 3. DataLoaders ───────────────────────────────────────
     ds_treino = TensorDataset(torch.from_numpy(X_treino))
-    ds_val    = TensorDataset(torch.from_numpy(X_val))
+    ds_val    = TensorDataset(torch.from_numpy(X_calib))
     loader_treino = DataLoader(ds_treino, batch_size=batch_size, shuffle=True)
     loader_val    = DataLoader(ds_val,    batch_size=batch_size, shuffle=False)
 
@@ -461,28 +548,32 @@ def executar_autoencoder(
     # ── 6. Erros de reconstrução ─────────────────────────────
     _log(f"\n📐 Calculando erros de reconstrução...")
     T_treino = torch.from_numpy(X_treino)
-    T_val    = torch.from_numpy(X_val)
+    T_calib = torch.from_numpy(X_calib)
+    T_teste = torch.from_numpy(X_teste)
     T_all    = torch.from_numpy(X_all)
 
     erros_treino = calcular_erros(modelo, T_treino, device)
-    erros_val    = calcular_erros(modelo, T_val,    device)
+    erros_calib = calcular_erros(modelo, T_calib, device)
+    erros_teste = calcular_erros(modelo, T_teste, device)
     erros_all    = calcular_erros(modelo, T_all,    device)
 
     # ── 7. Limiar de anomalia ────────────────────────────────
-    info_limiar = calcular_limiar(erros_treino, sigma)
+    info_limiar = calcular_limiar(erros_calib, sigma)
     limiar      = info_limiar["limiar"]
 
     _log(f"\n🎯 Limiares de anomalia:")
-    _log(f"   μ (treino)     = {info_limiar['mu']:.6f}")
-    _log(f"   σ (treino)     = {info_limiar['sigma']:.6f}")
+    _log(f"   μ (calibração) = {info_limiar['mu']:.6f}")
+    _log(f"   σ (calibração) = {info_limiar['sigma']:.6f}")
     _log(f"   Percentil 99   = {info_limiar['limiar_p99']:.6f}  ← operacional")
     _log(f"   Percentil 95   = {info_limiar['limiar_p95']:.6f}")
     _log(f"   μ + {sigma}σ        = {info_limiar['limiar_mu3s']:.6f}  ← referência teórica")
 
-    # Taxa de falso positivo no conjunto de validação
-    fp_val = (erros_val > limiar).mean() * 100
+    # A calibração fixa o limiar; o teste fornece a estimativa final de FP.
+    fp_calib = (erros_calib > limiar).mean() * 100
+    fp_teste = (erros_teste > limiar).mean() * 100
     fp_all = (erros_all > limiar).mean() * 100
-    _log(f"\n   Falsos positivos (val): {fp_val:.1f}%")
+    _log(f"\n   Falsos positivos (calibração): {fp_calib:.1f}%")
+    _log(f"   Falsos positivos (teste isolado): {fp_teste:.1f}%")
     _log(f"   Falsos positivos (all): {fp_all:.1f}%")
     _log(f"   (limiar p99 alveja FP ≈ 1%; μ+3σ daria ≈ 0,3% se o erro fosse normal)")
 
@@ -497,7 +588,7 @@ def executar_autoencoder(
         "n_features"  : n_features,
         "latente_dim" : latente_dim,
         "colunas_feat": colunas_feat,
-        "data_treino" : datetime.now().isoformat(),
+        "data_treino" : agora_local().isoformat(),
     }, arq_modelo)
     _log(f"   ✅ {arq_modelo.name}")
 
@@ -515,25 +606,55 @@ def executar_autoencoder(
     metadados  = {
         **info_limiar,
         "n_janelas_treino"  : len(X_treino),
+        "n_janelas_calibracao": len(X_calib),
+        "n_janelas_teste"   : len(X_teste),
         "n_features"        : n_features,
         "latente_dim"       : latente_dim,
         "epochs_treinadas"  : len(hist_t),
         "epoca_melhor"      : ep_melhor,
         "loss_val_melhor"   : float(min(hist_v)),
-        "fp_val_pct"        : float(fp_val),
-        "data_treino"       : datetime.now().isoformat(),
+        "fp_val_pct"        : float(fp_teste),
+        "fp_calib_pct"      : float(fp_calib),
+        "fp_test_pct"       : float(fp_teste),
+        "split_temporal"    : {
+            "protocolo": "treino_60_calibracao_20_teste_20_com_purga",
+            "limites": split["limites"],
+            "purge_janelas": split["purge_janelas"],
+            "indices_teste": idx_teste.tolist(),
+        },
+        "data_treino"       : agora_local().isoformat(),
         "device"            : str(device),
     }
     with open(arq_limiar, "w", encoding="utf-8") as f:
         json.dump(metadados, f, indent=2, ensure_ascii=False)
     _log(f"   ✅ {arq_limiar.name}")
 
+    arq_diag = pasta_saida / "diagnostico_autoencoder.npz"
+    np.savez_compressed(
+        arq_diag,
+        historico_treino=np.asarray(hist_t, dtype=np.float32),
+        historico_calibracao=np.asarray(hist_v, dtype=np.float32),
+        erros_treino=erros_treino.astype(np.float32),
+        erros_calibracao=erros_calib.astype(np.float32),
+        erros_teste=erros_teste.astype(np.float32),
+        erros_todos=erros_all.astype(np.float32),
+        tempos=np.asarray(tempos if tempos is not None else [], dtype=np.float32),
+        indices_teste=idx_teste.astype(np.int32),
+        epoca_melhor=np.asarray([ep_melhor], dtype=np.int32),
+    )
+    _log(f"   ✅ {arq_diag.name}")
+
     # ── 9. Visualizações ─────────────────────────────────────
     _log(f"\n📊 Gerando gráficos...")
     plotar_curvas(hist_t, hist_v, ep_melhor, pasta_saida)
-    plotar_distribuicao(erros_treino, erros_val, info_limiar, pasta_saida)
+    info_limiar["fp_test_pct"] = float(fp_teste)
+    plotar_distribuicao(
+        erros_treino, erros_calib, erros_teste, info_limiar, pasta_saida
+    )
     if tempos is not None:
-        plotar_erro_temporal(erros_all, tempos, info_limiar, pasta_saida)
+        plotar_erro_temporal(
+            erros_all, tempos, info_limiar, pasta_saida, indices_teste=idx_teste
+        )
 
     # ── 10. Resumo final ─────────────────────────────────────
     _log(f"\n{'='*60}")
@@ -543,7 +664,7 @@ def executar_autoencoder(
     _log(f"  Épocas treinadas: {len(hist_t)}")
     _log(f"  Loss val melhor : {min(hist_v):.6f}")
     _log(f"  Limiar anomalia : {limiar:.6f}")
-    _log(f"  Falsos positivos: {fp_val:.1f}% (val)")
+    _log(f"  Falsos positivos: {fp_teste:.1f}% (teste isolado)")
     _log(f"  Artefatos em    : resultados/autoencoder/")
     _log(f"\n  Próximo passo: injeção de falhas sintéticas")
     _log(f"  (src/ml/injecao_falhas.py)")

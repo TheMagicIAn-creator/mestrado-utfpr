@@ -66,7 +66,10 @@ def test_tabela_markdown_none_e_linha_curta():
 def test_estilo_tamanhos_canonicos():
     from src.ml.estilo_graficos import TAM, tam_barras_h, tam_barras_v, tam_matriz
 
-    assert set(TAM) == {"unico", "quadrado", "painel_3", "painel_6"}
+    assert set(TAM) == {
+        "unico", "painel_2", "quadrado", "painel_3", "painel_4",
+        "painel_6", "painel_9",
+    }
     assert tam_barras_h(3)[0] == 12          # largura fixa
     assert tam_barras_h(30)[1] > tam_barras_h(3)[1]
     assert tam_barras_v(20)[1] == 5          # altura fixa

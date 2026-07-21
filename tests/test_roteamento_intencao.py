@@ -55,6 +55,14 @@ def test_stender_sobre_paderborn_vai_para_rag_nao_catalogo_dataset():
     )
 
 
+def test_citar_fonte_sem_inventar_nao_desliga_literatura():
+    pergunta = (
+        "O que Stender diz sobre Paderborn? Cite a fonte e a página exata, "
+        "sem inventar."
+    )
+    assert deve_consultar_literatura(pergunta)
+
+
 def test_compare_autores_com_artefatos_consulta_resultados_sem_treinar():
     pergunta = (
         "Compare Sharma, Ibrahim e Ahirwar usando somente os artefatos "
@@ -138,3 +146,48 @@ def test_forcar_resposta_direta_bypass_llm():
         LLMQueNuncaDeveSerChamado(),
     )
     assert resp == "tabela AUC aqui"
+
+
+def test_pedido_de_codigo_de_grafico_vai_para_llm_nao_devolve_artefato():
+    """Bug do usuario: "gere um codigo de um grafico da TTF" trazia as figuras
+    ja criadas, em vez de o LLM ESCREVER o codigo. Deve ir para o LLM."""
+    esperado = {"usar_ferramenta": False, "ferramenta": None}
+    for pergunta in (
+        "gere um código para plotar a distribuição do erro do autoencoder",
+        "me dê o script em Python do gráfico da TTF",
+        "como plotar a curva de Weibull no matplotlib?",
+        "escreva a função que desenha o histograma do erro de reconstrução",
+        "quero o código do gráfico da TTF",
+    ):
+        assert _decisao_rapida(pergunta) == esperado, pergunta
+
+
+def test_pedido_de_execucao_ou_consulta_nao_e_confundido_com_codigo():
+    """A correcao de codigo NAO pode roubar pedidos legitimos de rodar/mostrar."""
+    from src.conhecimento.ferramentas import _quer_codigo_snippet
+
+    assert _ferramenta("rode o pipeline completo") == "rodar_pipeline_completo"
+    assert _ferramenta("mostre os gráficos da validação") == "consultar_resultados"
+    # "autoencoder"/"decodifique" contem a substring "code" — nao pode disparar.
+    assert not _quer_codigo_snippet("qual o AUC do autoencoder?")
+    assert not _quer_codigo_snippet("decodifique o sinal")
+    assert not _quer_codigo_snippet("escreva um resumo da distribuição do erro")
+
+
+def test_gerar_grafico_sem_palavra_codigo_nao_despeja_resultados():
+    """'gera um gráfico da ttf' nao pode cair em consultar_resultados so por
+    conter 'gráfico' — verbo de geracao bloqueia o despejo (vai ao LLM)."""
+    for pergunta in (
+        "gera um gráfico da ttf",
+        "plota a curva de weibull pra mim",
+        "desenha a distribuição do erro",
+    ):
+        assert _ferramenta(pergunta) != "consultar_resultados", pergunta
+
+
+def test_consulta_legitima_de_resultados_preservada():
+    assert _ferramenta("mostre a matriz de confusão") == "consultar_resultados"
+    assert _ferramenta("mostre os resultados do weibull") == "consultar_resultados"
+    assert _ferramenta("cadê as imagens da roc?") == "consultar_resultados"
+    # 'geral' NAO pode ser confundido com verbo de geracao
+    assert _ferramenta("de modo geral, mostre a matriz") == "consultar_resultados"

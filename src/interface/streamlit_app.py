@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime
 from pathlib import Path
 
 try:
@@ -24,7 +23,12 @@ import streamlit as st
 from langchain_core.messages import HumanMessage
 
 from src.core.config import RAIZ_PROJETO
-from watcher import iniciar_em_background
+from src.core.tempo import agora_local
+from src.core.conversa_export import (
+    montar_transcricao,
+    nome_arquivo_conversa,
+    quer_exportar_conversa,
+)
 
 sys.path.insert(0, str(RAIZ_PROJETO))
 
@@ -41,9 +45,11 @@ st.set_page_config(
 # Settings -> Theme para alternar entre claro/escuro nativo do Streamlit.
 _CSS_MINIMO = """
 <style>
-.stDeployButton  { display: none; }
+.stDeployButton,
+[data-testid="stAppDeployButton"] { display: none; }
 .block-container {
     max-width: min(1680px, calc(100vw - 2.5rem));
+    padding-top: 4rem;
     padding-left: 1.25rem;
     padding-right: 1.25rem;
 }
@@ -111,6 +117,9 @@ _CSS_MINIMO = """
         padding-left: 0.5rem;
         padding-right: 0.5rem;
     }
+    .block-container {
+        padding-top: 3.5rem;
+    }
     [data-testid="stMarkdownContainer"] table {
         font-size: 0.82rem;
     }
@@ -138,42 +147,174 @@ TIPOS_ANEXO = [
 
 @st.cache_resource
 def carregar_base():
-    from sentence_transformers import SentenceTransformer
     import chromadb
     from src.conhecimento.agente import carregar_perfil
+    from src.conhecimento.embeddings import (
+        backend_embeddings,
+        criar_modelo_embeddings,
+    )
     from src.core.config import (
-        MODELO_EMBEDDINGS,
         NOME_COLECAO,
         NOME_COLECAO_SESSOES,
+        NOME_COLECAO_OBSIDIAN,
+        ARQUIVO_INDICE_LITERATURA,
+        ARQUIVO_INDICE_OBSIDIAN,
+        ARQUIVO_MEMORIA_VALIDADA,
         PASTA_CHROMADB,
     )
+    from src.ml.pipeline import capacidade_recalculo_pipeline
 
-    with st.spinner("Carregando embeddings e base de conhecimento..."):
-        modelo = SentenceTransformer(MODELO_EMBEDDINGS)
-        try:
-            iniciar_em_background(modelo)
-        except Exception:
-            pass
-
+    with st.spinner("Carregando a base de conhecimento..."):
         relatorio = []
-        try:
-            from src.orquestrador import executar_pipeline
-            relatorio = executar_pipeline(modelo)
-        except Exception as exc:
-            print(f"[Orquestrador] Erro: {exc}")
-
         client = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
         colecao = client.get_or_create_collection(name=NOME_COLECAO)
         colecao_sessoes = client.get_or_create_collection(name=NOME_COLECAO_SESSOES)
+        colecao_obsidian = client.get_or_create_collection(
+            name=NOME_COLECAO_OBSIDIAN,
+            metadata={"hnsw:space": "cosine"},
+        )
+        if ARQUIVO_INDICE_OBSIDIAN.is_file():
+            try:
+                from src.conhecimento.indice_portatil import importar_colecao
+
+                restauracao_obsidian = importar_colecao(
+                    colecao_obsidian,
+                    ARQUIVO_INDICE_OBSIDIAN,
+                    mesclar=True,
+                )
+                relatorio.append(
+                    "Obsidian: "
+                    f"{restauracao_obsidian['n_chunks']} chunks históricos "
+                    f"disponíveis ({restauracao_obsidian['importados']} restaurados; "
+                    f"{restauracao_obsidian.get('preservados', 0)} novos preservados)."
+                )
+            except Exception as exc:
+                relatorio.append(f"Obsidian: snapshot inválido - {exc}")
+        if colecao.count() == 0 and ARQUIVO_INDICE_LITERATURA.is_file():
+            try:
+                from src.conhecimento.indice_portatil import importar_colecao
+
+                with st.spinner("Restaurando o índice portátil da literatura..."):
+                    restauracao = importar_colecao(
+                        colecao, ARQUIVO_INDICE_LITERATURA
+                    )
+                relatorio.append(
+                    "Literatura: "
+                    f"{restauracao['n_chunks']} chunks restaurados do snapshot."
+                )
+            except Exception as exc:
+                relatorio.append(f"Literatura: snapshot inválido - {exc}")
+
+        capacidade = capacidade_recalculo_pipeline()
+        modo_consulta = not capacidade["disponivel"]
+        modelo = criar_modelo_embeddings(modo_consulta=modo_consulta)
+        relatorio.append(
+            "Embeddings: "
+            f"backend {backend_embeddings(modo_consulta=modo_consulta)}."
+        )
+
+        try:
+            from src.conhecimento.obsidian import (
+                espelhar_memoria_validada,
+                sincronizar_obsidian,
+            )
+
+            espelhar_memoria_validada(ARQUIVO_MEMORIA_VALIDADA)
+            if not modo_consulta:
+                estado_obsidian = sincronizar_obsidian(colecao_obsidian, modelo)
+                relatorio.append(
+                    "Obsidian: "
+                    f"{estado_obsidian['notas_ativas']} notas do vault prontas."
+                )
+            else:
+                relatorio.append(
+                    "Obsidian: notas portáteis prontas; alterações locais "
+                    "sincronizadas sob demanda no chat."
+                )
+        except Exception as exc:
+            relatorio.append(f"Obsidian: integração indisponível - {exc}")
+
+        if not modo_consulta:
+            try:
+                from watcher import iniciar_em_background
+
+                iniciar_em_background(modelo)
+            except Exception:
+                pass
+
+            try:
+                from src.orquestrador import executar_pipeline
+
+                relatorio.extend(executar_pipeline(modelo))
+            except Exception as exc:
+                print(f"[Orquestrador] Erro: {exc}")
         perfil = carregar_perfil()
 
-    return perfil, modelo, colecao, colecao_sessoes, relatorio
+        from src.conhecimento.indice_lexical import IndiceLexicalSQLite
+
+        indice_lexical = IndiceLexicalSQLite()
+        versao_lexical = f"chroma:{colecao.count()}"
+        if modo_consulta and ARQUIVO_INDICE_LITERATURA.is_file():
+            try:
+                from src.conhecimento.indice_portatil import ler_manifesto
+
+                manifesto = ler_manifesto(ARQUIVO_INDICE_LITERATURA)
+                versao_lexical = str(
+                    manifesto.get("hash_corpus_sha256") or versao_lexical
+                )
+            except Exception:
+                pass
+        elif colecao.count():
+            # No PC, o Chroma pode ter sido reindexado sem regenerar ainda o
+            # snapshot portatil. IDs amostrados detectam essa troca sem ler o
+            # corpus inteiro na inicializacao.
+            ids_amostra = []
+            for offset in sorted({0, colecao.count() // 2, colecao.count() - 1}):
+                try:
+                    lote = colecao.get(
+                        limit=1,
+                        offset=offset,
+                        include=["metadatas"],
+                    )
+                    ids_amostra.extend(lote.get("ids") or [])
+                except Exception:
+                    pass
+            versao_lexical += ":" + ":".join(map(str, ids_amostra))
+        try:
+            with st.spinner("Preparando a busca lexical BM25..."):
+                estado_lexical = indice_lexical.sincronizar(
+                    colecao,
+                    versao=versao_lexical,
+                )
+        except Exception as exc:
+            estado_lexical = {"reconstruido": False}
+            relatorio.append(
+                f"Busca lexical indisponivel; busca semantica mantida: {exc}"
+            )
+        if estado_lexical.get("reconstruido"):
+            relatorio.append(
+                "Busca lexical: "
+                f"{estado_lexical['n_chunks']} chunks preparados em SQLite FTS5."
+            )
+
+    return (
+        perfil,
+        modelo,
+        colecao,
+        colecao_sessoes,
+        colecao_obsidian,
+        indice_lexical,
+        relatorio,
+    )
 
 
 def inicializar_estado() -> None:
     defaults = {
         "mensagens": [],
         "llm": None,
+        "equipe": None,
+        "auditor": None,
+        "erro_equipe": None,
         "nome_provedor": "Nenhum",
         "caminho_sessao": None,
         "pergunta_pendente": None,
@@ -185,9 +326,51 @@ def inicializar_estado() -> None:
             st.session_state[chave] = valor
 
 
+def conectar_equipe(*, forcar: bool = False) -> bool:
+    """Ativa a equipe Gemini (Pro conversa + Flash auditoria) nos papeis fixos."""
+    if st.session_state.get("equipe") is not None:
+        return True
+    if st.session_state.get("erro_equipe") and not forcar:
+        return False
+    try:
+        from src.conhecimento.multiagente import criar_equipe_agentes
+
+        equipe = criar_equipe_agentes()
+        st.session_state.equipe = equipe
+        st.session_state.llm = equipe.conversa
+        st.session_state.auditor = equipe.auditoria
+        # O orcamento do prompt e a capacidade multimodal seguem o agente que
+        # produz a resposta final; o auditor recebe seu proprio pacote compacto.
+        st.session_state.nome_provedor = "Google Gemini"
+        st.session_state.multimodal = True
+        st.session_state.erro_equipe = None
+        return True
+    except Exception as exc:
+        from src.core.seguranca import mascarar_segredos
+
+        st.session_state.equipe = None
+        st.session_state.llm = None
+        st.session_state.auditor = None
+        st.session_state.nome_provedor = "Nenhum"
+        st.session_state.multimodal = False
+        st.session_state.erro_equipe = mascarar_segredos(str(exc))
+        return False
+
+
 def renderizar_pipeline_status() -> None:
     """Status do pipeline no sidebar: ready / stale / pending."""
-    from src.ml.pipeline import NOMES_ETAPAS, estado_pipeline
+    from src.ml.pipeline import (
+        NOMES_ETAPAS,
+        capacidade_recalculo_pipeline,
+        estado_pipeline,
+        estado_resultados_publicados,
+    )
+
+    if not capacidade_recalculo_pipeline()["disponivel"]:
+        for key, info in estado_resultados_publicados().items():
+            marcador = "✅" if info["disponivel"] else "⚪"
+            st.markdown(f"{marcador} {NOMES_ETAPAS[key]} _(publicado)_")
+        return
 
     for key, info in estado_pipeline().items():
         nome = NOMES_ETAPAS[key]
@@ -201,27 +384,44 @@ def renderizar_pipeline_status() -> None:
             st.markdown(f"⚪ {nome} _(pendente)_")
 
 
-def renderizar_diagnostico(colecao, colecao_sessoes) -> None:
+def renderizar_diagnostico(colecao, colecao_sessoes, colecao_obsidian) -> None:
     """Painel de diagnóstico (13.4): ChromaDB, pipeline, libs opcionais, log."""
     import importlib.util
 
     try:
-        st.caption(f"ChromaDB · literatura: {colecao.count()} · "
-                   f"sessões: {colecao_sessoes.count()}")
+        from src.conhecimento.obsidian import contar_notas_indexadas
+
+        st.caption(
+            f"ChromaDB · literatura: {colecao.count()} · "
+            f"sessões: {colecao_sessoes.count()} · "
+            f"Obsidian: {contar_notas_indexadas(colecao_obsidian)} notas / "
+            f"{colecao_obsidian.count()} chunks"
+        )
     except Exception as exc:  # noqa: BLE001
         st.warning(f"ChromaDB indisponível: {exc}")
 
     try:
-        from src.ml.pipeline import NOMES_ETAPAS, estado_pipeline
+        from src.ml.pipeline import (
+            NOMES_ETAPAS,
+            capacidade_recalculo_pipeline,
+            estado_pipeline,
+            estado_resultados_publicados,
+        )
 
-        rot = {"ready": "✅", "stale": "⚠️", "pending": "⬜"}
-        for key, info in estado_pipeline().items():
-            st.caption(f"{rot.get(info['estado'], '?')} {NOMES_ETAPAS[key]} "
-                       f"— {info['estado']}")
+        if capacidade_recalculo_pipeline()["disponivel"]:
+            rot = {"ready": "✅", "stale": "⚠️", "pending": "⬜"}
+            for key, info in estado_pipeline().items():
+                st.caption(f"{rot.get(info['estado'], '?')} {NOMES_ETAPAS[key]} "
+                           f"— {info['estado']}")
+        else:
+            st.caption("Modo consulta: cálculo pesado indisponível neste servidor.")
+            for key, info in estado_resultados_publicados().items():
+                marcador = "✅" if info["disponivel"] else "⬜"
+                st.caption(f"{marcador} {NOMES_ETAPAS[key]} — publicado")
     except Exception as exc:  # noqa: BLE001
         st.caption(f"pipeline: {exc}")
 
-    libs = {"prophet": "Prophet", "torch": "torch"}
+    libs = {"torch": "torch"}
     marcas = []
     for mod, desc in libs.items():
         try:
@@ -259,55 +459,81 @@ def _carregar_metadados_pendentes() -> dict:
     }
 
 
-def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
+def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian) -> None:
     with st.sidebar:
         st.markdown("## Al IAdo PV")
         st.caption("Assistente de pesquisa | Mestrado UTFPR")
+        from src.core.config import MARCADOR_BUILD
 
-        provedor = st.session_state.get("nome_provedor", "Nenhum")
-        if provedor == "Nenhum":
-            st.warning("LLM desconectado")
-        else:
-            st.success(f"LLM ativo: {provedor}")
+        st.caption(f"🏷️ build: {MARCADOR_BUILD}")
 
-        st.divider()
-        st.markdown("**Provedor**")
-        from src.conhecimento.provedores import PROVEDORES, inicializar_provedor
-
-        opcoes = {info["nome"]: chave for chave, info in PROVEDORES.items()}
-        escolha_label = st.selectbox(
-            "Modelo",
-            options=list(opcoes.keys()),
-            index=0,
-            label_visibility="collapsed",
-        )
-        escolha = opcoes[escolha_label]
-        st.caption(PROVEDORES[escolha]["limite"])
-        if st.button("Conectar", use_container_width=True, type="primary"):
-            try:
-                from src.conhecimento.provedores import eh_multimodal
-
-                llm, nome = inicializar_provedor(escolha)
-                st.session_state.llm = llm
-                st.session_state.nome_provedor = nome
-                st.session_state.multimodal = eh_multimodal(nome)
+        equipe = st.session_state.get("equipe")
+        if equipe is None:
+            st.warning("Equipe de IA desconectada")
+            erro = st.session_state.get("erro_equipe")
+            if erro:
+                st.caption(erro)
+            if st.button("Ativar equipe", width="stretch", type="primary"):
+                conectar_equipe(forcar=True)
                 st.rerun()
-            except Exception as exc:
-                st.error(f"Erro ao conectar: {exc}")
+        else:
+            st.success("Equipe de IA ativa")
+            st.caption("Gemini Flash: conversa e síntese (padrão estável)")
+            st.caption("Gemini Flash: auditoria de evidências e memória")
 
         st.divider()
-        st.markdown("**Base local**")
+        st.markdown("**Base de conhecimento**")
         c1, c2 = st.columns(2)
         c1.metric("Literatura", colecao.count())
         c2.metric("Sessões", colecao_sessoes.count())
-        st.caption("Literatura, memória e resultados são acessados pelo chat.")
+        memorias = equipe.memoria.contar() if equipe is not None else 0
+        from src.conhecimento.obsidian import contar_notas_indexadas
+
+        notas_obsidian = contar_notas_indexadas(colecao_obsidian)
+        st.caption(
+            f"Vault Obsidian: {notas_obsidian} notas pesquisáveis · "
+            f"memórias validadas: {memorias}. Literatura, memória e resultados "
+            "são acessados pelo chat."
+        )
+
+        # Fallback: o caminho normal da nuvem restaura o snapshot portátil no
+        # carregamento. O botão só aparece se o snapshot estiver ausente/inválido.
+        if colecao.count() == 0:
+            st.caption("⚠️ Literatura não indexada (base vazia).")
+            if st.button(
+                "Indexar literatura",
+                icon=":material/sync:",
+                width="stretch",
+                help="Reconstrói a base a partir dos PDFs de literatura/. "
+                     "Use apenas se a restauração automática não estiver disponível.",
+            ):
+                try:
+                    from src.conhecimento.indexador import indexar_literatura
+                    with st.spinner("Indexando literatura… alguns minutos."):
+                        resumo = indexar_literatura(modelo=modelo)
+                    if resumo["erros"]:
+                        st.warning(
+                            f"Indexação concluída com {resumo['erros']} erro(s)."
+                        )
+                    st.success("Literatura indexada! Atualizando…")
+                    st.rerun()
+                except Exception as exc:  # noqa: BLE001
+                    st.error(f"Falha ao indexar: {exc}")
 
         st.divider()
         st.markdown("**Comandos por prompt**")
-        st.caption(
-            "Use o chat para rodar pipeline, comparar artigos, recalcular, "
-            "apagar artefatos, pedir gráficos ou discutir resultados."
-        )
+        from src.ml.pipeline import capacidade_recalculo_pipeline
+
+        if capacidade_recalculo_pipeline()["disponivel"]:
+            st.caption(
+                "Use o chat para rodar pipeline, comparar artigos, recalcular, "
+                "apagar artefatos, pedir gráficos ou discutir resultados."
+            )
+        else:
+            st.caption(
+                "Modo consulta: peça resultados, tabelas, gráficos, comparações "
+                "e interpretação. O recálculo permanece no PC com os datasets."
+            )
 
         st.divider()
         st.markdown("**Documentos**")
@@ -317,7 +543,7 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
             label_visibility="collapsed",
         )
         if arquivo_pdf is not None:
-            if st.button("Enviar para processamento", use_container_width=True):
+            if st.button("Enviar para processamento", width="stretch"):
                 # Sanitiza o nome vindo do navegador (anti path-traversal) e
                 # confirma que o destino fica DENTRO de novos_pdfs/.
                 from src.core.seguranca import (
@@ -333,13 +559,13 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
 
         st.divider()
         st.markdown("**Sessão**")
-        if st.button("Limpar conversa", use_container_width=True):
+        if st.button("Limpar conversa", width="stretch"):
             st.session_state.mensagens = []
             st.session_state.caminho_sessao = None
             st.rerun()
 
         with st.expander("🔧 Diagnóstico"):
-            renderizar_diagnostico(colecao, colecao_sessoes)
+            renderizar_diagnostico(colecao, colecao_sessoes, colecao_obsidian)
 
         metadados_pendentes = _carregar_metadados_pendentes()
         if metadados_pendentes:
@@ -361,7 +587,7 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
                         f"({info.get('ano_atual') or '????'}) | "
                         f"registrado em {info.get('registrado', '?')}"
                     )
-            if st.button("Consolidar memória", use_container_width=True):
+            if st.button("Consolidar memória", width="stretch"):
                 try:
                     from src.conhecimento.consolidar_memoria import consolidar
 
@@ -370,7 +596,7 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
                 except Exception as exc:
                     st.error(f"Erro: {exc}")
 
-            if st.button("Corrigir metadados ruins", use_container_width=True):
+            if st.button("Corrigir metadados ruins", width="stretch"):
                 try:
                     from src.orquestrador import reprocessar_metadados_ruins
 
@@ -382,7 +608,7 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes) -> None:
 
 
 def renderizar_topo(relatorio: list) -> None:
-    provedor = st.session_state.get("nome_provedor", "Nenhum")
+    equipe_ativa = st.session_state.get("equipe") is not None
 
     col_titulo, col_status = st.columns([4, 1.1])
     with col_titulo:
@@ -392,10 +618,10 @@ def renderizar_topo(relatorio: list) -> None:
             "em inversores fotovoltaicos | UTFPR"
         )
     with col_status:
-        if provedor != "Nenhum":
-            st.success(f"{provedor}")
+        if equipe_ativa:
+            st.success("Equipe Gemini")
         else:
-            st.warning("Conecte um LLM")
+            st.warning("Ative a equipe")
 
     novidades = [
         str(item)
@@ -410,19 +636,31 @@ def renderizar_topo(relatorio: list) -> None:
 
 def renderizar_boas_vindas() -> None:
     from src.conhecimento.agente import _saudacao_pelo_horario
+    from src.ml.pipeline import capacidade_recalculo_pipeline
 
     saudacao = _saudacao_pelo_horario()
+    calculo_local = capacidade_recalculo_pipeline()["disponivel"]
+    capacidade = (
+        "posso rodar etapas do pipeline, comparar experimentos"
+        if calculo_local else
+        "posso consultar os resultados publicados e comparar experimentos"
+    )
     st.info(
         f"**{saudacao}, Rodolfo.**\n\n"
-        "Peça em linguagem natural: posso rodar etapas do pipeline, comparar "
-        "experimentos, explicar métricas, mostrar gráficos ou discutir decisões "
+        f"Peça em linguagem natural: {capacidade}, explicar métricas, "
+        "mostrar gráficos ou discutir decisões "
         "metodológicas da dissertação."
     )
 
     st.markdown("##### Exemplos de prompt")
+    acao_weibull = (
+        "Rode a análise de Weibull e depois interprete MTTF e B10."
+        if calculo_local else
+        "Interprete os resultados publicados de Weibull, MTTF e B10."
+    )
     exemplos = [
         "Explique os resultados de validação e mostre as curvas ROC.",
-        "Rode a análise de Weibull e depois interprete MTTF e B10.",
+        acao_weibull,
         "Compare os experimentos de anomalia por AUC.",
         "What does the literature say about LCL filter faults?",
         "Explique en español qué modelo parece más confiable.",
@@ -438,7 +676,7 @@ def stream_resposta(prompt: str, llm):
 
 # ── Cadência de "digitação" do streaming ────────────────────────────────────
 # A resposta é revelada palavra a palavra com uma pequena pausa, em vez de
-# "estourar" blocos inteiros de texto (efeito comum com o Groq, que entrega
+# "estourar" blocos inteiros de texto (efeito comum quando o provedor entrega
 # muitos tokens de uma vez). Deixa a leitura mais natural, como se o agente
 # estivesse escrevendo na hora.
 #   VELOCIDADE_DIGITACAO   = segundos por palavra (MAIOR = mais devagar).
@@ -554,23 +792,104 @@ def _imagem_larga(img: dict) -> bool:
 
 def _ordem_imagem(img: dict, indice: int) -> tuple:
     try:
-        ordem_grupo = int(img.get("group_order", 0) or 0)
+        valor_grupo = img.get("group_order", 0)
+        ordem_grupo = int(0 if valor_grupo is None else valor_grupo)
     except Exception:
         ordem_grupo = 0
     try:
-        ordem = int(img.get("order", indice) or indice)
+        valor_ordem = img.get("order", indice)
+        ordem = int(indice if valor_ordem is None else valor_ordem)
     except Exception:
         ordem = indice
     return ordem_grupo, ordem, indice
 
 
+# Contador monotônico p/ chaves únicas dos download_button (Streamlit exige
+# key única por widget; monotônico garante unicidade dentro e entre reruns).
+_DL_KEY = [0]
+
+
+def _botao_download(img: dict, alvo=None, *, compacto: bool = False) -> None:
+    """Botão de download da figura (PNG). Não renderiza a imagem, só o botão."""
+    destino = alvo if alvo is not None else st
+    p = Path(img["path"])
+    if not p.is_file():
+        return
+    try:
+        dados = p.read_bytes()
+    except OSError:
+        return
+    _DL_KEY[0] += 1
+    legenda = img.get("caption") or p.name
+    destino.download_button(
+        label="Baixar PNG" if compacto else f"Baixar — {legenda}",
+        data=dados,
+        file_name=p.name,
+        mime="image/png",
+        key=f"dl_{_DL_KEY[0]}",
+        icon=":material/download:",
+        help=f"Salvar {p.name}",
+        on_click="ignore",
+        width="stretch",
+    )
+
+
+def _botao_download_texto(texto: str, nome: str, alvo=None) -> None:
+    """Botão de download de um texto puro (ex.: transcrito da conversa em .txt)."""
+    destino = alvo if alvo is not None else st
+    _DL_KEY[0] += 1
+    destino.download_button(
+        label=f"Baixar {nome}",
+        data=(texto or "").encode("utf-8"),
+        file_name=nome,
+        mime="text/plain",
+        key=f"dl_txt_{_DL_KEY[0]}",
+        icon=":material/download:",
+        on_click="ignore",
+        width="stretch",
+    )
+
+
+def _controles_antevisao(img: dict, alvo=None) -> None:
+    """Antevisão sob demanda: a figura não ocupa o fluxo normal do chat."""
+    destino = alvo if alvo is not None else st
+    p = Path(img["path"])
+    if not p.is_file():
+        return
+
+    legenda = img.get("caption") or p.name
+    destino.markdown(f"**{legenda}**")
+    col_ver, col_baixar = destino.columns(2, gap="small")
+    _DL_KEY[0] += 1
+    with col_ver.popover(
+        "Visualizar",
+        icon=":material/visibility:",
+        help="Abrir antevisão responsiva sem baixar o arquivo",
+        width="stretch",
+        key=f"preview_{_DL_KEY[0]}",
+    ):
+        st.image(
+            str(p),
+            caption=legenda,
+            width="stretch",
+        )
+        largura, altura = _dimensoes_imagem(str(p))
+        tamanho_kb = p.stat().st_size / 1024
+        dimensoes = f"{largura} × {altura} px" if largura and altura else "dimensões indisponíveis"
+        st.caption(f"{dimensoes} · {tamanho_kb:.0f} KB · PNG")
+    _botao_download(img, col_baixar, compacto=True)
+
+
 def _renderizar_imagem_unica(img: dict, coluna=None) -> None:
     alvo = coluna if coluna is not None else st
+    # width="stretch": a figura se ajusta à largura da tela/coluna — nunca
+    # estoura nem fica minúscula (substitui a largura fixa em px).
     alvo.image(
         img["path"],
         caption=img.get("caption", ""),
-        width=_largura_exibicao_imagem(img),
+        width="stretch",
     )
+    _botao_download(img, alvo)
 
 
 def _renderizar_lote_regular(lote: list[dict]) -> None:
@@ -638,8 +957,14 @@ def renderizar_imagens(imagens: list[dict]) -> None:
         return
 
     validas.sort(key=lambda img: _ordem_imagem(img, int(img.get("_idx", 0))))
+
+    # inline=True → renderiza na tela (com botão de download embaixo);
+    # inline=False → só botão de download (não ocupa a tela com a figura).
+    inline = [img for img in validas if img.get("inline", True)]
+    download_only = [img for img in validas if not img.get("inline", True)]
+
     grupos: dict[str, list[dict]] = {}
-    for img in validas:
+    for img in inline:
         grupos.setdefault(_grupo_imagem(img), []).append(img)
 
     mostrar_titulos = len(grupos) > 1
@@ -647,6 +972,16 @@ def renderizar_imagens(imagens: list[dict]) -> None:
         if mostrar_titulos:
             st.markdown(f"**{grupo}**")
         _renderizar_grupo_imagens(itens)
+
+    if download_only:
+        st.caption(
+            "Gráficos disponíveis. Abra a antevisão para inspecionar antes de baixar."
+        )
+        for inicio in range(0, len(download_only), 2):
+            par = download_only[inicio:inicio + 2]
+            cols = st.columns(len(par), gap="small")
+            for col, img in zip(cols, par):
+                _controles_antevisao(img, col)
 
     if invalidas:
         st.caption(
@@ -659,6 +994,11 @@ def renderizar_mensagem(msg: dict) -> None:
     avatar = "🔬" if msg["role"] == "user" else "⚡"
     with st.chat_message(msg["role"], avatar=avatar):
         st.markdown(msg["content"])
+        # Botão de download da conversa exportada — re-renderizado a cada rerun
+        # para o download continuar disponível (o Streamlit exige isso).
+        exportado = msg.get("export_txt")
+        if exportado:
+            _botao_download_texto(exportado["data"], exportado["file_name"])
         renderizar_imagens(msg.get("imagens", []))
 
 
@@ -670,7 +1010,7 @@ def salvar_sessao(pergunta: str, resposta: str, imagens: list[dict], n: int, mod
     pasta_sessoes.mkdir(parents=True, exist_ok=True)
 
     if st.session_state.caminho_sessao is None:
-        agora = datetime.now()
+        agora = agora_local()
         caminho = pasta_sessoes / f"{agora:%Y-%m-%d_%H-%M}_sessao_web.md"
         caminho.write_text(
             (
@@ -702,6 +1042,38 @@ def salvar_sessao(pergunta: str, resposta: str, imagens: list[dict], n: int, mod
 
     try:
         indexar_sessao(st.session_state.caminho_sessao, modelo_embeddings, PASTA_CHROMADB)
+    except Exception:
+        pass
+
+
+def aprender_da_sessao_web() -> None:
+    """Aprendizado automático entre sessões, no fluxo da conversa.
+
+    A cada N interações, o auditor (Gemini Flash) varre o transcrito atual e
+    extrai decisões/preferências duráveis para a memória validada — SEM depender
+    do gatilho manual ("lembre") NEM do watcher (que não roda em modo_consulta,
+    ou seja, nunca dispara na nuvem). É a peça que faz o agente "acumular" o que
+    foi conversado. Best-effort; persiste no GitHub se AL_IADO_PERSISTIR_NUVEM
+    estiver ligado (senão vale durante a instância). Deduplica via registrar().
+    """
+    import os
+
+    auditor = st.session_state.get("auditor")
+    if auditor is None or not hasattr(auditor, "consolidar_memoria_das_sessoes"):
+        return
+    mensagens = st.session_state.get("mensagens") or []
+    n = len(mensagens) // 2
+    try:
+        passo = max(1, int(os.getenv("AL_IADO_CONSOLIDAR_A_CADA", "6")))
+    except ValueError:
+        passo = 6
+    if n <= 0 or n % passo != 0:
+        return
+    try:
+        from src.core.conversa_export import montar_transcricao
+
+        transcrito = montar_transcricao(mensagens)
+        auditor.consolidar_memoria_das_sessoes(transcrito, origem="chat_web_auto")
     except Exception:
         pass
 
@@ -741,6 +1113,8 @@ def responder_com_rag(pergunta: str,
                       modelo,
                       colecao,
                       colecao_sessoes,
+                      colecao_obsidian,
+                      indice_lexical=None,
                       anexos: list | None = None) -> str:
     from src.conhecimento.agente import (
         deve_consultar_literatura,
@@ -750,8 +1124,25 @@ def responder_com_rag(pergunta: str,
         resposta_interacao_simples,
     )
 
-    # ── Atalho: cumprimento/casual responde local sem RAG ────
-    # Nunca atalhar quando ha anexos: o pesquisador quer o arquivo lido.
+    # Consultas simples de primeiro/último registro são resolvidas pela ordem
+    # dos metadados. Isso evita que o LLM troque cronologia por similaridade.
+    try:
+        from src.conhecimento.obsidian import responder_consulta_cronologica
+
+        resposta_cronologica = responder_consulta_cronologica(
+            colecao_obsidian, pergunta
+        )
+    except Exception:
+        resposta_cronologica = None
+    if resposta_cronologica:
+        with st.chat_message("assistant", avatar="⚡"):
+            st.markdown(resposta_cronologica)
+        return resposta_cronologica
+
+    # ── Atalho: cumprimento/casual responde local sem RAG/LLM ────
+    # Vale MESMO com o LLM conectado: um "olá" não deve acionar o modelo pesado
+    # (lento e sujeito a 503). Nunca atalha com anexos: o pesquisador quer o
+    # arquivo lido.
     if not anexos:
         resposta_simples = resposta_interacao_simples(pergunta)
         if resposta_simples:
@@ -781,6 +1172,14 @@ def responder_com_rag(pergunta: str,
     )
 
     with st.spinner(mensagem_busca):
+        # Qualquer Markdown novo ou editado no vault vale no próximo turno.
+        # A sincronização é incremental e não recalcula embeddings sem mudanças.
+        try:
+            from src.conhecimento.obsidian import sincronizar_obsidian
+
+            sincronizar_obsidian(colecao_obsidian, modelo)
+        except Exception:
+            pass
         prompt, citacoes = preparar_prompt(
             pergunta=pergunta,
             perfil=perfil,
@@ -790,7 +1189,35 @@ def responder_com_rag(pergunta: str,
             colecao_sessoes=colecao_sessoes,
             nome_provedor=st.session_state.get("nome_provedor", ""),
             anexos=anexos,
+            indice_lexical=indice_lexical,
+            colecao_obsidian=colecao_obsidian,
         )
+
+    auditoria = None
+    auditor = st.session_state.get("auditor")
+    if consultar_literatura and auditor is not None and citacoes:
+        with st.spinner("Auditando a cobertura das evidencias..."):
+            auditoria = auditor.auditar_evidencias(pergunta, citacoes)
+        from src.conhecimento.multiagente import filtrar_citacoes_auditadas
+
+        citacoes = filtrar_citacoes_auditadas(citacoes, auditoria)
+
+    coordenador = st.session_state.llm
+    if hasattr(coordenador, "contextualizar_prompt"):
+        prompt = coordenador.contextualizar_prompt(
+            prompt,
+            pergunta,
+            auditoria,
+        )
+
+    # Coerencia prosa x rodape: o contexto do prompt nao e filtrado, mas o
+    # rodape sim (o auditor roda depois). Sem isto, a prosa pode citar uma fonte
+    # que o rodape nao mostra. Restringe as citacoes ao MESMO conjunto do rodape
+    # (e, se vazio, proibe citar) — como ultima instrucao, a mais saliente.
+    if consultar_literatura:
+        from src.core.citacao_guarda import montar_restricao_fontes
+
+        prompt = prompt + "\n\n" + montar_restricao_fontes(citacoes)
 
     # Quando ha imagem anexada E o provedor e multimodal, o conteudo vira uma
     # lista (texto + image_url); caso contrario, segue como string.
@@ -808,22 +1235,51 @@ def responder_com_rag(pergunta: str,
                 placeholder,
                 refs_md,
             )
+            # Trava estrutural: sinaliza citações sem lastro (normas fora do
+            # rodapé, páginas sem fonte recuperada) que o prompt sozinho não
+            # segura. O aviso vira parte da resposta (exibida e exportada).
+            if consultar_literatura:
+                from src.core.citacao_guarda import alerta_citacao_infundada
+
+                aviso = alerta_citacao_infundada(resposta, citacoes)
+                if aviso:
+                    placeholder.markdown(resposta + aviso)
+                    resposta = resposta + aviso
         except Exception as exc:
             erro = str(exc)
+            erro_baixo = erro.lower()
             if "413" in erro or "Request too large" in erro:
                 st.error(
                     "A solicitação ficou grande demais para o limite do provedor. "
-                    "Tente pedir uma resposta mais focada ou troque para Gemini."
+                    "Tente pedir uma resposta mais focada."
                 )
-            elif "429" in erro:
-                st.error("Limite da API atingido. Aguarde ou troque o provedor.")
+                resposta = f"[Erro: {exc}]"
+            elif "503" in erro or "unavailable" in erro_baixo or "high demand" in erro_baixo:
+                msg = (
+                    "⏳ Os modelos do Gemini estão com alta demanda no momento "
+                    "(503). Já tentei repetir e usar um modelo alternativo sem "
+                    "sucesso — costuma ser passageiro. Reenvie a pergunta em "
+                    "alguns segundos."
+                )
+                st.warning(msg)
+                resposta = msg
+            elif "429" in erro or "resource_exhausted" in erro_baixo:
+                st.warning("Limite de taxa da API atingido. Aguarde alguns instantes e reenvie.")
+                resposta = "[Limite de taxa atingido — reenvie em instantes.]"
             else:
                 st.error(f"Erro: {exc}")
-            resposta = f"[Erro: {exc}]"
+                resposta = f"[Erro: {exc}]"
     return resposta
 
 
-def renderizar_chat(perfil, modelo, colecao, colecao_sessoes) -> None:
+def renderizar_chat(
+    perfil,
+    modelo,
+    colecao,
+    colecao_sessoes,
+    colecao_obsidian,
+    indice_lexical=None,
+) -> None:
     for msg in st.session_state.mensagens:
         renderizar_mensagem(msg)
 
@@ -854,11 +1310,50 @@ def renderizar_chat(perfil, modelo, colecao, colecao_sessoes) -> None:
     with st.chat_message("user", avatar="🔬"):
         st.markdown(conteudo_usuario)
 
+    # Atalho: exportar a conversa em .txt. Intercepta ANTES do LLM — o modelo
+    # não cria arquivos (só alucinaria "gerei"); aqui montamos o transcrito real
+    # e oferecemos o download, que persiste via renderizar_mensagem.
+    if not anexos and quer_exportar_conversa(pergunta):
+        carimbo = f"{agora_local():%Y-%m-%d_%H-%M}"
+        transcricao = montar_transcricao(
+            st.session_state.mensagens,
+            exportado_em=f"{agora_local():%d/%m/%Y às %H:%M} (America/Sao_Paulo)",
+        )
+        nome_arq = nome_arquivo_conversa(carimbo)
+        trocas = sum(1 for m in st.session_state.mensagens if m.get("role") == "user")
+        resposta = (
+            f"📄 Preparei o histórico completo desta conversa "
+            f"({trocas} {'troca' if trocas == 1 else 'trocas'}) em **{nome_arq}**. "
+            "Clique no botão abaixo para baixar — o texto traz cada mensagem na íntegra."
+        )
+        with st.chat_message("assistant", avatar="⚡"):
+            st.markdown(resposta)
+            _botao_download_texto(transcricao, nome_arq)
+        st.session_state.mensagens.append({
+            "role": "user", "content": conteudo_usuario, "imagens": [],
+        })
+        st.session_state.mensagens.append({
+            "role": "assistant", "content": resposta, "imagens": [],
+            "export_txt": {"data": transcricao, "file_name": nome_arq},
+        })
+        salvar_sessao(
+            conteudo_usuario, resposta, [],
+            len(st.session_state.mensagens) // 2, modelo,
+        )
+        return
+
     # Com anexos, ir direto ao RAG (que le o arquivo). Pular o roteador de
     # ferramentas evita misrotear "o que tem nesse arquivo?" para o pipeline ML.
     if anexos:
         resposta = responder_com_rag(
-            pergunta, perfil, modelo, colecao, colecao_sessoes, anexos=anexos
+            pergunta,
+            perfil,
+            modelo,
+            colecao,
+            colecao_sessoes,
+            colecao_obsidian,
+            indice_lexical,
+            anexos=anexos,
         )
         imagens = []
     else:
@@ -867,7 +1362,13 @@ def renderizar_chat(perfil, modelo, colecao, colecao_sessoes) -> None:
         )
         if not resposta:
             resposta = responder_com_rag(
-                pergunta, perfil, modelo, colecao, colecao_sessoes
+                pergunta,
+                perfil,
+                modelo,
+                colecao,
+                colecao_sessoes,
+                colecao_obsidian,
+                indice_lexical,
             )
             imagens = []
 
@@ -888,22 +1389,50 @@ def renderizar_chat(perfil, modelo, colecao, colecao_sessoes) -> None:
         len(st.session_state.mensagens) // 2,
         modelo,
     )
+    # Aprendizado automático: extrai decisões duráveis da conversa (a cada N
+    # interações), independente do modo_consulta/watcher. É o que faz o agente
+    # acumular conhecimento entre sessões.
+    aprender_da_sessao_web()
+
+    auditor = st.session_state.get("auditor")
+    if auditor is not None:
+        aprendizado = auditor.aprender_da_interacao(pergunta, resposta)
+        if aprendizado.salvas:
+            st.toast(
+                f"{aprendizado.salvas} memoria(s) validada(s) para as proximas sessoes."
+            )
 
 
 def main() -> None:
     inicializar_estado()
     st.markdown(_CSS_MINIMO, unsafe_allow_html=True)
+    conectar_equipe()
 
     try:
-        perfil, modelo, colecao, colecao_sessoes, relatorio = carregar_base()
+        (
+            perfil,
+            modelo,
+            colecao,
+            colecao_sessoes,
+            colecao_obsidian,
+            indice_lexical,
+            relatorio,
+        ) = carregar_base()
     except Exception as exc:
         st.error(f"Erro ao carregar o agente: {exc}")
         return
 
-    renderizar_sidebar(modelo, colecao, colecao_sessoes)
+    renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian)
     renderizar_topo(relatorio)
 
-    renderizar_chat(perfil, modelo, colecao, colecao_sessoes)
+    renderizar_chat(
+        perfil,
+        modelo,
+        colecao,
+        colecao_sessoes,
+        colecao_obsidian,
+        indice_lexical,
+    )
 
     entrada = st.chat_input(
         "Peça uma análise ou anexe um arquivo (PDF, CSV, imagem, código...)",

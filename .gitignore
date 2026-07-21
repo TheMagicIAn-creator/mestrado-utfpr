@@ -15,6 +15,7 @@ dados/
 # ========================
 resultados/modelos_salvos/
 *.pkl
+*.pkl.sha256
 *.joblib
 *.h5
 *.pt
@@ -38,6 +39,10 @@ venv_mestrado/
 # CHROMADB (memória local)
 # ========================
 base_conhecimento/
+
+# A nuvem usa o snapshot portátil versionado em artefatos/, não o diretório
+# interno do ChromaDB. O banco local acumula segmentos e não é portátil.
+artefatos/*.tmp
 
 # ========================
 # LOGS

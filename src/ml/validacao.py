@@ -1,6 +1,6 @@
 """
 validacao.py — Al IAdo PV / Fase 5
-Validação formal do detector de anomalias com métricas quantitativas.
+Validação sintética interna E2 do detector com métricas quantitativas.
 
 Fundamentação:
   Avalia o Autoencoder treinado com métricas padronizadas de classificação
@@ -71,7 +71,9 @@ import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from src.ml.estilo_graficos import TAM, aplicar_estilo
+from src.ml.estilo_graficos import (
+    COR_ALERTA, TAM, aplicar_estilo, salvar_figura,
+)
 
 aplicar_estilo()
 import matplotlib.gridspec as gridspec
@@ -88,9 +90,10 @@ from sklearn.metrics import (
 
 from src.ml.features_ca     import extrair_janela, JANELA, FS
 from src.ml.autoencoder      import Autoencoder
+from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas_holdout
+from src.ml.estatistica import bootstrap_auc_ci, intervalo_wilson
 from src.ml.injecao_falhas   import (
     FUNCOES_FALHA, FALHAS,
-    T_INICIO_ESTAVEL, T_FIM_ESTAVEL
 )
 
 # ── Caminhos ─────────────────────────────────────────────────
@@ -98,12 +101,12 @@ RAIZ        = Path(__file__).parent.parent.parent
 ARQUIVO_CSV = RAIZ / "dados" / "brutos" / "Inverter_Data_Set.csv"
 PASTA_AE    = RAIZ / "resultados" / "autoencoder"
 
-# Severidades avaliadas na validação formal
+# Severidades avaliadas na validação sintética interna E2
 SEVS_VALIDACAO = [0.30, 0.50, 1.00]
 
 # Número de janelas por classe
-N_JANELAS_SAUDAVEL = 50
-N_JANELAS_FALHA    = 50
+N_JANELAS_SAUDAVEL = 40
+N_JANELAS_FALHA    = 40
 
 # Prevalência REALISTA de falha em operação (falhas CA são eventos raros).
 # O teste é balanceado (50/50) para estimar TPR/FPR de forma estável, mas
@@ -116,7 +119,7 @@ PREVALENCIA_RARA = 0.05
 # COLETA DE ERROS (saudável e falhas)
 # ============================================================
 
-def coletar_erros(df_estavel: pd.DataFrame,
+def coletar_erros(janelas_holdout: list[pd.DataFrame],
                   modelo: Autoencoder,
                   scaler,
                   device: torch.device,
@@ -125,20 +128,19 @@ def coletar_erros(df_estavel: pd.DataFrame,
                   severidade: float,
                   n_janelas: int) -> np.ndarray:
     """
-    Coleta erros de reconstrução para janelas com falha injetada.
-    Usa offsets variados para amostrar diferentes posições do sinal.
+    Coleta erros em janelas não sobrepostas do holdout temporal isolado.
     """
     fn = FUNCOES_FALHA.get(tipo_falha)  # None se for "saudavel"
     erros = []
 
-    passo_max = max(1, (len(df_estavel) - JANELA) // n_janelas)
-
-    for i in range(n_janelas):
-        inicio = (i * passo_max) % (len(df_estavel) - JANELA)
-        janela = df_estavel.iloc[inicio:inicio + JANELA].copy()
+    for i, janela_base in enumerate(janelas_holdout[:n_janelas]):
+        janela = janela_base.copy()
 
         if fn is not None:
-            janela = fn(janela, severidade)
+            if tipo_falha == "contator_ac":
+                janela = fn(janela, severidade, seed=20_000 + i)
+            else:
+                janela = fn(janela, severidade)
 
         feats  = extrair_janela(janela)
         vetor  = np.array([feats.get(c, 0.0) for c in colunas_feat],
@@ -161,7 +163,8 @@ def coletar_erros(df_estavel: pd.DataFrame,
 
 def metricas_no_limiar(erros_neg: np.ndarray,
                         erros_pos: np.ndarray,
-                        limiar: float) -> dict:
+                        limiar: float,
+                        seed: int = 42) -> dict:
     """
     Calcula métricas de classificação binária no limiar fixo.
     Negativo=saudável (0), Positivo=falha (1).
@@ -181,6 +184,7 @@ def metricas_no_limiar(erros_neg: np.ndarray,
     pr_auc               = auc(rec_arr, prec_arr)
 
     cm = confusion_matrix(y_true, y_pred)
+    tn, fp, fn, tp = cm.ravel()
 
     # — Ponto de operação (limiar congelado): TPR/FPR independem da prevalência —
     tpr_op = float((erros_pos > limiar).mean())   # = recall
@@ -194,6 +198,11 @@ def metricas_no_limiar(erros_neg: np.ndarray,
     precision_raro = float(pi * tpr_op / denom) if denom > 0 else 0.0
     f1_raro = (float(2 * precision_raro * tpr_op / (precision_raro + tpr_op))
                if (precision_raro + tpr_op) > 0 else 0.0)
+    recall_ci = intervalo_wilson(int(tp), int(tp + fn))
+    specificity = float(tn / (tn + fp)) if (tn + fp) else 0.0
+    specificity_ci = intervalo_wilson(int(tn), int(tn + fp))
+    precision_ci = intervalo_wilson(int(tp), int(tp + fp))
+    auc_ci = bootstrap_auc_ci(erros_neg, erros_pos, n_boot=500, seed=seed)
 
     return {
         "precision"  : float(precision_score(y_true, y_pred, zero_division=0)),
@@ -202,6 +211,15 @@ def metricas_no_limiar(erros_neg: np.ndarray,
         "accuracy"   : float(accuracy_score(y_true, y_pred)),
         "auc_roc"    : float(roc_auc),
         "auc_pr"     : float(pr_auc),
+        "specificity": specificity,
+        "fnr"        : float(1.0 - tpr_op),
+        "recall_ci_low": recall_ci[0],
+        "recall_ci_high": recall_ci[1],
+        "specificity_ci_low": specificity_ci[0],
+        "specificity_ci_high": specificity_ci[1],
+        "precision_ci_low": precision_ci[0],
+        "precision_ci_high": precision_ci[1],
+        **auc_ci,
         # Regime raro (prevalência realista de falha CA) — precision/F1 honestos:
         "prevalencia_raro" : pi,
         "tpr_op"           : tpr_op,
@@ -224,7 +242,9 @@ def metricas_no_limiar(erros_neg: np.ndarray,
 
 def plotar_roc(resultados: dict, limiar: float, pasta: Path):
     """Curvas ROC para cada combinação falha × severidade."""
-    fig, axes = plt.subplots(1, 3, figsize=TAM["painel_3"])
+    fig, axes = plt.subplots(
+        1, 3, figsize=TAM["painel_3"], layout="constrained"
+    )
     fig.suptitle("Curvas ROC — Detecção de Anomalias por Tipo de Falha",
                  fontsize=13, fontweight="bold")
 
@@ -244,9 +264,14 @@ def plotar_roc(resultados: dict, limiar: float, pasta: Path):
             res = resultados[chave]
             ax.plot(res["fpr"], res["tpr"],
                     color=cores_sev[sev], linewidth=2,
-                    label=f"sev={sev} (AUC={res['auc_roc']:.3f})")
+                    label=(f"sev={sev} · AUC={res['auc_roc']:.3f} "
+                           f"[{res['auc_roc_ci_low']:.3f}; {res['auc_roc_ci_high']:.3f}]"))
+            ax.scatter(
+                [res["fpr_op"]], [res["tpr_op"]], color=cores_sev[sev],
+                edgecolors="black", linewidths=0.6, s=42, zorder=4,
+            )
 
-        npm_str = f"NPR={npr}" if npr else "D=10"
+        npm_str = f"NPR={npr}"
         ax.set_title(f"{nome}\n({npm_str})", fontsize=10)
         ax.set_xlabel("Taxa de Falso Positivo")
         ax.set_ylabel("Taxa de Verdadeiro Positivo (Recall)")
@@ -255,17 +280,21 @@ def plotar_roc(resultados: dict, limiar: float, pasta: Path):
         ax.set_xlim([0, 1])
         ax.set_ylim([0, 1.02])
 
-    plt.tight_layout()
     arq = pasta / "validacao_roc.png"
-    fig.savefig(arq)
-    plt.close(fig)
+    salvar_figura(
+        fig,
+        arq,
+        "Os círculos marcam o limiar p99 congelado; faixas na legenda são IC95% bootstrap da AUC.",
+    )
     _log(f"   📊 {arq.name}")
 
 
 def plotar_pr(resultados: dict, pasta: Path):
     """Curvas Precision-Recall por falha × severidade (complementa a ROC,
     importante quando há desbalanceamento entre saudável e falha)."""
-    fig, axes = plt.subplots(1, 3, figsize=TAM["painel_3"])
+    fig, axes = plt.subplots(
+        1, 3, figsize=TAM["painel_3"], layout="constrained"
+    )
     fig.suptitle("Curvas Precision-Recall — Detecção de Anomalias por Tipo de Falha",
                  fontsize=13, fontweight="bold")
 
@@ -281,7 +310,11 @@ def plotar_pr(resultados: dict, pasta: Path):
             ax.plot(res["rec_arr"], res["prec_arr"],
                     color=cores_sev[sev], linewidth=2,
                     label=f"sev={sev} (AUC-PR={res['auc_pr']:.3f})")
-        npm_str = f"NPR={npr}" if npr else "D=10"
+            ax.scatter(
+                [res["recall"]], [res["precision"]], color=cores_sev[sev],
+                edgecolors="black", linewidths=0.6, s=42, zorder=4,
+            )
+        npm_str = f"NPR={npr}"
         ax.set_title(f"{nome}\n({npm_str})", fontsize=10)
         ax.set_xlabel("Recall")
         ax.set_ylabel("Precision")
@@ -290,16 +323,20 @@ def plotar_pr(resultados: dict, pasta: Path):
         ax.set_xlim([0, 1])
         ax.set_ylim([0, 1.02])
 
-    plt.tight_layout()
     arq = pasta / "validacao_pr.png"
-    fig.savefig(arq)
-    plt.close(fig)
+    salvar_figura(
+        fig,
+        arq,
+        "Os círculos marcam o ponto operacional; teste interno balanceado, evidência sintética E2.",
+    )
     _log(f"   📊 {arq.name}")
 
 
 def plotar_matrizes(resultados: dict, pasta: Path):
     """Matrizes de confusão para severidade=1.0 de cada falha."""
-    fig, axes = plt.subplots(1, 3, figsize=TAM["painel_3"])
+    fig, axes = plt.subplots(
+        1, 3, figsize=TAM["painel_3"], layout="constrained"
+    )
     fig.suptitle("Matrizes de Confusão — Severidade 1.0 (Limiar Operacional p99)",
                  fontsize=12, fontweight="bold")
 
@@ -330,32 +367,78 @@ def plotar_matrizes(resultados: dict, pasta: Path):
 
         f1  = resultados[chave]["f1"]
         auc = resultados[chave]["auc_roc"]
-        npm_str = f"NPR={falha['npr']}" if falha['npr'] else "D=10"
-        ax.set_title(f"{falha['nome']}\n({npm_str}) | F1={f1:.3f} | AUC={auc:.3f}",
+        rec = resultados[chave]["recall"]
+        npm_str = f"NPR={falha['npr']}"
+        ax.set_title(f"{falha['nome']}\n({npm_str}) · Recall={rec:.2f} · F1={f1:.2f} · AUC={auc:.2f}",
                      fontsize=9)
         ax.set_ylabel("Real")
         ax.set_xlabel("Predito")
 
-    plt.tight_layout()
     arq = pasta / "validacao_matriz.png"
-    fig.savefig(arq)
-    plt.close(fig)
+    salvar_figura(
+        fig, arq,
+        "Matriz no ponto operacional p99; linhas = classe real, colunas = predição.",
+    )
+    _log(f"   📊 {arq.name}")
+
+
+def plotar_matrizes_todas_severidades(resultados: dict, pasta: Path):
+    """Matrizes de confusão para toda combinação falha x severidade."""
+    fig, axes = plt.subplots(
+        len(FALHAS), len(SEVS_VALIDACAO),
+        figsize=TAM["painel_9"], layout="constrained",
+    )
+    fig.suptitle("Matrizes de confusão — todas as severidades no limiar p99")
+
+    for linha, falha in enumerate(FALHAS):
+        for coluna, sev in enumerate(SEVS_VALIDACAO):
+            ax = axes[linha][coluna]
+            chave = f"{falha['id']}_sev{sev}"
+            res = resultados[chave]
+            cm = np.asarray(res["confusion"])
+            ax.imshow(cm, interpolation="nearest", cmap="Blues", vmin=0, vmax=cm.max())
+            for i in range(2):
+                for j in range(2):
+                    ax.text(
+                        j, i, str(cm[i, j]), ha="center", va="center",
+                        fontsize=12, fontweight="bold",
+                        color="white" if cm[i, j] > cm.max() / 2 else "black",
+                    )
+            ax.set_xticks([0, 1], ["Saudável", "Falha"], fontsize=8)
+            ax.set_yticks([0, 1], ["Saudável", "Falha"], fontsize=8)
+            ax.set_title(
+                f"{falha['nome']} · sev={sev:.2f}\n"
+                f"Recall={res['recall']:.2f} · FNR={res['fnr']:.2f}",
+                fontsize=9,
+            )
+            if coluna == 0:
+                ax.set_ylabel(f"Real\nNPR={falha['npr']}")
+            if linha == len(FALHAS) - 1:
+                ax.set_xlabel("Predito")
+
+    arq = pasta / "validacao_matrizes_severidades.png"
+    salvar_figura(
+        fig, arq,
+        "E2 sintético em janelas não sobrepostas do holdout temporal; n por classe indicado no CSV.",
+    )
     _log(f"   📊 {arq.name}")
 
 
 def plotar_tabela_metricas(tabela_df: pd.DataFrame, pasta: Path):
     """Heatmap das métricas F1, AUC, Recall por falha × severidade."""
-    fig, axes = plt.subplots(1, 3, figsize=TAM["painel_3"])
+    fig, axes = plt.subplots(2, 2, figsize=TAM["painel_4"], layout="constrained")
     fig.suptitle("Métricas por Tipo de Falha e Severidade",
                  fontsize=13, fontweight="bold")
 
-    metricas_plot = ["f1", "auc_roc", "recall"]
-    titulos       = ["F1-Score", "AUC-ROC", "Recall (Sensibilidade)"]
-    cmaps         = ["YlOrRd", "YlGnBu", "PuRd"]
+    metricas_plot = ["f1", "auc_roc", "recall", "fnr"]
+    titulos = ["F1-Score", "AUC-ROC", "Recall (Sensibilidade)", "FNR (Falhas Perdidas)"]
+    cmaps = ["YlOrRd", "YlGnBu", "PuRd", "Reds"]
+    ordem_falhas = [falha["nome"] for falha in FALHAS]
 
-    for ax, metrica, titulo, cmap in zip(axes, metricas_plot, titulos, cmaps):
+    for ax, metrica, titulo, cmap in zip(axes.ravel(), metricas_plot, titulos, cmaps):
         pivot = tabela_df.pivot(index="falha", columns="severidade",
                                 values=metrica)
+        pivot = pivot.reindex(ordem_falhas)
         im = ax.imshow(pivot.values, cmap=cmap, vmin=0, vmax=1,
                        aspect="auto")
         ax.set_xticks(range(len(pivot.columns)))
@@ -375,10 +458,11 @@ def plotar_tabela_metricas(tabela_df: pd.DataFrame, pasta: Path):
 
         plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
-    plt.tight_layout()
     arq = pasta / "validacao_metricas.png"
-    fig.savefig(arq)
-    plt.close(fig)
+    salvar_figura(
+        fig, arq,
+        "AUC mede ranking; Recall/FNR mostram o comportamento efetivo no limiar operacional.",
+    )
     _log(f"   📊 {arq.name}")
 
 
@@ -388,7 +472,7 @@ def plotar_tabela_metricas(tabela_df: pd.DataFrame, pasta: Path):
 
 def executar_validacao() -> bool:
     _log("=" * 60)
-    _log("  AL IADO PV — VALIDAÇÃO FORMAL DO DETECTOR")
+    _log("  AL IADO PV — VALIDAÇÃO SINTÉTICA INTERNA E2")
     _log("=" * 60)
 
     # ── 1. Carrega artefatos ─────────────────────────────────
@@ -420,18 +504,19 @@ def executar_validacao() -> bool:
     modelo.load_state_dict(checkpoint["state_dict"])
     _log(f"   ✅ Modelo carregado | limiar={limiar:.4f}")
 
-    # ── 2. Dataset estável ───────────────────────────────────
+    # ── 2. Holdout temporal isolado ───────────────────────────
     _log(f"\n📂 Carregando dataset...")
-    df = pd.read_csv(ARQUIVO_CSV)
-    idx_i = int(T_INICIO_ESTAVEL * FS)
-    idx_f = int(T_FIM_ESTAVEL * FS)
-    df_estavel = df.iloc[idx_i:idx_f].reset_index(drop=True)
-    _log(f"   ✅ {len(df_estavel):,} amostras estáveis disponíveis")
+    df = carregar_paderborn_compacto(ARQUIVO_CSV)
+    janelas_holdout, meta_holdout = preparar_janelas_holdout(
+        df, n_max=max(N_JANELAS_SAUDAVEL, N_JANELAS_FALHA)
+    )
+    del df
+    _log(f"   ✅ {len(janelas_holdout)} janelas não sobrepostas do teste")
 
     # ── 3. Erros classe negativa (saudável) ──────────────────
     _log(f"\n⚕️  Coletando erros — classe SAUDÁVEL ({N_JANELAS_SAUDAVEL} janelas)...")
     erros_neg = coletar_erros(
-        df_estavel, modelo, scaler, device, colunas_feat,
+        janelas_holdout, modelo, scaler, device, colunas_feat,
         "saudavel", 0.0, N_JANELAS_SAUDAVEL
     )
     _log(f"   μ={erros_neg.mean():.4f} ± {erros_neg.std():.4f} | "
@@ -449,11 +534,14 @@ def executar_validacao() -> bool:
 
         for sev in SEVS_VALIDACAO:
             erros_pos = coletar_erros(
-                df_estavel, modelo, scaler, device, colunas_feat,
+                janelas_holdout, modelo, scaler, device, colunas_feat,
                 fid, sev, N_JANELAS_FALHA
             )
 
-            res   = metricas_no_limiar(erros_neg, erros_pos, limiar)
+            seed_boot = 42 + 100 * len(resultados) + int(sev * 100)
+            res = metricas_no_limiar(
+                erros_neg, erros_pos, limiar, seed=seed_boot
+            )
             chave = f"{fid}_sev{sev}"
             resultados[chave] = res
 
@@ -474,6 +562,22 @@ def executar_validacao() -> bool:
                 "precision": res["precision"],
                 "accuracy" : res["accuracy"],
                 "auc_pr"   : res["auc_pr"],
+                "specificity": res["specificity"],
+                "fpr"      : res["fpr_op"],
+                "fnr"      : res["fnr"],
+                "n_neg"    : res["n_neg"],
+                "n_pos"    : res["n_pos"],
+                "recall_ci_low": res["recall_ci_low"],
+                "recall_ci_high": res["recall_ci_high"],
+                "specificity_ci_low": res["specificity_ci_low"],
+                "specificity_ci_high": res["specificity_ci_high"],
+                "auc_roc_ci_low": res["auc_roc_ci_low"],
+                "auc_roc_ci_high": res["auc_roc_ci_high"],
+                "threshold_method": info_limiar.get("threshold_method", "p99"),
+                "threshold_source": info_limiar.get(
+                    "threshold_source", "bloco_calibracao_temporal"
+                ),
+                "evidence_level": "E2",
                 # regime raro (prevalência realista)
                 "precision_raro": res["precision_raro"],
                 "f1_raro"       : res["f1_raro"],
@@ -484,6 +588,7 @@ def executar_validacao() -> bool:
     plotar_roc(resultados, limiar, PASTA_AE)
     plotar_pr(resultados, PASTA_AE)
     plotar_matrizes(resultados, PASTA_AE)
+    plotar_matrizes_todas_severidades(resultados, PASTA_AE)
 
     tabela_df = pd.DataFrame(linhas_tabela)
     plotar_tabela_metricas(tabela_df, PASTA_AE)
@@ -493,7 +598,36 @@ def executar_validacao() -> bool:
     tabela_df.to_csv(arq_csv, index=False)
     _log(f"   📋 {arq_csv.name}")
 
+    arq_md = PASTA_AE / "validacao_tabela.md"
+    cabecalho = (
+        "| Falha | Sev. | AUC-ROC (IC95%) | Recall (IC95%) | FNR | "
+        "Especificidade | n/classe |\n"
+        "|---|---:|---:|---:|---:|---:|---:|\n"
+    )
+    linhas_md = []
+    for row in linhas_tabela:
+        linhas_md.append(
+            f"| {row['falha']} | {row['severidade']:.2f} | "
+            f"{row['auc_roc']:.3f} [{row['auc_roc_ci_low']:.3f}; "
+            f"{row['auc_roc_ci_high']:.3f}] | {row['recall']:.3f} "
+            f"[{row['recall_ci_low']:.3f}; {row['recall_ci_high']:.3f}] | "
+            f"{row['fnr']:.3f} | {row['specificity']:.3f} | "
+            f"{row['n_pos']} |"
+        )
+    arq_md.write_text(
+        "# Validação sintética interna E2\n\n"
+        "> Holdout temporal não sobreposto; limiar p99 congelado na calibração.\n\n"
+        + cabecalho + "\n".join(linhas_md) + "\n",
+        encoding="utf-8",
+    )
+    _log(f"   📋 {arq_md.name}")
+
     arq_json = PASTA_AE / "validacao_report.json"
+    referencia_negativa = next(iter(resultados.values()))
+    fpr_holdout = float(referencia_negativa["fpr_op"])
+    fp_holdout = int(referencia_negativa["confusion"][0][1])
+    n_neg_holdout = int(referencia_negativa["n_neg"])
+    rotulo_fp = "falso positivo" if fp_holdout == 1 else "falsos positivos"
     report_serializavel = {
         "__meta__": {
             "evidence_level": "E2",
@@ -504,24 +638,28 @@ def executar_validacao() -> bool:
                 "otimizado no teste. Não é prova de desempenho industrial (E3)."
             ),
             "threshold_method": info_limiar.get("threshold_method", "p99"),
-            "threshold_source": "congelado_do_limiar_json",
+            "threshold_source": info_limiar.get(
+                "threshold_source", "bloco_calibracao_temporal"
+            ),
             "limiar_operacional": float(limiar),
+            "protocolo_avaliacao": meta_holdout,
             "prevalencia_teste": 0.5,
             "prevalencia_raro": PREVALENCIA_RARA,
+            "falsos_positivos_holdout": fp_holdout,
+            "n_saudaveis_holdout": n_neg_holdout,
+            "fpr_holdout": fpr_holdout,
             "nota_regime_raro": (
                 "O teste é balanceado (50% falha) para estimar TPR/FPR com "
                 "estabilidade, mas falhas CA são RARAS em operação. Por isso "
                 "reportamos também precision_raro/f1_raro reprojetados para "
                 f"prevalência de {PREVALENCIA_RARA:.0%} (regra de Bayes no ponto "
                 "de operação). AUC, recall (TPR) e specificity independem da "
-                "prevalência; só precision/F1 mudam. RESSALVA HONESTA: neste "
-                "pipeline do Autoencoder o limiar p99 deixa fpr_op≈0 nas "
-                f"{N_JANELAS_SAUDAVEL} janelas saudáveis, então precision_raro≈"
-                "precision e a reprojeção é praticamente um NO-OP aqui (com FPR=0, "
-                "Bayes dá precisão=1). Isso é limite de resolução amostral (poucas "
-                "janelas não resolvem FPR<~1/N), NÃO prova de zero falsos "
-                "positivos. O colapso de precisão sob raridade aparece nos "
-                "protocolos por artigo (IForest/Z-score, fpr_op>0), não aqui."
+                "prevalência; só precision/F1 mudam. Nesta execução, o limiar "
+                f"p99 produziu {fp_holdout} {rotulo_fp} em "
+                f"{n_neg_holdout} janelas saudáveis (FPR={fpr_holdout:.2%}). "
+                "Esse FPR observado reduz de forma relevante a precisão projetada "
+                "para o regime raro. Como o holdout é pequeno, o valor tem resolução "
+                "amostral limitada e não deve ser interpretado como taxa de campo."
             ),
         },
     }

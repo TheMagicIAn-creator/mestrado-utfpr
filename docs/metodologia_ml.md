@@ -19,19 +19,24 @@ Pipeline principal: `features_ca → autoencoder → injecao_falhas → validaca
 
 ## 2. Limiar do Autoencoder
 
-- **Limiar operacional = percentil 99** do erro de reconstrução saudável
+- **Limiar operacional = percentil 99** do erro de reconstrução saudável no
+  bloco temporal de **calibração**
   (controla FP ≈ 1%, robusto a distribuições assimétricas).
 - **μ + 3σ = referência comparativa** (assume normalidade) — **nunca** o limiar
   em uso.
 - **p95 = referência adicional.**
 - O artefato `limiar.json` registra `threshold_method = "p99"` + os três valores.
 
-## 3. Validação formal (limiar congelado)
+## 3. Validação sintética interna E2 (limiar congelado)
 
 `src/ml/validacao.py` carrega o limiar de `limiar.json` (**congelado**) e calcula
 as métricas nesse limiar fixo — **não** otimiza o limiar no conjunto de teste.
 Gera ROC, **Precision-Recall**, matriz de confusão e `validacao_report.json`
-com `evidence_level = E2` e `threshold_source = congelado_do_limiar_json`.
+com `evidence_level = E2` e `threshold_source = bloco_calibracao_temporal`.
+O protocolo canônico é `treino 60% → calibração 20% → teste 20%`, com purga
+nas fronteiras. Injeção e validação usam apenas janelas **não sobrepostas** do
+bloco final. Isso remove vazamento de treino, mas não transforma E2 em
+validação externa: as falhas continuam sintéticas.
 
 Benchmarks exploratórios (ex.: `experimentos_artigos.py`) que escolhem o limiar
 no próprio conjunto avaliado são rotulados `threshold_source =
@@ -50,7 +55,7 @@ tempo com zona de **purga** na fronteira.
 |---|---|
 | **E0** | Hipótese |
 | **E1** | Benchmark exploratório (perturbação genérica / dataset rotulado) |
-| **E2** | Validação sintética orientada pelo FMEA (injeção/validação do pipeline) |
+| **E2** | Validação sintética orientada pela FMECA (injeção/validação do pipeline) |
 | **E3** | Validação experimental externa (bancada / campo) |
 
 O agente **sempre** informa o nível e **nunca** trata E1/E2 como prova de
@@ -60,20 +65,42 @@ desempenho industrial.
 
 Cada falha injetada (`FALHAS` em `injecao_falhas.py`) declara: `evidence_level`
 (E2), `hipotese_fisica`, `sinais`, `formula`, `severity_definition`, `source` e
-`limitations`. **Falha de Sensor CA:** o ruído gaussiano é um **proxy** e exige
-**calibração física** — não afirmar alta sensibilidade sem essa ressalva.
+`limitations`. **Contator AC:** o ruído gaussiano é um **proxy** do transiente de comutação
+e exige **calibração física** — não afirmar alta sensibilidade sem essa ressalva.
 
 **SMD probabilística:** `smd_probabilistico` calcula a taxa de detecção por
-severidade sobre repetições e a **SMD₉₅** (menor severidade com detecção ≥ 95%).
+severidade em janelas não sobrepostas do holdout, o intervalo de Wilson de 95%
+e a **SMD₉₅** (menor severidade cuja taxa pontual é ≥ 95%). O campo
+`smd_95_conservadora` exige também limite inferior do IC ≥ 95%; quando n é
+insuficiente, permanece nulo em vez de transmitir certeza artificial.
 
-## 7. Métricas
+## 7. Weibull e RUL sintéticos
+
+- Uma trajetória mantém a **mesma janela-base** enquanto a severidade cresce;
+  não mistura ativos/regimes operacionais a cada passo. Realizações estocásticas
+  de uma mesma trajetória também ficam congeladas ao longo da severidade.
+- Janelas do holdout que já excedem o limiar saudável em `t=0` são excluídas e
+  contabilizadas. Um evento exige três passos consecutivos acima do limiar,
+  reduzindo cruzamentos isolados por ruído.
+- Cruzamentos persistentes do limiar são eventos; trajetórias sem cruzamento permanecem
+  **censuradas à direita**. Censura nunca recebe jitter nem vira falha.
+- O ajuste de dois parâmetros usa máxima verossimilhança censurada e intervalos
+  bootstrap por trajetória. Kaplan-Meier é exibido junto da curva paramétrica.
+- A **RUL restrita por Kaplan-Meier** é calculada para todas as famílias até o
+  horizonte observado. A RUL paramétrica só aparece quando há eventos suficientes;
+  censura acima de 50% não apaga a curva, mas a marca como extrapolação de alta
+  incerteza. Sem eventos suficientes, beta, eta, MTTF e B10 permanecem nulos.
+- MTTF, B10 e ambas as formas de RUL estão em **passos sintéticos E2**. Mesmo com ajuste
+  convergente, não equivalem a horas, ciclos ou vida física de campo.
+
+## 8. Métricas
 
 Schema único (`_metricas_classificacao`): accuracy, **balanced_accuracy**,
 precision, recall, f1, **MCC**, AUC, **specificity** (= TN/(TN+FP) no binário) +
 **specificity_macro_ovr** (média one-vs-rest) + `specificity_tipo`,
 **FPR/FNR** (binário), matriz de confusão.
 
-## 8. Proveniência e reprodutibilidade
+## 9. Proveniência e reprodutibilidade
 
 - **Manifesto por etapa** (`proveniencia.py`): `code_sha256`, `parameters`,
   hash dos artefatos upstream, outputs, `git_commit`. Estados **ready / stale /
@@ -85,7 +112,7 @@ precision, recall, f1, **MCC**, AUC, **specificity** (= TN/(TN+FP) no binário) 
 - **Datasets** validados por `scripts/verificar_datasets.py` (SHA-256, linhas);
   dados brutos não são versionados.
 
-## 9. Protocolos de avaliação POR ARTIGO (anti "erro de simulação")
+## 10. Protocolos de avaliação POR ARTIGO (anti "erro de simulação")
 
 Antes, todos os experimentos de anomalia compartilhavam um harness único:
 split **aleatório** de janelas sobrepostas (vazamento temporal) e limiar
@@ -95,17 +122,20 @@ e **nenhum limiar enxerga os rótulos do teste**:
 
 | Artigo | Decisão de cada modelo | `threshold_source` |
 |---|---|---|
-| **Francisti (2025)** | Shewhart: alarme se alguma feature sai de ±3σ do treino (fixo a priori); RF probabilidade ≥ 0,5 | `shewhart_3sigma_a_priori` |
-| **Ibrahim (2022)** | IF contaminação a priori (5%); AE-LSTM limiar = p99 do erro **no treino** (congelado); Prophet fora da banda de 99% | `contaminacao_a_priori_0.05`, `p99_erro_reconstrucao_treino`, `intervalo_prophet_0.99` |
-| **Sharma (2026)** | PPO otimiza a contaminação do IF em **validação temporal** separada (split 60/20/20 com purga); teste só com o parâmetro congelado; baselines em 0,5 nativo | `ppo_otimizado_em_validacao_temporal` |
-| **Ahirwar (2025)** | Voto **majoritário** entre membros (IF/AE-LSTM/Prophet), cada um na sua regra a priori | `voto_majoritario_K_de_N` |
+| **Francisti (2025)** | Shewhart: alarme se alguma feature sai de ±3σ do treino (fixo a priori) | `shewhart_3sigma_a_priori` |
+| **Ibrahim (2022)** | IF contaminação a priori (5%); AE-LSTM limiar = p99 do erro **no treino** (congelado) | `contaminacao_a_priori_0.05`, `p99_erro_em_calibracao_temporal` |
+
+Cortados da curadoria (não são experimentos executáveis): Sharma (PPO+IF,
+baselines supervisionados, RNN/CNN), Ahirwar (voto híbrido — derivativo do
+Ibrahim), o Random Forest do Francisti e o Prophet do Ibrahim (pior detector
++ dependência instável em runtime).
 
 Infraestrutura comum (benchmark justo):
 - **Split temporal com purga** (`split_temporal.py`) — nunca aleatório;
-- **Injeção orientada pelo FMEA no espaço de features**: cada anomalia pertence
-  a uma família do FMECA de Torres (2024) — degradação LCL (NPR=210),
-  desbalanceamento de fase (NPR=150), falha de sensor — perturbando apenas as
-  features que a física daquela falha afeta. O resultado reporta **detecção
+- **Injeção orientada pela FMECA no espaço de features**: cada anomalia pertence
+  a uma família da FMECA de Torres (2024) — Contator AC (NPR=315), IGBT (NPR=90),
+  Fusível AC (NPR=30) — perturbando apenas as features que a física daquela
+  falha afeta (fonte única: docs/fmeca.md). O resultado reporta **detecção
   por família** (`deteccao_por_falha`).
 - O `resultado.json` carrega o bloco **`metodologia`** (split, injeção, decisão
   por modelo, notas de fidelidade ao artigo).

@@ -34,7 +34,7 @@ src/
 ```
 
 - **core** — central configuration and shared utilities
-- **conhecimento** — PDF indexing, RAG agent, multi-LLM provider,
+- **conhecimento** — PDF indexing, semantic + BM25 RAG, fixed-role all-Gemini team (Pro/Flash/Flash-Lite),
   memory consolidation
 - **ml** — exploratory data analysis and fault classification
 - **orquestrador** — runs pending steps on startup, skips
@@ -43,10 +43,10 @@ src/
 ## Tech stack
 
 - Python 3.13
-- Streamlit — local web interface
-- ChromaDB — local vector database
+- Streamlit — local and cloud web interface
+- ChromaDB — local vector database restored from a portable cloud snapshot
 - sentence-transformers — multilingual embeddings
-- LLM providers — Google Gemini and Groq
+- LLM provider — Google Gemini (Pro for chat, Flash for auditing, Flash-Lite for background)
 - scikit-learn, XGBoost, LightGBM — Machine Learning
 
 ## How to run
@@ -55,7 +55,7 @@ src/
 streamlit run app.py
 ```
 
-API keys (Google and Groq) must be set in a local `.env` file —
+A single Google Gemini API key must be set in a local `.env` file —
 see `.env.example` for the template. The `.env` file is never
 committed to the repository.
 
@@ -80,6 +80,7 @@ FMEA-guided synthetic validation; field validation E3 not yet performed).
 - [`docs/datasets.md`](docs/datasets.md) — Paderborn (CA) vs PV Farms (CC) e separação de domínio.
 - [`docs/evidence_levels.md`](docs/evidence_levels.md) — níveis de evidência E0–E3.
 - [`docs/reproducibilidade.md`](docs/reproducibilidade.md) — manifestos, estados, memória, recálculo.
+- [`docs/memoria_agentes.md`](docs/memoria_agentes.md) — aprendizado validado entre sessões e limites de persistência.
 - [`docs/comandos.md`](docs/comandos.md) — todos os comandos.
 
 ## Verificação rápida

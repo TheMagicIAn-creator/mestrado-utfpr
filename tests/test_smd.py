@@ -18,6 +18,8 @@ def test_smd_95_usa_taxa_de_deteccao():
     r = smd_probabilistico(deteccoes, alvo=0.95)
     assert r["smd_pontual"] == 0.3       # primeira com qualquer detecção
     assert r["smd_95"] == 1.0            # primeira com taxa >= 0,95
+    assert "intervalo_wilson_95" in r
+    assert r["intervalo_wilson_95"][1.0]["high"] <= 1.0
     assert abs(r["taxa_deteccao"][0.5] - 0.9) < 1e-9
     assert r["n_repeticoes"][1.0] == 10
 

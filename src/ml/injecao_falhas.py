@@ -1,40 +1,37 @@
 """
 injecao_falhas.py — Al IAdo PV / Fase 5
-Injeção de falhas sintéticas fundamentada no FMEA do TCC (Torres, 2024).
+Injeção de falhas sintéticas fundamentada na FMECA do TCC (Torres, 2024).
+FONTE ÚNICA dos componentes/modos/índices: docs/fmeca.md.
 
 Fundamentação metodológica:
-  O FMEA aplicado ao sistema fotovoltaico do CEAMAZON identificou:
-    NPR=210 → Inversor: "Problema de conexão com a rede" (S=3, O=7, D=10)
-    NPR=150 → Subsistema CA: "Curto-circuito em dispositivos de proteção"
-                              (S=5, O=3, D=10)
+  A FMECA (FMEA + Criticidade; NPR = S×O×D) aponta o inversor como o
+  componente mais crítico do SFV. Pela Tab. 3.3 do TCC (Cristaldi et al.,
+  2017), os componentes CA-elétricos do inversor que mais falham — e são
+  detectáveis no sinal — são Contator AC, IGBT e Fusível AC.
 
   A prioridade NPR define a ordem de injeção: primeiro as falhas de maior
   criticidade. Cada falha é modelada pela sua assinatura elétrica esperada
-  nos sinais de corrente e tensão CA (Francisti, 2025; Ibrahim, 2022).
+  nos sinais de corrente CA.
 
-Falhas implementadas (em ordem de NPR):
-  FALHA 1 — Degradação do Filtro LCL (NPR=210, relacionada ao inversor)
-    Assinatura: aumento de THD, elevação dos harmônicos 5° e 7°
-    Modelagem: injeção aditiva de componentes harmônicas nas correntes CA
-    Física: redução da indutância ou capacitância do filtro LCL diminui
-            a atenuação dos harmônicos de chaveamento
+Falhas implementadas (em ordem de NPR; índices S/O/D e NPR em docs/fmeca.md):
+  Id.1 — Contator AC (NPR=315, S=5·O=7·D=9 — mais crítico)
+    Assinatura: transiente/ruído de comutação na corrente CA (proxy)
+    Física: contatos desgastados/soldados (chattering) → comutação deficiente
 
-  FALHA 2 — Desbalanceamento de Fase (NPR=150, subsistema CA)
-    Assinatura: assimetria de corrente entre fases (desbalanceamento > 5%)
-    Modelagem: redução proporcional da amplitude de uma fase
-    Física: curto-circuito em proteção ou falha de IGBT em uma fase
+  Id.2 — IGBT (NPR=90, S=5·O=6·D=3)
+    Assinatura: elevação de THD e harmônicos 5°/7°/11°/13°
+    Física: IGBT envelhecido (bond wire, Vce↑) → chaveamento imperfeito
 
-  FALHA 3 — Ruído de Sensor de Corrente (D=10 — alta dificuldade de detecção)
-    Assinatura: ruído gaussiano elevado em uma fase
-    Modelagem: sobreposição de ruído branco com std proporcional ao sinal
-    Física: degradação do sensor Hall ou circuito de condicionamento
+  Id.3 — Fusível AC (NPR=30, S=5·O=3·D=2)
+    Assinatura: redução de amplitude de uma fase (desbalanceamento)
+    Física: fusível degradado/rompido → perda parcial de fase
 
 Estratégia de severidade:
   Cada falha é injetada em 7 níveis de severidade [0.05→1.0] para
   identificar a severidade mínima detectável (SMD) — ponto onde o erro
   de reconstrução cruza o limiar do Autoencoder.
-  Isso conecta diretamente com o índice D (detecção) do FMEA:
-  D=10 → falha muito difícil de detectar → SMD esperada mais alta.
+  ATENÇÃO: o índice D da FMECA (detecção EM CAMPO) e a detectabilidade
+  empírica do Autoencoder são conceitos distintos (ver docs/fmeca.md).
 
 Entrada:
   dados/brutos/Inverter_Data_Set.csv
@@ -87,7 +84,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from src.ml.estilo_graficos import (
-    COR_NAO_DETECTADO, TAM, aplicar_estilo, rotular_barras,
+    COR_ALERTA, TAM, aplicar_estilo, salvar_figura,
 )
 
 aplicar_estilo()
@@ -101,6 +98,8 @@ from src.ml.features_ca import (
     COLUNAS_CORRENTE, COLUNAS_TENSAO, COLUNA_DC, FASES
 )
 from src.ml.autoencoder import Autoencoder
+from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas_holdout
+from src.ml.estatistica import intervalo_wilson
 
 # ── Caminhos ─────────────────────────────────────────────────
 RAIZ          = Path(__file__).parent.parent.parent
@@ -108,77 +107,117 @@ ARQUIVO_CSV   = RAIZ / "dados" / "brutos" / "Inverter_Data_Set.csv"
 PASTA_AE      = RAIZ / "resultados" / "autoencoder"
 
 # ── Parâmetros de injeção ────────────────────────────────────
-# Janela de análise: t=10-20s (período estável do Paderborn, pós-transiente)
-T_INICIO_ESTAVEL = 10.0   # segundos
-T_FIM_ESTAVEL    = 20.0   # segundos
-
 # Severidades: de muito leve a severa
 SEVERIDADES = [0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0]
+ALVO_SMD = 0.95
+N_JANELAS_SMD = 100  # limitado pelo numero de janelas nao sobrepostas do holdout
 
-# Definição das falhas (nome, descrição, cor para gráfico)
+# ── Falhas FMECA — FONTE ÚNICA: docs/fmeca.md ────────────────
+# Componentes CA-elétricos do inversor que mais falham (Tab. 3.3 do TCC,
+# Cristaldi et al. 2017). NPR = S×O×D (índice da FMECA; D NUNCA é o NPR).
+# Índices S/O/D estipulados pelo pesquisador (Torres, 2024) — ver docs/fmeca.md.
+# Modo de falha / efeito / causa: reservados para preenchimento por Rodolfo.
+# Ordenadas por criticidade (NPR): Contator AC > IGBT > Fusível AC.
 FALHAS = [
     {
-        "id"      : "lcl",
-        "nome"    : "Degradação Filtro LCL",
-        "npr"     : 210,
-        "s"       : 3, "o": 7, "d": 10,
+        "id"      : "contator_ac",
+        "nome"    : "Contator AC",
+        "componente": "Contator AC",
+        "s"       : 5, "o": 7, "d": 9, "npr": 5 * 7 * 9,   # = 315
+        "criticidade": 5 + 7,                               # C = S+O = 12
+        # Modo/efeito/causa: FMECA preenchida por Rodolfo (docs/fmeca.md).
+        "modo_falha": ("Fuga de corrente; injeção contínua de energia ainda "
+                       "com a falta de energia da concessionária ou oscilação "
+                       "severa"),
+        "efeito"    : ("Paralisação do sistema por falha no isolamento; riscos "
+                       "de eletrocussão em técnicos operando na rede externa"),
+        "causa"     : ("Arco elétrico e desgaste mecânico; degradação da bobina "
+                       "e do isolamento"),
         "cor"     : "#2a78d6",  # PALETA[0] — ver estilo_graficos.CORES_FALHAS
-        "descricao": "Injeção de harmônicos 5°, 7° e 11° nas correntes CA",
+        "descricao": "Transiente/ruído de comutação na corrente CA",
         # Schema de proveniência da falha sintética (item 4.4)
         "evidence_level"     : "E2",
         "hipotese_fisica"    : (
-            "Capacitor com ESR elevado / indutor degradado no filtro LCL reduz a "
-            "atenuação do chaveamento, elevando harmônicos ímpares nas correntes."
+            "Contatos do contator CA desgastados/soldados (chattering) causam "
+            "comutação deficiente, introduzindo transientes e conteúdo de alta "
+            "frequência na corrente CA — modelado como ruído no sinal medido."
         ),
-        "sinais"             : ["i_a", "i_b", "i_c"],
-        "formula"            : "i += sev·(0,30·h5 + 0,20·h7 + h11)·amplitude",
-        "severity_definition": "fração [0..1] da amplitude harmônica injetada",
-        "source"             : "Torres (2024) FMECA CEAMAZON (NPR=210)",
+        "sinais"             : ["i_a"],
+        "formula"            : "i_a += N(0, sev·σ_sinal·0,3)  (proxy do transiente de comutação)",
+        "severity_definition": "desvio do ruído ≈ sev·σ_sinal·0,3 (componente mais crítico, NPR=315)",
+        "source"             : (
+            "Torres (2024) TCC — Tab. 3.3 (Cristaldi et al., 2017: Contator AC "
+            "= 12% dos tickets); Golnas (2012); Voss et al. (2009). "
+            "S/O/D estipulados pelo pesquisador; NPR=S×O×D=315."
+        ),
         "limitations"        : [
-            "amplitudes harmônicas são plausíveis, não medidas em bancada",
-            "não modela envelhecimento térmico real do capacitor",
+            "RUÍDO GAUSSIANO É UM PROXY do transiente — exige CALIBRAÇÃO FÍSICA "
+            "do contator real",
+            "a detectabilidade observada é E2 (sintética); o índice D=9 da FMECA "
+            "refere-se à detecção EM CAMPO, não à do Autoencoder (ver docs/fmeca.md)",
         ],
     },
     {
-        "id"      : "desbalanceamento",
-        "nome"    : "Desbalanceamento de Fase",
-        "npr"     : 150,
-        "s"       : 5, "o": 3, "d": 10,
+        "id"      : "igbt",
+        "nome"    : "IGBT",
+        "componente": "IGBT",
+        "s"       : 5, "o": 6, "d": 3, "npr": 5 * 6 * 3,   # = 90
+        "criticidade": 5 + 6,                               # C = 11
+        # Modo/efeito/causa: FMECA preenchida por Rodolfo (docs/fmeca.md).
+        "modo_falha": ("Não comutação CC→CA; curto-circuito permanente entre "
+                       "os terminais"),
+        "efeito"    : ("Interrupção imediata no fornecimento de energia e "
+                       "(possível) disparo de alarme de hardware no display"),
+        "causa"     : "Estresse termodinâmico e surtos de sobretensão",
         "cor"     : "#1baf7a",  # PALETA[1]
-        "descricao": "Redução de amplitude da fase A",
+        "descricao": "Injeção de harmônicos 5°, 7°, 11° e 13° nas correntes CA",
         "evidence_level"     : "E2",
         "hipotese_fisica"    : (
-            "Assimetria entre fases (perda parcial de fase ou carga "
-            "desbalanceada) reduz a amplitude de uma das correntes."
+            "IGBT envelhecido (lift-off de bond wire, Vce(sat) elevado) comuta de "
+            "forma imperfeita, elevando os harmônicos ímpares e o THD das correntes."
+        ),
+        "sinais"             : ["i_a", "i_b", "i_c"],
+        "formula"            : "i += sev·(0,30·h5 + 0,20·h7 + 0,10·h11 + 0,05·h13)·amplitude",
+        "severity_definition": "fração [0..1] da amplitude harmônica injetada",
+        "source"             : (
+            "Torres (2024) TCC — Tab. 3.3 (IGBT = 6% dos tickets); harmônicos "
+            "característicos de VSI (Francisti, 2025; Smith, 1999). "
+            "S/O/D estipulados pelo pesquisador; NPR=S×O×D=90."
+        ),
+        "limitations"        : [
+            "amplitudes harmônicas são plausíveis, não medidas em bancada",
+            "não modela envelhecimento térmico real do IGBT",
+        ],
+    },
+    {
+        "id"      : "fusivel_ac",
+        "nome"    : "Fusível AC",
+        "componente": "Fusível AC",
+        "s"       : 5, "o": 3, "d": 2, "npr": 5 * 3 * 2,   # = 30
+        "criticidade": 5 + 3,                               # C = 8
+        # Modo/efeito/causa: FMECA preenchida por Rodolfo (docs/fmeca.md).
+        "modo_falha": "Interrupção da condução de corrente (abertura do elo fusível)",
+        "efeito"    : ("Isolamento de uma ou mais fases da saída CA; interrupção "
+                       "no fornecimento de energia; desarme do inversor por "
+                       "desbalanceamento de fases"),
+        "causa"     : "Fadiga térmica por ciclos de carga; surtos de rede",
+        "cor"     : "#eda100",  # PALETA[2] — baixo contraste: exige rótulo direto
+        "descricao": "Redução de amplitude de uma fase (perda parcial)",
+        "evidence_level"     : "E2",
+        "hipotese_fisica"    : (
+            "Fusível CA degradado/rompido causa perda parcial de uma fase, "
+            "reduzindo a amplitude da corrente dessa fase (desbalanceamento)."
         ),
         "sinais"             : ["i_a"],
         "formula"            : "i_a ·= (1 − sev·0,12)  (reduz amplitude da fase A; máx 12%)",
         "severity_definition": "fração de redução da amplitude da fase A (calibrada: máx 12%)",
-        "source"             : "Torres (2024) FMECA, subsistema CA (NPR=150)",
-        "limitations"        : [
-            "modelo simplificado; desbalanceamento real afeta fase E amplitude",
-        ],
-    },
-    {
-        "id"      : "sensor",
-        "nome"    : "Falha de Sensor CA",
-        "npr"     : None,
-        "s"       : None, "o": None, "d": 10,
-        "cor"     : "#eda100",  # PALETA[2] — baixo contraste: exige rótulo direto
-        "descricao": "Ruído gaussiano na corrente da fase A",
-        "evidence_level"     : "E2",
-        "hipotese_fisica"    : (
-            "Degradação do sensor Hall / circuito de condicionamento introduz "
-            "ruído de medição na corrente."
+        "source"             : (
+            "Torres (2024) TCC — Tab. 3.3 (Fusíveis AC = 4% dos tickets, 12% "
+            "da energia perdida). S/O/D estipulados pelo pesquisador; NPR=S×O×D=30."
         ),
-        "sinais"             : ["i_a"],
-        "formula"            : "i_a += N(0, sev·σ_sinal)  (ruído gaussiano; ×1.0, calibrado p/ D=10)",
-        "severity_definition": "desvio do ruído ≈ sev·σ_sinal (calibrado: a falha MAIS difícil, D=10)",
-        "source"             : "FMEA (D=10 — alta dificuldade de detecção)",
         "limitations"        : [
-            "RUÍDO GAUSSIANO É UM PROXY — exige CALIBRAÇÃO FÍSICA do sensor real",
-            "a alta sensibilidade observada é E2 (sintética): NÃO afirmar alta "
-            "sensibilidade da falha de sensor sem esta ressalva",
+            "modelo simplificado; perda de fase real pode desarmar a proteção",
+            "redução máx de 12% p/ manter a curva severidade↔detecção plausível",
         ],
     },
 ]
@@ -198,19 +237,26 @@ def smd_probabilistico(deteccoes_por_severidade: dict, alvo: float = 0.95) -> di
     """
     import numpy as np
 
-    taxas, n_rep = {}, {}
+    taxas, n_rep, intervalos = {}, {}, {}
     for sev, dets in deteccoes_por_severidade.items():
         arr = np.asarray(list(dets), dtype=float)
         taxas[float(sev)] = float(arr.mean()) if arr.size else 0.0
         n_rep[float(sev)] = int(arr.size)
+        low, high = intervalo_wilson(int(arr.sum()), int(arr.size))
+        intervalos[float(sev)] = {"low": low, "high": high}
 
     sevs = sorted(taxas)
     smd_pontual = next((s for s in sevs if taxas[s] > 0.0), None)
     smd_95 = next((s for s in sevs if taxas[s] >= alvo), None)
+    smd_95_conservadora = next(
+        (s for s in sevs if intervalos[s]["low"] >= alvo), None
+    )
     return {
         "taxa_deteccao": taxas,
+        "intervalo_wilson_95": intervalos,
         "smd_pontual": smd_pontual,
         "smd_95": smd_95,
+        "smd_95_conservadora": smd_95_conservadora,
         "alvo": alvo,
         "n_repeticoes": n_rep,
     }
@@ -220,17 +266,16 @@ def smd_probabilistico(deteccoes_por_severidade: dict, alvo: float = 0.95) -> di
 # MODELOS DE FALHA (assinaturas elétricas)
 # ============================================================
 
-def falha_degradacao_lcl(janela_df: pd.DataFrame,
+def falha_harmonicos_igbt(janela_df: pd.DataFrame,
                           severidade: float,
                           f0: float = F0,
                           fs: int   = FS) -> pd.DataFrame:
     """
-    FALHA 1 — Degradação do Filtro LCL (NPR=210)
+    FALHA — IGBT (NPR=90)
 
-    Um filtro LCL degradado (capacitor com ESR elevado ou indutor
-    com indutância reduzida) atenua menos os harmônicos de chaveamento.
-    O resultado é um aumento do THD e elevação específica dos harmônicos
-    de ordem 5, 7 e 11 (dominantes em inversores VSI trifásicos).
+    Um IGBT envelhecido (lift-off de bond wire, Vce(sat) elevado) comuta de
+    forma imperfeita. O resultado é um aumento do THD e elevação específica
+    dos harmônicos de ordem 5, 7 e 11 (dominantes em inversores VSI trifásicos).
 
     Modelagem aditiva: sinal_falha = sinal_saudável + Σ Ak·sin(k·ω₀·t + φk)
 
@@ -247,7 +292,7 @@ def falha_degradacao_lcl(janela_df: pd.DataFrame,
         sinal     = janela_falha[col].values
         amplitude = np.std(sinal)  # referência de amplitude do sinal
 
-        # Harmônicos característicos de inversores VSI com filtro LCL degradado
+        # Harmônicos característicos de inversores VSI com IGBT degradado
         # Amplitudes relativas baseadas em Francisti (2025) e Smith (1999)
         h5  = severidade * 0.30 * amplitude * np.sin(2 * np.pi * 5  * f0 * t)
         h7  = severidade * 0.20 * amplitude * np.sin(2 * np.pi * 7  * f0 * t)
@@ -259,27 +304,27 @@ def falha_degradacao_lcl(janela_df: pd.DataFrame,
     return janela_falha
 
 
-def falha_desbalanceamento_fase(janela_df: pd.DataFrame,
-                                 severidade: float) -> pd.DataFrame:
+def falha_perda_fase_fusivel(janela_df: pd.DataFrame,
+                             severidade: float) -> pd.DataFrame:
     """
-    FALHA 2 — Desbalanceamento de Fase (NPR=150)
+    FALHA — Fusível AC (NPR=30)
 
-    Curto-circuito em dispositivo de proteção ou falha de IGBT em uma fase
-    causa assimetria nas correntes trifásicas. A fase afetada tem amplitude
-    reduzida. O desbalanceamento é medido pela feature inter-fase:
+    Um fusível CA degradado/rompido causa perda parcial de uma fase, reduzindo
+    a amplitude da corrente dessa fase (desbalanceamento). Medido pela feature
+    inter-fase:
       desbalanceamento = (max_rms - min_rms) / media_rms
 
     Fator de redução CALIBRADO p/ curva severidade↔detecção realista
     (fator = 1 - severidade × 0.12):
       severidade=0.3 → ~3,6% de redução (incipiente, ~limiar FMEA de 5%, DIFÍCIL)
       severidade=0.5 → 6% de redução (perceptível)
-      severidade=1.0 → 12% de redução (desbalanceamento severo, mas plausível)
+      severidade=1.0 → 12% de redução (perda severa, mas plausível)
 
     Antes usava ×0.7 (até 70% de redução) → o detector separava com erro ZERO
-    em qualquer severidade (validacao_report perfeito = artificial). Um
-    desbalanceamento real raramente passa de ~10–15% sem desarme de proteção.
+    em qualquer severidade (validacao_report perfeito = artificial). Uma perda
+    parcial real raramente passa de ~10–15% sem desarme de proteção.
 
-    A fase A é escolhida por ser a referência do FMEA (Id.1 do Apêndice E).
+    A fase A é a referência (Id.3 da FMECA consolidada — docs/fmeca.md).
     """
     janela_falha = janela_df.copy()
     fator        = 1.0 - severidade * 0.12
@@ -292,31 +337,29 @@ def falha_desbalanceamento_fase(janela_df: pd.DataFrame,
     return janela_falha
 
 
-def falha_sensor_corrente(janela_df: pd.DataFrame,
-                           severidade: float,
-                           seed: int = 0) -> pd.DataFrame:
+def falha_transiente_contator(janela_df: pd.DataFrame,
+                              severidade: float,
+                              seed: int = 0) -> pd.DataFrame:
     """
-    FALHA 3 — Falha de Sensor de Corrente (D=10)
+    FALHA — Contator AC (NPR=315, componente mais crítico)
 
-    Degradação do sensor Hall ou do circuito de condicionamento
-    introduz ruído gaussiano no sinal medido. É a falha com maior
-    índice D (dificuldade de detecção = 10) — o ruído se confunde
-    com variações normais do sinal.
+    Contatos do contator CA desgastados/soldados (chattering) causam comutação
+    deficiente, introduzindo transientes e conteúdo de alta frequência na
+    corrente CA — modelado aqui como ruído gaussiano no sinal medido (proxy).
 
     Modelagem: sinal_falha = sinal + N(0, σ_ruído)
-    onde σ_ruído = severidade × std(sinal) × 0.3 (CALIBRADO para D=10).
+    onde σ_ruído = severidade × std(sinal) × 0.3.
 
-    Como o FMEA atribui D=10 (a MAIOR dificuldade de detecção), esta deve ser a
-    falha MAIS difícil — não a mais fácil. O multiplicador caiu de ×3 para ×0.3,
-    o que produz uma curva severidade↔detecção real (varredura empírica):
-      severidade=0.30 → σ_ruído ≈ 0,09·σ_sinal (SNR ~21 dB) — NÃO detectada (difícil)
+    O multiplicador ×0.3 produz uma curva severidade↔detecção realista
+    (varredura empírica):
+      severidade=0.30 → σ_ruído ≈ 0,09·σ_sinal (SNR ~21 dB) — difícil
       severidade=0.50 → σ_ruído ≈ 0,15·σ_sinal — limítrofe
       severidade=1.00 → σ_ruído ≈ 0,30·σ_sinal (SNR ~10 dB) — detectada
 
-    Antes (×3) o ruído era enorme já em sev=0.3 → detecção trivial PERFEITA em
-    todas as severidades, contradizendo o índice D=10 do próprio FMEA.
     Nota: features espectrais (THD/harmônicos/kurtosis) são naturalmente
     sensíveis a ruído branco — por isso o multiplicador precisa ser pequeno.
+    O índice D=9 da FMECA (docs/fmeca.md) refere-se à detecção EM CAMPO,
+    distinta da detectabilidade empírica do Autoencoder.
     """
     rng          = np.random.default_rng(seed)
     janela_falha = janela_df.copy()
@@ -329,11 +372,11 @@ def falha_sensor_corrente(janela_df: pd.DataFrame,
     return janela_falha
 
 
-# Mapa de funções de falha
+# Mapa de funções de falha (id da FMECA → assinatura elétrica)
 FUNCOES_FALHA = {
-    "lcl"             : falha_degradacao_lcl,
-    "desbalanceamento": falha_desbalanceamento_fase,
-    "sensor"          : falha_sensor_corrente,
+    "contator_ac": falha_transiente_contator,
+    "igbt"       : falha_harmonicos_igbt,
+    "fusivel_ac" : falha_perda_fase_fusivel,
 }
 
 
@@ -381,10 +424,10 @@ def executar_injecao_falhas() -> bool:
     _log("=" * 60)
     _log("  AL IADO PV — INJEÇÃO DE FALHAS SINTÉTICAS")
     _log("=" * 60)
-    _log("\n  Fundamentação: FMEA Torres (2024)")
-    _log("  NPR=210 → Degradação Filtro LCL")
-    _log("  NPR=150 → Desbalanceamento de Fase")
-    _log("  D=10    → Falha de Sensor CA")
+    _log("\n  Fundamentação: FMECA Torres (2024) — docs/fmeca.md")
+    _log("  NPR=315 → Contator AC (S=5·O=7·D=9)")
+    _log("  NPR=90  → IGBT (S=5·O=6·D=3)")
+    _log("  NPR=30  → Fusível AC (S=5·O=3·D=2)")
 
     # ── 1. Carrega artefatos do Autoencoder ──────────────────
     _log(f"\n📂 Carregando Autoencoder...")
@@ -422,24 +465,20 @@ def executar_injecao_falhas() -> bool:
 
     # ── 2. Carrega dataset e seleciona janelas estáveis ──────
     _log(f"\n📂 Carregando dataset de Paderborn...")
-    df = pd.read_csv(ARQUIVO_CSV)
-
-    # Período estável: t=10-20s (pós-transiente de velocidade)
-    idx_inicio = int(T_INICIO_ESTAVEL * FS)
-    idx_fim    = int(T_FIM_ESTAVEL * FS)
-    df_estavel = df.iloc[idx_inicio:idx_fim].reset_index(drop=True)
-    _log(f"   ✅ Período estável: t={T_INICIO_ESTAVEL}-{T_FIM_ESTAVEL}s "
-          f"({len(df_estavel):,} amostras)")
+    df = carregar_paderborn_compacto(ARQUIVO_CSV)
+    janelas_holdout, meta_holdout = preparar_janelas_holdout(
+        df, n_max=N_JANELAS_SMD
+    )
+    del df
+    _log(
+        f"   ✅ {len(janelas_holdout)} janelas não sobrepostas do bloco de teste "
+        "(treino/calibração excluídos)"
+    )
 
     # ── 3. Erro baseline (comportamento saudável) ─────────────
     _log(f"\n⚕️  Calculando erro baseline (saudável)...")
-    n_janelas_baseline = 20
     erros_baseline = []
-    for i in range(n_janelas_baseline):
-        inicio = i * (JANELA // 2)
-        if inicio + JANELA > len(df_estavel):
-            break
-        janela = df_estavel.iloc[inicio:inicio + JANELA]
+    for janela in janelas_holdout:
         erro   = calcular_erro_reconstrucao(
             janela, modelo, scaler, device, colunas_feat
         )
@@ -454,149 +493,153 @@ def executar_injecao_falhas() -> bool:
     # ── 4. Injeção de falhas por severidade ──────────────────
     _log(f"\n💉 Injetando falhas (3 tipos × {len(SEVERIDADES)} severidades)...")
 
-    resultados = {}   # {id_falha: {severidade: erro_medio}}
-
-    # Janela de referência para injeção
-    janela_ref = df_estavel.iloc[0:JANELA].copy()
+    resultados = {}
+    smd_detalhado = {}
 
     for falha in FALHAS:
         fid  = falha["id"]
         fn   = FUNCOES_FALHA[fid]
         erros_por_sev = {}
+        deteccoes_por_sev = {}
 
         _log(f"\n   🔴 {falha['nome']} (NPR={falha['npr']})")
 
         for sev in SEVERIDADES:
-            # Injeta falha em 5 janelas diferentes e faz média
             erros_sev = []
-            for j in range(5):
-                inicio  = j * (JANELA // 4)
-                if inicio + JANELA > len(df_estavel):
-                    inicio = 0
-                janela_base  = df_estavel.iloc[inicio:inicio + JANELA].copy()
-                janela_falha = fn(janela_base, sev)
+            for j, janela_base in enumerate(janelas_holdout):
+                if fid == "contator_ac":
+                    janela_falha = fn(janela_base, sev, seed=10_000 + j)
+                else:
+                    janela_falha = fn(janela_base, sev)
                 erro = calcular_erro_reconstrucao(
                     janela_falha, modelo, scaler, device, colunas_feat
                 )
                 erros_sev.append(erro)
 
-            erro_medio    = np.mean(erros_sev)
-            detectado     = erro_medio > limiar
-            margem        = erro_medio / limiar
+            erros_arr = np.asarray(erros_sev, dtype=float)
+            deteccoes = erros_arr > limiar
+            taxa = float(deteccoes.mean())
+            ci_low, ci_high = intervalo_wilson(
+                int(deteccoes.sum()), len(deteccoes)
+            )
+            erro_medio = float(erros_arr.mean())
+            erro_mediano = float(np.median(erros_arr))
+            detectado = taxa >= ALVO_SMD
+            margem = erro_mediano / limiar
+            deteccoes_por_sev[sev] = deteccoes.tolist()
 
             erros_por_sev[sev] = {
                 "erro"      : erro_medio,
+                "erro_mediano": erro_mediano,
+                "erro_q25"  : float(np.percentile(erros_arr, 25)),
+                "erro_q75"  : float(np.percentile(erros_arr, 75)),
                 "detectado" : detectado,
                 "margem"    : margem,
+                "taxa_deteccao": taxa,
+                "taxa_ci_low": ci_low,
+                "taxa_ci_high": ci_high,
+                "n": len(erros_arr),
             }
 
-            status = "✅ DETECTADA" if detectado else "⬜ não detectada"
-            _log(f"      sev={sev:.2f} | erro={erro_medio:.4f} | "
-                  f"margem={margem:.2f}× | {status}")
+            status = "✅ alvo atingido" if detectado else "⬜ abaixo do alvo"
+            _log(
+                f"      sev={sev:.2f} | erro mediano={erro_mediano:.4f} | "
+                f"detecção={taxa:.1%} (IC95% {ci_low:.1%}–{ci_high:.1%}) | {status}"
+            )
 
         resultados[fid] = erros_por_sev
+        smd_detalhado[fid] = smd_probabilistico(
+            deteccoes_por_sev, alvo=ALVO_SMD
+        )
 
     # ── 5. Severidade mínima detectável (SMD) ────────────────
     _log(f"\n🎯 Severidade Mínima Detectável (SMD):")
     smd_report = {}
     for falha in FALHAS:
         fid = falha["id"]
-        smd = None
-        for sev in SEVERIDADES:
-            if resultados[fid][sev]["detectado"]:
-                smd = sev
-                break
+        smd = smd_detalhado[fid]["smd_95"]
         smd_report[fid] = smd
         if smd:
-            _log(f"   {falha['nome']:<30}: SMD = {smd:.2f} "
-                  f"(erro = {resultados[fid][smd]['erro']:.4f})")
+            _log(f"   {falha['nome']:<30}: SMD95 = {smd:.2f} "
+                  f"(taxa = {resultados[fid][smd]['taxa_deteccao']:.1%})")
         else:
-            _log(f"   {falha['nome']:<30}: não detectada em nenhuma severidade")
+            _log(f"   {falha['nome']:<30}: nenhuma severidade atingiu {ALVO_SMD:.0%}")
 
     # ── 6. Visualizações ─────────────────────────────────────
     _log(f"\n📊 Gerando gráficos...")
     PASTA_AE.mkdir(parents=True, exist_ok=True)
 
-    # Gráfico 1: Erro vs Severidade por tipo de falha
-    fig, axes = plt.subplots(1, 3, figsize=TAM["painel_3"], sharey=False)
-    fig.suptitle("Injeção de Falhas Sintéticas — Erro de Reconstrução vs Severidade",
-                 fontsize=13, fontweight="bold")
+    # Gráfico 1: mediana e intervalo interquartil do erro por falha.
+    fig, axes = plt.subplots(
+        1, 3, figsize=TAM["painel_3"], sharey=True, layout="constrained"
+    )
+    fig.suptitle("Injeção sintética — distribuição do erro no holdout temporal")
 
     for ax, falha in zip(axes, FALHAS):
         fid   = falha["id"]
-        sevs  = SEVERIDADES
-        erros = [resultados[fid][s]["erro"] for s in sevs]
+        sevs = np.asarray(SEVERIDADES, dtype=float)
+        medianas = np.asarray([resultados[fid][s]["erro_mediano"] for s in SEVERIDADES])
+        q25 = np.asarray([resultados[fid][s]["erro_q25"] for s in SEVERIDADES])
+        q75 = np.asarray([resultados[fid][s]["erro_q75"] for s in SEVERIDADES])
 
-        cores = [falha["cor"] if resultados[fid][s]["detectado"]
-                 else COR_NAO_DETECTADO for s in sevs]
-
-        barras = ax.bar([str(s) for s in sevs], erros, color=cores,
-                        edgecolor="white", linewidth=0.5)
-        rotular_barras(ax, barras, fmt="{:.2f}",
-                       dx=max(erros) * 0.02 if max(erros) > 0 else 0.01)
-        ax.axhline(limiar, color="red", linestyle="--", linewidth=1.5,
+        ax.plot(sevs, medianas, marker="o", color=falha["cor"], label="Mediana")
+        ax.fill_between(sevs, q25, q75, color=falha["cor"], alpha=0.18,
+                        label="Intervalo interquartil")
+        ax.axhline(limiar, color=COR_ALERTA, linestyle="--", linewidth=1.5,
                    label=f"Limiar = {limiar:.2f}")
-        ax.axhline(baseline_mean, color="green", linestyle=":",
+        ax.axhline(baseline_mean, color="#147a3d", linestyle=":",
                    linewidth=1.2, label=f"Baseline = {baseline_mean:.4f}")
 
-        npm_str = f"NPR={falha['npr']}" if falha['npr'] else "D=10"
-        ax.set_title(f"{falha['nome']}\n({npm_str})", fontsize=10)
+        ax.set_title(f"{falha['nome']}\n(NPR={falha['npr']})", fontsize=10)
         ax.set_xlabel("Severidade")
-        ax.set_ylabel("Erro de Reconstrução (MSE)")
+        ax.set_ylabel("Erro de reconstrução (MSE, escala log)")
+        ax.set_yscale("log")
         ax.legend(fontsize=8)
-        ax.grid(True, alpha=0.3, axis="y")
 
-        # Marca SMD
         smd = smd_report[fid]
         if smd:
-            idx_smd = sevs.index(smd)
-            ax.bar([str(smd)], [resultados[fid][smd]["erro"]],
-                   color=falha["cor"], edgecolor="black", linewidth=2,
-                   alpha=1.0)
-            ax.annotate(f"SMD={smd}",
-                        xy=(idx_smd, resultados[fid][smd]["erro"]),
-                        xytext=(idx_smd, resultados[fid][smd]["erro"] * 1.05),
-                        fontsize=8, ha="center", fontweight="bold")
+            y_smd = resultados[fid][smd]["erro_mediano"]
+            ax.scatter([smd], [y_smd], s=90, facecolors="none",
+                       edgecolors="black", linewidths=1.5, zorder=4)
+            ax.annotate(f"SMD95={smd}", xy=(smd, y_smd), xytext=(0, 12),
+                        textcoords="offset points", ha="center", fontsize=8)
 
-    plt.tight_layout()
     arq_g1 = PASTA_AE / "injecao_falhas_resultados.png"
-    fig.savefig(arq_g1)
-    plt.close(fig)
+    salvar_figura(
+        fig,
+        arq_g1,
+        "E2 sintético. Cada ponto resume janelas não sobrepostas do teste; a faixa mostra Q25–Q75.",
+    )
     _log(f"   📊 {arq_g1.name}")
 
-    # Gráfico 2: Comparação consolidada em escala log
-    fig, ax = plt.subplots(figsize=TAM["unico"])
+    # Gráfico 2: probabilidade de detecção e IC de Wilson.
+    fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
+    for falha in FALHAS:
+        fid = falha["id"]
+        taxas = np.asarray([resultados[fid][s]["taxa_deteccao"] for s in SEVERIDADES])
+        lows = np.asarray([resultados[fid][s]["taxa_ci_low"] for s in SEVERIDADES])
+        highs = np.asarray([resultados[fid][s]["taxa_ci_high"] for s in SEVERIDADES])
+        erros_y = np.vstack([taxas - lows, highs - taxas])
+        ax.errorbar(
+            SEVERIDADES, taxas, yerr=erros_y, color=falha["cor"], marker="o",
+            capsize=3, label=f"{falha['nome']} (NPR={falha['npr']})",
+        )
 
-    x      = np.arange(len(SEVERIDADES))
-    largura = 0.25
-    offsets = [-largura, 0, largura]
-
-    for i, falha in enumerate(FALHAS):
-        fid   = falha["id"]
-        erros = [resultados[fid][s]["erro"] for s in SEVERIDADES]
-        ax.bar(x + offsets[i], erros, largura, label=falha["nome"],
-               color=falha["cor"], alpha=0.85, edgecolor="white")
-
-    ax.axhline(limiar, color="red", linestyle="--", linewidth=2,
-               label=f"Limiar anomalia = {limiar:.4f}")
-    ax.axhline(baseline_mean, color="green", linestyle=":",
-               linewidth=1.5, label=f"Baseline saudável = {baseline_mean:.4f}")
-
-    ax.set_xticks(x)
-    ax.set_xticklabels([str(s) for s in SEVERIDADES])
-    ax.set_xlabel("Severidade da Falha")
-    ax.set_ylabel("Erro de Reconstrução (MSE)")
-    ax.set_title("Comparação das Falhas Sintéticas\n"
-                 "(barras acima da linha vermelha = anomalia detectada)",
-                 fontsize=12)
-    ax.legend(loc="upper left")
-    ax.set_yscale("log")
-    ax.grid(True, alpha=0.3, axis="y")
-    plt.tight_layout()
+    ax.axhline(ALVO_SMD, color=COR_ALERTA, linestyle="--",
+               label=f"Alvo SMD = {ALVO_SMD:.0%}")
+    ax.set_xlabel("Severidade da falha")
+    ax.set_ylabel("Taxa de detecção no limiar p99")
+    ax.set_ylim(-0.03, 1.03)
+    ax.set_yticks(np.linspace(0, 1, 6), labels=[f"{v:.0%}" for v in np.linspace(0, 1, 6)])
+    ax.set_title("Detectabilidade por severidade\nIntervalos de Wilson de 95%")
+    ax.legend(loc="best")
 
     arq_g2 = PASTA_AE / "injecao_falhas_comparacao.png"
-    fig.savefig(arq_g2)
-    plt.close(fig)
+    salvar_figura(
+        fig,
+        arq_g2,
+        "SMD95 é a menor severidade cuja taxa pontual atinge 95%; consulte o IC antes de concluir detectabilidade.",
+    )
     _log(f"   📊 {arq_g2.name}")
 
     # ── 7. Salva relatório JSON ───────────────────────────────
@@ -608,18 +651,31 @@ def executar_injecao_falhas() -> bool:
             "ruído do sensor é um PROXY e exige calibração física."
         ),
         "threshold_method": "p99",
+        "threshold_source": info_limiar.get(
+            "threshold_source", "bloco_calibracao_temporal"
+        ),
         "limiar": float(limiar),
         "baseline_mean": float(baseline_mean),
         "baseline_std": float(baseline_std),
+        "protocolo_avaliacao": meta_holdout,
+        "alvo_smd": ALVO_SMD,
         "smd": {k: float(v) if v is not None else None
                 for k, v in smd_report.items()},
+        "smd_probabilistica": smd_detalhado,
         "falhas": {}
     }
     for falha in FALHAS:
         fid = falha["id"]
         relatorio["falhas"][fid] = {
             "nome": falha["nome"],
+            "componente": falha.get("componente", falha["nome"]),
+            # Índices FMECA (fonte única: docs/fmeca.md). NPR = S×O×D.
+            "s": falha["s"], "o": falha["o"], "d": falha["d"],
             "npr": falha["npr"],
+            "criticidade": falha.get("criticidade"),
+            "modo_falha": falha.get("modo_falha", ""),
+            "efeito": falha.get("efeito", ""),
+            "causa": falha.get("causa", ""),
             "descricao": falha["descricao"],
             # Schema de proveniência da falha sintética (item 4.4)
             "evidence_level": falha.get("evidence_level", "E2"),
@@ -632,8 +688,15 @@ def executar_injecao_falhas() -> bool:
             "resultados": {
                 str(s): {
                     "erro": float(resultados[fid][s]["erro"]),
+                    "erro_mediano": float(resultados[fid][s]["erro_mediano"]),
+                    "erro_q25": float(resultados[fid][s]["erro_q25"]),
+                    "erro_q75": float(resultados[fid][s]["erro_q75"]),
                     "detectado": bool(resultados[fid][s]["detectado"]),
                     "margem": float(resultados[fid][s]["margem"]),
+                    "taxa_deteccao": float(resultados[fid][s]["taxa_deteccao"]),
+                    "taxa_ci_low": float(resultados[fid][s]["taxa_ci_low"]),
+                    "taxa_ci_high": float(resultados[fid][s]["taxa_ci_high"]),
+                    "n": int(resultados[fid][s]["n"]),
                 }
                 for s in SEVERIDADES
             }
@@ -643,6 +706,30 @@ def executar_injecao_falhas() -> bool:
     with open(arq_report, "w", encoding="utf-8") as f:
         json.dump(relatorio, f, indent=2, ensure_ascii=False)
     _log(f"   ✅ {arq_report.name}")
+
+    linhas_smd = []
+    for falha in FALHAS:
+        fid = falha["id"]
+        for sev in SEVERIDADES:
+            res = resultados[fid][sev]
+            linhas_smd.append({
+                "falha": falha["nome"],
+                "falha_id": fid,
+                "npr": falha["npr"],
+                "severidade": sev,
+                "n": res["n"],
+                "erro_mediano": res["erro_mediano"],
+                "erro_q25": res["erro_q25"],
+                "erro_q75": res["erro_q75"],
+                "taxa_deteccao": res["taxa_deteccao"],
+                "taxa_ci_low": res["taxa_ci_low"],
+                "taxa_ci_high": res["taxa_ci_high"],
+                "atinge_alvo_smd": res["detectado"],
+                "evidence_level": "E2",
+            })
+    arq_tabela = PASTA_AE / "injecao_smd_tabela.csv"
+    pd.DataFrame(linhas_smd).to_csv(arq_tabela, index=False)
+    _log(f"   📋 {arq_tabela.name}")
 
     # ── 8. Resumo final ───────────────────────────────────────
     _log(f"\n{'='*60}")

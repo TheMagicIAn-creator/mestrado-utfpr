@@ -10,20 +10,28 @@ src/
 │   ├── utils.py          UTF-8 seguro, caminhos relativos
 │   └── logs.py           logging estruturado (logs/al_iado_pv.log)
 ├── conhecimento/         cérebro do agente (RAG + ferramentas)
-│   ├── agente.py         pipeline RAG 3 camadas, PERFIL_COMPACTO, prompt
+│   ├── agente.py         expansão, busca híbrida, RRF, reranking e prompt
 │   ├── ferramentas.py    tool calling (specs + roteador + execução)
-│   ├── provedores.py     multi-provedor de LLM (Gemini / Groq)
+│   ├── provedores.py     adaptador leve do SDK Gemini e papéis por nível
+│   ├── multiagente.py    coordenação: Gemini Pro conversa, Gemini Flash audita
+│   ├── memoria_persistente.py memória validada entre sessões
+│   ├── obsidian.py       vault completo, busca híbrida e espelho da memória
 │   ├── indexador.py      indexa PDFs/tabelas no ChromaDB
+│   ├── indice_lexical.py índice BM25 em SQLite FTS5
+│   ├── indice_portatil.py exporta/importa snapshot gzip do índice
 │   ├── leitor_anexos.py  leitura de anexos (PDF/CSV/Office/imagem)
 │   └── web_search.py     busca leve + níveis de confiança A-D
 ├── ml/                   pipeline e experimentos de ML
 │   ├── pipeline.py       registry das etapas + estado ready/stale/pending
 │   ├── proveniencia.py   manifesto + hash + detecção de stale
 │   ├── split_temporal.py divisão temporal com purga (anti-vazamento)
+│   ├── dados_avaliacao.py banco E1 comum para comparações locais
+│   ├── estatistica.py    ICs, bootstrap e métricas metodológicas
+│   ├── exec_etapa_isolada.py executa etapa pesada em subprocesso
 │   ├── features_ca.py    features CA do Paderborn
 │   ├── autoencoder.py    modelo de normalidade (limiar p99)
 │   ├── injecao_falhas.py falhas sintéticas FMEA (schema E2) + SMD_95
-│   ├── validacao.py      validação formal (limiar congelado, ROC+PR, E2)
+│   ├── validacao.py      validação interna E2 (holdout, ROC+PR, ICs)
 │   ├── rul_weibull.py    RUL / Weibull
 │   ├── classificador_pv.py classificação supervisionada PV Farms (CC)
 │   ├── experimentos_artigos.py experimentos de ML por artigo-base
@@ -33,18 +41,63 @@ src/
 ```
 
 ## Fluxos
-- **Init:** `app.py` → `configurar_saida_utf8` + `KMP_DUPLICATE_LIB_OK` →
-  `carregar_base` (embeddings, ChromaDB, perfil) → orquestrador.
-- **RAG:** pergunta → expansão de query → busca híbrida → reranking → prompt
-  (com `PERFIL_COMPACTO`) → LLM.
+- **Init local:** `app.py` → `configurar_saida_utf8` +
+  `KMP_DUPLICATE_LIB_OK` → `carregar_base` (ChromaDB, embeddings, perfil) →
+  watcher + orquestrador.
+- **Init nuvem:** `app.py` → restauração do snapshot portátil → encoder ONNX
+  sob demanda → perfil. O deploy não inicia watcher nem orquestrador.
+- **RAG:** pergunta → expansão local → embeddings + BM25 → fusão RRF →
+  reranking → memória classificada do Obsidian → auditoria compacta do Gemini Flash → prompt
+  com memória validada → síntese final do Gemini.
+- **Memória:** o auditor (Gemini Flash) só avalia turnos com correção, preferência ou decisão
+  explícita. Itens aprovados são gravados atomicamente em JSON, com evidência,
+  proveniência e status, e espelhados como Markdown; o Gemini recebe apenas os
+  itens pertinentes.
+- **Obsidian:** todo Markdown útil sob a raiz configurada do vault entra na
+  coleção independente `obsidian_pv`. O indexador classifica notas curadas,
+  sessões atuais/arquivadas, memórias consolidadas, conceitos, experimentos e
+  notas de leitura. Diretórios técnicos, templates, segredos aparentes e notas
+  explicitamente privadas ficam de fora. O bloco recuperado é contexto interno
+  e nunca compõe o rodapé de fontes científicas; uma resposta antiga registra o
+  que foi dito, não o que continua correto. O snapshot
+  `artefatos/obsidian_indexado.jsonl.gz` leva esse histórico à nuvem.
 - **Ferramentas (chat):** `decidir_acao` roteia para pipeline ML, experimentos,
   catálogo de literatura, `consultar_datasets`, `comparar_abordagens_ml`, etc.
 - **Pipeline ML:** `features_ca → autoencoder → injecao_falhas → validacao →
   rul_weibull`, cada etapa com manifesto de proveniência.
 
+## Execução local e nuvem
+- **PC:** possui `dados/brutos/`, treina os modelos, regenera os experimentos e
+  publica apenas os artefatos científicos verificáveis.
+- **Streamlit Cloud:** restaura `artefatos/literatura_indexada.jsonl.gz` em um
+  ChromaDB efêmero e consulta os JSONs, CSVs e PNGs versionados em `resultados/`.
+  Sem os datasets brutos, não tenta representar uma execução de treino como
+  concluída na nuvem. Para manter a memória dentro do limite do serviço, usa a
+  variante ONNX quantizada do mesmo MiniLM do índice, carrega a sessão apenas
+  na primeira busca e libera o tokenizer antes da inferência. Os modelos Gemini
+  usam adaptadores diretos dos SDKs oficiais; as integrações LangChain, que
+  carregavam PyTorch indiretamente, não entram no processo web.
+- `AL_IADO_CHROMADB_DIR` permite redirecionar o ChromaDB sem alterar o código;
+  `AL_IADO_INDICE_LITERATURA` permite apontar para outro snapshot portátil,
+  `AL_IADO_INDICE_LEXICAL` redireciona o SQLite FTS5,
+  `AL_IADO_MEMORIA_VALIDADA` redireciona a memória estruturada,
+  `AL_IADO_OBSIDIAN_VAULT_DIR` aponta para a raiz pesquisável do vault e
+  `AL_IADO_OBSIDIAN_DIR` aponta para sua subpasta curada;
+  `AL_IADO_INDICE_OBSIDIAN` redireciona seu snapshot portátil. O arquivo
+  versionado é durável entre deploys; gravações feitas dentro do Community
+  Cloud duram somente até o próximo reinício/redeploy. Já
+  `AL_IADO_DATASET_PADERBORN` permite simular o modo de consulta em testes.
+  `AL_IADO_EMBEDDINGS_BACKEND` aceita `auto`, `onnx` ou
+  `sentence-transformers`; `AL_IADO_ONNX_THREADS` limita threads do backend
+  leve. Em `auto`, ausência do dataset ativa ONNX. Modelos, tamanho de saída e
+  orçamentos do RAG são ajustáveis por `AL_IADO_GEMINI_MODEL`,
+  `AL_IADO_GEMINI_MODEL_AUDITOR`, `AL_IADO_GEMINI_MODEL_FUNDO`, `AL_IADO_GEMINI_MAX_OUTPUT_TOKENS` e
+  `AL_IADO_RAG_*`. Datas de interface usam `AL_IADO_TIMEZONE`
+  (`America/Sao_Paulo` por padrão).
+
 ## Isolamento de cargas pesadas (subprocesso)
-Experimentos por artigo que carregam bibliotecas pesadas (`torch`,
-`prophet`) rodam em **subprocesso** via
+Experimentos por artigo que carregam bibliotecas pesadas (`torch`)
+rodam em **subprocesso** via
 `exec_experimento_isolado.executar_experimento_isolado(key)`. Um segfault,
 conflito de OpenMP ou estouro de memória derruba apenas o filho — o app
 Streamlit segue de pé e recebe uma mensagem de falha legível. O progresso é
@@ -64,7 +117,6 @@ Os dois **não se fundem** — ver `docs/datasets.md` e `docs/metodologia_ml.md`
 pip install -r requirements.txt              # ambiente completo (pins exatos)
 # ou por grupo:
 pip install -r requirements-ui.txt -r requirements-rag.txt -r requirements-ml.txt
-pip install -r requirements-extras-prophet.txt   # Prophet (opcional)
 pip install -r requirements-dev.txt              # testes/lint
 ```
 

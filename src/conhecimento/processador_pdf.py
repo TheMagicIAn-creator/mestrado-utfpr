@@ -17,7 +17,6 @@ import re
 import sys
 import shutil
 from pathlib import Path
-from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -25,11 +24,12 @@ from pypdf import PdfReader
 from src.core.config import (
     PASTA_LITERATURA, PASTA_NOTAS, PASTA_NOVOS_PDFS,
     PASTA_CHROMADB, RAIZ_PROJETO,
-    GROQ_API_KEY, GOOGLE_API_KEY,
+    GOOGLE_API_KEY,
 )
+from src.core.tempo import agora_local
 
 # Pasta de notas de literatura dentro do vault Obsidian
-PASTA_NOTAS_LIT = PASTA_NOTAS / "literatura"
+PASTA_NOTAS_LIT = PASTA_NOTAS / "Literatura"
 
 
 # ============================================================
@@ -140,27 +140,15 @@ Nome do arquivo (pode ajudar): {nome_arquivo}
 
     resposta = None
 
-    # Groq primeiro — mais rápido
-    if GROQ_API_KEY:
-        try:
-            from langchain_groq import ChatGroq
-            from langchain_core.messages import HumanMessage
-            llm      = ChatGroq(
-                model        = "llama-3.3-70b-versatile",
-                groq_api_key = GROQ_API_KEY,
-                temperature  = 0
-            )
-            resposta = llm.invoke([HumanMessage(content=prompt)]).content
-        except Exception:
-            pass
-
-    # Gemini como fallback
-    if not resposta and GOOGLE_API_KEY:
+    # Tarefa de fundo → Gemini econômico (MODELO_GEMINI_FUNDO). O fallback
+    # seguinte continua sendo regex + metadados internos do PDF.
+    if GOOGLE_API_KEY:
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
             from langchain_core.messages import HumanMessage
+            from src.conhecimento.provedores import MODELO_GEMINI_FUNDO
             llm      = ChatGoogleGenerativeAI(
-                model          = "gemini-2.5-flash",
+                model          = MODELO_GEMINI_FUNDO,
                 google_api_key = GOOGLE_API_KEY,
                 temperature    = 0
             )
@@ -230,7 +218,7 @@ def _extrair_via_metadados_internos(caminho_pdf: Path) -> dict:
         match_ano = re.search(r"(\d{4})", data_raw)
         if match_ano:
             ano_cand = int(match_ano.group(1))
-            if 1990 <= ano_cand <= datetime.now().year:
+            if 1990 <= ano_cand <= agora_local().year:
                 ano = str(ano_cand)
     except Exception:
         pass
@@ -260,7 +248,7 @@ def _registrar_pendencia(caminho_pdf: Path, autor: str, titulo: str, ano: str):
             "autor_atual" : autor,
             "titulo_atual": titulo,
             "ano_atual"   : ano,
-            "registrado"  : datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "registrado"  : agora_local().isoformat(timespec="minutes"),
             "resolvido"   : False
         }
         arquivo_pendencias.write_text(
@@ -408,7 +396,7 @@ def gerar_nota_obsidian(
     conteudo += f"tema: {tema}\n"
     conteudo += f"arquivo: {nome_final}\n"
     conteudo += f"tags: [literatura, {tema}, mestrado-utfpr]\n"
-    conteudo += f"data_insercao: {datetime.now().strftime('%Y-%m-%d')}\n"
+    conteudo += f"data_insercao: {agora_local().strftime('%Y-%m-%d')}\n"
     conteudo += f"---\n\n"
     conteudo += f"# {titulo[:100]}\n\n"
     conteudo += f"**Autor:** {autor}  \n"

@@ -43,7 +43,6 @@ RAIZ_PROJETO = Path(__file__).resolve().parent.parent.parent
 load_dotenv(RAIZ_PROJETO / ".env")
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-GROQ_API_KEY   = os.getenv("GROQ_API_KEY")
 
 
 # ============================================================
@@ -58,9 +57,54 @@ PASTA_RESULTADOS   = RAIZ_PROJETO / "resultados"
 PASTA_NOTAS        = RAIZ_PROJETO / "notas"
 PASTA_SESSOES      = PASTA_NOTAS / "sessoes"
 PASTA_MEMORIAS     = PASTA_NOTAS / "memorias"
+PASTA_VAULT_OBSIDIAN = Path(
+    os.getenv(
+        "AL_IADO_OBSIDIAN_VAULT_DIR",
+        str(PASTA_NOTAS),
+    )
+).expanduser().resolve()
+PASTA_CEREBRO_OBSIDIAN = Path(
+    os.getenv(
+        "AL_IADO_OBSIDIAN_DIR",
+        str(PASTA_VAULT_OBSIDIAN / "Cerebro"),
+    )
+).expanduser().resolve()
+PASTA_MEMORIA_AGENTES = Path(
+    os.getenv(
+        "AL_IADO_MEMORIA_DIR",
+        str(PASTA_MEMORIAS / "agentes"),
+    )
+).expanduser().resolve()
+ARQUIVO_MEMORIA_VALIDADA = Path(
+    os.getenv(
+        "AL_IADO_MEMORIA_VALIDADA",
+        str(PASTA_MEMORIA_AGENTES / "memoria_validada.json"),
+    )
+).expanduser().resolve()
 PASTA_ARQUIVO      = PASTA_NOTAS / "sessoes_arquivadas"
 PASTA_NOVOS_PDFS   = RAIZ_PROJETO / "novos_pdfs"
-PASTA_CHROMADB     = RAIZ_PROJETO / "base_conhecimento"
+PASTA_CHROMADB     = Path(
+    os.getenv("AL_IADO_CHROMADB_DIR", str(RAIZ_PROJETO / "base_conhecimento"))
+).expanduser().resolve()
+PASTA_ARTEFATOS    = RAIZ_PROJETO / "artefatos"
+ARQUIVO_INDICE_LITERATURA = Path(
+    os.getenv(
+        "AL_IADO_INDICE_LITERATURA",
+        str(PASTA_ARTEFATOS / "literatura_indexada.jsonl.gz"),
+    )
+).expanduser().resolve()
+ARQUIVO_INDICE_OBSIDIAN = Path(
+    os.getenv(
+        "AL_IADO_INDICE_OBSIDIAN",
+        str(PASTA_ARTEFATOS / "obsidian_indexado.jsonl.gz"),
+    )
+).expanduser().resolve()
+ARQUIVO_INDICE_LEXICAL = Path(
+    os.getenv(
+        "AL_IADO_INDICE_LEXICAL",
+        str(PASTA_CHROMADB / "literatura_fts.sqlite3"),
+    )
+).expanduser().resolve()
 ARQUIVO_PERFIL     = RAIZ_PROJETO / "CLAUDE.md"
 
 
@@ -68,10 +112,19 @@ ARQUIVO_PERFIL     = RAIZ_PROJETO / "CLAUDE.md"
 # CONSTANTES DO AGENTE (RAG)
 # ============================================================
 
+# Marcador de build — atualizado a cada deploy relevante. Aparece na barra
+# lateral do app para confirmar QUAL versão do código está no ar (resolve a
+# ambiguidade de redeploy no Streamlit Cloud: se o marcador aqui não bate com
+# o exibido, o app está rodando código antigo e precisa de Reboot).
+MARCADOR_BUILD         = "2026-07-21 · #26 · roteador código + aprendizado automático no chat"
+
 MODELO_EMBEDDINGS      = "paraphrase-multilingual-MiniLM-L12-v2"
-MODELO_GEMINI          = "gemini-2.5-flash"
+# Modelo principal de conversa (fonte de verdade: provedores.PROVEDORES / env
+# AL_IADO_GEMINI_MODEL). O de fundo (metadados/memória) é gemini-2.5-flash.
+MODELO_GEMINI          = "gemini-2.5-pro"
 NOME_COLECAO           = "literatura_pv"
 NOME_COLECAO_SESSOES   = "sessoes_pv"
+NOME_COLECAO_OBSIDIAN  = "obsidian_pv"
 # Memória de AVALIAÇÃO (baterias/harness) — SEPARADA da memória de produção,
 # para que testes automatizados nunca contaminem as sessões reais (item 8.2/18).
 NOME_COLECAO_AVALIACOES = "avaliacoes_agente"
@@ -115,7 +168,6 @@ if __name__ == "__main__":
     print("=" * 60)
     print(f"\nRaiz do projeto: {RAIZ_PROJETO}")
     print(f"\nChave Google : {'✅ configurada' if GOOGLE_API_KEY else '❌ ausente'}")
-    print(f"Chave Groq   : {'✅ configurada' if GROQ_API_KEY else '❌ ausente'}")
     print(f"\nEstrutura de pastas:")
     for nome, existe in verificar_estrutura().items():
         status = "✅" if existe else "❌"

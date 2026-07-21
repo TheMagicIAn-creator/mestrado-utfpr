@@ -26,6 +26,7 @@ from src.core.config import (
     PASTA_SESSOES, PASTA_MEMORIAS, PASTA_ARQUIVO,
     NOME_COLECAO_SESSOES
 )
+from src.core.tempo import agora_local
 
 # ─── Parâmetros (sobrescrevíveis via .env) ───────────────────
 MINIMO_SESSOES        = 2
@@ -212,38 +213,69 @@ Artigos e documentos mais relevantes mencionados, com contexto de uso.
 
     resposta = None
 
-    groq_key = os.getenv("GROQ_API_KEY")
-    if groq_key:
+    # Tarefa de fundo → Gemini econômico (MODELO_GEMINI_FUNDO).
+    gemini_key = os.getenv("GOOGLE_API_KEY")
+    if gemini_key:
         try:
-            from langchain_groq import ChatGroq
+            from langchain_google_genai import ChatGoogleGenerativeAI
             from langchain_core.messages import HumanMessage
-            llm = ChatGroq(
-                model       = "llama-3.3-70b-versatile",
-                api_key     = groq_key,
-                temperature = 0.2
+            from src.conhecimento.provedores import MODELO_GEMINI_FUNDO
+            llm = ChatGoogleGenerativeAI(
+                model        = MODELO_GEMINI_FUNDO,
+                google_api_key = gemini_key,
+                temperature  = 0.2
             )
             resposta = llm.invoke([HumanMessage(content=prompt)]).content
-            print("   ✅ Resumo gerado pelo Groq")
+            print("   ✅ Resumo gerado pelo Gemini")
         except Exception as e:
-            print(f"   ⚠️  Groq falhou: {e} — tentando Gemini...")
-
-    if not resposta:
-        gemini_key = os.getenv("GOOGLE_API_KEY")
-        if gemini_key:
-            try:
-                from langchain_google_genai import ChatGoogleGenerativeAI
-                from langchain_core.messages import HumanMessage
-                llm = ChatGoogleGenerativeAI(
-                    model        = "gemini-2.5-flash",
-                    google_api_key = gemini_key,
-                    temperature  = 0.2
-                )
-                resposta = llm.invoke([HumanMessage(content=prompt)]).content
-                print("   ✅ Resumo gerado pelo Gemini")
-            except Exception as e:
-                print(f"   ❌ Gemini também falhou: {e}")
+            print(f"   ❌ Gemini falhou: {e}")
 
     return resposta or "Erro: não foi possível gerar o resumo."
+
+
+# ============================================================
+# MEMÓRIA VALIDADA (estruturada) — extração automática
+# ============================================================
+
+def consolidar_memoria_validada(sessoes: list) -> None:
+    """Extrai decisões/preferências metodológicas das sessões para a memória
+    validada (``memoria_validada.json``), com o auditor (Gemini Flash) filtrando
+    ruído — sem depender do gatilho manual ("lembre…").
+
+    Best-effort: qualquer falha (sem chave de API, erro de rede) é reportada e
+    ignorada, para nunca derrubar a consolidação narrativa que já rodou.
+    """
+    try:
+        from src.conhecimento.memoria_persistente import MemoriaPersistente
+        from src.conhecimento.multiagente import AgenteAuditorGemini
+        from src.conhecimento.provedores import inicializar_papel
+    except Exception as e:
+        print(f"   ⚠️  Memória validada indisponível (import): {e}")
+        return
+
+    try:
+        llm, _nome, _rotulo = inicializar_papel("auditoria")
+    except Exception as e:
+        print(f"   ⏭️  Sem auditor (chave ausente?) — memória validada intacta: {e}")
+        return
+
+    auditor = AgenteAuditorGemini(llm, MemoriaPersistente())
+    texto = ""
+    for s in sessoes:
+        texto += f"\n\n=== SESSÃO {s['data']} ===\n{s['conteudo'][:12000]}"
+
+    try:
+        resultado = auditor.consolidar_memoria_das_sessoes(texto[:70000])
+    except Exception as e:
+        print(f"   ⚠️  Extração de memória validada falhou: {e}")
+        return
+
+    if not resultado.avaliou:
+        print("   ℹ️  Nada durável a memorizar das sessões.")
+    elif resultado.salvas:
+        print(f"   ✅ Memória validada: +{resultado.salvas} item(ns) — {resultado.motivo}")
+    else:
+        print(f"   ℹ️  Memória validada inalterada — {resultado.motivo}")
 
 
 # ============================================================
@@ -254,7 +286,7 @@ def salvar_consolidado(resumo: str, sessoes: list) -> Path:
     """Salva o resumo consolidado como nota .md."""
     PASTA_MEMORIAS.mkdir(parents=True, exist_ok=True)
 
-    agora        = datetime.now()
+    agora        = agora_local()
     datas        = [s["data"] for s in sessoes]
     total_int    = sum(s["interacoes"] for s in sessoes)
     nome_arquivo = f"{agora.strftime('%Y-%m-%d')}_consolidado.md"
@@ -319,7 +351,7 @@ def atualizar_chromadb(caminho_consolidado: Path, sessoes: list):
             {
                 "arquivo"      : nome_final,
                 "tipo"         : "memoria-consolidada",
-                "data"         : datetime.now().strftime("%Y-%m-%d"),
+                "data"         : agora_local().strftime("%Y-%m-%d"),
                 "chunk_index"  : j,
                 "total_chunks" : len(chunks)
             }
@@ -394,6 +426,10 @@ def consolidar(forcar: bool = False) -> bool:
     print(f"\n💾 Salvando memória consolidada...")
     caminho = salvar_consolidado(resumo, sessoes)
     print(f"   ✅ Salvo: {caminho.name}")
+
+    # 4.5. Extrai memória VALIDADA (estruturada) das mesmas sessões
+    print(f"\n🧠 Atualizando memória validada (decisões/preferências)...")
+    consolidar_memoria_validada(sessoes)
 
     # 5. Atualiza ChromaDB
     print(f"\n🗄️  Atualizando ChromaDB...")

@@ -1,5 +1,5 @@
 """
-Sprint 1 — validação formal com limiar CONGELADO (item 3.3).
+Validação sintética interna E2 com limiar CONGELADO.
 
 Garante que metricas_no_limiar() aplica o limiar RECEBIDO (carregado de
 limiar.json, congelado) e NÃO escolhe o limiar ótimo no próprio conjunto:

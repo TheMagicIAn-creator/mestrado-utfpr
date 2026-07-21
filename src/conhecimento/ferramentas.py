@@ -19,7 +19,9 @@ from src.ml.pipeline import (
     NOMES_ETAPAS,
     ORDEM_ETAPAS_ML,
     artefatos_a_partir,
+    capacidade_recalculo_pipeline,
     estado_pipeline,
+    estado_resultados_publicados,
     executar_etapa,
     executar_pipeline_ml,
     limpar_artefatos,
@@ -317,6 +319,15 @@ _AUTORES_EXP = {
     "francisti": "francisti",
     "ibrahim": "ibrahim",
 }
+
+# Autores CITÁVEIS na literatura indexada (superset dos de experimento):
+# usados como guarda para NÃO desviar uma pergunta autoral ("o que o Stender
+# diz...") para a ferramenta de catálogo de datasets. Stender/Ahirwar/etc.
+# não são mais experimentos executáveis, mas seguem sendo papers indexados.
+_AUTORES_CITAVEIS = set(_AUTORES_EXP) | {
+    "stender", "ahirwar", "ghoneim", "sharma", "cristaldi", "golnas",
+    "voss", "torres",
+}
 _VERBOS_RODAR_EXP = (
     "rode", "rodar", "roda", "execut", "teste", "testar", "testa",
     "treine", "treinar", "treina", "rodar os modelos",
@@ -421,7 +432,9 @@ def _quer_consultar_datasets(pergunta: str) -> bool:
     txt = _normalizar(pergunta)
     if _quer_rodar_experimento(pergunta):
         return False
-    if any(autor in txt for autor in _AUTORES_EXP):
+    # Pergunta que cita um autor da literatura ("o que o Stender diz...") é
+    # consulta bibliográfica → RAG, não catálogo de datasets.
+    if any(autor in txt for autor in _AUTORES_CITAVEIS):
         return False
     if any(t in txt for t in (
         "resultado", "resultados", "replicacao", "replicacoes",
@@ -515,6 +528,15 @@ def _quer_comparar_auc_experimentos(pergunta: str) -> bool:
     if _quer_rodar_experimento(pergunta):
         return False
     txt = _normalizar(pergunta)
+    # Pedidos compostos de apresentação devem ler os artefatos já calculados.
+    # A ferramenta de banco comum gera somente a comparação AUC e, por isso,
+    # não consegue cumprir matrizes, contagens ou formatos gráficos pedidos.
+    if any(t in txt for t in (
+        "anomalias detectadas", "quantas anomalias", "matriz", "matrizes",
+        "grafico", "graficos", "por pontos", "dot plot", "barras",
+        "cada artigo", "proprio grupo", "próprio grupo",
+    )):
+        return False
     tem_compare = any(t in txt for t in (
         "compare", "comparar", "comparacao", "comparacao",
         "analise", "analisa", "qual o melhor", "qual e o melhor",
@@ -639,6 +661,31 @@ def _parece_pedido_de_ferramenta(pergunta: str) -> bool:
 def consultar_status_pipeline(progresso=None, pergunta: str = "") -> dict:
     if progresso:
         progresso("Lendo status do pipeline...")
+
+    capacidade = capacidade_recalculo_pipeline()
+    if not capacidade["disponivel"]:
+        publicados = estado_resultados_publicados()
+        linhas = [
+            "## Pipeline de ML — modo de consulta\n",
+            "O site não contém o dataset bruto de Paderborn, portanto não "
+            "executa treinamento na nuvem. Ele consulta a última execução "
+            "local publicada no repositório.\n",
+        ]
+        for key in ORDEM_ETAPAS_ML:
+            info = publicados[key]
+            marcador = "✅ disponível" if info["disponivel"] else "⬜ ausente"
+            linhas.append(f"- **{NOMES_ETAPAS[key]}**: {marcador}")
+        linhas.append(
+            "\n_Esses itens são artefatos recalculados no PC e publicados para "
+            "consulta; não representam uma nova execução no servidor._"
+        )
+        return {
+            "ok": True,
+            "etapa": "Status do pipeline",
+            "mensagem": "\n".join(linhas),
+            "imagens": [],
+            "resposta_pronta": True,
+        }
 
     estados = estado_pipeline()
     rotulo = {"ready": "✅ pronto", "stale": "⚠️ desatualizado (stale)",
@@ -777,6 +824,22 @@ def _resultado_pos_execucao(stage_key: str, pergunta: str) -> dict:
 
 
 def _rodar_stage(stage_key: str, progresso=None, pergunta: str = "") -> dict:
+    if not capacidade_recalculo_pipeline()["disponivel"]:
+        resumo = _resultado_pos_execucao(stage_key, pergunta)
+        return {
+            "ok": True,
+            "etapa": NOMES_ETAPAS[stage_key],
+            "mensagem": (
+                "## Cálculo indisponível neste ambiente\n\n"
+                "O dataset bruto de Paderborn não é publicado no Streamlit "
+                "Cloud. Por isso, o site não pode retreinar esta etapa. Abaixo "
+                "está a última execução local publicada.\n\n"
+                + resumo["mensagem"]
+            ),
+            "imagens": resumo.get("imagens", []),
+            "resposta_pronta": True,
+        }
+
     force = _deve_forcar(pergunta)
     res = executar_etapa(stage_key, force=force, progresso=progresso)
 
@@ -821,6 +884,25 @@ def rodar_weibull(progresso=None, pergunta: str = "") -> dict:
 
 
 def rodar_pipeline_completo(progresso=None, pergunta: str = "") -> dict:
+    if not capacidade_recalculo_pipeline()["disponivel"]:
+        status = consultar_status_pipeline(pergunta=pergunta)
+        return {
+            "ok": True,
+            "etapa": "Pipeline completo",
+            "mensagem": (
+                "## Cálculo indisponível neste ambiente\n\n"
+                "O pipeline pesado só pode ser recalculado no PC que contém "
+                "`dados/brutos/Inverter_Data_Set.csv`. O site está em modo de "
+                "consulta e preserva a última execução local publicada.\n\n"
+                + status["mensagem"]
+                + "\n\nConsulte uma parte por vez, por exemplo: `mostre os "
+                  "resultados de validação`, `compare os experimentos de "
+                  "anomalia` ou `interprete a análise de Weibull`."
+            ),
+            "imagens": [],
+            "resposta_pronta": True,
+        }
+
     force = _deve_forcar(pergunta)
     resultados = executar_pipeline_ml("features_ca", force=force, progresso=progresso)
     ok = all(not r.startswith("ERRO") for r in resultados)
@@ -1108,14 +1190,14 @@ def _md_experimento(res: dict) -> tuple[str, list[dict]]:
     }
     if com_falhas:
         linhas.append("\n**Detecção por família de falha (recall):**")
-        linhas.append("| Modelo | LCL (NPR 210) | Desbalanceamento (NPR 150) | Sensor |")
+        linhas.append("| Modelo | Contator AC (NPR 315) | IGBT (NPR 90) | Fusível AC (NPR 30) |")
         linhas.append("|---|---:|---:|---:|")
         for nome, det in com_falhas.items():
             def _pct(v):
                 return f"{v:.0%}" if isinstance(v, (int, float)) else "—"
             linhas.append(
-                f"| {nome} | {_pct(det.get('lcl'))} | "
-                f"{_pct(det.get('desbalanceamento'))} | {_pct(det.get('sensor'))} |")
+                f"| {nome} | {_pct(det.get('contator_ac'))} | "
+                f"{_pct(det.get('igbt'))} | {_pct(det.get('fusivel_ac'))} |")
 
     from src.core.utils import resolve_project_path
 
@@ -1131,8 +1213,23 @@ def _md_experimento(res: dict) -> tuple[str, list[dict]]:
 
 def rodar_experimento_artigo(progresso=None, pergunta: str = "") -> dict:
     """Roda um ou mais experimentos por artigo e devolve a comparação."""
+    if not capacidade_recalculo_pipeline()["disponivel"]:
+        resumo = resumir_resultados(pergunta)
+        return {
+            "ok": True,
+            "etapa": "Experimentos por artigo",
+            "mensagem": (
+                "## Experimento indisponível neste ambiente\n\n"
+                "Os experimentos exigem os dados locais de Paderborn. O site "
+                "não os recalcula, mas pode consultar os resultados publicados.\n\n"
+                + resumo["mensagem"]
+            ),
+            "imagens": resumo.get("imagens", []),
+            "resposta_pronta": True,
+        }
+
     from src.ml.experimentos_artigos import catalogo_experimentos_md
-    # 10.4 — isola cargas pesadas (Orange/RL/torch/prophet) em subprocesso para
+    # 10.4 — isola cargas pesadas (torch) em subprocesso para
     # que um segfault/conflito de OpenMP não derrube o app. Cai para in-process
     # se o subprocesso não puder ser lançado.
     from src.ml.exec_experimento_isolado import (
@@ -1260,7 +1357,7 @@ def comparar_abordagens_ml(progresso=None, pergunta: str = "") -> dict:
         "não diagnostica falhas CA do inversor, nem transfere suas métricas ao "
         "pipeline CA.\n"
         "- Cada experimento por artigo segue o PROTOCOLO do próprio artigo "
-        "(Shewhart 3σ, contaminação a priori, p99 do treino, banda do Prophet, "
+        "(Shewhart 3σ, contaminação a priori, p99 do treino congelado, "
         "PPO em validação temporal, voto majoritário) — por isso o F1 não é "
         "comparável entre protocolos; compare métodos pelo AUC."
     )
@@ -1535,6 +1632,72 @@ _ETAPA_ORDEM = [
 ]
 
 
+def _quer_codigo_snippet(pergunta: str) -> bool:
+    """
+    Rodolfo pediu para o agente ESCREVER código — um trecho Python, um script,
+    "como plotar ..." — e NÃO para rodar o pipeline nem devolver artefatos já
+    gerados. Nesse caso quem responde é o LLM (que redige o código); nenhuma
+    ferramenta de execução ou de consulta de resultados deve interceptar.
+
+    Bug corrigido: "gere um código de um gráfico da TTF/distribuição" caía em
+    `termos_executar`/`consultar_resultados` e o agente trazia as figuras já
+    criadas, em vez de escrever o código pedido.
+
+    Exemplos que passam a ir para o LLM:
+      "gere um código para plotar a distribuição do erro do autoencoder"
+      "me dê o script em Python do gráfico da TTF"
+      "como plotar a curva de Weibull no matplotlib?"
+      "escreva a função que desenha o histograma do erro de reconstrução"
+    """
+    txt = _normalizar(pergunta)
+
+    # Sinais fortes e inequívocos de pedido de código, isoladamente suficientes.
+    # "code"/"script"/"snippet" exigem fronteira de palavra: "code" é substring
+    # de "autoencoder", "decode" etc. — usar \b evita esses falsos positivos.
+    if "codigo" in txt or "pseudocodigo" in txt or "pseudo codigo" in txt:
+        return True
+    if any(re.search(rf"\b{t}\b", txt) for t in ("code", "script", "snippet")):
+        return True
+    if any(t in txt for t in (
+        "matplotlib", "seaborn", "plotly", "pyplot", "plt.", "sns.",
+        "ggplot", "bokeh",
+    )):
+        return True
+
+    # "escreva/implemente a função/classe/método ..." é pedido de código. Gate
+    # em SUBSTANTIVOS de código (função/classe/...), nunca em palavras de plot
+    # como "distribuição/curva" — senão "escreva um resumo da distribuição"
+    # (discursivo) seria confundido com código.
+    verbo_escrever = any(t in txt for t in (
+        "escreva", "escreve", "escrever", "implemente", "implementar",
+        "programe", "programar", "codar", "coda ",
+    ))
+    if verbo_escrever and any(t in txt for t in (
+        "funcao", "classe", "metodo", "rotina", "trecho",
+    )):
+        return True
+    if any(t in txt for t in (
+        "como plot", "como faco para plot", "como desenh", "como trac",
+        "how to plot", "como gerar o grafico", "como fazer o grafico",
+        "como criar o grafico", "como monto o grafico", "como plotar",
+        "como ploto", "como codar", "como programar",
+    )):
+        return True
+
+    # "... em Python ..." combinado com um pedido de visualização também é
+    # pedido de código (o usuário quer o programa, não o artefato pronto).
+    tem_python = any(t in txt for t in (
+        "em python", "in python", "com python", "usando python",
+        "no matplotlib", "em py ", "codigo python", "funcao python",
+    ))
+    quer_plot = any(t in txt for t in (
+        "grafico", "graficos", "plot", "plotar", "curva", "distribuicao",
+        "histograma", "figura", "chart", "ttf", "weibull", "roc",
+        "dispersao", "scatter", "boxplot", "heatmap",
+    ))
+    return tem_python and quer_plot
+
+
 def _etapa_mais_avancada_mencionada(txt_normalizado: str) -> str | None:
     """
     Retorna o nome da ferramenta correspondente à etapa MAIS AVANÇADA
@@ -1620,6 +1783,12 @@ def _decisao_rapida(pergunta: str) -> dict | None:
     # Busca na web — atalho prioritário quando gatilho explícito aparece
     if any(g in txt for g in _GATILHOS_WEB):
         return {"usar_ferramenta": True, "ferramenta": "buscar_web"}
+
+    # Pedido de CÓDIGO ("gere um código do gráfico da TTF", "como plotar ...")
+    # vai para o LLM, que ESCREVE o código — nunca para execução do pipeline
+    # nem para devolver os artefatos já criados.
+    if _quer_codigo_snippet(pergunta):
+        return {"usar_ferramenta": False, "ferramenta": None}
 
     if _quer_limpar_experimentos(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "limpar_experimentos_artigos"}
@@ -1708,9 +1877,20 @@ def _decisao_rapida(pergunta: str) -> dict | None:
         "execut", "entraîn", "entrain", "gener", "génér", "calcul", "inject",
     )
     termos_validacao_ativa = ("validar", "valide", "valida")
+    # Verbos de GERAÇÃO (fazer/plotar/escrever). Fronteira de palavra para não
+    # pegar "geral", "gerenciar" etc. Sem isto, "gera um gráfico da ttf" caía no
+    # despejo de resultados só por conter "gráfico" — o LLM deve escrever o
+    # código/conversar, não devolver o artefato salvo.
+    termos_geracao_ativa = (
+        "gera", "gere", "gerar", "plota", "plote", "plotar",
+        "desenha", "desenhe", "desenhar", "traca", "trace", "tracar",
+        "escreve", "escreva", "escrever", "coda", "code", "codar",
+        "monta", "monte", "montar", "cria", "crie", "criar",
+    )
     tem_acao_ativa = (
         any(t in txt for t in termos_acao_ativa)
-        or any(re.search(rf"\b{re.escape(t)}\b", txt) for t in termos_validacao_ativa)
+        or any(re.search(rf"\b{re.escape(t)}\b", txt)
+               for t in termos_validacao_ativa + termos_geracao_ativa)
     )
     if any(t in txt for t in termos_consulta):
         if not tem_acao_ativa:
@@ -1777,31 +1957,134 @@ Responda apenas JSON valido:
     return {"usar_ferramenta": False, "ferramenta": None}
 
 
+def _corrigir_descricao_visual(resposta: str, imagens: list[dict] | None) -> str:
+    """Remove afirmações visuais que não correspondem aos artefatos exibidos."""
+    imagens = imagens or []
+    if not resposta or not imagens:
+        return resposta
+
+    inventario = " ".join(
+        f"{imagem.get('caption', '')} {imagem.get('path', '')}"
+        for imagem in imagens
+    )
+    inventario_norm = _normalizar(inventario)
+    # Quando o pedido realmente inclui esse tipo de figura, a interpretação é
+    # permitida. A proteção atua apenas nos conjuntos de métricas/contagens.
+    if any(termo in inventario_norm for termo in (
+        "score", "curva roc", "temporal", "limiar", "distribuicao",
+    )):
+        return resposta
+
+    termos_nao_suportados = (
+        "distribuicao de score",
+        "distribuicoes de score",
+        "curva roc",
+        "curvas roc",
+        "ao longo do tempo",
+        "separacao entre classes",
+        "separacao entre os dados",
+        "localizacao das deteccoes",
+    )
+    partes = re.split(r"(\n\s*\n)", resposta)
+    filtradas: list[str] = []
+    removeu = False
+    for parte in partes:
+        normalizada = _normalizar(parte)
+        descreve_figura = "grafico" in normalizada or "figura" in normalizada
+        incompativel = descreve_figura and any(
+            termo in normalizada for termo in termos_nao_suportados
+        )
+        if incompativel:
+            removeu = True
+            continue
+        filtradas.append(parte)
+
+    if not removeu:
+        return resposta
+
+    corrigida = "".join(filtradas).strip()
+    descricoes = []
+    if "comparacao por pontos" in inventario_norm:
+        descricoes.append("a comparação das métricas por pontos")
+    if "anomalias detectadas" in inventario_norm:
+        descricoes.append("as contagens de detecções e a cobertura percentual")
+    if descricoes:
+        corrigida += (
+            "\n\nOs gráficos exibidos abaixo mostram "
+            + " e ".join(descricoes)
+            + ", organizadas por artigo."
+        )
+    return corrigida
+
+
 def comentar_resultado(pergunta: str, resultado: dict, perfil: str, llm) -> str:
-    # forcar_resposta_direta: ferramenta determinística — não passa pelo LLM.
-    if resultado.get("forcar_resposta_direta"):
+    autoral = _quer_resposta_autoral(pergunta)
+    # Tabela crua (resposta direta) SÓ quando NÃO é pedido autoral. Se o
+    # Rodolfo pediu opinião/interpretação ("sua opinião", "o que isso
+    # significa"), os dados viram EVIDÊNCIA para o LLM interpretar — mesmo
+    # em ferramentas determinísticas (forcar_resposta_direta). Era esse
+    # atalho que fazia o agente "despejar a tabela" em vez de opinar.
+    if not autoral and (resultado.get("forcar_resposta_direta")
+                        or resultado.get("resposta_pronta")):
         return resultado.get("mensagem", "")
-    if resultado.get("resposta_pronta") and not _quer_resposta_autoral(pergunta):
+    if llm is None:
         return resultado.get("mensagem", "")
 
     status = "SUCESSO" if resultado.get("ok") else "FALHA"
-    prompt = f"""Voce e o Al IAdo PV, pesquisador tecnico do mestrado do Rodolfo.
-Responda em portugues brasileiro natural por padrao. Se Rodolfo perguntou claramente
-em ingles, espanhol ou frances, voce pode responder no mesmo idioma.
-Use os resultados abaixo como evidencia. Nao invente numeros.
-Nao devolva apenas a tabela: interprete, priorize, compare e diga o que isso significa para a dissertacao.
-Distinga dados locais, metodologia dos artigos e falhas sinteticas quando isso afetar a interpretacao.
+    perfil_txt = (perfil or "").strip()[:4000]
+    legendas_visuais = []
+    for imagem in resultado.get("imagens") or []:
+        legenda = str(imagem.get("caption", "")).strip()
+        if not legenda:
+            continue
+        grupo = str(imagem.get("grupo", "")).strip()
+        tipo = str(imagem.get("tipo", "")).strip()
+        qualificadores = ", ".join(item for item in (grupo, tipo) if item)
+        sufixo = f" ({qualificadores})" if qualificadores else ""
+        legendas_visuais.append(f"- {legenda}{sufixo}")
+    inventario_visual = (
+        "ARTEFATOS VISUAIS QUE SERÃO EXIBIDOS (inventário autoritativo):\n"
+        + "\n".join(legendas_visuais)
+        if legendas_visuais
+        else "ARTEFATOS VISUAIS QUE SERÃO EXIBIDOS: nenhum."
+    )
+    prompt = f"""{perfil_txt}
 
 Rodolfo pediu: "{pergunta}"
 
-Resultado tecnico ({status}):
+Resultado técnico ({status}) — use como EVIDÊNCIA, NÃO copie a tabela crua:
 {resultado.get('mensagem', 'sem detalhes')}
 
-Explique de forma natural, humana e tecnicamente precisa."""
+{inventario_visual}
+
+Responda como o Al IAdo PV, no papel de coorientador: INTERPRETE os números,
+priorize o que importa para a dissertação, aponte ressalvas (ajuste estatístico
+rejeitado, detecção nula, evidência E1/E2) e diga o que aquilo SIGNIFICA para o
+trabalho. Não invente números — cite só os que estão na evidência. Se um número
+tiver ressalva na evidência (ex.: KS rejeitado, SMD não detectada), NÃO o
+apresente como conclusivo. Escolha a forma que melhor atende ao pedido: prosa,
+lista, ranking ou tabela específica. Não despeje sempre a mesma tabela completa;
+se o pesquisador pedir uma métrica ou contagem, mostre apenas as colunas úteis.
+Em comparações, não omita modelos relevantes presentes na evidência. Português
+brasileiro natural, salvo se Rodolfo escreveu claramente em outro idioma.
+Não repita o pedido, não use encorajamento genérico e mantenha a extensão
+proporcional. Se o resultado mencionar imagens, elas serão renderizadas no chat:
+    não diga que não pode vê-las. Comece diretamente pela análise, sem
+    vocativos como "Prezado Rodolfo". Descreva cada gráfico somente pelo que a
+    evidência e sua legenda dizem; não atribua distribuições, limiares ou curvas a
+    uma figura de métricas, contagens ou cobertura. Uma "comparação por pontos"
+    compara métricas dos modelos; um gráfico de "anomalias detectadas" compara
+    contagens e cobertura. Nenhum dos dois mostra distribuição de scores,
+    limiares ou separação amostra a amostra, salvo se isso estiver explicitamente
+    nomeado no inventário. Em Weibull/RUL, preserve
+    rigorosamente o rótulo:
+"RUL restrita" é Kaplan-Meier não paramétrica; não a chame de paramétrica. NPR
+é criticidade FMECA e não causa a frequência de eventos simulados."""
     try:
         from langchain_core.messages import HumanMessage
 
-        return llm.invoke([HumanMessage(content=prompt)]).content
+        resposta = llm.invoke([HumanMessage(content=prompt)]).content
+        return _corrigir_descricao_visual(resposta, resultado.get("imagens"))
     except Exception:
         return resultado.get("mensagem", "")
 

@@ -638,21 +638,21 @@ def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path
         return resultado
 
 
-def indexar_literatura() -> None:
-    """Indexa todos os PDFs da pasta de literatura."""
+def indexar_literatura(modelo=None, pasta_chromadb: Path = PASTA_CHROMADB) -> dict:
+    """Indexa todos os PDFs e retorna um resumo estruturado da execução."""
     print("=" * 72)
     print("AL IADO PV — INDEXADOR SEGURO DE LITERATURA")
     print("=" * 72)
 
     if not PASTA_LITERATURA.exists():
         print(f"Pasta não encontrada: {PASTA_LITERATURA}")
-        return
+        return {"pdfs": 0, "indexados": 0, "pulados": 0, "erros": 1, "chunks": 0}
 
     pdfs = sorted(PASTA_LITERATURA.rglob("*.pdf"))
 
     if not pdfs:
         print(f"Nenhum PDF encontrado em: {PASTA_LITERATURA}")
-        return
+        return {"pdfs": 0, "indexados": 0, "pulados": 0, "erros": 1, "chunks": 0}
 
     print(f"PDFs encontrados: {len(pdfs)}")
     print(f"Modelo de embeddings: {MODELO_EMBEDDINGS}")
@@ -660,7 +660,7 @@ def indexar_literatura() -> None:
     print(f"Sobreposição literatura: {SOBREPOSICAO_LITERATURA}")
     print(f"Extração de tabelas: {'ativada' if EXTRAIR_TABELAS_LITERATURA else 'desativada'}")
 
-    modelo = obter_modelo_embeddings()
+    modelo = modelo or obter_modelo_embeddings()
 
     total_chunks = 0
     pdfs_indexados = 0
@@ -669,7 +669,7 @@ def indexar_literatura() -> None:
 
     for i, caminho_pdf in enumerate(pdfs, 1):
         print(f"[{i}/{len(pdfs)}] {caminho_pdf.name}")
-        resultado = indexar_pdf_unico(caminho_pdf, modelo, PASTA_CHROMADB)
+        resultado = indexar_pdf_unico(caminho_pdf, modelo, pasta_chromadb)
 
         if not resultado.get("sucesso"):
             pdfs_com_erro += 1
@@ -693,6 +693,13 @@ def indexar_literatura() -> None:
     print(f"PDFs com erro  : {pdfs_com_erro}")
     print(f"Chunks novos   : {total_chunks}")
     print("=" * 72)
+    return {
+        "pdfs": len(pdfs),
+        "indexados": pdfs_indexados,
+        "pulados": pdfs_pulados,
+        "erros": pdfs_com_erro,
+        "chunks": total_chunks,
+    }
 
 
 # ============================================================

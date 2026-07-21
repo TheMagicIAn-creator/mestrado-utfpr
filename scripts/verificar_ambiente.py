@@ -51,7 +51,6 @@ def checar_nucleo() -> None:
 def checar_opcionais() -> None:
     secao("Opcionais (degradação honesta)")
     mapa = {
-        "prophet": "Facebook Prophet",
         "xgboost": "XGBoost",
         "lightgbm": "LightGBM",
     }
@@ -69,7 +68,8 @@ def checar_chaves() -> None:
     from dotenv import load_dotenv
 
     load_dotenv()
-    for chave in ("GROQ_API_KEY", "GOOGLE_API_KEY"):
+    # Equipe 100% Gemini: uma única chave atende conversa, auditoria e fundo.
+    for chave in ("GOOGLE_API_KEY",):
         tem = bool(os.getenv(chave))
         print(f"  {OK if tem else AVISO} {chave:18s} {'configurada' if tem else 'ausente'}")
 

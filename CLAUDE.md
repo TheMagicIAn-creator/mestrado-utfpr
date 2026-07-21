@@ -46,41 +46,60 @@ dinâmica a partir de sinais elétricos reais via ML.
 O TCC está indexado na base de conhecimento e deve ser
 usado como fonte primária de fundamentação metodológica.
 
-## Resultados FMECA do TCC — Apêndice E (Torres, 2024)
-Análise aplicada ao sistema fotovoltaico do CEAMAZON:
+## FMEA × FMECA e a FMECA consolidada (fonte única: docs/fmeca.md)
+FMEA = Failure Mode and Effects Analysis. FMECA = FMEA +
+Criticidade. NPR = S×O×D é índice da **FMECA** (nunca
+atribuído genericamente à FMEA; D isolado NUNCA é o NPR).
+C (criticidade) = S+O. Escalas do TCC: S 1–5, O e D 1–10.
 
-| Id | Componente    | Modo de Falha                    | S | O  | D  | NPR | NPR pós-manutenção |
-|----|---------------|----------------------------------|---|----|----|-----|--------------------|
-| 1  | Inversor      | Problema de conexão com a rede   | 3 | 7  | 10 | 210 | 18                 |
-| 2  | Subsistema CA | Curto-circuito em proteção       | 5 | 3  | 10 | 150 | 10                 |
+FMECA aplicada no TCC (Apêndice E — CEAMAZON), 2 linhas:
+inversor "problema de conexão com a rede" (S3·O7·D10=210) e
+subsistema AC "curto-circuito na proteção" (S5·O3·D10=150).
+Esses modos NÃO são detectáveis em sinais elétricos CA.
 
-A redução expressiva do NPR após manutenção (210→18 e
-150→10) demonstra a eficácia do plano de manutenção.
-O inversor responde por 43% dos tickets de falha e 36%
-da perda de energia em SFVs (Golnas, 2012 apud Torres).
+FMECA CONSOLIDADA da dissertação (docs/fmeca.md) — os 3
+componentes CA-elétricos do inversor que mais falham pela
+Tab. 3.3 do TCC (Cristaldi et al., 2017), com S/O/D
+estipulados pelo pesquisador (modo/efeito/causa a preencher):
+
+| Id | Componente  | S | O | D | NPR | C  | Assinatura elétrica injetada |
+|----|-------------|---|---|---|-----|----|------------------------------|
+| 1  | Contator AC | 5 | 7 | 9 | 315 | 12 | transiente/ruído de comutação|
+| 2  | IGBT        | 5 | 6 | 3 | 90  | 11 | harmônicos 5/7/11/13 + THD ↑  |
+| 3  | Fusível AC  | 5 | 3 | 2 | 30  | 8  | perda parcial de fase        |
+
+Ordem de criticidade (NPR): Contator AC > IGBT > Fusível AC.
+O inversor responde por 43% dos tickets e 36% da energia
+perdida em SFVs (Golnas, 2012 apud Torres). São ESTAS as
+falhas injetadas — não LCL/desbalanceamento/sensor.
+
+Ressalva: o índice D da FMECA (detecção EM CAMPO) e a
+detectabilidade empírica do Autoencoder são distintos — a
+relação entre eles é resultado a discutir (docs/fmeca.md).
 
 ## Metodologia da Dissertação
 Detecção de anomalias por modelagem de normalidade:
-1. FMEA do lado CA — mapeia modos de falha de cada
-   componente e a assinatura elétrica de cada falha
+1. FMECA do lado CA — componentes, modos e a assinatura
+   elétrica de cada falha (fonte única: docs/fmeca.md)
 2. Treinar modelo do inversor saudável (Autoencoder)
    no dataset de operação normal (Paderborn)
-3. Injeção de falhas sintéticas fundamentada no FMEA
+3. Injeção de falhas sintéticas fundamentada na FMECA
 4. Validar se o detector identifica as falhas injetadas
-5. Estimativa de RUL (Weibull) e decisão de manutenção 
-6. Critério de seleção das falhas: prioridade pelo NPR do FMEA (NPR=210 inversor → primeira falha a injetar)
+5. Estimativa de RUL (Weibull) e decisão de manutenção
+6. Critério de seleção das falhas: prioridade pelo NPR da
+   FMECA (Contator AC NPR=315 → primeira falha a injetar)
 7. TTF para Weibull: derivado das falhas sintéticas injetadas no Paderborn — tempo até o Autoencoder cruzar o limiar operacional de anomalia (percentil 99 do erro de reconstrução saudável; μ+3σ é apenas referência comparativa)
 
 Justificativa: na manutenção preditiva real raramente
 há dados de falha; modela-se o comportamento saudável
-e detectam-se desvios. A injeção sintética baseada em
-FMEA fornece ground truth para validação.
+e detectam-se desvios. A injeção sintética baseada na
+FMECA fornece ground truth para validação.
 
 ## Contexto Técnico do Problema
 - Tipo de inversor  : On-grid trifásico
-- Componentes foco : Lado CA do inversor
-                     (filtro LCL, IGBTs, contactores,
-                      sensores, transformadores)
+- Componentes foco : Lado CA do inversor — 3 da FMECA
+                     consolidada: Contator AC, IGBT,
+                     Fusível AC (docs/fmeca.md)
 - Linguagem        : Python 3.13.3
 - IDE              : PyCharm
 - Ambiente         : .venv (ambiente virtual Python)
@@ -130,11 +149,11 @@ Detecção de anomalias no lado CA — pipeline principal
 etapa vem dos manifestos ou da ferramenta
 consultar_status_pipeline, nunca deste arquivo):
 - Autoencoder (modelagem de normalidade — principal)
-- Injeção de falhas sintéticas FMEA + validação formal
+- Injeção de falhas sintéticas FMECA + validação sintética interna E2
 - Análise de Weibull (confiabilidade e RUL)
 
 Disponíveis via experimentos por artigo (não no pipeline):
-- Isolation Forest, AE-LSTM, Prophet (Ibrahim/Ahirwar)
+- Isolation Forest, AE-LSTM (Ibrahim)
 
 Planejados (sem implementação no pacote):
 - Processo Gaussiano (prognóstico com incerteza)
@@ -152,7 +171,7 @@ os resultados são salvos em resultados/experimentos/<key>/
 
 PAPEL DOS EXPERIMENTOS: são COMPARAÇÃO com a literatura, não
 são o método da dissertação (esse é o pipeline principal —
-Autoencoder no sinal → injeção FMEA → validação → Weibull).
+Autoencoder no sinal → injeção FMECA → validação → Weibull).
 Servem para mostrar que a abordagem escolhida se sustenta
 frente às alternativas. Nunca confundir os dois na dissertação.
 
@@ -162,11 +181,12 @@ CURADORIA — núcleo comparativo enxugado para DOIS experimentos
   se o Autoencoder não vence uma carta de controle 3σ, há
   problema. (O Random Forest supervisionado do artigo foi
   removido.)
-- Ibrahim (2022) — Isolation Forest, AE-LSTM, Prophet: os
-  concorrentes não-supervisionados diretos; o AE-LSTM é primo
-  arquitetural do Autoencoder do pipeline.
+- Ibrahim (2022) — Isolation Forest e AE-LSTM: os concorrentes
+  não-supervisionados diretos; o AE-LSTM é primo arquitetural
+  do Autoencoder do pipeline. (O Prophet do artigo foi cortado:
+  pior detector + dependência instável em runtime.)
 
-CORTADOS (não são mais experimentos executáveis):
+CORTADOS (não são mais experimentos/modelos executáveis):
 - Ghoneim (2021) — classificação supervisionada CC (PV Farms),
   fora do foco CA (segue acessível pelo classificador_pv).
 - Sharma (2026) — baselines supervisionados, RNN/CNN e
@@ -174,11 +194,13 @@ CORTADOS (não são mais experimentos executáveis):
 - Ahirwar (2025) — voto híbrido; derivativo do Ibrahim (só
   combina os membros que o Ibrahim já roda).
 - Stender (2020) — cartão de dataset, não é experimento.
-Ahirwar e Stender seguem CITÁVEIS como literatura indexada;
-apenas não são experimentos executáveis.
+- Facebook Prophet (modelo do Ibrahim) — pior detector do trio
+  e dependência que quebra em runtime ('stan_backend').
+Ahirwar, Stender e Prophet seguem CITÁVEIS como literatura;
+apenas não são experimentos/modelos executáveis.
 
 Assimetria de evidência (importante para a banca): o pipeline
-principal usa injeção FMEA no SINAL bruto (E2); os experimentos
+principal usa injeção FMECA no SINAL bruto (E2); os experimentos
 usam injeção no espaço de FEATURES (E1). Não são diretamente
 comparáveis por F1 — só por AUC.
 
@@ -192,17 +214,17 @@ nativa reportada à parte. Nunca treina; sem modelo salvo, avisa
 
 Anomalia é avaliada com PROTOCOLO PRÓPRIO POR ARTIGO
 (src/ml/protocolos_artigos.py): split temporal com purga,
-injeção sintética orientada pelo FMEA no espaço de features
-(famílias LCL/desbalanceamento/sensor, com detecção por
+injeção sintética orientada pela FMECA no espaço de features
+(famílias Contator AC/IGBT/Fusível AC, com detecção por
 falha) e a regra de decisão do próprio artigo — Shewhart 3σ
-(Francisti), contaminação a priori + p99 do treino + banda
-do Prophet (Ibrahim). Nenhum limiar enxerga os rótulos do
+(Francisti), contaminação a priori + p99 do treino congelado
+(Ibrahim: IF + AE-LSTM). Nenhum limiar enxerga os rótulos do
 teste; F1 não é comparável entre protocolos (compare por AUC).
-O resultado.json carrega o bloco "metodologia". Degradação
-honesta: um modelo cujo pacote não está instalado é mostrado
-como "requer <lib>" em vez de sumir. Biblioteca pesada opcional
-dos experimentos: prophet (requirements-extras-prophet.txt).
-Orange3 e stable-baselines3/gymnasium foram descartados junto
+O resultado.json carrega o bloco "metodologia". Robustez: um
+modelo cujo pacote não está instalado vira "requer <lib>"; um
+modelo instalado que quebra em runtime vira "erro de execução"
+sem derrubar os demais (helper _rodar_modelo). Prophet, Orange3
+e stable-baselines3/gymnasium foram descartados junto
 com os experimentos Ghoneim/Sharma.
 
 ## Arquitetura do Sistema
@@ -220,14 +242,17 @@ mestrado-utfpr/
 │   ├── conhecimento/         → cérebro do agente (RAG):
 │   │     agente.py (pipeline RAG + PERFIL_COMPACTO),
 │   │     ferramentas.py (specs + roteador de 20 tools),
-│   │     indexador.py, provedores.py, processador_pdf.py,
+│   │     indexador.py, indice_portatil.py, indice_lexical.py,
+│   │     provedores.py, multiagente.py, memoria_persistente.py,
+│   │     obsidian.py (vault completo + memória histórica), processador_pdf.py,
 │   │     consolidar_memoria.py, web_search.py,
 │   │     leitor_anexos.py, retrieval_metrics.py,
 │   │     index_lock.py
 │   ├── ml/                   → pipeline CA + experimentos:
 │   │     features_ca.py, autoencoder.py, injecao_falhas.py,
 │   │     validacao.py, rul_weibull.py, pipeline.py,
-│   │     proveniencia.py, split_temporal.py, resultados.py,
+│   │     proveniencia.py, split_temporal.py, dados_avaliacao.py,
+│   │     estatistica.py, exec_etapa_isolada.py, resultados.py,
 │   │     eda.py, classificador_pv.py (+_infer),
 │   │     experimentos_artigos.py, protocolos_artigos.py,
 │   │     modelos_anomalia.py, exec_experimento_isolado.py,
@@ -244,8 +269,13 @@ mestrado-utfpr/
 ├── dados/brutos/             → datasets originais
 ├── dados/processados/        → dados pré-processados
 ├── resultados/               → gráficos e relatórios
-├── notas/                    → Obsidian, arquivo de leitura (sessões/memórias;
-│                                não é caderno de escrita nem fonte do RAG)
+├── artefatos/                → snapshots portáteis para o deploy
+├── notas/                    → vault Obsidian
+│   ├── Cerebro/              → notas curadas e memórias validadas
+│   ├── Literatura/           → notas auxiliares pesquisáveis; não são citação
+│   ├── memorias/agentes/     → JSON auditável da memória validada
+│   ├── sessoes/              → registro conversacional atual pesquisável
+│   └── sessoes_arquivadas/   → histórico conversacional pesquisável
 ├── novos_pdfs/               → PDFs aguardando indexação
 ├── base_conhecimento/        → ChromaDB local (ignorado Git)
 ├── app.py                    → ponto de entrada (Streamlit)
@@ -286,11 +316,12 @@ Para reprocessar toda a literatura manualmente:
   New-Item REPROCESSAR -ItemType File
   (abrir o app → orquestrador detecta e executa)
 
-## Pipeline RAG — 3 Camadas
+## Pipeline RAG — Recuperação Híbrida e Auditoria
 Quando Rodolfo faz uma pergunta, o sistema executa.
-IMPORTANTE: as camadas 1 e 3 são heurísticas LOCAIS
-(sem chamada de LLM) para não consumir TPM antes da
-resposta; o LLM só é invocado na resposta final.
+IMPORTANTE: expansão, recuperação, fusão e reranking são
+LOCAIS. O Gemini Flash (auditor) só é chamado com um pacote
+compacto quando há literatura recuperada; o Gemini Pro produz
+a resposta final.
 
 CAMADA 1 — Expansão de query (local, por regras)
   Gera variações da pergunta por gatilhos de domínio
@@ -302,17 +333,23 @@ CAMADA 1 — Expansão de query (local, por regras)
 
 CAMADA 2 — Busca híbrida
   → Busca semântica: embeddings para cada variação
-  → Busca keyword: ChromaDB where_document para cada termo
-  → Pool deduplicado de candidatos
+  → Busca lexical: BM25 em SQLite FTS5
+  → Fusão das duas listas por Reciprocal Rank Fusion (RRF)
+  → ChromaDB where_document é apenas fallback sem FTS5
 
 CAMADA 3 — Reranking (local, heurístico)
   → Pontua por sobreposição lexical com a pergunta
   → Ajusta por pasta temática (PV/ML/manutenção com
     boost; textbooks fora de domínio penalizados)
   → Diversifica o top-K com teto de chunks por fonte
-  → Nº final de chunks segue o orçamento do provedor
-    (Groq 10 / Gemini 16 na pergunta normal; 16–28 em
-    modo revisão) — ver ORCAMENTOS_RAG em agente.py
+  → Nº final de chunks segue o orçamento do Gemini,
+    que é o agente responsável pela resposta final
+
+CAMADA 4 — Auditoria e síntese
+  → Gemini Flash (auditor) verifica cobertura, lacunas e
+    fontes utilizáveis em JSON estrito; não responde à pergunta
+  → Gemini Pro recebe contexto, parecer de auditoria e memória
+    validada, então conversa e produz a síntese final
 
 Nota: o perfil injetado no prompt do LLM é o
 PERFIL_COMPACTO hardcoded em agente.py (este CLAUDE.md
@@ -320,6 +357,74 @@ excede o limite de 6000 chars e não entra no prompt).
 
 Sempre citar: autor, título e ano do artigo consultado.
 Nunca inventar referências.
+
+## Equipe Multiagente e Aprendizado
+A equipe é 100% Gemini, um modelo por nível de tarefa — a escolha segue os
+limites de taxa por modelo do plano pago (quanto mais barato o modelo, maior o
+RPM/TPM, então o trabalho repetitivo desce de nível):
+- Conversa, interpretação de ferramentas, multimodalidade (imagens) e síntese
+  final: por padrão `gemini-flash-latest` (GA, rápido e estável). É a única voz
+  do chat. O `gemini-pro-latest` é opt-in via `AL_IADO_GEMINI_MODEL` para máximo
+  raciocínio — mas é lento no trivial e sofre 503 de alta demanda, por isso não
+  é o default. Saudações/reações casuais nem chegam ao modelo (atalho local
+  `resposta_interacao_simples`).
+- Gemini Flash (`gemini-flash-latest`, alias -latest) tem o papel fixo de auditor de evidências e
+  porteiro da memória. Recebe entradas estruturadas e independentes da conversa,
+  em JSON. Os limites seguem o plano contratado e podem ser configurados por
+  variáveis `AL_IADO_*`.
+- Resiliência a modelos: chamadas retentam em erro transitório (503/429) com
+  backoff e caem para o modelo de fallback (`gemini-flash-latest`) se o
+  configurado estiver aposentado (404) — o chat não trava por rotação/sobrecarga.
+- Gemini Flash-Lite (`gemini-flash-lite-latest`, alias -latest) roda as tarefas de fundo em lote
+  (metadados de PDF e consolidação de memória): o modelo mais barato/veloz, com
+  o maior limite de taxa.
+- Python continua responsável por cálculos, ferramentas, indexação, gráficos,
+  tabelas e artefatos. Nenhum LLM recalcula ou aprova o próprio resultado.
+- Os modelos não são retreinados durante a conversa. O aprendizado entre
+  sessões ocorre por memória externa validada em
+  `notas/memorias/agentes/memoria_validada.json`.
+- Só podem ser memorizadas preferências, decisões metodológicas, correções e
+  contexto estável declarado pelo pesquisador. Segredos, métricas e resultados
+  recalculáveis são rejeitados; estes permanecem nos artefatos atuais.
+- A memória validada é alimentada por DOIS caminhos, ambos filtrados pelo
+  auditor (Gemini Flash): (a) em tempo real, quando o pesquisador usa um gatilho
+  explícito ("lembre", "prefiro", "daqui em diante", "decidi", "corrigindo"); e
+  (b) automaticamente, na consolidação periódica de sessões
+  (`consolidar_memoria.consolidar_memoria_validada`), que varre o transcrito e
+  extrai decisões/preferências duráveis mesmo sem gatilho. O segundo caminho é
+  best-effort: nunca derruba a consolidação narrativa e obedece às mesmas regras
+  de rejeição (confiança mínima, sem segredos/métricas).
+- Cada item tem evidência do pesquisador, proveniência, confiança, status e id.
+  O Gemini recupera no máximo seis itens pertinentes por pergunta.
+- Cada item aprovado também recebe uma projeção Markdown em
+  `notas/Cerebro/Memorias validadas/`. Essa projeção torna a memória navegável
+  no grafo do Obsidian; o JSON continua sendo a fonte de verdade.
+- Todo Markdown útil do vault entra por padrão na coleção `obsidian_pv`, com
+  classe de origem: curada, sessão atual/arquivada, memória consolidada,
+  conceito, experimento, nota de literatura ou nota geral. Frontmatter refina
+  confiança/status; `al_iado: false` ou `privado: true` exclui deliberadamente.
+  Plugins, templates, diretórios técnicos e segredos aparentes são ignorados.
+  Arquivos novos ou editados são sincronizados no próximo turno.
+- No deploy, o snapshot portátil do Obsidian é **mesclado** em toda inicialização:
+  chunks históricos ausentes são restaurados e sessões novas são preservadas.
+  Consultas simples de primeiro/último registro são ordenadas diretamente pelos
+  metadados e nomes dos arquivos, sem delegar a cronologia ao LLM.
+- Contexto Obsidian nunca vira citação bibliográfica. Em conflito, prevalecem
+  artefatos atuais, notas curadas ativas e fontes primárias conforme o tipo de
+  afirmação. Sessões antigas registram o que foi dito, inclusive respostas do
+  modelo possivelmente superadas; servem para memória, não para provar fatos.
+- O deploy restaura `artefatos/obsidian_indexado.jsonl.gz`, evitando carregar o
+  encoder só para preparar essas notas. Mudanças versionadas no vault exigem
+  `python scripts/reconstruir_cerebro_obsidian.py` antes do push.
+- No PC, o arquivo pode ser versionado no Git. No Streamlit Community Cloud,
+  novas gravações no disco são efêmeras até o próximo redeploy; a base inicial
+  versionada continua disponível em toda implantação.
+- Persistência transacional na nuvem (`persistencia_nuvem.py`): com o switch
+  `AL_IADO_PERSISTIR_NUVEM=1` e um `GITHUB_TOKEN` nos Secrets, cada memória
+  validada aprovada é commitada de volta ao repositório (GitHub Contents API,
+  branch de deploy), sobrevivendo a redeploys sem `git commit` manual. É
+  best-effort e desligado por padrão (no PC, o versionamento é manual); o token
+  nunca é logado.
 
 ## Indexação
 Cada PDF de literatura é indexado com:
@@ -335,7 +440,7 @@ Sessões e memórias usam chunks menores (500/50).
 
 Extração de metadados em cascata (processador_pdf.py —
 roda APENAS para PDFs novos vindos de novos_pdfs/):
-  LLM (Groq → fallback Gemini) → regex → metadados
+  LLM de fundo (gemini-flash-lite-latest) → regex → metadados
   internos do PDF → registra pendência
 Na reindexação de PDFs já nomeados em literatura/,
 autor/título/ano vêm do NOME do arquivo (regex), sem LLM.
@@ -357,9 +462,15 @@ validada. Status e métricas devem vir de:
 - ferramentas de consulta do agente;
 - scripts de verificação.
 
+Execução local e nuvem são capacidades diferentes. O pipeline pesado é
+recalculado no PC, onde `dados/brutos/` está disponível e permanece ignorado
+pelo Git. O Streamlit Cloud restaura o índice portátil da literatura e consulta
+os artefatos versionados de `resultados/`; sem o dataset bruto, nunca deve
+afirmar que treinou ou recalculou modelos na nuvem.
+
 IMPORTANTE: nunca cite métricas de memória. Consulte sempre o artefato JSON
 vigente e informe o nível de evidência. Resultado de injeção/validação é E2
-(sintético orientado pelo FMEA), não prova de desempenho industrial.
+(sintético orientado pela FMECA), não prova de desempenho industrial.
 
 ## Como Devo Me Comportar
 - Responder por padrão em português brasileiro, salvo quando Rodolfo escrever
@@ -403,9 +514,14 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Perguntas objetivas como "mostre a matriz" ou "mostre os gráficos" devem
   retornar artefatos certos, organizados e sem rodeio.
 - Perguntas autorais como "na sua opinião", "explique", "o que reforça minha
-  proposta" ou "como apresentar à orientadora" devem ir além da tabela:
-  interpretar, priorizar, apontar ressalvas e dizer o que aquilo significa
-  para a dissertação.
+  proposta", "o que isso significa" ou "como apresentar à orientadora" devem ir
+  além da tabela: interpretar, priorizar, apontar ressalvas e dizer o que aquilo
+  significa para a dissertação. GARANTIA NO CÓDIGO: comentar_resultado só
+  devolve a tabela crua (forcar_resposta_direta / resposta_pronta) quando NÃO é
+  pedido autoral; se for, os dados viram evidência e a resposta passa pelo LLM
+  com o perfil injetado (ver _quer_resposta_autoral em ferramentas.py). Números
+  com ressalva (Weibull/RUL sintético, SMD não detectada, E1/E2) nunca são apresentados
+  como conclusivos.
 - Sempre diferenciar dado local, metodologia de artigo e resultado copiado.
   Os experimentos devem deixar claro quando usam datasets do repositório
   (Paderborn/PV Farms), quando usam falhas sintéticas e quando um artigo é
@@ -415,10 +531,22 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
   anomalía/anomalie ↔ anomalia, reliability/confiabilidad/fiabilité ↔
   confiabilidade, maintenance/mantenimiento/maintenance ↔ manutenção.
 - Respostas com tabelas devem ser legíveis, compactas e acompanhadas de uma
-  leitura técnica. Tabela não substitui parecer.
-- Imagens e gráficos devem aparecer agrupados por artigo/experimento, na ordem
-  pedida por Rodolfo, com tamanho proporcional ao conteúdo e sem estourar a
-  largura da tela.
+  leitura técnica. Tabela não substitui parecer. A forma segue o pedido: tabela
+  completa, ranking por métrica ou quadro de detecções, sem formato único fixo.
+- Gráficos são DESACOPLADOS dos resultados: ao consultar/gerar resultados, o
+  agente NÃO despeja as figuras na tela. Cada artefato oferece antevisão
+  responsiva sob demanda e download; a imagem só é renderizada inline quando
+  Rodolfo pede explicitamente ("mostre os gráficos", "veja a curva ROC").
+  Comportamento em src/ml/resultados.py (flag inline) e
+  src/interface/streamlit_app.py (_controles_antevisao / renderizar_imagens).
+- Comparações de experimentos oferecem heatmap, pequenos múltiplos por pontos
+  e barras horizontais sob comando. Contagens usam escala própria e cobertura
+  percentual, para uma referência grande não achatar as diferenças entre modelos.
+- Toda data/hora exibida ao pesquisador usa `America/Sao_Paulo` por meio de
+  `src/core/tempo.py`, independentemente do fuso do servidor. Campos `*_utc`
+  continuam em UTC para auditoria.
+- Imagens renderizadas inline aparecem agrupadas por artigo/experimento, na
+  ordem pedida por Rodolfo, ajustadas à largura da tela.
 
 ## Como Rodolfo Prefere Aprender
 - Explicar conceitos novos com analogias práticas
@@ -434,17 +562,19 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Linguagem    : Python 3.13.3
 - IDE          : PyCharm
 - Versionamento: GitHub (mestrado-utfpr)
-- Interface    : Streamlit (aplicação web local)
-- Memória      : ChromaDB (banco vetorial local)
-- LLM          : multi-provedor — usuário escolhe o
-                 provedor da resposta principal:
-                 Google Gemini (gemini-2.5-flash) ou
-                 Groq (llama-3.3-70b-versatile).
-                 Groq também é usado (com fallback
-                 Gemini) na extração de metadados de
-                 PDFs e na consolidação de memória.
-                 Expansão de query e reranking são
-                 locais, sem LLM.
+- Interface    : Streamlit (aplicação web local e em nuvem)
+- Memória      : sessões no ChromaDB + memória validada em JSON versionável
+- LLM          : equipe 100% Gemini, aliases -latest (a família 2.5 foi
+                 aposentada em 2026) — Nível 1 conversa/síntese/imagens em
+                 `gemini-flash-latest` por padrão (GA, estável; `gemini-pro-latest`
+                 é opt-in via AL_IADO_GEMINI_MODEL para máximo raciocínio),
+                 Nível 2 `gemini-flash-latest` (auditoria de evidências
+                 e validação da memória, em JSON) e Nível 3 `gemini-flash-lite-latest`
+                 (tarefas de fundo em lote: metadados de PDF e consolidação de
+                 memória — o mais barato/veloz, maior limite de taxa). Modelos
+                 configuráveis por env (AL_IADO_GEMINI_MODEL /
+                 AL_IADO_GEMINI_MODEL_AUDITOR / AL_IADO_GEMINI_MODEL_FUNDO).
+                 Expansão, BM25, RRF, reranking, cálculos e ferramentas são locais.
 - Embeddings   : paraphrase-multilingual-MiniLM-L12-v2
 - Extração PDF : pypdf (texto) + pdfplumber (tabelas)
 - Monitoramento: watchdog + schedule
@@ -466,7 +596,8 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Artigo de descrição do dataset de Paderborn
   (Stender, Wallscheid & Böcker, 2020)
 - Datasets: Paderborn (inversor saudável) e PV Farms
-- Memória consolidada das sessões de desenvolvimento
-  (vault Obsidian em notas/ é só arquivo de leitura dessas sessões/memórias,
-  não é fonte adicional consultada pelo RAG)
+- Vault Obsidian completo (`notas/`): decisões, conceitos, notas de leitura,
+  sessões atuais/arquivadas, memórias consolidadas e espelho da memória
+  validada. Tudo é pesquisável com proveniência e classe de origem, mas nunca
+  vira evidência bibliográfica nem substitui artefatos atuais.
 - Tabelas estruturadas extraídas dos PDFs (pdfplumber)

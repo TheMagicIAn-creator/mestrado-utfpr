@@ -40,12 +40,19 @@ def test_env_example_cobre_variaveis_lidas_pelo_codigo():
 
 
 def test_modelos_citados_existem_no_codigo():
-    """Modelos nomeados no CLAUDE.md/.env.example existem em provedores.py."""
-    proibidos = ("3.1 8B", "LLaMA 3.1", "llama-3.1", "Gemma", "gemma")
+    """Modelos nomeados no CLAUDE.md/.env.example existem em provedores.py.
+
+    A equipe agora é 100% Gemini (Groq/LLaMA foram removidos): os modelos
+    da família LLaMA e o próprio Groq não podem reaparecer nos docs.
+    """
+    proibidos = ("3.1 8B", "LLaMA 3.1", "llama-3.1", "llama-3.3",
+                 "Gemma", "gemma")
     for texto, nome in ((CLAUDE, "CLAUDE.md"), (ENV_EXAMPLE, ".env.example")):
         for p in proibidos:
             assert p not in texto, f"{nome} cita modelo inexistente no código: {p!r}"
-    for modelo in ("gemini-2.5-flash", "llama-3.3-70b-versatile"):
+    # Aliases -latest (a família 2.5 foi aposentada em 2026; versões explícitas
+    # giram rápido). Nível 1 = pro (conversa); 2 = flash (auditor); 3 = flash-lite.
+    for modelo in ("gemini-pro-latest", "gemini-flash-latest", "gemini-flash-lite-latest"):
         assert modelo in PROVEDORES, f"provedores.py não define {modelo}"
         assert modelo in CLAUDE, f"CLAUDE.md não documenta o modelo real {modelo}"
 
@@ -90,3 +97,11 @@ def test_experimentos_do_claude_md_existem_no_registry():
     )
     for cortado in ("ghoneim", "sharma", "ahirwar", "stender"):
         assert cortado not in chaves, f"experimento cortado voltou: {cortado}"
+
+
+def test_obsidian_documentado_com_governanca_e_sem_status_bibliografico():
+    assert "Todo Markdown útil do vault" in CLAUDE
+    assert "obsidian_pv" in CLAUDE
+    assert "nunca vira citação bibliográfica" in CLAUDE
+    assert "al_iado: false" in CLAUDE
+    assert "sessão atual/arquivada" in CLAUDE

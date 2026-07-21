@@ -2,14 +2,14 @@
 avaliar_respostas_reais.py — Al IAdo PV
 
 Harness de "amostra real": gera a resposta de verdade do agente (RAG real +
-Groq) para um conjunto curado de perguntas e a avalia programaticamente
+Gemini) para um conjunto curado de perguntas e a avalia programaticamente
 (barato, determinístico) com correção/retry. Complementa a bateria
 determinística `avaliar_agente_100.py` (que valida políticas/funções puras sem
 gastar cota de API).
 
 Para cada pergunta:
   1. `preparar_prompt(...)` monta o prompt com RAG real (ChromaDB + embeddings).
-  2. `llm.invoke(...)` no Groq, com backoff para o limite de 12k tokens/min.
+  2. `llm.invoke(...)` no Gemini, com backoff em caso de limite de taxa (429).
   3. Avaliação programática da resposta:
        - não escreve um bloco final de Referências/Bibliografia/📚 Fontes
          (`remover_bloco_fontes_llm` deve ser no-op — o rodapé é do sistema);
@@ -18,7 +18,7 @@ Para cada pergunta:
        - responde em português, com tamanho são;
        - nunca afirma que algo "não está na base".
   4. Correção: se falhar, 1 retry com instrução reforçada e reavaliação.
-  5. (Opcional, flag --juiz) LLM-juiz: nota 0–5 + justificativa (1 chamada Groq).
+  5. (Opcional, flag --juiz) LLM-juiz: nota 0–5 + justificativa (1 chamada Gemini).
 
 Gera relatório em notas/sessoes/ e grava 1 memória por pergunta no ChromaDB
 (coleção de sessões), como a bateria determinística.
@@ -30,7 +30,7 @@ Uso:
   python scripts/avaliar_respostas_reais.py --sem-retry     # sem correção
   python scripts/avaliar_respostas_reais.py --sem-memoria   # não grava ChromaDB
 
-Sem GROQ_API_KEY no .env, o script encerra com aviso (não falha o CI).
+Sem GOOGLE_API_KEY no .env, o script encerra com aviso (não falha o CI).
 
 Autor: Rodolfo Torres (UTFPR)
 """
@@ -71,9 +71,11 @@ from src.core.config import (
     PASTA_NOTAS,
 )
 
-# Provedor real: Groq (texto puro, 12k tokens/min). Chave "2" em provedores.py.
-ESCOLHA_GROQ = "2"
-NOME_PROVEDOR_GROQ = "Groq (LLaMA 3.3)"
+# Provedor da avaliacao: Gemini Flash (papel de auditor, chave "2" em
+# provedores.py). Escolhido em vez do Pro para nao gastar a cota do modelo
+# principal numa bateria de dezenas de perguntas.
+ESCOLHA_LLM = "2"
+NOME_PROVEDOR_LLM = "Google Gemini (Flash)"
 
 # Limites de sanidade da resposta.
 MIN_CHARS_RESPOSTA = 80
@@ -81,7 +83,7 @@ MAX_CHARS_RESPOSTA = 14_000
 
 
 class QuotaExcedida(RuntimeError):
-    """Cota diaria/por-minuto do Groq esgotada (HTTP 429). NAO e falha de
+    """Cota/limite de taxa do Gemini esgotado (HTTP 429). NAO e falha de
     qualidade da resposta — e limite externo de API. Tratada a parte para
     nao contaminar o veredito da bateria."""
 
@@ -351,7 +353,7 @@ def _instrucao_reforco(checks: list[tuple[str, bool, str]], pergunta: str) -> st
 # CHAMADA AO LLM (com backoff de rate limit)
 # ============================================================
 
-def invocar_groq(llm, prompt: str, max_tentativas: int = 4) -> str:
+def invocar_llm(llm, prompt: str, max_tentativas: int = 4) -> str:
     mensagens = [HumanMessage(content=prompt)]
     for tentativa in range(1, max_tentativas + 1):
         try:
@@ -379,7 +381,7 @@ def invocar_groq(llm, prompt: str, max_tentativas: int = 4) -> str:
 
 
 def julgar(llm, pergunta: str, resposta: str) -> tuple[int | None, str]:
-    """LLM-juiz opcional: nota 0–5 + justificativa (1 chamada Groq)."""
+    """LLM-juiz opcional: nota 0–5 + justificativa (1 chamada Gemini)."""
     rubrica = (
         "Voce e um avaliador rigoroso de um assistente de pesquisa de mestrado "
         "em engenharia eletrica (deteccao preditiva de falhas em inversores "
@@ -389,7 +391,7 @@ def julgar(llm, pergunta: str, resposta: str) -> tuple[int | None, str]:
         f"PERGUNTA: {pergunta}\n\nRESPOSTA:\n{resposta[:4000]}"
     )
     try:
-        saida = invocar_groq(llm, rubrica, max_tentativas=3)
+        saida = invocar_llm(llm, rubrica, max_tentativas=3)
     except Exception as exc:  # noqa: BLE001
         return None, f"juiz indisponivel: {exc}"
     m = re.search(r"nota[:\s]*([0-5])", saida, re.IGNORECASE)
@@ -423,7 +425,7 @@ def gravar_memoria(resultados: list[dict], timestamp: str) -> int:
             f"- Nota do juiz: {item.get('nota')}\n\n"
             f"Trecho da resposta:\n{item['resposta'][:600]}\n\n"
             "Memoria operacional: este teste valida a RESPOSTA real do agente "
-            "(RAG + Groq) — politica de citacao, ausencia de bloco de fontes "
+            "(RAG + Gemini) — politica de citacao, ausencia de bloco de fontes "
             "duplicado, termos-chave do dominio e proibicao de negar a base."
         )
         ids.append(f"avaliacao_respostas_reais_{timestamp}_{item['indice']:03d}")
@@ -456,10 +458,10 @@ def gravar_relatorio(resultados: list[dict], memorias: int, timestamp: str,
     avaliadas = total - len(quota_skips)
 
     linhas = [
-        f"# Avaliacao de respostas reais (Groq) - {total} perguntas",
+        f"# Avaliacao de respostas reais (Gemini) - {total} perguntas",
         "",
         f"- Data: {timestamp}",
-        f"- Provedor: {NOME_PROVEDOR_GROQ}",
+        f"- Provedor: {NOME_PROVEDOR_LLM}",
         f"- Total: {total}",
         f"- Respondidas/avaliadas: {avaliadas}",
         f"- Passaram: {sum(1 for r in resultados if r['ok'])}",
@@ -521,13 +523,13 @@ def gravar_relatorio(resultados: list[dict], memorias: int, timestamp: str,
 # ============================================================
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Avaliacao de respostas reais (Groq).")
+    parser = argparse.ArgumentParser(description="Avaliacao de respostas reais (Gemini).")
     parser.add_argument("--limite", type=int, default=0,
                         help="avalia apenas as N primeiras perguntas (0 = todas).")
     parser.add_argument("--pausa", type=float, default=4.0,
                         help="pausa (s) entre perguntas para respeitar o rate limit.")
     parser.add_argument("--juiz", action="store_true",
-                        help="ativa o LLM-juiz (1 chamada Groq extra por pergunta).")
+                        help="ativa o LLM-juiz (1 chamada Gemini extra por pergunta).")
     parser.add_argument("--sem-retry", action="store_true",
                         help="desativa a correcao/retry em caso de falha.")
     parser.add_argument("--com-memoria", action="store_true",
@@ -536,13 +538,13 @@ def main() -> int:
                         help="(compat.) nao grava memorias — ja e o padrao.")
     args = parser.parse_args()
 
-    if not os.getenv("GROQ_API_KEY"):
-        print("⚠️  GROQ_API_KEY ausente no .env — harness de respostas reais "
+    if not os.getenv("GOOGLE_API_KEY"):
+        print("⚠️  GOOGLE_API_KEY ausente no .env — harness de respostas reais "
               "ignorado (sem custo de API). Configure a chave para rodar.")
         return 0
 
-    print(f"\n🟢 Inicializando {NOME_PROVEDOR_GROQ}...")
-    llm, nome_provedor = inicializar_provedor(ESCOLHA_GROQ)
+    print(f"\n🟢 Inicializando {NOME_PROVEDOR_LLM}...")
+    llm, nome_provedor = inicializar_provedor(ESCOLHA_LLM)
 
     print("📚 Carregando RAG (embeddings + ChromaDB)...")
     modelo, colecao, colecao_sessoes = _carregar_rag()
@@ -568,14 +570,14 @@ def main() -> int:
                 colecao_sessoes=colecao_sessoes,
                 nome_provedor=nome_provedor,
             )
-            resposta = invocar_groq(llm, prompt)
+            resposta = invocar_llm(llm, prompt)
             checks = avaliar(resposta, termos, consultar)
             corrigido = False
 
             if not all(ok for _, ok, _ in checks) and not args.sem_retry:
                 print("    ↻ retry com instrucao reforcada...")
                 reforco = _instrucao_reforco(checks, pergunta)
-                resposta2 = invocar_groq(llm, prompt + reforco)
+                resposta2 = invocar_llm(llm, prompt + reforco)
                 checks2 = avaliar(resposta2, termos, consultar)
                 # adota o retry se nao piorou
                 if sum(ok for _, ok, _ in checks2) >= sum(ok for _, ok, _ in checks):
@@ -596,7 +598,7 @@ def main() -> int:
 
         except QuotaExcedida as exc:
             resposta = f"[quota excedida: {exc}]"
-            checks = [("quota", False, "cota diaria/por-minuto do Groq esgotada")]
+            checks = [("quota", False, "cota/limite de taxa do Gemini esgotado")]
             ok, falhas, corrigido = False, ["quota"], False
             nota, juiz_just, quota = (None, "", True)
             print("    → SKIP (cota da API esgotada — nao e falha de qualidade)")
@@ -640,7 +642,7 @@ def main() -> int:
     print(f"Relatorio             : {relatorio}")
     if quota_skips:
         print("\n⚠️  Algumas perguntas nao foram avaliadas por esgotamento da cota "
-              "diaria do Groq (100k tokens/dia no tier gratuito). Rode novamente "
+              "de taxa do Gemini. Rode novamente "
               "amanha, ou use --limite/--pausa para caber no orcamento. Isso NAO "
               "conta como falha de qualidade.")
 

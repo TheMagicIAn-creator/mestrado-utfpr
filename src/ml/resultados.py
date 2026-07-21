@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
 from pathlib import Path
 
 from src.core.config import PASTA_CHROMADB, RAIZ_PROJETO
-from src.core.formatacao import fmt_num, fmt_pvalor
+from src.core.formatacao import fmt_num
+from src.core.tempo import agora_local
 
 PASTA_AE = RAIZ_PROJETO / "resultados" / "autoencoder"
 PASTA_EXPERIMENTOS = RAIZ_PROJETO / "resultados" / "experimentos"
@@ -122,6 +122,17 @@ def _pede_graficos_modelo(txt: str) -> bool:
     ))
 
 
+def _variante_comparacao_metricas(txt: str) -> tuple[str, str]:
+    if any(t in txt for t in ("pontos", "dot plot", "dotplot", "lollipop", "dispersao")):
+        return "comparacao_metricas_pontos.png", "comparacao por pontos"
+    if any(t in txt for t in (
+        "barras", "barra horizontal", "bar chart", "bar plot",
+        "grafico de colunas", "gráfico de colunas",
+    )):
+        return "comparacao_metricas_barras.png", "comparacao em barras horizontais"
+    return "comparacao_metricas.png", "comparacao de metricas"
+
+
 def _pede_anomalias(txt: str) -> bool:
     return any(t in txt for t in (
         "anomalias detectadas", "detectaram", "detectou",
@@ -167,7 +178,6 @@ def _modelo_citado(txt: str, modelo: str) -> bool:
         "random forest": ("random forest", "rf", "bosque aleatorio", "foret aleatoire", "forêt aléatoire"),
         "z-score": ("z-score", "z score", "zscore"),
         "ae-lstm": ("ae-lstm", "ae lstm", "autoencoder lstm"),
-        "facebook prophet": ("facebook prophet", "prophet"),
         "hibrido": ("hibrido", "voto"),
         "svm": ("svm",),
         "knn": ("knn",),
@@ -301,16 +311,19 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
 
     imagens = []
     if "autoencoder" in focos:
+        caminho_qualidade = RAIZ_PROJETO / "dados" / "processados" / "features_paderborn_qualidade.png"
+        _add_img(imagens, caminho_qualidade, "Features - diagnostico espectral e F0", grupo="Qualidade dos dados", ordem=5, ordem_grupo=5)
         _add_img(imagens, "curva_treino.png", "Autoencoder - curva de treinamento", grupo="Autoencoder", ordem=10, ordem_grupo=10)
         _add_img(imagens, "distribuicao_erro.png", "Autoencoder - distribuicao do erro", grupo="Autoencoder", ordem=20, ordem_grupo=10)
         _add_img(imagens, "erro_temporal.png", "Autoencoder - erro temporal", grupo="Autoencoder", ordem=30, ordem_grupo=10)
     if "injecao" in focos:
         _add_img(imagens, "injecao_falhas_resultados.png", "Falhas sinteticas - erro por severidade", grupo="Injecao de falhas", ordem=10, tipo="comparacao", ordem_grupo=20)
-        _add_img(imagens, "injecao_falhas_comparacao.png", "Falhas sinteticas - comparacao em escala log", grupo="Injecao de falhas", ordem=20, tipo="comparacao", ordem_grupo=20)
+        _add_img(imagens, "injecao_falhas_comparacao.png", "Falhas sinteticas - taxa de deteccao e IC95%", grupo="Injecao de falhas", ordem=20, tipo="comparacao", ordem_grupo=20)
     if "validacao" in focos:
         _add_img(imagens, "validacao_roc.png", "Validacao - curvas ROC", grupo="Validacao", ordem=10, tipo="comparacao", ordem_grupo=30)
         _add_img(imagens, "validacao_pr.png", "Validacao - curvas Precision-Recall", grupo="Validacao", ordem=15, tipo="comparacao", ordem_grupo=30)
         _add_img(imagens, "validacao_matriz.png", "Validacao - matrizes de confusao", grupo="Validacao", ordem=20, tipo="matriz", ordem_grupo=30)
+        _add_img(imagens, "validacao_matrizes_severidades.png", "Validacao - matrizes por falha e severidade", grupo="Validacao", ordem=25, tipo="comparacao", ordem_grupo=30)
         _add_img(imagens, "validacao_metricas.png", "Validacao - heatmap de metricas", grupo="Validacao", ordem=30, tipo="comparacao", ordem_grupo=30)
     if "weibull" in focos:
         _add_img(imagens, "weibull_ttf.png", "Weibull - distribuicao TTF", grupo="Weibull / RUL", ordem=10, ordem_grupo=40)
@@ -322,6 +335,16 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
         somente_matriz = pede_matriz and not pede_graficos
         melhor_apenas = _pede_melhor(txt)
         pede_anomalias = _pede_anomalias(txt)
+        pedido_comparativo = any(t in txt for t in (
+            "comparar", "compare", "comparacao", "comparison",
+            "comparacion", "comparaison", "versus", " vs ",
+        ))
+        pede_individuais = (not pedido_comparativo) or any(t in txt for t in (
+            "resultado individual", "resultados individuais",
+            "grafico de cada modelo", "gráfico de cada modelo",
+            "graficos por modelo", "gráficos por modelo",
+            "todos os graficos", "todos os gráficos", "graficos e matrizes",
+        ))
 
         for idx_exp, resultado in enumerate(_arquivos_experimentos(pergunta)):
             pasta = resultado.parent
@@ -333,10 +356,14 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
             grupo = dados.get("referencia") or f"Experimento {nome}"
 
             if not somente_matriz:
+                arquivo_comparacao, rotulo_comparacao = _variante_comparacao_metricas(txt)
+                caminho_comparacao = pasta / arquivo_comparacao
+                if not caminho_comparacao.exists():
+                    caminho_comparacao = pasta / "comparacao_metricas.png"
                 _add_img(
                     imagens,
-                    pasta / "comparacao_metricas.png",
-                    f"{grupo} - comparacao de metricas",
+                    caminho_comparacao,
+                    f"{grupo} - {rotulo_comparacao}",
                     grupo=grupo,
                     ordem=0,
                     tipo="comparacao",
@@ -360,7 +387,7 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
                     continue
                 if modelos_pedidos and modelo not in modelos_pedidos:
                     continue
-                if not somente_matriz:
+                if not somente_matriz and pede_individuais:
                     _add_grafico_modelo(
                         imagens,
                         pasta,
@@ -405,7 +432,10 @@ def _resumo_autoencoder() -> str | None:
         f"| Limiar p99 | {_fmt(d.get('limiar'), 4)} |\n"
         f"| Média baseline | {_fmt(d.get('mu'), 4)} |\n"
         f"| Desvio baseline | {_fmt(d.get('sigma'), 4)} |\n"
-        f"| Falsos positivos validação | {_fmt(d.get('fp_val_pct'), 2)}% |\n"
+        f"| Janelas de treino | {d.get('n_janelas_treino', '-')} |\n"
+        f"| Janelas de calibração | {d.get('n_janelas_calibracao', '-')} |\n"
+        f"| Janelas de teste | {d.get('n_janelas_teste', '-')} |\n"
+        f"| Falsos positivos no teste isolado | {_fmt(d.get('fp_test_pct', d.get('fp_val_pct')), 2)}% |\n"
         f"| Épocas treinadas | {d.get('epochs_treinadas', '-')} |\n\n"
         "Leitura rápida: o detector está calibrado por erro de reconstrução. "
         "Quanto maior a distância entre erro de falha e limiar, mais clara é a anomalia."
@@ -421,18 +451,22 @@ def _resumo_injecao() -> str | None:
         "## Injeção de falhas sintéticas\n",
         f"Limiar: **{_fmt(d.get('limiar'), 4)}**. "
         f"Baseline: **{_fmt(d.get('baseline_mean'), 4)} ± {_fmt(d.get('baseline_std'), 4)}**.\n",
-        "| Falha | NPR | SMD | Erro na SMD | Margem |\n",
-        "|---|---:|---:|---:|---:|\n",
+        "| Falha | NPR | SMD95 | Taxa (IC95%) | n | Erro mediano |\n",
+        "|---|---:|---:|---:|---:|---:|\n",
     ]
     nao_detectadas = []
     for fid, falha in d.get("falhas", {}).items():
         smd = d.get("smd", {}).get(fid)
-        erro = margem = "-"
-        smd_txt = "⚠️ não detectada"
+        erro = taxa_txt = n_txt = "-"
+        smd_txt = "⚠️ alvo não atingido"
         if smd is not None:
             res = falha.get("resultados", {}).get(str(smd), {})
-            erro = _fmt(res.get("erro"), 4)
-            margem = f"{_fmt(res.get('margem'), 2)}x"
+            erro = _fmt(res.get("erro_mediano", res.get("erro")), 4)
+            taxa_txt = (
+                f"{_fmt(res.get('taxa_deteccao'), 3)} "
+                f"[{_fmt(res.get('taxa_ci_low'), 3)}; {_fmt(res.get('taxa_ci_high'), 3)}]"
+            )
+            n_txt = str(res.get("n", "-"))
             smd_txt = str(smd)
         else:
             resultados_sev = falha.get("resultados", {})
@@ -440,18 +474,17 @@ def _resumo_injecao() -> str | None:
                 sev_max = max(resultados_sev, key=lambda s: float(s))
                 pico = resultados_sev[sev_max]
                 nao_detectadas.append(
-                    f"- **{falha.get('nome', fid)}**: erro médio máximo "
-                    f"{_fmt(pico.get('erro'), 4)} na severidade {sev_max} "
-                    f"(margem {_fmt(pico.get('margem'), 2)}x do limiar) — "
-                    "o Autoencoder não cruza o limiar operacional em nenhuma "
-                    "severidade testada."
+                    f"- **{falha.get('nome', fid)}**: taxa máxima de detecção "
+                    f"{_fmt(pico.get('taxa_deteccao'), 3)} na severidade {sev_max}; "
+                    "o alvo probabilístico de 95% não foi atingido."
                 )
         linhas.append(
             f"| {falha.get('nome', fid)} | {falha.get('npr') or '-'} | "
-            f"{smd_txt} | {erro} | {margem} |\n"
+            f"{smd_txt} | {taxa_txt} | {n_txt} | {erro} |\n"
         )
     linhas.append(
-        "\nLeitura rápida: a SMD é a menor severidade em que o Autoencoder cruza o limiar."
+        "\nLeitura rápida: SMD95 é a menor severidade cuja taxa pontual de detecção "
+        "atinge 95%; o intervalo de Wilson mostra a incerteza dessa estimativa."
     )
     if nao_detectadas:
         linhas.append(
@@ -464,9 +497,9 @@ def _resumo_injecao() -> str | None:
 def _nome_falha(chave: str) -> str:
     base = re.sub(r"_sev.*$", "", chave)
     nomes = {
-        "lcl": "Degradação Filtro LCL",
-        "desbalanceamento": "Desbalanceamento de Fase",
-        "sensor": "Falha de Sensor CA",
+        "contator_ac": "Contator AC",
+        "igbt": "IGBT",
+        "fusivel_ac": "Fusível AC",
     }
     return nomes.get(base, base)
 
@@ -481,31 +514,36 @@ def _resumo_validacao() -> str | None:
     if not d:
         return None
 
-    meta = d.get("__meta__", {})
-    melhores = {}
+    itens = []
+    ordem_falhas = {"Contator AC": 0, "IGBT": 1, "Fusível AC": 2}
     for chave, res in d.items():
         if chave.startswith("__"):
-            continue  # bloco de metadados (evidence_level, limiar), não é falha
-        falha = _nome_falha(chave)
-        if falha not in melhores or res.get("auc_roc", 0) > melhores[falha].get("auc_roc", 0):
-            item = dict(res)
-            item["chave"] = chave
-            melhores[falha] = item
+            continue
+        item = dict(res)
+        item["chave"] = chave
+        item["falha"] = _nome_falha(chave)
+        itens.append(item)
+    itens.sort(key=lambda item: (
+        ordem_falhas.get(item["falha"], 99), float(_sev(item["chave"])),
+    ))
 
     linhas = [
-        "## Validação formal\n\n",
-        "| Falha | Severidade | AUC-ROC | Recall | F1 (50%) | F1 (raro 5%) |\n",
-        "|---|---:|---:|---:|---:|---:|\n",
+        "## Validação sintética interna E2\n\n",
+        "| Falha | Sev. | AUC-ROC (IC95%) | Recall (IC95%) | FNR | Especificidade | n/classe |\n",
+        "|---|---:|---:|---:|---:|---:|---:|\n",
     ]
     cego = []
-    for falha, res in melhores.items():
+    for res in itens:
+        falha = res["falha"]
         rec = res.get("recall")
         if isinstance(rec, (int, float)) and rec < 0.1:
-            cego.append(falha)
+            cego.append(f"{falha} (sev. {_sev(res['chave'])})")
         linhas.append(
-            f"| {falha} | {_sev(res['chave'])} | {_fmt(res.get('auc_roc'))} | "
-            f"{_fmt(rec)} | {_fmt(res.get('f1'))} | "
-            f"{_fmt(res.get('f1_raro'))} |\n"
+            f"| {falha} | {_sev(res['chave'])} | {_fmt(res.get('auc_roc'))} "
+            f"[{_fmt(res.get('auc_roc_ci_low'))}; {_fmt(res.get('auc_roc_ci_high'))}] | "
+            f"{_fmt(rec)} [{_fmt(res.get('recall_ci_low'))}; {_fmt(res.get('recall_ci_high'))}] | "
+            f"{_fmt(res.get('fnr'))} | {_fmt(res.get('specificity'))} | "
+            f"{res.get('n_pos', '-')} |\n"
         )
     leitura = [
         "\n**Leitura honesta:** a AUC mede a separação por *ranking* (independe "
@@ -514,14 +552,13 @@ def _resumo_validacao() -> str | None:
     ]
     if cego:
         leitura.append(
-            f" Atenção: **{', '.join(cego)}** tem AUC alta mas recall ~0 — é bem "
-            "ranqueada, mas o limiar conservador a deixa passar (praticamente "
-            "cega no ponto de operação)."
+            f" Atenção ao baixo recall em **{', '.join(cego)}**: o limiar "
+            "conservador perde a maior parte dessas falhas."
         )
     leitura.append(
-        " F1 (50%) é o teste balanceado; F1 (raro 5%) reflete a raridade real "
-        "das falhas CA. Evidência E2 (falha sintética orientada pelo FMEA), não "
-        "desempenho industrial."
+        " As linhas mostram todas as severidades, sem escolher apenas a melhor "
+        "AUC. O bloco de teste é temporalmente isolado e sem sobreposição, mas a "
+        "falha continua sintética: não é desempenho industrial."
     )
     linhas.append("".join(leitura))
     return "".join(linhas)
@@ -534,40 +571,50 @@ def _resumo_weibull() -> str | None:
 
     linhas = [
         "## RUL / Weibull\n\n",
-        "| Falha | NPR | beta | eta | MTTF | B10 | Ajuste (KS) | Interpretação |\n",
-        "|---|---:|---:|---:|---:|---:|---|---|\n",
+        "| Falha | NPR | Eventos/Censura | beta (IC95%) | eta (IC95%) | MTTF (IC95%) | B10 (IC95%) | RUL restrita inicial | Status |\n",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---|\n",
     ]
-    ressalvas = []
     for fid, falha in d.get("falhas", {}).items():
         p = falha.get("weibull", {})
         beta = p.get("beta")
-        taxa = "desgaste progressivo" if isinstance(beta, (int, float)) and beta > 1 else "falha aleatória/infantil"
-        adequado = falha.get("ajuste_weibull_adequado")
-        if adequado is None:
-            ks_txt = "n/d"
-        elif adequado:
-            ks_txt = "✅ adequado"
-        else:
-            ks_txt = f"⚠️ rejeitado ({fmt_pvalor(p.get('ks_pval'))})"
-            ressalvas.append(
-                f"- **{falha.get('nome', fid)}**: "
-                f"{falha.get('ressalva_ajuste') or 'KS rejeita o ajuste Weibull.'}"
-            )
+        def valor_ci(nome: str, casas: int = 1) -> str:
+            valor = p.get(nome)
+            ci = p.get(f"{nome}_ci95") or [None, None]
+            return f"{_fmt(valor, casas)} [{_fmt(ci[0], casas)}; {_fmt(ci[1], casas)}]"
+
+        status_mapa = {
+            "exploratorio_descritivo": "exploratório",
+            "exploratorio_alta_censura": "Weibull incerta; KM restrita disponível",
+            "nao_estimavel": "não estimável",
+            "nao_estimavel_parametrico_rul_restrita": (
+                "Weibull não estimável; KM restrita disponível"
+            ),
+        }
+        status = status_mapa.get(
+            falha.get("status_ajuste"),
+            "exploratório" if p.get("fit_converged") else "não estimável",
+        )
         linhas.append(
-            f"| {falha.get('nome', fid)} | {falha.get('npr') or 'D=10'} | "
-            f"{_fmt(beta)} | {_fmt(p.get('eta'), 1)} | {_fmt(p.get('mttf'), 1)} | "
-            f"{_fmt(p.get('b10'), 1)} | {ks_txt} | {taxa} |\n"
+            f"| {falha.get('nome', fid)} | {falha.get('npr')} | "
+            f"{p.get('n_eventos', '-')}/{p.get('n_censurados', '-')} | "
+            f"{valor_ci('beta', 2)} | {valor_ci('eta')} | {valor_ci('mttf')} | "
+            f"{valor_ci('b10')} | {_fmt(p.get('rul_restrita_inicial'))} | {status} |\n"
         )
     linhas.append(
-        "\nLeitura rápida: beta > 1 sustenta a hipótese de degradação progressiva, "
-        "coerente com manutenção preditiva."
+        "\n**Separação obrigatória das estimativas:** a coluna **RUL restrita "
+        "inicial** é exclusivamente a média residual **não paramétrica de "
+        "Kaplan-Meier**, truncada no horizonte observado. Ela nunca deve ser "
+        "descrita como RUL Weibull. A curva Weibull do gráfico é a estimativa "
+        "paramétrica/extrapolativa e só existe quando o ajuste convergiu.\n\n"
+        "**Leitura obrigatória:** a censura agora é preservada e os intervalos "
+        "vêm de bootstrap, mas os tempos continuam sendo passos de degradação "
+        "sintética E2. A RUL por Kaplan-Meier é restrita ao horizonte observado; "
+        "a RUL Weibull é extrapolativa e recebe ressalva quando há alta censura. "
+        "MTTF, B10 e RUL descrevem o experimento computacional e "
+        "não podem ser apresentados como vida útil física ou de campo. O NPR "
+        "prioriza risco na FMECA; ele **não determina** quantos eventos o "
+        "experimento sintético produzirá e não explica causalmente a censura."
     )
-    if ressalvas:
-        linhas.append(
-            "\n\n⚠️ **Ressalva estatística**: o teste KS rejeita o ajuste Weibull "
-            "nas falhas abaixo — MTTF/B10 são indicativos, não conclusivos:\n"
-            + "\n".join(ressalvas)
-        )
     return "".join(linhas)
 
 
@@ -578,11 +625,7 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
 
     txt = _normalizar(pergunta)
     metricas = ("accuracy", "precision", "recall", "f1", "auc", "specificity")
-    linhas = [
-        "## Experimentos por artigo\n\n",
-        "| Experimento | Modelo | Accuracy | Precision | Recall | F1 | AUC | Specificity | Anomalias detectadas |\n",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|\n",
-    ]
+    linhas = ["## Experimentos por artigo\n\n"]
 
     linhas_modelos = []
     destaques_melhor = []
@@ -614,6 +657,7 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
                     "anomalias": None,
                     "exp": exp,
                     "modelo": modelo,
+                    "dados": m,
                     "linha": f"| {exp} | {modelo} ({motivo}) | - | - | - | - | - | - | - |\n",
                 })
                 continue
@@ -623,23 +667,101 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
                 "anomalias": anomalias if isinstance(anomalias, int) else None,
                 "exp": exp,
                 "modelo": modelo,
+                "dados": m,
                 "linha": (
                     f"| {exp} | {modelo} | {valores[0]} | {valores[1]} | {valores[2]} | "
                     f"{valores[3]} | {valores[4]} | {valores[5]} | {anomalias} |\n"
                 ),
             })
 
-    if _pede_anomalias(txt):
-        linhas_modelos.sort(key=lambda item: item["anomalias"] if item["anomalias"] is not None else -1, reverse=True)
-    linhas.extend(item["linha"] for item in linhas_modelos)
+    metrica_pedida = next(
+        (
+            met
+            for met in ("auc", "f1", "recall", "precision", "accuracy", "specificity")
+            if re.search(rf"\b{re.escape(met)}\b", txt)
+        ),
+        None,
+    )
+    if _pede_anomalias(txt) and not metrica_pedida:
+        linhas_modelos.sort(
+            key=lambda item: item["anomalias"] if item["anomalias"] is not None else -1,
+            reverse=True,
+        )
+    if _pede_anomalias(txt) and metrica_pedida:
+        ordenados = sorted(
+            linhas_modelos,
+            key=lambda item: (
+                item["dados"].get(metrica_pedida)
+                if isinstance(item["dados"].get(metrica_pedida), (int, float))
+                else -1
+            ),
+            reverse=True,
+        )
+        linhas.extend([
+            f"| Rank | Experimento | Modelo | {metrica_pedida.upper()} | Detectadas | Reais | Taxa marcada | Recall |\n",
+            "|---:|---|---|---:|---:|---:|---:|---:|\n",
+        ])
+        for rank, item in enumerate(ordenados, 1):
+            dados_modelo = item["dados"]
+            linhas.append(
+                f"| {rank} | {item['exp']} | {item['modelo']} | "
+                f"{_fmt(dados_modelo.get(metrica_pedida))} | "
+                f"{_fmt(dados_modelo.get('anomalias_detectadas'), 0)} | "
+                f"{_fmt(dados_modelo.get('anomalias_reais'), 0)} | "
+                f"{_fmt(dados_modelo.get('taxa_anomalias_detectadas'))} | "
+                f"{_fmt(dados_modelo.get('recall'))} |\n"
+            )
+    elif _pede_anomalias(txt):
+        linhas.extend([
+            "| Experimento | Modelo | Detectadas | Reais | Taxa marcada | Recall |\n",
+            "|---|---|---:|---:|---:|---:|\n",
+        ])
+        for item in linhas_modelos:
+            dados_modelo = item["dados"]
+            linhas.append(
+                f"| {item['exp']} | {item['modelo']} | "
+                f"{_fmt(dados_modelo.get('anomalias_detectadas'), 0)} | "
+                f"{_fmt(dados_modelo.get('anomalias_reais'), 0)} | "
+                f"{_fmt(dados_modelo.get('taxa_anomalias_detectadas'))} | "
+                f"{_fmt(dados_modelo.get('recall'))} |\n"
+            )
+    elif metrica_pedida:
+        ordenados = sorted(
+            linhas_modelos,
+            key=lambda item: (
+                item["dados"].get(metrica_pedida)
+                if isinstance(item["dados"].get(metrica_pedida), (int, float))
+                else -1
+            ),
+            reverse=True,
+        )
+        linhas.extend([
+            f"| Rank | Experimento | Modelo | {metrica_pedida.upper()} |\n",
+            "|---:|---|---|---:|\n",
+        ])
+        for rank, item in enumerate(ordenados, 1):
+            linhas.append(
+                f"| {rank} | {item['exp']} | {item['modelo']} | "
+                f"{_fmt(item['dados'].get(metrica_pedida))} |\n"
+            )
+    else:
+        linhas.extend([
+            "| Experimento | Modelo | Accuracy | Precision | Recall | F1 | AUC | Specificity | Anomalias detectadas |\n",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|\n",
+        ])
+        linhas.extend(item["linha"] for item in linhas_modelos)
 
     if _pede_anomalias(txt):
         candidatos = [item for item in linhas_modelos if item["anomalias"] is not None]
         if candidatos:
-            topo = candidatos[0]
+            topo = max(candidatos, key=lambda item: item["anomalias"])
             linhas.append(
                 f"\nDestaque: quem mais marcou anomalias foi **{topo['modelo']}** "
                 f"em **{topo['exp']}**, com **{topo['anomalias']}** detecções no ponto de operação.\n"
+            )
+            linhas.append(
+                "Essa contagem depende do limiar e não define, sozinha, o melhor "
+                "modelo: avalie junto AUC, recall, falsos positivos e o protocolo.\n"
             )
     if destaques_melhor:
         linhas.append("\nMelhor modelo pelo criterio salvo:\n" + "\n".join(destaques_melhor) + "\n")
@@ -657,7 +779,7 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
         linhas.append("\nSeparacao entre artigo e recalculo local:\n")
         linhas.append(
             "- **Metodologia dos artigos**: define quais familias de modelos entram "
-            "no benchmark (por exemplo, Isolation Forest, AE-LSTM, Prophet, SVM, "
+            "no benchmark (por exemplo, Isolation Forest, AE-LSTM, SVM, "
             "RNN/CNN ou hibrido). Isso e inspiracao metodologica, nao copia de "
             "metricas publicadas.\n"
         )
@@ -726,20 +848,33 @@ def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> d
             "resposta_pronta": True,
         }
 
-    imagens = imagens_relevantes(pergunta) if incluir_imagens and _quer_imagens(pergunta) else []
+    # Gráficos sempre ficam disponíveis em antevisão sob demanda + download,
+    # mas só são renderizados inline quando o pedido exige vê-los no chat.
+    imagens = imagens_relevantes(pergunta) if incluir_imagens else []
+    mostrar_inline = _quer_imagens(pergunta)
+    for img in imagens:
+        img["inline"] = mostrar_inline
+
     mensagem = (
         "Aqui está o que já existe nos artefatos do pipeline.\n\n"
         + "\n\n".join(secoes)
     )
     if imagens:
-        mensagem += "\n\nVou exibir os gráficos relevantes logo abaixo da resposta."
+        if mostrar_inline:
+            mensagem += "\n\nGráficos relevantes logo abaixo."
+        else:
+            mensagem += (
+                f"\n\n{len(imagens)} gráfico(s) disponível(is) logo abaixo. "
+                "Use **Visualizar** para abrir uma antevisão responsiva sem baixar, "
+                'ou peça "mostre os gráficos" para inseri-los na conversa.'
+            )
 
     return {
         "ok": True,
         "etapa": "Consulta de resultados",
         "mensagem": mensagem,
         "imagens": imagens,
-        "resposta_pronta": True,
+        "resposta_pronta": False,
     }
 
 
@@ -751,7 +886,7 @@ def indexar_resultados_ml(modelo_embeddings) -> str:
     resumo = resumir_resultados("", incluir_imagens=False)["mensagem"]
     conteudo = (
         "# Resultados da Fase 5 - Pipeline de ML\n\n"
-        f"> Gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n"
+        f"> Gerado em {agora_local().strftime('%d/%m/%Y %H:%M %Z')}\n\n"
         f"{resumo}\n"
     )
     saida.parent.mkdir(parents=True, exist_ok=True)

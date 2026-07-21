@@ -2,7 +2,7 @@
 Sprint 5 — 10.4: isolamento de experimentos pesados em subprocesso.
 
 Testes COMPORTAMENTAIS e torch-free: usam um ``Popen`` fake (sem spawnar
-processo real, sem importar torch/prophet), cobrindo os caminhos:
+processo real, sem importar torch), cobrindo os caminhos:
   - opt-out (AL_IADO_SEM_ISOLAMENTO) → in-process;
   - sucesso isolado (lê o JSON do filho + encaminha progresso);
   - returncode != 0 / arquivo ausente → dict ok=False (graceful);
@@ -91,7 +91,7 @@ def test_ok_false_legitimo_passa_mesmo_com_returncode_nao_zero(monkeypatch):
     def fake_popen(cmd, **kw):
         Path(cmd[-1]).write_text(
             json.dumps({"experimento": "ibrahim", "ok": False,
-                        "mensagem": "modelo requer prophet — sem execução"}),
+                        "mensagem": "modelo requer torch — sem execução"}),
             encoding="utf-8",
         )
         return _FakeProc(["aviso"], returncode=1)
@@ -99,7 +99,7 @@ def test_ok_false_legitimo_passa_mesmo_com_returncode_nao_zero(monkeypatch):
     monkeypatch.setattr(ei.subprocess, "Popen", fake_popen)
     out = ei.executar_experimento_isolado("ibrahim")
     assert out["ok"] is False
-    assert out["mensagem"] == "modelo requer prophet — sem execução"
+    assert out["mensagem"] == "modelo requer torch — sem execução"
 
 
 def test_returncode_nao_zero_graceful(monkeypatch):

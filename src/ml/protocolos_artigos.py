@@ -7,7 +7,7 @@ Antes, todos os experimentos de anomalia compartilhavam UM único harness:
 split aleatório de janelas temporais sobrepostas (vazamento temporal) e limiar
 escolhido maximizando F1 NO PRÓPRIO conjunto de teste (oráculo) para os
 modelos sem decisão nativa — exatamente os modelos que definem cada artigo
-(Z-score, AE-LSTM, Prophet). Isso é o "erro de simulação": todos os métodos
+(Z-score, AE-LSTM). Isso é o "erro de simulação": todos os métodos
 pareciam iguais porque eram avaliados pela mesma régua artificial.
 
 Aqui cada artigo tem o SEU protocolo de decisão, fiel ao método do paper e à
@@ -17,8 +17,9 @@ prática da área — e nenhum limiar enxerga os rótulos do teste:
   priori, por variável).
 - Ibrahim et al. (2022)    → Isolation Forest com contaminação A PRIORI;
   AE-LSTM com limiar = percentil 99 do erro de reconstrução NO TREINO
-  (congelado antes de ver o teste — a mesma disciplina do pipeline principal);
-  Prophet com banda de incerteza de 99% (fora da banda = anomalia).
+  (congelado antes de ver o teste — a mesma disciplina do pipeline principal).
+  O Prophet do artigo foi removido da curadoria (pior detector + dependência
+  instável em runtime).
 
 Nota de curadoria: o núcleo comparativo foi enxugado para DOIS protocolos —
 Francisti (baseline ingênuo Shewhart) e Ibrahim (concorrentes diretos do
@@ -31,8 +32,8 @@ citáveis como literatura indexada — apenas não são experimentos executávei
 Infraestrutura comum (igual para todos, como num benchmark justo):
 - split TEMPORAL com purga (src/ml/split_temporal.py) — nunca aleatório;
 - injeção sintética ORIENTADA PELO FMEA no espaço de features: cada anomalia
-  pertence a uma família de falha do FMECA de Torres (2024) — degradação LCL
-  (NPR=210), desbalanceamento de fase (NPR=150), falha de sensor — perturbando
+  pertence a uma família de falha da FMECA de Torres (2024) — Contator AC
+  (NPR=315), IGBT (NPR=90), Fusível AC (NPR=30) — perturbando
   apenas as features que a física daquela falha afeta. Continua E1 (proxy
   sintético em espaço de features), mas com ground truth fisicamente motivado
   e relatório de detecção POR FALHA.
@@ -53,56 +54,52 @@ SEVERIDADE_PADRAO = 1.0          # escala global da injeção (1.0 = moderada)
 LIMIAR_SIGMA = 3.0               # regra de Shewhart (Francisti)
 CONTAMINACAO_A_PRIORI = 0.05     # Isolation Forest (Ibrahim)
 PERCENTIL_TREINO = 99            # AE-LSTM: limiar congelado no treino
-INTERVALO_PROPHET = 0.99         # banda de incerteza do Prophet
 PURGA_JANELAS = 2                # janelas com 50% de sobreposição → purga 2
 
-# Pesos de amostragem das famílias de falha (ordem de criticidade do FMECA:
-# NPR 210 > NPR 150 > sensor sem NPR mas D=10).
-PESOS_FALHAS = {"lcl": 0.40, "desbalanceamento": 0.35, "sensor": 0.25}
+# Pesos de amostragem das famílias de falha (ordem de criticidade da FMECA —
+# docs/fmeca.md: NPR Contator AC 315 > IGBT 90 > Fusível AC 30).
+PESOS_FALHAS = {"contator_ac": 0.40, "igbt": 0.35, "fusivel_ac": 0.25}
 
-# Assinaturas FMEA no ESPAÇO DE FEATURES (features_ca.py):
+# Assinaturas FMECA no ESPAÇO DE FEATURES (features_ca.py) — mesma física da
+# injeção no sinal (src/ml/injecao_falhas.py), no domínio das features:
 # cada item: (padrão regex do nome da coluna, modo, intensidade min, max).
 # modo "soma_std"  → coluna += U(min,max) · severidade · σ_treino
 # modo "mult"      → coluna ·= (1 − U(min,max) · severidade)  [redução]
 ASSINATURAS_FMEA = {
-    "lcl": [
-        # harmônicos 5/7/11 das correntes ↑ (filtro atenua menos) + THD ↑
+    # Contator AC (NPR=315): transiente/ruído de comutação → dispersão e
+    # conteúdo de alta frequência sobem no canal medido.
+    "contator_ac": [
+        (r"^i_a_desvio$", "soma_std", 0.8, 1.5),
+        (r"^i_a_largura_banda$", "soma_std", 1.0, 2.0),
+        (r"^i_a_energia_chaveamento$", "soma_std", 1.0, 2.5),
+        (r"^i_a_centroide$", "soma_std", 0.8, 1.5),
+        (r"^i_a_thd$", "soma_std", 0.5, 1.0),
+    ],
+    # IGBT (NPR=90): chaveamento imperfeito → harmônicos 5/7/11 e THD ↑.
+    "igbt": [
         (r"^i_[abc]_harm_5$", "soma_std", 1.5, 3.0),
         (r"^i_[abc]_harm_7$", "soma_std", 1.0, 2.0),
         (r"^i_[abc]_harm_11$", "soma_std", 1.5, 3.0),
         (r"^i_[abc]_thd$", "soma_std", 1.0, 2.5),
         (r"^i_[abc]_energia_media$", "soma_std", 0.8, 1.5),
     ],
-    # HIPÓTESE (E1, não verdade universal): modelamos perda parcial/assimetria
-    # na fase A em que o CONTROLE do inversor (malha de potência) redistribui
-    # corrente para B/C, mantendo a potência total — cenário comum em inversores
-    # com controle de tensão/corrente. NÃO cobre o caso em que A cai E B/C
-    # também caem (perda de linha, carga severamente desbalanceada sem
-    # compensação). A assinatura central (sempre presente) é a fase A enfraquecer
-    # e a métrica de desbalanceamento subir; a compensação B/C é a parte
-    # dependente do controle. Magnitudes plausíveis, não medidas em bancada.
-    "desbalanceamento": [
-        # Fase A ENFRAQUECE (rms, pico, desvio, energia da fundamental, potência)
+    # Fusível AC (NPR=30): perda parcial de fase.
+    # HIPÓTESE (E1, não verdade universal): a fase A enfraquece e o CONTROLE do
+    # inversor redistribui corrente para B/C, mantendo a potência total —
+    # comum em inversores com controle de tensão/corrente. NÃO cobre o caso em
+    # que A cai E B/C também caem. Assinatura central: fase A enfraquece e a
+    # métrica de desbalanceamento sobe; a compensação B/C depende do controle.
+    # Magnitudes plausíveis, não medidas em bancada.
+    "fusivel_ac": [
         (r"^i_a_rms$", "mult", 0.15, 0.35),
         (r"^i_a_pico_a_pico$", "mult", 0.15, 0.35),
         (r"^i_a_desvio$", "mult", 0.15, 0.35),
         (r"^i_a_energia_baixa$", "mult", 0.15, 0.35),
         (r"^potencia_a$", "mult", 0.15, 0.35),
-        # Fases B e C COMPENSAM parcialmente (hipótese dependente do controle)
         (r"^i_[bc]_rms$", "soma_std", 0.6, 1.2),
         (r"^i_[bc]_energia_baixa$", "soma_std", 0.6, 1.2),
         (r"^potencia_[bc]$", "soma_std", 0.6, 1.2),
-        # Métrica de desbalanceamento de corrente — assinatura central.
         (r"^desbalanceamento_corrente$", "soma_std", 2.0, 4.0),
-    ],
-    "sensor": [
-        # ruído de medição na fase A → dispersão e conteúdo de alta
-        # frequência sobem no canal medido
-        (r"^i_a_desvio$", "soma_std", 0.8, 1.5),
-        (r"^i_a_largura_banda$", "soma_std", 1.0, 2.0),
-        (r"^i_a_energia_chaveamento$", "soma_std", 1.0, 2.5),
-        (r"^i_a_centroide$", "soma_std", 0.8, 1.5),
-        (r"^i_a_thd$", "soma_std", 0.5, 1.0),
     ],
 }
 
@@ -124,8 +121,8 @@ def injetar_falhas_fmea(X, nomes: list[str], rng, severidade: float = SEVERIDADE
     falha do FMEA por janela e perturbando SOMENTE as features que a física
     daquela falha afeta (em unidades do desvio-padrão do próprio conjunto).
 
-    Retorna ``(X_anom, tipos)`` onde ``tipos[i]`` ∈ {"lcl",
-    "desbalanceamento", "sensor"} é o ground truth da família injetada.
+    Retorna ``(X_anom, tipos)`` onde ``tipos[i]`` ∈ {"contator_ac",
+    "igbt", "fusivel_ac"} é o ground truth da família injetada.
 
     E1/proxy: as intensidades são plausíveis (fundamentadas nas fórmulas de
     src/ml/injecao_falhas.py, que opera no sinal bruto), não medidas em
@@ -235,28 +232,9 @@ def preparar_dados_anomalia(com_validacao: bool = False,
 
     scaler = StandardScaler().fit(Xn_tr)
 
-    # Variável monitorada pelo Prophet: a feature MAIS INFORMATIVA entre as
-    # que as famílias FMEA afetam (maior coeficiente de variação no treino
-    # BRUTO). Equivale a monitorar a série de processo sensível à falha —
-    # proxy da série de potência usada no artigo do Ibrahim. Sem isso, o
-    # Prophet vigiaria uma feature intocada pelas falhas (cego por projeto).
-    cols_afetadas = sorted({
-        j for regras in ASSINATURAS_FMEA.values()
-        for padrao, _, _, _ in regras
-        for j in _colunas_por_padrao(nomes, padrao)
-    })
-    if cols_afetadas:
-        sub = Xn_tr[:, cols_afetadas]
-        cv = sub.std(axis=0) / (np.abs(sub.mean(axis=0)) + 1e-9)
-        col_prophet = int(cols_afetadas[int(np.argmax(cv))])
-    else:
-        col_prophet = None
-
     dados = {
         "nomes": nomes,
         "scaler": scaler,
-        "col_prophet": col_prophet,
-        "col_prophet_nome": nomes[col_prophet] if col_prophet is not None else None,
         "Xn_tr": scaler.transform(Xn_tr),
         "X_tr_sup": np.vstack([scaler.transform(Xn_tr), scaler.transform(Xa_tr)]),
         "y_tr_sup": np.r_[np.zeros(len(Xn_tr)), np.ones(len(Xa_tr))],
@@ -275,8 +253,9 @@ def preparar_dados_anomalia(com_validacao: bool = False,
             "falhas": list(PESOS_FALHAS),
             "pesos": dict(PESOS_FALHAS),
             "severidade": float(severidade),
-            "fonte": "Torres (2024) — FMECA CEAMAZON (NPR 210/150) via "
-                     "assinaturas de src/ml/injecao_falhas.py",
+            "fonte": "Torres (2024) — FMECA consolidada (docs/fmeca.md): "
+                     "Contator AC/IGBT/Fusível AC, via assinaturas de "
+                     "src/ml/injecao_falhas.py",
             "nota": "E1 — proxy sintético no espaço de features; ground truth "
                     "por família de falha, não medição de bancada.",
         },
@@ -319,6 +298,27 @@ def _metricas(y_te, score, y_pred, threshold_source: str, limiar=None,
 
 def _indisponivel(motivo: str) -> dict:
     return {"disponivel": False, "motivo": motivo}
+
+
+def _rodar_modelo(nome: str, fn, saida: dict, preds: dict | None = None):
+    """
+    Executa o scoring de UM modelo com isolamento de falha. Se ``fn`` estourar
+    em runtime (lib instalada mas quebrada — ex.: Prophet 'stan_backend', torch
+    sem backend), o modelo degrada para indisponível com o motivo do erro, sem
+    derrubar os demais modelos do experimento. ``fn`` deve devolver
+    ``(metricas, y_pred | None)``.
+    """
+    try:
+        metricas, y_pred = fn()
+        saida[nome] = metricas
+        if preds is not None and y_pred is not None:
+            preds[nome] = y_pred
+    except Exception as exc:  # noqa: BLE001 — robustez: um modelo não derruba o resto
+        from src.core.logs import get_logger
+
+        get_logger("protocolos_artigos").warning(
+            "Modelo '%s' falhou em runtime: %s", nome, exc)
+        saida[nome] = _indisponivel(f"erro de execução: {type(exc).__name__}: {exc}")
 
 
 # ============================================================
@@ -381,9 +381,8 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
     """
     IF com contaminação A PRIORI; AE-LSTM com limiar = percentil do erro de
     reconstrução numa fatia de CALIBRAÇÃO temporal do treino (o AE não vê a
-    calibração no ajuste — evita o limiar otimista do erro de treino);
-    Prophet com banda de 99% (fora da banda = anomalia). Nenhuma decisão
-    enxerga os rótulos do teste.
+    calibração no ajuste — evita o limiar otimista do erro de treino).
+    Nenhuma decisão enxerga os rótulos do teste.
 
     Com ``retornar_predicoes=True`` devolve também ``{modelo: y_pred}`` (as
     decisões por membro, sem refazer fits) — gancho para eventual ensemble.
@@ -399,63 +398,53 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
 
     if progresso:
         progresso("Ibrahim: Isolation Forest (contaminação a priori)...")
-    from sklearn.ensemble import IsolationForest
 
-    iso = IsolationForest(n_estimators=200, random_state=42,
-                          contamination=CONTAMINACAO_A_PRIORI)
-    iso.fit(dados["Xn_tr"])
-    score_if = -iso.decision_function(X_te)
-    y_pred_if = (iso.predict(X_te) == -1).astype(int)
-    preds["Isolation Forest"] = y_pred_if
-    saida["Isolation Forest"] = _metricas(
-        y_te, score_if, y_pred_if,
-        threshold_source=f"contaminacao_a_priori_{CONTAMINACAO_A_PRIORI}",
-        tipos_te=tipos,
-    )
+    def _rodar_if():
+        from sklearn.ensemble import IsolationForest
+
+        iso = IsolationForest(n_estimators=200, random_state=42,
+                              contamination=CONTAMINACAO_A_PRIORI)
+        iso.fit(dados["Xn_tr"])
+        score_if = -iso.decision_function(X_te)
+        y_pred_if = (iso.predict(X_te) == -1).astype(int)
+        return _metricas(
+            y_te, score_if, y_pred_if,
+            threshold_source=f"contaminacao_a_priori_{CONTAMINACAO_A_PRIORI}",
+            tipos_te=tipos,
+        ), y_pred_if
+
+    _rodar_modelo("Isolation Forest", _rodar_if, saida, preds)
 
     if lib_disponivel("torch"):
         if progresso:
             progresso("Ibrahim: AE-LSTM (calibração temporal do limiar)...")
-        from src.ml.modelos_anomalia import _score_ae_lstm
 
-        # Fatia de CALIBRAÇÃO: bloco final do treino normal (com purga) fica
-        # FORA do ajuste do AE e fornece o erro "não visto" para o percentil.
-        # Calibrar no erro de treino subestimaria o erro real (modelo decora).
-        Xn_tr = dados["Xn_tr"]
-        corte = max(10, int(len(Xn_tr) * 0.8))
-        Xn_fit = Xn_tr[:max(1, corte - PURGA_JANELAS)]
-        X_calib = Xn_tr[corte:]
-        dados_ae = {**dados, "Xn_tr": Xn_fit,
-                    "X_te": np.vstack([X_calib, X_te])}
-        score_all = _score_ae_lstm(dados_ae)
-        score_calib = score_all[:len(X_calib)]
-        score_te = score_all[len(X_calib):]
-        limiar = float(np.percentile(score_calib, PERCENTIL_TREINO))
-        y_pred_ae = (score_te > limiar).astype(int)
-        preds["AE-LSTM"] = y_pred_ae
-        saida["AE-LSTM"] = _metricas(
-            y_te, score_te, y_pred_ae,
-            threshold_source=f"p{PERCENTIL_TREINO}_erro_em_calibracao_temporal",
-            limiar=limiar, tipos_te=tipos,
-        )
+        def _rodar_ae():
+            from src.ml.modelos_anomalia import _score_ae_lstm
+
+            # Fatia de CALIBRAÇÃO: bloco final do treino normal (com purga)
+            # fica FORA do ajuste do AE e fornece o erro "não visto" para o
+            # percentil. Calibrar no erro de treino subestimaria o erro real.
+            Xn_tr = dados["Xn_tr"]
+            corte = max(10, int(len(Xn_tr) * 0.8))
+            Xn_fit = Xn_tr[:max(1, corte - PURGA_JANELAS)]
+            X_calib = Xn_tr[corte:]
+            dados_ae = {**dados, "Xn_tr": Xn_fit,
+                        "X_te": np.vstack([X_calib, X_te])}
+            score_all = _score_ae_lstm(dados_ae)
+            score_calib = score_all[:len(X_calib)]
+            score_te = score_all[len(X_calib):]
+            limiar = float(np.percentile(score_calib, PERCENTIL_TREINO))
+            y_pred_ae = (score_te > limiar).astype(int)
+            return _metricas(
+                y_te, score_te, y_pred_ae,
+                threshold_source=f"p{PERCENTIL_TREINO}_erro_em_calibracao_temporal",
+                limiar=limiar, tipos_te=tipos,
+            ), y_pred_ae
+
+        _rodar_modelo("AE-LSTM", _rodar_ae, saida, preds)
     else:
         saida["AE-LSTM"] = _indisponivel("requer torch")
-
-    if lib_disponivel("prophet"):
-        if progresso:
-            progresso("Ibrahim: Prophet (banda de 99%)...")
-        from src.ml.modelos_anomalia import _score_prophet
-
-        score_p = _score_prophet(dados, interval_width=INTERVALO_PROPHET)
-        y_pred_p = (score_p > 1.0).astype(int)  # >1 = fora da banda
-        preds["Facebook Prophet"] = y_pred_p
-        saida["Facebook Prophet"] = _metricas(
-            y_te, score_p, y_pred_p,
-            threshold_source=f"intervalo_prophet_{INTERVALO_PROPHET}",
-            limiar=1.0, tipos_te=tipos,
-        )
-    else:
-        saida["Facebook Prophet"] = _indisponivel("requer prophet")
 
     metodologia = {
         "protocolo": "ibrahim2022_series_temporais",
@@ -465,25 +454,21 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
             "AE-LSTM": f"limiar = p{PERCENTIL_TREINO} do erro numa fatia de "
                        "CALIBRAÇÃO temporal do treino (fora do ajuste do AE; "
                        "congelado antes do teste)",
-            "Facebook Prophet": f"fora da banda de incerteza de "
-                                f"{INTERVALO_PROPHET:.0%}",
         },
         "fidelidade": [
-            "Segue o artigo: trio IF / AE-LSTM / Prophet para anomalia.",
+            "Segue o artigo no par não-supervisionado IF + AE-LSTM.",
             "AE-LSTM usa a disciplina de limiar congelado do pipeline "
             "principal, com calibração em bloco temporal NÃO visto no ajuste "
             "(o erro de treino subestimaria o erro real).",
-            "Adaptação: Prophet univariado monitorando a feature mais "
-            "sensível às famílias FMEA (proxy da série de potência do artigo).",
+            "Curadoria: o Facebook Prophet do artigo foi removido — era o pior "
+            "detector do trio e sua dependência quebra em runtime; a base "
+            "comparativa fica com IF + AE-LSTM, que bastam.",
             "Leitura correta: a contaminação a priori de 5% reflete a "
             "prevalência esperada em operação; no teste BALANCEADO (50% "
             "anômalo) ela limita o recall por construção — compare métodos "
             "pelo AUC e pela precisão, não pelo F1 entre protocolos.",
         ],
     }
-    if dados.get("col_prophet_nome"):
-        metodologia["decisoes"]["Facebook Prophet"] += (
-            f" — monitora '{dados['col_prophet_nome']}'")
     if retornar_predicoes:
         return saida, metodologia, preds
     return saida, metodologia

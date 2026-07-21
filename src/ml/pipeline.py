@@ -10,6 +10,10 @@ recriar listas paralelas de etapas.
 from __future__ import annotations
 
 import ast
+import gc
+import os
+import subprocess
+import sys
 from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
@@ -107,6 +111,8 @@ STAGES: dict[str, PipelineStage] = {
         artifacts=(
             "dados/processados/features_paderborn.parquet",
             "dados/processados/features_paderborn_stats.csv",
+            "dados/processados/features_paderborn_qualidade.json",
+            "dados/processados/features_paderborn_qualidade.png",
         ),
     ),
     "autoencoder": PipelineStage(
@@ -116,12 +122,14 @@ STAGES: dict[str, PipelineStage] = {
         function="executar_autoencoder",
         parameter_names=(
             "LATENTE_DIM", "EPOCHS", "BATCH_SIZE", "LR", "SIGMA",
-            "THRESHOLD_METHOD", "SEED",
+            "THRESHOLD_METHOD", "SEED", "TRAIN_RATIO", "CALIB_RATIO",
+            "TEST_RATIO",
         ),
         artifacts=(
             "resultados/autoencoder/modelo_autoencoder.pt",
             "resultados/autoencoder/scaler.pkl",
             "resultados/autoencoder/limiar.json",
+            "resultados/autoencoder/diagnostico_autoencoder.npz",
             "resultados/autoencoder/curva_treino.png",
             "resultados/autoencoder/distribuicao_erro.png",
             "resultados/autoencoder/erro_temporal.png",
@@ -133,17 +141,18 @@ STAGES: dict[str, PipelineStage] = {
         label="Injecao de Falhas",
         module="src.ml.injecao_falhas",
         function="executar_injecao_falhas",
-        parameter_names=("T_INICIO_ESTAVEL", "T_FIM_ESTAVEL", "SEVERIDADES"),
+        parameter_names=("SEVERIDADES", "ALVO_SMD", "N_JANELAS_SMD"),
         artifacts=(
             "resultados/autoencoder/injecao_falhas_resultados.png",
             "resultados/autoencoder/injecao_falhas_comparacao.png",
             "resultados/autoencoder/injecao_falhas_report.json",
+            "resultados/autoencoder/injecao_smd_tabela.csv",
         ),
         depends_on=("autoencoder",),
     ),
     "validacao": PipelineStage(
         key="validacao",
-        label="Validacao Formal",
+        label="Validacao Interna E2",
         module="src.ml.validacao",
         function="executar_validacao",
         parameter_names=("SEVS_VALIDACAO", "N_JANELAS_SAUDAVEL", "N_JANELAS_FALHA"),
@@ -151,8 +160,10 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/validacao_roc.png",
             "resultados/autoencoder/validacao_pr.png",
             "resultados/autoencoder/validacao_matriz.png",
+            "resultados/autoencoder/validacao_matrizes_severidades.png",
             "resultados/autoencoder/validacao_metricas.png",
             "resultados/autoencoder/validacao_tabela.csv",
+            "resultados/autoencoder/validacao_tabela.md",
             "resultados/autoencoder/validacao_report.json",
         ),
         depends_on=("injecao_falhas",),
@@ -162,12 +173,16 @@ STAGES: dict[str, PipelineStage] = {
         label="RUL / Weibull",
         module="src.ml.rul_weibull",
         function="executar_rul_weibull",
-        parameter_names=("N_TRAJ", "N_STEPS", "BATCH_INFERENCIA"),
+        parameter_names=(
+            "N_TRAJ", "N_STEPS", "BATCH_INFERENCIA", "N_BOOTSTRAP",
+            "MIN_EVENTOS_WEIBULL", "MAX_CENSURA_RUL_PCT",
+        ),
         artifacts=(
             "resultados/autoencoder/weibull_ttf.png",
             "resultados/autoencoder/weibull_confiabilidade.png",
             "resultados/autoencoder/weibull_rul.png",
             "resultados/autoencoder/weibull_results.json",
+            "resultados/autoencoder/weibull_tabela.csv",
         ),
         depends_on=("validacao",),
     ),
@@ -177,12 +192,69 @@ ORDEM_ETAPAS_ML = list(STAGES.keys())
 NOMES_ETAPAS = {key: stage.label for key, stage in STAGES.items()}
 ARTEFATOS_ML = {key: list(stage.artifacts) for key, stage in STAGES.items()}
 
+DATASET_PADERBORN = Path(
+    os.getenv(
+        "AL_IADO_DATASET_PADERBORN",
+        str(RAIZ_PROJETO / "dados" / "brutos" / "Inverter_Data_Set.csv"),
+    )
+).expanduser().resolve()
+
+# Subconjunto leve e versionável necessário para consultar uma execução já
+# concluída. Pesos, scalers e dados processados permanecem locais.
+ARTEFATOS_PUBLICADOS: dict[str, tuple[str, ...]] = {
+    "features_ca": ("resultados/manifestos/features_ca.json",),
+    "autoencoder": (
+        "resultados/manifestos/autoencoder.json",
+        "resultados/autoencoder/limiar.json",
+        "resultados/autoencoder/distribuicao_erro.png",
+    ),
+    "injecao_falhas": (
+        "resultados/manifestos/injecao_falhas.json",
+        "resultados/autoencoder/injecao_falhas_report.json",
+        "resultados/autoencoder/injecao_smd_tabela.csv",
+    ),
+    "validacao": (
+        "resultados/manifestos/validacao.json",
+        "resultados/autoencoder/validacao_report.json",
+        "resultados/autoencoder/validacao_tabela.csv",
+    ),
+    "rul_weibull": (
+        "resultados/manifestos/rul_weibull.json",
+        "resultados/autoencoder/weibull_results.json",
+        "resultados/autoencoder/weibull_tabela.csv",
+    ),
+}
+
 
 def get_stage(key: str) -> PipelineStage:
     try:
         return STAGES[key]
     except KeyError as exc:
         raise ValueError(f"Etapa desconhecida: {key}") from exc
+
+
+def capacidade_recalculo_pipeline() -> dict:
+    """Distingue o ambiente de cálculo local do modo de consulta do deploy."""
+    disponivel = DATASET_PADERBORN.is_file()
+    return {
+        "disponivel": disponivel,
+        "modo": "calculo_local" if disponivel else "consulta_publicada",
+        "dataset": str(DATASET_PADERBORN),
+    }
+
+
+def estado_resultados_publicados() -> dict[str, dict]:
+    """Disponibilidade dos artefatos leves que o site pode consultar."""
+    estados: dict[str, dict] = {}
+    for key, relativos in ARTEFATOS_PUBLICADOS.items():
+        caminhos = [RAIZ_PROJETO / relativo for relativo in relativos]
+        presentes = [path for path in caminhos if path.is_file()]
+        estados[key] = {
+            "disponivel": len(presentes) == len(caminhos),
+            "presentes": len(presentes),
+            "esperados": len(caminhos),
+        }
+    return estados
 
 
 def etapa_pendente(key: str) -> bool:
@@ -314,9 +386,64 @@ def limpar_artefatos(etapa_inicial: str) -> list[Path]:
     return removidos
 
 
+def _precisa_rodar(key: str) -> bool:
+    """True se a etapa NÃO está ready (pending OU stale) — precisa (re)rodar."""
+    try:
+        return estado_etapa_completo(key).get("estado") != "ready"
+    except Exception:
+        return etapa_pendente(key)
+
+
 def dependencias_pendentes(etapa: str) -> list[str]:
     stage = get_stage(etapa)
-    return [dep for dep in stage.depends_on if etapa_pendente(dep)]
+    return [dep for dep in stage.depends_on if _precisa_rodar(dep)]
+
+
+def _rodar_stage(stage: PipelineStage, progresso=None) -> bool:
+    """Executa etapas reais em subprocesso; fakes de teste seguem in-process."""
+    if (
+        not isinstance(stage, PipelineStage)
+        or os.environ.get("AL_IADO_SEM_ISOLAMENTO") == "1"
+        or os.environ.get("AL_IADO_PIPELINE_CHILD") == "1"
+    ):
+        return bool(stage.load_runner()())
+
+    from src.core.seguranca import env_minimo_subprocesso
+
+    cmd = [sys.executable, "-m", "src.ml.exec_etapa_isolada", stage.key]
+    env = env_minimo_subprocesso(extras={"AL_IADO_PIPELINE_CHILD": "1"})
+    proc = subprocess.Popen(
+        cmd,
+        cwd=str(RAIZ_PROJETO),
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        bufsize=1,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    ultimas: list[str] = []
+    assert proc.stdout is not None
+    for linha in proc.stdout:
+        linha = linha.rstrip()
+        if not linha:
+            continue
+        ultimas.append(linha)
+        ultimas = ultimas[-30:]
+        if progresso:
+            progresso(linha)
+    proc.wait()
+    if proc.returncode == 0:
+        return True
+    if proc.returncode == 1:
+        return False
+    detalhe = "\n".join(ultimas[-12:])
+    raise RuntimeError(
+        f"subprocesso da etapa {stage.label} terminou com código "
+        f"{proc.returncode}.\n{detalhe}"
+    )
 
 
 def executar_etapa(etapa: str,
@@ -333,15 +460,25 @@ def executar_etapa(etapa: str,
     """
     stage = get_stage(etapa)
 
+    # Só pula quando a etapa está READY (artefatos presentes E manifesto
+    # compatível: código, parâmetros e artefatos upstream inalterados). Se
+    # estiver STALE (ex.: código da injeção/validação mudou após um git pull),
+    # RE-EXECUTA — senão os artefatos/gráficos ficariam defasados. `pending`
+    # também roda. Ver src/ml/proveniencia.estado_etapa.
     if force:
         limpar_artefatos(etapa)
-    elif stage.is_complete():
-        return {
-            "ok": True,
-            "etapa": stage.label,
-            "executou": False,
-            "mensagem": f"{stage.label} ja esta pronto.",
-        }
+    else:
+        estado_atual = estado_etapa_completo(etapa).get("estado")
+        if estado_atual == "ready":
+            return {
+                "ok": True,
+                "etapa": stage.label,
+                "executou": False,
+                "mensagem": f"{stage.label} ja esta pronto.",
+            }
+        if estado_atual == "stale":
+            # limpa a etapa (e o downstream, que também precisa regenerar).
+            limpar_artefatos(etapa)
 
     pendentes = dependencias_pendentes(etapa)
     if pendentes:
@@ -359,12 +496,12 @@ def executar_etapa(etapa: str,
         for dep_key in ORDEM_ETAPAS_ML:
             if dep_key == etapa:
                 break
-            if etapa_pendente(dep_key):
+            if _precisa_rodar(dep_key):
                 if progresso:
                     progresso(f"Pré-requisito: rodando {NOMES_ETAPAS[dep_key]}...")
                 dep_stage = get_stage(dep_key)
                 try:
-                    ok_dep = bool(dep_stage.load_runner()())
+                    ok_dep = _rodar_stage(dep_stage, progresso=progresso)
                 except Exception as exc:
                     return {
                         "ok": False,
@@ -385,13 +522,14 @@ def executar_etapa(etapa: str,
                             f"não consegui chegar até {stage.label}."
                         ),
                     }
+                registrar_manifesto(dep_key)
                 executadas_extra.append(dep_stage.label)
 
     if progresso:
         progresso(f"Executando: {stage.label}...")
 
     try:
-        ok = bool(stage.load_runner()())
+        ok = _rodar_stage(stage, progresso=progresso)
     except Exception as exc:
         return {
             "ok": False,
@@ -446,6 +584,13 @@ def executar_pipeline_ml(etapa_inicial: str = "features_ca",
 
     for key in ORDEM_ETAPAS_ML[idx:]:
         res = executar_etapa(key, force=False, progresso=progresso)
+        # O pipeline completo roda no mesmo processo do Streamlit. Coleta entre
+        # etapas evita reter dataframes/figuras grandes até a validação seguinte.
+        gc.collect()
+        torch_mod = sys.modules.get("torch")
+        if torch_mod is not None and getattr(torch_mod, "cuda", None):
+            if torch_mod.cuda.is_available():
+                torch_mod.cuda.empty_cache()
         prefixo = "OK" if res["ok"] else "ERRO"
         if res["ok"] and not res.get("executou"):
             prefixo = "SKIP"

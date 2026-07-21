@@ -40,7 +40,7 @@ jobs:
 
       - name: Smoke de import (modulos leves)
         run: |
-          python -c "import src.core.config, src.core.utils, src.ml.split_temporal, src.ml.proveniencia; print('import OK')"
+          python -c "import src.core.config, src.core.utils, src.conhecimento.indice_lexical, src.conhecimento.memoria_persistente, src.conhecimento.multiagente, src.ml.split_temporal, src.ml.proveniencia; print('import OK')"
 
       - name: Testes unitarios leves (sem torch/chromadb)
         run: |
@@ -48,8 +48,10 @@ jobs:
             tests/test_consistencia_docs.py \
             tests/test_formatacao_estilo.py \
             tests/test_comparacao_literatura.py \
+            tests/test_inteligencia_agente.py \
             tests/test_split_temporal.py \
             tests/test_proveniencia.py \
+            tests/test_pipeline_stale.py \
             tests/test_caminhos.py \
             tests/test_metricas.py \
             tests/test_abordagens.py \
@@ -61,6 +63,11 @@ jobs:
             tests/test_classificador_infer.py \
             tests/test_classificador_tools.py \
             tests/test_retrieval_metrics.py \
+            tests/test_embeddings.py \
+            tests/test_provedores_leves.py \
+            tests/test_indice_lexical.py \
+            tests/test_memoria_persistente.py \
+            tests/test_multiagente.py \
             tests/test_exec_isolado.py \
             tests/test_seguranca.py \
             tests/test_protocolos_artigos.py

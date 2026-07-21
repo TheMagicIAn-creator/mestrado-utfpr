@@ -43,7 +43,8 @@ _PADROES_SEGREDO = [
     re.compile(r"\bAIza[0-9A-Za-z_\-]{30,}"),          # Google API key
     re.compile(r"\bsk-[A-Za-z0-9_\-]{16,}"),            # OpenAI-like
     re.compile(r"\bhf_[A-Za-z0-9]{16,}"),               # HuggingFace
-    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}"),        # GitHub tokens
+    re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}"),      # GitHub fine-grained PAT
+    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}"),        # GitHub tokens (classic)
     re.compile(r"(?i)\bBearer\s+[A-Za-z0-9_\-.~+/]{16,}=*"),
     re.compile(r"(?i)([?&](?:key|api_key|apikey|token|access_token)=)[^&\s'\"]{8,}"),
 ]
@@ -53,7 +54,7 @@ _PADROES_SEGREDO = [
 NOMES_ENV_SENSIVEIS = (
     "GROQ_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY",
     "ANTHROPIC_API_KEY", "HF_TOKEN", "HUGGINGFACE_TOKEN", "GITHUB_TOKEN",
-    "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY",
+    "AL_IADO_GITHUB_TOKEN", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY",
 )
 
 
