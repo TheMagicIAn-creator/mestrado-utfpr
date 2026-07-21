@@ -23,12 +23,15 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
 - **MTTF / B10**: tempo médio até a falha; tempo em que 10% da população
   falhou. No projeto, medidos em PASSOS de simulação, não em horas de campo.
 - **TTF**: tempo até a falha de uma trajetória de degradação simulada —
-  passo em que o erro de reconstrução cruza o limiar operacional.
+  passo em que se confirma uma sequência persistente de erros acima do limiar
+  operacional. Trajetórias sem confirmação são censuradas à direita.
 - **Teste KS (Kolmogorov–Smirnov)**: teste de aderência entre os TTF
   simulados e a Weibull ajustada. p ≤ 0,05 → ajuste REJEITADO → MTTF/B10
   indicativos, não conclusivos (campo `ajuste_weibull_adequado`).
 - **RUL** (Remaining Useful Life): vida útil remanescente estimada a partir
-  da curva de confiabilidade.
+  da curva de confiabilidade. O projeto distingue **RUL restrita KM** (não
+  paramétrica, limitada ao horizonte observado) de **RUL Weibull**
+  (paramétrica e extrapolativa, com ressalva explícita sob alta censura).
 
 ## Detecção de anomalias
 

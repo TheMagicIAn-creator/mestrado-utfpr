@@ -1,5 +1,5 @@
 {
-  "gerado_em": "2026-07-20T08:58:45",
+  "gerado_em": "2026-07-21T00:21:32-03:00",
   "evidence_level": "E1",
   "evidence_note": "Comparação no banco comum (injeção no espaço de features). Para o método proposto este é um teste MAIS FRACO que o E2 nativo (injeção no sinal) — reportado à parte em e2_nativo.",
   "banco_comum": {

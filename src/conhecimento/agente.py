@@ -34,6 +34,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import chromadb
 from src.core.utils import parsear_nome_arquivo
+from src.core.tempo import FUSO_PADRAO, agora_local
 from src.core.config import (
     PASTA_CHROMADB, ARQUIVO_PERFIL, NOME_COLECAO,
     NOME_COLECAO_SESSOES, NOME_COLECAO_OBSIDIAN, MODELO_EMBEDDINGS,
@@ -45,30 +46,30 @@ from src.conhecimento.provedores import eh_multimodal
 
 ORCAMENTOS_RAG = {
     "groq": {
-        "n_pool": 60,
-        "n_resultados": 10,
-        "n_resultados_revisao": 16,
-        "max_chunks_por_fonte": 2,
-        "contexto_chars": 7_000,
-        "obsidian_chars": 2_400,
-        "sessao_chars": 800,
-        "historico_turnos": 10,
-        "historico_chars": 900,
-        "anexos_chars": 6_000,
-        "max_prompt_chars": 28_000,
+        "n_pool": 140,
+        "n_resultados": 20,
+        "n_resultados_revisao": 32,
+        "max_chunks_por_fonte": 3,
+        "contexto_chars": 24_000,
+        "obsidian_chars": 10_000,
+        "sessao_chars": 3_000,
+        "historico_turnos": 18,
+        "historico_chars": 1_800,
+        "anexos_chars": 24_000,
+        "max_prompt_chars": 90_000,
     },
     "gemini": {
-        "n_pool": 120,
-        "n_resultados": 16,
-        "n_resultados_revisao": 28,
-        "max_chunks_por_fonte": 2,
-        "contexto_chars": 14_000,
-        "obsidian_chars": 4_000,
-        "sessao_chars": 1_500,
-        "historico_turnos": 14,
-        "historico_chars": 1_400,
-        "anexos_chars": 14_000,
-        "max_prompt_chars": 48_000,
+        "n_pool": 300,
+        "n_resultados": 30,
+        "n_resultados_revisao": 50,
+        "max_chunks_por_fonte": 4,
+        "contexto_chars": 40_000,
+        "obsidian_chars": 18_000,
+        "sessao_chars": 5_000,
+        "historico_turnos": 24,
+        "historico_chars": 2_500,
+        "anexos_chars": 50_000,
+        "max_prompt_chars": 180_000,
     },
     "padrao": {
         "n_pool": 80,
@@ -492,8 +493,7 @@ def pedido_sem_literatura(pergunta: str) -> bool:
 
 def _saudacao_pelo_horario() -> str:
     """Retorna 'Bom dia', 'Boa tarde' ou 'Boa noite' conforme a hora atual."""
-    from datetime import datetime
-    hora = datetime.now().hour
+    hora = agora_local().hour
     if 5 <= hora < 12:
         return "Bom dia"
     if 12 <= hora < 18:
@@ -661,10 +661,19 @@ def resposta_interacao_simples(pergunta: str) -> str | None:
 def _orcamento_rag(nome_provedor: str | None = None) -> dict:
     nome = (nome_provedor or "").lower()
     if "groq" in nome or "llama" in nome:
-        return ORCAMENTOS_RAG["groq"].copy()
-    if "gemini" in nome or "google" in nome:
-        return ORCAMENTOS_RAG["gemini"].copy()
-    return ORCAMENTOS_RAG["padrao"].copy()
+        orcamento = ORCAMENTOS_RAG["groq"].copy()
+    elif "gemini" in nome or "google" in nome:
+        orcamento = ORCAMENTOS_RAG["gemini"].copy()
+    else:
+        orcamento = ORCAMENTOS_RAG["padrao"].copy()
+    for chave in orcamento:
+        env = os.getenv(f"AL_IADO_RAG_{chave.upper()}")
+        if env:
+            try:
+                orcamento[chave] = max(1, int(env))
+            except ValueError:
+                pass
+    return orcamento
 
 
 def _limitar_texto(texto: str, limite: int) -> str:
@@ -1255,16 +1264,16 @@ def _formatar_historico(historico: list, orcamento: dict) -> str:
 
 def _contexto_temporal() -> str:
     """Gera bloco com data, hora e dia da semana atuais."""
-    from datetime import datetime
     dias = ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira",
             "sexta-feira", "sábado", "domingo"]
     meses = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
              "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
-    agora = datetime.now()
+    agora = agora_local()
     saudacao = _saudacao_pelo_horario()
     return (
         f"DATA E HORA ATUAL: {dias[agora.weekday()]}, {agora.day} de "
-        f"{meses[agora.month - 1]} de {agora.year}, às {agora.strftime('%H:%M')}. "
+        f"{meses[agora.month - 1]} de {agora.year}, às {agora.strftime('%H:%M')} "
+        f"(fuso {agora.tzname() or FUSO_PADRAO}). "
         f"Período do dia: {saudacao.lower()}."
     )
 

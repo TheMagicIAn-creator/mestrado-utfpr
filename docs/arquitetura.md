@@ -89,7 +89,11 @@ src/
   `AL_IADO_DATASET_PADERBORN` permite simular o modo de consulta em testes.
   `AL_IADO_EMBEDDINGS_BACKEND` aceita `auto`, `onnx` ou
   `sentence-transformers`; `AL_IADO_ONNX_THREADS` limita threads do backend
-  leve. Em `auto`, ausência do dataset ativa ONNX.
+  leve. Em `auto`, ausência do dataset ativa ONNX. Modelos, tamanho de saída e
+  orçamentos do RAG são ajustáveis por `AL_IADO_GEMINI_MODEL`,
+  `AL_IADO_GROQ_MODEL`, `AL_IADO_GEMINI_MAX_OUTPUT_TOKENS` e
+  `AL_IADO_RAG_*`. Datas de interface usam `AL_IADO_TIMEZONE`
+  (`America/Sao_Paulo` por padrão).
 
 ## Isolamento de cargas pesadas (subprocesso)
 Experimentos por artigo que carregam bibliotecas pesadas (`torch`)

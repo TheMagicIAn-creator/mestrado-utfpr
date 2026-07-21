@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime
 from pathlib import Path
 
 try:
@@ -24,6 +23,7 @@ import streamlit as st
 from langchain_core.messages import HumanMessage
 
 from src.core.config import RAIZ_PROJETO
+from src.core.tempo import agora_local
 
 sys.path.insert(0, str(RAIZ_PROJETO))
 
@@ -168,17 +168,20 @@ def carregar_base():
             name=NOME_COLECAO_OBSIDIAN,
             metadata={"hnsw:space": "cosine"},
         )
-        if colecao_obsidian.count() == 0 and ARQUIVO_INDICE_OBSIDIAN.is_file():
+        if ARQUIVO_INDICE_OBSIDIAN.is_file():
             try:
                 from src.conhecimento.indice_portatil import importar_colecao
 
                 restauracao_obsidian = importar_colecao(
                     colecao_obsidian,
                     ARQUIVO_INDICE_OBSIDIAN,
+                    mesclar=True,
                 )
                 relatorio.append(
                     "Obsidian: "
-                    f"{restauracao_obsidian['n_chunks']} chunks restaurados."
+                    f"{restauracao_obsidian['n_chunks']} chunks históricos "
+                    f"disponíveis ({restauracao_obsidian['importados']} restaurados; "
+                    f"{restauracao_obsidian.get('preservados', 0)} novos preservados)."
                 )
             except Exception as exc:
                 relatorio.append(f"Obsidian: snapshot inválido - {exc}")
@@ -781,11 +784,13 @@ def _imagem_larga(img: dict) -> bool:
 
 def _ordem_imagem(img: dict, indice: int) -> tuple:
     try:
-        ordem_grupo = int(img.get("group_order", 0) or 0)
+        valor_grupo = img.get("group_order", 0)
+        ordem_grupo = int(0 if valor_grupo is None else valor_grupo)
     except Exception:
         ordem_grupo = 0
     try:
-        ordem = int(img.get("order", indice) or indice)
+        valor_ordem = img.get("order", indice)
+        ordem = int(indice if valor_ordem is None else valor_ordem)
     except Exception:
         ordem = indice
     return ordem_grupo, ordem, indice
@@ -976,7 +981,7 @@ def salvar_sessao(pergunta: str, resposta: str, imagens: list[dict], n: int, mod
     pasta_sessoes.mkdir(parents=True, exist_ok=True)
 
     if st.session_state.caminho_sessao is None:
-        agora = datetime.now()
+        agora = agora_local()
         caminho = pasta_sessoes / f"{agora:%Y-%m-%d_%H-%M}_sessao_web.md"
         caminho.write_text(
             (
@@ -1057,6 +1062,21 @@ def responder_com_rag(pergunta: str,
         preparar_prompt,
         resposta_interacao_simples,
     )
+
+    # Consultas simples de primeiro/último registro são resolvidas pela ordem
+    # dos metadados. Isso evita que o LLM troque cronologia por similaridade.
+    try:
+        from src.conhecimento.obsidian import responder_consulta_cronologica
+
+        resposta_cronologica = responder_consulta_cronologica(
+            colecao_obsidian, pergunta
+        )
+    except Exception:
+        resposta_cronologica = None
+    if resposta_cronologica:
+        with st.chat_message("assistant", avatar="⚡"):
+            st.markdown(resposta_cronologica)
+        return resposta_cronologica
 
     # ── Atalho: cumprimento/casual responde local sem RAG ────
     # Nunca atalhar quando ha anexos: o pesquisador quer o arquivo lido.

@@ -8,7 +8,9 @@ from src.conhecimento.obsidian import (
     buscar_notas_obsidian,
     contar_notas_indexadas,
     espelhar_memoria_validada,
+    identificar_registro_cronologico,
     ler_nota,
+    responder_consulta_cronologica,
     sincronizar_obsidian,
 )
 
@@ -269,6 +271,20 @@ def test_busca_primeira_sessao_usa_ordem_cronologica(tmp_path):
     assert "2026-05-16_16-25_sessao.md" in contexto
     assert "primeira pergunta foi sobre algoritmos" in contexto
     assert "origem=sessao_arquivada" in contexto
+    assert "REGISTRO CRONOLÓGICO AUTORITATIVO" in contexto
+
+    registro = identificar_registro_cronologico(
+        colecao, "Qual foi a primeira sessão registrada?"
+    )
+    resposta = responder_consulta_cronologica(
+        colecao, "Qual foi a primeira sessão registrada?"
+    )
+
+    assert registro is not None
+    assert registro["data"] == "16/05/2026"
+    assert registro["hora"] == "16:25"
+    assert "2026-05-16_16-25_sessao.md" in resposta
+    assert "16/05/2026, às 16:25" in resposta
 
 
 def test_busca_lexical_preserva_caixa_para_nome_de_modelos(tmp_path):

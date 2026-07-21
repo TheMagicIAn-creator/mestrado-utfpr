@@ -11,12 +11,16 @@ class _Mensagem:
 
 
 def test_gemini_invoke_e_stream_preservam_contrato():
+    chamadas = []
+
     class Models:
         def generate_content(self, **kwargs):
+            chamadas.append(kwargs)
             assert kwargs["contents"] == "prompt"
             return SimpleNamespace(text="resposta")
 
         def generate_content_stream(self, **kwargs):
+            chamadas.append(kwargs)
             assert kwargs["contents"] == "prompt"
             return iter([SimpleNamespace(text="res"), SimpleNamespace(text="posta")])
 
@@ -25,6 +29,7 @@ def test_gemini_invoke_e_stream_preservam_contrato():
 
     assert llm.invoke([_Mensagem("prompt")]).content == "resposta"
     assert "".join(item.content for item in llm.stream([_Mensagem("prompt")])) == "resposta"
+    assert all(chamada["config"]["max_output_tokens"] == 8192 for chamada in chamadas)
 
 
 def test_groq_remove_imagem_de_provedor_textual():

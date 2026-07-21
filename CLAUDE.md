@@ -360,7 +360,9 @@ Nunca inventar referências.
 - Gemini tem o papel fixo de conversa, interpretação de ferramentas,
   multimodalidade e síntese final. É a única voz do chat.
 - Groq tem o papel fixo de auditor de evidências e porteiro da memória. Recebe
-  entradas curtas e estruturadas para respeitar o limite de 12k TPM.
+  entradas estruturadas e independentes da conversa. Os limites seguem o plano
+  contratado e podem ser configurados por variáveis `AL_IADO_*`; não há no
+  código pressuposto fixo de tier gratuito.
 - Python continua responsável por cálculos, ferramentas, indexação, gráficos,
   tabelas e artefatos. Nenhum LLM recalcula ou aprova o próprio resultado.
 - Os modelos não são retreinados durante a conversa. O aprendizado entre
@@ -380,6 +382,10 @@ Nunca inventar referências.
   confiança/status; `al_iado: false` ou `privado: true` exclui deliberadamente.
   Plugins, templates, diretórios técnicos e segredos aparentes são ignorados.
   Arquivos novos ou editados são sincronizados no próximo turno.
+- No deploy, o snapshot portátil do Obsidian é **mesclado** em toda inicialização:
+  chunks históricos ausentes são restaurados e sessões novas são preservadas.
+  Consultas simples de primeiro/último registro são ordenadas diretamente pelos
+  metadados e nomes dos arquivos, sem delegar a cronologia ao LLM.
 - Contexto Obsidian nunca vira citação bibliográfica. Em conflito, prevalecem
   artefatos atuais, notas curadas ativas e fontes primárias conforme o tipo de
   afirmação. Sessões antigas registram o que foi dito, inclusive respostas do
@@ -496,13 +502,20 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
   anomalía/anomalie ↔ anomalia, reliability/confiabilidad/fiabilité ↔
   confiabilidade, maintenance/mantenimiento/maintenance ↔ manutenção.
 - Respostas com tabelas devem ser legíveis, compactas e acompanhadas de uma
-  leitura técnica. Tabela não substitui parecer.
+  leitura técnica. Tabela não substitui parecer. A forma segue o pedido: tabela
+  completa, ranking por métrica ou quadro de detecções, sem formato único fixo.
 - Gráficos são DESACOPLADOS dos resultados: ao consultar/gerar resultados, o
   agente NÃO despeja as figuras na tela. Cada artefato oferece antevisão
   responsiva sob demanda e download; a imagem só é renderizada inline quando
   Rodolfo pede explicitamente ("mostre os gráficos", "veja a curva ROC").
   Comportamento em src/ml/resultados.py (flag inline) e
   src/interface/streamlit_app.py (_controles_antevisao / renderizar_imagens).
+- Comparações de experimentos oferecem heatmap, pequenos múltiplos por pontos
+  e barras horizontais sob comando. Contagens usam escala própria e cobertura
+  percentual, para uma referência grande não achatar as diferenças entre modelos.
+- Toda data/hora exibida ao pesquisador usa `America/Sao_Paulo` por meio de
+  `src/core/tempo.py`, independentemente do fuso do servidor. Campos `*_utc`
+  continuam em UTC para auditoria.
 - Imagens renderizadas inline aparecem agrupadas por artigo/experimento, na
   ordem pedida por Rodolfo, ajustadas à largura da tela.
 

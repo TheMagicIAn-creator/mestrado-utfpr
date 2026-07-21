@@ -601,6 +601,56 @@ def _registros_historicos(colecao, pergunta: str) -> list[tuple[str, dict, float
     return [(doc, meta, 1.2) for _, _, doc, meta in filtrados]
 
 
+def identificar_registro_cronologico(colecao, pergunta: str) -> dict[str, str] | None:
+    """Retorna o primeiro/último registro por metadados, sem inferência do LLM."""
+    if not (_PRIMEIRO_REGISTRO.search(pergunta) or _ULTIMO_REGISTRO.search(pergunta)):
+        return None
+    registros = _registros_historicos(colecao, pergunta)
+    if not registros:
+        return None
+    meta = registros[0][1] or {}
+    caminho = str(meta.get("caminho_obsidian", ""))
+    nome = Path(caminho).name
+    match = re.search(r"(20\d{2})-(\d{2})-(\d{2})(?:_(\d{2})-(\d{2}))?", nome)
+    data_legivel = str(meta.get("data_registro", ""))
+    hora = ""
+    if match:
+        ano, mes, dia, hora_match, minuto = match.groups()
+        data_legivel = f"{dia}/{mes}/{ano}"
+        if hora_match and minuto:
+            hora = f"{hora_match}:{minuto}"
+    return {
+        "ordem": "primeira" if _PRIMEIRO_REGISTRO.search(pergunta) else "última",
+        "data": data_legivel,
+        "hora": hora,
+        "titulo": str(meta.get("titulo", Path(caminho).stem)),
+        "arquivo": caminho,
+        "classe_fonte": str(meta.get("classe_fonte", "")),
+    }
+
+
+def responder_consulta_cronologica(colecao, pergunta: str) -> str | None:
+    """Responde consultas cronológicas simples diretamente a partir do índice."""
+    normalizada = _normalizar(pergunta)
+    if any(
+        termo in normalizada
+        for termo in ("resum", "conteudo", "assunto", "discut", "aconteceu", "falamos")
+    ):
+        return None
+    registro = identificar_registro_cronologico(colecao, pergunta)
+    if not registro:
+        return None
+    quando = registro["data"] or "data não informada"
+    if registro["hora"]:
+        quando += f", às {registro['hora']}"
+    return (
+        f"A {registro['ordem']} sessão registrada no vault é de **{quando}**. "
+        f"O registro está em `{registro['arquivo']}` e tem o título "
+        f"**{registro['titulo']}**. Essa identificação vem da ordenação dos "
+        "metadados e nomes de arquivo do índice completo, não de similaridade semântica."
+    )
+
+
 def buscar_notas_obsidian(
     pergunta: str,
     modelo_embeddings,
@@ -688,10 +738,19 @@ def buscar_notas_obsidian(
         pontuados.append((score, -ordem, doc, meta))
     pontuados.sort(reverse=True)
 
+    registro_cronologico = identificar_registro_cronologico(colecao, pergunta)
     linhas = [
         "\n🧠 DO VAULT OBSIDIAN — MEMÓRIA PESQUISÁVEL DO PROJETO ",
         "(contexto interno; não é evidência bibliográfica. Sessões registram falas e respostas antigas, que podem conter hipóteses ou erros já superados):\n",
     ]
+    if registro_cronologico:
+        linhas.append(
+            "\n[REGISTRO CRONOLÓGICO AUTORITATIVO — use este arquivo e esta "
+            f"data na resposta: ordem={registro_cronologico['ordem']} | "
+            f"data={registro_cronologico['data']} | hora={registro_cronologico['hora'] or '?'} | "
+            f"arquivo={registro_cronologico['arquivo']} | "
+            f"título={registro_cronologico['titulo']}]\n"
+        )
     usados = sum(len(item) for item in linhas)
     por_nota: dict[str, int] = {}
     incluidos = 0

@@ -95,6 +95,31 @@ def test_importacao_recusa_colecao_parcial(tmp_path, itens):
         importar_colecao(ColecaoFalsa(itens[:1]), destino)
 
 
+def test_mesclagem_completa_snapshot_e_preserva_registro_novo(tmp_path, itens):
+    destino = tmp_path / "indice.jsonl.gz"
+    exportar_colecao(
+        ColecaoFalsa(itens),
+        destino,
+        modelo_embeddings="modelo",
+        hash_corpus="hash",
+        n_documentos=2,
+    )
+    registro_novo = {
+        "id": "sessao-runtime",
+        "documento": "Sessão criada depois do deploy.",
+        "metadata": {"caminho_obsidian": "sessoes/2026-07-21.md"},
+        "embedding": [0.7, 0.8, 0.9],
+    }
+    colecao = ColecaoFalsa([itens[0], registro_novo])
+
+    resultado = importar_colecao(colecao, destino, mesclar=True, tamanho_lote=1)
+
+    assert resultado["importados"] == 1
+    assert resultado["preservados"] == 1
+    assert colecao.count() == 3
+    assert set(colecao.itens) == {"paper-a-1", "paper-b-4", "sessao-runtime"}
+
+
 def test_manifesto_rejeita_arquivo_que_nao_e_gzip(tmp_path):
     caminho = tmp_path / "quebrado.jsonl.gz"
     caminho.write_text(json.dumps({"tipo": "qualquer"}), encoding="utf-8")

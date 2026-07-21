@@ -145,20 +145,47 @@ def exportar_colecao(
     }
 
 
-def importar_colecao(colecao, origem: Path, *, tamanho_lote: int = 250) -> dict:
-    """Restaura um snapshot em uma coleção vazia, validando a contagem."""
+def _ids_existentes(colecao, tamanho_lote: int) -> set[str]:
+    """Lê os IDs atuais em lotes, sem carregar documentos ou embeddings."""
+    total = int(colecao.count())
+    existentes: set[str] = set()
+    for offset in range(0, total, tamanho_lote):
+        lote = colecao.get(
+            limit=tamanho_lote,
+            offset=offset,
+            include=["metadatas"],
+        )
+        existentes.update(str(item) for item in (lote.get("ids") or []))
+    return existentes
+
+
+def importar_colecao(
+    colecao,
+    origem: Path,
+    *,
+    tamanho_lote: int = 250,
+    mesclar: bool = False,
+) -> dict:
+    """Restaura ou mescla um snapshot e valida todos os IDs declarados.
+
+    O modo estrito continua exigindo uma coleção vazia. ``mesclar=True`` é
+    destinado a coleções de memória: preserva registros criados em runtime e
+    importa apenas os chunks históricos ausentes do snapshot.
+    """
     origem = Path(origem)
     manifesto = ler_manifesto(origem)
     esperado = int(manifesto["n_chunks"])
     existentes = int(colecao.count())
-    if existentes == esperado:
+    if existentes == esperado and not mesclar:
         return {**manifesto, "importados": 0, "ja_estava_pronto": True}
-    if existentes:
+    if existentes and not mesclar:
         raise IndicePortatilInvalido(
             f"Coleção parcialmente preenchida ({existentes}/{esperado}); "
             "a restauração automática exige coleção vazia."
         )
 
+    ids_antes = _ids_existentes(colecao, tamanho_lote) if mesclar else set()
+    ids_snapshot: set[str] = set()
     ids: list[str] = []
     documentos: list[str] = []
     metadados: list[dict] = []
@@ -194,7 +221,11 @@ def importar_colecao(colecao, origem: Path, *, tamanho_lote: int = 250) -> dict:
                 raise IndicePortatilInvalido(
                     f"Registro inesperado na linha {numero_linha}."
                 )
-            ids.append(str(item["id"]))
+            chunk_id = str(item["id"])
+            ids_snapshot.add(chunk_id)
+            if chunk_id in ids_antes:
+                continue
+            ids.append(chunk_id)
             documentos.append(str(item["documento"]))
             metadados.append(dict(item["metadata"]))
             embeddings.append([float(v) for v in item["embedding"]])
@@ -203,9 +234,24 @@ def importar_colecao(colecao, origem: Path, *, tamanho_lote: int = 250) -> dict:
         enviar_lote()
 
     total_final = int(colecao.count())
-    if importados != esperado or total_final != esperado:
+    if len(ids_snapshot) != esperado:
+        raise IndicePortatilInvalido(
+            f"Snapshot incompleto: IDs únicos={len(ids_snapshot)}, esperado={esperado}."
+        )
+    if mesclar:
+        ausentes = ids_snapshot - _ids_existentes(colecao, tamanho_lote)
+        if ausentes:
+            raise IndicePortatilInvalido(
+                f"Mesclagem incompleta: {len(ausentes)} chunks continuam ausentes."
+            )
+    elif importados != esperado or total_final != esperado:
         raise IndicePortatilInvalido(
             f"Restauração incompleta: importados={importados}, "
             f"coleção={total_final}, esperado={esperado}."
         )
-    return {**manifesto, "importados": importados, "ja_estava_pronto": False}
+    return {
+        **manifesto,
+        "importados": importados,
+        "preservados": len(ids_antes - ids_snapshot) if mesclar else 0,
+        "ja_estava_pronto": importados == 0,
+    }

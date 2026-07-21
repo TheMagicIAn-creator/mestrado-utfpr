@@ -81,3 +81,31 @@ def test_weibull_preserva_censura_e_retorna_intervalos():
     assert ajuste["n_eventos"] == int(eventos.sum())
     assert ajuste["beta"] > 0
     assert ajuste["beta_ci95"][0] < ajuste["beta_ci95"][1]
+
+
+def test_rul_restrita_km_permanece_disponivel_sem_ajuste_weibull():
+    from src.ml.rul_weibull import ajustar_weibull, rul_restrita_km
+
+    tempos = np.full(30, 120.0)
+    eventos = np.zeros(30, dtype=bool)
+
+    ajuste = ajustar_weibull(tempos, eventos, n_boot=0)
+    assert not ajuste["fit_converged"]
+    assert ajuste["rul_restrita_disponivel"]
+    assert ajuste["rul_restrita_inicial"] == 120.0
+    assert rul_restrita_km(30.0, tempos, eventos) == 90.0
+
+
+def test_alta_censura_sinaliza_incerteza_sem_ocultar_rul_parametrica():
+    from src.ml.rul_weibull import ajustar_weibull
+
+    tempos = np.concatenate([np.linspace(5.0, 15.0, 12), np.full(48, 20.0)])
+    eventos = np.concatenate([
+        np.ones(12, dtype=bool), np.zeros(48, dtype=bool)
+    ])
+
+    ajuste = ajustar_weibull(tempos, eventos, n_boot=0)
+    assert ajuste["fit_converged"]
+    assert ajuste["rul_reportavel"]
+    assert ajuste["rul_parametrica_alta_incerteza"]
+    assert ajuste["rul_restrita_disponivel"]

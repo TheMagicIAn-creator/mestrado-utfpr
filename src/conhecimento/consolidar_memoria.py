@@ -26,6 +26,7 @@ from src.core.config import (
     PASTA_SESSOES, PASTA_MEMORIAS, PASTA_ARQUIVO,
     NOME_COLECAO_SESSOES
 )
+from src.core.tempo import agora_local
 
 # ─── Parâmetros (sobrescrevíveis via .env) ───────────────────
 MINIMO_SESSOES        = 2
@@ -254,7 +255,7 @@ def salvar_consolidado(resumo: str, sessoes: list) -> Path:
     """Salva o resumo consolidado como nota .md."""
     PASTA_MEMORIAS.mkdir(parents=True, exist_ok=True)
 
-    agora        = datetime.now()
+    agora        = agora_local()
     datas        = [s["data"] for s in sessoes]
     total_int    = sum(s["interacoes"] for s in sessoes)
     nome_arquivo = f"{agora.strftime('%Y-%m-%d')}_consolidado.md"
@@ -319,7 +320,7 @@ def atualizar_chromadb(caminho_consolidado: Path, sessoes: list):
             {
                 "arquivo"      : nome_final,
                 "tipo"         : "memoria-consolidada",
-                "data"         : datetime.now().strftime("%Y-%m-%d"),
+                "data"         : agora_local().strftime("%Y-%m-%d"),
                 "chunk_index"  : j,
                 "total_chunks" : len(chunks)
             }
