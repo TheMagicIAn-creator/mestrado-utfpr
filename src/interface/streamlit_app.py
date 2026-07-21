@@ -1103,6 +1103,16 @@ def responder_com_ferramenta(pergunta: str, perfil: str, llm) -> tuple[str, list
             )
         resposta = saida["resposta"] or "Sem resposta."
         imagens = saida["resultado"].get("imagens", []) if saida["resultado"] else []
+        # Trava anti-invenção TAMBÉM no caminho de ferramenta/web: 'norma IEC/ISO'
+        # cai em buscar_web, e o LLM pode inventar cláusula/página de uma norma
+        # paga não indexada (ex.: IEC 60812). Aqui não há rodapé de literatura,
+        # então checamos contra vazio: norma/página sem lastro vira aviso.
+        if "Verificação de citações" not in resposta:
+            from src.core.citacao_guarda import alerta_citacao_infundada
+
+            aviso = alerta_citacao_infundada(resposta, {})
+            if aviso:
+                resposta = resposta + aviso
         st.markdown(resposta)
         renderizar_imagens(imagens)
     return resposta, imagens
