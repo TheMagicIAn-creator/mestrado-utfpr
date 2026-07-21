@@ -463,6 +463,9 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian) -> No
     with st.sidebar:
         st.markdown("## Al IAdo PV")
         st.caption("Assistente de pesquisa | Mestrado UTFPR")
+        from src.core.config import MARCADOR_BUILD
+
+        st.caption(f"🏷️ build: {MARCADOR_BUILD}")
 
         equipe = st.session_state.get("equipe")
         if equipe is None:
@@ -475,8 +478,8 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian) -> No
                 st.rerun()
         else:
             st.success("Equipe de IA ativa")
-            st.caption("Gemini Pro: conversa, sintese final e imagens")
-            st.caption("Gemini Flash: auditoria de evidencias e memoria")
+            st.caption("Gemini Flash: conversa e síntese (padrão estável)")
+            st.caption("Gemini Flash: auditoria de evidências e memória")
 
         st.divider()
         st.markdown("**Base de conhecimento**")
@@ -1191,6 +1194,16 @@ def responder_com_rag(pergunta: str,
                 placeholder,
                 refs_md,
             )
+            # Trava estrutural: sinaliza citações sem lastro (normas fora do
+            # rodapé, páginas sem fonte recuperada) que o prompt sozinho não
+            # segura. O aviso vira parte da resposta (exibida e exportada).
+            if consultar_literatura:
+                from src.core.citacao_guarda import alerta_citacao_infundada
+
+                aviso = alerta_citacao_infundada(resposta, citacoes)
+                if aviso:
+                    placeholder.markdown(resposta + aviso)
+                    resposta = resposta + aviso
         except Exception as exc:
             erro = str(exc)
             erro_baixo = erro.lower()

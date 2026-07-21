@@ -112,6 +112,12 @@ ARQUIVO_PERFIL     = RAIZ_PROJETO / "CLAUDE.md"
 # CONSTANTES DO AGENTE (RAG)
 # ============================================================
 
+# Marcador de build — atualizado a cada deploy relevante. Aparece na barra
+# lateral do app para confirmar QUAL versão do código está no ar (resolve a
+# ambiguidade de redeploy no Streamlit Cloud: se o marcador aqui não bate com
+# o exibido, o app está rodando código antigo e precisa de Reboot).
+MARCADOR_BUILD         = "2026-07-21 · #24 · citações honestas + trava anti-invenção"
+
 MODELO_EMBEDDINGS      = "paraphrase-multilingual-MiniLM-L12-v2"
 # Modelo principal de conversa (fonte de verdade: provedores.PROVEDORES / env
 # AL_IADO_GEMINI_MODEL). O de fundo (metadados/memória) é gemini-2.5-flash.
