@@ -1046,6 +1046,38 @@ def salvar_sessao(pergunta: str, resposta: str, imagens: list[dict], n: int, mod
         pass
 
 
+def aprender_da_sessao_web() -> None:
+    """Aprendizado automático entre sessões, no fluxo da conversa.
+
+    A cada N interações, o auditor (Gemini Flash) varre o transcrito atual e
+    extrai decisões/preferências duráveis para a memória validada — SEM depender
+    do gatilho manual ("lembre") NEM do watcher (que não roda em modo_consulta,
+    ou seja, nunca dispara na nuvem). É a peça que faz o agente "acumular" o que
+    foi conversado. Best-effort; persiste no GitHub se AL_IADO_PERSISTIR_NUVEM
+    estiver ligado (senão vale durante a instância). Deduplica via registrar().
+    """
+    import os
+
+    auditor = st.session_state.get("auditor")
+    if auditor is None or not hasattr(auditor, "consolidar_memoria_das_sessoes"):
+        return
+    mensagens = st.session_state.get("mensagens") or []
+    n = len(mensagens) // 2
+    try:
+        passo = max(1, int(os.getenv("AL_IADO_CONSOLIDAR_A_CADA", "6")))
+    except ValueError:
+        passo = 6
+    if n <= 0 or n % passo != 0:
+        return
+    try:
+        from src.core.conversa_export import montar_transcricao
+
+        transcrito = montar_transcricao(mensagens)
+        auditor.consolidar_memoria_das_sessoes(transcrito, origem="chat_web_auto")
+    except Exception:
+        pass
+
+
 def responder_com_ferramenta(pergunta: str, perfil: str, llm) -> tuple[str, list[dict]]:
     from src.conhecimento.ferramentas import decidir_acao, processar_com_ferramentas
 
@@ -1357,6 +1389,10 @@ def renderizar_chat(
         len(st.session_state.mensagens) // 2,
         modelo,
     )
+    # Aprendizado automático: extrai decisões duráveis da conversa (a cada N
+    # interações), independente do modo_consulta/watcher. É o que faz o agente
+    # acumular conhecimento entre sessões.
+    aprender_da_sessao_web()
 
     auditor = st.session_state.get("auditor")
     if auditor is not None:
