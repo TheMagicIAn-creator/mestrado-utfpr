@@ -118,6 +118,7 @@ BATCH_INFERENCIA = 16
 N_BOOTSTRAP = 250
 MIN_EVENTOS_WEIBULL = 10
 MAX_CENSURA_RUL_PCT = 50.0
+PERSISTENCIA_CRUZAMENTO = 3
 
 
 def _json_seguro(valor):
@@ -144,6 +145,33 @@ def calcular_erros_batch(vetores: np.ndarray,
     return erros
 
 
+def selecionar_janelas_baseline_normais(
+    janelas: list[pd.DataFrame],
+    modelo: Autoencoder,
+    scaler,
+    device: torch.device,
+    colunas_feat: list[str],
+    limiar: float,
+) -> tuple[list[pd.DataFrame], np.ndarray, np.ndarray]:
+    """Remove trajetórias cuja janela saudável já nasce acima do limiar."""
+    if not janelas:
+        return [], np.asarray([], dtype=float), np.asarray([], dtype=bool)
+
+    vetores = []
+    for janela in janelas:
+        feats = extrair_janela(janela)
+        vetores.append([feats.get(coluna, 0.0) for coluna in colunas_feat])
+    erros = calcular_erros_batch(
+        np.asarray(vetores, dtype=np.float32), modelo, scaler, device
+    )
+    elegiveis = np.asarray(erros <= limiar, dtype=bool)
+    return (
+        [janela for janela, ok in zip(janelas, elegiveis) if ok],
+        np.asarray(erros, dtype=float),
+        elegiveis,
+    )
+
+
 # ============================================================
 # TRAJETÓRIA DE DEGRADAÇÃO PROGRESSIVA
 # ============================================================
@@ -157,12 +185,15 @@ def gerar_ttf(df_estavel: pd.DataFrame,
               tipo_falha: str,
               n_steps: int,
               seed: int,
-              batch_size: int = BATCH_INFERENCIA) -> tuple[int, bool]:
+              batch_size: int = BATCH_INFERENCIA,
+              persistencia: int = PERSISTENCIA_CRUZAMENTO) -> tuple[int, bool]:
     """
     Simula uma trajetória de degradação progressiva e retorna o TTF.
 
     A severidade aumenta linearmente de 0 a 1,0 em n_steps passos.
-    O TTF é o passo em que o erro de reconstrução cruza o limiar.
+    O TTF é o passo em que o erro de reconstrução permanece acima do limiar
+    por ``persistencia`` avaliações consecutivas. Isso evita declarar falha por
+    um pico isolado do detector.
     Se não cruzar, retorna (n_steps, False), preservando a censura à direita.
 
     Parâmetros:
@@ -184,6 +215,7 @@ def gerar_ttf(df_estavel: pd.DataFrame,
 
     modelo.eval()
 
+    erros_trajetoria: list[float] = []
     for inicio_batch in range(0, n_steps, batch_size):
         fim_batch = min(inicio_batch + batch_size, n_steps)
         vetores = []
@@ -195,7 +227,10 @@ def gerar_ttf(df_estavel: pd.DataFrame,
 
             if sev > 0.01:
                 if tipo_falha == "contator_ac":
-                    janela = fn(janela, float(sev), seed=seed * 10_000 + step)
+                    # Mantém a mesma realização de ruído e aumenta somente sua
+                    # amplitude. Trocar o ruído a cada passo misturava evolução
+                    # da degradação com variabilidade aleatória.
+                    janela = fn(janela, float(sev), seed=seed * 10_000)
                 else:
                     janela = fn(janela, float(sev))
 
@@ -206,9 +241,24 @@ def gerar_ttf(df_estavel: pd.DataFrame,
             np.asarray(vetores, dtype=np.float32),
             modelo, scaler, device
         )
-        cruzamentos = np.flatnonzero(erros > limiar)
-        if len(cruzamentos) > 0:
-            return inicio_batch + int(cruzamentos[0]), True
+        erros_trajetoria.extend(float(erro) for erro in erros)
+
+    acima = np.asarray(erros_trajetoria) > limiar
+    persistencia = max(int(persistencia), 1)
+    if persistencia == 1:
+        cruzamentos = np.flatnonzero(acima)
+    elif len(acima) >= persistencia:
+        confirmados = np.convolve(
+            acima.astype(int), np.ones(persistencia, dtype=int), mode="valid"
+        ) >= persistencia
+        # O evento é registrado quando o critério fica confirmado, não no
+        # primeiro ponto ainda isolado da sequência.
+        cruzamentos = np.flatnonzero(confirmados) + persistencia - 1
+    else:
+        cruzamentos = np.asarray([], dtype=int)
+
+    if len(cruzamentos) > 0:
+        return int(cruzamentos[0]), True
 
     return n_steps, False
 
@@ -234,6 +284,62 @@ def curva_kaplan_meier(
         pontos_t.append(float(t))
         pontos_s.append(float(sobrevivencia))
     return np.asarray(pontos_t), np.asarray(pontos_s)
+
+
+def rul_restrita_km(
+    t_atual: float,
+    ttfs: np.ndarray,
+    eventos: np.ndarray,
+    horizonte: float | None = None,
+) -> float:
+    """RUL média restrita até o horizonte observado, estimada por Kaplan-Meier.
+
+    Diferentemente da extrapolação Weibull, esta medida não pressupõe uma forma
+    paramétrica além do último acompanhamento. Por isso continua informativa
+    com alta censura, desde que seja apresentada explicitamente como RUL
+    restrita ao horizonte sintético do experimento.
+    """
+    tempos = np.asarray(ttfs, dtype=float)
+    obs = np.asarray(eventos, dtype=bool)
+    if len(tempos) == 0 or len(tempos) != len(obs):
+        return float("nan")
+
+    tau = float(np.max(tempos) if horizonte is None else horizonte)
+    t0 = float(max(t_atual, 0.0))
+    if not np.isfinite(tau) or t0 >= tau:
+        return 0.0
+
+    sobrevivencia = 1.0
+    inicio = 0.0
+    area = 0.0
+    sobrevivencia_t0: float | None = None
+
+    for tempo in np.unique(tempos):
+        fim = min(float(tempo), tau)
+        if fim > inicio:
+            if inicio <= t0 < fim:
+                sobrevivencia_t0 = sobrevivencia
+            area += sobrevivencia * max(fim - max(inicio, t0), 0.0)
+        if tempo >= tau:
+            inicio = tau
+            break
+
+        em_risco = int(np.sum(tempos >= tempo))
+        eventos_t = int(np.sum((tempos == tempo) & obs))
+        if em_risco > 0:
+            sobrevivencia *= 1.0 - eventos_t / em_risco
+        inicio = float(tempo)
+
+    if inicio < tau:
+        if inicio <= t0 < tau:
+            sobrevivencia_t0 = sobrevivencia
+        area += sobrevivencia * max(tau - max(inicio, t0), 0.0)
+
+    if sobrevivencia_t0 is None:
+        sobrevivencia_t0 = sobrevivencia
+    if sobrevivencia_t0 <= 0:
+        return 0.0
+    return float(max(area / sobrevivencia_t0, 0.0))
 
 
 def _ajuste_weibull_censurado(
@@ -322,6 +428,11 @@ def ajustar_weibull(
     else:
         cis = {f"{nome}_ci95": [None, None] for nome in nomes}
 
+    censura_pct = float((~obs).mean() * 100.0)
+    horizonte = float(np.max(tempos)) if len(tempos) else 0.0
+    rul_restrita_inicial = rul_restrita_km(0.0, tempos, obs, horizonte)
+    alta_censura = censura_pct > MAX_CENSURA_RUL_PCT
+
     return {
         "beta": float(beta),
         "eta": float(eta),
@@ -333,11 +444,16 @@ def ajustar_weibull(
         "n_traj": int(len(tempos)),
         "n_eventos": int(obs.sum()),
         "n_censurados": int((~obs).sum()),
-        "censura_pct": float((~obs).mean() * 100.0),
+        "censura_pct": censura_pct,
         "min_eventos_exigidos": MIN_EVENTOS_WEIBULL,
-        "rul_reportavel": bool(
-            convergiu and ((~obs).mean() * 100.0) <= MAX_CENSURA_RUL_PCT
-        ),
+        # Compatibilidade: indica disponibilidade da curva paramétrica. Alta
+        # censura passa a ser ressalva explícita, não motivo para apagar a RUL.
+        "rul_reportavel": bool(convergiu),
+        "rul_parametrica_disponivel": bool(convergiu),
+        "rul_parametrica_alta_incerteza": bool(convergiu and alta_censura),
+        "rul_restrita_disponivel": bool(len(tempos) > 0),
+        "rul_restrita_horizonte": horizonte,
+        "rul_restrita_inicial": rul_restrita_inicial,
         "ttf_mean_observado": (
             float(np.mean(tempos[obs])) if obs.any() else None
         ),
@@ -402,34 +518,44 @@ def plotar_ttf_histogramas(
         observados = ttfs[eventos]
         censurados = ttfs[~eventos]
 
+        horizonte = float(max(ttfs))
+        bins = np.linspace(0.0, horizonte, 13)
         if len(observados):
-            ax.hist(observados, bins=16, density=True, alpha=0.55,
-                    color=falha["cor"], label=f"Falhas observadas (n={len(observados)})")
+            ax.hist(
+                observados, bins=bins, density=False, alpha=0.72,
+                color=falha["cor"], edgecolor="white",
+                label=f"Eventos observados (n={len(observados)})",
+            )
+            ax.axvline(
+                float(np.median(observados)), color="black", linestyle="-",
+                linewidth=1.4, label=f"Mediana observada={np.median(observados):.0f}",
+            )
         if len(censurados):
-            ax.scatter(
-                censurados, np.zeros_like(censurados), marker="|", s=100,
-                color=COR_ALERTA, label=f"Censurados (n={len(censurados)})", zorder=4,
+            ax.axvline(
+                horizonte, color=COR_ALERTA, linestyle="--", linewidth=2,
+                label=f"Censura em {horizonte:.0f} (n={len(censurados)})",
             )
 
-        if p["fit_converged"]:
-            t_lin = np.linspace(0.1, max(ttfs) * 1.1, 200)
-            pdf = weibull_min.pdf(t_lin, p["beta"], loc=0, scale=p["eta"])
-            ax.plot(t_lin, pdf, color="black", linewidth=2, label="Weibull censurada")
-            ax.axvline(p["mttf"], color=COR_ALERTA, linestyle="--",
-                       label=f"MTTF={p['mttf']:.1f}")
-            ax.axvline(p["b10"], color="#2a78d6", linestyle=":",
-                       linewidth=1.5, label=f"B10={p['b10']:.1f}")
+        if p["fit_converged"] and p["b10"] <= horizonte:
+            ax.axvline(
+                p["b10"], color="#2a78d6", linestyle=":", linewidth=1.7,
+                label=f"B10 paramétrico={p['b10']:.1f}",
+            )
 
         npm_str = f"NPR={falha['npr']}"
         ajuste = (
             f"β={p['beta']:.2f} · η={p['eta']:.1f} · "
             f"censura={p['censura_pct']:.0f}%"
-            + ("\nALTA CENSURA — RUL omitida" if not p["rul_reportavel"] else "")
-            if p["fit_converged"] else "ajuste não estimável"
+            + ("\nRUL paramétrica com alta incerteza"
+               if p["rul_parametrica_alta_incerteza"] else "")
+            if p["fit_converged"]
+            else (f"Weibull não estimável · censura={p['censura_pct']:.0f}%\n"
+                  "RUL restrita por Kaplan-Meier disponível")
         )
         ax.set_title(f"{nome} ({npm_str})\n{ajuste}", fontsize=9)
         ax.set_xlabel("TTF (passos de degradação)")
-        ax.set_ylabel("Densidade / marcas de censura")
+        ax.set_ylabel("Número de trajetórias")
+        ax.set_xlim(0, horizonte * 1.05)
         ax.legend(fontsize=8)
 
     arq = pasta / "weibull_ttf.png"
@@ -471,7 +597,8 @@ def plotar_confiabilidade(
         npm_str = f"NPR={falha['npr']}"
         titulo_ajuste = (
             f"β={p['beta']:.2f}, η={p['eta']:.1f}, RMSE-KM={p['km_rmse']:.3f}"
-            + ("\nALTA CENSURA — extrapolação" if not p["rul_reportavel"] else "")
+            + ("\nALTA CENSURA — extrapolação incerta"
+               if p["rul_parametrica_alta_incerteza"] else "")
             if p["fit_converged"] else "ajuste não estimável"
         )
         ax_r.set_title(f"{falha['nome']} ({npm_str})\n{titulo_ajuste}", fontsize=9)
@@ -504,47 +631,79 @@ def plotar_confiabilidade(
     _log(f"   📊 {arq.name}")
 
 
-def plotar_rul(params: dict, pasta: Path):
-    """RUL esperado em função do tempo atual t."""
-    fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
+def plotar_rul(
+    ttfs_dict: dict, eventos_dict: dict, params: dict, pasta: Path
+):
+    """RUL restrita e paramétrica, sem ocultar componentes censurados."""
+    fig, axes = plt.subplots(
+        1, len(FALHAS), figsize=TAM["painel_3"], layout="constrained"
+    )
+    fig.suptitle(
+        "RUL sintética por componente — estimativa restrita e extrapolação Weibull"
+    )
 
-    n_curvas = 0
-    for falha in FALHAS:
-        fid  = falha["id"]
-        p    = params[fid]
-        if not p["rul_reportavel"]:
-            continue
-        mttf = p["mttf"]
+    for ax, falha in zip(axes, FALHAS):
+        fid = falha["id"]
+        p = params[fid]
+        ttfs = ttfs_dict[fid]
+        eventos = eventos_dict[fid]
+        horizonte = float(np.max(ttfs))
+        t_pontos = np.linspace(0.0, horizonte * 0.8, 41)
+        ruls_km = [
+            rul_restrita_km(t, ttfs, eventos, horizonte) for t in t_pontos
+        ]
 
-        # Avalia RUL em 20 pontos de t_atual (0 a 80% do MTTF)
-        t_pontos = np.linspace(0, mttf * 0.8, 20)
-        ruls     = [rul_condicional(t, p["beta"], p["eta"])
-                    for t in t_pontos]
-
-        npm_str = f"NPR={falha['npr']}"
-        ax.plot(t_pontos / mttf * 100, ruls,
-                color=falha["cor"], linewidth=2.5,
-                label=f"{falha['nome']} ({npm_str}) — MTTF={mttf:.1f}")
-        n_curvas += 1
-
-    ax.set_xlabel("Posição na trajetória sintética (% do MTTF ajustado)")
-    ax.set_ylabel("RUL ilustrativa (passos sintéticos)")
-    ax.set_title("RUL condicional do experimento computacional\n"
-                 "Não representa horas, ciclos ou vida útil física do componente")
-    if n_curvas:
-        ax.legend(fontsize=9)
-    else:
-        ax.text(
-            0.5, 0.5, "Nenhum ajuste estimável com os eventos observados",
-            transform=ax.transAxes, ha="center", va="center",
-            color=COR_TEXTO_SEC,
+        ax.plot(
+            t_pontos, ruls_km, color=falha["cor"], linewidth=2.6,
+            label="RUL restrita KM",
         )
-    ax.set_xlim([0, 80])
+        ax.fill_between(t_pontos, ruls_km, color=falha["cor"], alpha=0.12)
+        ax.set_xlabel("Tempo atual (passos sintéticos)")
+        ax.set_ylabel("RUL restrita ao horizonte")
+        ax.set_xlim(0, horizonte * 0.8)
+        ax.set_ylim(0, max(horizonte, max(ruls_km, default=0.0)) * 1.05)
+
+        eixos_legenda = [ax]
+        if p["fit_converged"]:
+            ruls_param = [
+                rul_condicional(t, p["beta"], p["eta"]) for t in t_pontos
+            ]
+            # Com alta censura, a extrapolação pode ser várias vezes maior que
+            # o horizonte observado. Um eixo próprio mantém as duas estimativas
+            # visíveis e impede que a escala paramétrica achate a curva KM.
+            ax_param = ax.twinx() if p["rul_parametrica_alta_incerteza"] else ax
+            ax_param.plot(
+                t_pontos, ruls_param, color="black", linewidth=1.8,
+                linestyle="--", label="RUL Weibull",
+            )
+            if ax_param is not ax:
+                ax_param.set_ylabel("RUL Weibull extrapolada")
+                ax_param.tick_params(axis="y", colors=COR_TEXTO_SEC)
+                eixos_legenda.append(ax_param)
+
+        status = (
+            "Weibull com alta incerteza"
+            if p["rul_parametrica_alta_incerteza"]
+            else "Weibull + KM"
+            if p["fit_converged"]
+            else "Somente KM restrita"
+        )
+        ax.set_title(
+            f"{falha['nome']} (NPR={falha['npr']})\n"
+            f"eventos={p['n_eventos']} · censura={p['censura_pct']:.0f}% · {status}",
+            fontsize=9,
+        )
+        handles, labels = [], []
+        for eixo in eixos_legenda:
+            h, l = eixo.get_legend_handles_labels()
+            handles.extend(h)
+            labels.extend(l)
+        ax.legend(handles, labels, fontsize=8, loc="best")
 
     arq = pasta / "weibull_rul.png"
     salvar_figura(
         fig, arq,
-        "E2 ilustrativo. Para RUL de campo são necessários dados run-to-failure ou calibração física longitudinal.",
+        "E2 ilustrativo. KM é restrita ao horizonte observado; Weibull extrapola e exige cautela, especialmente sob alta censura.",
     )
     _log(f"   📊 {arq.name}")
 
@@ -593,8 +752,25 @@ def executar_rul_weibull() -> bool:
     df = carregar_paderborn_compacto(ARQUIVO_CSV)
     janelas_holdout, meta_holdout = preparar_janelas_holdout(df)
     del df
+    n_janelas_originais = len(janelas_holdout)
+    janelas_holdout, erros_baseline, mascara_elegivel = selecionar_janelas_baseline_normais(
+        janelas_holdout, modelo, scaler, device, colunas_feat, limiar
+    )
+    n_excluidas = int((~mascara_elegivel).sum())
+    meta_holdout["filtro_baseline_ttf"] = {
+        "criterio": "erro_reconstrucao_baseline <= limiar",
+        "limiar": float(limiar),
+        "n_janelas_antes": n_janelas_originais,
+        "n_janelas_elegiveis": len(janelas_holdout),
+        "n_janelas_excluidas": n_excluidas,
+        "erros_baseline": [float(x) for x in erros_baseline],
+    }
+    if not janelas_holdout:
+        _log("   ❌ Nenhuma janela saudável ficou abaixo do limiar para gerar TTF")
+        return False
     n_traj_real = min(N_TRAJ, len(janelas_holdout))
-    _log(f"   ✅ {len(janelas_holdout)} janelas não sobrepostas do teste")
+    _log(f"   ✅ {n_janelas_originais} janelas não sobrepostas do teste")
+    _log(f"   ✅ {len(janelas_holdout)} elegíveis; {n_excluidas} excluídas por anomalia em t=0")
     _log(f"   ✅ {n_traj_real} trajetórias independentes serão usadas")
 
     # ── 3. Gera TTFs por tipo de falha ───────────────────────
@@ -649,13 +825,17 @@ def executar_rul_weibull() -> bool:
             _log(f"      Censura={p['censura_pct']:.0f}% | "
                  f"RMSE(KM)={p['km_rmse']:.4f} | bootstrap={p['bootstrap_validos']}")
         else:
-            _log("      ⚠️ Ajuste não estimável: menos de dois eventos observados")
+            _log(
+                f"      ⚠️ Weibull não estimável: {p['n_eventos']} eventos; "
+                f"mínimo configurado={MIN_EVENTOS_WEIBULL}. "
+                "RUL restrita por Kaplan-Meier será mantida."
+            )
 
     # ── 5. Visualizações ─────────────────────────────────────
     _log(f"\n📊 Gerando gráficos...")
     plotar_ttf_histogramas(ttfs_dict, eventos_dict, params, PASTA_AE)
     plotar_confiabilidade(ttfs_dict, eventos_dict, params, PASTA_AE)
-    plotar_rul(params, PASTA_AE)
+    plotar_rul(ttfs_dict, eventos_dict, params, PASTA_AE)
 
     # ── 6. Salva resultados ──────────────────────────────────
     arq_json = PASTA_AE / "weibull_results.json"
@@ -686,6 +866,7 @@ def executar_rul_weibull() -> bool:
             "limiar"       : float(limiar),
             "min_eventos_weibull": MIN_EVENTOS_WEIBULL,
             "max_censura_rul_pct": MAX_CENSURA_RUL_PCT,
+            "persistencia_cruzamento": PERSISTENCIA_CRUZAMENTO,
         },
         "falhas": {}
     }
@@ -697,10 +878,10 @@ def executar_rul_weibull() -> bool:
             "weibull": _json_seguro(params[fid]),
             "ajuste_weibull_adequado": None,
             "status_ajuste": (
-                "nao_estimavel"
+                "nao_estimavel_parametrico_rul_restrita"
                 if not params[fid]["fit_converged"]
                 else "exploratorio_alta_censura"
-                if not params[fid]["rul_reportavel"]
+                if params[fid]["rul_parametrica_alta_incerteza"]
                 else "exploratorio_descritivo"
             ),
             "ressalva_ajuste": (
@@ -740,6 +921,11 @@ def executar_rul_weibull() -> bool:
             "km_rmse": p["km_rmse"],
             "fit_converged": p["fit_converged"],
             "rul_reportavel": p["rul_reportavel"],
+            "rul_parametrica_disponivel": p["rul_parametrica_disponivel"],
+            "rul_parametrica_alta_incerteza": p["rul_parametrica_alta_incerteza"],
+            "rul_restrita_disponivel": p["rul_restrita_disponivel"],
+            "rul_restrita_horizonte": p["rul_restrita_horizonte"],
+            "rul_restrita_inicial": p["rul_restrita_inicial"],
             "status_ajuste": relatorio["falhas"][fid]["status_ajuste"],
             "evidence_level": "E2",
         })

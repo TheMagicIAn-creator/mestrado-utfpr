@@ -80,7 +80,7 @@ import matplotlib
 matplotlib.use("Agg")   # sem display — salva direto em arquivo
 
 from pathlib import Path
-from datetime import datetime
+from src.core.tempo import agora_local
 
 import torch
 import torch.nn as nn
@@ -588,7 +588,7 @@ def executar_autoencoder(
         "n_features"  : n_features,
         "latente_dim" : latente_dim,
         "colunas_feat": colunas_feat,
-        "data_treino" : datetime.now().isoformat(),
+        "data_treino" : agora_local().isoformat(),
     }, arq_modelo)
     _log(f"   ✅ {arq_modelo.name}")
 
@@ -622,7 +622,7 @@ def executar_autoencoder(
             "purge_janelas": split["purge_janelas"],
             "indices_teste": idx_teste.tolist(),
         },
-        "data_treino"       : datetime.now().isoformat(),
+        "data_treino"       : agora_local().isoformat(),
         "device"            : str(device),
     }
     with open(arq_limiar, "w", encoding="utf-8") as f:

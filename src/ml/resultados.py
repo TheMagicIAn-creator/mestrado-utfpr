@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
 from pathlib import Path
 
 from src.core.config import PASTA_CHROMADB, RAIZ_PROJETO
 from src.core.formatacao import fmt_num
+from src.core.tempo import agora_local
 
 PASTA_AE = RAIZ_PROJETO / "resultados" / "autoencoder"
 PASTA_EXPERIMENTOS = RAIZ_PROJETO / "resultados" / "experimentos"
@@ -120,6 +120,17 @@ def _pede_graficos_modelo(txt: str) -> bool:
         "imagen", "imagenes", "figura", "figuras",
         "graphique", "graphiques", "metriques", "métriques",
     ))
+
+
+def _variante_comparacao_metricas(txt: str) -> tuple[str, str]:
+    if any(t in txt for t in ("pontos", "dot plot", "dotplot", "lollipop", "dispersao")):
+        return "comparacao_metricas_pontos.png", "comparacao por pontos"
+    if any(t in txt for t in (
+        "barras", "barra horizontal", "bar chart", "bar plot",
+        "grafico de colunas", "gráfico de colunas",
+    )):
+        return "comparacao_metricas_barras.png", "comparacao em barras horizontais"
+    return "comparacao_metricas.png", "comparacao de metricas"
 
 
 def _pede_anomalias(txt: str) -> bool:
@@ -324,6 +335,16 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
         somente_matriz = pede_matriz and not pede_graficos
         melhor_apenas = _pede_melhor(txt)
         pede_anomalias = _pede_anomalias(txt)
+        pedido_comparativo = any(t in txt for t in (
+            "comparar", "compare", "comparacao", "comparison",
+            "comparacion", "comparaison", "versus", " vs ",
+        ))
+        pede_individuais = (not pedido_comparativo) or any(t in txt for t in (
+            "resultado individual", "resultados individuais",
+            "grafico de cada modelo", "gráfico de cada modelo",
+            "graficos por modelo", "gráficos por modelo",
+            "todos os graficos", "todos os gráficos", "graficos e matrizes",
+        ))
 
         for idx_exp, resultado in enumerate(_arquivos_experimentos(pergunta)):
             pasta = resultado.parent
@@ -335,10 +356,14 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
             grupo = dados.get("referencia") or f"Experimento {nome}"
 
             if not somente_matriz:
+                arquivo_comparacao, rotulo_comparacao = _variante_comparacao_metricas(txt)
+                caminho_comparacao = pasta / arquivo_comparacao
+                if not caminho_comparacao.exists():
+                    caminho_comparacao = pasta / "comparacao_metricas.png"
                 _add_img(
                     imagens,
-                    pasta / "comparacao_metricas.png",
-                    f"{grupo} - comparacao de metricas",
+                    caminho_comparacao,
+                    f"{grupo} - {rotulo_comparacao}",
                     grupo=grupo,
                     ordem=0,
                     tipo="comparacao",
@@ -362,7 +387,7 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
                     continue
                 if modelos_pedidos and modelo not in modelos_pedidos:
                     continue
-                if not somente_matriz:
+                if not somente_matriz and pede_individuais:
                     _add_grafico_modelo(
                         imagens,
                         pasta,
@@ -546,8 +571,8 @@ def _resumo_weibull() -> str | None:
 
     linhas = [
         "## RUL / Weibull\n\n",
-        "| Falha | NPR | Eventos/Censura | beta (IC95%) | eta (IC95%) | MTTF (IC95%) | B10 (IC95%) | Status |\n",
-        "|---|---:|---:|---:|---:|---:|---:|---|\n",
+        "| Falha | NPR | Eventos/Censura | beta (IC95%) | eta (IC95%) | MTTF (IC95%) | B10 (IC95%) | RUL restrita inicial | Status |\n",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---|\n",
     ]
     for fid, falha in d.get("falhas", {}).items():
         p = falha.get("weibull", {})
@@ -559,8 +584,11 @@ def _resumo_weibull() -> str | None:
 
         status_mapa = {
             "exploratorio_descritivo": "exploratório",
-            "exploratorio_alta_censura": "alta censura; RUL omitida",
+            "exploratorio_alta_censura": "Weibull incerta; KM restrita disponível",
             "nao_estimavel": "não estimável",
+            "nao_estimavel_parametrico_rul_restrita": (
+                "Weibull não estimável; KM restrita disponível"
+            ),
         }
         status = status_mapa.get(
             falha.get("status_ajuste"),
@@ -570,13 +598,22 @@ def _resumo_weibull() -> str | None:
             f"| {falha.get('nome', fid)} | {falha.get('npr')} | "
             f"{p.get('n_eventos', '-')}/{p.get('n_censurados', '-')} | "
             f"{valor_ci('beta', 2)} | {valor_ci('eta')} | {valor_ci('mttf')} | "
-            f"{valor_ci('b10')} | {status} |\n"
+            f"{valor_ci('b10')} | {_fmt(p.get('rul_restrita_inicial'))} | {status} |\n"
         )
     linhas.append(
-        "\n**Leitura obrigatória:** a censura agora é preservada e os intervalos "
+        "\n**Separação obrigatória das estimativas:** a coluna **RUL restrita "
+        "inicial** é exclusivamente a média residual **não paramétrica de "
+        "Kaplan-Meier**, truncada no horizonte observado. Ela nunca deve ser "
+        "descrita como RUL Weibull. A curva Weibull do gráfico é a estimativa "
+        "paramétrica/extrapolativa e só existe quando o ajuste convergiu.\n\n"
+        "**Leitura obrigatória:** a censura agora é preservada e os intervalos "
         "vêm de bootstrap, mas os tempos continuam sendo passos de degradação "
-        "sintética E2. MTTF, B10 e RUL descrevem o experimento computacional e "
-        "não podem ser apresentados como vida útil física ou de campo."
+        "sintética E2. A RUL por Kaplan-Meier é restrita ao horizonte observado; "
+        "a RUL Weibull é extrapolativa e recebe ressalva quando há alta censura. "
+        "MTTF, B10 e RUL descrevem o experimento computacional e "
+        "não podem ser apresentados como vida útil física ou de campo. O NPR "
+        "prioriza risco na FMECA; ele **não determina** quantos eventos o "
+        "experimento sintético produzirá e não explica causalmente a censura."
     )
     return "".join(linhas)
 
@@ -588,11 +625,7 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
 
     txt = _normalizar(pergunta)
     metricas = ("accuracy", "precision", "recall", "f1", "auc", "specificity")
-    linhas = [
-        "## Experimentos por artigo\n\n",
-        "| Experimento | Modelo | Accuracy | Precision | Recall | F1 | AUC | Specificity | Anomalias detectadas |\n",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|\n",
-    ]
+    linhas = ["## Experimentos por artigo\n\n"]
 
     linhas_modelos = []
     destaques_melhor = []
@@ -624,6 +657,7 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
                     "anomalias": None,
                     "exp": exp,
                     "modelo": modelo,
+                    "dados": m,
                     "linha": f"| {exp} | {modelo} ({motivo}) | - | - | - | - | - | - | - |\n",
                 })
                 continue
@@ -633,23 +667,101 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
                 "anomalias": anomalias if isinstance(anomalias, int) else None,
                 "exp": exp,
                 "modelo": modelo,
+                "dados": m,
                 "linha": (
                     f"| {exp} | {modelo} | {valores[0]} | {valores[1]} | {valores[2]} | "
                     f"{valores[3]} | {valores[4]} | {valores[5]} | {anomalias} |\n"
                 ),
             })
 
-    if _pede_anomalias(txt):
-        linhas_modelos.sort(key=lambda item: item["anomalias"] if item["anomalias"] is not None else -1, reverse=True)
-    linhas.extend(item["linha"] for item in linhas_modelos)
+    metrica_pedida = next(
+        (
+            met
+            for met in ("auc", "f1", "recall", "precision", "accuracy", "specificity")
+            if re.search(rf"\b{re.escape(met)}\b", txt)
+        ),
+        None,
+    )
+    if _pede_anomalias(txt) and not metrica_pedida:
+        linhas_modelos.sort(
+            key=lambda item: item["anomalias"] if item["anomalias"] is not None else -1,
+            reverse=True,
+        )
+    if _pede_anomalias(txt) and metrica_pedida:
+        ordenados = sorted(
+            linhas_modelos,
+            key=lambda item: (
+                item["dados"].get(metrica_pedida)
+                if isinstance(item["dados"].get(metrica_pedida), (int, float))
+                else -1
+            ),
+            reverse=True,
+        )
+        linhas.extend([
+            f"| Rank | Experimento | Modelo | {metrica_pedida.upper()} | Detectadas | Reais | Taxa marcada | Recall |\n",
+            "|---:|---|---|---:|---:|---:|---:|---:|\n",
+        ])
+        for rank, item in enumerate(ordenados, 1):
+            dados_modelo = item["dados"]
+            linhas.append(
+                f"| {rank} | {item['exp']} | {item['modelo']} | "
+                f"{_fmt(dados_modelo.get(metrica_pedida))} | "
+                f"{_fmt(dados_modelo.get('anomalias_detectadas'), 0)} | "
+                f"{_fmt(dados_modelo.get('anomalias_reais'), 0)} | "
+                f"{_fmt(dados_modelo.get('taxa_anomalias_detectadas'))} | "
+                f"{_fmt(dados_modelo.get('recall'))} |\n"
+            )
+    elif _pede_anomalias(txt):
+        linhas.extend([
+            "| Experimento | Modelo | Detectadas | Reais | Taxa marcada | Recall |\n",
+            "|---|---|---:|---:|---:|---:|\n",
+        ])
+        for item in linhas_modelos:
+            dados_modelo = item["dados"]
+            linhas.append(
+                f"| {item['exp']} | {item['modelo']} | "
+                f"{_fmt(dados_modelo.get('anomalias_detectadas'), 0)} | "
+                f"{_fmt(dados_modelo.get('anomalias_reais'), 0)} | "
+                f"{_fmt(dados_modelo.get('taxa_anomalias_detectadas'))} | "
+                f"{_fmt(dados_modelo.get('recall'))} |\n"
+            )
+    elif metrica_pedida:
+        ordenados = sorted(
+            linhas_modelos,
+            key=lambda item: (
+                item["dados"].get(metrica_pedida)
+                if isinstance(item["dados"].get(metrica_pedida), (int, float))
+                else -1
+            ),
+            reverse=True,
+        )
+        linhas.extend([
+            f"| Rank | Experimento | Modelo | {metrica_pedida.upper()} |\n",
+            "|---:|---|---|---:|\n",
+        ])
+        for rank, item in enumerate(ordenados, 1):
+            linhas.append(
+                f"| {rank} | {item['exp']} | {item['modelo']} | "
+                f"{_fmt(item['dados'].get(metrica_pedida))} |\n"
+            )
+    else:
+        linhas.extend([
+            "| Experimento | Modelo | Accuracy | Precision | Recall | F1 | AUC | Specificity | Anomalias detectadas |\n",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|\n",
+        ])
+        linhas.extend(item["linha"] for item in linhas_modelos)
 
     if _pede_anomalias(txt):
         candidatos = [item for item in linhas_modelos if item["anomalias"] is not None]
         if candidatos:
-            topo = candidatos[0]
+            topo = max(candidatos, key=lambda item: item["anomalias"])
             linhas.append(
                 f"\nDestaque: quem mais marcou anomalias foi **{topo['modelo']}** "
                 f"em **{topo['exp']}**, com **{topo['anomalias']}** detecções no ponto de operação.\n"
+            )
+            linhas.append(
+                "Essa contagem depende do limiar e não define, sozinha, o melhor "
+                "modelo: avalie junto AUC, recall, falsos positivos e o protocolo.\n"
             )
     if destaques_melhor:
         linhas.append("\nMelhor modelo pelo criterio salvo:\n" + "\n".join(destaques_melhor) + "\n")
@@ -762,7 +874,7 @@ def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> d
         "etapa": "Consulta de resultados",
         "mensagem": mensagem,
         "imagens": imagens,
-        "resposta_pronta": True,
+        "resposta_pronta": False,
     }
 
 
@@ -774,7 +886,7 @@ def indexar_resultados_ml(modelo_embeddings) -> str:
     resumo = resumir_resultados("", incluir_imagens=False)["mensagem"]
     conteudo = (
         "# Resultados da Fase 5 - Pipeline de ML\n\n"
-        f"> Gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n"
+        f"> Gerado em {agora_local().strftime('%d/%m/%Y %H:%M %Z')}\n\n"
         f"{resumo}\n"
     )
     saida.parent.mkdir(parents=True, exist_ok=True)

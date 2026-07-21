@@ -18,10 +18,10 @@ from __future__ import annotations
 
 import json
 import pickle
-from datetime import datetime
 from pathlib import Path
 
 from src.core.config import RAIZ_PROJETO
+from src.core.tempo import agora_local
 
 PASTA = Path(RAIZ_PROJETO) / "resultados" / "classificacao_pv"
 NOMES_CLASSES = {
@@ -146,7 +146,7 @@ def treinar_e_salvar_de(
         ],
     }
     training_manifest = {
-        "created_at": datetime.now().isoformat(),
+        "created_at": agora_local().isoformat(),
         "dataset": "PV Farms",
         "dominio": "CC",
         "modelo": "Random Forest",

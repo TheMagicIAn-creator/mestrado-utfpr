@@ -528,6 +528,15 @@ def _quer_comparar_auc_experimentos(pergunta: str) -> bool:
     if _quer_rodar_experimento(pergunta):
         return False
     txt = _normalizar(pergunta)
+    # Pedidos compostos de apresentação devem ler os artefatos já calculados.
+    # A ferramenta de banco comum gera somente a comparação AUC e, por isso,
+    # não consegue cumprir matrizes, contagens ou formatos gráficos pedidos.
+    if any(t in txt for t in (
+        "anomalias detectadas", "quantas anomalias", "matriz", "matrizes",
+        "grafico", "graficos", "por pontos", "dot plot", "barras",
+        "cada artigo", "proprio grupo", "próprio grupo",
+    )):
+        return False
     tem_compare = any(t in txt for t in (
         "compare", "comparar", "comparacao", "comparacao",
         "analise", "analisa", "qual o melhor", "qual e o melhor",
@@ -1892,8 +1901,20 @@ priorize o que importa para a dissertação, aponte ressalvas (ajuste estatísti
 rejeitado, detecção nula, evidência E1/E2) e diga o que aquilo SIGNIFICA para o
 trabalho. Não invente números — cite só os que estão na evidência. Se um número
 tiver ressalva na evidência (ex.: KS rejeitado, SMD não detectada), NÃO o
-apresente como conclusivo. Português brasileiro natural, salvo se Rodolfo
-escreveu claramente em outro idioma."""
+apresente como conclusivo. Escolha a forma que melhor atende ao pedido: prosa,
+lista, ranking ou tabela específica. Não despeje sempre a mesma tabela completa;
+se o pesquisador pedir uma métrica ou contagem, mostre apenas as colunas úteis.
+Em comparações, não omita modelos relevantes presentes na evidência. Português
+brasileiro natural, salvo se Rodolfo escreveu claramente em outro idioma.
+Não repita o pedido, não use encorajamento genérico e mantenha a extensão
+proporcional. Se o resultado mencionar imagens, elas serão renderizadas no chat:
+    não diga que não pode vê-las. Comece diretamente pela análise, sem
+    vocativos como "Prezado Rodolfo". Descreva cada gráfico somente pelo que a
+    evidência e sua legenda dizem; não atribua distribuições, limiares ou curvas a
+    uma figura de métricas, contagens ou cobertura. Em Weibull/RUL, preserve
+    rigorosamente o rótulo:
+"RUL restrita" é Kaplan-Meier não paramétrica; não a chame de paramétrica. NPR
+é criticidade FMECA e não causa a frequência de eventos simulados."""
     try:
         from langchain_core.messages import HumanMessage
 

@@ -33,11 +33,11 @@ Regras:
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from pathlib import Path
 
 from src.core.config import RAIZ_PROJETO
 from src.core.formatacao import fmt_metrica, tabela_markdown
+from src.core.tempo import agora_local
 
 PASTA_AE = RAIZ_PROJETO / "resultados" / "autoencoder"
 PASTA_EXPERIMENTOS = RAIZ_PROJETO / "resultados" / "experimentos"
@@ -296,7 +296,7 @@ def comparar_com_literatura(progresso=None) -> dict:
     _grafico(linhas, info_banco, arq_png)
 
     relatorio = {
-        "gerado_em": datetime.now().isoformat(timespec="seconds"),
+        "gerado_em": agora_local().isoformat(timespec="seconds"),
         "evidence_level": "E1",
         "evidence_note": (
             "Comparação no banco comum (injeção no espaço de features). "

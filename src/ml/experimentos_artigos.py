@@ -42,6 +42,7 @@ from pathlib import Path
 from typing import Callable
 
 from src.core.config import RAIZ_PROJETO
+from src.core.tempo import agora_local
 
 PASTA_EXPERIMENTOS = RAIZ_PROJETO / "resultados" / "experimentos"
 METRICAS_BASE = ("accuracy", "precision", "recall", "f1", "auc", "specificity")
@@ -584,26 +585,27 @@ def _grafico_metricas_modelo(exp: ExperimentoArtigo, nome: str, modelo: dict, pl
     if not metricas:
         return None
 
-    from src.ml.estilo_graficos import TAM
+    from src.ml.estilo_graficos import COR_METODO, COR_NEUTRA, TAM
 
     valores = [float(modelo[met]) for met in metricas]
-    from src.ml.estilo_graficos import PALETA
-
-    cores = PALETA[:len(metricas)]
     fig, ax = plt.subplots(figsize=TAM["unico"])
-    barras = ax.bar(metricas, valores, color=cores)
-    ax.set_ylim(0, 1.05)
-    ax.set_ylabel("valor")
+    y = np.arange(len(metricas))
+    cor = COR_METODO if "autoencoder" in nome.lower() else COR_NEUTRA
+    barras = ax.barh(y, valores, color=cor, height=0.58)
+    ax.set_xlim(0, 1.05)
+    ax.set_yticks(y)
+    ax.set_yticklabels([met.replace("_", " ").upper() for met in metricas])
+    ax.invert_yaxis()
+    ax.set_xlabel("Métrica (0–1)")
     ax.set_title(f"{exp.referencia} - {nome}")
-    ax.grid(axis="y", alpha=0.25)
-    ax.tick_params(axis="x", rotation=20)
+    ax.grid(axis="x", alpha=0.25)
     for barra, valor in zip(barras, valores):
         ax.text(
-            barra.get_x() + barra.get_width() / 2,
-            min(1.03, valor + 0.02),
+            min(1.03, valor + 0.015),
+            barra.get_y() + barra.get_height() / 2,
             f"{valor:.3f}",
-            ha="center",
-            va="bottom",
+            ha="left",
+            va="center",
             fontsize=9,
         )
 
@@ -678,7 +680,14 @@ def _grafico_comparacao(exp: ExperimentoArtigo, resultado: dict) -> list[Path]:
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
-        from src.ml.estilo_graficos import aplicar_estilo, tam_barras_v
+        from src.ml.estilo_graficos import (
+            COR_METODO,
+            COR_NEUTRA,
+            PALETA,
+            TAM,
+            aplicar_estilo,
+            tam_barras_h,
+        )
 
         aplicar_estilo()
     except Exception:
@@ -706,24 +715,88 @@ def _grafico_comparacao(exp: ExperimentoArtigo, resultado: dict) -> list[Path]:
     ]
     if modelos and metricas:
         nomes = [n for n, _ in modelos]
-        x = np.arange(len(nomes))
-        largura = min(0.16, 0.78 / max(1, len(metricas)))
-        fig, ax = plt.subplots(figsize=tam_barras_v(len(nomes)))
-        for i, met in enumerate(metricas):
-            vals = [
+        matriz = np.asarray([
+            [
                 float(m.get(met)) if isinstance(m.get(met), (int, float)) else np.nan
-                for _, m in modelos
+                for met in metricas
             ]
-            ax.bar(x + (i - (len(metricas) - 1) / 2) * largura, vals, largura, label=met)
-        ax.set_ylim(0, 1.05)
-        ax.set_ylabel("valor")
-        ax.set_title(f"{exp.referencia} - comparacao multi-metrica")
-        ax.set_xticks(x)
-        ax.set_xticklabels(nomes, rotation=25, ha="right")
-        ax.legend(ncol=min(3, len(metricas)), fontsize=8)
-        ax.grid(axis="y", alpha=0.25)
+            for _, m in modelos
+        ])
+
+        # Visão densa padrão: valores comparáveis na mesma escala, sem colunas
+        # estreitas nem legendas que disputem espaço com os modelos.
+        fig, ax = plt.subplots(figsize=(max(9.0, 1.25 * len(metricas)), max(4.5, 0.75 * len(nomes))))
+        im = ax.imshow(matriz, cmap="Blues", vmin=0, vmax=1, aspect="auto")
+        ax.set_xticks(range(len(metricas)))
+        ax.set_xticklabels([met.replace("_", " ").upper() for met in metricas])
+        ax.set_yticks(range(len(nomes)))
+        ax.set_yticklabels(nomes)
+        ax.grid(False)
+        for i in range(matriz.shape[0]):
+            for j in range(matriz.shape[1]):
+                valor = matriz[i, j]
+                if np.isnan(valor):
+                    rotulo, cor_texto = "–", "#52514e"
+                else:
+                    rotulo = f"{valor:.3f}"
+                    cor_texto = "white" if valor >= 0.58 else "#0b0b0b"
+                ax.text(j, i, rotulo, ha="center", va="center", color=cor_texto, fontsize=9)
+        fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, label="Métrica (0–1)")
+        ax.set_title(f"{exp.referencia} - comparação multimétrica")
         fig.tight_layout()
         caminho = exp.pasta() / "comparacao_metricas.png"
+        fig.savefig(caminho)
+        plt.close(fig)
+        graficos.append(caminho)
+
+        # Alternativa 1: dot plots em pequenos múltiplos. Boa para perceber
+        # diferenças pequenas sem transformar cada métrica em uma cor.
+        ncols = min(3, len(metricas))
+        nrows = int(np.ceil(len(metricas) / ncols))
+        fig, axes = plt.subplots(nrows, ncols, figsize=TAM["painel_6"], squeeze=False)
+        y = np.arange(len(nomes))
+        cores_modelos = [
+            COR_METODO if "autoencoder" in nome.lower() else PALETA[i % len(PALETA)]
+            for i, nome in enumerate(nomes)
+        ]
+        for indice, met in enumerate(metricas):
+            ax = axes.flat[indice]
+            valores = matriz[:, indice]
+            ax.hlines(y, 0, valores, color="#d5d4cd", linewidth=1.2)
+            ax.scatter(valores, y, c=cores_modelos, s=44, zorder=3)
+            ax.set_xlim(0, 1.03)
+            ax.set_title(met.replace("_", " ").upper(), fontsize=10)
+            ax.set_yticks(y)
+            ax.set_yticklabels(nomes if indice % ncols == 0 else [])
+            ax.invert_yaxis()
+            ax.grid(axis="x", alpha=0.25)
+        for ax in axes.flat[len(metricas):]:
+            ax.axis("off")
+        fig.suptitle(f"{exp.referencia} - comparação por pontos", y=1.01)
+        fig.tight_layout()
+        caminho = exp.pasta() / "comparacao_metricas_pontos.png"
+        fig.savefig(caminho)
+        plt.close(fig)
+        graficos.append(caminho)
+
+        # Alternativa 2: barras horizontais em pequenos múltiplos, usada
+        # somente quando o prompt pedir barras explicitamente.
+        fig, axes = plt.subplots(nrows, ncols, figsize=TAM["painel_6"], squeeze=False)
+        for indice, met in enumerate(metricas):
+            ax = axes.flat[indice]
+            valores = matriz[:, indice]
+            ax.barh(y, valores, color=cores_modelos, height=0.55)
+            ax.set_xlim(0, 1.03)
+            ax.set_title(met.replace("_", " ").upper(), fontsize=10)
+            ax.set_yticks(y)
+            ax.set_yticklabels(nomes if indice % ncols == 0 else [])
+            ax.invert_yaxis()
+            ax.grid(axis="x", alpha=0.25)
+        for ax in axes.flat[len(metricas):]:
+            ax.axis("off")
+        fig.suptitle(f"{exp.referencia} - comparação em barras horizontais", y=1.01)
+        fig.tight_layout()
+        caminho = exp.pasta() / "comparacao_metricas_barras.png"
         fig.savefig(caminho)
         plt.close(fig)
         graficos.append(caminho)
@@ -736,13 +809,58 @@ def _grafico_comparacao(exp: ExperimentoArtigo, resultado: dict) -> list[Path]:
     if itens_anomalia:
         nomes = [n for n, _ in itens_anomalia]
         valores = [v for _, v in itens_anomalia]
-        fig, ax = plt.subplots(figsize=tam_barras_v(len(nomes)))
-        ax.bar(nomes, valores, color="#7B4CC2")
-        ax.set_ylabel("anomalias detectadas")
-        ax.set_title(f"{exp.referencia} - anomalias no ponto de operacao")
-        ax.tick_params(axis="x", rotation=25)
-        for i, v in enumerate(valores):
-            ax.text(i, v, str(v), ha="center", va="bottom", fontsize=9)
+        y = np.arange(len(nomes))
+        reais = [
+            int(m["anomalias_reais"])
+            for _, m in modelos
+            if isinstance(m.get("anomalias_reais"), int)
+        ]
+        referencia_real = reais[0] if reais and len(set(reais)) == 1 else None
+        maior = max(valores + [1])
+        if referencia_real is not None:
+            fig, (ax, ax_taxa) = plt.subplots(1, 2, figsize=TAM["painel_2"])
+        else:
+            fig, ax = plt.subplots(figsize=tam_barras_h(len(nomes)))
+            ax_taxa = None
+        barras = ax.barh(y, valores, color=PALETA[:len(nomes)], height=0.58)
+        ax.set_yticks(y)
+        ax.set_yticklabels(nomes)
+        ax.invert_yaxis()
+        ax.set_xlim(0, maior * 1.18)
+        ax.set_xlabel("Anomalias marcadas no ponto de operação")
+        ax.set_title(f"{exp.referencia} - detecções por modelo")
+        for barra, v in zip(barras, valores):
+            ax.text(
+                v + maior * 0.012,
+                barra.get_y() + barra.get_height() / 2,
+                str(v),
+                ha="left",
+                va="center",
+                fontsize=9,
+            )
+        ax.grid(axis="x", alpha=0.25)
+        if ax_taxa is not None and referencia_real:
+            taxas = [100.0 * valor / referencia_real for valor in valores]
+            barras_taxa = ax_taxa.barh(
+                y, taxas, color=PALETA[:len(nomes)], height=0.58
+            )
+            ax_taxa.set_yticks(y)
+            ax_taxa.set_yticklabels([])
+            ax_taxa.invert_yaxis()
+            ax_taxa.set_xlim(0, max(100.0, max(taxas) * 1.15))
+            ax_taxa.axvline(100, color="#c43d3d", linestyle="--", linewidth=1.5)
+            ax_taxa.set_xlabel("Cobertura das anomalias reais (%)")
+            ax_taxa.set_title(f"Referência: {referencia_real} anomalias reais")
+            for barra, taxa in zip(barras_taxa, taxas):
+                ax_taxa.text(
+                    taxa + 1.0,
+                    barra.get_y() + barra.get_height() / 2,
+                    f"{taxa:.1f}%",
+                    ha="left",
+                    va="center",
+                    fontsize=9,
+                )
+            ax_taxa.grid(axis="x", alpha=0.25)
         fig.tight_layout()
         caminho = exp.pasta() / "anomalias_detectadas.png"
         fig.savefig(caminho)
@@ -773,8 +891,6 @@ def _grafico_comparacao(exp: ExperimentoArtigo, resultado: dict) -> list[Path]:
 
 def _consolidar(exp: ExperimentoArtigo, modelos_out: dict, metrica_principal: str,
                 metodologia: dict | None = None) -> dict:
-    from datetime import datetime
-
     validos = {
         n: m for n, m in modelos_out.items()
         if m.get("disponivel", True) and isinstance(m.get(metrica_principal), (int, float))
@@ -799,7 +915,7 @@ def _consolidar(exp: ExperimentoArtigo, modelos_out: dict, metrica_principal: st
             "E1 — benchmark exploratório (perturbação genérica / dataset rotulado "
             "CC); não é validação formal nem desempenho industrial."
         ),
-        "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "data": agora_local().isoformat(timespec="seconds"),
         "metrica_principal": metrica_principal,
         "origem_dados": _origem_dados(exp),
         "modelos": modelos_out,

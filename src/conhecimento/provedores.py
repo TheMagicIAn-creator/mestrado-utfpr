@@ -4,8 +4,8 @@ Gerencia os provedores de LLM disponíveis.
 Permite escolher e trocar de provedor durante a sessão.
 
 Provedores suportados:
-  1. Google Gemini (gemini-2.5-flash) — 20 req/dia grátis
-  2. Groq (llama-3.3-70b)            — 12k tokens/min no tier on-demand
+  1. Google Gemini (modelo configurável) — conversa e síntese
+  2. Groq (modelo configurável)          — auditoria e memória
 
 Autor: Rodolfo Torres (UTFPR)
 """
@@ -25,17 +25,17 @@ load_dotenv()
 PROVEDORES = {
     "1": {
         "nome"      : "Google Gemini",
-        "modelo"    : "gemini-2.5-flash",
+        "modelo"    : os.getenv("AL_IADO_GEMINI_MODEL", "gemini-2.5-flash"),
         "env_key"   : "GOOGLE_API_KEY",
-        "limite"    : "20 req/dia",
+        "limite"    : "conforme o plano da API",
         "emoji"     : "🔵",
         "multimodal": True,   # entende imagens (visão)
     },
     "2": {
         "nome"      : "Groq (LLaMA 3.3)",
-        "modelo"    : "llama-3.3-70b-versatile",
+        "modelo"    : os.getenv("AL_IADO_GROQ_MODEL", "llama-3.3-70b-versatile"),
         "env_key"   : "GROQ_API_KEY",
-        "limite"    : "12k tokens/min no tier on-demand",
+        "limite"    : "conforme o plano da API",
         "emoji"     : "🟢",
         "multimodal": False,  # texto puro (não lê imagens)
     }
@@ -84,11 +84,12 @@ def _texto_do_conteudo(conteudo) -> str:
 class GeminiLeve:
     """Adaptador do SDK Google Gen AI sem carregar a integração LangChain."""
 
-    def __init__(self, api_key: str, model: str, temperature: float = 0.3,
-                 client=None) -> None:
+    def __init__(self, api_key: str, model: str, temperature: float = 0.45,
+                 max_output_tokens: int = 8192, client=None) -> None:
         self.api_key = api_key
         self.model = model
         self.temperature = float(temperature)
+        self.max_output_tokens = max(256, int(max_output_tokens))
         self._client = client
 
     def _obter_client(self):
@@ -140,7 +141,10 @@ class GeminiLeve:
         resposta = self._obter_client().models.generate_content(
             model=self.model,
             contents=self._conteudos(mensagens),
-            config={"temperature": self.temperature},
+            config={
+                "temperature": self.temperature,
+                "max_output_tokens": self.max_output_tokens,
+            },
         )
         return RespostaLLM(content=getattr(resposta, "text", "") or "")
 
@@ -148,7 +152,10 @@ class GeminiLeve:
         fluxo = self._obter_client().models.generate_content_stream(
             model=self.model,
             contents=self._conteudos(mensagens),
-            config={"temperature": self.temperature},
+            config={
+                "temperature": self.temperature,
+                "max_output_tokens": self.max_output_tokens,
+            },
         )
         for item in fluxo:
             texto = getattr(item, "text", "") or ""
@@ -254,7 +261,7 @@ def listar_provedores():
         disponivel   = "✅ Chave configurada" if api_key else "❌ Chave não encontrada"
         print(f"\n  {info['emoji']} [{chave}] {info['nome']}")
         print(f"      Modelo : {info['modelo']}")
-        print(f"      Limite : {info['limite']} (tier gratuito)")
+        print(f"      Limite : {info['limite']}")
         print(f"      Status : {disponivel}")
 
     print("\n" + "=" * 60)
@@ -284,7 +291,10 @@ def inicializar_provedor(escolha: str):
         llm = GeminiLeve(
             model=info["modelo"],
             api_key=api_key,
-            temperature=0.3,
+            temperature=float(os.getenv("AL_IADO_GEMINI_TEMPERATURE", "0.45")),
+            max_output_tokens=int(
+                os.getenv("AL_IADO_GEMINI_MAX_OUTPUT_TOKENS", "8192")
+            ),
         )
 
     # Groq

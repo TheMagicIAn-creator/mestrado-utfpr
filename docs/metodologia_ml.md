@@ -77,12 +77,20 @@ insuficiente, permanece nulo em vez de transmitir certeza artificial.
 ## 7. Weibull e RUL sintéticos
 
 - Uma trajetória mantém a **mesma janela-base** enquanto a severidade cresce;
-  não mistura ativos/regimes operacionais a cada passo.
-- Cruzamentos do limiar são eventos; trajetórias sem cruzamento permanecem
+  não mistura ativos/regimes operacionais a cada passo. Realizações estocásticas
+  de uma mesma trajetória também ficam congeladas ao longo da severidade.
+- Janelas do holdout que já excedem o limiar saudável em `t=0` são excluídas e
+  contabilizadas. Um evento exige três passos consecutivos acima do limiar,
+  reduzindo cruzamentos isolados por ruído.
+- Cruzamentos persistentes do limiar são eventos; trajetórias sem cruzamento permanecem
   **censuradas à direita**. Censura nunca recebe jitter nem vira falha.
 - O ajuste de dois parâmetros usa máxima verossimilhança censurada e intervalos
   bootstrap por trajetória. Kaplan-Meier é exibido junto da curva paramétrica.
-- MTTF, B10 e RUL estão em **passos sintéticos E2**. Mesmo com ajuste
+- A **RUL restrita por Kaplan-Meier** é calculada para todas as famílias até o
+  horizonte observado. A RUL paramétrica só aparece quando há eventos suficientes;
+  censura acima de 50% não apaga a curva, mas a marca como extrapolação de alta
+  incerteza. Sem eventos suficientes, beta, eta, MTTF e B10 permanecem nulos.
+- MTTF, B10 e ambas as formas de RUL estão em **passos sintéticos E2**. Mesmo com ajuste
   convergente, não equivalem a horas, ciclos ou vida física de campo.
 
 ## 8. Métricas

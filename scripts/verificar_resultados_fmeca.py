@@ -8,7 +8,8 @@ O verificador cruza os formatos publicados (JSON/CSV/PNG) e valida a
 metodologia vigente: holdout temporal com purga, limiar p99 de calibração,
 SMD probabilística com Wilson, validação sintética E2 e Weibull com censura à
 direita. Ausência de ajuste por poucos eventos é um resultado válido, não uma
-falha do verificador.
+falha do verificador; nesses casos, a RUL restrita por Kaplan-Meier deve
+permanecer disponível até o horizonte observado.
 """
 
 from __future__ import annotations
@@ -326,19 +327,40 @@ def checar_weibull(aud: Auditoria) -> dict | None:
         aud.exigir(n_traj - n_eventos == n_cens, f"Weibull[{fid}]: censura incorreta")
         aud.exigir(_proximo(censura, 100 * n_cens / n_traj), f"Weibull[{fid}]: percentual de censura incorreto")
         aud.exigir(bool(str(falha.get("ressalva_ajuste", "")).strip()), f"Weibull[{fid}]: ressalva ausente")
+        horizonte = _numero(ajuste.get("rul_restrita_horizonte"))
+        rul_restrita = _numero(ajuste.get("rul_restrita_inicial"))
+        aud.exigir(
+            ajuste.get("rul_restrita_disponivel") is True,
+            f"Weibull[{fid}]: RUL restrita KM deve estar disponível",
+        )
+        aud.exigir(
+            horizonte > 0 and 0 <= rul_restrita <= horizonte,
+            f"Weibull[{fid}]: RUL restrita fora do horizonte observado",
+        )
 
         if n_eventos < min_eventos:
-            aud.exigir(falha.get("status_ajuste") == "nao_estimavel", f"Weibull[{fid}]: poucos eventos devem resultar em nao_estimavel")
+            aud.exigir(
+                falha.get("status_ajuste") == "nao_estimavel_parametrico_rul_restrita",
+                f"Weibull[{fid}]: poucos eventos devem manter apenas RUL restrita",
+            )
             aud.exigir(ajuste.get("beta") is None and ajuste.get("eta") is None, f"Weibull[{fid}]: parâmetros não devem existir com poucos eventos")
-            aud.exigir(ajuste.get("rul_reportavel") is False, f"Weibull[{fid}]: RUL não pode ser reportada")
+            aud.exigir(ajuste.get("rul_parametrica_disponivel") is False, f"Weibull[{fid}]: RUL paramétrica não pode ser reportada")
         else:
             for nome in ("beta", "eta", "mttf", "b10"):
                 valor = _numero(ajuste.get(nome))
                 aud.exigir(valor > 0, f"Weibull[{fid}].{nome} deve ser positivo")
                 aud.exigir(_ci_valido(valor, ajuste.get(f"{nome}_ci95")), f"Weibull[{fid}]: IC95 de {nome} inválido")
             aud.exigir(ajuste.get("fit_converged") is True, f"Weibull[{fid}]: ajuste não convergiu")
+            aud.exigir(ajuste.get("rul_parametrica_disponivel") is True, f"Weibull[{fid}]: RUL paramétrica deveria estar disponível")
             if censura > max_censura:
-                aud.exigir(ajuste.get("rul_reportavel") is False, f"Weibull[{fid}]: RUL deve ser omitida por alta censura")
+                aud.exigir(
+                    ajuste.get("rul_parametrica_alta_incerteza") is True,
+                    f"Weibull[{fid}]: alta censura deve sinalizar incerteza paramétrica",
+                )
+                aud.exigir(
+                    falha.get("status_ajuste") == "exploratorio_alta_censura",
+                    f"Weibull[{fid}]: status de alta censura ausente",
+                )
 
     linhas = aud.csv(PASTA_AE / "weibull_tabela.csv")
     aud.exigir(len(linhas) == len(ESPERADO), f"weibull_tabela.csv: {len(linhas)}/{len(ESPERADO)} linhas")

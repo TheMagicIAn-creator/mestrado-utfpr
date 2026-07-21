@@ -21,10 +21,10 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
-from datetime import datetime
 from pathlib import Path
 
 from src.core.config import RAIZ_PROJETO
+from src.core.tempo import agora_local
 from src.core.utils import to_project_relative_path
 
 PASTA_MANIFESTOS = Path(RAIZ_PROJETO) / "resultados" / "manifestos"
@@ -78,7 +78,7 @@ def gerar_manifesto(
     """
     manifesto = {
         "stage": stage,
-        "created_at": created_at or datetime.now().isoformat(),
+        "created_at": created_at or agora_local().isoformat(),
         "git_commit": _git_commit(),
         "code_sha256": sha256_arquivo(code_path) or "",
         "parameters": parameters or {},
