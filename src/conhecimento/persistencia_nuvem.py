@@ -44,6 +44,17 @@ _API = "https://api.github.com"
 _TIMEOUT = float(os.getenv("AL_IADO_GITHUB_TIMEOUT", "12"))
 
 
+# Último resultado de uma tentativa de commit, para diagnóstico na UI. A
+# persistência é best-effort e engolia erros em silêncio — isto os torna
+# VISÍVEIS (ex.: token sem permissão de escrita → 403/404).
+_ULTIMO_STATUS: dict = {"estado": "sem_tentativa", "detalhe": "", "quando": ""}
+
+
+def _registrar_status(estado: str, detalhe: str = "") -> None:
+    _ULTIMO_STATUS["estado"] = estado
+    _ULTIMO_STATUS["detalhe"] = _mascarar(detalhe)[:200]
+
+
 def _token() -> str | None:
     return os.getenv("GITHUB_TOKEN") or os.getenv("AL_IADO_GITHUB_TOKEN")
 
@@ -168,7 +179,8 @@ def persistir_arquivo(caminho: str | Path, *, mensagem: str) -> bool:
             print(f"   ⚠️  Persistência nuvem: rede falhou ({_mascarar(exc)})")
             return False
         if status in (200, 201):
-            print(f"   ☁️  Memória persistida no GitHub ({repo}@{branch}).")
+            print(f"   ☁️  Persistido no GitHub ({repo}@{branch}).")
+            _registrar_status("ok", f"{caminho_repo} @ {repo}")
             return True
         if status in (409, 422) and tentativa == 1:
             continue  # sha desatualizado: recarrega e tenta de novo
@@ -176,8 +188,42 @@ def persistir_arquivo(caminho: str | Path, *, mensagem: str) -> bool:
         if isinstance(corpo, dict):
             motivo = str(corpo.get("message", ""))
         print(f"   ⚠️  Persistência nuvem: HTTP {status} {_mascarar(motivo)}")
+        _registrar_status("erro", f"HTTP {status}: {motivo}")
         return False
     return False
+
+
+def diagnostico() -> dict:
+    """Estado legível da persistência na nuvem, para exibir na barra lateral.
+
+    Torna VISÍVEL o que era silencioso: se está desligada e por quê (flag/token/
+    repo), ou se está ligada e qual foi o resultado do último commit (ok/erro).
+    """
+    flag = os.getenv("AL_IADO_PERSISTIR_NUVEM", "").strip().lower()
+    ligado = flag in {"1", "true", "sim", "yes", "on"}
+    tem_token = bool(_token())
+    repo = _repo_alvo()
+
+    if not ligado:
+        return {"ativa": False, "resumo": "desligada",
+                "detalhe": "AL_IADO_PERSISTIR_NUVEM não está em 1 nos Secrets."}
+    if not tem_token:
+        return {"ativa": False, "resumo": "sem token",
+                "detalhe": "GITHUB_TOKEN ausente nos Secrets."}
+    if not repo:
+        return {"ativa": False, "resumo": "sem repositório",
+                "detalhe": "Não detectei owner/repo (defina AL_IADO_GITHUB_REPO)."}
+
+    est = _ULTIMO_STATUS.get("estado", "sem_tentativa")
+    if est == "ok":
+        return {"ativa": True, "resumo": "ativa ✓",
+                "detalhe": f"Último commit OK: {_ULTIMO_STATUS.get('detalhe','')}"}
+    if est == "erro":
+        return {"ativa": True, "resumo": "ativa mas FALHOU",
+                "detalhe": f"Último commit falhou — {_ULTIMO_STATUS.get('detalhe','')}. "
+                           "Verifique se o token tem permissão Contents: Read and write."}
+    return {"ativa": True, "resumo": "ativa (aguardando)",
+            "detalhe": f"Pronta ({repo}). O 1º commit ocorre ao criar memória ou a cada 6 interações."}
 
 
 def persistir_memoria_validada(caminho: str | Path) -> bool:
