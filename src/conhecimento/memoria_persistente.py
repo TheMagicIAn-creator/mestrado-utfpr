@@ -85,7 +85,7 @@ def _vazio() -> dict:
 
 
 class MemoriaPersistente:
-    """Repositorio JSON atomico de memorias aprovadas pelo Groq."""
+    """Repositorio JSON atomico de memorias aprovadas pelo auditor."""
 
     def __init__(
         self,

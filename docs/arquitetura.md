@@ -12,8 +12,8 @@ src/
 ├── conhecimento/         cérebro do agente (RAG + ferramentas)
 │   ├── agente.py         expansão, busca híbrida, RRF, reranking e prompt
 │   ├── ferramentas.py    tool calling (specs + roteador + execução)
-│   ├── provedores.py     adaptadores leves e papéis fixos Gemini / Groq
-│   ├── multiagente.py    coordenação: Gemini conversa, Groq audita
+│   ├── provedores.py     adaptador leve do SDK Gemini e papéis por nível
+│   ├── multiagente.py    coordenação: Gemini Pro conversa, Gemini Flash audita
 │   ├── memoria_persistente.py memória validada entre sessões
 │   ├── obsidian.py       vault completo, busca híbrida e espelho da memória
 │   ├── indexador.py      indexa PDFs/tabelas no ChromaDB
@@ -47,9 +47,9 @@ src/
 - **Init nuvem:** `app.py` → restauração do snapshot portátil → encoder ONNX
   sob demanda → perfil. O deploy não inicia watcher nem orquestrador.
 - **RAG:** pergunta → expansão local → embeddings + BM25 → fusão RRF →
-  reranking → memória classificada do Obsidian → auditoria compacta do Groq → prompt
+  reranking → memória classificada do Obsidian → auditoria compacta do Gemini Flash → prompt
   com memória validada → síntese final do Gemini.
-- **Memória:** o Groq só avalia turnos com correção, preferência ou decisão
+- **Memória:** o auditor (Gemini Flash) só avalia turnos com correção, preferência ou decisão
   explícita. Itens aprovados são gravados atomicamente em JSON, com evidência,
   proveniência e status, e espelhados como Markdown; o Gemini recebe apenas os
   itens pertinentes.
@@ -74,7 +74,7 @@ src/
   Sem os datasets brutos, não tenta representar uma execução de treino como
   concluída na nuvem. Para manter a memória dentro do limite do serviço, usa a
   variante ONNX quantizada do mesmo MiniLM do índice, carrega a sessão apenas
-  na primeira busca e libera o tokenizer antes da inferência. Gemini e Groq
+  na primeira busca e libera o tokenizer antes da inferência. Os modelos Gemini
   usam adaptadores diretos dos SDKs oficiais; as integrações LangChain, que
   carregavam PyTorch indiretamente, não entram no processo web.
 - `AL_IADO_CHROMADB_DIR` permite redirecionar o ChromaDB sem alterar o código;
@@ -91,7 +91,7 @@ src/
   `sentence-transformers`; `AL_IADO_ONNX_THREADS` limita threads do backend
   leve. Em `auto`, ausência do dataset ativa ONNX. Modelos, tamanho de saída e
   orçamentos do RAG são ajustáveis por `AL_IADO_GEMINI_MODEL`,
-  `AL_IADO_GROQ_MODEL`, `AL_IADO_GEMINI_MAX_OUTPUT_TOKENS` e
+  `AL_IADO_GEMINI_MODEL_AUDITOR`, `AL_IADO_GEMINI_MODEL_FUNDO`, `AL_IADO_GEMINI_MAX_OUTPUT_TOKENS` e
   `AL_IADO_RAG_*`. Datas de interface usam `AL_IADO_TIMEZONE`
   (`America/Sao_Paulo` por padrão).
 

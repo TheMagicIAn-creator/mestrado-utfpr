@@ -43,7 +43,6 @@ RAIZ_PROJETO = Path(__file__).resolve().parent.parent.parent
 load_dotenv(RAIZ_PROJETO / ".env")
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-GROQ_API_KEY   = os.getenv("GROQ_API_KEY")
 
 
 # ============================================================
@@ -163,7 +162,6 @@ if __name__ == "__main__":
     print("=" * 60)
     print(f"\nRaiz do projeto: {RAIZ_PROJETO}")
     print(f"\nChave Google : {'✅ configurada' if GOOGLE_API_KEY else '❌ ausente'}")
-    print(f"Chave Groq   : {'✅ configurada' if GROQ_API_KEY else '❌ ausente'}")
     print(f"\nEstrutura de pastas:")
     for nome, existe in verificar_estrutura().items():
         status = "✅" if existe else "❌"

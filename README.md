@@ -34,7 +34,7 @@ src/
 ```
 
 - **core** — central configuration and shared utilities
-- **conhecimento** — PDF indexing, semantic + BM25 RAG, fixed-role Gemini/Groq team,
+- **conhecimento** — PDF indexing, semantic + BM25 RAG, fixed-role all-Gemini team (Pro/Flash/Flash-Lite),
   memory consolidation
 - **ml** — exploratory data analysis and fault classification
 - **orquestrador** — runs pending steps on startup, skips
@@ -46,7 +46,7 @@ src/
 - Streamlit — local and cloud web interface
 - ChromaDB — local vector database restored from a portable cloud snapshot
 - sentence-transformers — multilingual embeddings
-- LLM providers — Google Gemini and Groq
+- LLM provider — Google Gemini (Pro for chat, Flash for auditing, Flash-Lite for background)
 - scikit-learn, XGBoost, LightGBM — Machine Learning
 
 ## How to run
@@ -55,7 +55,7 @@ src/
 streamlit run app.py
 ```
 
-API keys (Google and Groq) must be set in a local `.env` file —
+A single Google Gemini API key must be set in a local `.env` file —
 see `.env.example` for the template. The `.env` file is never
 committed to the repository.
 

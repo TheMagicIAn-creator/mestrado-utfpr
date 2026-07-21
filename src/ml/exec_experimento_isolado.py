@@ -70,7 +70,7 @@ def executar_experimento_isolado(
 
     cmd = [sys.executable, "-m", "src.ml.exec_experimento_isolado", str(key), str(out)]
     # Menor privilégio: o filho treina modelos LOCAIS e não precisa de chaves
-    # de API — env_minimo_subprocesso remove GROQ/GOOGLE/etc. e já define
+    # de API — env_minimo_subprocesso remove GOOGLE/legadas etc. e já define
     # KMP/UTF-8 com defaults seguros.
     from src.core.seguranca import env_minimo_subprocesso
 

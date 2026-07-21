@@ -45,19 +45,6 @@ from src.conhecimento.leitor_anexos import montar_bloco_texto_anexos, tem_imagem
 from src.conhecimento.provedores import eh_multimodal
 
 ORCAMENTOS_RAG = {
-    "groq": {
-        "n_pool": 140,
-        "n_resultados": 20,
-        "n_resultados_revisao": 32,
-        "max_chunks_por_fonte": 3,
-        "contexto_chars": 24_000,
-        "obsidian_chars": 10_000,
-        "sessao_chars": 3_000,
-        "historico_turnos": 18,
-        "historico_chars": 1_800,
-        "anexos_chars": 24_000,
-        "max_prompt_chars": 90_000,
-    },
     "gemini": {
         "n_pool": 300,
         "n_resultados": 30,
@@ -660,9 +647,7 @@ def resposta_interacao_simples(pergunta: str) -> str | None:
 
 def _orcamento_rag(nome_provedor: str | None = None) -> dict:
     nome = (nome_provedor or "").lower()
-    if "groq" in nome or "llama" in nome:
-        orcamento = ORCAMENTOS_RAG["groq"].copy()
-    elif "gemini" in nome or "google" in nome:
+    if "gemini" in nome or "google" in nome:
         orcamento = ORCAMENTOS_RAG["gemini"].copy()
     else:
         orcamento = ORCAMENTOS_RAG["padrao"].copy()
@@ -1952,7 +1937,7 @@ def buscar_contexto(
     """
     Recuperacao local em quatro camadas: literatura híbrida, vault Obsidian,
     memória de sessões e memória estruturada adicionada pelo coordenador.
-    A auditoria Groq e a sintese Gemini sao aplicadas pelo invocador web.
+    A auditoria (Gemini Flash) e a sintese (Gemini Pro) sao do invocador web.
     Quando consultar_literatura=False, pula expansão/busca/reranking da base
     bibliográfica e usa apenas o cérebro do projeto e a memória de sessões.
 

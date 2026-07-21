@@ -1,7 +1,8 @@
-"""Orquestracao enxuta da equipe Gemini + Groq.
+"""Orquestracao enxuta da equipe 100% Gemini, um modelo por papel.
 
-Gemini conversa, interpreta ferramentas e produz a resposta final. Groq recebe
-somente pacotes textuais compactos para auditar evidencias e aprovar memorias.
+Gemini Pro conversa, interpreta ferramentas/imagens e produz a resposta final.
+Gemini Flash recebe somente pacotes textuais compactos para auditar evidencias
+e aprovar memorias.
 Calculos, recuperacao e geracao de artefatos permanecem deterministicos.
 """
 
@@ -151,7 +152,7 @@ parecer em evidencia bibliografica.
         return "\n\n".join(blocos)
 
 
-class AgenteAuditorGroq:
+class AgenteAuditorGemini:
     """Auditor de evidencias e porteiro da memoria persistente."""
 
     _GATILHOS_APRENDIZADO = (
@@ -167,7 +168,7 @@ class AgenteAuditorGroq:
     def __init__(self, llm, memoria: MemoriaPersistente) -> None:
         self.llm = llm
         self.memoria = memoria
-        self.nome = "Groq LLaMA 3.3 - auditoria e memoria"
+        self.nome = "Gemini Flash - auditoria e memoria"
 
     def deve_avaliar_aprendizado(self, pergunta: str) -> bool:
         texto = _normalizar(pergunta)
@@ -324,7 +325,7 @@ Retorne apenas JSON:
 @dataclass
 class EquipeAgentes:
     conversa: AgenteConversacionalGemini
-    auditoria: AgenteAuditorGroq
+    auditoria: AgenteAuditorGemini
     memoria: MemoriaPersistente
     nomes: dict[str, str] = field(default_factory=dict)
 
@@ -333,7 +334,7 @@ def criar_equipe_agentes(
     *,
     memoria: MemoriaPersistente | None = None,
     llm_gemini=None,
-    llm_groq=None,
+    llm_auditor=None,
 ) -> EquipeAgentes:
     """Cria a equipe com papeis fixos e dependencias injetaveis para testes."""
     memoria = memoria or MemoriaPersistente()
@@ -343,14 +344,14 @@ def criar_equipe_agentes(
         nomes["conversa"] = f"{rotulo} ({nome})"
     else:
         nomes["conversa"] = "Gemini - conversa e sintese"
-    if llm_groq is None:
-        llm_groq, nome, rotulo = inicializar_papel("auditoria")
+    if llm_auditor is None:
+        llm_auditor, nome, rotulo = inicializar_papel("auditoria")
         nomes["auditoria"] = f"{rotulo} ({nome})"
     else:
-        nomes["auditoria"] = "Groq - auditoria e memoria"
+        nomes["auditoria"] = "Gemini Flash - auditoria e memoria"
     return EquipeAgentes(
         conversa=AgenteConversacionalGemini(llm_gemini, memoria),
-        auditoria=AgenteAuditorGroq(llm_groq, memoria),
+        auditoria=AgenteAuditorGemini(llm_auditor, memoria),
         memoria=memoria,
         nomes=nomes,
     )

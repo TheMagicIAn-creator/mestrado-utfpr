@@ -33,14 +33,14 @@ ninguém). `conhecimento/` e `ml/` são irmãos e quase não se cruzam. A
 | `indexador.py` | Indexa PDFs e sessões no ChromaDB (chunking por página, dedupe SHA-256). |
 | `indice_lexical.py` | Índice lexical BM25 em SQLite FTS5, derivado da literatura. |
 | `indice_portatil.py` | Exporta e restaura um snapshot gzip versionável do índice literário. |
-| `multiagente.py` | Contratos da equipe: Gemini conversa/sintetiza; Groq audita evidências e memória. |
+| `multiagente.py` | Contratos da equipe: Gemini Pro conversa/sintetiza; Gemini Flash audita evidências e memória. |
 | `memoria_persistente.py` | Memória JSON validada, atômica, deduplicada e recuperada por relevância. |
 | `obsidian.py` | Indexação do vault completo, busca híbrida histórica e espelho Markdown da memória validada. |
 | `processador_pdf.py` | Ingestão de PDF novo: metadados, nome padrão, tema, cópia, indexa, nota Obsidian. |
 | `consolidar_memoria.py` | Consolida sessões `.md` em memória via LLM, reindexa e arquiva. |
 | `leitor_anexos.py` | Leitura **efêmera** de anexos da conversa (PDF/CSV/XLSX/DOCX/imagem). |
 | `web_search.py` | Busca web sem API, com classificação de confiança A–D da fonte. |
-| `provedores.py` | Adaptadores leves dos SDKs e papéis fixos de Gemini/Groq. |
+| `provedores.py` | Adaptador leve do SDK Gemini e papéis fixos por nível (Pro/Flash/Flash-Lite). |
 | `retrieval_metrics.py` | Métricas puras de **recuperação** RAG (Recall@k, MRR, nDCG). |
 | `index_lock.py` | Lock in-process que serializa escritas concorrentes no ChromaDB. |
 
@@ -86,7 +86,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 **1. Pergunta no chat** (`streamlit_app` → `agente`/`ferramentas`):
 `ferramentas.decidir_acao` decide se é caso de **ferramenta** (rodar/consultar ML)
 ou de **RAG**. Se RAG: `agente` expande a query → combina ChromaDB semântico e
-BM25 por RRF → reranking → Groq audita a cobertura → Gemini responde com
+BM25 por RRF → reranking → Gemini Flash audita a cobertura → Gemini Pro responde com
 citações por página, memória classificada do Obsidian e memória validada pertinente.
 
 **2. Experimento de ML** (`ferramentas` → `experimentos_artigos`):

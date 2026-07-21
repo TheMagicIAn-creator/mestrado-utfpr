@@ -40,13 +40,18 @@ def test_env_example_cobre_variaveis_lidas_pelo_codigo():
 
 
 def test_modelos_citados_existem_no_codigo():
-    """Modelos nomeados no CLAUDE.md/.env.example existem em provedores.py."""
-    proibidos = ("3.1 8B", "LLaMA 3.1", "llama-3.1", "Gemma", "gemma")
+    """Modelos nomeados no CLAUDE.md/.env.example existem em provedores.py.
+
+    A equipe agora é 100% Gemini (Groq/LLaMA foram removidos): os modelos
+    da família LLaMA e o próprio Groq não podem reaparecer nos docs.
+    """
+    proibidos = ("3.1 8B", "LLaMA 3.1", "llama-3.1", "llama-3.3",
+                 "Gemma", "gemma")
     for texto, nome in ((CLAUDE, "CLAUDE.md"), (ENV_EXAMPLE, ".env.example")):
         for p in proibidos:
             assert p not in texto, f"{nome} cita modelo inexistente no código: {p!r}"
-    # gemini-2.5-pro = conversa principal; gemini-2.5-flash = tarefas de fundo.
-    for modelo in ("gemini-2.5-pro", "gemini-2.5-flash", "llama-3.3-70b-versatile"):
+    # Nível 1 = pro (conversa); Nível 2 = flash (auditor); Nível 3 = flash-lite (fundo).
+    for modelo in ("gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"):
         assert modelo in PROVEDORES, f"provedores.py não define {modelo}"
         assert modelo in CLAUDE, f"CLAUDE.md não documenta o modelo real {modelo}"
 

@@ -213,37 +213,22 @@ Artigos e documentos mais relevantes mencionados, com contexto de uso.
 
     resposta = None
 
-    groq_key = os.getenv("GROQ_API_KEY")
-    if groq_key:
+    # Tarefa de fundo → Gemini econômico (MODELO_GEMINI_FUNDO).
+    gemini_key = os.getenv("GOOGLE_API_KEY")
+    if gemini_key:
         try:
-            from langchain_groq import ChatGroq
+            from langchain_google_genai import ChatGoogleGenerativeAI
             from langchain_core.messages import HumanMessage
-            llm = ChatGroq(
-                model       = "llama-3.3-70b-versatile",
-                api_key     = groq_key,
-                temperature = 0.2
+            from src.conhecimento.provedores import MODELO_GEMINI_FUNDO
+            llm = ChatGoogleGenerativeAI(
+                model        = MODELO_GEMINI_FUNDO,
+                google_api_key = gemini_key,
+                temperature  = 0.2
             )
             resposta = llm.invoke([HumanMessage(content=prompt)]).content
-            print("   ✅ Resumo gerado pelo Groq")
+            print("   ✅ Resumo gerado pelo Gemini")
         except Exception as e:
-            print(f"   ⚠️  Groq falhou: {e} — tentando Gemini...")
-
-    if not resposta:
-        gemini_key = os.getenv("GOOGLE_API_KEY")
-        if gemini_key:
-            try:
-                from langchain_google_genai import ChatGoogleGenerativeAI
-                from langchain_core.messages import HumanMessage
-                from src.conhecimento.provedores import MODELO_GEMINI_FUNDO
-                llm = ChatGoogleGenerativeAI(
-                    model        = MODELO_GEMINI_FUNDO,
-                    google_api_key = gemini_key,
-                    temperature  = 0.2
-                )
-                resposta = llm.invoke([HumanMessage(content=prompt)]).content
-                print("   ✅ Resumo gerado pelo Gemini")
-            except Exception as e:
-                print(f"   ❌ Gemini também falhou: {e}")
+            print(f"   ❌ Gemini falhou: {e}")
 
     return resposta or "Erro: não foi possível gerar o resumo."
 
