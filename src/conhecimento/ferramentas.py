@@ -2060,7 +2060,14 @@ Resultado técnico ({status}) — use como EVIDÊNCIA, NÃO copie a tabela crua:
 Responda como o Al IAdo PV, no papel de coorientador: INTERPRETE os números,
 priorize o que importa para a dissertação, aponte ressalvas (ajuste estatístico
 rejeitado, detecção nula, evidência E1/E2) e diga o que aquilo SIGNIFICA para o
-trabalho. Não invente números — cite só os que estão na evidência. Se um número
+trabalho. Não invente números — cite só os que estão na evidência.
+NORMAS TÉCNICAS (IEC/ISO/ABNT/IEEE/NBR): se o pedido for sobre uma norma e a
+EVIDÊNCIA acima não trouxer o número EXATO de cláusula/seção/página, NÃO os
+invente. Diga com franqueza que não tem a norma indexada nem uma fonte
+verificável para a localização exata, e recomende consultar a norma oficial
+(ex.: webstore da IEC) ou uma fonte que o Rodolfo já tenha. Você pode explicar o
+CONCEITO (ex.: NPR = S×O×D) sem atribuir cláusula/página inventada. Nunca
+escreva "Clause X.Y" ou "p. N" de uma norma que não esteja na evidência. Se um número
 tiver ressalva na evidência (ex.: KS rejeitado, SMD não detectada), NÃO o
 apresente como conclusivo. Escolha a forma que melhor atende ao pedido: prosa,
 lista, ranking ou tabela específica. Não despeje sempre a mesma tabela completa;

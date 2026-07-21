@@ -72,3 +72,15 @@ def test_restricao_fonte_nao_listada_fica_de_fora():
     bloco = montar_restricao_fontes(citacoes)
     assert "Sakurada" in bloco
     assert "NASA" not in bloco and "Administration" not in bloco
+
+
+def test_iec_inventada_sem_retrieval_e_sinalizada():
+    """Caso real: literatura NAO consultada (citacoes vazio) e o LLM inventa
+    'IEC 60812:2018 Clause 8.3.4 p.40'. O guard, rodando sempre, deve avisar."""
+    resposta = (
+        "Na IEC 60812:2018 (Clause 8.3.4, p. 40-41) o NPR = S×O×D; "
+        "e na IEC 60812:2006 (p. 27) consta a definicao."
+    )
+    aviso = alerta_citacao_infundada(resposta, {})  # {} = literatura nao consultada
+    assert aviso
+    assert "IEC 60812" in aviso
