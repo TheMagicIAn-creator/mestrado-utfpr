@@ -67,12 +67,26 @@ deve lê-los sempre dos artefatos atuais do pipeline.
 No PC, o JSON está no repositório e pode ser versionado com Git. Esse é o modo
 durável e auditável. No Streamlit Community Cloud, o sistema de arquivos da
 instância é efêmero: itens aprendidos durante uma execução permanecem enquanto
-a instância vive, mas desaparecem em um redeploy ou reinício. O conteúdo já
+a instância vive, mas desapareceriam em um redeploy ou reinício. O conteúdo já
 commitado no JSON reaparece em toda implantação.
 
-Para persistência de escrita contínua na nuvem, será necessário conectar no
-futuro um armazenamento externo transacional. A interface atual não simula essa
-garantia.
+### Persistência transacional na nuvem (GitHub como backend)
+
+Como o repositório Git já é a fonte de verdade, o backend durável na nuvem é o
+próprio GitHub (`src/conhecimento/persistencia_nuvem.py`). Com o master switch
+`AL_IADO_PERSISTIR_NUVEM=1` e um `GITHUB_TOKEN` (permissão de escrita em
+conteúdo) nos Secrets, cada item aprovado dispara um commit do
+`memoria_validada.json` de volta ao repo via Contents API. No próximo deploy, o
+app já traz o estado mais recente — o aprendizado sobrevive a redeploys sem
+`git commit` manual.
+
+Propriedades: usa `sha` atual para update (com 1 retry em conflito 409/422);
+detecta `owner/repo` do `.git/config` (ou de `AL_IADO_GITHUB_REPO`); commita na
+branch de deploy (`AL_IADO_GITHUB_BRANCH`, default `main`). É **best-effort** —
+qualquer falha (sem token, rede, conflito) é mascarada e ignorada, jamais
+invalidando a gravação local já concluída. No PC fica desligado por padrão
+(sem o switch e o token), preservando o fluxo de versionamento manual. O token
+nunca é logado (passa por `mascarar_segredos`).
 
 ## Relação com o Obsidian
 
