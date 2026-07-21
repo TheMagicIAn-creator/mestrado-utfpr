@@ -1,3 +1,4 @@
+# Dependencias reprodutiveis do Al IAdo PV (rebuild da versao 2026-07-21).
 altair==6.1.0
 annotated-doc==0.0.4
 annotated-types==0.7.0
