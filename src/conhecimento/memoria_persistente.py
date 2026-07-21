@@ -114,6 +114,24 @@ class MemoriaPersistente:
             # invalidar o JSON atomico que acabou de ser aprovado.
             pass
 
+    def _persistir_nuvem(self) -> None:
+        """Commita o JSON de volta ao GitHub quando na nuvem (Streamlit Cloud).
+
+        Best-effort e desligado por padrao: so faz algo com o master switch
+        AL_IADO_PERSISTIR_NUVEM e um token presentes. Falha aqui nunca invalida
+        a gravacao local ja concluida.
+        """
+        try:
+            from src.conhecimento.persistencia_nuvem import (
+                persistencia_ativa,
+                persistir_memoria_validada,
+            )
+
+            if persistencia_ativa():
+                persistir_memoria_validada(self.caminho)
+        except Exception:
+            pass
+
     def _ler(self, *, estrito: bool = False) -> dict:
         if not self.caminho.is_file():
             return _vazio()
@@ -234,6 +252,9 @@ class MemoriaPersistente:
                 self._salvar(dados)
                 resultado = ResultadoRegistro(item=dict(item), criado=True)
         self._espelhar_obsidian()
+        if resultado.criado:
+            # Só toca o GitHub quando o arquivo REALMENTE mudou.
+            self._persistir_nuvem()
         assert resultado is not None
         return resultado
 

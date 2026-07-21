@@ -411,6 +411,12 @@ RPM/TPM, então o trabalho repetitivo desce de nível):
 - No PC, o arquivo pode ser versionado no Git. No Streamlit Community Cloud,
   novas gravações no disco são efêmeras até o próximo redeploy; a base inicial
   versionada continua disponível em toda implantação.
+- Persistência transacional na nuvem (`persistencia_nuvem.py`): com o switch
+  `AL_IADO_PERSISTIR_NUVEM=1` e um `GITHUB_TOKEN` nos Secrets, cada memória
+  validada aprovada é commitada de volta ao repositório (GitHub Contents API,
+  branch de deploy), sobrevivendo a redeploys sem `git commit` manual. É
+  best-effort e desligado por padrão (no PC, o versionamento é manual); o token
+  nunca é logado.
 
 ## Indexação
 Cada PDF de literatura é indexado com:
