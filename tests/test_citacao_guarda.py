@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from src.core.citacao_guarda import alerta_citacao_infundada
+from src.core.citacao_guarda import (
+    alerta_citacao_infundada,
+    montar_restricao_fontes,
+)
 
 
 def test_norma_iec_nao_recuperada_e_sinalizada():
@@ -42,3 +45,30 @@ def test_varias_normas_diferentes():
     assert "IEC 60812" in aviso
     # limita a 3 exemplos no texto, mas detecta as normas
     assert aviso.count(",") >= 1
+
+
+def test_restricao_lista_apenas_fontes_do_rodape():
+    citacoes = {
+        "a": "Sakurada (1998) — As Tecnicas... — p. 10 — trecho: 'abc'",
+        "b": "Torres (2024) — Aplicacao RCM... — p. 59 — trecho: 'def'",
+    }
+    bloco = montar_restricao_fontes(citacoes)
+    assert "Sakurada (1998)" in bloco and "p. 10" in bloco
+    assert "Torres (2024)" in bloco and "p. 59" in bloco
+    assert "trecho" not in bloco  # o trecho e removido do rotulo
+    assert "EXATAMENTE estas" in bloco
+
+
+def test_restricao_sem_fontes_proibe_citacao():
+    bloco = montar_restricao_fontes({})
+    assert "NENHUMA" in bloco
+    assert "NAO cite" in bloco
+    assert "invencao" in bloco.lower()
+
+
+def test_restricao_fonte_nao_listada_fica_de_fora():
+    # NASA nao foi aprovada pelo auditor -> nao entra na lista -> nao pode citar.
+    citacoes = {"a": "Sakurada (1998) — ... — p. 10 — trecho: 'x'"}
+    bloco = montar_restricao_fontes(citacoes)
+    assert "Sakurada" in bloco
+    assert "NASA" not in bloco and "Administration" not in bloco

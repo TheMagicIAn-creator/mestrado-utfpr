@@ -37,6 +37,49 @@ def _norm(texto: str) -> str:
     return re.sub(r"[\s\-:]", "", str(texto or "")).upper()
 
 
+def _rotulo_curto(entrada: str) -> str:
+    """Extrai 'Autor (ano) - ... - p. N' de uma entrada de citacao, sem o trecho."""
+    s = str(entrada or "")
+    for sep in (" — trecho", " - trecho", "— trecho", "- trecho", "trecho:", "Trecho"):
+        i = s.find(sep)
+        if i != -1:
+            s = s[:i]
+            break
+    return re.sub(r"\s+", " ", s).strip(" —-:·")
+
+
+def montar_restricao_fontes(citacoes) -> str:
+    """Bloco de instrucao que RESTRINGE o que o LLM pode citar ao MESMO conjunto
+    que vai para o rodape — corrige a incoerencia em que a prosa cita uma fonte
+    que o rodape (filtrado pelo auditor apos montar o contexto) nao mostra.
+
+    Sem fontes utilizaveis -> proibe qualquer citacao (mata a fabricacao de
+    normas/paginas quando a busca vem vazia ou off-topic).
+    """
+    valores = list(citacoes.values()) if isinstance(citacoes, dict) else list(citacoes or [])
+    rotulos = [r for r in (_rotulo_curto(v) for v in valores) if r]
+
+    if not rotulos:
+        return (
+            "FONTES DISPONIVEIS PARA CITAR NESTA RESPOSTA: NENHUMA. A busca nao "
+            "trouxe fonte utilizavel para esta pergunta. NAO cite autor, ano, "
+            "pagina, clausula ou norma, e NAO use aspas de nenhuma fonte. Diga com "
+            "franqueza que nao localizou uma fonte on-topic e ofereca refazer a "
+            "busca (ou buscar na web). Qualquer citacao aqui seria invencao."
+        )
+
+    linhas = "\n".join(f"- {r}" for r in rotulos)
+    return (
+        "FONTES QUE VOCE PODE CITAR (use EXATAMENTE estas, com a pagina indicada; "
+        "NAO cite nenhuma outra fonte, pagina, clausula ou norma, mesmo que "
+        "apareca no contexto acima ou que voce 'conheca' de fora):\n"
+        f"{linhas}\n"
+        "Esta lista e so para seu controle — NAO a reproduza como secao de "
+        "referencias. Se nenhuma delas sustentar uma afirmacao, diga que a busca "
+        "nao trouxe fonte para aquele ponto, em vez de preencher com pagina inventada."
+    )
+
+
 def _texto_das_citacoes(citacoes) -> str:
     if not citacoes:
         return ""
