@@ -201,6 +201,15 @@ PERGUNTA (maximo 1200 caracteres):
 FONTES RECUPERADAS:
 {fontes}
 
+RELEVANCIA TEMATICA (criterio rigoroso): uma fonte so entra em
+'fontes_utilizaveis' se o seu trecho tratar DIRETAMENTE do tema da pergunta.
+Estar na mesma grande area (ex.: engenharia eletrica, confiabilidade) NAO basta:
+para "o que e FMECA", trechos sobre linhas de transmissao, subestacoes, custos de
+interrupcao ou Weibull generico NAO sao utilizaveis, mesmo que citaveis. Na
+duvida, deixe de fora. Prefira 1-3 fontes on-topic a uma lista longa e ruidosa.
+Se NENHUMA fonte tratar diretamente do tema, use status 'insuficiente' e
+'fontes_utilizaveis' vazio — melhor admitir do que aprovar ruido.
+
 Retorne apenas JSON com este formato:
 {{
   "status": "aprovado|com_ressalvas|insuficiente",
