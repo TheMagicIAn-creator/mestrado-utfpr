@@ -361,13 +361,13 @@ Nunca inventar referências.
 A equipe é 100% Gemini, um modelo por nível de tarefa — a escolha segue os
 limites de taxa por modelo do plano pago (quanto mais barato o modelo, maior o
 RPM/TPM, então o trabalho repetitivo desce de nível):
-- Gemini Pro (`gemini-2.5-pro`) tem o papel fixo de conversa, interpretação de
+- Gemini Pro (`gemini-pro-latest`, alias -latest) tem o papel fixo de conversa, interpretação de
   ferramentas, multimodalidade (imagens) e síntese final. É a única voz do chat.
-- Gemini Flash (`gemini-2.5-flash`) tem o papel fixo de auditor de evidências e
+- Gemini Flash (`gemini-flash-latest`, alias -latest) tem o papel fixo de auditor de evidências e
   porteiro da memória. Recebe entradas estruturadas e independentes da conversa,
   em JSON. Os limites seguem o plano contratado e podem ser configurados por
   variáveis `AL_IADO_*`.
-- Gemini Flash-Lite (`gemini-2.5-flash-lite`) roda as tarefas de fundo em lote
+- Gemini Flash-Lite (`gemini-flash-lite-latest`, alias -latest) roda as tarefas de fundo em lote
   (metadados de PDF e consolidação de memória): o modelo mais barato/veloz, com
   o maior limite de taxa.
 - Python continua responsável por cálculos, ferramentas, indexação, gráficos,
@@ -432,7 +432,7 @@ Sessões e memórias usam chunks menores (500/50).
 
 Extração de metadados em cascata (processador_pdf.py —
 roda APENAS para PDFs novos vindos de novos_pdfs/):
-  LLM de fundo (gemini-2.5-flash-lite) → regex → metadados
+  LLM de fundo (gemini-flash-lite-latest) → regex → metadados
   internos do PDF → registra pendência
 Na reindexação de PDFs já nomeados em literatura/,
 autor/título/ano vêm do NOME do arquivo (regex), sem LLM.
@@ -558,9 +558,9 @@ vigente e informe o nível de evidência. Resultado de injeção/validação é 
 - Memória      : sessões no ChromaDB + memória validada em JSON versionável
 - LLM          : equipe 100% Gemini, um modelo por nível de tarefa (escolha
                  guiada pelos limites de taxa por modelo do plano pago) — Nível 1
-                 `gemini-2.5-pro` (conversa, síntese final e imagens, o modelo
-                 mais capaz), Nível 2 `gemini-2.5-flash` (auditoria de evidências
-                 e validação da memória, em JSON) e Nível 3 `gemini-2.5-flash-lite`
+                 `gemini-pro-latest` (conversa, síntese final e imagens, o modelo
+                 mais capaz), Nível 2 `gemini-flash-latest` (auditoria de evidências
+                 e validação da memória, em JSON) e Nível 3 `gemini-flash-lite-latest`
                  (tarefas de fundo em lote: metadados de PDF e consolidação de
                  memória — o mais barato/veloz, maior limite de taxa). Modelos
                  configuráveis por env (AL_IADO_GEMINI_MODEL /

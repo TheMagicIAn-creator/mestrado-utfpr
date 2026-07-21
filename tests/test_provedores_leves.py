@@ -53,6 +53,50 @@ def test_gemini_invoke_json_forca_json_e_limita_saida():
     assert chamadas[0]["config"]["response_mime_type"] == "application/json"
 
 
+def test_gemini_cai_para_fallback_quando_modelo_indisponivel():
+    """404 'no longer available' num modelo deve cair para o próximo candidato,
+    e o modelo que funcionar vira o novo self.model (sem repetir o 404)."""
+    usados = []
+
+    class Models:
+        def generate_content(self, **kwargs):
+            usados.append(kwargs["model"])
+            if kwargs["model"] == "gemini-pro-latest":
+                raise RuntimeError(
+                    "404 NOT_FOUND: model gemini-pro-latest is no longer available"
+                )
+            return SimpleNamespace(text="ok")
+
+    cliente = SimpleNamespace(models=Models())
+    llm = GeminiLeve("chave", "gemini-pro-latest", client=cliente,
+                     fallbacks=("gemini-flash-latest",))
+
+    assert llm.invoke([_Mensagem("oi")]).content == "ok"
+    assert usados == ["gemini-pro-latest", "gemini-flash-latest"]
+    assert llm.model == "gemini-flash-latest"  # fixou o que funcionou
+    # Segunda chamada não repete o modelo morto.
+    usados.clear()
+    assert llm.invoke([_Mensagem("de novo")]).content == "ok"
+    assert usados == ["gemini-flash-latest"]
+
+
+def test_gemini_erro_que_nao_e_de_modelo_nao_faz_fallback():
+    """Erro comum (ex.: 429/500) NÃO deve mascarar-se de troca de modelo."""
+    class Models:
+        def generate_content(self, **kwargs):
+            raise RuntimeError("500 internal error")
+
+    cliente = SimpleNamespace(models=Models())
+    llm = GeminiLeve("chave", "gemini-pro-latest", client=cliente,
+                     fallbacks=("gemini-flash-latest",))
+    try:
+        llm.invoke([_Mensagem("oi")])
+    except RuntimeError as e:
+        assert "500" in str(e)
+        return
+    raise AssertionError("erro nao-de-modelo deveria propagar")
+
+
 def test_gemini_invoke_json_rejeita_nao_objeto():
     class Models:
         def generate_content(self, **kwargs):
