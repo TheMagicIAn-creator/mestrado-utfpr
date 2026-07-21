@@ -172,3 +172,22 @@ def test_pedido_de_execucao_ou_consulta_nao_e_confundido_com_codigo():
     assert not _quer_codigo_snippet("qual o AUC do autoencoder?")
     assert not _quer_codigo_snippet("decodifique o sinal")
     assert not _quer_codigo_snippet("escreva um resumo da distribuição do erro")
+
+
+def test_gerar_grafico_sem_palavra_codigo_nao_despeja_resultados():
+    """'gera um gráfico da ttf' nao pode cair em consultar_resultados so por
+    conter 'gráfico' — verbo de geracao bloqueia o despejo (vai ao LLM)."""
+    for pergunta in (
+        "gera um gráfico da ttf",
+        "plota a curva de weibull pra mim",
+        "desenha a distribuição do erro",
+    ):
+        assert _ferramenta(pergunta) != "consultar_resultados", pergunta
+
+
+def test_consulta_legitima_de_resultados_preservada():
+    assert _ferramenta("mostre a matriz de confusão") == "consultar_resultados"
+    assert _ferramenta("mostre os resultados do weibull") == "consultar_resultados"
+    assert _ferramenta("cadê as imagens da roc?") == "consultar_resultados"
+    # 'geral' NAO pode ser confundido com verbo de geracao
+    assert _ferramenta("de modo geral, mostre a matriz") == "consultar_resultados"

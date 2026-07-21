@@ -1877,9 +1877,20 @@ def _decisao_rapida(pergunta: str) -> dict | None:
         "execut", "entraîn", "entrain", "gener", "génér", "calcul", "inject",
     )
     termos_validacao_ativa = ("validar", "valide", "valida")
+    # Verbos de GERAÇÃO (fazer/plotar/escrever). Fronteira de palavra para não
+    # pegar "geral", "gerenciar" etc. Sem isto, "gera um gráfico da ttf" caía no
+    # despejo de resultados só por conter "gráfico" — o LLM deve escrever o
+    # código/conversar, não devolver o artefato salvo.
+    termos_geracao_ativa = (
+        "gera", "gere", "gerar", "plota", "plote", "plotar",
+        "desenha", "desenhe", "desenhar", "traca", "trace", "tracar",
+        "escreve", "escreva", "escrever", "coda", "code", "codar",
+        "monta", "monte", "montar", "cria", "crie", "criar",
+    )
     tem_acao_ativa = (
         any(t in txt for t in termos_acao_ativa)
-        or any(re.search(rf"\b{re.escape(t)}\b", txt) for t in termos_validacao_ativa)
+        or any(re.search(rf"\b{re.escape(t)}\b", txt)
+               for t in termos_validacao_ativa + termos_geracao_ativa)
     )
     if any(t in txt for t in termos_consulta):
         if not tem_acao_ativa:
