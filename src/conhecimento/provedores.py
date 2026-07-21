@@ -2,21 +2,25 @@
 provedores.py — Al IAdo PV
 Gerencia os provedores de LLM disponíveis.
 
-Equipe 100% Gemini, um modelo por nível de tarefa (a escolha segue os limites
-de taxa por modelo do plano pago da API Gemini: quanto mais barato o modelo,
-maior o RPM/TPM disponível — então o trabalho repetitivo desce de nível):
+Equipe 100% Gemini, um modelo por nível de tarefa. Usa os ALIASES -latest, que
+sempre apontam para a versão vigente de cada tier — a família Gemini 2.5 foi
+aposentada em 2026 e versões explícitas giram rápido, então fixar número quebra:
 
   • NÍVEL 1 — conversa, síntese final e interpretação de imagens
-      gemini-2.5-pro (o mais capaz; limite de requisições menor, por isso é
-      reservado à ÚNICA chamada que o Rodolfo lê por turno).
+      gemini-pro-latest (o mais capaz; reservado à ÚNICA chamada que o Rodolfo
+      lê por turno). Se o Pro não estiver liberado, cai para o Flash (fallback).
   • NÍVEL 2 — auditoria de evidências e porteiro da memória validada
-      gemini-2.5-flash (rápido, JSON estruturado nativo, RPM alto; roda a cada
+      gemini-flash-latest (rápido, JSON estruturado nativo, GA; roda a cada
       turno com literatura sem competir com o orçamento do pro).
   • NÍVEL 3 — tarefas de fundo em lote: metadados de PDF e consolidação
-      gemini-2.5-flash-lite (o mais barato/veloz, maior limite de taxa; ideal
-      para varrer 39 PDFs ou resumir sessões sem custo relevante).
+      gemini-flash-lite-latest (o mais barato/veloz; ideal para varrer os PDFs
+      ou resumir sessões sem custo relevante).
   • SEM LLM — expansão de query, BM25, RRF, reranking, cálculos e ferramentas
       continuam heurísticas locais determinísticas.
+
+Resiliência: GeminiLeve tenta o modelo configurado e, se ele estiver
+indisponível (404/aposentado), cai automaticamente para MODELO_GEMINI_FALLBACK
+(gemini-flash-latest, GA) — o app nunca mais trava por rotação de modelo.
 
 Autor: Rodolfo Torres (UTFPR)
 """
@@ -30,8 +34,10 @@ load_dotenv()
 
 
 # NÍVEL 3 — modelo de FUNDO (extração de metadados de PDF e consolidação de
-# memória): o mais econômico da família, com o maior limite de taxa.
-MODELO_GEMINI_FUNDO = os.getenv("AL_IADO_GEMINI_MODEL_FUNDO", "gemini-2.5-flash-lite")
+# memória): o mais econômico da família, com o maior limite de taxa. Usa o alias
+# estável -latest (hoje, família Gemini 3 Flash-Lite) para não quebrar quando a
+# versão explícita for aposentada.
+MODELO_GEMINI_FUNDO = os.getenv("AL_IADO_GEMINI_MODEL_FUNDO", "gemini-flash-lite-latest")
 
 
 # ============================================================
@@ -41,7 +47,7 @@ MODELO_GEMINI_FUNDO = os.getenv("AL_IADO_GEMINI_MODEL_FUNDO", "gemini-2.5-flash-
 PROVEDORES = {
     "1": {
         "nome"      : "Google Gemini",
-        "modelo"    : os.getenv("AL_IADO_GEMINI_MODEL", "gemini-2.5-pro"),
+        "modelo"    : os.getenv("AL_IADO_GEMINI_MODEL", "gemini-pro-latest"),
         "env_key"   : "GOOGLE_API_KEY",
         "limite"    : "conforme o plano da API",
         "emoji"     : "🔵",
@@ -49,7 +55,7 @@ PROVEDORES = {
     },
     "2": {
         "nome"      : "Google Gemini (auditor)",
-        "modelo"    : os.getenv("AL_IADO_GEMINI_MODEL_AUDITOR", "gemini-2.5-flash"),
+        "modelo"    : os.getenv("AL_IADO_GEMINI_MODEL_AUDITOR", "gemini-flash-latest"),
         "env_key"   : "GOOGLE_API_KEY",
         "limite"    : "conforme o plano da API",
         "emoji"     : "🟢",
@@ -74,6 +80,9 @@ PAPEIS_AGENTES = {
 }
 
 
+_SEM_ITEM = object()  # sentinela: stream vazio sem confundir com item None
+
+
 @dataclass(frozen=True)
 class RespostaLLM:
     """Resposta mínima compatível com o contrato usado pelo agente."""
@@ -87,16 +96,45 @@ def _conteudo_da_mensagem(mensagem):
     return getattr(mensagem, "content", mensagem)
 
 
+# Alias estável do Gemini que sempre aponta para o Flash GA atual (hoje,
+# gemini-3.5-flash). É o último degrau do fallback: se o modelo configurado
+# some (a família 2.5 foi desativada em 2026, e versões giram rápido), a
+# chamada cai aqui e o app nunca trava por 404 de modelo.
+MODELO_GEMINI_FALLBACK = os.getenv("AL_IADO_GEMINI_FALLBACK", "gemini-flash-latest")
+
+
+def _erro_de_modelo_indisponivel(exc) -> bool:
+    """True quando a exceção indica modelo inexistente/aposentado (404 etc.).
+
+    Ex.: 'This model models/gemini-2.5-pro is no longer available...',
+         'NOT_FOUND', 'is not supported', 'was not found'.
+    """
+    txt = str(exc).lower()
+    return any(s in txt for s in (
+        "not_found", "not found", "was not found", "404",
+        "no longer available", "is not supported", "not supported for",
+        "does not exist", "unknown model",
+    ))
+
+
 class GeminiLeve:
-    """Adaptador do SDK Google Gen AI sem carregar a integração LangChain."""
+    """Adaptador do SDK Google Gen AI sem carregar a integração LangChain.
+
+    Resiliência a rotação de modelos: cada chamada tenta o modelo configurado
+    e, se ele estiver indisponível (404/aposentado), cai para os `fallbacks`
+    (por fim MODELO_GEMINI_FALLBACK). O modelo que funcionar vira o novo
+    `self.model`, então a troca custa no máximo a primeira chamada da sessão.
+    """
 
     def __init__(self, api_key: str, model: str, temperature: float = 0.45,
-                 max_output_tokens: int = 8192, client=None) -> None:
+                 max_output_tokens: int = 8192, client=None,
+                 fallbacks: tuple[str, ...] = ()) -> None:
         self.api_key = api_key
         self.model = model
         self.temperature = float(temperature)
         self.max_output_tokens = max(256, int(max_output_tokens))
         self._client = client
+        self.fallbacks = tuple(f for f in fallbacks if f)
 
     def _obter_client(self):
         if self._client is None:
@@ -104,6 +142,61 @@ class GeminiLeve:
 
             self._client = genai.Client(api_key=self.api_key)
         return self._client
+
+    def _candidatos(self) -> list[str]:
+        """Modelos a tentar, em ordem, sem repetição."""
+        vistos: set[str] = set()
+        ordem = []
+        for m in (self.model, *self.fallbacks, MODELO_GEMINI_FALLBACK):
+            if m and m not in vistos:
+                vistos.add(m)
+                ordem.append(m)
+        return ordem
+
+    def _gerar(self, contents, config, *, stream: bool = False):
+        """Executa generate_content(_stream) com fallback de modelo.
+
+        Retorna a resposta (não-stream) ou um gerador de itens (stream).
+        """
+        erro_final = None
+        for modelo in self._candidatos():
+            try:
+                cliente = self._obter_client()
+                if stream:
+                    fluxo = cliente.models.generate_content_stream(
+                        model=modelo, contents=contents, config=config,
+                    )
+                    iterador = iter(fluxo)
+                    primeiro = next(iterador, _SEM_ITEM)  # força a chamada aqui
+                    self._fixar_modelo(modelo)
+
+                    def _fluxo():
+                        if primeiro is not _SEM_ITEM:
+                            yield primeiro
+                        yield from iterador
+
+                    return _fluxo()
+                resposta = cliente.models.generate_content(
+                    model=modelo, contents=contents, config=config,
+                )
+                self._fixar_modelo(modelo)
+                return resposta
+            except Exception as exc:  # noqa: BLE001 — só cai p/ fallback se for de modelo
+                if _erro_de_modelo_indisponivel(exc):
+                    erro_final = exc
+                    continue
+                raise
+        if erro_final is not None:
+            raise erro_final
+        raise RuntimeError("Nenhum modelo Gemini candidato disponível.")
+
+    def _fixar_modelo(self, modelo: str) -> None:
+        if modelo != self.model:
+            print(
+                f"   ⚠️  Gemini: modelo '{self.model}' indisponível — "
+                f"usando '{modelo}'. Ajuste AL_IADO_GEMINI_MODEL se quiser fixar."
+            )
+            self.model = modelo
 
     @staticmethod
     def _converter_conteudo(conteudo):
@@ -144,10 +237,9 @@ class GeminiLeve:
         return convertidos[0] if len(convertidos) == 1 else convertidos
 
     def invoke(self, mensagens) -> RespostaLLM:
-        resposta = self._obter_client().models.generate_content(
-            model=self.model,
-            contents=self._conteudos(mensagens),
-            config={
+        resposta = self._gerar(
+            self._conteudos(mensagens),
+            {
                 "temperature": self.temperature,
                 "max_output_tokens": self.max_output_tokens,
             },
@@ -156,10 +248,9 @@ class GeminiLeve:
 
     def invoke_json(self, mensagens, max_tokens: int = 700) -> dict:
         """Executa uma chamada curta e exige um objeto JSON (papel de auditor)."""
-        resposta = self._obter_client().models.generate_content(
-            model=self.model,
-            contents=self._conteudos(mensagens),
-            config={
+        resposta = self._gerar(
+            self._conteudos(mensagens),
+            {
                 "temperature": 0.0,
                 "max_output_tokens": max(100, int(max_tokens)),
                 "response_mime_type": "application/json",
@@ -172,13 +263,13 @@ class GeminiLeve:
         return payload
 
     def stream(self, mensagens):
-        fluxo = self._obter_client().models.generate_content_stream(
-            model=self.model,
-            contents=self._conteudos(mensagens),
-            config={
+        fluxo = self._gerar(
+            self._conteudos(mensagens),
+            {
                 "temperature": self.temperature,
                 "max_output_tokens": self.max_output_tokens,
             },
+            stream=True,
         )
         for item in fluxo:
             texto = getattr(item, "text", "") or ""
