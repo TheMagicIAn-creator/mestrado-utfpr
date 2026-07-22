@@ -527,9 +527,29 @@ def plotar_ttf_histogramas(
                 label=f"Eventos observados (n={len(observados)})",
             )
             ax.axvline(
-                float(np.median(observados)), color="black", linestyle="-",
-                linewidth=1.4, label=f"Mediana observada={np.median(observados):.0f}",
+                float(np.median(observados)), color="0.35", linestyle="--",
+                linewidth=1.3, label=f"Mediana observada={np.median(observados):.0f}",
             )
+
+        # Curva de Weibull ajustada SOBRE o histograma (quando estimável). A
+        # densidade f(t) integra 1 sobre TODAS as trajetórias; escala-se para a
+        # contagem multiplicando por (n_total × largura_do_bin). n_total inclui
+        # as censuradas: só assim a curva bate com o histograma dos eventos
+        # observados (que é a fração de f(t) à esquerda do horizonte). Sob alta
+        # censura, a maior parte da massa fica à direita da censura — a curva
+        # baixa perto do histograma é o próprio sinal de que o ajuste extrapola.
+        if p["fit_converged"] and len(observados):
+            largura_bin = float(bins[1] - bins[0])
+            t_grid = np.linspace(0.0, horizonte, 400)
+            densidade = weibull_min.pdf(
+                t_grid, p["beta"], loc=0, scale=p["eta"]
+            )
+            escala = len(ttfs) * largura_bin
+            ax.plot(
+                t_grid, densidade * escala, color="black", linewidth=2.2,
+                label=f"Weibull ajustada (β={p['beta']:.2f}, η={p['eta']:.1f})",
+            )
+
         if len(censurados):
             ax.axvline(
                 horizonte, color=COR_ALERTA, linestyle="--", linewidth=2,
