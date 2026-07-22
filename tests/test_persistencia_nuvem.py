@@ -120,11 +120,58 @@ def test_diagnostico_sem_token(monkeypatch):
     assert d["ativa"] is False and "token" in d["resumo"].lower()
 
 
+def _resetar_status_por_alvo():
+    for alvo in pn._ALVOS_CONHECIDOS:
+        pn._STATUS_POR_ALVO[alvo] = {"estado": "sem_tentativa", "detalhe": ""}
+
+
 def test_diagnostico_ativa_aguardando(monkeypatch):
     _limpar_env(monkeypatch)
     monkeypatch.setenv("AL_IADO_PERSISTIR_NUVEM", "1")
     monkeypatch.setenv("GITHUB_TOKEN", "ghp_x" * 8)
     monkeypatch.setenv("AL_IADO_GITHUB_REPO", "dono/repo")
-    pn._ULTIMO_STATUS["estado"] = "sem_tentativa"
+    _resetar_status_por_alvo()
     d = pn.diagnostico()
     assert d["ativa"] is True
+    assert d["por_alvo"]["sessao"]["estado"] == "sem_tentativa"
+    assert d["por_alvo"]["memoria"]["estado"] == "sem_tentativa"
+
+
+def test_diagnostico_por_alvo_isola_sucesso_de_falha(monkeypatch):
+    """O bug real: sessão OK no mesmo turno que memória FALHOU não pode
+    esconder a falha da memória atrás do sucesso da sessão."""
+    _limpar_env(monkeypatch)
+    monkeypatch.setenv("AL_IADO_PERSISTIR_NUVEM", "1")
+    monkeypatch.setenv("GITHUB_TOKEN", "ghp_x" * 8)
+    monkeypatch.setenv("AL_IADO_GITHUB_REPO", "dono/repo")
+    _resetar_status_por_alvo()
+
+    pn._registrar_status("sessao", "ok", "notas/sessoes/x.md @ dono/repo")
+    pn._registrar_status("memoria", "erro", "HTTP 403: sem permissao de escrita")
+
+    d = pn.diagnostico()
+    assert d["ativa"] is True
+    assert "FALHA" in d["resumo"]
+    assert d["por_alvo"]["sessao"]["estado"] == "ok"
+    assert d["por_alvo"]["memoria"]["estado"] == "erro"
+    assert "403" in d["por_alvo"]["memoria"]["detalhe"]
+
+
+def test_persistir_arquivo_registra_status_do_alvo_correto(monkeypatch, tmp_path):
+    _limpar_env(monkeypatch)
+    monkeypatch.setenv("AL_IADO_PERSISTIR_NUVEM", "1")
+    monkeypatch.setenv("GITHUB_TOKEN", "ghp_x" * 8)
+    monkeypatch.setenv("AL_IADO_GITHUB_REPO", "dono/repo")
+    _resetar_status_por_alvo()
+
+    alvo_arquivo = pn.RAIZ_PROJETO / "notas" / "memorias" / "agentes" / "memoria_validada.json"
+
+    def fake(metodo, url, token, payload=None):
+        if metodo == "GET":
+            return 200, {"sha": "s"}
+        return 201, {}
+
+    monkeypatch.setattr(pn, "_requisitar", fake)
+    assert pn.persistir_arquivo(alvo_arquivo, mensagem="msg", alvo="memoria") is True
+    assert pn._STATUS_POR_ALVO["memoria"]["estado"] == "ok"
+    assert pn._STATUS_POR_ALVO["sessao"]["estado"] == "sem_tentativa"  # intocado
