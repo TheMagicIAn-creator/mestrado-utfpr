@@ -1964,6 +1964,18 @@ def _decisao_rapida(pergunta: str) -> dict | None:
         if "resultado" in txt:
             return {"usar_ferramenta": True, "ferramenta": "rodar_pipeline_completo"}
 
+    # Pergunta conceitual/recall SEM referência a artefato de resultado vai
+    # DEFINITIVAMENTE ao LLM — impede o roteador-LLM (fallback) de despejar
+    # consultar_resultados (gráficos, às vezes velhos) numa pergunta de conceito.
+    _NOUNS_RESULTADO = (
+        "resultado", "resultados", "grafico", "graficos", "figura", "figuras",
+        "imagem", "imagens", "matriz", "matrizes", "metrica", "metricas",
+        "auc", "f1", "roc", "curva", "curvas", "heatmap", "limiar", "ttf",
+        "smd", "b10", "mttf", "artefato", "artefatos", "plot",
+    )
+    if _e_pergunta(pergunta) and not any(t in txt for t in _NOUNS_RESULTADO):
+        return {"usar_ferramenta": False, "ferramenta": None}
+
     return None
 
 
