@@ -220,3 +220,19 @@ def test_comandos_e_consultas_legitimos_preservados():
     assert _ferramenta("rode o pipeline completo") == "rodar_pipeline_completo"
     assert _ferramenta("gere os resultados") == "rodar_pipeline_completo"
     assert _ferramenta("mostre os resultados do weibull") == "consultar_resultados"
+
+
+def test_pergunta_conceitual_sem_artefato_vai_ao_llm_nao_despeja_grafico():
+    """'por onde começar o TCC?' / 'os NPR foram demais?' sao conceituais — vao
+    ao LLM definitivamente, sem o fallback-LLM despejar consultar_resultados."""
+    for q in (
+        "por onde acha que devo começar a tratar as coisas do meu tcc?",
+        "achas que os valores que adotei no npr foram demais ou fora da realidade?",
+        "Qual falha a gente decidiu injetar primeiro no pipeline, o Contator AC?",
+    ):
+        assert _decisao_rapida(q) == {"usar_ferramenta": False, "ferramenta": None}, q
+
+
+def test_pergunta_com_artefato_segue_fluxo_normal():
+    """Pergunta que cita artefato ('cadê as imagens da roc?') ainda consulta."""
+    assert _ferramenta("cadê as imagens da roc?") == "consultar_resultados"

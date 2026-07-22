@@ -467,6 +467,25 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian) -> No
 
         st.caption(f"🏷️ build: {MARCADOR_BUILD}")
 
+        # Persistência na nuvem — logo após o build e à prova de falha, para o
+        # silêncio nunca mais esconder que sessões/memórias não estão sendo
+        # salvas. (Antes ficava no fim e podia nem ser alcançado.)
+        try:
+            from src.conhecimento.persistencia_nuvem import diagnostico
+
+            diag = diagnostico()
+            if diag["ativa"] and "FALHOU" in diag["resumo"]:
+                st.error(f"☁️ Persistência: {diag['resumo']} — {diag['detalhe']}")
+            elif diag["ativa"]:
+                st.caption(f"☁️ Persistência na nuvem: {diag['resumo']}. {diag['detalhe']}")
+            else:
+                st.warning(
+                    f"☁️ Persistência na nuvem DESLIGADA ({diag['resumo']}): "
+                    f"{diag['detalhe']} Sem isto, sessões da nuvem somem a cada reboot."
+                )
+        except Exception as exc:
+            st.caption(f"☁️ Persistência: diagnóstico indisponível ({type(exc).__name__}).")
+
         equipe = st.session_state.get("equipe")
         if equipe is None:
             st.warning("Equipe de IA desconectada")
@@ -495,24 +514,6 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian) -> No
             f"memórias validadas: {memorias}. Literatura, memória e resultados "
             "são acessados pelo chat."
         )
-
-        # Persistência na nuvem — VISÍVEL, para o silêncio nunca mais esconder
-        # que sessões/memórias não estão sendo salvas.
-        try:
-            from src.conhecimento.persistencia_nuvem import diagnostico
-
-            diag = diagnostico()
-            if diag["ativa"] and "FALHOU" in diag["resumo"]:
-                st.error(f"☁️ Persistência: {diag['resumo']} — {diag['detalhe']}")
-            elif diag["ativa"]:
-                st.caption(f"☁️ Persistência na nuvem: {diag['resumo']}. {diag['detalhe']}")
-            else:
-                st.warning(
-                    f"☁️ Persistência na nuvem DESLIGADA ({diag['resumo']}): "
-                    f"{diag['detalhe']} Sem isto, sessões da nuvem somem a cada reboot."
-                )
-        except Exception:
-            pass
 
         # Fallback: o caminho normal da nuvem restaura o snapshot portátil no
         # carregamento. O botão só aparece se o snapshot estiver ausente/inválido.
