@@ -1,7 +1,7 @@
 {
   "stage": "features_ca",
-  "created_at": "2026-07-17T19:01:19.273142",
-  "git_commit": "274b4077708c0255c44cca407ca7c97c6bc8bacd",
+  "created_at": "2026-07-21T21:58:49.858348-03:00",
+  "git_commit": "d64c51536a343eca78cf3ae9a0a1e2f879a50704",
   "code_sha256": "7155b8633b3316a6c00583c70c56a4183aab3ed37f4d4ed2a7c1517bb6039183",
   "parameters": {
     "fs": 10000,

@@ -1,28 +1,31 @@
 {
   "stage": "validacao",
-  "created_at": "2026-07-09T13:21:40.545132",
-  "git_commit": "ea00b07695ce49c073093ea25bb5a69492ed285d",
-  "code_sha256": "69f8d044393c78aefd240c3706b771b94444989382efdbabd24550934108e380",
+  "created_at": "2026-07-21T22:00:01.368262-03:00",
+  "git_commit": "156081ee290281f60e99fc0772fab026c8190c80",
+  "code_sha256": "a577783ebc7f479bf1fde3dbd15a458935a362c93e5ed3fe62e5e51510fc74d5",
   "parameters": {
     "sevs_validacao": [
       0.3,
       0.5,
       1.0
     ],
-    "n_janelas_saudavel": 50,
-    "n_janelas_falha": 50
+    "n_janelas_saudavel": 40,
+    "n_janelas_falha": 40
   },
   "input_artifacts": {
-    "injecao_falhas:0:injecao_falhas_resultados.png": "45bf02e243e9da5db8fbbc9091f2fc39f8426b68b3ec348bc0627015c5c4ad84",
-    "injecao_falhas:1:injecao_falhas_comparacao.png": "8d04b8267c0659c1760128e0163760bf56e6caaf73ad7f0fddce3787e123e437",
-    "injecao_falhas:2:injecao_falhas_report.json": "2eec7abad400e784047b9b4319bad2f0ef79087dd7f1007689937267af3dca21"
+    "injecao_falhas:0:injecao_falhas_resultados.png": "fd3905087518e6509ad9b8a2f57bfa399423cb366d63b8cc426bb8b13bb7ff3e",
+    "injecao_falhas:1:injecao_falhas_comparacao.png": "b5fd1f9a1dab9ebb828eab90ebc6d1c52f7fbea86d1675d44ec15c7db1154d60",
+    "injecao_falhas:2:injecao_falhas_report.json": "e66e47a8de10a10e3073ca45a77154bc754e06db46a0225f988fd3c0bc5033ee",
+    "injecao_falhas:3:injecao_smd_tabela.csv": "d995d3bdc4f5f88be35be7eb5f37236cf9f6474e1f618a2b0ca93ed460182a7a"
   },
   "outputs": [
     "resultados/autoencoder/validacao_roc.png",
     "resultados/autoencoder/validacao_pr.png",
     "resultados/autoencoder/validacao_matriz.png",
+    "resultados/autoencoder/validacao_matrizes_severidades.png",
     "resultados/autoencoder/validacao_metricas.png",
     "resultados/autoencoder/validacao_tabela.csv",
+    "resultados/autoencoder/validacao_tabela.md",
     "resultados/autoencoder/validacao_report.json"
   ]
 }
