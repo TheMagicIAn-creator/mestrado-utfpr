@@ -18,16 +18,19 @@ REM Driver de merge que mantem seus resultados/ locais (roda uma vez; idempotent
 git config merge.ours.driver true
 
 git pull origin main
+if %errorlevel% neq 0 goto :falhou
 
-if %errorlevel% neq 0 (
-    echo.
-    echo [!] O pull encontrou um problema (provavelmente um conflito de notas
-    echo     editadas nos dois lados). Rode "git status" para ver, ou peca ajuda.
-) else (
-    echo.
-    echo [OK] Vault atualizado. Pode abrir o Obsidian - as novas sessoes e
-    echo      memorias consolidadas estarao la.
-)
+echo.
+echo [OK] Vault atualizado. Pode abrir o Obsidian - as novas sessoes e
+echo      memorias consolidadas estarao la.
+goto :fim
 
+:falhou
+echo.
+echo [!] O pull encontrou um problema - provavelmente um conflito de
+echo     notas editadas nos dois lados. Rode  git status  para ver,
+echo     ou peca ajuda ao Al IAdo PV.
+
+:fim
 echo.
 pause
