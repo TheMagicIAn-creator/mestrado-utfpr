@@ -474,15 +474,32 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian) -> No
             from src.conhecimento.persistencia_nuvem import diagnostico
 
             diag = diagnostico()
-            if diag["ativa"] and "FALHOU" in diag["resumo"]:
-                st.error(f"☁️ Persistência: {diag['resumo']} — {diag['detalhe']}")
-            elif diag["ativa"]:
-                st.caption(f"☁️ Persistência na nuvem: {diag['resumo']}. {diag['detalhe']}")
-            else:
+            if not diag["ativa"]:
                 st.warning(
                     f"☁️ Persistência na nuvem DESLIGADA ({diag['resumo']}): "
-                    f"{diag['detalhe']} Sem isto, sessões da nuvem somem a cada reboot."
+                    f"{diag['detalhe']} Sem isto, sessões/memórias somem a cada reboot."
                 )
+            else:
+                # Uma linha POR ALVO — nunca mais um alvo com sucesso mascara o
+                # outro falhando silenciosamente no mesmo turno (era o bug que
+                # perdeu uma memória sem nenhum aviso visível).
+                tem_erro = False
+                linhas = []
+                for info in diag.get("por_alvo", {}).values():
+                    estado = info.get("estado")
+                    rotulo = info.get("rotulo", "")
+                    if estado == "ok":
+                        linhas.append(f"{rotulo}: ✓")
+                    elif estado == "erro":
+                        tem_erro = True
+                        linhas.append(f"{rotulo}: ❌ FALHOU ({info.get('detalhe', '')})")
+                    else:
+                        linhas.append(f"{rotulo}: aguardando 1º commit")
+                texto = "☁️ Persistência na nuvem ativa — " + " · ".join(linhas)
+                if tem_erro:
+                    st.error(texto + " Verifique a permissão Contents: Read and write do token.")
+                else:
+                    st.caption(texto)
         except Exception as exc:
             st.caption(f"☁️ Persistência: diagnóstico indisponível ({type(exc).__name__}).")
 
@@ -1156,6 +1173,7 @@ def persistir_sessao_web() -> None:
             persistir_arquivo(
                 caminho,
                 mensagem=f"chore(sessao): atualiza sessao web ({n} interacoes)",
+                alvo="sessao",
             )
     except Exception:
         pass
