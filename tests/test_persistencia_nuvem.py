@@ -175,3 +175,14 @@ def test_persistir_arquivo_registra_status_do_alvo_correto(monkeypatch, tmp_path
     assert pn.persistir_arquivo(alvo_arquivo, mensagem="msg", alvo="memoria") is True
     assert pn._STATUS_POR_ALVO["memoria"]["estado"] == "ok"
     assert pn._STATUS_POR_ALVO["sessao"]["estado"] == "sem_tentativa"  # intocado
+
+
+def test_diagnostico_inclui_alvo_consolidado(monkeypatch):
+    _limpar_env(monkeypatch)
+    monkeypatch.setenv("AL_IADO_PERSISTIR_NUVEM", "1")
+    monkeypatch.setenv("GITHUB_TOKEN", "ghp_x" * 8)
+    monkeypatch.setenv("AL_IADO_GITHUB_REPO", "dono/repo")
+    _resetar_status_por_alvo()
+    d = pn.diagnostico()
+    assert "consolidado" in d["por_alvo"]
+    assert d["por_alvo"]["consolidado"]["rotulo"] == "Consolidação"

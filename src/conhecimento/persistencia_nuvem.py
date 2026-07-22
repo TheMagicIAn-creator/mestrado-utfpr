@@ -52,7 +52,7 @@ _TIMEOUT = float(os.getenv("AL_IADO_GITHUB_TIMEOUT", "12"))
 # mais recente (ex.: sessão OK) mascarar uma falha silenciosa no outro alvo
 # (ex.: memória FALHOU) — exatamente o cenário que perdeu uma memória do
 # pesquisador sem nenhum aviso visível antes deste fix.
-_ALVOS_CONHECIDOS = ("sessao", "memoria")
+_ALVOS_CONHECIDOS = ("sessao", "memoria", "consolidado")
 _STATUS_POR_ALVO: dict[str, dict] = {
     alvo: {"estado": "sem_tentativa", "detalhe": ""} for alvo in _ALVOS_CONHECIDOS
 }
@@ -204,7 +204,7 @@ def persistir_arquivo(caminho: str | Path, *, mensagem: str, alvo: str = "geral"
     return False
 
 
-_ROTULOS_ALVO = {"sessao": "Sessão", "memoria": "Memória"}
+_ROTULOS_ALVO = {"sessao": "Sessão", "memoria": "Memória", "consolidado": "Consolidação"}
 
 
 def diagnostico() -> dict:
