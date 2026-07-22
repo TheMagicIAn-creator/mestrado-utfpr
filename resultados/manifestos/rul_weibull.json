@@ -1,25 +1,31 @@
 {
   "stage": "rul_weibull",
-  "created_at": "2026-07-09T13:27:07.516307",
-  "git_commit": "ea00b07695ce49c073093ea25bb5a69492ed285d",
-  "code_sha256": "0d25def4cf81752969b80c5cfbc76ceb2c2e6e32912f5d76c790677755a7dd25",
+  "created_at": "2026-07-21T22:04:54.554326-03:00",
+  "git_commit": "156081ee290281f60e99fc0772fab026c8190c80",
+  "code_sha256": "e0c54440d4a1b2d47711f4d74b07e423051ae31d381147ef6c9abd52ac8a6ba8",
   "parameters": {
     "n_traj": 100,
     "n_steps": 120,
-    "batch_inferencia": 16
+    "batch_inferencia": 16,
+    "n_bootstrap": 250,
+    "min_eventos_weibull": 10,
+    "max_censura_rul_pct": 50.0
   },
   "input_artifacts": {
-    "validacao:0:validacao_roc.png": "258cc6ce4e9db5abd2aaafae517c070ace5df127d236b825d350b3bc368645a3",
-    "validacao:1:validacao_pr.png": "d57fcebc7dba8876cb568017a8ccce0e8e0ea94bc0e890fd2b1a73a4ba39d56b",
-    "validacao:2:validacao_matriz.png": "6e8bfdc5be2ee670d5dc0e9914c2c29e8c9d815252abd2676e3f8e1197c78e9e",
-    "validacao:3:validacao_metricas.png": "5c2a3eaa9a791bb75ff55cc4bb6c883f278dc0a113ac165de223832981eac547",
-    "validacao:4:validacao_tabela.csv": "0ec6fbc4b82afab42629446d5b43244e8dce35b53c93d027de25856edcb70237",
-    "validacao:5:validacao_report.json": "da0c7942f6a2c3f2522483e0e1581d98abdae128ae4e94b9234d6e323a6a3a45"
+    "validacao:0:validacao_roc.png": "dc0804a254656960061d0ec0b49bb1c1227e871ea0f97df9063a9624f62615e0",
+    "validacao:1:validacao_pr.png": "bef1d060ccefbf97dec8da93b74ad88af8db7259ca845766aaaef74dcef44a9f",
+    "validacao:2:validacao_matriz.png": "0f788f49956d776b9a698272b02b35e60c262668afd555a7a3c33c09ee928ee8",
+    "validacao:3:validacao_matrizes_severidades.png": "49ccb712dd846885f2a7d7ca694e61584c2c0dcad8272cfc1189eb9e2158e2c3",
+    "validacao:4:validacao_metricas.png": "fbd9d85fdf2f5050bbe48863635a6bd66fb8930083eb2d841a67134be3e648a2",
+    "validacao:5:validacao_tabela.csv": "19ed12467194dd9037e89e45ca0294fbbca3a3c8bd7eff3e351796076b51f2b3",
+    "validacao:6:validacao_tabela.md": "8c16c84cf37092d5c7737e84114d538d43b6013b72b1fa549abfece7e51fa0ea",
+    "validacao:7:validacao_report.json": "43e3e0f0183b58e3bb7fbbb421c1079d1279ede5894626a120b51a9e99c4b5b6"
   },
   "outputs": [
     "resultados/autoencoder/weibull_ttf.png",
     "resultados/autoencoder/weibull_confiabilidade.png",
     "resultados/autoencoder/weibull_rul.png",
-    "resultados/autoencoder/weibull_results.json"
+    "resultados/autoencoder/weibull_results.json",
+    "resultados/autoencoder/weibull_tabela.csv"
   ]
 }

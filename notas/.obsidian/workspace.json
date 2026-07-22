@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "sessoes/2026-07-20_09-12_sessao_web.md",
+                "file": "memorias/resultados-fase5-ml.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "2026-07-20_09-12_sessao_web"
+              "title": "resultados-fase5-ml"
             }
           }
         ]
@@ -217,12 +217,13 @@
   },
   "active": "e31a0497f3397f66",
   "lastOpenFiles": [
+    "sessoes_arquivadas/2026-07-20_09-19_sessao_web.md",
+    "sessoes/2026-07-20_09-12_sessao_web.md",
     "sessoes/2026-07-20_09-17_sessao_web.md",
     "sessoes/2026-07-20_09-19_sessao_web.md",
     "Literatura/manutencao/administration_nasa-reliability-centered-maintenance-guide-for-facilities-a_2008.md",
     "Cerebro/Conceitos/Separação dos domínios de dados.md",
     "Cerebro/Conceitos/Níveis de evidência.md",
-    "sessoes_arquivadas/2026-07-20_09-19_sessao_web.md",
     "sessoes_arquivadas/2026-05-27_20-35-11_avaliacao_agente_100.md",
     "sessoes_arquivadas/2026-05-30_07-38_sessao_web.md",
     "sessoes_arquivadas/2026-05-30_09-34_sessao_web.md",
@@ -242,7 +243,6 @@
     "memorias/2026-05-18_consolidado.md",
     "Literatura/confiabilidade/autor-desconhecido_431-uso-papel-weibull_0000.md",
     "sessoes_arquivadas/2026-05-23_16-16_sessao_web.md",
-    "memorias/2026-05-23_consolidado.md",
     "Literatura/sinais-eletricos",
     "codigo_apoio/re_indexador_memoria.py",
     "codigo_apoio",

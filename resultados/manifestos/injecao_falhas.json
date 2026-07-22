@@ -1,11 +1,9 @@
 {
   "stage": "injecao_falhas",
-  "created_at": "2026-07-09T13:21:32.109535",
-  "git_commit": "ea00b07695ce49c073093ea25bb5a69492ed285d",
-  "code_sha256": "4d8a501ec601b257ac6d179615f651d2d565144d63045d459a558788fbcaa3d9",
+  "created_at": "2026-07-21T21:59:33.060613-03:00",
+  "git_commit": "d64c51536a343eca78cf3ae9a0a1e2f879a50704",
+  "code_sha256": "a80b38e4d7a6206ade717c515db35cb9a9091b52a61c2f7d6f2179f2637559b1",
   "parameters": {
-    "t_inicio_estavel": 10.0,
-    "t_fim_estavel": 20.0,
     "severidades": [
       0.05,
       0.1,
@@ -14,19 +12,23 @@
       0.5,
       0.7,
       1.0
-    ]
+    ],
+    "alvo_smd": 0.95,
+    "n_janelas_smd": 100
   },
   "input_artifacts": {
-    "autoencoder:0:modelo_autoencoder.pt": "777f08e5566bc532892c4cfb52abd3d28e35d283ac5e607d686b1a5cd67809d4",
-    "autoencoder:1:scaler.pkl": "83307da2ee76a4fe1f59921eba9eb5b03f30ded786e7fa49423c92e8b771c4f1",
-    "autoencoder:2:limiar.json": "de8629541d247ea3bddc4262b99d010ee982195cda075d97a48c1558964ef9c7",
-    "autoencoder:3:curva_treino.png": "71277be06adcff34d91aa562710918507754623fbc18d4d8d760551adc67341b",
-    "autoencoder:4:distribuicao_erro.png": "879a4a4c99f29eb26b29c068b68767eb835228669630df4abb644e5f080e28b2",
-    "autoencoder:5:erro_temporal.png": "736efa7fdd750722e2133a0273d1d9ff8a4e8d1c3489d8edf49ff3a3a54c6f16"
+    "autoencoder:0:modelo_autoencoder.pt": "55e605b342710f19986ee534007289173378528c23068241a388084f81595466",
+    "autoencoder:1:scaler.pkl": "6410b906f4aea04bdb010da6465df9753f6d52d2def529e29e110c0fe521edad",
+    "autoencoder:2:limiar.json": "5db790bdc788b8eefe8ab8b0070f8f6492cacef16e5afd64ea768f9764c4e77c",
+    "autoencoder:3:diagnostico_autoencoder.npz": "42b46cddc75f946d718f0224c3ec7c41205a98c5e5e5c28858353454e308e4b9",
+    "autoencoder:4:curva_treino.png": "97d4c60948a18a3db3481130fb1651c55768eebdc0d5d030414ba2d3ccfa3aa0",
+    "autoencoder:5:distribuicao_erro.png": "ff56699f6fc7fe021202969c56a401bbf358d121d4cc6df3bd59a41ce5ab88d3",
+    "autoencoder:6:erro_temporal.png": "9386778e4dda1e88bd2bea671944c830199a5a27eeb7cff9ad76ebc2d84d8f31"
   },
   "outputs": [
     "resultados/autoencoder/injecao_falhas_resultados.png",
     "resultados/autoencoder/injecao_falhas_comparacao.png",
-    "resultados/autoencoder/injecao_falhas_report.json"
+    "resultados/autoencoder/injecao_falhas_report.json",
+    "resultados/autoencoder/injecao_smd_tabela.csv"
   ]
 }
