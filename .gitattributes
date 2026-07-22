@@ -1,0 +1,6 @@
+# Artefatos do pipeline (PNG/JSON/CSV gerados no PC): em merge/pull, sempre
+# mantém a versão LOCAL. Esses arquivos só são gerados por quem roda o pipeline
+# no PC (nunca pelo deploy na nuvem, que é modo-consulta); então "ours" nunca
+# descarta um artefato mais novo por engano — só evita o conflito add/add
+# recorrente entre a cópia local e a já versionada no repositório.
+resultados/** merge=ours
