@@ -113,6 +113,51 @@ def _conteudo_da_mensagem(mensagem):
     return getattr(mensagem, "content", mensagem)
 
 
+def texto_da_resposta(resposta) -> str:
+    """Converte respostas dos SDKs/integrações em texto puro.
+
+    Versões recentes dos provedores podem devolver ``content`` como uma lista
+    de blocos em vez de ``str``. Centralizar a conversão evita que cada fluxo
+    tente concatenar ou interpretar diretamente estruturas incompatíveis.
+    Blocos não textuais são ignorados deliberadamente.
+    """
+
+    conteudo = resposta if isinstance(resposta, (str, list, tuple, dict)) else getattr(
+        resposta, "content", resposta
+    )
+
+    def _partes(valor):
+        if valor is None:
+            return
+        if isinstance(valor, str):
+            if valor:
+                yield valor
+            return
+        if isinstance(valor, (list, tuple)):
+            for item in valor:
+                yield from _partes(item)
+            return
+        if isinstance(valor, dict):
+            tipo = str(valor.get("type", "")).lower()
+            if tipo and tipo not in {"text", "output_text"}:
+                return
+            for chave in ("text", "content", "value"):
+                if chave in valor:
+                    yield from _partes(valor[chave])
+                    return
+            return
+
+        texto = getattr(valor, "text", None)
+        if texto is not None:
+            yield from _partes(texto)
+            return
+        interno = getattr(valor, "content", None)
+        if interno is not None and interno is not valor:
+            yield from _partes(interno)
+
+    return "".join(_partes(conteudo) or ())
+
+
 # Alias estável do Gemini que sempre aponta para o Flash GA atual (hoje,
 # gemini-3.5-flash). É o último degrau do fallback: se o modelo configurado
 # some (a família 2.5 foi desativada em 2026, e versões giram rápido), a
@@ -323,6 +368,26 @@ class GeminiLeve:
             texto = getattr(item, "text", "") or ""
             if texto:
                 yield RespostaLLM(content=texto)
+
+
+def inicializar_llm_fundo(
+    *,
+    temperature: float = 0.0,
+    max_output_tokens: int = 8192,
+) -> GeminiLeve:
+    """Cria o Gemini econômico usado em tarefas administrativas de fundo."""
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        raise ValueError(
+            "GOOGLE_API_KEY não configurada para a tarefa de fundo."
+        )
+    return GeminiLeve(
+        model=MODELO_GEMINI_FUNDO,
+        api_key=api_key,
+        temperature=temperature,
+        max_output_tokens=max_output_tokens,
+        fallbacks=(MODELO_GEMINI_ALTERNATIVO, MODELO_GEMINI_FALLBACK),
+    )
 
 
 def eh_multimodal(nome_ou_chave: str) -> bool:

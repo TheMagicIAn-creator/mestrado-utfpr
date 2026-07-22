@@ -52,50 +52,185 @@ def etapa_indexar_pdfs(modelo_embeddings) -> str:
 
 def reprocessar_metadados_ruins() -> str:
     """
-    Corrige PDFs com 'autor-desconhecido' no nome.
-    Operacao pesada, chamada sob demanda pela manutencao.
-    """
-    ruins = list(PASTA_LITERATURA.rglob("autor-desconhecido_*.pdf"))
-    if not ruins:
-        return "Metadados: todos os arquivos com nome correto"
+    Reconcilia pendências, nomes dos PDFs e metadados dos índices.
 
+    A operação usa o cadastro de pendências e também revisita arquivos ``0000``;
+    portanto não depende mais apenas do prefixo ``autor-desconhecido``.
+    """
     try:
-        import chromadb
-        from sentence_transformers import SentenceTransformer
-        from src.conhecimento.indexador import indexar_pdf_unico
+        from pathlib import Path
+
+        from src.conhecimento.indice_portatil import (
+            atualizar_metadados_snapshot,
+            hash_corpus_pdfs,
+        )
         from src.conhecimento.processador_pdf import (
+            carregar_metadados_pendentes,
             extrair_metadados_pdf,
             gerar_nome_padronizado,
+            metadados_resolvidos,
+            salvar_metadados_pendentes,
         )
+        from src.core.config import ARQUIVO_INDICE_LITERATURA
+        from src.core.tempo import agora_local
 
-        modelo = SentenceTransformer(MODELO_EMBEDDINGS)
-        client = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
-        colecao = client.get_or_create_collection(NOME_COLECAO)
-        corrigidos = 0
+        pendencias = carregar_metadados_pendentes()
 
-        for pdf in ruins:
-            meta = extrair_metadados_pdf(pdf)
-            autor = meta["autor"]
-            if autor == "autor-desconhecido":
+        def caminho_local(nome: str, info: dict) -> Path | None:
+            candidatos = []
+            bruto = Path(str(info.get("arquivo", "")))
+            partes_minusculas = [parte.lower() for parte in bruto.parts]
+            if "literatura" in partes_minusculas:
+                posicao = partes_minusculas.index("literatura")
+                candidatos.append(PASTA_LITERATURA.joinpath(*bruto.parts[posicao + 1:]))
+            if not bruto.is_absolute():
+                candidatos.append(RAIZ_PROJETO / bruto)
+            candidatos.extend(PASTA_LITERATURA.rglob(nome))
+            raiz = PASTA_LITERATURA.resolve()
+            for candidato in candidatos:
+                try:
+                    resolvido = candidato.resolve()
+                    resolvido.relative_to(raiz)
+                except (OSError, ValueError):
+                    continue
+                if resolvido.is_file():
+                    return resolvido
+            return None
+
+        alvos: dict[Path, set[str]] = {}
+        for nome, info in pendencias.items():
+            if not isinstance(info, dict) or info.get("resolvido"):
+                continue
+            caminho = caminho_local(nome, info)
+            if caminho is not None:
+                alvos.setdefault(caminho, set()).add(nome)
+
+        for padrao in ("autor-desconhecido_*.pdf", "*_0000.pdf"):
+            for caminho in PASTA_LITERATURA.rglob(padrao):
+                alvos.setdefault(caminho.resolve(), set()).add(caminho.name)
+
+        atualizacoes_snapshot: dict[str, dict] = {}
+        corrigidos = confirmados_sem_data = ainda_pendentes = 0
+
+        colecao = None
+        if PASTA_CHROMADB.is_dir():
+            try:
+                import chromadb
+
+                cliente = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
+                colecao = cliente.get_collection(NOME_COLECAO)
+            except Exception:
+                colecao = None
+
+        for pdf, chaves_pendencia in sorted(alvos.items(), key=lambda item: str(item[0])):
+            nome_antigo = pdf.name
+            meta = extrair_metadados_pdf(pdf, registrar_pendencia=False)
+            if not metadados_resolvidos(meta):
+                ainda_pendentes += 1
+                for chave in chaves_pendencia:
+                    if chave not in pendencias:
+                        pendencias[chave] = {}
+                    pendencias[chave].update({
+                        "arquivo": pdf.relative_to(RAIZ_PROJETO).as_posix(),
+                        "autor_atual": meta.get("autor", ""),
+                        "titulo_atual": meta.get("titulo", ""),
+                        "ano_atual": meta.get("ano", "0000"),
+                        "ultima_verificacao": agora_local().isoformat(timespec="minutes"),
+                        "resolvido": False,
+                    })
                 continue
 
             nome_novo = gerar_nome_padronizado(
-                autor, meta["titulo"], meta["ano"]
+                meta["autor"], meta["titulo"], meta["ano"]
             )
             destino = pdf.parent / nome_novo
-            if destino.exists() and destino != pdf:
+            if destino != pdf and destino.exists():
+                ainda_pendentes += 1
                 continue
 
-            res = colecao.get(where={"arquivo": pdf.name}, include=["metadatas"])
-            ids_antigos = res.get("ids", [])
-            if ids_antigos:
-                colecao.delete(ids=ids_antigos)
+            if destino != pdf:
+                pdf.rename(destino)
+                corrigidos += 1
+            if meta.get("ano_confirmado_ausente"):
+                confirmados_sem_data += 1
 
-            pdf.rename(destino)
-            indexar_pdf_unico(destino, modelo, PASTA_CHROMADB)
-            corrigidos += 1
+            ano_citacao = meta["ano"] if meta["ano"] != "0000" else "s.d."
+            novos_metadados = {
+                "arquivo": destino.name,
+                "autor": meta["autor"],
+                "titulo": meta["titulo"],
+                "ano": ano_citacao,
+                "citacao": f"{meta['autor']} ({ano_citacao}) — {meta['titulo']}",
+            }
+            atualizacoes_snapshot[nome_antigo] = novos_metadados
 
-        return f"Metadados: {corrigidos} arquivo(s) corrigido(s)"
+            if colecao is not None:
+                try:
+                    registros = colecao.get(
+                        where={"arquivo_hash": meta.get("arquivo_hash", "")},
+                        include=["metadatas"],
+                    ) if meta.get("arquivo_hash") else colecao.get(
+                        where={"arquivo": nome_antigo}, include=["metadatas"]
+                    )
+                    ids = registros.get("ids") or []
+                    metadados = registros.get("metadatas") or []
+                    for inicio in range(0, len(ids), 250):
+                        fim = inicio + 250
+                        colecao.update(
+                            ids=ids[inicio:fim],
+                            metadatas=[
+                                {**item, **novos_metadados}
+                                for item in metadados[inicio:fim]
+                            ],
+                        )
+                except Exception:
+                    pass
+
+            for chave in chaves_pendencia:
+                if chave not in pendencias:
+                    continue
+                pendencias[chave].update({
+                    "arquivo_final": destino.relative_to(RAIZ_PROJETO).as_posix(),
+                    "autor_atual": meta["autor"],
+                    "titulo_atual": meta["titulo"],
+                    "ano_atual": meta["ano"],
+                    "ano_confirmado_ausente": bool(
+                        meta.get("ano_confirmado_ausente")
+                    ),
+                    "ultima_verificacao": agora_local().isoformat(timespec="minutes"),
+                    "resolvido": True,
+                    "motivo_resolucao": "metadados revisados e propagados",
+                })
+
+        orfaos = 0
+        for nome, info in pendencias.items():
+            if not isinstance(info, dict) or info.get("resolvido"):
+                continue
+            if caminho_local(nome, info) is None:
+                info.update({
+                    "resolvido": True,
+                    "ultima_verificacao": agora_local().isoformat(timespec="minutes"),
+                    "motivo_resolucao": "registro órfão de arquivo já removido ou renomeado",
+                })
+                orfaos += 1
+
+        salvar_metadados_pendentes(pendencias)
+
+        if atualizacoes_snapshot and ARQUIVO_INDICE_LITERATURA.is_file():
+            hash_corpus, n_documentos = hash_corpus_pdfs(PASTA_LITERATURA)
+            atualizar_metadados_snapshot(
+                ARQUIVO_INDICE_LITERATURA,
+                atualizacoes_snapshot,
+                hash_corpus=hash_corpus,
+                n_documentos=n_documentos,
+            )
+
+        return (
+            f"Metadados: {corrigidos} arquivo(s) renomeado(s), "
+            f"{confirmados_sem_data} fonte(s) confirmada(s) como s.d., "
+            f"{orfaos} registro(s) órfão(s) encerrado(s) e "
+            f"{ainda_pendentes} pendência(s) restante(s)."
+        )
     except Exception as exc:
         return f"Metadados: erro no reprocessamento - {exc}"
 

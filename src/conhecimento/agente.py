@@ -42,7 +42,7 @@ from src.core.config import (
 )
 from langchain_core.messages import HumanMessage
 from src.conhecimento.leitor_anexos import montar_bloco_texto_anexos, tem_imagem
-from src.conhecimento.provedores import eh_multimodal
+from src.conhecimento.provedores import eh_multimodal, texto_da_resposta
 
 ORCAMENTOS_RAG = {
     "gemini": {
@@ -2376,7 +2376,7 @@ def perguntar(
         for tentativa in range(1, max_tentativas + 1):
             try:
                 for chunk in llm.stream(mensagens):
-                    pedaco = chunk.content
+                    pedaco = texto_da_resposta(chunk)
                     print(pedaco, end="", flush=True)
                     texto_completo += pedaco
                 print()  # quebra de linha ao terminar
@@ -2395,7 +2395,7 @@ def perguntar(
         for tentativa in range(1, max_tentativas + 1):
             try:
                 resposta       = llm.invoke(mensagens)
-                texto_completo = resposta.content
+                texto_completo = texto_da_resposta(resposta)
                 break
             except Exception as e:
                 erro = str(e)

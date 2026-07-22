@@ -211,26 +211,27 @@ O que foi planejado ou ficou pendente — com nível de prioridade.
 Artigos e documentos mais relevantes mencionados, com contexto de uso.
 """
 
-    resposta = None
+    try:
+        from src.conhecimento.provedores import (
+            inicializar_llm_fundo,
+            texto_da_resposta,
+        )
 
-    # Tarefa de fundo → Gemini econômico (MODELO_GEMINI_FUNDO).
-    gemini_key = os.getenv("GOOGLE_API_KEY")
-    if gemini_key:
-        try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            from langchain_core.messages import HumanMessage
-            from src.conhecimento.provedores import MODELO_GEMINI_FUNDO
-            llm = ChatGoogleGenerativeAI(
-                model        = MODELO_GEMINI_FUNDO,
-                google_api_key = gemini_key,
-                temperature  = 0.2
-            )
-            resposta = llm.invoke([HumanMessage(content=prompt)]).content
-            print("   ✅ Resumo gerado pelo Gemini")
-        except Exception as e:
-            print(f"   ❌ Gemini falhou: {e}")
+        llm = inicializar_llm_fundo(
+            temperature=0.2,
+            max_output_tokens=16_384,
+        )
+        resposta = texto_da_resposta(llm.invoke([{"content": prompt}])).strip()
+    except Exception as exc:
+        raise RuntimeError(
+            f"não foi possível gerar a memória consolidada: {exc}"
+        ) from exc
 
-    return resposta or "Erro: não foi possível gerar o resumo."
+    if not resposta:
+        raise RuntimeError("o Gemini retornou uma memória consolidada vazia")
+
+    print("   ✅ Resumo gerado pelo Gemini")
+    return resposta
 
 
 # ============================================================
@@ -284,12 +285,20 @@ def consolidar_memoria_validada(sessoes: list) -> None:
 
 def salvar_consolidado(resumo: str, sessoes: list) -> Path:
     """Salva o resumo consolidado como nota .md."""
+    if not isinstance(resumo, str):
+        from src.conhecimento.provedores import texto_da_resposta
+
+        resumo = texto_da_resposta(resumo)
+    resumo = resumo.strip()
+    if not resumo:
+        raise ValueError("Resumo consolidado vazio; nenhuma sessão será arquivada.")
+
     PASTA_MEMORIAS.mkdir(parents=True, exist_ok=True)
 
     agora        = agora_local()
     datas        = [s["data"] for s in sessoes]
     total_int    = sum(s["interacoes"] for s in sessoes)
-    nome_arquivo = f"{agora.strftime('%Y-%m-%d')}_consolidado.md"
+    nome_arquivo = f"{agora.strftime('%Y-%m-%d_%H-%M-%S')}_consolidado.md"
     caminho      = PASTA_MEMORIAS / nome_arquivo
 
     conteudo  = f"---\n"
@@ -303,9 +312,11 @@ def salvar_consolidado(resumo: str, sessoes: list) -> Path:
     conteudo += f"# Memória Consolidada — {agora.strftime('%d/%m/%Y')}\n\n"
     conteudo += f"> {len(sessoes)} sessões | {total_int} interações | {datas[0]} a {datas[-1]}\n\n"
     conteudo += f"---\n\n"
-    conteudo += resumo
+    conteudo += resumo + "\n"
 
-    caminho.write_text(conteudo, encoding="utf-8")
+    temporario = caminho.with_suffix(".md.tmp")
+    temporario.write_text(conteudo, encoding="utf-8")
+    temporario.replace(caminho)
     return caminho
 
 
@@ -314,31 +325,19 @@ def salvar_consolidado(resumo: str, sessoes: list) -> Path:
 # ============================================================
 
 def atualizar_chromadb(caminho_consolidado: Path, sessoes: list):
-    """Remove chunks antigos e indexa o novo consolidado."""
+    """Indexa o consolidado e só então remove os chunks substituídos."""
     import chromadb
-    from sentence_transformers import SentenceTransformer
-    from src.core.config            import MODELO_EMBEDDINGS, PASTA_CHROMADB
+    from src.core.config            import PASTA_CHROMADB
+    from src.conhecimento.embeddings import criar_modelo_embeddings
     from src.conhecimento.indexador import dividir_em_chunks, upsert_em_lotes
 
-    print("   🔄 Carregando modelo de embeddings...")
-    modelo  = SentenceTransformer(MODELO_EMBEDDINGS)
+    print("   🔄 Carregando backend leve de embeddings...")
+    modelo  = criar_modelo_embeddings(modo_consulta=True)
     client  = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
     colecao = client.get_or_create_collection(name=NOME_COLECAO_SESSOES)
 
-    # Remove chunks das sessões antigas
-    print("   🗑️  Removendo chunks das sessões antigas...")
-    for sessao in sessoes:
-        nome = sessao["arquivo"].name
-        try:
-            resultados  = colecao.get(where={"arquivo": nome})
-            ids_remover = resultados.get("ids", [])
-            if ids_remover:
-                colecao.delete(ids=ids_remover)
-                print(f"      → {nome}: {len(ids_remover)} chunks removidos")
-        except Exception as e:
-            print(f"      ⚠️  Erro ao remover {nome}: {e}")
-
-    # Indexa o consolidado
+    # Indexa primeiro: se embeddings/upsert falharem, as sessões antigas
+    # continuam pesquisáveis e os arquivos de origem não serão arquivados.
     print("   📥 Indexando memória consolidada...")
     texto  = caminho_consolidado.read_text(encoding="utf-8")
     chunks = dividir_em_chunks(texto, 600, 80)  # chunks maiores para memória
@@ -359,6 +358,15 @@ def atualizar_chromadb(caminho_consolidado: Path, sessoes: list):
         ]
         upsert_em_lotes(colecao, ids, embeddings, chunks, metadados)
         print(f"      ✅ {len(chunks)} chunks indexados")
+
+    print("   🗑️  Removendo chunks das sessões substituídas...")
+    for sessao in sessoes:
+        nome = sessao["arquivo"].name
+        resultados = colecao.get(where={"arquivo": nome})
+        ids_remover = resultados.get("ids", [])
+        if ids_remover:
+            colecao.delete(ids=ids_remover)
+            print(f"      → {nome}: {len(ids_remover)} chunks removidos")
 
 
 # ============================================================
@@ -401,8 +409,12 @@ def consolidar(forcar: bool = False) -> bool:
     print("\n📂 Lendo sessões...")
     sessoes = ler_sessoes()
 
-    if len(sessoes) < MINIMO_SESSOES:
-        print(f"\n⚠️  Apenas {len(sessoes)} sessão(ões). Mínimo: {MINIMO_SESSOES}")
+    minimo_necessario = 1 if forcar else MINIMO_SESSOES
+    if len(sessoes) < minimo_necessario:
+        print(
+            f"\n⚠️  Apenas {len(sessoes)} sessão(ões). "
+            f"Mínimo: {minimo_necessario}"
+        )
         return False
 
     print(f"   ✅ {len(sessoes)} sessões | "

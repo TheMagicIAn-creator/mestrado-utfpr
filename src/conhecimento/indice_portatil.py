@@ -64,6 +64,91 @@ def ler_manifesto(caminho: Path) -> dict:
     return manifesto
 
 
+def hash_corpus_pdfs(raiz: Path) -> tuple[str, int]:
+    """Calcula a identidade do corpus usando caminho relativo e SHA-256."""
+    raiz = Path(raiz)
+    registros = [
+        {
+            "arquivo": pdf.relative_to(raiz).as_posix(),
+            "sha256": _sha256(pdf),
+        }
+        for pdf in sorted(raiz.rglob("*.pdf"))
+    ]
+    serializado = json.dumps(
+        registros, ensure_ascii=False, sort_keys=True
+    ).encode("utf-8")
+    return hashlib.sha256(serializado).hexdigest(), len(registros)
+
+
+def atualizar_metadados_snapshot(
+    caminho: Path,
+    atualizacoes: dict[str, dict],
+    *,
+    hash_corpus: str | None = None,
+    n_documentos: int | None = None,
+) -> dict:
+    """Atualiza somente metadados de chunks, preservando texto e embeddings.
+
+    As chaves de ``atualizacoes`` são nomes antigos de PDF. A reescrita é
+    streaming e atômica, adequada ao snapshot versionado de dezenas de MB.
+    """
+    caminho = Path(caminho)
+    manifesto = ler_manifesto(caminho)
+    temporario = caminho.with_name(caminho.name + ".tmp")
+    chunks_lidos = 0
+    chunks_atualizados = 0
+    documentos_atualizados: set[str] = set()
+
+    try:
+        with gzip.open(caminho, "rt", encoding="utf-8") as origem, gzip.open(
+            temporario, "wt", encoding="utf-8", compresslevel=6
+        ) as destino:
+            cabecalho = json.loads(origem.readline())
+            if hash_corpus is not None:
+                cabecalho["hash_corpus_sha256"] = str(hash_corpus)
+            if n_documentos is not None:
+                cabecalho["n_documentos"] = int(n_documentos)
+            cabecalho["gerado_em_utc"] = datetime.now(timezone.utc).isoformat()
+            destino.write(_linha_json(cabecalho))
+
+            for numero_linha, linha in enumerate(origem, 2):
+                try:
+                    registro = json.loads(linha)
+                except json.JSONDecodeError as exc:
+                    raise IndicePortatilInvalido(
+                        f"JSON inválido na linha {numero_linha}: {exc}"
+                    ) from exc
+                if registro.get("tipo") not in TIPOS_CHUNK_COMPATIVEIS:
+                    raise IndicePortatilInvalido(
+                        f"Registro desconhecido na linha {numero_linha}."
+                    )
+
+                chunks_lidos += 1
+                metadata = registro.get("metadata") or {}
+                nome_antigo = str(metadata.get("arquivo", ""))
+                novos = atualizacoes.get(nome_antigo)
+                if novos:
+                    registro["metadata"] = {**metadata, **novos}
+                    chunks_atualizados += 1
+                    documentos_atualizados.add(nome_antigo)
+                destino.write(_linha_json(registro))
+
+        esperado = int(manifesto["n_chunks"])
+        if chunks_lidos != esperado:
+            raise IndicePortatilInvalido(
+                f"Reescrita incompleta: {chunks_lidos}/{esperado} chunks."
+            )
+        os.replace(temporario, caminho)
+    finally:
+        temporario.unlink(missing_ok=True)
+
+    return {
+        "chunks_atualizados": chunks_atualizados,
+        "documentos_atualizados": len(documentos_atualizados),
+        "arquivo_sha256": _sha256(caminho),
+    }
+
+
 def exportar_colecao(
     colecao,
     destino: Path,

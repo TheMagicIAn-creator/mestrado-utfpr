@@ -595,6 +595,9 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian) -> No
 
         with st.expander("Manutenção avançada"):
             st.caption("Use apenas quando quiser forçar tarefas administrativas.")
+            feedback = st.session_state.pop("feedback_manutencao", None)
+            if feedback:
+                st.success(feedback)
             if metadados_pendentes:
                 st.warning(
                     f"{len(metadados_pendentes)} PDF(s) com autor/ano "
@@ -611,7 +614,10 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian) -> No
                     from src.conhecimento.consolidar_memoria import consolidar
 
                     ok = consolidar(forcar=True)
-                    st.success("Memória consolidada." if ok else "Nada a consolidar.")
+                    st.session_state.feedback_manutencao = (
+                        "Memória consolidada." if ok else "Nada a consolidar."
+                    )
+                    st.rerun()
                 except Exception as exc:
                     st.error(f"Erro: {exc}")
 
@@ -619,7 +625,10 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian) -> No
                 try:
                     from src.orquestrador import reprocessar_metadados_ruins
 
-                    st.info(reprocessar_metadados_ruins())
+                    st.session_state.feedback_manutencao = (
+                        reprocessar_metadados_ruins()
+                    )
+                    st.rerun()
                 except Exception as exc:
                     st.error(f"Erro: {exc}")
 

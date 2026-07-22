@@ -13,9 +13,12 @@ Etapas:
 Autor: Rodolfo Torres (UTFPR)
 """
 
+import hashlib
+import json
 import re
 import sys
 import shutil
+import threading
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -24,12 +27,12 @@ from pypdf import PdfReader
 from src.core.config import (
     PASTA_LITERATURA, PASTA_NOTAS, PASTA_NOVOS_PDFS,
     PASTA_CHROMADB, RAIZ_PROJETO,
-    GOOGLE_API_KEY,
 )
 from src.core.tempo import agora_local
 
 # Pasta de notas de literatura dentro do vault Obsidian
 PASTA_NOTAS_LIT = PASTA_NOTAS / "Literatura"
+_LOCK_METADADOS = threading.RLock()
 
 
 # ============================================================
@@ -105,6 +108,85 @@ def extrair_texto_pdf(caminho_pdf: Path, n_paginas: int = 3) -> str:
         return ""
 
 
+def _hash_pdf(caminho_pdf: Path) -> str:
+    digest = hashlib.sha256()
+    with caminho_pdf.open("rb") as arquivo:
+        for bloco in iter(lambda: arquivo.read(1024 * 1024), b""):
+            digest.update(bloco)
+    return digest.hexdigest()
+
+
+def _ler_json_objeto(caminho: Path) -> dict:
+    if not caminho.is_file():
+        return {}
+    try:
+        dados = json.loads(caminho.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return dados if isinstance(dados, dict) else {}
+
+
+def _salvar_json_atomico(caminho: Path, dados: dict) -> None:
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    temporario = caminho.with_suffix(caminho.suffix + ".tmp")
+    temporario.write_text(
+        json.dumps(dados, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    temporario.replace(caminho)
+
+
+def _arquivo_metadados_revisados() -> Path:
+    return RAIZ_PROJETO / "metadados_revisados.json"
+
+
+def _arquivo_metadados_pendentes() -> Path:
+    return RAIZ_PROJETO / "metadados_pendentes.json"
+
+
+def carregar_metadados_pendentes() -> dict:
+    """Lê o cadastro completo, inclusive itens resolvidos para auditoria."""
+    with _LOCK_METADADOS:
+        return _ler_json_objeto(_arquivo_metadados_pendentes())
+
+
+def salvar_metadados_pendentes(pendencias: dict) -> None:
+    with _LOCK_METADADOS:
+        _salvar_json_atomico(_arquivo_metadados_pendentes(), pendencias)
+
+
+def _metadados_curados(caminho_pdf: Path) -> dict:
+    catalogo = _ler_json_objeto(_arquivo_metadados_revisados())
+    documentos = catalogo.get("documentos", {})
+    if not isinstance(documentos, dict):
+        return {}
+    arquivo_hash = _hash_pdf(caminho_pdf).lower()
+    item = documentos.get(arquivo_hash, {})
+    if not isinstance(item, dict):
+        return {}
+    return {
+        "autor": str(item.get("autor", "")).strip(),
+        "titulo": str(item.get("titulo", "")).strip(),
+        "ano": str(item.get("ano", "0000") or "0000").strip(),
+        "ano_confirmado_ausente": bool(item.get("ano_confirmado_ausente")),
+        "fonte_metadados": "curadoria",
+        "arquivo_hash": arquivo_hash,
+    }
+
+
+def metadados_resolvidos(metadados: dict) -> bool:
+    autor = str(metadados.get("autor", "")).strip().lower()
+    titulo = str(metadados.get("titulo", "")).strip()
+    ano = str(metadados.get("ano", "0000") or "0000").strip()
+    autor_valido = bool(autor and autor not in {"autor-desconhecido", "desconhecido"})
+    ano_valido = bool(re.fullmatch(r"(?:19|20)\d{2}", ano))
+    return bool(
+        autor_valido
+        and titulo
+        and (ano_valido or metadados.get("ano_confirmado_ausente"))
+    )
+
+
 # ============================================================
 # EXTRAÇÃO DE METADADOS — AUXILIARES
 # ============================================================
@@ -114,8 +196,6 @@ def _extrair_via_llm(texto: str, nome_arquivo: str) -> dict:
     Usa LLM para extrair autor, título e ano do texto do PDF.
     Método principal — mais confiável que regex.
     """
-    import json as _json
-
     prompt = f"""Analise o texto abaixo — são as primeiras páginas de um documento acadêmico.
 Extraia autor, título e ano de publicação e retorne APENAS um JSON válido, sem explicações, sem markdown.
 
@@ -138,30 +218,17 @@ Nome do arquivo (pode ajudar): {nome_arquivo}
 {texto[:2000]}
 </conteudo_documento>"""
 
-    resposta = None
+    # Tarefa de fundo → adaptador leve com JSON nativo. O fallback seguinte
+    # continua sendo regex + metadados internos do PDF.
+    try:
+        from src.conhecimento.provedores import inicializar_llm_fundo
 
-    # Tarefa de fundo → Gemini econômico (MODELO_GEMINI_FUNDO). O fallback
-    # seguinte continua sendo regex + metadados internos do PDF.
-    if GOOGLE_API_KEY:
-        try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            from langchain_core.messages import HumanMessage
-            from src.conhecimento.provedores import MODELO_GEMINI_FUNDO
-            llm      = ChatGoogleGenerativeAI(
-                model          = MODELO_GEMINI_FUNDO,
-                google_api_key = GOOGLE_API_KEY,
-                temperature    = 0
-            )
-            resposta = llm.invoke([HumanMessage(content=prompt)]).content
-        except Exception:
-            pass
-
-    if resposta:
-        try:
-            limpo = re.sub(r"```json?\n?", "", resposta.strip()).replace("```", "").strip()
-            return _json.loads(limpo)
-        except Exception:
-            pass
+        llm = inicializar_llm_fundo(temperature=0.0, max_output_tokens=700)
+        resposta = llm.invoke_json([{"content": prompt}], max_tokens=700)
+        if isinstance(resposta, dict):
+            return resposta
+    except Exception:
+        pass
 
     return {}
 
@@ -226,35 +293,38 @@ def _extrair_via_metadados_internos(caminho_pdf: Path) -> dict:
     return {"autor": autor, "titulo": titulo, "ano": ano}
 
 
-def _registrar_pendencia(caminho_pdf: Path, autor: str, titulo: str, ano: str):
-    """Registra documentos com metadados não resolvidos para revisão manual."""
-    import json as _json
-
+def _registrar_pendencia(
+    caminho_pdf: Path,
+    autor: str,
+    titulo: str,
+    ano: str,
+    *,
+    ano_confirmado_ausente: bool = False,
+):
+    """Registra ou atualiza um documento ainda não resolvido."""
     from src.core.utils import to_project_relative_path
 
-    arquivo_pendencias = RAIZ_PROJETO / "metadados_pendentes.json"
-
-    pendencias = {}
-    if arquivo_pendencias.exists():
-        try:
-            pendencias = _json.loads(arquivo_pendencias.read_text(encoding="utf-8"))
-        except Exception:
-            pass
-
-    nome = caminho_pdf.name
-    if nome not in pendencias:
-        pendencias[nome] = {
-            "arquivo"     : to_project_relative_path(caminho_pdf),
-            "autor_atual" : autor,
-            "titulo_atual": titulo,
-            "ano_atual"   : ano,
-            "registrado"  : agora_local().isoformat(timespec="minutes"),
-            "resolvido"   : False
-        }
-        arquivo_pendencias.write_text(
-            _json.dumps(pendencias, ensure_ascii=False, indent=2),
-            encoding="utf-8"
+    with _LOCK_METADADOS:
+        arquivo_pendencias = _arquivo_metadados_pendentes()
+        pendencias = _ler_json_objeto(arquivo_pendencias)
+        nome = caminho_pdf.name
+        anterior = pendencias.get(nome, {})
+        registrado = anterior.get("registrado") or agora_local().isoformat(
+            timespec="minutes"
         )
+        pendencias[nome] = {
+            **(anterior if isinstance(anterior, dict) else {}),
+            "arquivo": to_project_relative_path(caminho_pdf),
+            "arquivo_hash": _hash_pdf(caminho_pdf),
+            "autor_atual": autor,
+            "titulo_atual": titulo,
+            "ano_atual": ano,
+            "ano_confirmado_ausente": bool(ano_confirmado_ausente),
+            "registrado": registrado,
+            "ultima_verificacao": agora_local().isoformat(timespec="minutes"),
+            "resolvido": False,
+        }
+        _salvar_json_atomico(arquivo_pendencias, pendencias)
         print(f"   ⚠️  Metadados pendentes registrados: {nome}")
 
 
@@ -262,7 +332,11 @@ def _registrar_pendencia(caminho_pdf: Path, autor: str, titulo: str, ano: str):
 # EXTRAÇÃO DE METADADOS — PRINCIPAL
 # ============================================================
 
-def extrair_metadados_pdf(caminho_pdf: Path) -> dict:
+def extrair_metadados_pdf(
+    caminho_pdf: Path,
+    *,
+    registrar_pendencia: bool = True,
+) -> dict:
     """
     Extrai autor, título e ano do PDF em cascata:
     1. LLM analisa o texto das primeiras páginas  ← mais confiável
@@ -270,6 +344,10 @@ def extrair_metadados_pdf(caminho_pdf: Path) -> dict:
     3. Metadados internos do arquivo PDF          ← último recurso
     4. Registra pendência se ainda não resolvido
     """
+    curados = _metadados_curados(caminho_pdf)
+    if curados:
+        return curados
+
     texto  = extrair_texto_pdf(caminho_pdf, n_paginas=3)
     autor  = ""
     titulo = ""
@@ -278,9 +356,9 @@ def extrair_metadados_pdf(caminho_pdf: Path) -> dict:
     # 1. LLM
     if texto:
         resultado = _extrair_via_llm(texto, caminho_pdf.name)
-        autor     = resultado.get("autor",  "").strip()
-        titulo    = resultado.get("titulo", "").strip()
-        ano       = resultado.get("ano",    "0000").strip()
+        autor     = str(resultado.get("autor") or "").strip()
+        titulo    = str(resultado.get("titulo") or "").strip()
+        ano       = str(resultado.get("ano") or "0000").strip()
 
     # 2. Regex — completa o que LLM não resolveu
     if not autor or not titulo or ano == "0000":
@@ -302,15 +380,25 @@ def extrair_metadados_pdf(caminho_pdf: Path) -> dict:
         if ano == "0000":
             ano    = resultado.get("ano",    "0000")
 
-    # 4. Registra pendência se ainda incompleto
-    if not autor or not titulo or ano == "0000":
-        _registrar_pendencia(caminho_pdf, autor, titulo, ano)
-
-    return {
+    metadados = {
         "autor" : autor  or "autor-desconhecido",
         "titulo": titulo or caminho_pdf.stem,
-        "ano"   : ano    or "0000"
+        "ano"   : ano    or "0000",
+        "ano_confirmado_ausente": False,
+        "fonte_metadados": "extracao-automatica",
+        "arquivo_hash": _hash_pdf(caminho_pdf),
     }
+
+    # 4. Registra pendência se ainda incompleto
+    if registrar_pendencia and not metadados_resolvidos(metadados):
+        _registrar_pendencia(
+            caminho_pdf,
+            metadados["autor"],
+            metadados["titulo"],
+            metadados["ano"],
+        )
+
+    return metadados
 
 
 # ============================================================
