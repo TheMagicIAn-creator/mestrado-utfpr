@@ -44,15 +44,24 @@ _API = "https://api.github.com"
 _TIMEOUT = float(os.getenv("AL_IADO_GITHUB_TIMEOUT", "12"))
 
 
-# Último resultado de uma tentativa de commit, para diagnóstico na UI. A
-# persistência é best-effort e engolia erros em silêncio — isto os torna
-# VISÍVEIS (ex.: token sem permissão de escrita → 403/404).
-_ULTIMO_STATUS: dict = {"estado": "sem_tentativa", "detalhe": "", "quando": ""}
+# Último resultado de tentativa de commit, POR ALVO ("sessao"/"memoria"/...).
+# A persistência é best-effort e engolia erros em silêncio — isto os torna
+# VISÍVEIS (ex.: token sem permissão de escrita → 403/404). Rastrear por alvo
+# (não um único status global) importa porque sessão e memória commitam
+# separadamente no mesmo turno: um status compartilhado deixava o resultado
+# mais recente (ex.: sessão OK) mascarar uma falha silenciosa no outro alvo
+# (ex.: memória FALHOU) — exatamente o cenário que perdeu uma memória do
+# pesquisador sem nenhum aviso visível antes deste fix.
+_ALVOS_CONHECIDOS = ("sessao", "memoria", "consolidado", "snippet")
+_STATUS_POR_ALVO: dict[str, dict] = {
+    alvo: {"estado": "sem_tentativa", "detalhe": ""} for alvo in _ALVOS_CONHECIDOS
+}
 
 
-def _registrar_status(estado: str, detalhe: str = "") -> None:
-    _ULTIMO_STATUS["estado"] = estado
-    _ULTIMO_STATUS["detalhe"] = _mascarar(detalhe)[:200]
+def _registrar_status(alvo: str, estado: str, detalhe: str = "") -> None:
+    registro = _STATUS_POR_ALVO.setdefault(alvo, {"estado": "sem_tentativa", "detalhe": ""})
+    registro["estado"] = estado
+    registro["detalhe"] = _mascarar(detalhe)[:200]
 
 
 def _token() -> str | None:
@@ -139,9 +148,11 @@ def _sha_atual(repo: str, caminho_repo: str, branch: str, token: str) -> str | N
     return None  # 404 = arquivo novo; qualquer outro status = trata como novo
 
 
-def persistir_arquivo(caminho: str | Path, *, mensagem: str) -> bool:
+def persistir_arquivo(caminho: str | Path, *, mensagem: str, alvo: str = "geral") -> bool:
     """Faz commit do arquivo para o GitHub (create/update). Best-effort.
 
+    `alvo` identifica QUEM está commitando ("sessao"/"memoria"/...) para o
+    diagnóstico rastrear cada um separadamente — ver nota em _STATUS_POR_ALVO.
     Retorna True se o commit foi aceito (200/201), False caso contrário —
     nunca levanta exceção para o chamador.
     """
@@ -180,7 +191,7 @@ def persistir_arquivo(caminho: str | Path, *, mensagem: str) -> bool:
             return False
         if status in (200, 201):
             print(f"   ☁️  Persistido no GitHub ({repo}@{branch}).")
-            _registrar_status("ok", f"{caminho_repo} @ {repo}")
+            _registrar_status(alvo, "ok", f"{caminho_repo} @ {repo}")
             return True
         if status in (409, 422) and tentativa == 1:
             continue  # sha desatualizado: recarrega e tenta de novo
@@ -188,16 +199,21 @@ def persistir_arquivo(caminho: str | Path, *, mensagem: str) -> bool:
         if isinstance(corpo, dict):
             motivo = str(corpo.get("message", ""))
         print(f"   ⚠️  Persistência nuvem: HTTP {status} {_mascarar(motivo)}")
-        _registrar_status("erro", f"HTTP {status}: {motivo}")
+        _registrar_status(alvo, "erro", f"HTTP {status}: {motivo}")
         return False
     return False
+
+
+_ROTULOS_ALVO = {"sessao": "Sessão", "memoria": "Memória", "consolidado": "Consolidação", "snippet": "Trechos"}
 
 
 def diagnostico() -> dict:
     """Estado legível da persistência na nuvem, para exibir na barra lateral.
 
     Torna VISÍVEL o que era silencioso: se está desligada e por quê (flag/token/
-    repo), ou se está ligada e qual foi o resultado do último commit (ok/erro).
+    repo), ou se está ligada e qual foi o resultado do último commit de CADA
+    alvo (sessão / memória) separadamente — um alvo com sucesso não pode mais
+    mascarar o outro falhando silenciosamente no mesmo turno.
     """
     flag = os.getenv("AL_IADO_PERSISTIR_NUVEM", "").strip().lower()
     ligado = flag in {"1", "true", "sim", "yes", "on"}
@@ -206,24 +222,33 @@ def diagnostico() -> dict:
 
     if not ligado:
         return {"ativa": False, "resumo": "desligada",
-                "detalhe": "AL_IADO_PERSISTIR_NUVEM não está em 1 nos Secrets."}
+                "detalhe": "AL_IADO_PERSISTIR_NUVEM não está em 1 nos Secrets.",
+                "por_alvo": {}}
     if not tem_token:
         return {"ativa": False, "resumo": "sem token",
-                "detalhe": "GITHUB_TOKEN ausente nos Secrets."}
+                "detalhe": "GITHUB_TOKEN ausente nos Secrets.", "por_alvo": {}}
     if not repo:
         return {"ativa": False, "resumo": "sem repositório",
-                "detalhe": "Não detectei owner/repo (defina AL_IADO_GITHUB_REPO)."}
+                "detalhe": "Não detectei owner/repo (defina AL_IADO_GITHUB_REPO).",
+                "por_alvo": {}}
 
-    est = _ULTIMO_STATUS.get("estado", "sem_tentativa")
-    if est == "ok":
-        return {"ativa": True, "resumo": "ativa ✓",
-                "detalhe": f"Último commit OK: {_ULTIMO_STATUS.get('detalhe','')}"}
-    if est == "erro":
-        return {"ativa": True, "resumo": "ativa mas FALHOU",
-                "detalhe": f"Último commit falhou — {_ULTIMO_STATUS.get('detalhe','')}. "
-                           "Verifique se o token tem permissão Contents: Read and write."}
-    return {"ativa": True, "resumo": "ativa (aguardando)",
-            "detalhe": f"Pronta ({repo}). O 1º commit ocorre ao criar memória ou a cada 6 interações."}
+    por_alvo = {}
+    for alvo in _ALVOS_CONHECIDOS:
+        info = _STATUS_POR_ALVO.get(alvo, {"estado": "sem_tentativa", "detalhe": ""})
+        por_alvo[alvo] = {"rotulo": _ROTULOS_ALVO.get(alvo, alvo), **info}
+
+    estados = {v["estado"] for v in por_alvo.values()}
+    if "erro" in estados:
+        resumo = "ativa, com FALHA em pelo menos um alvo"
+        detalhe = "Verifique se o token tem permissão Contents: Read and write."
+    elif "ok" in estados:
+        resumo = "ativa ✓"
+        detalhe = f"Pronta ({repo})."
+    else:
+        resumo = "ativa (aguardando)"
+        detalhe = f"Pronta ({repo}). O 1º commit ocorre ao criar memória ou a cada 6 interações."
+
+    return {"ativa": True, "resumo": resumo, "detalhe": detalhe, "por_alvo": por_alvo}
 
 
 def persistir_memoria_validada(caminho: str | Path) -> bool:
@@ -231,4 +256,5 @@ def persistir_memoria_validada(caminho: str | Path) -> bool:
     return persistir_arquivo(
         caminho,
         mensagem="chore(memoria): atualiza memoria validada (persistencia nuvem)",
+        alvo="memoria",
     )

@@ -384,6 +384,49 @@ def arquivar_sessoes(sessoes: list):
         print(f"   📦 Arquivado: {sessao['arquivo'].name}")
 
 
+def _persistir_consolidacao_na_nuvem(caminho_consolidado: Path, sessoes: list) -> None:
+    """Commita no GitHub o resumo consolidado e as sessões recém-arquivadas.
+
+    Causa-raiz de uma perda real: "Consolidar memória" MOVE o conteúdo das
+    sessões para fora de notas/sessoes/ (o único caminho que a persistência de
+    sessão cobria) e gera um resumo narrativo novo — ambos existindo só no
+    disco EFÊMERO do container até este fix. Um reboot logo após consolidar
+    apagava esse trabalho por completo, mesmo com AL_IADO_PERSISTIR_NUVEM
+    ligado. Best-effort: nunca derruba a consolidação já concluída.
+    """
+    try:
+        from src.conhecimento.persistencia_nuvem import (
+            persistencia_ativa,
+            persistir_arquivo,
+        )
+    except Exception:
+        return
+    if not persistencia_ativa():
+        return
+
+    try:
+        persistir_arquivo(
+            caminho_consolidado,
+            mensagem=f"chore(memoria): consolida {caminho_consolidado.name}",
+            alvo="consolidado",
+        )
+    except Exception as exc:
+        print(f"   ⚠️  Persistência nuvem (resumo consolidado) falhou: {exc}")
+
+    for sessao in sessoes:
+        arquivo_arquivado = PASTA_ARQUIVO / sessao["arquivo"].name
+        if not arquivo_arquivado.is_file():
+            continue
+        try:
+            persistir_arquivo(
+                arquivo_arquivado,
+                mensagem=f"chore(sessao): arquiva {arquivo_arquivado.name}",
+                alvo="sessao",
+            )
+        except Exception as exc:
+            print(f"   ⚠️  Persistência nuvem (sessão arquivada) falhou: {exc}")
+
+
 # ============================================================
 # PIPELINE PRINCIPAL
 # ============================================================
@@ -468,6 +511,12 @@ def consolidar(forcar: bool = False) -> bool:
         arquivar_sessoes(sessoes)
     except Exception as exc:
         print(f"   ⚠️  Arquivamento parcial ({exc}).")
+
+    # 7. Persiste na nuvem o resumo consolidado + as sessões arquivadas — sem
+    # isto, um reboot logo após consolidar apagava tudo (ver docstring da
+    # função). Best-effort; roda mesmo se o passo 6 falhou parcialmente.
+    print(f"\n☁️  Persistindo consolidação na nuvem (se ativa)...")
+    _persistir_consolidacao_na_nuvem(caminho, sessoes)
 
     print(f"\n{'='*60}")
     print(f"  CONSOLIDAÇÃO CONCLUÍDA!")
