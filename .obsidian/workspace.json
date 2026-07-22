@@ -157,13 +157,23 @@
               "icon": "lucide-list",
               "title": "Outline"
             }
+          },
+          {
+            "id": "5e55be51c108dc57",
+            "type": "leaf",
+            "state": {
+              "type": "git-view",
+              "state": {},
+              "icon": "git-pull-request",
+              "title": "Source Control"
+            }
           }
-        ]
+        ],
+        "currentTab": 5
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 200
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -173,9 +183,22 @@
       "daily-notes:Open today's daily note": false,
       "templates:Insert template": false,
       "command-palette:Open command palette": false,
-      "bases:Create new base": false
+      "bases:Create new base": false,
+      "obsidian-git:Open Git source control": false
     }
   },
   "active": "218d765a1bfe40f5",
-  "lastOpenFiles": []
+  "lastOpenFiles": [
+    "src/conhecimento/__pycache__/persistencia_nuvem.cpython-313.pyc.2156913682160",
+    "base_conhecimento/literatura_fts.sqlite3-shm",
+    "base_conhecimento/literatura_fts.sqlite3-wal",
+    "base_conhecimento/chroma.sqlite3-journal",
+    "Untitled 1.canvas",
+    "2026-07-22.md",
+    "Untitled.canvas",
+    "notas/Cerebro/Memorias validadas/1a08c0bc82b79ceb39b9.md",
+    "notas/Cerebro/Decisoes/Arquitetura Gemini e Groq.md",
+    "notas/Cerebro/Conceitos/Separação dos domínios de dados.md",
+    "notas/Cerebro/Conceitos/Níveis de evidência.md"
+  ]
 }
