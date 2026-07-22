@@ -59,6 +59,20 @@ A single Google Gemini API key must be set in a local `.env` file —
 see `.env.example` for the template. The `.env` file is never
 committed to the repository.
 
+### One-time local Git setup
+
+`resultados/` (pipeline artifacts) is regenerated only on the PC and is
+git-tracked so the cloud deploy (query-only mode) can display it. Run this
+**once** on any machine that will `git pull`/merge this repo, so a local
+re-run of the pipeline never produces a merge conflict against the
+already-committed artifacts (`.gitattributes` marks `resultados/** merge=ours`,
+but the `ours` driver itself must be registered locally — it isn't something
+a commit can carry):
+
+```
+git config merge.ours.driver true
+```
+
 ## Status
 
 | Phase | Description           | Status        |
