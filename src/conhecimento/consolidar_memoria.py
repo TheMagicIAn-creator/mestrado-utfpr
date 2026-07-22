@@ -430,9 +430,19 @@ def consolidar(forcar: bool = False) -> bool:
     else:
         print(f"   ℹ️  Nenhuma memória anterior — consolidação completa")
 
-    # 3. Gera resumo
+    # 3. Gera resumo. Se o modelo de fundo falhar (503/vazio), NÃO derruba com
+    # stack trace cru nem arquiva as sessões (preserva os dados) — levanta uma
+    # mensagem amigável e acionável para o botão exibir.
     print(f"\n🤖 Gerando resumo consolidado com LLM...")
-    resumo = consolidar_com_llm(sessoes, memoria_anterior)
+    try:
+        resumo = consolidar_com_llm(sessoes, memoria_anterior)
+    except Exception as exc:
+        print(f"   ❌ Resumo não gerado: {exc}")
+        raise RuntimeError(
+            "O modelo de fundo da consolidação está indisponível agora "
+            "(costuma ser sobrecarga temporária — 503). As sessões foram "
+            "preservadas; tente novamente em instantes."
+        ) from exc
 
     # 4. Salva
     print(f"\n💾 Salvando memória consolidada...")
@@ -443,13 +453,21 @@ def consolidar(forcar: bool = False) -> bool:
     print(f"\n🧠 Atualizando memória validada (decisões/preferências)...")
     consolidar_memoria_validada(sessoes)
 
-    # 5. Atualiza ChromaDB
+    # 5. Atualiza ChromaDB — best-effort. O resumo .md e a memória validada já
+    # foram salvos; o vault re-indexa por turno de qualquer forma. Uma falha
+    # aqui (embeddings/ChromaDB) não deve derrubar a consolidação inteira.
     print(f"\n🗄️  Atualizando ChromaDB...")
-    atualizar_chromadb(caminho, sessoes)
+    try:
+        atualizar_chromadb(caminho, sessoes)
+    except Exception as exc:
+        print(f"   ⚠️  ChromaDB não atualizado ({exc}); memória .md já salva.")
 
-    # 6. Arquiva sessões
+    # 6. Arquiva sessões — best-effort (mover arquivos pode falhar na nuvem).
     print(f"\n📦 Arquivando sessões originais...")
-    arquivar_sessoes(sessoes)
+    try:
+        arquivar_sessoes(sessoes)
+    except Exception as exc:
+        print(f"   ⚠️  Arquivamento parcial ({exc}).")
 
     print(f"\n{'='*60}")
     print(f"  CONSOLIDAÇÃO CONCLUÍDA!")
