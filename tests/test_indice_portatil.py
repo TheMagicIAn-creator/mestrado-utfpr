@@ -5,6 +5,7 @@ import pytest
 
 from src.conhecimento.indice_portatil import (
     IndicePortatilInvalido,
+    atualizar_metadados_snapshot,
     exportar_colecao,
     importar_colecao,
     ler_manifesto,
@@ -79,6 +80,37 @@ def test_roundtrip_indice_portatil(tmp_path, itens):
     importado = importar_colecao(restaurada, destino, tamanho_lote=1)
     assert importado["importados"] == 2
     assert restaurada.itens == origem.itens
+
+
+def test_atualiza_metadados_sem_alterar_texto_ou_embedding(tmp_path, itens):
+    destino = tmp_path / "indice.jsonl.gz"
+    exportar_colecao(
+        ColecaoFalsa(itens),
+        destino,
+        modelo_embeddings="modelo",
+        hash_corpus="hash-antigo",
+        n_documentos=2,
+    )
+
+    resultado = atualizar_metadados_snapshot(
+        destino,
+        {
+            "paper-a.pdf": {
+                "arquivo": "autor_paper-a_2026.pdf",
+                "autor": "Autor",
+                "ano": "2026",
+            }
+        },
+        hash_corpus="hash-novo",
+    )
+    restaurada = ColecaoFalsa()
+    importar_colecao(restaurada, destino)
+
+    assert resultado["chunks_atualizados"] == 1
+    assert ler_manifesto(destino)["hash_corpus_sha256"] == "hash-novo"
+    assert restaurada.itens["paper-a-1"]["documento"] == itens[0]["documento"]
+    assert restaurada.itens["paper-a-1"]["embedding"] == itens[0]["embedding"]
+    assert restaurada.itens["paper-a-1"]["metadata"]["ano"] == "2026"
 
 
 def test_importacao_recusa_colecao_parcial(tmp_path, itens):

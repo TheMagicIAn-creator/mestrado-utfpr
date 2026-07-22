@@ -17,16 +17,14 @@ from src.conhecimento.memoria_persistente import (
     MemoriaInvalida,
     MemoriaPersistente,
 )
-from src.conhecimento.provedores import inicializar_papel
+from src.conhecimento.provedores import inicializar_papel, texto_da_resposta
 
 
 STATUS_AUDITORIA = {"aprovado", "com_ressalvas", "insuficiente", "nao_aplicavel"}
 
 
 def _texto_resposta(resposta) -> str:
-    if isinstance(resposta, str):
-        return resposta
-    return str(getattr(resposta, "content", resposta) or "")
+    return texto_da_resposta(resposta)
 
 
 def _normalizar(texto: str) -> str:

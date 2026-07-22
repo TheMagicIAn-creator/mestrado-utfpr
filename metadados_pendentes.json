@@ -1,58 +1,76 @@
 {
   "autor-desconhecido_431-uso-papel-weibull_0000.pdf": {
-    "arquivo": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\literatura\\confiabilidade\\autor-desconhecido_431-uso-papel-weibull_0000.pdf",
+    "arquivo": "literatura/confiabilidade/autor-desconhecido_431-uso-papel-weibull_0000.pdf",
     "autor_atual": "Joâo Ricardo Barusso Lafraia",
     "titulo_atual": "Manual de Confiabilidade, Mantenabilidade e Disponibilidade",
     "ano_atual": "0000",
     "registrado": "2026-05-22 18:47",
-    "resolvido": false
+    "resolvido": true,
+    "ultima_verificacao": "2026-07-21T22:33-03:00",
+    "motivo_resolucao": "registro órfão de arquivo já removido ou renomeado"
   },
   "autor-desconhecido_nos-capitulos-apresentamos-alguns-metodos_0000.pdf": {
-    "arquivo": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\literatura\\manutencao\\autor-desconhecido_nos-capitulos-apresentamos-alguns-metodos_0000.pdf",
+    "arquivo": "literatura/manutencao/autor-desconhecido_nos-capitulos-apresentamos-alguns-metodos_0000.pdf",
     "autor_atual": "",
     "titulo_atual": "autor-desconhecido_nos-capitulos-apresentamos-alguns-metodos",
     "ano_atual": "0000",
     "registrado": "2026-05-22 18:50",
-    "resolvido": false
+    "resolvido": true,
+    "ultima_verificacao": "2026-07-21T22:33-03:00",
+    "motivo_resolucao": "registro órfão de arquivo já removido ou renomeado"
   },
   "autor-desconhecido_zoelzer-pdf_2005.pdf": {
-    "arquivo": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\literatura\\ml-preditivo\\autor-desconhecido_zoelzer-pdf_2005.pdf",
+    "arquivo": "literatura/ml-preditivo/autor-desconhecido_zoelzer-pdf_2005.pdf",
     "autor_atual": "",
     "titulo_atual": "zoelzer.pdf",
     "ano_atual": "2005",
     "registrado": "2026-05-22 18:50",
-    "resolvido": false
+    "resolvido": true,
+    "ultima_verificacao": "2026-07-21T22:33-03:00",
+    "motivo_resolucao": "registro órfão de arquivo já removido ou renomeado"
   },
   "autor-desconhecido_subestacoesde-energia_0000.pdf": {
-    "arquivo": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\literatura\\sinais-eletricos\\autor-desconhecido_subestacoesde-energia_0000.pdf",
+    "arquivo": "literatura/sinais-eletricos/autor-desconhecido_subestacoesde-energia_0000.pdf",
     "autor_atual": "APRENDER ELÉTRICA",
     "titulo_atual": "SUBESTAÇÕES DE ENERGIA - DEFINIÇÕES, CONCEITOS, E APLICAÇÕES",
     "ano_atual": "0000",
     "registrado": "2026-05-22 19:00",
-    "resolvido": false
+    "resolvido": true,
+    "ultima_verificacao": "2026-07-21T22:33-03:00",
+    "motivo_resolucao": "registro órfão de arquivo já removido ou renomeado"
   },
   "lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_0000.pdf": {
-    "arquivo": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\literatura\\confiabilidade\\lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_0000.pdf",
-    "autor_atual": "Joâo Ricardo Barusso Lafraia",
+    "arquivo": "literatura/confiabilidade/lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_0000.pdf",
+    "autor_atual": "João Ricardo Barusso Lafraia",
     "titulo_atual": "Manual de Confiabilidade, Mantenabilidade e Disponibilidade",
-    "ano_atual": "0000",
+    "ano_atual": "2001",
     "registrado": "2026-05-23 12:27",
-    "resolvido": false
+    "resolvido": true,
+    "arquivo_final": "literatura/confiabilidade/lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_2001.pdf",
+    "ano_confirmado_ausente": false,
+    "ultima_verificacao": "2026-07-21T22:33-03:00",
+    "motivo_resolucao": "metadados revisados e propagados"
   },
   "lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade-cap-7_0000.pdf": {
-    "arquivo": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\literatura\\manutencao\\lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade-cap-7_0000.pdf",
+    "arquivo": "literatura/manutencao/lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade-cap-7_0000.pdf",
     "autor_atual": "",
     "titulo_atual": "Manual de Confiabilidade, Mantenabilidade e Disponibilidade",
     "ano_atual": "0000",
     "registrado": "2026-05-23 12:30",
-    "resolvido": false
+    "resolvido": true,
+    "ultima_verificacao": "2026-07-21T22:33-03:00",
+    "motivo_resolucao": "registro órfão de arquivo já removido ou renomeado"
   },
   "eletrica_subestacoes-de-energia-definicoes-conceitos-e-aplicacoes_0000.pdf": {
-    "arquivo": "C:\\Users\\RODOLFO TORRES\\Documents\\mestrado-utfpr\\literatura\\sinais-eletricos\\eletrica_subestacoes-de-energia-definicoes-conceitos-e-aplicacoes_0000.pdf",
-    "autor_atual": "APRENDER ELÉTRICA",
-    "titulo_atual": "SUBESTAÇÕES DE ENERGIA DEFINIÇÕES, CONCEITOS E APLICAÇÕES",
+    "arquivo": "literatura/sinais-eletricos/eletrica_subestacoes-de-energia-definicoes-conceitos-e-aplicacoes_0000.pdf",
+    "autor_atual": "Aprender Elétrica",
+    "titulo_atual": "Subestações de Energia: Definições, Conceitos e Aplicações",
     "ano_atual": "0000",
     "registrado": "2026-05-23 12:47",
-    "resolvido": false
+    "resolvido": true,
+    "arquivo_final": "literatura/sinais-eletricos/eletrica_subestacoes-de-energia-definicoes-conceitos-e-aplicacoes_0000.pdf",
+    "ano_confirmado_ausente": true,
+    "ultima_verificacao": "2026-07-21T22:33-03:00",
+    "motivo_resolucao": "metadados revisados e propagados"
   }
 }

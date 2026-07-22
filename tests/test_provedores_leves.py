@@ -33,6 +33,25 @@ def test_gemini_invoke_e_stream_preservam_contrato():
     assert all(chamada["config"]["max_output_tokens"] == 8192 for chamada in chamadas)
 
 
+def test_texto_da_resposta_normaliza_blocos_textuais():
+    resposta = SimpleNamespace(content=[
+        {"type": "text", "text": "primeira parte"},
+        {"type": "image_url", "image_url": {"url": "data:image/png;base64,AA=="}},
+        {"type": "output_text", "text": " e segunda"},
+    ])
+
+    assert pv.texto_da_resposta(resposta) == "primeira parte e segunda"
+
+
+def test_texto_da_resposta_aceita_objetos_de_bloco():
+    resposta = SimpleNamespace(content=[
+        SimpleNamespace(text="A"),
+        SimpleNamespace(content={"type": "text", "text": "B"}),
+    ])
+
+    assert pv.texto_da_resposta(resposta) == "AB"
+
+
 def test_gemini_invoke_json_forca_json_e_limita_saida():
     """O papel de auditor (antes Groq) agora roda no GeminiLeve.invoke_json:
     temperatura 0, mime-type JSON e teto de tokens do parametro."""

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "documentos": {
+    "2d40ae51b2935b8eb21d5421daf04e4f25a133204ee8bdfc40f0d6684dcadca6": {
+      "autor": "João Ricardo Barusso Lafraia",
+      "titulo": "Manual de Confiabilidade, Mantenabilidade e Disponibilidade",
+      "ano": "2001",
+      "fonte_revisao": "Catálogos bibliográficos e referências acadêmicas da obra (Qualitymark, 2001)",
+      "revisado_em": "2026-07-21"
+    },
+    "8a5015512ba5d81c99c0e9b9513f19aa84e2273b0d3bdd160634b5e940e174ae": {
+      "autor": "João Ricardo Barusso Lafraia",
+      "titulo": "Manual de Confiabilidade, Mantenabilidade e Disponibilidade — Capítulo 7: Confiabilidade de Sistemas",
+      "ano": "2001",
+      "fonte_revisao": "Identificação do capítulo no PDF e referência bibliográfica da obra (Qualitymark, 2001)",
+      "revisado_em": "2026-07-21"
+    },
+    "16c755c2489cd2f3c0d2795aadd8cb231b9186d63b557d77cbf78d3184c593c9": {
+      "autor": "Aprender Elétrica",
+      "titulo": "Subestações de Energia: Definições, Conceitos e Aplicações",
+      "ano": "0000",
+      "ano_confirmado_ausente": true,
+      "fonte_revisao": "Folha de rosto e metadados internos do PDF; a publicação não declara ano",
+      "revisado_em": "2026-07-21"
+    }
+  }
+}

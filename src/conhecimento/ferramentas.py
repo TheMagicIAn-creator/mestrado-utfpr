@@ -15,6 +15,7 @@ import shutil
 import unicodedata
 
 from src.core.config import RAIZ_PROJETO
+from src.conhecimento.provedores import texto_da_resposta
 from src.ml.pipeline import (
     NOMES_ETAPAS,
     ORDEM_ETAPAS_ML,
@@ -2003,7 +2004,7 @@ Responda apenas JSON valido:
     try:
         from langchain_core.messages import HumanMessage
 
-        resposta = llm.invoke([HumanMessage(content=prompt)]).content
+        resposta = texto_da_resposta(llm.invoke([HumanMessage(content=prompt)]))
         limpo = re.sub(r"```json?\n?", "", resposta.strip()).replace("```", "").strip()
         dados = json.loads(limpo)
         nomes = {f["name"] for f in ESPEC_FERRAMENTAS}
@@ -2148,7 +2149,7 @@ proporcional. Se o resultado mencionar imagens, elas serão renderizadas no chat
     try:
         from langchain_core.messages import HumanMessage
 
-        resposta = llm.invoke([HumanMessage(content=prompt)]).content
+        resposta = texto_da_resposta(llm.invoke([HumanMessage(content=prompt)]))
         return _corrigir_descricao_visual(resposta, resultado.get("imagens"))
     except Exception:
         return resultado.get("mensagem", "")
