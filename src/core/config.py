@@ -116,7 +116,7 @@ ARQUIVO_PERFIL     = RAIZ_PROJETO / "CLAUDE.md"
 # lateral do app para confirmar QUAL versão do código está no ar (resolve a
 # ambiguidade de redeploy no Streamlit Cloud: se o marcador aqui não bate com
 # o exibido, o app está rodando código antigo e precisa de Reboot).
-MARCADOR_BUILD         = "2026-07-22 · #38 · consolidação persiste na nuvem (fim da perda pós-consolidar+reboot)"
+MARCADOR_BUILD         = "2026-07-22 · #39 · cofre de trechos verbatim (guarde/recupere código idêntico)"
 
 MODELO_EMBEDDINGS      = "paraphrase-multilingual-MiniLM-L12-v2"
 # Modelo principal de conversa (fonte de verdade: provedores.PROVEDORES / env

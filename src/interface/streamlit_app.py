@@ -1179,6 +1179,94 @@ def persistir_sessao_web() -> None:
         pass
 
 
+def _fechar_turno_simples(conteudo_usuario: str, resposta: str, modelo) -> None:
+    """Registra um par (usuário, assistente) resolvido localmente — sem LLM —
+    na sessão, igual ao fluxo normal (para persistir e indexar)."""
+    st.session_state.mensagens.append(
+        {"role": "user", "content": conteudo_usuario, "imagens": []}
+    )
+    st.session_state.mensagens.append(
+        {"role": "assistant", "content": resposta, "imagens": []}
+    )
+    salvar_sessao(
+        conteudo_usuario, resposta, [], len(st.session_state.mensagens) // 2, modelo
+    )
+
+
+def _tratar_snippet(pergunta: str, modelo, conteudo_usuario: str) -> str | None:
+    """Cofre de trechos verbatim. Retorna a resposta (str) se tratou o pedido,
+    ou None se a mensagem não é sobre snippets (segue o fluxo normal)."""
+    from src.conhecimento import snippets as snp
+
+    # RECUPERAR primeiro ('guardei' contém 'guarde'): recall IDÊNTICO, sem LLM.
+    if snp.quer_recuperar_snippet(pergunta):
+        registro = snp.recuperar_snippet(pergunta)
+        itens = snp.carregar_snippets()
+        if registro is None:
+            resposta = (
+                "Não encontrei nenhum trecho salvo ainda. Depois que o código "
+                "aparecer no chat, diga *'guarde este script'* que eu guardo "
+                "idêntico para recuperar quando quiser."
+            )
+        else:
+            resposta = snp.formatar_snippet_para_chat(registro, total=len(itens))
+        with st.chat_message("assistant", avatar="⚡"):
+            st.markdown(resposta)
+        _fechar_turno_simples(conteudo_usuario, resposta, modelo)
+        return resposta
+
+    # LISTAR
+    if snp.quer_listar_snippets(pergunta):
+        resposta = snp.formatar_lista_snippets(snp.carregar_snippets())
+        with st.chat_message("assistant", avatar="⚡"):
+            st.markdown(resposta)
+        _fechar_turno_simples(conteudo_usuario, resposta, modelo)
+        return resposta
+
+    # SALVAR: pega o código da mensagem atual ou do bloco mais recente do chat.
+    if snp.quer_salvar_snippet(pergunta):
+        bloco = snp.ultimo_bloco_codigo(pergunta, st.session_state.get("mensagens"))
+        if not bloco:
+            resposta = (
+                "Não achei nenhum bloco de código para guardar. Cole o código "
+                "(entre ``` ```), ou peça primeiro que eu escreva o script e "
+                "depois diga *'guarde este script'*."
+            )
+        else:
+            try:
+                reg = snp.salvar_snippet(bloco["codigo"], linguagem=bloco.get("linguagem", ""))
+                # Persiste no Git para sobreviver a reboot/consolidação.
+                try:
+                    from src.conhecimento.persistencia_nuvem import (
+                        persistencia_ativa,
+                        persistir_arquivo,
+                    )
+
+                    if persistencia_ativa():
+                        persistir_arquivo(
+                            snp.ARQUIVO_SNIPPETS,
+                            mensagem=f"chore(snippet): guarda trecho {reg['rotulo']}",
+                            alvo="snippet",
+                        )
+                except Exception:
+                    pass
+                n = len(reg["codigo"].splitlines())
+                resposta = (
+                    f"✅ Guardei o trecho como **{reg['rotulo']}** "
+                    f"({reg.get('linguagem') or 'texto'}, {n} linhas), **idêntico**. "
+                    f"Para recuperá-lo exatamente assim (mesmo após reboot), peça: "
+                    f"*'me manda o script {reg['rotulo']} que salvei'*."
+                )
+            except Exception as exc:
+                resposta = f"Não consegui guardar o trecho ({type(exc).__name__})."
+        with st.chat_message("assistant", avatar="⚡"):
+            st.markdown(resposta)
+        _fechar_turno_simples(conteudo_usuario, resposta, modelo)
+        return resposta
+
+    return None
+
+
 def responder_com_ferramenta(pergunta: str, perfil: str, llm) -> tuple[str, list[dict]]:
     from src.conhecimento.ferramentas import decidir_acao, processar_com_ferramentas
 
@@ -1456,6 +1544,14 @@ def renderizar_chat(
             len(st.session_state.mensagens) // 2, modelo,
         )
         return
+
+    # Atalho: cofre de TRECHOS VERBATIM. Intercepta ANTES do LLM para o recall
+    # ser IDÊNTICO ao salvo (o LLM re-escreveria o código do zero). Persiste no
+    # Git, então sobrevive a consolidação + reboot.
+    if not anexos:
+        resposta_snip = _tratar_snippet(pergunta, modelo, conteudo_usuario)
+        if resposta_snip is not None:
+            return
 
     # Com anexos, ir direto ao RAG (que le o arquivo). Pular o roteador de
     # ferramentas evita misrotear "o que tem nesse arquivo?" para o pipeline ML.
