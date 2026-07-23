@@ -531,12 +531,25 @@ def plotar_ttf_histogramas(
 
         horizonte = float(max(ttfs))
         bins = np.linspace(0.0, horizonte, 13)
-        if len(observados):
+        MIN_EVENTOS_HIST = 5
+        if len(observados) >= MIN_EVENTOS_HIST:
             ax.hist(
                 observados, bins=bins, density=False, alpha=0.72,
                 color=falha["cor"], edgecolor="white",
                 label=f"Eventos observados (n={len(observados)})",
             )
+        elif len(observados):
+            # Pouquíssimos eventos: uma barra solitária parece defeito e engana.
+            # Mostra um aviso claro de amostra insuficiente (mantendo as linhas
+            # de mediana/censura) em vez de um histograma degenerado.
+            ax.set_ylim(0, 1)
+            ax.text(
+                0.5, 0.6,
+                f"amostra insuficiente\npara histograma (n={len(observados)})",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=10, color=COR_TEXTO_SEC,
+            )
+        if len(observados):
             ax.axvline(
                 float(np.median(observados)), color="0.35", linestyle="--",
                 linewidth=1.3, label=f"Mediana observada={np.median(observados):.0f}",
