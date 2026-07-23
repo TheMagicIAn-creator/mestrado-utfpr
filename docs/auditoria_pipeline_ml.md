@@ -328,3 +328,37 @@ gargalo é **intrínseco ao dataset**, não um bug:
 **Conclusão:** o terreno está pronto. A fundamentação existe (§13) e o gargalo
 de janelas não bloqueia a correção (§14). Para promover o escore ao pipeline
 operacional falta apenas a decisão + o aval da orientadora.
+
+---
+
+# 4ª rodada — escore localizado PROMOVIDO ao pipeline operacional
+
+## 15. O que mudou (implementação)
+
+Fonte única do escore: **`src/ml/escore_anomalia.py`** (módulo folha, com teste
+`tests/test_escore_anomalia.py`). O pipeline passa a usar o escore **localizado**
+como operacional, com o MSE médio ainda calibrado e reportado.
+
+- `autoencoder.py`: computa a **régua por-feature** (μ/σ do |resíduo| saudável)
+  na CALIBRAÇÃO, calibra **os dois** limiares (MSE p99 e localizado p99), salva
+  `estatistica_residuo.npz` e grava em `limiar.json` o método operacional
+  (`metodo_escore`), `limiar_mse`, `limiar_localizado` e `k_localizado`. O
+  `"limiar"` passa a ser o **operacional**.
+- `injecao_falhas.py`, `validacao.py`, `rul_weibull.py`: carregam a régua + o
+  método e computam **o mesmo escore** que definiu o limiar (via
+  `escore_anomalia.pontuar`). O TTF do Weibull agora cruza o limiar do escore
+  localizado.
+- **Interruptor de segurança / reversão:** `AL_IADO_ESCORE_ANOMALIA=mse`
+  reproduz EXATAMENTE o pipeline antigo; `AL_IADO_ESCORE_K` ajusta o k. Sem a
+  régua (artefato antigo), tudo cai para MSE — nada quebra por artefato
+  faltando.
+- **Reprodução para a dissertação:** rodar o pipeline com o padrão (localizado)
+  e com `AL_IADO_ESCORE_ANOMALIA=mse` produz o antes/depois auditável.
+
+Ordem de execução local (regenera todos os artefatos e gráficos):
+`python src/ml/autoencoder.py` → `injecao_falhas.py` → `validacao.py` →
+`rul_weibull.py`. O `diagnostico_escore.py` segue como comparação lado a lado.
+
+Pendências (§11) que restam: #2 (AE-LSTM fiel ao Ibrahim), #3 (texto do
+grounding do AE denso), #4 (β "não confiável" — deve melhorar sozinho com a
+censura menor), #6 (ReLU do encoder).

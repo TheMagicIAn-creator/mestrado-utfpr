@@ -56,42 +56,12 @@ import numpy as np
 
 
 # ============================================================
-# NÚCLEO — funções puras (testáveis sem dataset)
+# NÚCLEO — reusa a fonte única do escore (src/ml/escore_anomalia.py)
 # ============================================================
-
-def ajustar_estatistica_residuo(residuos_saudaveis: np.ndarray) -> dict:
-    """Estatística por-feature do |resíduo| no bloco saudável.
-
-    residuos_saudaveis: matriz (n_janelas, n_features) do resíduo
-    (x - x_rec) em espaço normalizado. Retorna mu/sigma do |resíduo| por
-    feature — a régua contra a qual um |resíduo| anômalo é padronizado.
-    """
-    abs_r = np.abs(np.asarray(residuos_saudaveis, dtype=float))
-    mu = abs_r.mean(axis=0)
-    sigma = abs_r.std(axis=0) + 1e-9
-    return {"mu": mu, "sigma": sigma}
-
-
-def escore_localizado(residuos: np.ndarray, stats: dict, k: int = 5) -> np.ndarray:
-    """Escore de anomalia sensível a falha LOCALIZADA.
-
-    Para cada janela, padroniza o |resíduo| de cada feature contra a régua
-    saudável (z_j = (|r_j| - mu_j)/sigma_j) e agrega pela MÉDIA dos k maiores
-    z. Diferente do MSE médio, não dilui um desvio concentrado em poucas
-    features. residuos: (n_janelas, n_features). Retorna (n_janelas,).
-    """
-    r = np.abs(np.atleast_2d(np.asarray(residuos, dtype=float)))
-    z = (r - stats["mu"]) / stats["sigma"]
-    k = int(max(1, min(k, z.shape[1])))
-    # média dos k maiores z de cada linha (parcial, sem ordenar tudo)
-    topk = np.partition(z, -k, axis=1)[:, -k:]
-    return topk.mean(axis=1)
-
-
-def escore_mse_medio(residuos: np.ndarray) -> np.ndarray:
-    """Escore operacional atual: MSE médio sobre todas as features."""
-    r = np.atleast_2d(np.asarray(residuos, dtype=float))
-    return (r ** 2).mean(axis=1)
+# Sem duplicar lógica: as funções de escore vivem no módulo canônico.
+from src.ml.escore_anomalia import (  # noqa: E402
+    ajustar_estatistica_residuo, escore_localizado, escore_mse_medio,
+)
 
 
 def _wilson(sucessos: int, n: int) -> tuple[float, float]:
