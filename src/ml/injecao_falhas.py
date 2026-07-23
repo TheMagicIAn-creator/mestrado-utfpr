@@ -388,29 +388,26 @@ def calcular_erro_reconstrucao(janela_df: pd.DataFrame,
                                 modelo: Autoencoder,
                                 scaler,
                                 device: torch.device,
-                                colunas_feat: list) -> float:
+                                colunas_feat: list,
+                                estat_residuo: dict | None = None,
+                                metodo: str = "mse") -> float:
     """
-    Extrai features de uma janela, normaliza e calcula o erro
-    de reconstrução do Autoencoder.
-    """
-    # Extrai features
-    feats = extrair_janela(janela_df)
+    Extrai features de uma janela, normaliza e calcula o ESCORE de anomalia
+    do Autoencoder (fonte única: src/ml/escore_anomalia.py).
 
-    # Monta vetor na ordem correta (igual ao treino)
+    Por padrão (`metodo="mse"`, sem régua) devolve o MSE médio — comportamento
+    histórico. Com `metodo="localizado"` e a régua `estat_residuo` (μ/σ por
+    feature), devolve o escore localizado (top-k dos resíduos padronizados),
+    sensível a falha concentrada em poucas features.
+    """
+    from src.ml import escore_anomalia as ea
+
+    feats = extrair_janela(janela_df)
     vetor = np.array([feats.get(c, 0.0) for c in colunas_feat],
                      dtype=np.float32)
-
-    # Normaliza com o scaler ajustado no treino
     vetor_norm = scaler.transform(vetor.reshape(1, -1)).astype(np.float32)
-
-    # Inferência
-    modelo.eval()
-    with torch.no_grad():
-        x     = torch.from_numpy(vetor_norm).to(device)
-        x_rec = modelo(x)
-        erro  = float(((x - x_rec) ** 2).mean().cpu())
-
-    return erro
+    residuo = ea.residuo_de_vetor(modelo, vetor_norm, device)
+    return float(ea.pontuar(residuo, estat_residuo, metodo)[0])
 
 
 # ============================================================
@@ -453,7 +450,16 @@ def executar_injecao_falhas() -> bool:
     n_features   = checkpoint["n_features"]
     latente_dim  = checkpoint["latente_dim"]
     colunas_feat = checkpoint["colunas_feat"]
-    limiar       = info_limiar["limiar"]
+    limiar       = info_limiar["limiar"]   # OPERACIONAL (método escolhido)
+
+    # Escore operacional (fonte única). O método e a régua por-feature vêm do
+    # limiar.json/estatistica_residuo.npz gravados pelo autoencoder. Sem eles
+    # (artefato antigo), cai para MSE — o comportamento histórico.
+    from src.ml import escore_anomalia as ea
+
+    metodo_escore = info_limiar.get("metodo_escore", "mse")
+    estat_residuo = ea.carregar_estatistica(PASTA_AE)
+    _log(f"   ✅ Escore: {ea.descricao_metodo(metodo_escore, info_limiar.get('k_localizado', 5))}")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     modelo = Autoencoder(n_features, latente_dim).to(device)
@@ -480,7 +486,8 @@ def executar_injecao_falhas() -> bool:
     erros_baseline = []
     for janela in janelas_holdout:
         erro   = calcular_erro_reconstrucao(
-            janela, modelo, scaler, device, colunas_feat
+            janela, modelo, scaler, device, colunas_feat,
+            estat_residuo, metodo_escore,
         )
         erros_baseline.append(erro)
 
@@ -512,7 +519,8 @@ def executar_injecao_falhas() -> bool:
                 else:
                     janela_falha = fn(janela_base, sev)
                 erro = calcular_erro_reconstrucao(
-                    janela_falha, modelo, scaler, device, colunas_feat
+                    janela_falha, modelo, scaler, device, colunas_feat,
+                    estat_residuo, metodo_escore,
                 )
                 erros_sev.append(erro)
 
