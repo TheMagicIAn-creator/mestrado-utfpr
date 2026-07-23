@@ -94,9 +94,20 @@ def _pontuar_autoencoder(dados: dict) -> dict:
             X_ae[:, k] = X_bruto[:, j]
 
     vnorm = scaler_ae.transform(X_ae).astype(np.float32)
-    with torch.inference_mode():
-        x = torch.from_numpy(vnorm)
-        erros = ((x - modelo(x)) ** 2).mean(dim=1).numpy()
+    # Usa o MESMO escore operacional do pipeline (localizado, por padrão) para a
+    # comparação ser JUSTA. Antes pontuava com MSE médio — subestimava o AE, que
+    # opera com o escore localizado. Sem a régua (artefato antigo), cai para MSE.
+    import json as _json
+
+    from src.ml import escore_anomalia as ea
+
+    info_limiar = _json.loads(
+        (PASTA_AE / "limiar.json").read_text(encoding="utf-8")
+    )
+    metodo = info_limiar.get("metodo_escore", "mse")
+    estat = ea.carregar_estatistica(PASTA_AE)
+    residuos = ea.residuo_por_feature(modelo, vnorm, torch.device("cpu"))
+    erros = ea.pontuar(residuos, estat, metodo)
 
     from sklearn.metrics import roc_auc_score
 

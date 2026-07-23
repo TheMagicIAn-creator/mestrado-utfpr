@@ -587,15 +587,20 @@ def plotar_ttf_histogramas(
             )
 
         npm_str = f"NPR={falha['npr']}"
-        ajuste = (
-            f"β={p['beta']:.2f} · η={p['eta']:.1f} · "
-            f"censura={p['censura_pct']:.0f}%"
-            + ("\nRUL paramétrica com alta incerteza"
-               if p["rul_parametrica_alta_incerteza"] else "")
-            if p["fit_converged"]
-            else (f"Weibull não estimável · censura={p['censura_pct']:.0f}%\n"
-                  "RUL restrita por Kaplan-Meier disponível")
-        )
+        if p["fit_converged"]:
+            incerto = p["rul_parametrica_alta_incerteza"]
+            # β sob censura alta é ARTEFATO (poucos eventos empilhados na borda,
+            # η extrapolando além do horizonte) — não é propriedade física. Marca
+            # explicitamente para não ser lido como um β confiável.
+            beta_txt = f"β={p['beta']:.2f}" + (" (não confiável*)" if incerto else "")
+            ajuste = (
+                f"{beta_txt} · η={p['eta']:.1f} · censura={p['censura_pct']:.0f}%"
+                + ("\n*censura alta → β é artefato, não vida útil"
+                   if incerto else "")
+            )
+        else:
+            ajuste = (f"Weibull não estimável · censura={p['censura_pct']:.0f}%\n"
+                      "RUL restrita por Kaplan-Meier disponível")
         ax.set_title(f"{nome} ({npm_str})\n{ajuste}", fontsize=9)
         ax.set_xlabel("TTF (passos de degradação)")
         ax.set_ylabel("Número de trajetórias")
