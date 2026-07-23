@@ -360,5 +360,92 @@ Ordem de execução local (regenera todos os artefatos e gráficos):
 `rul_weibull.py`. O `diagnostico_escore.py` segue como comparação lado a lado.
 
 Pendências (§11) que restam: #2 (AE-LSTM fiel ao Ibrahim), #3 (texto do
-grounding do AE denso), #4 (β "não confiável" — deve melhorar sozinho com a
-censura menor), #6 (ReLU do encoder).
+grounding do AE denso), #6 (ReLU do encoder).
+
+---
+
+# 5ª rodada — validação empírica REAL (dataset completo, PC do pesquisador)
+
+## 16. Resultado: a hipótese do escore localizado se confirma no dado real
+
+Pipeline rodado com `metodo_escore=localizado, k=5` no dataset completo de
+Paderborn (não mais o diagnóstico isolado). Comparação com o estado MSE
+anterior:
+
+| Falha | Métrica | MSE (antes) | Localizado (agora) |
+|---|---|---|---|
+| **IGBT** | censura | 70% | **13%** |
+| | eventos observados | 13 | **34** |
+| | β (Weibull) | 5,71 (artefato, η>horizonte) | **2,74** (converge, η=83,4 dentro do horizonte) |
+| | detecção @sev1,0 | 34% | **86,4%** |
+| | recall (validação) @sev1,0 | 0,35 | **0,875** |
+| **Fusível AC** | censura | 98% | **0%** |
+| | eventos observados | 1 | **39** |
+| | β (Weibull) | não estimável | **6,33** (converge, η=92,9) |
+| | detecção @sev1,0 | 4,5% | **100%** |
+| | recall (validação) @sev1,0 | 0,05 | **1,00** |
+| **Contator AC** | β / η | 3,33 / 64,5 | 4,91 / 34,1 (novo escore, novo limiar — não comparável 1:1) |
+
+As três falhas agora têm Weibull **convergente, sem extrapolação além do
+horizonte, e sem a marca "não confiável"**. Os números de detecção do IGBT
+(86,4%) batem quase exatamente com a projeção do diagnóstico da 4ª rodada
+(86%) — forte evidência de que a correção é robusta, não um artefato do
+diagnóstico isolado. **A causa-raiz identificada em §3.1 está confirmada e
+corrigida com dado real.**
+
+## 17. Achado NOVO — três gráficos ficaram OBSOLETOS no processo (ação corretiva)
+
+Verificação por hash (SHA-256) contra o commit anterior a qualquer correção
+desta auditoria (`af9338e`):
+
+| Arquivo | Estado |
+|---|---|
+| `weibull_ttf.png`, `weibull_confiabilidade.png` | **Hash diferente do antigo — genuinamente regenerados** com o escore localizado |
+| `limiar.json`, `weibull_results.json`, `injecao_falhas_report.json`, `validacao_tabela.csv` | Regenerados; valores conferidos manualmente (tabela acima) |
+| `curva_treino.png`, `distribuicao_erro.png`, `erro_temporal.png` | **Hash IDÊNTICO ao commit `af9338e`** (anterior a todas as correções desta auditoria) — **nunca foram regenerados** nesta rodada |
+
+Interpretação: o `injecao_falhas.py`/`validacao.py`/`rul_weibull.py` rodaram
+com o modelo e o limiar corretos (por isso os números batem), mas as três
+figuras específicas do **próprio `autoencoder.py`** ficaram de uma execução
+anterior — provavelmente perdidas na resolução de um merge local. Isso
+**não invalida os resultados numéricos** (que vêm de outros artefatos), mas
+as três imagens ainda mostram o estilo antigo (histograma em degraus, sem a
+suavização da correção de plotagem).
+
+**Ação pendente:** rodar `python src/ml/autoencoder.py` novamente (idealmente
+o pipeline completo, na ordem, para garantir consistência total) e
+subir os resultados de novo. Como a semente é fixa (`SEED=42`) e os dados
+não mudaram, o modelo/limiar devem sair numericamente idênticos — só as três
+imagens devem mudar de estilo.
+
+## 18. Achado NOVO — ressalva honesta: taxa de falso positivo subiu no teste isolado
+
+| | FP calibração | FP teste isolado |
+|---|---|---|
+| MSE (antes) | 1,1% | **1,1%** |
+| Localizado (agora) | 1,1% | **6,8%** |
+
+O limiar do escore localizado generaliza pior da calibração (91 janelas) para
+o teste isolado (88 janelas) do que o MSE médio generalizava. Hipótese mais
+provável: o top-k de resíduos padronizados é uma estatística de cauda (ordem
+estatística), mais sensível a ruído amostral do que uma média sobre 109
+features (que se beneficia de suavização tipo lei dos grandes números). Com
+poucas janelas de calibração, o p99 dessa estatística é uma estimativa mais
+instável.
+
+**Isto é um trade-off real, não um detalhe cosmético:** o ganho de recall no
+IGBT/Fusível veio acompanhado de uma taxa de falso alarme operacional maior
+que o 1% de projeto. Precisa constar na dissertação como limitação conhecida.
+Mitigações a avaliar (não implementadas ainda): (a) aumentar o bloco de
+calibração; (b) usar percentil mais conservador (ex. p99,5) para o escore
+localizado; (c) suavizar a estimativa do limiar com bootstrap.
+
+## 19. Plano atualizado
+
+| # | Item | Status |
+|---|---|---|
+| Regenerar `curva_treino.png`/`distribuicao_erro.png`/`erro_temporal.png` | **Pendente** — rerun local |
+| Investigar/mitigar FP=6,8% no teste isolado | **Pendente** — decisão de projeto |
+| #2 AE-LSTM fiel ao Ibrahim | Pendente |
+| #3 grounding do AE denso (texto) | Pendente |
+| #6 ReLU do encoder | Pendente |
