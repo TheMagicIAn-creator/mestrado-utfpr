@@ -141,9 +141,118 @@ natureza do dataset (inversor IGBT trifásico saudável). Ressalvas:
 | 4 | Grounding do AE em Ibrahim (2022) — leitura confrontada | autoencoder.py (docstring/metodologia) | Médio | — (documental) |
 | 5 | Remover ReLU final do encoder + justificar latente | autoencoder.py | Baixo | re-treino; comparar loss de calibração |
 
-## 7. Pendente nesta rodada (honestidade de escopo)
+## 7. Pendente da 1ª rodada — RESOLVIDO na 2ª (§8–§10)
 
-Ainda **não** auditados linha a linha: `experimentos_artigos.py`,
-`protocolos_artigos.py`, `modelos_anomalia.py`, `comparacao_literatura.py`
-(experimentos de comparação com a literatura) e o PDF de Ibrahim (2022)
-para o grounding do §2/§5. Próxima rodada.
+Auditados na 2ª rodada: `protocolos_artigos.py`, `modelos_anomalia.py` e o
+PDF de Ibrahim (2022). Falta apenas varrer `experimentos_artigos.py` (1149
+linhas — harness/plotagem dos experimentos) e `comparacao_literatura.py`
+linha a linha; o essencial (protocolos + scorers + grounding) está coberto.
+
+---
+
+# 2ª rodada — experimentos de comparação e grounding do AE (Ibrahim 2022)
+
+## 8. O que o Ibrahim (2022) realmente faz (leitura do PDF)
+
+Fonte: `literatura/ml-preditivo/ibrahim_...2022.pdf` (Energies 2022, 15,
+1082), confrontada com o código.
+
+- **AE-LSTM é temporal.** A LSTM existe para "segurar a relação de sequência
+  do vetor de entrada" e o AE-LSTM "aprende a correlação entre variáveis **e
+  a correlação na série temporal**" (§3.1, pág. 5). A recorrência é sobre o
+  **tempo**.
+- **Dados do Ibrahim:** séries de potência CA/CC, irradiância e temperatura
+  de duas usinas, a **intervalos de 15 min por 34 dias** (§4). O sinal de
+  decisão é a **potência CA como série temporal**; as 13 anomalias são quedas
+  de potência em dias específicos. NÃO é sinal elétrico a 10 kHz.
+- **Hiperparâmetros por grid search** (§5, pág. 9): Ibrahim **otimiza** os
+  hiperparâmetros de cada modelo; a contribuição declarada é justamente
+  compará-los "with their optimized hyperparameters".
+- **Erro de reconstrução:** `L(X,X̂)=‖X̂−X‖²` (eq. 3) — o MSE, igual ao do
+  pipeline. Esse ponto **está** fundamentado.
+
+## 9. Grounding do Autoencoder — veredito
+
+| Afirmação da dissertação | Fundamentada por Ibrahim? |
+|---|---|
+| Modelagem de normalidade (treinar no saudável, sem rótulo de falha) | **Sim** — AE não-supervisionado, treino no normal |
+| Erro de reconstrução (MSE) como escore de anomalia | **Sim** — eq. 3 do artigo |
+| **Arquitetura DENSA** (109→64→32→16) sobre features handcrafted | **Não** — Ibrahim usa **AE-LSTM temporal**, não AE denso. É uma escolha diferente, hoje **sem justificativa citável** |
+| Hiperparâmetros fixos sem busca | **Não** — Ibrahim faz grid search; o pipeline usa defaults |
+
+**Conclusão (ponta solta a fechar na dissertação):** citar Ibrahim para o
+*conceito* (AE de normalidade + MSE) é correto. Mas o *método específico* (AE
+denso sobre features espectrais) **diverge** do AE-LSTM temporal do artigo.
+É preciso, no texto: (a) justificar explicitamente a escolha do AE denso
+sobre features FMECA como alternativa deliberada — p.ex. "a dinâmica
+intra-janela já está codificada nas features espectrais, dispensando
+recorrência" — e/ou (b) citar uma referência de AE-sobre-features; e (c)
+documentar como os hiperparâmetros foram escolhidos (nem que seja uma
+varredura simples de latente), para não ficarem "a esmo".
+
+## 10. Achados nos experimentos de comparação
+
+### 10.1 [ALTA] AE-LSTM do experimento não é fiel ao Ibrahim (eixo errado)
+- **Onde:** `modelos_anomalia.py:58` — `seq = x.unsqueeze(-1)` → forma
+  `(B, F, 1)`: a LSTM percorre o **eixo das features** (109 "passos"), não o
+  tempo.
+- **O quê:** as features (RMS, THD, harmônicos…) **não têm ordem temporal**;
+  sua ordem é arbitrária. Rodar a LSTM sobre elas é usá-la como uma camada
+  densa cara — **não** modela a dependência temporal que é a razão de existir
+  do AE-LSTM no Ibrahim. O bloco de metodologia (`protocolos_artigos.py:459`)
+  afirma "segue o artigo", o que hoje **não** se sustenta.
+- **Correção:** para ser fiel, alimentar uma **sequência de janelas**
+  (evolução temporal do vetor de features) e deixar a LSTM sobre o tempo; ou
+  reetiquetar honestamente como "AE recorrente sobre features (adaptação),
+  não o AE-LSTM temporal de Ibrahim".
+
+### 10.2 [ALTA] Mesma diluição do escore no AE-LSTM do experimento
+- **Onde:** `modelos_anomalia.py:77` e `:81` — `((rec-X)**2).mean(dim=1)`.
+- **O quê:** o mesmo MSE médio sobre todas as features do §3.1 reaparece
+  aqui. A causa-raiz é transversal ao pipeline e aos experimentos.
+
+### 10.3 [documentar] O baseline ingênuo é MAIS sensível que o AE proposto
+- **Onde:** `protocolos_artigos.py:349` — Francisti usa
+  `score = max(|z|)` sobre as features (Shewhart 3σ).
+- **O quê:** o baseline "burro" agrega por **máximo** — exatamente o que
+  detecta anomalia **localizada**. Ou seja: contra falha localizada
+  (IGBT/Fusível), o Z-score máx-|z| tende a **vencer** o AE de MSE médio.
+  Isso **reforça** a correção §3.1: se o Autoencoder não vence uma carta de
+  controle 3σ na detecção localizada, o problema é o escore médio, não o
+  método. (Alinhado ao papel do Francisti no CLAUDE.md: baseline que o AE
+  precisa vencer.)
+
+### 10.4 [documentar] Assimetria E1 (features) × E2 (sinal) — não comparar por F1
+- **Onde:** `protocolos_artigos.py:68-104` (injeção E1 no espaço de features,
+  em unidades de σ: IGBT soma 1,5–3,0σ aos harmônicos) vs
+  `injecao_falhas.py` (injeção E2 no sinal, fisicamente calibrada e fraca).
+- **O quê:** nos EXPERIMENTOS a injeção é forte (features movem vários σ) →
+  os detectores funcionam. No PIPELINE principal a injeção é fraca (E2) e o
+  escore é médio → cegueira. **Não são comparáveis por F1** (só por AUC), e a
+  cegueira do pipeline é específica do par **E2 + MSE médio** — o código já
+  ressalva isso, mas o ponto deve ficar explícito na dissertação.
+
+### 10.5 [positivo] Protocolos de comparação são metodologicamente sólidos
+- Split temporal com purga (`protocolos_artigos.py:217-221`); scaler só no
+  treino; cada método com regra de decisão **a priori** que nunca vê rótulos
+  do teste (Shewhart 3σ; IF contaminação a priori; AE-LSTM p99 congelado em
+  fatia de calibração temporal, `:428-437`); recall reportado **por família
+  de falha**; blocos de "fidelidade" honestos sobre cada adaptação. Manter.
+
+## 11. Plano de correção priorizado (consolidado, 2 rodadas)
+
+| # | Item | Arquivo | Esforço |
+|---|------|---------|---------|
+| 1 | Escore sensível a falha localizada (top-k/máx-z/Mahalanobis), medido lado a lado com o MSE médio | autoencoder.py, validacao.py, injecao_falhas.py, rul_weibull.py, modelos_anomalia.py | Alto |
+| 2 | AE-LSTM fiel ao Ibrahim (LSTM sobre o TEMPO) OU reetiquetar honestamente | modelos_anomalia.py, protocolos_artigos.py | Médio |
+| 3 | Justificar/citar o AE denso e documentar escolha de hiperparâmetros | autoencoder.py + dissertação | Médio |
+| 4 | Marcar β "não confiável" sob censura alta | rul_weibull.py | Baixo |
+| 5 | Mais janelas independentes do holdout (sem vazamento) | dados_avaliacao.py, split_temporal.py | Médio |
+| 6 | Remover ReLU final do encoder + justificar latente | autoencoder.py | Baixo |
+
+## 12. Pendente (honestidade de escopo)
+
+Falta varrer `experimentos_artigos.py` (harness/plotagem/AUC dos
+experimentos) e `comparacao_literatura.py` linha a linha. O núcleo
+metodológico (autoencoder, features, injeção, validação, RUL, protocolos,
+scorers e o grounding no Ibrahim) está auditado.
