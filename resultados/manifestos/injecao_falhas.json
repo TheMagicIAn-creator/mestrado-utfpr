@@ -1,7 +1,7 @@
 {
   "stage": "injecao_falhas",
-  "created_at": "2026-07-21T21:59:33.060613-03:00",
-  "git_commit": "d64c51536a343eca78cf3ae9a0a1e2f879a50704",
+  "created_at": "2026-07-22T19:13:53.460819-03:00",
+  "git_commit": "74e19b4f2443464303cd2c4104ab55acb2856d38",
   "code_sha256": "a80b38e4d7a6206ade717c515db35cb9a9091b52a61c2f7d6f2179f2637559b1",
   "parameters": {
     "severidades": [
@@ -17,9 +17,9 @@
     "n_janelas_smd": 100
   },
   "input_artifacts": {
-    "autoencoder:0:modelo_autoencoder.pt": "55e605b342710f19986ee534007289173378528c23068241a388084f81595466",
+    "autoencoder:0:modelo_autoencoder.pt": "587797f2ad438649bdb1f4a33054765d4b3251cc33708e77af23530afe010acb",
     "autoencoder:1:scaler.pkl": "6410b906f4aea04bdb010da6465df9753f6d52d2def529e29e110c0fe521edad",
-    "autoencoder:2:limiar.json": "5db790bdc788b8eefe8ab8b0070f8f6492cacef16e5afd64ea768f9764c4e77c",
+    "autoencoder:2:limiar.json": "560ed0a9961fb2125b81728a8017bf0ed5213262eee98fe330602f1b96d8b18a",
     "autoencoder:3:diagnostico_autoencoder.npz": "42b46cddc75f946d718f0224c3ec7c41205a98c5e5e5c28858353454e308e4b9",
     "autoencoder:4:curva_treino.png": "97d4c60948a18a3db3481130fb1651c55768eebdc0d5d030414ba2d3ccfa3aa0",
     "autoencoder:5:distribuicao_erro.png": "ff56699f6fc7fe021202969c56a401bbf358d121d4cc6df3bd59a41ce5ab88d3",
