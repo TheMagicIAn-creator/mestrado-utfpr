@@ -135,14 +135,20 @@ def _json_seguro(valor):
 def calcular_erros_batch(vetores: np.ndarray,
                          modelo: Autoencoder,
                          scaler,
-                         device: torch.device) -> np.ndarray:
-    """Normaliza um lote de features e retorna o MSE por amostra."""
+                         device: torch.device,
+                         estat_residuo: dict | None = None,
+                         metodo: str = "mse") -> np.ndarray:
+    """Normaliza um lote de features e retorna o ESCORE de anomalia por amostra.
+
+    Escore via src/ml/escore_anomalia.py: MSE médio (padrão) ou localizado
+    (`metodo="localizado"` + régua). Deve ser o MESMO escore que definiu o
+    limiar (senão o TTF cruza uma régua de escala diferente).
+    """
+    from src.ml import escore_anomalia as ea
+
     vnorm = scaler.transform(vetores).astype(np.float32)
-    with torch.inference_mode():
-        x     = torch.from_numpy(vnorm).to(device)
-        x_rec = modelo(x)
-        erros = ((x - x_rec) ** 2).mean(dim=1).detach().cpu().numpy()
-    return erros
+    residuos = ea.residuo_por_feature(modelo, vnorm, device)
+    return ea.pontuar(residuos, estat_residuo, metodo)
 
 
 def selecionar_janelas_baseline_normais(
@@ -152,6 +158,8 @@ def selecionar_janelas_baseline_normais(
     device: torch.device,
     colunas_feat: list[str],
     limiar: float,
+    estat_residuo: dict | None = None,
+    metodo: str = "mse",
 ) -> tuple[list[pd.DataFrame], np.ndarray, np.ndarray]:
     """Remove trajetórias cuja janela saudável já nasce acima do limiar."""
     if not janelas:
@@ -162,7 +170,8 @@ def selecionar_janelas_baseline_normais(
         feats = extrair_janela(janela)
         vetores.append([feats.get(coluna, 0.0) for coluna in colunas_feat])
     erros = calcular_erros_batch(
-        np.asarray(vetores, dtype=np.float32), modelo, scaler, device
+        np.asarray(vetores, dtype=np.float32), modelo, scaler, device,
+        estat_residuo, metodo,
     )
     elegiveis = np.asarray(erros <= limiar, dtype=bool)
     return (
@@ -186,7 +195,9 @@ def gerar_ttf(df_estavel: pd.DataFrame,
               n_steps: int,
               seed: int,
               batch_size: int = BATCH_INFERENCIA,
-              persistencia: int = PERSISTENCIA_CRUZAMENTO) -> tuple[int, bool]:
+              persistencia: int = PERSISTENCIA_CRUZAMENTO,
+              estat_residuo: dict | None = None,
+              metodo: str = "mse") -> tuple[int, bool]:
     """
     Simula uma trajetória de degradação progressiva e retorna o TTF.
 
@@ -239,7 +250,7 @@ def gerar_ttf(df_estavel: pd.DataFrame,
 
         erros = calcular_erros_batch(
             np.asarray(vetores, dtype=np.float32),
-            modelo, scaler, device
+            modelo, scaler, device, estat_residuo, metodo
         )
         erros_trajetoria.extend(float(erro) for erro in erros)
 
@@ -520,12 +531,25 @@ def plotar_ttf_histogramas(
 
         horizonte = float(max(ttfs))
         bins = np.linspace(0.0, horizonte, 13)
-        if len(observados):
+        MIN_EVENTOS_HIST = 5
+        if len(observados) >= MIN_EVENTOS_HIST:
             ax.hist(
                 observados, bins=bins, density=False, alpha=0.72,
                 color=falha["cor"], edgecolor="white",
                 label=f"Eventos observados (n={len(observados)})",
             )
+        elif len(observados):
+            # Pouquíssimos eventos: uma barra solitária parece defeito e engana.
+            # Mostra um aviso claro de amostra insuficiente (mantendo as linhas
+            # de mediana/censura) em vez de um histograma degenerado.
+            ax.set_ylim(0, 1)
+            ax.text(
+                0.5, 0.6,
+                f"amostra insuficiente\npara histograma (n={len(observados)})",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=10, color=COR_TEXTO_SEC,
+            )
+        if len(observados):
             ax.axvline(
                 float(np.median(observados)), color="0.35", linestyle="--",
                 linewidth=1.3, label=f"Mediana observada={np.median(observados):.0f}",
@@ -563,15 +587,20 @@ def plotar_ttf_histogramas(
             )
 
         npm_str = f"NPR={falha['npr']}"
-        ajuste = (
-            f"β={p['beta']:.2f} · η={p['eta']:.1f} · "
-            f"censura={p['censura_pct']:.0f}%"
-            + ("\nRUL paramétrica com alta incerteza"
-               if p["rul_parametrica_alta_incerteza"] else "")
-            if p["fit_converged"]
-            else (f"Weibull não estimável · censura={p['censura_pct']:.0f}%\n"
-                  "RUL restrita por Kaplan-Meier disponível")
-        )
+        if p["fit_converged"]:
+            incerto = p["rul_parametrica_alta_incerteza"]
+            # β sob censura alta é ARTEFATO (poucos eventos empilhados na borda,
+            # η extrapolando além do horizonte) — não é propriedade física. Marca
+            # explicitamente para não ser lido como um β confiável.
+            beta_txt = f"β={p['beta']:.2f}" + (" (não confiável*)" if incerto else "")
+            ajuste = (
+                f"{beta_txt} · η={p['eta']:.1f} · censura={p['censura_pct']:.0f}%"
+                + ("\n*censura alta → β é artefato, não vida útil"
+                   if incerto else "")
+            )
+        else:
+            ajuste = (f"Weibull não estimável · censura={p['censura_pct']:.0f}%\n"
+                      "RUL restrita por Kaplan-Meier disponível")
         ax.set_title(f"{nome} ({npm_str})\n{ajuste}", fontsize=9)
         ax.set_xlabel("TTF (passos de degradação)")
         ax.set_ylabel("Número de trajetórias")
@@ -759,13 +788,22 @@ def executar_rul_weibull() -> bool:
     n_features   = checkpoint["n_features"]
     latente_dim  = checkpoint["latente_dim"]
     colunas_feat = checkpoint["colunas_feat"]
-    limiar       = info_limiar["limiar"]
+    limiar       = info_limiar["limiar"]   # OPERACIONAL (método escolhido)
+
+    # Escore operacional (o MESMO que definiu o limiar): método + régua.
+    # O TTF é o passo em que ESTE escore cruza ESTE limiar. Sem a régua
+    # (artefato antigo), cai para MSE.
+    from src.ml import escore_anomalia as ea
+
+    metodo_escore = info_limiar.get("metodo_escore", "mse")
+    estat_residuo = ea.carregar_estatistica(PASTA_AE)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     modelo = Autoencoder(n_features, latente_dim).to(device)
     modelo.load_state_dict(checkpoint["state_dict"])
     modelo.eval()
-    _log(f"   ✅ Limiar={limiar:.4f} | device={device}")
+    _log(f"   ✅ Limiar={limiar:.4f} | device={device} | "
+          f"escore={ea.descricao_metodo(metodo_escore, info_limiar.get('k_localizado', 5))}")
 
     # ── 2. Holdout temporal isolado ───────────────────────────
     _log(f"\n📂 Carregando dataset...")
@@ -774,7 +812,8 @@ def executar_rul_weibull() -> bool:
     del df
     n_janelas_originais = len(janelas_holdout)
     janelas_holdout, erros_baseline, mascara_elegivel = selecionar_janelas_baseline_normais(
-        janelas_holdout, modelo, scaler, device, colunas_feat, limiar
+        janelas_holdout, modelo, scaler, device, colunas_feat, limiar,
+        estat_residuo, metodo_escore
     )
     n_excluidas = int((~mascara_elegivel).sum())
     meta_holdout["filtro_baseline_ttf"] = {
@@ -809,7 +848,8 @@ def executar_rul_weibull() -> bool:
             janela_base = janelas_holdout[i]
             ttf, evento = gerar_ttf(
                 janela_base, modelo, scaler, device,
-                colunas_feat, limiar, fid, N_STEPS, seed=i
+                colunas_feat, limiar, fid, N_STEPS, seed=i,
+                estat_residuo=estat_residuo, metodo=metodo_escore
             )
             ttfs.append(ttf)
             eventos.append(evento)

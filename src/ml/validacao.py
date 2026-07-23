@@ -126,10 +126,17 @@ def coletar_erros(janelas_holdout: list[pd.DataFrame],
                   colunas_feat: list,
                   tipo_falha: str,
                   severidade: float,
-                  n_janelas: int) -> np.ndarray:
+                  n_janelas: int,
+                  estat_residuo: dict | None = None,
+                  metodo: str = "mse") -> np.ndarray:
     """
-    Coleta erros em janelas não sobrepostas do holdout temporal isolado.
+    Coleta o ESCORE de anomalia em janelas não sobrepostas do holdout isolado.
+
+    Escore via src/ml/escore_anomalia.py: MSE médio (padrão) ou localizado
+    (`metodo="localizado"` + régua `estat_residuo`). Mesmo escore do limiar.
     """
+    from src.ml import escore_anomalia as ea
+
     fn = FUNCOES_FALHA.get(tipo_falha)  # None se for "saudavel"
     erros = []
 
@@ -146,13 +153,8 @@ def coletar_erros(janelas_holdout: list[pd.DataFrame],
         vetor  = np.array([feats.get(c, 0.0) for c in colunas_feat],
                           dtype=np.float32)
         vnorm  = scaler.transform(vetor.reshape(1, -1)).astype(np.float32)
-
-        modelo.eval()
-        with torch.no_grad():
-            x     = torch.from_numpy(vnorm).to(device)
-            x_rec = modelo(x)
-            erro  = float(((x - x_rec) ** 2).mean().cpu())
-        erros.append(erro)
+        residuo = ea.residuo_de_vetor(modelo, vnorm, device)
+        erros.append(float(ea.pontuar(residuo, estat_residuo, metodo)[0]))
 
     return np.array(erros)
 
@@ -497,12 +499,20 @@ def executar_validacao() -> bool:
     n_features   = checkpoint["n_features"]
     latente_dim  = checkpoint["latente_dim"]
     colunas_feat = checkpoint["colunas_feat"]
-    limiar       = info_limiar["limiar"]
+    limiar       = info_limiar["limiar"]   # OPERACIONAL (método escolhido)
+
+    # Escore operacional (mesmo do limiar): método + régua por-feature dos
+    # artefatos do autoencoder. Sem eles (artefato antigo), cai para MSE.
+    from src.ml import escore_anomalia as ea
+
+    metodo_escore = info_limiar.get("metodo_escore", "mse")
+    estat_residuo = ea.carregar_estatistica(PASTA_AE)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     modelo = Autoencoder(n_features, latente_dim).to(device)
     modelo.load_state_dict(checkpoint["state_dict"])
-    _log(f"   ✅ Modelo carregado | limiar={limiar:.4f}")
+    _log(f"   ✅ Modelo carregado | limiar={limiar:.4f} | "
+          f"escore={ea.descricao_metodo(metodo_escore, info_limiar.get('k_localizado', 5))}")
 
     # ── 2. Holdout temporal isolado ───────────────────────────
     _log(f"\n📂 Carregando dataset...")
@@ -517,7 +527,7 @@ def executar_validacao() -> bool:
     _log(f"\n⚕️  Coletando erros — classe SAUDÁVEL ({N_JANELAS_SAUDAVEL} janelas)...")
     erros_neg = coletar_erros(
         janelas_holdout, modelo, scaler, device, colunas_feat,
-        "saudavel", 0.0, N_JANELAS_SAUDAVEL
+        "saudavel", 0.0, N_JANELAS_SAUDAVEL, estat_residuo, metodo_escore
     )
     _log(f"   μ={erros_neg.mean():.4f} ± {erros_neg.std():.4f} | "
           f"FP={( erros_neg > limiar).mean()*100:.1f}%")
@@ -535,7 +545,7 @@ def executar_validacao() -> bool:
         for sev in SEVS_VALIDACAO:
             erros_pos = coletar_erros(
                 janelas_holdout, modelo, scaler, device, colunas_feat,
-                fid, sev, N_JANELAS_FALHA
+                fid, sev, N_JANELAS_FALHA, estat_residuo, metodo_escore
             )
 
             seed_boot = 42 + 100 * len(resultados) + int(sev * 100)

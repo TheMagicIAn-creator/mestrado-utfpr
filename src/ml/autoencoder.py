@@ -87,6 +87,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import RobustScaler
 
+from src.ml import escore_anomalia as ea
+
 # ── Caminhos ─────────────────────────────────────────────────
 RAIZ           = Path(__file__).parent.parent.parent
 ARQUIVO_FEAT   = RAIZ / "dados" / "processados" / "features_paderborn.parquet"
@@ -350,11 +352,14 @@ def plotar_distribuicao(erros_treino: np.ndarray,
     positivos = np.concatenate([v[v > 0] for _, v, _ in conjuntos])
     minimo = max(float(positivos.min()), 1e-8)
     maximo = float(max(v.max() for _, v, _ in conjuntos))
-    bins = np.geomspace(minimo, max(maximo, minimo * 10), 28)
+    # 14 bins (não 28): com poucas amostras, bins log demais criavam degraus
+    # finos e vazados ("quadradão"). stepfilled com alpha suaviza a leitura.
+    bins = np.geomspace(minimo, max(maximo, minimo * 10), 14)
     for nome, valores, cor in conjuntos:
         ax_hist.hist(
             np.clip(valores, minimo, None), bins=bins, density=True,
-            histtype="step", linewidth=2, color=cor, label=f"{nome} (n={len(valores)})",
+            histtype="stepfilled", alpha=0.35, linewidth=1.6,
+            edgecolor=cor, color=cor, label=f"{nome} (n={len(valores)})",
         )
         ordenados = np.sort(valores)
         ecdf = np.arange(1, len(ordenados) + 1) / len(ordenados)
@@ -545,37 +550,60 @@ def executar_autoencoder(
         epochs, lr, paciencia, device
     )
 
-    # ── 6. Erros de reconstrução ─────────────────────────────
+    # ── 6. Erros de reconstrução (MSE) e resíduos por feature ─
     _log(f"\n📐 Calculando erros de reconstrução...")
-    T_treino = torch.from_numpy(X_treino)
-    T_calib = torch.from_numpy(X_calib)
-    T_teste = torch.from_numpy(X_teste)
-    T_all    = torch.from_numpy(X_all)
+    erros_treino = calcular_erros(modelo, torch.from_numpy(X_treino), device)
+    erros_calib = calcular_erros(modelo, torch.from_numpy(X_calib), device)
+    erros_teste = calcular_erros(modelo, torch.from_numpy(X_teste), device)
+    erros_all    = calcular_erros(modelo, torch.from_numpy(X_all),    device)
 
-    erros_treino = calcular_erros(modelo, T_treino, device)
-    erros_calib = calcular_erros(modelo, T_calib, device)
-    erros_teste = calcular_erros(modelo, T_teste, device)
-    erros_all    = calcular_erros(modelo, T_all,    device)
+    # Resíduo por feature → régua saudável (μ/σ) do escore LOCALIZADO. A régua
+    # vem do bloco de CALIBRAÇÃO (saudável, fora do ajuste de pesos do AE).
+    R_calib = ea.residuo_por_feature(modelo, X_calib, device)
+    estat_residuo = ea.ajustar_estatistica_residuo(R_calib)
+    sc_loc_calib = ea.escore_localizado(R_calib, estat_residuo)
+    sc_loc_teste = ea.escore_localizado(
+        ea.residuo_por_feature(modelo, X_teste, device), estat_residuo)
+    sc_loc_all = ea.escore_localizado(
+        ea.residuo_por_feature(modelo, X_all, device), estat_residuo)
 
-    # ── 7. Limiar de anomalia ────────────────────────────────
-    info_limiar = calcular_limiar(erros_calib, sigma)
-    limiar      = info_limiar["limiar"]
+    # ── 7. Limiar de anomalia (MSE e localizado; operacional = escolhido) ─
+    info_mse = calcular_limiar(erros_calib, sigma)      # p99/p95/μ+3σ do MSE
+    limiar_mse = float(info_mse["limiar"])
+    limiar_loc = float(np.percentile(sc_loc_calib, 99))
 
-    _log(f"\n🎯 Limiares de anomalia:")
-    _log(f"   μ (calibração) = {info_limiar['mu']:.6f}")
-    _log(f"   σ (calibração) = {info_limiar['sigma']:.6f}")
-    _log(f"   Percentil 99   = {info_limiar['limiar_p99']:.6f}  ← operacional")
-    _log(f"   Percentil 95   = {info_limiar['limiar_p95']:.6f}")
-    _log(f"   μ + {sigma}σ        = {info_limiar['limiar_mu3s']:.6f}  ← referência teórica")
+    metodo = ea.METODO_ESCORE            # 'localizado' (padrão) ou 'mse'
+    k_loc  = ea.K_LOCALIZADO
+    if metodo == "localizado":
+        limiar_op = limiar_loc
+        sc_op_calib, sc_op_teste, sc_op_all = sc_loc_calib, sc_loc_teste, sc_loc_all
+    else:
+        limiar_op = limiar_mse
+        sc_op_calib, sc_op_teste, sc_op_all = erros_calib, erros_teste, erros_all
+
+    _log(f"\n🎯 Escore operacional: {ea.descricao_metodo(metodo, k_loc)}")
+    _log(f"   Limiar MSE (p99)        = {limiar_mse:.6f}")
+    _log(f"   Limiar localizado (p99) = {limiar_loc:.6f}")
+    _log(f"   Limiar OPERACIONAL      = {limiar_op:.6f}  ← método '{metodo}'")
 
     # A calibração fixa o limiar; o teste fornece a estimativa final de FP.
-    fp_calib = (erros_calib > limiar).mean() * 100
-    fp_teste = (erros_teste > limiar).mean() * 100
-    fp_all = (erros_all > limiar).mean() * 100
+    fp_calib = float((sc_op_calib > limiar_op).mean() * 100)
+    fp_teste = float((sc_op_teste > limiar_op).mean() * 100)
+    fp_all = float((sc_op_all > limiar_op).mean() * 100)
     _log(f"\n   Falsos positivos (calibração): {fp_calib:.1f}%")
     _log(f"   Falsos positivos (teste isolado): {fp_teste:.1f}%")
     _log(f"   Falsos positivos (all): {fp_all:.1f}%")
-    _log(f"   (limiar p99 alveja FP ≈ 1%; μ+3σ daria ≈ 0,3% se o erro fosse normal)")
+
+    # info_limiar carrega o OPERACIONAL em 'limiar' (o que injeção/validação/RUL
+    # leem) + os dois limiares e o método, para auditoria e reversão.
+    info_limiar = dict(info_mse)
+    info_limiar["limiar"] = limiar_op
+    info_limiar["limiar_operacional"] = limiar_op
+    info_limiar["metodo_escore"] = metodo
+    info_limiar["limiar_mse"] = limiar_mse
+    info_limiar["limiar_localizado"] = limiar_loc
+    info_limiar["k_localizado"] = k_loc
+    limiar = limiar_op
 
     # ── 8. Salva artefatos ───────────────────────────────────
     _log(f"\n💾 Salvando artefatos...")
@@ -600,6 +628,11 @@ def executar_autoencoder(
 
     gravar_sidecar_sha256(arq_scaler)
     _log(f"   ✅ {arq_scaler.name}")
+
+    # Régua por-feature (μ/σ do |resíduo| saudável) do escore localizado —
+    # consumida por injeção/validação/RUL para computar o mesmo escore.
+    arq_estat = ea.salvar_estatistica(estat_residuo, pasta_saida)
+    _log(f"   ✅ {arq_estat.name}")
 
     # Limiar e metadados
     arq_limiar = pasta_saida / "limiar.json"
@@ -645,15 +678,19 @@ def executar_autoencoder(
     _log(f"   ✅ {arq_diag.name}")
 
     # ── 9. Visualizações ─────────────────────────────────────
+    # Estes gráficos DOCUMENTAM a distribuição do MSE — usam o limiar de MSE
+    # (não o operacional), para o eixo e a linha de limiar ficarem na mesma
+    # escala do que é plotado. A comparação MSE × localizado vive em
+    # src/ml/diagnostico_escore.py.
     _log(f"\n📊 Gerando gráficos...")
     plotar_curvas(hist_t, hist_v, ep_melhor, pasta_saida)
-    info_limiar["fp_test_pct"] = float(fp_teste)
+    info_mse["fp_test_pct"] = float((erros_teste > limiar_mse).mean() * 100)
     plotar_distribuicao(
-        erros_treino, erros_calib, erros_teste, info_limiar, pasta_saida
+        erros_treino, erros_calib, erros_teste, info_mse, pasta_saida
     )
     if tempos is not None:
         plotar_erro_temporal(
-            erros_all, tempos, info_limiar, pasta_saida, indices_teste=idx_teste
+            erros_all, tempos, info_mse, pasta_saida, indices_teste=idx_teste
         )
 
     # ── 10. Resumo final ─────────────────────────────────────
