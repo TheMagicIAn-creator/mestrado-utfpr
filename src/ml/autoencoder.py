@@ -352,11 +352,14 @@ def plotar_distribuicao(erros_treino: np.ndarray,
     positivos = np.concatenate([v[v > 0] for _, v, _ in conjuntos])
     minimo = max(float(positivos.min()), 1e-8)
     maximo = float(max(v.max() for _, v, _ in conjuntos))
-    bins = np.geomspace(minimo, max(maximo, minimo * 10), 28)
+    # 14 bins (não 28): com poucas amostras, bins log demais criavam degraus
+    # finos e vazados ("quadradão"). stepfilled com alpha suaviza a leitura.
+    bins = np.geomspace(minimo, max(maximo, minimo * 10), 14)
     for nome, valores, cor in conjuntos:
         ax_hist.hist(
             np.clip(valores, minimo, None), bins=bins, density=True,
-            histtype="step", linewidth=2, color=cor, label=f"{nome} (n={len(valores)})",
+            histtype="stepfilled", alpha=0.35, linewidth=1.6,
+            edgecolor=cor, color=cor, label=f"{nome} (n={len(valores)})",
         )
         ordenados = np.sort(valores)
         ecdf = np.arange(1, len(ordenados) + 1) / len(ordenados)
