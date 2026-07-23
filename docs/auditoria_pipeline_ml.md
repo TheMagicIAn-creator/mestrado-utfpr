@@ -67,6 +67,18 @@ evento, histogramas "quadrados".
 - **Risco:** muda todos os números; exige re-treino/recalibração e teste
   local. Implementar como escore alternativo mensurável lado a lado com o
   atual antes de substituir.
+- **RESULTADO EMPÍRICO (2026-07-23, `src/ml/diagnostico_escore.py`, k=5,
+  rodado no PC do pesquisador, E2, FP saudável 2,3% em AMBOS os escores):**
+  a hipótese confirma-se. Taxa de detecção, MSE médio → localizado:
+  IGBT @sev1,0 **34% → 86%**; IGBT @sev0,5 **2,3% → 39%**; Fusível @sev1,0
+  **4,5% → 89%**; Contator atinge o alvo SMD em sev0,3 (vs 0,7 do MSE).
+  A cegueira ao IGBT/Fusível era do ESCORE, não do método nem dos dados —
+  sem alterar amplitude de injeção. Ressalvas: (i) o FP saiu 2,3% (não 1%)
+  por causa do gargalo de 44 janelas (§3.5) — igual para os dois escores,
+  logo a comparação é justa; (ii) o Fusível só cruza forte em severidade
+  alta (12% de perda de fase é sutil de fato); (iii) o escore localizado
+  e o k=5 precisam de fundamentação própria na dissertação (não trocar uma
+  escolha "a esmo" por outra).
 
 ### 3.2 [MÉDIA] Hiperparâmetros e arquitetura sem lastro citável
 - **Onde:** `autoencoder.py:96-108` (LATENTE=16, EPOCHS=150, BATCH=32,
