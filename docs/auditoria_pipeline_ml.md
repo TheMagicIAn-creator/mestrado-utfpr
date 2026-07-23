@@ -268,3 +268,63 @@ Falta varrer `experimentos_artigos.py` (harness/plotagem/AUC dos
 experimentos) e `comparacao_literatura.py` linha a linha. O núcleo
 metodológico (autoencoder, features, injeção, validação, RUL, protocolos,
 scorers e o grounding no Ibrahim) está auditado.
+
+---
+
+# 3ª rodada — preparação do terreno para promover o escore localizado
+
+## 13. Fundamentação do escore localizado (sem "a esmo")
+
+O escore localizado (`diagnostico_escore.py`) decompõe-se em três peças, cada
+uma com lastro na literatura indexada:
+
+1. **Erro de reconstrução como sinal de anomalia** — Ibrahim (2022), eq. 3:
+   `L(X,X̂)=‖X̂−X‖²`. Fundamentado.
+2. **Padronização por-feature do resíduo** (`z_j = (|r_j|−μ_j)/σ_j`) —
+   Francisti (2025): *"Z-scores were calculated to detect statistical
+   anomalies, defined here as deviations exceeding ±3 standard deviations
+   from the mean"*. É controle estatístico de processo (Shewhart/Z-score),
+   aqui aplicado ao **resíduo do Autoencoder** em vez do sinal bruto.
+   Fundamentado.
+3. **Agregação pelos top-k mais desviantes** — generalização robusta da regra
+   de Shewhart (que alarma pelo feature MAIS desviante, k=1) para o
+   subconjunto onde a falha localizada se concentra. O princípio "a anomalia
+   vive num subconjunto de variáveis" é o das cartas multivariadas de SPC e
+   da análise de contribuição por feature (Narayanan, 2023 — XAI de falha).
+
+**Justificativa do k:** k deve refletir a cardinalidade típica da assinatura
+de falha. Pelas assinaturas FMECA (`protocolos_artigos.py:68-104`), uma falha
+toca ~3–9 features (ex.: IGBT = `harm_5/7/11` × 3 fases). k=5 é um piso
+razoável; **recomenda-se justificar com uma varredura** (`diagnostico_escore.py`
+aceita `--k`) e reportar a escolha — nunca fixar sem evidência.
+
+**Relação com o baseline Francisti (papel no CLAUDE.md):** o escore localizado
+é, em essência, a regra de Shewhart do Francisti aplicada aos resíduos do AE e
+suavizada por top-k. Ou seja, o AE + escore localizado **incorpora a força do
+baseline** que ele precisava vencer — o que fecha o argumento em vez de deixá-lo
+como concorrente vencedor.
+
+## 14. Reavaliação do gargalo de janelas (§3.5)
+
+Com o split (`split_temporal.py`) e a extração (`dados_avaliacao.py`) na mão, o
+gargalo é **intrínseco ao dataset**, não um bug:
+
+- O Paderborn tem ~23 s de sinal a 10 kHz → ~229 janelas **não-sobrepostas**
+  totais → ~44 no bloco de teste (20%). Não há "muitos dados" em janelas
+  independentes; há muitas AMOSTRAS de poucos segundos.
+- **O #1 já resolve o downstream:** com detecção de 86%/89% (IGBT/Fusível), as
+  44 janelas geram **~38/39 eventos** (vs 13/1 hoje) — suficiente para o
+  Weibull **deixar de degenerar**. Não é preciso mais janelas para consertar o
+  β; basta o escore.
+- **O FP=2,3% do diagnóstico é artefato** de calibrar o limiar nas 44 janelas
+  do holdout. No pipeline real, o limiar é calibrado no **bloco de calibração**
+  (20% das features, com sobreposição ≈ 91 janelas) → granularidade de FP ≈ 1%.
+  Normaliza ao promover.
+- **Opção documentada (não hack):** para CIs mais estreitos, dá para reduzir o
+  treino (ex.: 50/20/30) e ganhar ~68 janelas de teste, ao custo de menos dado
+  de treino — trade-off a decidir, não melhoria gratuita. Janela sobreposta no
+  teste infla n artificialmente e fica desaconselhada.
+
+**Conclusão:** o terreno está pronto. A fundamentação existe (§13) e o gargalo
+de janelas não bloqueia a correção (§14). Para promover o escore ao pipeline
+operacional falta apenas a decisão + o aval da orientadora.
