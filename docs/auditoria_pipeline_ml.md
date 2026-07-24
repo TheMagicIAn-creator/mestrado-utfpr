@@ -486,3 +486,79 @@ varredura.
 sequências, contexto, e que anomalia no último passo eleva o escore). Os
 números finais (AUC do AE-LSTM vs. método proposto) saem no rerun local do
 experimento do Ibrahim, com dataset — não puderam ser medidos na nuvem.
+
+---
+
+# 7ª rodada — pendências fechadas + revisão de código
+
+## 21. #3 — Fundamentação do AE denso (texto para a dissertação)
+
+Justificativa a incorporar no capítulo de metodologia, fechando a ponta solta
+do §9 (o AE denso diverge do AE-LSTM temporal do Ibrahim):
+
+> A modelagem de normalidade por Autoencoder e o uso do erro de reconstrução
+> como escore de anomalia seguem Ibrahim et al. (2022). Optou-se, porém, por um
+> **Autoencoder denso sobre features espectrais** derivadas da FMECA (RMS, THD,
+> harmônicos 5/7/11/13, desbalanceamento), e não pelo AE-LSTM temporal do
+> artigo, por três razões: (i) a **dinâmica intra-janela** relevante às falhas
+> CA já está condensada nas features espectrais de cada janela de ~102 ms,
+> tornando a recorrência temporal redundante para o alvo de detecção; (ii) o
+> espaço de features **nomeadas** habilita o escore localizado (top-k dos
+> resíduos padronizados por feature), que é **interpretável via FMECA** — o
+> desvio pode ser atribuído a "harmônico 5 da fase A", ligando a detecção ao
+> modo de falha; um AE-LSTM sobre sinal bruto perderia essa rastreabilidade;
+> (iii) o AE-LSTM temporal fiel ao artigo é mantido como **concorrente na
+> comparação** (protocolo Ibrahim), de modo que a escolha do AE denso é
+> justificada empiricamente pela comparação por AUC, não por conveniência.
+
+Hiperparâmetros (latente=16, épocas=150, lr=1e-3, dropout=0,2): ainda são
+defaults. Recomendação para não ficarem "a esmo": reportar uma **varredura
+simples de latente ∈ {8,16,32}** pela loss de calibração, e citar o resultado.
+Não implementado (exige rerun local); é trabalho de redação + uma execução.
+
+## 22. #18 — Mitigação do FP=6,8% (levers implementados)
+
+O FP alto no teste isolado é do escore localizado ser uma **estatística de
+cauda** (top-k). Dois levers agora **configuráveis por env**, para o
+pesquisador calibrar no dado real (não dá para escolher o valor sem o dataset):
+
+- `AL_IADO_ESCORE_PERCENTIL` (padrão 99) — subir para 99,5/99,9 eleva o limiar
+  e **baixa o FP**, ao custo de recall. Gravado em `limiar.json`
+  (`percentil_limiar`) para auditoria.
+- `AL_IADO_ESCORE_K` (padrão 5) — k maior = agregação mais suave (menos
+  sensível a ruído de cauda) = **menor variância de FP**, ao custo de
+  localização. k pequeno detecta falha mais concentrada.
+
+**Recomendação:** varrer `k ∈ {5,10,15}` × `percentil ∈ {99; 99,5}` no dado
+real e escolher o par que traz o FP do teste para ~1–2% mantendo o recall do
+IGBT/Fusível. É o item a levar com números para a orientadora.
+
+## 23. #6 — ReLU no gargalo do encoder: por que NÃO mexer agora
+
+O encoder termina em `ReLU` no espaço latente (`autoencoder.py`), o que zera
+componentes negativas — subótimo em teoria. **Decisão: não alterar agora**, por
+duas razões honestas: (i) mudaria a arquitetura logo após a validação empírica
+da 5ª rodada, **invalidando** os números recém-confirmados; (ii) o checkpoint
+não registra essa escolha, então trocar sem versionar a flag arrisca
+**incompatibilidade de `state_dict`** ao carregar o modelo nas etapas seguintes.
+Recomendação: fazer junto da **varredura de hiperparâmetros (#3)**, numa rodada
+deliberada de re-treino, não isoladamente. Fica registrado como melhoria
+pendente consciente, não esquecida.
+
+## 24. Revisão de código das mudanças da sessão (/code-review)
+
+Revisão de correção dos módulos alterados/criados nesta sessão
+(`escore_anomalia.py`, `modelos_anomalia.py`, `protocolos_artigos.py`,
+`comparacao_literatura.py`, `autoencoder.py`, `rul_weibull.py`):
+
+- **Sem bug de correção encontrado.** Escore central com fallback seguro
+  (régua ausente → MSE); guardas de `k>n_features` e `sigma=0`; AE-LSTM temporal
+  com contexto correto (último passo = item; padding no início; fit único +
+  score de calibração/teste juntos); reconstrução de `Xn_te/Xa_te` coerente com
+  o layout `[normais | anômalas]` do protocolo.
+- **Cobertura de teste:** `tests/test_escore_anomalia.py` (6) e
+  `tests/test_ae_lstm_temporal.py` (5) — verdes na parte numpy; a parte torch
+  roda na máquina do pesquisador.
+- **Risco residual (declarado):** os números finais do AE-LSTM temporal e o FP
+  mitigado **não foram medidos na nuvem** (sem dataset). Exigem rerun local.
+  Nenhum resultado deste relatório afirma desempenho não medido.
