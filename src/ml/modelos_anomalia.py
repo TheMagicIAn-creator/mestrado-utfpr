@@ -2,83 +2,123 @@
 modelos_anomalia.py — Al IAdo PV
 
 Scorer de detecção de anomalia NÃO-supervisionada usado pelo protocolo por
-artigo do núcleo (Ibrahim). Recebe o dict ``dados`` e devolve um vetor de
-score por janela do teste — quanto maior, mais anômalo.
+artigo do núcleo (Ibrahim). Modelagem de NORMALIDADE (sem rótulo de falha):
 
-Resta um, por modelagem de NORMALIDADE (sem rótulo de falha):
-- ``_score_ae_lstm``  — Autoencoder-LSTM (erro de reconstrução)
-Removidos na curadoria do mestrado: os scorers supervisionados/RL (RNN/CNN/PPO,
-com o experimento Sharma) e o Facebook Prophet (pior detector do Ibrahim e
-dependência instável em runtime). O Isolation Forest do Ibrahim vive direto no
-protocolo (é só um sklearn.ensemble.IsolationForest, não precisa de scorer).
+- ``_score_ae_lstm`` — Autoencoder-LSTM TEMPORAL (Ibrahim, 2022). A LSTM
+  percorre o eixo do TEMPO — uma SEQUÊNCIA de janelas consecutivas — como no
+  artigo (que modela a "correlação na série temporal"). A versão anterior
+  rodava a LSTM sobre o eixo das FEATURES (ordem arbitrária), o que NÃO era
+  fiel ao Ibrahim: era uma camada densa cara disfarçada de recorrente
+  (ver docs/auditoria_pipeline_ml.md §10.1). Corrigido aqui.
 
-Por que este módulo existe (arquitetura):
-- ``experimentos_artigos.py`` e ``protocolos_artigos.py`` precisavam deste
-  scorer, mas importavam um do outro, criando um ciclo. Mantê-lo num TERCEIRO
-  módulo NEUTRO quebra o ciclo: este módulo é uma FOLHA — depende só de
-  bibliotecas externas (numpy/torch), nunca de experimentos_artigos nem
-  de protocolos_artigos.
-- O import pesado é LOCAL (dentro da função), então importar este módulo é
-  barato e não dispara torch na carga.
+  Escolha metodológica (documentada): como a injeção do protocolo é pontual
+  (uma janela por vez), cada item é pontuado como "a janela ATUAL dado o
+  histórico normal precedente" — o escore é o erro de reconstrução no ÚLTIMO
+  passo da sequência. Assim o modelo é genuinamente temporal e o banco de
+  teste permanece o MESMO dos outros modelos (comparável por AUC).
 
-NÃO importe experimentos_artigos nem protocolos_artigos aqui (recriaria o ciclo).
+O Isolation Forest do Ibrahim vive direto no protocolo (é um
+sklearn.ensemble.IsolationForest, não precisa de scorer). Removidos na
+curadoria: scorers supervisionados/RL (Sharma) e o Facebook Prophet.
+
+Por que este módulo existe (arquitetura): ``experimentos_artigos.py`` e
+``protocolos_artigos.py`` precisavam deste scorer sem importar um do outro —
+este módulo é uma FOLHA (depende só de numpy/torch). O import pesado é LOCAL.
+NÃO importe experimentos_artigos nem protocolos_artigos aqui.
 """
 
 from __future__ import annotations
 
 
-# ---- Redes neurais compactas (PyTorch) -------------------------------------
+# ---- Construção de sequências temporais (numpy puro) -----------------------
 
-def _score_ae_lstm(dados, epochs: int = 60, retornar_treino: bool = False):
-    """Autoencoder-LSTM: erro de reconstrução como score (fit no normal).
+def sequencias_deslizantes(Xn, L: int):
+    """Janelas deslizantes sobre o fluxo normal ORDENADO no tempo.
 
-    Com ``retornar_treino=True`` devolve ``(score_teste, score_treino)`` —
-    o erro no próprio treino permite CONGELAR um limiar (ex.: p99) antes de
-    olhar o teste, como nos protocolos por artigo.
+    Xn: (n, F) janelas normais em ordem temporal. Retorna (max(1,n-L+1), L, F).
+    Se n < L, faz padding com a primeira janela para garantir 1 sequência.
+    """
+    import numpy as np
+
+    Xn = np.asarray(Xn, dtype=np.float32)
+    n, F = Xn.shape
+    if n < L:
+        pad = np.repeat(Xn[:1], L - n, axis=0)
+        return np.concatenate([pad, Xn])[None, :, :]
+    return np.stack([Xn[i - L + 1:i + 1] for i in range(L - 1, n)])
+
+
+def sequencias_com_contexto(contexto_normal, itens, L: int):
+    """Uma sequência por item: L-1 predecessores NORMAIS + o item no último passo.
+
+    contexto_normal: (n, F) fluxo normal ordenado (o "histórico" real).
+    itens: (n, F) janelas a pontuar (limpas OU injetadas), alinhadas 1:1 com a
+    posição temporal de contexto_normal. Retorna (n, L, F). No início (i<L-1)
+    faz padding com a primeira janela normal.
+    """
+    import numpy as np
+
+    ctx = np.asarray(contexto_normal, dtype=np.float32)
+    it = np.asarray(itens, dtype=np.float32)
+    n, F = it.shape
+    seqs = np.zeros((n, L, F), dtype=np.float32)
+    for i in range(n):
+        for t in range(L):
+            if t == L - 1:
+                seqs[i, t] = it[i]                 # último passo = a janela atual
+            else:
+                pos = i - (L - 1) + t              # passo do histórico
+                seqs[i, t] = ctx[pos] if pos >= 0 else ctx[0]
+    return seqs
+
+
+# ---- Autoencoder-LSTM temporal (PyTorch) -----------------------------------
+
+def _score_ae_lstm(seq_fit, seq_eval, epochs: int = 60, seed: int = 42):
+    """AE-LSTM TEMPORAL: reconstrói sequências de janelas ao longo do TEMPO.
+
+    seq_fit:  (m, L, F) sequências NORMAIS para treino.
+    seq_eval: (k, L, F) sequências a pontuar.
+    Retorna score (k,) = MSE de reconstrução no ÚLTIMO passo (a janela atual
+    dado o histórico). Fiel ao Ibrahim: a LSTM percorre o eixo TEMPORAL.
     """
     import numpy as np
     import torch
     import torch.nn as nn
 
-    torch.manual_seed(42)
-    Xn = torch.tensor(dados["Xn_tr"], dtype=torch.float32)
-    Xte = torch.tensor(dados["X_te"], dtype=torch.float32)
-    n_feat = Xn.shape[1]
+    torch.manual_seed(seed)
+    Xf = torch.tensor(np.asarray(seq_fit, dtype=np.float32))    # (m, L, F)
+    Xe = torch.tensor(np.asarray(seq_eval, dtype=np.float32))   # (k, L, F)
+    n_feat = Xf.shape[2]
 
     class AELSTM(nn.Module):
-        def __init__(self, hid=32, lat=8):
+        def __init__(self, n_feat, hid=32, lat=8):
             super().__init__()
-            self.enc = nn.LSTM(1, hid, batch_first=True)
+            self.enc = nn.LSTM(n_feat, hid, batch_first=True)
             self.to_lat = nn.Linear(hid, lat)
             self.from_lat = nn.Linear(lat, hid)
             self.dec = nn.LSTM(hid, hid, batch_first=True)
-            self.out = nn.Linear(hid, 1)
+            self.out = nn.Linear(hid, n_feat)
 
-        def forward(self, x):
-            seq = x.unsqueeze(-1)                       # (B, F, 1)
-            _, (h, _) = self.enc(seq)
-            lat = self.to_lat(h[-1])                    # (B, lat)
-            dec_in = self.from_lat(lat).unsqueeze(1).repeat(1, seq.size(1), 1)
-            dec_out, _ = self.dec(dec_in)
-            return self.out(dec_out).squeeze(-1)        # (B, F)
+        def forward(self, x):                       # x: (B, L, F)
+            _, (h, _) = self.enc(x)                 # h[-1]: (B, hid)
+            lat = self.to_lat(h[-1])                # (B, lat)
+            dec_in = self.from_lat(lat).unsqueeze(1).repeat(1, x.size(1), 1)
+            dec_out, _ = self.dec(dec_in)           # (B, L, hid)
+            return self.out(dec_out)                # (B, L, F)
 
-    model = AELSTM()
+    model = AELSTM(n_feat)
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
     lossf = nn.MSELoss()
     model.train()
     for _ in range(epochs):
         opt.zero_grad()
-        loss = lossf(model(Xn), Xn)
+        loss = lossf(model(Xf), Xf)
         loss.backward()
         opt.step()
     model.eval()
     with torch.no_grad():
-        rec = model(Xte)
-        score_te = ((rec - Xte) ** 2).mean(dim=1).numpy()
-        if not retornar_treino:
-            return score_te
-        rec_tr = model(Xn)
-        score_tr = ((rec_tr - Xn) ** 2).mean(dim=1).numpy()
-        return score_te, score_tr
-
-
+        rec = model(Xe)                             # (k, L, F)
+        # escore = erro no ÚLTIMO passo (janela atual dado o histórico normal)
+        score = ((rec[:, -1, :] - Xe[:, -1, :]) ** 2).mean(dim=1).numpy()
+    return score

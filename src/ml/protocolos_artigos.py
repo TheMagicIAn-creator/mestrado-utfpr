@@ -45,6 +45,8 @@ cada método.
 
 from __future__ import annotations
 
+import os
+
 from src.core.logs import get_logger
 
 log = get_logger("protocolos_artigos")
@@ -55,6 +57,7 @@ LIMIAR_SIGMA = 3.0               # regra de Shewhart (Francisti)
 CONTAMINACAO_A_PRIORI = 0.05     # Isolation Forest (Ibrahim)
 PERCENTIL_TREINO = 99            # AE-LSTM: limiar congelado no treino
 PURGA_JANELAS = 2                # janelas com 50% de sobreposição → purga 2
+SEQ_LEN = int(os.getenv("AL_IADO_AELSTM_SEQ_LEN", "8"))  # passos temporais do AE-LSTM
 
 # Pesos de amostragem das famílias de falha (ordem de criticidade da FMECA —
 # docs/fmeca.md: NPR Contator AC 315 > IGBT 90 > Fusível AC 30).
@@ -420,25 +423,39 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
             progresso("Ibrahim: AE-LSTM (calibração temporal do limiar)...")
 
         def _rodar_ae():
-            from src.ml.modelos_anomalia import _score_ae_lstm
+            from src.ml.modelos_anomalia import (
+                _score_ae_lstm, sequencias_com_contexto, sequencias_deslizantes,
+            )
 
-            # Fatia de CALIBRAÇÃO: bloco final do treino normal (com purga)
-            # fica FORA do ajuste do AE e fornece o erro "não visto" para o
-            # percentil. Calibrar no erro de treino subestimaria o erro real.
+            # AE-LSTM TEMPORAL (Ibrahim): a LSTM percorre o TEMPO — sequências de
+            # janelas consecutivas —, não o eixo das features. Cada item do teste
+            # é pontuado como "a janela ATUAL dado o histórico normal precedente"
+            # (erro no último passo). Banco de teste idêntico ao dos outros
+            # modelos → comparável por AUC. Ver modelos_anomalia._score_ae_lstm.
+            L = SEQ_LEN
             Xn_tr = dados["Xn_tr"]
-            corte = max(10, int(len(Xn_tr) * 0.8))
-            Xn_fit = Xn_tr[:max(1, corte - PURGA_JANELAS)]
-            X_calib = Xn_tr[corte:]
-            dados_ae = {**dados, "Xn_tr": Xn_fit,
-                        "X_te": np.vstack([X_calib, X_te])}
-            score_all = _score_ae_lstm(dados_ae)
-            score_calib = score_all[:len(X_calib)]
-            score_te = score_all[len(X_calib):]
+            n_te = int((np.asarray(y_te) == 0).sum())
+            Xn_te, Xa_te = X_te[:n_te], X_te[n_te:]   # normais | injetadas (mesma posição)
+
+            seq_tr = sequencias_deslizantes(Xn_tr, L)
+            # Fatia de CALIBRAÇÃO temporal: cauda das sequências de treino, fora
+            # do ajuste (com purga) → limiar p99 congelado antes do teste.
+            corte = max(1, int(len(seq_tr) * 0.8))
+            seq_fit = seq_tr[:max(1, corte - PURGA_JANELAS)]
+            seq_calib = seq_tr[corte:] if corte < len(seq_tr) else seq_tr[-1:]
+            seq_te = np.vstack([
+                sequencias_com_contexto(Xn_te, Xn_te, L),   # itens normais
+                sequencias_com_contexto(Xn_te, Xa_te, L),   # itens injetados
+            ])
+            # Ajusta UMA vez em seq_fit; pontua calibração e teste juntos.
+            score_all = _score_ae_lstm(seq_fit, np.vstack([seq_calib, seq_te]))
+            score_calib = score_all[:len(seq_calib)]
+            score_te = score_all[len(seq_calib):]
             limiar = float(np.percentile(score_calib, PERCENTIL_TREINO))
             y_pred_ae = (score_te > limiar).astype(int)
             return _metricas(
                 y_te, score_te, y_pred_ae,
-                threshold_source=f"p{PERCENTIL_TREINO}_erro_em_calibracao_temporal",
+                threshold_source=f"p{PERCENTIL_TREINO}_erro_seq_temporal_calibracao",
                 limiar=limiar, tipos_te=tipos,
             ), y_pred_ae
 
@@ -451,12 +468,16 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
         "fonte": "Ibrahim et al. (2022)",
         "decisoes": {
             "Isolation Forest": f"contaminação a priori = {CONTAMINACAO_A_PRIORI}",
-            "AE-LSTM": f"limiar = p{PERCENTIL_TREINO} do erro numa fatia de "
-                       "CALIBRAÇÃO temporal do treino (fora do ajuste do AE; "
-                       "congelado antes do teste)",
+            "AE-LSTM": f"sequências de {SEQ_LEN} janelas no TEMPO; limiar = "
+                       f"p{PERCENTIL_TREINO} do erro numa fatia de CALIBRAÇÃO "
+                       "temporal do treino (fora do ajuste; congelado antes do teste)",
         },
         "fidelidade": [
             "Segue o artigo no par não-supervisionado IF + AE-LSTM.",
+            f"AE-LSTM agora é TEMPORAL de verdade: a LSTM percorre uma sequência "
+            f"de {SEQ_LEN} janelas no tempo (a 'correlação na série temporal' do "
+            "Ibrahim), não mais o eixo das features. Cada item é a janela ATUAL "
+            "dado o histórico normal precedente (erro no último passo).",
             "AE-LSTM usa a disciplina de limiar congelado do pipeline "
             "principal, com calibração em bloco temporal NÃO visto no ajuste "
             "(o erro de treino subestimaria o erro real).",
