@@ -36,6 +36,13 @@ import numpy as np
 # ── Configuração operacional (env, com padrões seguros) ─────────────────────
 METODO_ESCORE = os.getenv("AL_IADO_ESCORE_ANOMALIA", "localizado").strip().lower()
 K_LOCALIZADO = int(os.getenv("AL_IADO_ESCORE_K", "5"))
+# Percentil do erro saudável que fixa o limiar operacional. p99 → alvo de ~1%
+# de falso positivo. O escore localizado (top-k) é uma estatística de CAUDA,
+# mais sensível a ruído amostral com poucas janelas de calibração: se o FP no
+# teste isolado ficar alto (ver docs/auditoria §18), aumentar este percentil
+# (ex.: 99.5) e/ou o k (top-k maior = mais suave) baixa o falso positivo, ao
+# custo de um pouco de recall. Ambos são levers a calibrar no dado real.
+PERCENTIL_LIMIAR = float(os.getenv("AL_IADO_ESCORE_PERCENTIL", "99"))
 
 # Nome canônico do artefato com a régua por-feature (μ/σ do |resíduo| saudável).
 ARQUIVO_ESTATISTICA = "estatistica_residuo.npz"
