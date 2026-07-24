@@ -36,13 +36,35 @@ import numpy as np
 # ── Configuração operacional (env, com padrões seguros) ─────────────────────
 METODO_ESCORE = os.getenv("AL_IADO_ESCORE_ANOMALIA", "localizado").strip().lower()
 K_LOCALIZADO = int(os.getenv("AL_IADO_ESCORE_K", "5"))
-# Percentil do erro saudável que fixa o limiar operacional. p99 → alvo de ~1%
-# de falso positivo. O escore localizado (top-k) é uma estatística de CAUDA,
-# mais sensível a ruído amostral com poucas janelas de calibração: se o FP no
-# teste isolado ficar alto (ver docs/auditoria §18), aumentar este percentil
-# (ex.: 99.5) e/ou o k (top-k maior = mais suave) baixa o falso positivo, ao
-# custo de um pouco de recall. Ambos são levers a calibrar no dado real.
-PERCENTIL_LIMIAR = float(os.getenv("AL_IADO_ESCORE_PERCENTIL", "99"))
+# Limiar operacional pelo percentil do erro saudável. Por PADRÃO o percentil é
+# AUTO-CALIBRADO para a taxa de falso positivo alvo (FP_ALVO) num bloco de
+# calibração NÃO visto — sem ajuste manual (o escore localizado top-k é uma
+# estatística de cauda, ruidosa com pouca calibração; ver docs/auditoria §25).
+# Definir AL_IADO_ESCORE_PERCENTIL fixa o percentil manualmente (desliga o auto).
+_PERCENTIL_ENV = os.getenv("AL_IADO_ESCORE_PERCENTIL")
+PERCENTIL_LIMIAR = float(_PERCENTIL_ENV) if _PERCENTIL_ENV else 99.0
+AUTO_PERCENTIL = _PERCENTIL_ENV is None
+FP_ALVO = float(os.getenv("AL_IADO_ESCORE_FP_ALVO", "1.0"))  # % de FP alvo (auto)
+
+
+def limiar_por_fp_alvo(scores_ajuste, scores_val, fp_alvo_pct: float = 1.0,
+                       percentis=(99.0, 99.3, 99.5, 99.7, 99.9)) -> tuple[float, float]:
+    """Auto-calibra o limiar visando o FP alvo, SEM ajuste manual.
+
+    Retorna (limiar, percentil): o MENOR percentil de ``scores_ajuste`` cujo
+    falso positivo em ``scores_val`` (bloco saudável NÃO visto) fica <=
+    ``fp_alvo_pct``. Se nenhum atinge o alvo, usa o maior percentil (mais
+    conservador). Assim o limiar generaliza melhor para dado saudável novo.
+    """
+    a = np.asarray(scores_ajuste, dtype=float)
+    v = np.asarray(scores_val, dtype=float)
+    escolhido = float(percentis[-1])
+    for p in percentis:
+        lim = float(np.percentile(a, p))
+        if float((v > lim).mean() * 100.0) <= fp_alvo_pct:
+            escolhido = float(p)
+            break
+    return float(np.percentile(a, escolhido)), escolhido
 
 # Nome canônico do artefato com a régua por-feature (μ/σ do |resíduo| saudável).
 ARQUIVO_ESTATISTICA = "estatistica_residuo.npz"

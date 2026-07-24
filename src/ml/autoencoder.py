@@ -559,8 +559,24 @@ def executar_autoencoder(
 
     # Resíduo por feature → régua saudável (μ/σ) do escore LOCALIZADO. A régua
     # vem do bloco de CALIBRAÇÃO (saudável, fora do ajuste de pesos do AE).
+    # Régua por-feature + limiar do escore localizado. Por PADRÃO (sem env de
+    # percentil) o limiar é AUTO-CALIBRADO: régua e candidatos vêm de um
+    # sub-bloco de calibração e o percentil é o menor cujo FP num sub-bloco NÃO
+    # VISTO fica ≤ FP_ALVO. Assim o falso positivo se auto-regula, sem ajuste
+    # manual (docs/auditoria §25). Com poucas janelas, cai para o percentil fixo.
     R_calib = ea.residuo_por_feature(modelo, X_calib, device)
-    estat_residuo = ea.ajustar_estatistica_residuo(R_calib)
+    if ea.AUTO_PERCENTIL and len(R_calib) >= 40:
+        corte_cal = int(len(R_calib) * 0.8)
+        R_fit, R_val = R_calib[:corte_cal], R_calib[corte_cal:]
+        estat_residuo = ea.ajustar_estatistica_residuo(R_fit)
+        sc_fit = ea.escore_localizado(R_fit, estat_residuo)
+        sc_val = ea.escore_localizado(R_val, estat_residuo)
+        limiar_loc, percentil_usado = ea.limiar_por_fp_alvo(sc_fit, sc_val, ea.FP_ALVO)
+    else:
+        estat_residuo = ea.ajustar_estatistica_residuo(R_calib)
+        percentil_usado = ea.PERCENTIL_LIMIAR
+        limiar_loc = float(np.percentile(
+            ea.escore_localizado(R_calib, estat_residuo), percentil_usado))
     sc_loc_calib = ea.escore_localizado(R_calib, estat_residuo)
     sc_loc_teste = ea.escore_localizado(
         ea.residuo_por_feature(modelo, X_teste, device), estat_residuo)
@@ -570,7 +586,6 @@ def executar_autoencoder(
     # ── 7. Limiar de anomalia (MSE e localizado; operacional = escolhido) ─
     info_mse = calcular_limiar(erros_calib, sigma)      # p99/p95/μ+3σ do MSE
     limiar_mse = float(info_mse["limiar"])
-    limiar_loc = float(np.percentile(sc_loc_calib, ea.PERCENTIL_LIMIAR))
 
     metodo = ea.METODO_ESCORE            # 'localizado' (padrão) ou 'mse'
     k_loc  = ea.K_LOCALIZADO
@@ -603,7 +618,8 @@ def executar_autoencoder(
     info_limiar["limiar_mse"] = limiar_mse
     info_limiar["limiar_localizado"] = limiar_loc
     info_limiar["k_localizado"] = k_loc
-    info_limiar["percentil_limiar"] = ea.PERCENTIL_LIMIAR
+    info_limiar["percentil_limiar"] = percentil_usado
+    info_limiar["percentil_auto"] = bool(ea.AUTO_PERCENTIL and len(R_calib) >= 40)
     limiar = limiar_op
 
     # ── 8. Salva artefatos ───────────────────────────────────
