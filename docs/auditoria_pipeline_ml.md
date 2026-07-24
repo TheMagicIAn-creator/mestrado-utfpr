@@ -444,8 +444,45 @@ localizado; (c) suavizar a estimativa do limiar com bootstrap.
 
 | # | Item | Status |
 |---|---|---|
-| Regenerar `curva_treino.png`/`distribuicao_erro.png`/`erro_temporal.png` | **Pendente** — rerun local |
+| Regenerar `curva_treino.png`/`distribuicao_erro.png`/`erro_temporal.png` | ✅ **feito** (rerun local, verificado por hash) |
 | Investigar/mitigar FP=6,8% no teste isolado | **Pendente** — decisão de projeto |
-| #2 AE-LSTM fiel ao Ibrahim | Pendente |
+| #2 AE-LSTM fiel ao Ibrahim | ✅ **feito** (§20) |
 | #3 grounding do AE denso (texto) | Pendente |
 | #6 ReLU do encoder | Pendente |
+
+---
+
+# 6ª rodada — AE-LSTM do Ibrahim corrigido (concorrente temporal fiel)
+
+## 20. Decisão de rumo e correção do AE-LSTM (#2)
+
+**Decisão metodológica (Rodolfo, aprovada):** o método PRINCIPAL continua o
+Autoencoder **denso sobre features FMECA + escore localizado** (nosso,
+validado na 5ª rodada). O AE-LSTM do Ibrahim entra **corrigido** como o
+concorrente forte na comparação — não substitui o cerne. Isso "alinha a
+pesquisa com o Ibrahim" (traz a arquitetura temporal e o benchmark) sem
+reescrever o núcleo a três anos da defesa.
+
+**Correção da infidelidade (§10.1):** `modelos_anomalia._score_ae_lstm`
+rodava a LSTM sobre o **eixo das features** (`x.unsqueeze(-1)` → (B, F, 1)),
+ordem arbitrária — uma densa disfarçada. Reescrito para percorrer o **TEMPO**:
+uma sequência de `SEQ_LEN` janelas consecutivas (a "correlação na série
+temporal" do Ibrahim). Helpers `sequencias_deslizantes` (treino) e
+`sequencias_com_contexto` (teste) em `modelos_anomalia.py`;
+`protocolos_artigos.protocolo_ibrahim` monta as sequências e ajusta o AE-LSTM
+uma vez, com limiar p99 congelado numa fatia de calibração temporal.
+
+**Escolha metodológica documentada (a revisar com a orientadora):** como a
+injeção do protocolo é PONTUAL (uma janela por vez, para manter o MESMO banco
+de teste dos outros modelos → comparável por AUC), cada item é pontuado como
+"a janela ATUAL dado o histórico normal precedente" — o escore é o erro de
+reconstrução no **último passo** da sequência. Alternativa possível (injetar
+um trecho temporal sustentado, mais próximo do cenário do Ibrahim) muda o
+ground truth e quebra a comparabilidade com IF/Z-score; por isso ficou de
+fora. `SEQ_LEN=8` por padrão (env `AL_IADO_AELSTM_SEQ_LEN`), a justificar por
+varredura.
+
+**Testes:** `tests/test_ae_lstm_temporal.py` valida a mecânica (forma das
+sequências, contexto, e que anomalia no último passo eleva o escore). Os
+números finais (AUC do AE-LSTM vs. método proposto) saem no rerun local do
+experimento do Ibrahim, com dataset — não puderam ser medidos na nuvem.
