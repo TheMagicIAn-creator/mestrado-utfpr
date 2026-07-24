@@ -1,8 +1,8 @@
 {
   "stage": "autoencoder",
-  "created_at": "2026-07-22T19:13:24.107250-03:00",
-  "git_commit": "74e19b4f2443464303cd2c4104ab55acb2856d38",
-  "code_sha256": "de88f0a517f3be9ac1f9f624bccace07eb46158a657d4451d32cf28bd1d0e0e4",
+  "created_at": "2026-07-23T21:15:41.587483-03:00",
+  "git_commit": "11491c349ce2b18c9867851752dcd3c7f093b25f",
+  "code_sha256": "47ea5fd44c44c1b7743752ca29e7aaeb0419b2d2fe9155a44ad6296998801b7a",
   "parameters": {
     "latente_dim": 16,
     "epochs": 150,
