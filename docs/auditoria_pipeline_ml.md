@@ -592,3 +592,56 @@ LSTM sobre o eixo das features): o `metricas.csv` traz
 não a nova `p99_erro_seq_temporal_calibracao`. Os números (AUC AE-LSTM=0,659;
 IF=0,589) são do modelo antigo. **Ação:** `git pull` + re-rodar o experimento
 do Ibrahim para obter o AE-LSTM temporal fiel, que é a comparação válida.
+
+---
+
+# 9ª rodada — macro-códigos (substituem o framework de experimentos)
+
+## 27. Por que trocar o framework de experimentos por dois macro-códigos
+
+Problemas concretos do framework antigo (`experimentos_artigos` +
+`protocolos_artigos`), levantados pelo pesquisador e confirmados:
+
+- `metricas.csv` com **33 colunas** — ilegível como tabela de comparação.
+- **Matriz de confusão enganosa**: com limiar congelado a ~1% de prevalência e
+  teste balanceado (50%), o AE-LSTM previu 2 anomalias em 364 → matriz com uma
+  coluna cheia e outra vazia, recall 0,5%. É artefato do protocolo, não do
+  método, mas visualmente sugere "modelo quebrado".
+- Cada artigo com protocolo próprio → **F1/matrizes não comparáveis** entre si.
+
+## 28. Nova arquitetura (decidida com o pesquisador)
+
+Dois scripts legíveis de ponta a ponta, com **avaliação e saída idênticas**:
+
+| | `macro_proposto.py` | `macro_ibrahim.py` |
+|---|---|---|
+| Modelo | AE denso + escore localizado (nosso) | AE-LSTM temporal (Ibrahim 2022) |
+| Features | espectrais FMECA | **as mesmas** |
+| Avaliação | E2: injeção FMECA no sinal por severidade | **a mesma** |
+| Limiar | auto-calibrado ~1% FP | **o mesmo critério** |
+| Saída | tabela 5 colunas + gráfico | **o mesmo módulo** |
+
+Decisões do pesquisador: (1) avaliação nossa (E2) para os dois; (2) só o
+AE-LSTM no macro do Ibrahim (Isolation Forest fora); (3) scripts **importam e
+orquestram** (não duplicam lógica) — legíveis para citar trechos na dissertação.
+
+**Contrato:** cada macro fornece um *scorer* `callable(list[DataFrame]) ->
+np.ndarray`; `macro_comum.avaliar_deteccao` faz o resto. Isso garante
+comparação maçã-com-maçã por construção.
+
+`macro_comparar.py` roda os dois e emite UMA tabela + UM gráfico sobreposto
+(AUC na legenda). Saídas em `resultados/macro/`.
+
+**Honestidade declarada no cabeçalho do `macro_ibrahim.py`:** o artigo usa
+séries de potência de usinas (15 min × 34 dias) com anomalias reais; aqui o
+MÉTODO dele é aplicado ao NOSSO problema (sinal CA + injeção FMECA), para
+comparabilidade. O que muda entre os macros é a arquitetura (LSTM temporal vs.
+densa) e o escore (MSE do artigo vs. localizado top-k nosso).
+
+**Testes:** `tests/test_macro_comum.py` (3 casos: tabela de 5 colunas,
+md/csv/json/png gerados, gráfico não vazio) — verdes. Os números reais exigem
+rerun local com dataset.
+
+**Status do framework antigo:** mantido no repositório por ora (não removido),
+mas os macro-códigos passam a ser o caminho recomendado para a comparação da
+dissertação.

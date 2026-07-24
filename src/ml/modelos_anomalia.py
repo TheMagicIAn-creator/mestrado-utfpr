@@ -82,13 +82,18 @@ def _score_ae_lstm(seq_fit, seq_eval, epochs: int = 60, seed: int = 42):
     Retorna score (k,) = MSE de reconstrução no ÚLTIMO passo (a janela atual
     dado o histórico). Fiel ao Ibrahim: a LSTM percorre o eixo TEMPORAL.
     """
+    return pontuar_ae_lstm(treinar_ae_lstm(seq_fit, epochs=epochs, seed=seed), seq_eval)
+
+
+def treinar_ae_lstm(seq_fit, epochs: int = 60, seed: int = 42):
+    """Treina o AE-LSTM temporal em sequências NORMAIS. Retorna o modelo treinado
+    (para pontuar várias vezes sem re-treinar — usado pelos macro-códigos)."""
     import numpy as np
     import torch
     import torch.nn as nn
 
     torch.manual_seed(seed)
     Xf = torch.tensor(np.asarray(seq_fit, dtype=np.float32))    # (m, L, F)
-    Xe = torch.tensor(np.asarray(seq_eval, dtype=np.float32))   # (k, L, F)
     n_feat = Xf.shape[2]
 
     class AELSTM(nn.Module):
@@ -117,8 +122,16 @@ def _score_ae_lstm(seq_fit, seq_eval, epochs: int = 60, seed: int = 42):
         loss.backward()
         opt.step()
     model.eval()
+    return model
+
+
+def pontuar_ae_lstm(model, seq_eval):
+    """Erro de reconstrução no ÚLTIMO passo de cada sequência (a janela atual
+    dado o histórico normal). Não re-treina."""
+    import numpy as np
+    import torch
+
+    Xe = torch.tensor(np.asarray(seq_eval, dtype=np.float32))   # (k, L, F)
     with torch.no_grad():
-        rec = model(Xe)                             # (k, L, F)
-        # escore = erro no ÚLTIMO passo (janela atual dado o histórico normal)
-        score = ((rec[:, -1, :] - Xe[:, -1, :]) ** 2).mean(dim=1).numpy()
-    return score
+        rec = model(Xe)
+        return ((rec[:, -1, :] - Xe[:, -1, :]) ** 2).mean(dim=1).numpy()
