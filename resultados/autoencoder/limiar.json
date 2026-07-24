@@ -1,7 +1,7 @@
 {
   "threshold_method": "p99",
-  "limiar": 6.5979764619649215,
-  "limiar_operacional": 6.5979764619649215,
+  "limiar": 7.826175715408156,
+  "limiar_operacional": 7.826175715408156,
   "mu": 0.35363560914993286,
   "sigma": 0.6341257691383362,
   "k": 3.0,
@@ -12,8 +12,10 @@
   "threshold_source": "bloco_calibracao_temporal",
   "metodo_escore": "localizado",
   "limiar_mse": 2.5454330444335938,
-  "limiar_localizado": 6.5979764619649215,
+  "limiar_localizado": 7.826175715408156,
   "k_localizado": 5,
+  "percentil_limiar": 99.9,
+  "percentil_auto": true,
   "n_janelas_treino": 274,
   "n_janelas_calibracao": 91,
   "n_janelas_teste": 88,
@@ -22,9 +24,9 @@
   "epochs_treinadas": 75,
   "epoca_melhor": 55,
   "loss_val_melhor": 0.3536356455022162,
-  "fp_val_pct": 6.8181818181818175,
-  "fp_calib_pct": 1.098901098901099,
-  "fp_test_pct": 6.8181818181818175,
+  "fp_val_pct": 10.227272727272728,
+  "fp_calib_pct": 4.395604395604396,
+  "fp_test_pct": 10.227272727272728,
   "split_temporal": {
     "protocolo": "treino_60_calibracao_20_teste_20_com_purga",
     "limites": {
@@ -133,6 +135,6 @@
       456
     ]
   },
-  "data_treino": "2026-07-23T21:15:37.022510-03:00",
+  "data_treino": "2026-07-24T00:48:56.538242-03:00",
   "device": "cpu"
 }

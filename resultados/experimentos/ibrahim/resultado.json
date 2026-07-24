@@ -6,7 +6,7 @@
   "tarefa": "anomalia",
   "evidence_level": "E1",
   "evidence_note": "E1 — benchmark exploratório (injeção sintética orientada pelo FMEA no espaço de features, com protocolo de decisão do próprio artigo); não é validação formal nem desempenho industrial.",
-  "data": "2026-07-20 08:58:25",
+  "data": "2026-07-23T21:46:34-03:00",
   "metrica_principal": "f1",
   "origem_dados": {
     "tipo": "dataset_local_paderborn_com_falhas_sinteticas",
@@ -77,7 +77,7 @@
       "recall": 0.005494505494505495,
       "f1": 0.010869565217391304,
       "mcc": 0.0,
-      "auc": 0.6592199009781428,
+      "auc": 0.5879724670933462,
       "specificity": 0.9945054945054945,
       "specificity_macro_ovr": 0.5,
       "specificity_tipo": "binaria_TN/(TN+FP)",
@@ -100,9 +100,9 @@
         ]
       ],
       "disponivel": true,
-      "limiar_score": 3.0468223094940186,
+      "limiar_score": 3.185750722885132,
       "ponto_operacao": "protocolo_do_artigo",
-      "threshold_source": "p99_erro_em_calibracao_temporal",
+      "threshold_source": "p99_erro_seq_temporal_calibracao",
       "metrica_dependente_de_limiar": "a_priori_ou_congelada",
       "anomalias_detectadas": 2,
       "anomalias_reais": 182,
@@ -131,10 +131,11 @@
     "fonte": "Ibrahim et al. (2022)",
     "decisoes": {
       "Isolation Forest": "contaminação a priori = 0.05",
-      "AE-LSTM": "limiar = p99 do erro numa fatia de CALIBRAÇÃO temporal do treino (fora do ajuste do AE; congelado antes do teste)"
+      "AE-LSTM": "sequências de 8 janelas no TEMPO; limiar = p99 do erro numa fatia de CALIBRAÇÃO temporal do treino (fora do ajuste; congelado antes do teste)"
     },
     "fidelidade": [
       "Segue o artigo no par não-supervisionado IF + AE-LSTM.",
+      "AE-LSTM agora é TEMPORAL de verdade: a LSTM percorre uma sequência de 8 janelas no tempo (a 'correlação na série temporal' do Ibrahim), não mais o eixo das features. Cada item é a janela ATUAL dado o histórico normal precedente (erro no último passo).",
       "AE-LSTM usa a disciplina de limiar congelado do pipeline principal, com calibração em bloco temporal NÃO visto no ajuste (o erro de treino subestimaria o erro real).",
       "Curadoria: o Facebook Prophet do artigo foi removido — era o pior detector do trio e sua dependência quebra em runtime; a base comparativa fica com IF + AE-LSTM, que bastam.",
       "Leitura correta: a contaminação a priori de 5% reflete a prevalência esperada em operação; no teste BALANCEADO (50% anômalo) ela limita o recall por construção — compare métodos pelo AUC e pela precisão, não pelo F1 entre protocolos."
@@ -169,6 +170,8 @@
     "resultados/experimentos/ibrahim/modelo_ae_lstm_metricas.png",
     "resultados/experimentos/ibrahim/modelo_ae_lstm_matriz_confusao.png",
     "resultados/experimentos/ibrahim/comparacao_metricas.png",
+    "resultados/experimentos/ibrahim/comparacao_metricas_pontos.png",
+    "resultados/experimentos/ibrahim/comparacao_metricas_barras.png",
     "resultados/experimentos/ibrahim/anomalias_detectadas.png",
     "resultados/experimentos/ibrahim/matriz_confusao.png"
   ],
