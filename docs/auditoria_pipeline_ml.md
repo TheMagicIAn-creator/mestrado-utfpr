@@ -562,3 +562,33 @@ Revisão de correção dos módulos alterados/criados nesta sessão
 - **Risco residual (declarado):** os números finais do AE-LSTM temporal e o FP
   mitigado **não foram medidos na nuvem** (sem dataset). Exigem rerun local.
   Nenhum resultado deste relatório afirma desempenho não medido.
+
+---
+
+# 8ª rodada — FP auto-calibrado + experimento Ibrahim desatualizado
+
+## 25. FP do escore localizado agora se AUTO-CALIBRA (sem ajuste manual)
+
+Substituição do percentil fixo (§18/§22) por **auto-calibração**, atendendo ao
+pedido de "sem alterar manualmente":
+
+- Por PADRÃO, o `autoencoder.py` divide o bloco de calibração em sub-fit (80%)
+  e sub-val (20%). A régua e os candidatos a limiar vêm do sub-fit; o percentil
+  escolhido (`escore_anomalia.limiar_por_fp_alvo`) é o **menor** cujo FP no
+  sub-val (não visto) fica ≤ `FP_ALVO` (padrão 1%). Assim o limiar generaliza
+  melhor para dado saudável novo, sem env, sem sweep.
+- Fallback seguro: com < 40 janelas de calibração, usa o percentil fixo (p99).
+- Override manual continua possível (`AL_IADO_ESCORE_PERCENTIL`), mas não é
+  necessário. `limiar.json` grava `percentil_limiar` (o escolhido) e
+  `percentil_auto` (se foi automático).
+- Testado: `test_limiar_por_fp_alvo_*` (sobe o percentil quando o p99 estoura;
+  respeita o alvo). O FP real no teste isolado só se confirma no rerun local.
+
+## 26. Experimento do Ibrahim rodado está DESATUALIZADO (rerun necessário)
+
+`resultados/experimentos/ibrahim/` foi gerado pelo **AE-LSTM ANTIGO** (infiel,
+LSTM sobre o eixo das features): o `metricas.csv` traz
+`threshold_source=p99_erro_em_calibracao_temporal` (string anterior ao #52),
+não a nova `p99_erro_seq_temporal_calibracao`. Os números (AUC AE-LSTM=0,659;
+IF=0,589) são do modelo antigo. **Ação:** `git pull` + re-rodar o experimento
+do Ibrahim para obter o AE-LSTM temporal fiel, que é a comparação válida.

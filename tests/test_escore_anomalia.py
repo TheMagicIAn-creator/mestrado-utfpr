@@ -61,3 +61,29 @@ def test_persistencia_da_regua_roundtrip(tmp_path):
     assert np.allclose(lido["sigma"], stats["sigma"])
     # pasta sem o artefato → None (dispara fallback para MSE no pipeline)
     assert ea.carregar_estatistica(tmp_path, "inexistente.npz") is None
+
+
+def test_limiar_por_fp_alvo_sobe_percentil_quando_p99_estoura():
+    # scores de ajuste: massa em [0,1]. scores_val: com cauda pesada que faz o
+    # p99 do ajuste ser ultrapassado por >1% dos val → auto deve subir o percentil.
+    rng = np.random.default_rng(0)
+    ajuste = rng.uniform(0, 1, size=2000)
+    val = np.concatenate([rng.uniform(0, 1, size=200),
+                          rng.uniform(1.0, 1.5, size=20)])  # ~9% acima do p99 do ajuste
+    lim99 = np.percentile(ajuste, 99)
+    fp99 = (val > lim99).mean() * 100
+    assert fp99 > 1.0  # confirma o cenário do problema
+    lim, perc = ea.limiar_por_fp_alvo(ajuste, val, fp_alvo_pct=1.0)
+    assert perc >= 99.0 and lim >= lim99          # subiu (ou manteve) o percentil
+    assert (val > lim).mean() * 100 <= (val > lim99).mean() * 100  # FP não piora
+
+
+def test_limiar_por_fp_alvo_respeita_o_alvo():
+    rng = np.random.default_rng(1)
+    ajuste = rng.normal(0, 1, size=3000)
+    val = rng.normal(0, 1, size=1000)
+    lim, perc = ea.limiar_por_fp_alvo(ajuste, val, fp_alvo_pct=1.0)
+    fp = (val > lim).mean() * 100
+    # invariante: ou atinge o alvo, ou usa o percentil mais conservador (99.9)
+    assert fp <= 1.0 or perc == 99.9
+    assert 99.0 <= perc <= 99.9
