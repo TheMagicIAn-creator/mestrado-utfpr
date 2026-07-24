@@ -570,7 +570,7 @@ def executar_autoencoder(
     # ── 7. Limiar de anomalia (MSE e localizado; operacional = escolhido) ─
     info_mse = calcular_limiar(erros_calib, sigma)      # p99/p95/μ+3σ do MSE
     limiar_mse = float(info_mse["limiar"])
-    limiar_loc = float(np.percentile(sc_loc_calib, 99))
+    limiar_loc = float(np.percentile(sc_loc_calib, ea.PERCENTIL_LIMIAR))
 
     metodo = ea.METODO_ESCORE            # 'localizado' (padrão) ou 'mse'
     k_loc  = ea.K_LOCALIZADO
@@ -603,6 +603,7 @@ def executar_autoencoder(
     info_limiar["limiar_mse"] = limiar_mse
     info_limiar["limiar_localizado"] = limiar_loc
     info_limiar["k_localizado"] = k_loc
+    info_limiar["percentil_limiar"] = ea.PERCENTIL_LIMIAR
     limiar = limiar_op
 
     # ── 8. Salva artefatos ───────────────────────────────────
