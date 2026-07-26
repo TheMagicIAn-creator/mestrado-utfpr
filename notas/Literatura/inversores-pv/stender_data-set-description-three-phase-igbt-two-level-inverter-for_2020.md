@@ -4,7 +4,7 @@ autor: "Marius Stender, Oliver Wallscheid, Joachim Böcker"
 ano: 2020
 tema: inversores-pv
 arquivo: stender_data-set-description-three-phase-igbt-two-level-inverter-for_2020.pdf
-tags: [literatura, inversores-pv, mestrado-utfpr]
+tags: [literatura, inversores-pv]
 data_insercao: 2026-05-23
 ---
 

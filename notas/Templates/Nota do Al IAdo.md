@@ -5,7 +5,7 @@ tipo: conceito
 status: rascunho
 confianca: media
 nivel_evidencia: projeto
-tags: [al-iado]
+tags: []
 ---
 
 # Título da nota

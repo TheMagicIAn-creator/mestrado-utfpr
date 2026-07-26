@@ -4,7 +4,7 @@ autor: "Steve Voss, Dr. Tassos Golnas, Steve Hester & Mark Culpepper, Sun Edison
 ano: 2009
 tema: manutencao
 arquivo: voss_service-service-architecture-yield-monitoring-optimization-a_2009.pdf
-tags: [literatura, manutencao, mestrado-utfpr]
+tags: [literatura, manutencao]
 data_insercao: 2026-05-23
 ---
 

@@ -4,7 +4,7 @@ autor: "Demetris Marangis, Georgios Tziolis, Andreas Livera, George Makrides, An
 ano: 2025
 tema: ml-preditivo
 arquivo: marangis_intelligent-maintenance-approaches-for-improving-photovoltai_2025.pdf
-tags: [literatura, ml-preditivo, mestrado-utfpr]
+tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

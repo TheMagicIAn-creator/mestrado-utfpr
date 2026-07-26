@@ -4,7 +4,7 @@ autor: "JOÃO NETO"
 ano: 2016
 tema: inversores-pv
 arquivo: neto_power-electronics-daniel-w-hart-pdf_2016.pdf
-tags: [literatura, inversores-pv, mestrado-utfpr]
+tags: [literatura, inversores-pv]
 data_insercao: 2026-05-17
 ---
 

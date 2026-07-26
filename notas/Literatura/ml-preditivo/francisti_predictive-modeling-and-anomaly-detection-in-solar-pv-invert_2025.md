@@ -4,7 +4,7 @@ autor: "Jan Francisti, Kristián Fodor, Zoltán Balogh, Martin Magdin"
 ano: 2025
 tema: ml-preditivo
 arquivo: francisti_predictive-modeling-and-anomaly-detection-in-solar-pv-invert_2025.pdf
-tags: [literatura, ml-preditivo, mestrado-utfpr]
+tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

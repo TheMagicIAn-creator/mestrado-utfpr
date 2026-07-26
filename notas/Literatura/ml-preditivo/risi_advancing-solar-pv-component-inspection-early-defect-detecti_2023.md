@@ -4,7 +4,7 @@ autor: "Al Reem Majid Ali Al Risi, Fatma Hassan Khamis Al-Zaabi, Azza Marwan Sal
 ano: 2023
 tema: ml-preditivo
 arquivo: risi_advancing-solar-pv-component-inspection-early-defect-detecti_2023.pdf
-tags: [literatura, ml-preditivo, mestrado-utfpr]
+tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

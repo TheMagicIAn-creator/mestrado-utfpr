@@ -4,7 +4,7 @@ autor: "Alan V. Oppenheim, Ronald W. Schafer"
 ano: 2014
 tema: sinais-eletricos
 arquivo: oppenheim_discrete-time-signal-processing_2014.pdf
-tags: [literatura, sinais-eletricos, mestrado-utfpr]
+tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-23
 ---
 

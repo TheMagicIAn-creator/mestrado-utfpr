@@ -8,8 +8,7 @@ relevancia: Media
 lido: false
 citado: false
 link_pdf: /literatura/ml-preditivo/intelligent-maintenance_cutting-edge-technologies-such-internet_2025.pdf
-tags:
-  - maintenance
+tags: [maintenance]
   - artificial-inteligence
   - performance
   - photovoltaic

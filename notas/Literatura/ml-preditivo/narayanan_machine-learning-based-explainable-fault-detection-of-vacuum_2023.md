@@ -4,7 +4,7 @@ autor: "Ajay Narayanan, Dr. Kedar Kulkarni, Fery Riswan, Muhammad Azzrul Bin Sal
 ano: 2023
 tema: ml-preditivo
 arquivo: narayanan_machine-learning-based-explainable-fault-detection-of-vacuum_2023.pdf
-tags: [literatura, ml-preditivo, mestrado-utfpr]
+tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

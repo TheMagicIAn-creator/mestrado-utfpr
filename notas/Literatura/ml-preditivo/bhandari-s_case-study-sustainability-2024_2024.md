@@ -8,8 +8,7 @@ relevancia: Media
 lido: false
 citado: false
 link_pdf: /literatura/ml-preditivo/bhandari-s_case-study-sustainability-2024_2024.pdf
-tags:
-  - failure
+tags: [failure]
   - mode
   - effects
   - analysis

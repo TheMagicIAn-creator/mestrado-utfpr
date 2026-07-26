@@ -4,7 +4,7 @@ autor: "Daniel W. Hart"
 ano: 2016
 tema: sinais-eletricos
 arquivo: hart_power-electronics_2016.pdf
-tags: [literatura, sinais-eletricos, mestrado-utfpr]
+tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-22
 ---
 

@@ -4,7 +4,7 @@ autor: "Sherif S. M. Ghoneim, Amr E. Rashed e Nagy I. Elkalashy"
 ano: 2021
 tema: ml-preditivo
 arquivo: ghoneim_fault-detection-algorithms-for-achieving-service-continuity-_2021.pdf
-tags: [literatura, ml-preditivo, mestrado-utfpr]
+tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

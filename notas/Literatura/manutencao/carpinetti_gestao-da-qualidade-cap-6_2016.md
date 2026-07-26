@@ -4,7 +4,7 @@ autor: "Carpinetti, L. C. R."
 ano: 2016
 tema: manutencao
 arquivo: carpinetti_gestao-da-qualidade-cap-6_2016.pdf
-tags: [literatura, manutencao, mestrado-utfpr]
+tags: [literatura, manutencao]
 data_insercao: 2026-05-23
 ---
 

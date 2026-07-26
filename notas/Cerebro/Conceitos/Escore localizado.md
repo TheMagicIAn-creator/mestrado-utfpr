@@ -5,7 +5,7 @@ tipo: conceito
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [al-iado, cerebro, conceito, escore, autoencoder]
+tags: [cerebro, conceito, escore, autoencoder]
 ---
 
 # Escore localizado

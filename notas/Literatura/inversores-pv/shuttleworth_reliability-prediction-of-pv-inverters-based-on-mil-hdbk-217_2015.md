@@ -4,7 +4,7 @@ autor: "Firas Obeidat and Roger Shuttleworth"
 ano: 2015
 tema: inversores-pv
 arquivo: shuttleworth_reliability-prediction-of-pv-inverters-based-on-mil-hdbk-217_2015.pdf
-tags: [literatura, inversores-pv, mestrado-utfpr]
+tags: [literatura, inversores-pv]
 data_insercao: 2026-05-23
 ---
 

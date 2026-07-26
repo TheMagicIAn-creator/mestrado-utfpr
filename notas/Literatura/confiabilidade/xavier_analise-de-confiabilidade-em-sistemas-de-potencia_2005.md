@@ -4,7 +4,7 @@ autor: "Xavier"
 ano: 2005
 tema: confiabilidade
 arquivo: xavier_analise-de-confiabilidade-em-sistemas-de-potencia_2005.pdf
-tags: [literatura, confiabilidade, mestrado-utfpr]
+tags: [literatura, confiabilidade]
 data_insercao: 2026-05-23
 ---
 

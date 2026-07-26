@@ -4,7 +4,7 @@ autor: "Daniel W. Hart"
 ano: 2016
 tema: inversores-pv
 arquivo: hart_power-electronics_2016.pdf
-tags: [literatura, inversores-pv, mestrado-utfpr]
+tags: [literatura, inversores-pv]
 data_insercao: 2026-05-22
 ---
 

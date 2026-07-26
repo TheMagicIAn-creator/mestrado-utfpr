@@ -4,7 +4,7 @@ autor: "Rodolfo Torres"
 ano: 2026
 tema: ml-preditivo
 arquivo: torres_ghoneim-fault-detection-algorithms-for-achieving-service-con_2026.pdf
-tags: [literatura, ml-preditivo, mestrado-utfpr]
+tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-22
 ---
 

@@ -4,7 +4,7 @@ autor: "Paulo S. R. Diniz"
 ano: 2021
 tema: sinais-eletricos
 arquivo: diniz_digital-signal-processing-system-analysis-and-design-second-_2021.pdf
-tags: [literatura, sinais-eletricos, mestrado-utfpr]
+tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-17
 ---
 

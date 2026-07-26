@@ -8,8 +8,7 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/inversores-pv/autor-desconhecido_steve-voss-tassos-golnas-steve_2009.pdf
-tags:
-  - system
+tags: [system]
   - systems
   - solar
   - data

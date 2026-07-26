@@ -4,7 +4,7 @@ autor: "Karim, A.Z.A.; Osman, M.S.; Rahmat, M.K."
 ano: 2025
 tema: inversores-pv
 arquivo: karim_a-review-on-risk-and-reliability-analysis-in-photovoltaic-po_2025.pdf
-tags: [literatura, inversores-pv, mestrado-utfpr]
+tags: [literatura, inversores-pv]
 data_insercao: 2026-05-23
 ---
 

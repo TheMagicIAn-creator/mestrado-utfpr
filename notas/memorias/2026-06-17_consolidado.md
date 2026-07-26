@@ -4,7 +4,7 @@ tipo: memoria-consolidada
 sessoes_incluidas: 10
 interacoes_totais: 30
 periodo: 2026-06-02 a 2026-06-17
-tags: [al-iado-pv, memoria, consolidado, mestrado]
+tags: [memoria, consolidado]
 ---
 
 > [!warning] DIVERGÊNCIA WEIBULL CONHECIDA

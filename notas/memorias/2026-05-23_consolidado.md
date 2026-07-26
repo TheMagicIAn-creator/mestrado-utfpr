@@ -3,7 +3,7 @@ data: 2026-05-23
 tipo: memoria-consolidada
 sessoes_incluidas: 8
 periodo: 2026-05-21 a 2026-05-23
-tags: [al-iado-pv, memoria, consolidado, mestrado]
+tags: [memoria, consolidado]
 ---
 
 # Memória Consolidada — 23/05/2026

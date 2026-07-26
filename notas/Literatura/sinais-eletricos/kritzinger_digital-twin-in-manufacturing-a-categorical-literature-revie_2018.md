@@ -4,7 +4,7 @@ autor: "Werner Kritzinger, Matthias Karner, Georg Traar, Jan Henjes, Wilfried Si
 ano: 2018
 tema: sinais-eletricos
 arquivo: kritzinger_digital-twin-in-manufacturing-a-categorical-literature-revie_2018.pdf
-tags: [literatura, sinais-eletricos, mestrado-utfpr]
+tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-22
 ---
 

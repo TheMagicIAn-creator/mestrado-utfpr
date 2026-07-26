@@ -4,7 +4,7 @@ autor: "Gaurav Sharma · Savita Khurana · Bhawna Sharma · Geetanjali Sharma"
 ano: 2026
 tema: ml-preditivo
 arquivo: sharma_a-self-tuning-reinforcement-learning-driven-isolation-forest_2026.pdf
-tags: [literatura, ml-preditivo, mestrado-utfpr]
+tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

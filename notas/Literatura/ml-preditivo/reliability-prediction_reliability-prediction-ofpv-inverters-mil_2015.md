@@ -8,8 +8,7 @@ relevancia: Media
 lido: false
 citado: false
 link_pdf: /literatura/ml-preditivo/reliability-prediction_reliability-prediction-ofpv-inverters-mil_2015.pdf
-tags:
-  - Failure-rate
+tags: [Failure-rate]
   - MIL-HDBK-217F-N2
   - PV-micro
   - inverter

@@ -4,7 +4,7 @@ autor: "A. Murat Tekalp"
 ano: 2015
 tema: ml-preditivo
 arquivo: tekalp_digital-video-processing_2015.pdf
-tags: [literatura, ml-preditivo, mestrado-utfpr]
+tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-17
 ---
 

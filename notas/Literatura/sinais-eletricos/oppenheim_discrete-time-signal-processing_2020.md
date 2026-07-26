@@ -4,7 +4,7 @@ autor: "Alan V. Oppenheim"
 ano: 2020
 tema: sinais-eletricos
 arquivo: oppenheim_discrete-time-signal-processing_2020.pdf
-tags: [literatura, sinais-eletricos, mestrado-utfpr]
+tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-17
 ---
 
