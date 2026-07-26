@@ -11,14 +11,10 @@
             "id": "0f198604c082c272",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "sessoes_arquivadas/2026-06-11_15-33-14_avaliacao_agente_100.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "2026-06-11_15-33-14_avaliacao_agente_100"
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
             }
           }
         ]
@@ -53,7 +49,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "tag:weibull-rul",
+                "query": "",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -229,6 +225,8 @@
   },
   "active": "0f198604c082c272",
   "lastOpenFiles": [
+    "sessoes_arquivadas/2026-05-29_17-41-21_avaliacao_agente_100.md",
+    "sessoes_arquivadas/2026-06-11_15-33-14_avaliacao_agente_100.md",
     "sessoes_arquivadas/2026-05-27_20-50-18_avaliacao_agente_100.md",
     "memorias/resultados-fase5-ml.md",
     "Literatura/ml-preditivo/open-eng_gineering-education-virtual-learning-environment_2020.md",
@@ -253,8 +251,6 @@
     "Cerebro/Resultados/Correção do escore — antes e depois.md",
     "conflict-files-obsidian-git.md",
     "Cerebro/Como usar o grafo.md",
-    "Cerebro/Conceitos/Modelagem de normalidade.md",
-    "sessoes/2026-07-24_12-34_sessao_web.md",
     "Cerebro/Resultados",
     "Literatura/sinais-eletricos",
     "codigo_apoio/re_indexador_memoria.py",
