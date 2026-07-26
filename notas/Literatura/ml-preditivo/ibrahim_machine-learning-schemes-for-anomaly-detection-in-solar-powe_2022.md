@@ -1,10 +1,10 @@
 ---
-titulo: "Machine Learning Schemes for Anomaly Detection in Solar Power Plants"
-autor: "Ibrahim, Mariam; Alsheikh, Ahmad; Awaysheh, Feras M.; Alshehri, Mohammad Dahman"
+titulo: Machine Learning Schemes for Anomaly Detection in Solar Power Plants
+autor: Ibrahim, Mariam; Alsheikh, Ahmad; Awaysheh, Feras M.; Alshehri, Mohammad Dahman
 ano: 2022
 tema: ml-preditivo
+tags: [literatura, ml-preditivo, inversor-pv, deteccao-anomalia, machine-learning, manutencao]
 arquivo: ibrahim_machine-learning-schemes-for-anomaly-detection-in-solar-powe_2022.pdf
-tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

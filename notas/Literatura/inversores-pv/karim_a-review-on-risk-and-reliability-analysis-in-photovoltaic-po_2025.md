@@ -1,10 +1,10 @@
 ---
-titulo: "A Review on Risk and Reliability Analysis in Photovoltaic Power Generation"
-autor: "Karim, A.Z.A.; Osman, M.S.; Rahmat, M.K."
+titulo: A Review on Risk and Reliability Analysis in Photovoltaic Power Generation
+autor: Karim, A.Z.A.; Osman, M.S.; Rahmat, M.K.
 ano: 2025
 tema: inversores-pv
+tags: [literatura, inversores-pv, inversor-pv, confiabilidade]
 arquivo: karim_a-review-on-risk-and-reliability-analysis-in-photovoltaic-po_2025.pdf
-tags: [literatura, inversores-pv]
 data_insercao: 2026-05-23
 ---
 

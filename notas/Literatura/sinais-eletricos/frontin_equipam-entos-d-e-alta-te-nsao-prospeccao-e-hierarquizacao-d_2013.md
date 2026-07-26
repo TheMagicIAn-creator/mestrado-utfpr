@@ -1,10 +1,10 @@
 ---
-titulo: "Equipam Entos d E alta tE nsão prospecção e Hierarquização de inovações t ecnológicas"
-autor: "Sergio O. Frontin"
+titulo: Equipam Entos d E alta tE nsão prospecção e Hierarquização de inovações t ecnológicas
+autor: Sergio O. Frontin
 ano: 2013
 tema: sinais-eletricos
+tags: [literatura, sinais-eletricos, confiabilidade]
 arquivo: frontin_equipam-entos-d-e-alta-te-nsao-prospeccao-e-hierarquizacao-d_2013.pdf
-tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-22
 ---
 

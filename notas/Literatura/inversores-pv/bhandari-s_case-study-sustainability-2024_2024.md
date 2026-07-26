@@ -3,12 +3,12 @@ titulo: Case Study Sustainability 2024
 autor: Bhandari S
 ano: 2024
 tema: Inversores PV
+tags: [literatura, solar, pv-systems, fmea, rpn, risk-priority-number, inversor-pv, confiabilidade]
 subtema: Inversores Pv
 relevancia: Alta
-lido: true
-citado: false
+lido: True
+citado: False
 link_pdf: /literatura/inversores-pv/bhandari-s_case-study-sustainability-2024_2024.pdf
-tags: [solar, pv-systems, fmea, rpn, risk-priority-number]
 ---
 
 # Case Study Sustainability 2024

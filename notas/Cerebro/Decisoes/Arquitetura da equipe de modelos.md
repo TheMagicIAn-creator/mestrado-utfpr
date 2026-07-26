@@ -1,10 +1,10 @@
 ---
-al_iado: true
-titulo: "Arquitetura da equipe de modelos"
+titulo: Arquitetura da equipe de modelos
 tipo: decisao
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
+al_iado: true
 tags: [cerebro, decisao, arquitetura, gemini]
 ---
 

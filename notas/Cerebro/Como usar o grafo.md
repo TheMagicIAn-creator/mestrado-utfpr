@@ -1,11 +1,11 @@
 ---
-al_iado: true
-titulo: "Como usar o grafo"
+titulo: Como usar o grafo
 tipo: contexto
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [cerebro, vault]
+al_iado: true
+tags: [cerebro, vault, weibull-rul, inversor-pv, igbt, fusivel-ac, fmeca, deteccao-anomalia]
 ---
 
 # Como usar o grafo

@@ -3,12 +3,12 @@ titulo: According National Renewable Energy Laboratory
 autor: Reliability
 ano: 2011
 tema: Inversores PV
+tags: [literatura, generalized, matrix, inversion, markov-process, markov, models, photovoltaic-systems, reliability, sensitivity-analysis, confiabilidade, inversor-pv]
 subtema: Inversores Pv
 relevancia: Alta
-lido: true
-citado: false
+lido: True
+citado: False
 link_pdf: /literatura/inversores-pv/reliability_according-national-renewable-energy-laboratory_2011.pdf
-tags: [generalized, matrix, inversion, Markov-process, markov, models, photovoltaic-systems, reliability, sensitivity-analysis]
 ---
 
 # According National Renewable Energy Laboratory

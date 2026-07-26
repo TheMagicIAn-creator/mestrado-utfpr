@@ -3,14 +3,14 @@ titulo: Processes These Disturbances Impede Ability
 autor: Autor Desconhecido
 ano: 2025
 tema: ML Preditivo
+revisar: true
+motivo_revisao: autor-invalido
+tags: [literatura, anomaly, detection, hybrid, model, ae-lstm, facebook, prophet, machine-learning, deteccao-anomalia, autoencoder, inversor-pv, manutencao, autor-invalido]
 subtema: Ml Preditivo
 relevancia: Media
-lido: false
-citado: false
+lido: False
+citado: False
 link_pdf: /literatura/ml-preditivo/autor-desconhecido_processes-these-disturbances-impede-ability_2025.pdf
-tags: Anomaly Detection, Hybrid Model, AE-LSTM, Facebook Prophet
-revisar: true
-motivo_revisao: "autor-invalido"
 ---
 
 # Processes These Disturbances Impede Ability

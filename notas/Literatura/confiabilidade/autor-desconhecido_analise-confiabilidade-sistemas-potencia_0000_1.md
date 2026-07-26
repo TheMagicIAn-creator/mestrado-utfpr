@@ -3,14 +3,14 @@ titulo: Analise Confiabilidade Sistemas Potencia
 autor: Autor Desconhecido
 ano: 0
 tema: Confiabilidade
+revisar: true
+motivo_revisao: autor-invalido
+tags: [literatura, confiabilidade, estado, falha, falhas, componentes, autor-invalido]
 subtema: Confiabilidade
 relevancia: Alta
-lido: true
-citado: false
+lido: True
+citado: False
 link_pdf: /literatura/confiabilidade/autor-desconhecido_analise-confiabilidade-sistemas-potencia_0000_1.pdf
-tags: [confiabilidade, estado, falha, falhas, componentes]
-revisar: true
-motivo_revisao: "autor-invalido,ano-invalido"
 ---
 
 # Analise Confiabilidade Sistemas Potencia

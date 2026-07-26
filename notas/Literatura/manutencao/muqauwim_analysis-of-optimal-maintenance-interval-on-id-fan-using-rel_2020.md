@@ -1,10 +1,10 @@
 ---
-titulo: "ANALYSIS OF OPTIMAL MAINTENANCE INTERVAL ON ID FAN USING RELIABILITY CENTERED MAINTENANCE"
-autor: "Muhammad Fakhrul Muqauwim, Hendrik Elvian Gayuh Prasetya, Radina Anggun Nurisma"
+titulo: ANALYSIS OF OPTIMAL MAINTENANCE INTERVAL ON ID FAN USING RELIABILITY CENTERED MAINTENANCE
+autor: Muhammad Fakhrul Muqauwim, Hendrik Elvian Gayuh Prasetya, Radina Anggun Nurisma
 ano: 2020
 tema: manutencao
+tags: [literatura, manutencao, rcm, confiabilidade]
 arquivo: muqauwim_analysis-of-optimal-maintenance-interval-on-id-fan-using-rel_2020.pdf
-tags: [literatura, manutencao]
 data_insercao: 2026-05-23
 ---
 

@@ -1,10 +1,10 @@
 ---
-titulo: "APLICAÇÃO DA METODOLOGIA RELIABILITY CENTRED MAINTENANCE A SISTEMAS FOTOVOLTAICOS"
-autor: "Rodolfo Fernandes Ramalho de Oliveira Torres"
+titulo: APLICAÇÃO DA METODOLOGIA RELIABILITY CENTRED MAINTENANCE A SISTEMAS FOTOVOLTAICOS
+autor: Rodolfo Fernandes Ramalho de Oliveira Torres
 ano: 2024
 tema: inversores-pv
+tags: [literatura, inversores-pv, rcm, manutencao, inversor-pv, confiabilidade]
 arquivo: torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf
-tags: [literatura, inversores-pv]
 data_insercao: 2026-05-23
 ---
 

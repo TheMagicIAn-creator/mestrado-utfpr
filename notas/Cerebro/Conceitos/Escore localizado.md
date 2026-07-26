@@ -1,11 +1,11 @@
 ---
-al_iado: true
-titulo: "Escore localizado (top-k dos resíduos padronizados)"
+titulo: Escore localizado (top-k dos resíduos padronizados)
 tipo: conceito
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [cerebro, conceito, escore, autoencoder]
+al_iado: true
+tags: [cerebro, conceito, escore, autoencoder, fmeca, escore-localizado, deteccao-anomalia, sinais-eletricos, machine-learning]
 ---
 
 # Escore localizado

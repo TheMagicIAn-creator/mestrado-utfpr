@@ -1,10 +1,10 @@
 ---
-titulo: "Cálculo, volume I"
-autor: "James Stewart"
+titulo: Cálculo, volume I
+autor: James Stewart
 ano: 2013
 tema: ml-preditivo
+tags: [literatura, ml-preditivo, manutencao]
 arquivo: stewart_calculo-volume-i_2013.pdf
-tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

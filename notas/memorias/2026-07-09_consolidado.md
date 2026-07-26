@@ -1,10 +1,11 @@
 ---
-data: 2026-07-09
+titulo: 2026 07 09 consolidado
 tipo: memoria-consolidada
+tags: [memoria, consolidado, weibull-rul, inversor-pv, autoencoder, manutencao, paderborn, deteccao-anomalia]
+data: 2026-07-09
 sessoes_incluidas: 6
 interacoes_totais: 21
 periodo: 2026-06-19 a 2026-07-09
-tags: [memoria, consolidado]
 ---
 
 # Memória Consolidada — 09/07/2026

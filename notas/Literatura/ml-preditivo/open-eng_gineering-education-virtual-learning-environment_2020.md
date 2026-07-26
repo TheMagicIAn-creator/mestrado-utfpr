@@ -3,12 +3,12 @@ titulo: Gineering Education Virtual Learning Environment
 autor: Open Eng
 ano: 2020
 tema: ML Preditivo
+tags: [literatura, digital-twin, digital-shadow, industry-40, engineering, education, manutencao]
 subtema: Ml Preditivo
 relevancia: Media
-lido: false
-citado: false
+lido: False
+citado: False
 link_pdf: /literatura/ml-preditivo/open-eng_gineering-education-virtual-learning-environment_2020.pdf
-tags: [digital-twin, digital-shadow, industry-40, engineering, Education]
 ---
 
 # Gineering Education Virtual Learning Environment

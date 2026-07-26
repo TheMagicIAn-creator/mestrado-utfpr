@@ -1,10 +1,11 @@
 ---
-data: 2026-05-24
+titulo: 2026 05 24 consolidado
 tipo: memoria-consolidada
+tags: [memoria, consolidado, inversor-pv, autoencoder, deteccao-anomalia, fmea, paderborn, machine-learning]
+data: 2026-05-24
 sessoes_incluidas: 2
 interacoes_totais: 16
 periodo: 2026-05-23 a 2026-05-23
-tags: [memoria, consolidado]
 ---
 
 # Memória Consolidada — 24/05/2026

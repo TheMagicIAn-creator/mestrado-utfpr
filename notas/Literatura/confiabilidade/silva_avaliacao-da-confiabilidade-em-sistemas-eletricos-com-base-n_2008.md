@@ -1,10 +1,10 @@
 ---
-titulo: "AVALIAÇÃO DA CONFIABILIDADE EM SISTEMAS ELÉTRICOS COM BASE NOS PARÂMETROS DE QUALIDADE DA ENERGIA"
-autor: "João Luis Reis e Silva"
+titulo: AVALIAÇÃO DA CONFIABILIDADE EM SISTEMAS ELÉTRICOS COM BASE NOS PARÂMETROS DE QUALIDADE DA ENERGIA
+autor: João Luis Reis e Silva
 ano: 2008
 tema: confiabilidade
-arquivo: silva_avaliacao-da-confiabilidade-em-sistemas-eletricos-com-base-n_2008.pdf
 tags: [literatura, confiabilidade]
+arquivo: silva_avaliacao-da-confiabilidade-em-sistemas-eletricos-com-base-n_2008.pdf
 data_insercao: 2026-05-23
 ---
 

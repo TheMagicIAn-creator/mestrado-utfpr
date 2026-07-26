@@ -1,10 +1,11 @@
 ---
-data: 2026-07-16
+titulo: 2026 07 16 consolidado
 tipo: memoria-consolidada
+tags: [memoria, consolidado, deteccao-anomalia, fmea, igbt, fusivel-ac, contator-ac, weibull-rul]
+data: 2026-07-16
 sessoes_incluidas: 2
 interacoes_totais: 2
 periodo: 2026-07-11 a 2026-07-16
-tags: [memoria, consolidado]
 ---
 
 # Memória Consolidada — 16/07/2026

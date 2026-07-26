@@ -1,11 +1,11 @@
 ---
-al_iado: true
-titulo: "FMECA e detectabilidade empírica"
+titulo: FMECA e detectabilidade empírica
 tipo: conceito
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [cerebro, conceito, fmeca, resultados]
+al_iado: true
+tags: [cerebro, conceito, fmeca, resultados, weibull-rul, sinais-eletricos, igbt, fusivel-ac, contator-ac]
 ---
 
 # FMECA e detectabilidade empírica

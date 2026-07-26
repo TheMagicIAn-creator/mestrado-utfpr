@@ -3,12 +3,12 @@ titulo: Case Study Sustainability 2024
 autor: Bhandari S
 ano: 2024
 tema: ML Preditivo
+tags: [literatura, failure, mode, effects, analysis, solar, photovoltaic, panels, risk-priority-number, rpn, inversor-pv, fmea, confiabilidade, manutencao, fmeca]
 subtema: Ml Preditivo
 relevancia: Media
-lido: false
-citado: false
+lido: False
+citado: False
 link_pdf: /literatura/ml-preditivo/bhandari-s_case-study-sustainability-2024_2024.pdf
-tags: [failure, mode, effects, analysis, solar, photovoltaic, panels, risk-priority-number, rpn]
 ---
 
 # Case Study Sustainability 2024

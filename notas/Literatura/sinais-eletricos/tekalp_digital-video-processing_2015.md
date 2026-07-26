@@ -1,10 +1,10 @@
 ---
-titulo: "Digital Video Processing"
-autor: "A. Murat Tekalp"
+titulo: Digital Video Processing
+autor: A. Murat Tekalp
 ano: 2015
 tema: ml-preditivo
+tags: [literatura, ml-preditivo, manutencao]
 arquivo: tekalp_digital-video-processing_2015.pdf
-tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-17
 ---
 

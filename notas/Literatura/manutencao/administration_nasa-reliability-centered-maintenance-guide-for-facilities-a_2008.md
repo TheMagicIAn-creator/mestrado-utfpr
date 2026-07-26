@@ -1,10 +1,10 @@
 ---
-titulo: "NASA RELIABILITY-CENTERED MAINTENANCE GUIDE FOR FACILITIES AND COLLATERAL EQUIPMENT"
-autor: "National Aeronautics and Space Administration"
+titulo: NASA RELIABILITY-CENTERED MAINTENANCE GUIDE FOR FACILITIES AND COLLATERAL EQUIPMENT
+autor: National Aeronautics and Space Administration
 ano: 2008
 tema: manutencao
+tags: [literatura, manutencao, rcm, confiabilidade]
 arquivo: administration_nasa-reliability-centered-maintenance-guide-for-facilities-a_2008.pdf
-tags: [literatura, manutencao]
 data_insercao: 2026-05-23
 ---
 

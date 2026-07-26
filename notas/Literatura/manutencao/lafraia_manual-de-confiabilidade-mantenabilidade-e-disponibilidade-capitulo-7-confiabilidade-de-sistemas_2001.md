@@ -1,10 +1,10 @@
 ---
 titulo: "Manual de Confiabilidade, Mantenabilidade e Disponibilidade — Capítulo 7: Confiabilidade de Sistemas"
-autor: "João Ricardo Barusso Lafraia"
+autor: João Ricardo Barusso Lafraia
 ano: 2001
 tema: manutencao
+tags: [literatura, manutencao, confiabilidade, fmea]
 arquivo: lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade-capitulo-7-confiabilidade-de-sistemas_2001.pdf
-tags: [literatura, manutencao]
 data_insercao: 2026-05-22
 ---
 

@@ -1,10 +1,10 @@
 ---
-titulo: "Equipam Entos d E alta tE nsão"
-autor: "Sergio O. Frontin"
+titulo: Equipam Entos d E alta tE nsão
+autor: Sergio O. Frontin
 ano: 2013
 tema: sinais-eletricos
+tags: [literatura, sinais-eletricos, confiabilidade]
 arquivo: frontin_equipam-entos-d-e-alta-te-nsao_2013.pdf
-tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-17
 ---
 

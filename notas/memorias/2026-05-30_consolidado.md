@@ -1,10 +1,11 @@
 ---
-data: 2026-05-30
+titulo: 2026 05 30 consolidado
 tipo: memoria-consolidada
+tags: [memoria, consolidado, autoencoder, weibull-rul, inversor-pv, manutencao, paderborn, machine-learning]
+data: 2026-05-30
 sessoes_incluidas: 8
 interacoes_totais: 33
 periodo: 2026-05-29 a 2026-05-30
-tags: [memoria, consolidado]
 ---
 
 > [!warning] MÉTRICAS SUBSTITUÍDAS

@@ -1,13 +1,13 @@
 ---
-titulo: "ENGENHARIA DE SISTEMAS DE POTÊNCIA"
-autor: "autor-desconhecido"
+titulo: ENGENHARIA DE SISTEMAS DE POTÊNCIA
+autor: autor-desconhecido
 ano: 2019
 tema: sinais-eletricos
-arquivo: autor-desconhecido_engenharia-de-sistemas-de-potencia_2019.pdf
-tags: [literatura, sinais-eletricos]
-data_insercao: 2026-05-17
 revisar: true
-motivo_revisao: "autor-invalido"
+motivo_revisao: autor-invalido
+tags: [literatura, sinais-eletricos, autor-invalido]
+arquivo: autor-desconhecido_engenharia-de-sistemas-de-potencia_2019.pdf
+data_insercao: 2026-05-17
 ---
 
 # ENGENHARIA DE SISTEMAS DE POTÊNCIA
