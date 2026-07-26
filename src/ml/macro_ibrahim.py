@@ -122,7 +122,9 @@ def executar(n_janelas: int | None = None) -> dict:
     from src.core.seguranca import carregar_pickle_com_sidecar
     from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas_holdout
     from src.ml.injecao_falhas import ARQUIVO_CSV, N_JANELAS_SMD
-    from src.ml.macro_comum import avaliar_deteccao, salvar_saidas
+    from src.ml.macro_comum import (
+        avaliar_deteccao, dividir_calibracao_avaliacao, salvar_saidas,
+    )
 
     _log("=" * 60)
     _log("  MACRO-CÓDIGO 2 — MÉTODO DO IBRAHIM (2022)")
@@ -144,13 +146,21 @@ def executar(n_janelas: int | None = None) -> dict:
     del df
     _log(f"  {len(janelas)} janelas não sobrepostas do bloco de teste")
 
-    _log("\n  Treinando AE-LSTM temporal no fluxo NORMAL...")
-    X_normal = features_das_janelas(janelas, colunas, scaler)
-    model = treinar_detector(X_normal)
+    # MESMA divisão do macro proposto: o AE-LSTM é treinado e calibrado no 1º
+    # bloco; FP/AUC/injeção saem do 2º, DISJUNTO (com purga). Sem isso o modelo
+    # seria treinado nas próprias janelas de avaliação (vazamento) e a
+    # comparação com o método proposto seria inválida.
+    j_cal, j_aval = dividir_calibracao_avaliacao(janelas)
+    _log(f"  calibração={len(j_cal)} | avaliação={len(j_aval)} (disjuntos)")
+
+    _log("\n  Treinando AE-LSTM temporal no fluxo NORMAL (bloco de calibração)...")
+    X_cal = features_das_janelas(j_cal, colunas, scaler)
+    model = treinar_detector(X_cal)
 
     _log("\n  Avaliando detecção por severidade (mesma injeção FMECA)...")
-    scorer = construir_scorer(model, X_normal, colunas, scaler)
-    resultado = avaliar_deteccao(NOME, "#1baf7a", scorer, janelas)
+    # contexto temporal do scorer = fluxo normal do bloco de calibração
+    scorer = construir_scorer(model, X_cal, colunas, scaler)
+    resultado = avaliar_deteccao(NOME, "#1baf7a", scorer, j_cal, j_aval)
 
     _log(f"\n  Limiar auto-calibrado = {resultado['limiar']:.4f} "
          f"(percentil {resultado['percentil']:.1f}) | FP saudável "
