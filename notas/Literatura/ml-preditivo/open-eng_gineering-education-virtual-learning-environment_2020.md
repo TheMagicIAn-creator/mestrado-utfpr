@@ -8,11 +8,7 @@ relevancia: Media
 lido: false
 citado: false
 link_pdf: /literatura/ml-preditivo/open-eng_gineering-education-virtual-learning-environment_2020.pdf
-tags: [digital-twin]
-  - digital-shadow
-  - industry-40
-  - engineering
-  - Education
+tags: [digital-twin, digital-shadow, industry-40, engineering, Education]
 ---
 
 # Gineering Education Virtual Learning Environment

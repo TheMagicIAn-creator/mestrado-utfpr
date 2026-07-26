@@ -9,6 +9,8 @@ lido: false
 citado: false
 link_pdf: /literatura/ml-preditivo/autor-desconhecido_processes-these-disturbances-impede-ability_2025.pdf
 tags: Anomaly Detection, Hybrid Model, AE-LSTM, Facebook Prophet
+revisar: true
+motivo_revisao: "autor-invalido"
 ---
 
 # Processes These Disturbances Impede Ability

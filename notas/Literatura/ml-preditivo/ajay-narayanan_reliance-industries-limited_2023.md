@@ -8,11 +8,7 @@ relevancia: Media
 lido: false
 citado: false
 link_pdf: /literatura/ml-preditivo/ajay-narayanan_reliance-industries-limited_2023.pdf
-tags: [PV-solar-cell-manufacturing]
-  - fault
-  - detection
-  - diagnosis
-  - Machine-learning
+tags: [PV-solar-cell-manufacturing, fault, detection, diagnosis, Machine-learning]
 ---
 
 # Reliance Industries Limited

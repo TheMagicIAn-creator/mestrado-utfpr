@@ -8,12 +8,7 @@ relevancia: Media
 lido: false
 citado: false
 link_pdf: /literatura/ml-preditivo/loredana-cristaldi_citation-loredana-cristaldi-mohamed-khalil_2017.pdf
-tags: [reliability-assessment]
-  - root-cause-analysis-of-failures
-  - Markov-process
-  - photovoltaic-systems
-  - balance-of-system
-  - fmeca
+tags: [reliability-assessment, root-cause-analysis-of-failures, Markov-process, photovoltaic-systems, balance-of-system, fmeca]
 ---
 
 # Citation Loredana Cristaldi Mohamed Khalil

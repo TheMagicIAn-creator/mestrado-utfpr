@@ -8,12 +8,7 @@ relevancia: Media
 lido: false
 citado: false
 link_pdf: /literatura/ml-preditivo/intelligent-maintenance_cutting-edge-technologies-such-internet_2025.pdf
-tags: [maintenance]
-  - artificial-inteligence
-  - performance
-  - photovoltaic
-  - predictive-maintenance
-  - reliability
+tags: [maintenance, artificial-inteligence, performance, photovoltaic, predictive-maintenance, reliability]
 ---
 
 # Cutting Edge Technologies Such Internet

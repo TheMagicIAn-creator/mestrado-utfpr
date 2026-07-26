@@ -8,9 +8,9 @@ relevancia: Media
 lido: true
 citado: false
 link_pdf: /literatura/confiabilidade/universidade-federal_prof-benjamim-rodrigues-menezes-orientador_2008.pdf
-tags: [energia]
-  - minas
-  - qualidade
+tags: [energia, minas, qualidade]
+revisar: true
+motivo_revisao: "titulo-suspeito"
 ---
 
 # Prof Benjamim Rodrigues Menezes Orientador

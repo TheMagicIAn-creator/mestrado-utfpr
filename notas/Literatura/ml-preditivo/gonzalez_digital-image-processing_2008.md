@@ -1,6 +1,4 @@
 ---
-revisar: true
-motivo_revisao: "abstract-editorial"
 titulo: "Digital Image Processing"
 autor: "Rafael C. Gonzalez, Richard E. Woods"
 ano: 2008
@@ -8,6 +6,8 @@ tema: ml-preditivo
 arquivo: gonzalez_digital-image-processing_2008.pdf
 tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
+revisar: true
+motivo_revisao: "abstract-editorial"
 ---
 
 # Digital Image Processing

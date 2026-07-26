@@ -8,12 +8,7 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/inversores-pv/bhandari-s_case-study-sustainability-2024_2024.pdf
-tags: [solar]
-  - pv-systems
-  - fmea
-  - rpn
-  - risk-priority-number
-  - RPN
+tags: [solar, pv-systems, fmea, rpn, risk-priority-number]
 ---
 
 # Case Study Sustainability 2024

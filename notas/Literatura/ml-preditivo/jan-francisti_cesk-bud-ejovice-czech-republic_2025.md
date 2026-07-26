@@ -8,11 +8,7 @@ relevancia: Media
 lido: false
 citado: false
 link_pdf: /literatura/ml-preditivo/jan-francisti_cesk-bud-ejovice-czech-republic_2025.pdf
-tags: [Machine-learning]
-  - Anomaly
-  - detection
-  - predictive-modeling
-  - solar-pv-inverters
+tags: [Machine-learning, Anomaly, detection, predictive-modeling, solar-pv-inverters]
 ---
 
 # Cesk Bud Ejovice Czech Republic
