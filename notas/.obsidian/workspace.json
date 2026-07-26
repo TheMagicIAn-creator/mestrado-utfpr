@@ -70,7 +70,8 @@
               "title": "Bookmarks"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
@@ -224,15 +225,19 @@
   },
   "active": "a9e90527b26f34d3",
   "lastOpenFiles": [
-    "Literatura/confiabilidade/empresa_analise-da-confiabilidade-em-sistemas-de-potencia_2003.md",
-    "Literatura/confiabilidade/autor-desconhecido_analise-confiabilidade-sistemas-potencia_0000_1.md",
+    "Literatura/inversores-pv/data-set_marius-stender-oliver-wallscheid-joachim_0000.md",
+    "Literatura/sinais-eletricos/frontin_equipam-entos-d-e-alta-te-nsao-prospeccao-e-hierarquizacao-d_2013.md",
     "Literatura/confiabilidade/autor-desconhecido_analise-confiabilidade-sistemas-potencia_0000.md",
+    "Literatura/confiabilidade/autor-desconhecido_analise-confiabilidade-sistemas-potencia_0000_1.md",
     "Literatura/inversores-pv/autor-desconhecido_universidade-federal-do-par-a_2024.md",
+    "Literatura/inversores-pv/autor-desconhecido_steve-voss-tassos-golnas-steve_2009.md",
+    "Literatura/inversores-pv/academic-editor_energy-research-laboratory-reneral-british_2025.md",
+    "Cerebro/Literatura a revisar.md",
+    "Cerebro/Como o Al IAdo lê este vault.md",
+    "Literatura/confiabilidade/empresa_analise-da-confiabilidade-em-sistemas-de-potencia_2003.md",
     "Cerebro/00 - Painel do cerebro.md",
     "Templates/Nota do Al IAdo.md",
     "Literatura/confiabilidade/joshi_reliability-estimation-for-components-of-photovoltaic-system_1996.md",
-    "Literatura/inversores-pv/autor-desconhecido_steve-voss-tassos-golnas-steve_2009.md",
-    "Literatura/inversores-pv/academic-editor_energy-research-laboratory-reneral-british_2025.md",
     "Literatura/confiabilidade/xavier_analise-de-confiabilidade-em-sistemas-de-potencia_2005.md",
     "Literatura/confiabilidade/universidade-federal_prof-benjamim-rodrigues-menezes-orientador_2008.md",
     "Literatura/confiabilidade/silva_avaliacao-da-confiabilidade-em-sistemas-eletricos-com-base-n_2008.md",
@@ -247,10 +252,6 @@
     "Cerebro/Resultados",
     "Cerebro/Decisoes/Macro-códigos de comparação.md",
     "Cerebro/Decisoes/Arquitetura da equipe de modelos.md",
-    "Cerebro/Conceitos/FMECA e detectabilidade empírica.md",
-    "Cerebro/Conceitos/Escore localizado.md",
-    "Cerebro/Decisoes/Arquitetura Gemini e Groq.md",
-    "Cerebro/Conceitos/Separação dos domínios de dados.md",
     "Literatura/sinais-eletricos",
     "codigo_apoio/re_indexador_memoria.py",
     "codigo_apoio",
