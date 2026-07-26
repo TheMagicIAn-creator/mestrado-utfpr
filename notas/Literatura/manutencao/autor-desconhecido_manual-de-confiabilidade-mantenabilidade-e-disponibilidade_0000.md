@@ -6,6 +6,8 @@ tema: manutencao
 arquivo: autor-desconhecido_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_0000.pdf
 tags: [literatura, manutencao]
 data_insercao: 2026-05-23
+revisar: true
+motivo_revisao: "autor-invalido,ano-invalido"
 ---
 
 # Manual de Confiabilidade, Mantenabilidade e Disponibilidade

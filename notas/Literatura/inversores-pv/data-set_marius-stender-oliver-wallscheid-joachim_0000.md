@@ -8,12 +8,7 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/inversores-pv/data-set_marius-stender-oliver-wallscheid-joachim_0000.pdf
-tags: [data]
-  - reliability-assessment
-  - solar-pv-inverters
-  - set
-  - inverter
-  - electrical-drive
+tags: [data, reliability-assessment, solar-pv-inverters, set, inverter, electrical-drive]
 ---
 
 # Marius Stender Oliver Wallscheid Joachim

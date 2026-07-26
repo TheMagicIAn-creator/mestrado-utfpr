@@ -8,10 +8,7 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/inversores-pv/reliability-probability_generally-used-systems-therefore-can_1996.pdf
-tags: [reliability]
-  - probability-of-success
-  - derating
-  - redundancy
+tags: [reliability, probability-of-success, derating, redundancy]
 ---
 
 # Generally Used Systems Therefore Can

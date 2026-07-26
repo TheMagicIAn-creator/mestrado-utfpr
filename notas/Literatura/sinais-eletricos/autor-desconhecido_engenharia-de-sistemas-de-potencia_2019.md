@@ -6,6 +6,8 @@ tema: sinais-eletricos
 arquivo: autor-desconhecido_engenharia-de-sistemas-de-potencia_2019.pdf
 tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-17
+revisar: true
+motivo_revisao: "autor-invalido"
 ---
 
 # ENGENHARIA DE SISTEMAS DE POTÊNCIA

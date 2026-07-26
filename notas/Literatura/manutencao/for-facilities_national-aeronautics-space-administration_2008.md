@@ -8,12 +8,7 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/manutencao/for-facilities_national-aeronautics-space-administration_2008.pdf
-tags: [nasa]
-  - fmea
-  - fmeca
-  - reinforcement
-  - rcm
-  - maintainability
+tags: [nasa, fmea, fmeca, reinforcement, rcm, maintainability]
 ---
 
 # National Aeronautics Space Administration

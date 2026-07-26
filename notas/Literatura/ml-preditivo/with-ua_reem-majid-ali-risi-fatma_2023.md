@@ -8,9 +8,7 @@ relevancia: Alta
 lido: false
 citado: false
 link_pdf: /literatura/ml-preditivo/with-ua_reem-majid-ali-risi-fatma_2023.pdf
-tags: [solar-energy]
-  - thermal
-  - defect
+tags: [solar-energy, thermal, defect]
 ---
 
 # Reem Majid Ali Risi Fatma

@@ -8,13 +8,7 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/manutencao/carpinetti-l_fmea-ingles-failure-mode-effect_2016.pdf
-tags: [fmea]
-  - fmeca
-  - blocos
-  - diagrama
-  - efeitos
-  - falhas
-  - gravidade
+tags: [fmea, fmeca, blocos, diagrama, efeitos, falhas, gravidade]
 ---
 
 # Fmea Ingles Failure Mode Effect

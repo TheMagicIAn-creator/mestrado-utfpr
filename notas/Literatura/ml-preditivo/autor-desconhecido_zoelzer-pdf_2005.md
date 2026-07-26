@@ -6,6 +6,8 @@ tema: ml-preditivo
 arquivo: autor-desconhecido_zoelzer-pdf_2005.pdf
 tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-22
+revisar: true
+motivo_revisao: "autor-invalido,titulo-suspeito"
 ---
 
 # zoelzer.pdf
