@@ -5,7 +5,7 @@ tipo: conceito
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [al-iado, cerebro, conceito, fmeca, resultados]
+tags: [cerebro, conceito, fmeca, resultados]
 ---
 
 # FMECA e detectabilidade empírica

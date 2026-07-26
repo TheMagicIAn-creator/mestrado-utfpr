@@ -4,7 +4,7 @@ autor: "National Aeronautics and Space Administration"
 ano: 2008
 tema: manutencao
 arquivo: administration_nasa-reliability-centered-maintenance-guide-for-facilities-a_2008.pdf
-tags: [literatura, manutencao, mestrado-utfpr]
+tags: [literatura, manutencao]
 data_insercao: 2026-05-23
 ---
 

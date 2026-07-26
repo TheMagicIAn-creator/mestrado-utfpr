@@ -8,8 +8,7 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/inversores-pv/academic-editor_energy-research-laboratory-reneral-british_2025.pdf
-tags:
-  - laboratory
+tags: [laboratory]
   - research
   - pesquisa
   - solar

@@ -4,7 +4,7 @@ autor: "Loredana Cristaldi, Mohamed Khalil, Payam Soulatiantork"
 ano: 2017
 tema: inversores-pv
 arquivo: cristaldi_a-root-cause-analysis-and-a-risk-evaluation-of-pv-balance-of_2017.pdf
-tags: [literatura, inversores-pv, mestrado-utfpr]
+tags: [literatura, inversores-pv]
 data_insercao: 2026-05-23
 ---
 

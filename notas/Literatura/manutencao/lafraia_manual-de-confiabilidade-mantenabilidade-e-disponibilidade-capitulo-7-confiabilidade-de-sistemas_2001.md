@@ -4,7 +4,7 @@ autor: "João Ricardo Barusso Lafraia"
 ano: 2001
 tema: manutencao
 arquivo: lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade-capitulo-7-confiabilidade-de-sistemas_2001.pdf
-tags: [literatura, manutencao, mestrado-utfpr]
+tags: [literatura, manutencao]
 data_insercao: 2026-05-22
 ---
 

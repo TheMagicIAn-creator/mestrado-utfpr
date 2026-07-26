@@ -8,8 +8,7 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/inversores-pv/reliability_according-national-renewable-energy-laboratory_2011.pdf
-tags:
-  - generalized
+tags: [generalized]
   - matrix
   - inversion
   - Markov-process

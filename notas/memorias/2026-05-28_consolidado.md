@@ -4,7 +4,7 @@ tipo: memoria-consolidada
 sessoes_incluidas: 21
 interacoes_totais: 47
 periodo: 2026-05-26 a 2026-05-28
-tags: [al-iado-pv, memoria, consolidado, mestrado]
+tags: [memoria, consolidado]
 ---
 
 > [!warning] MÉTRICAS SUBSTITUÍDAS

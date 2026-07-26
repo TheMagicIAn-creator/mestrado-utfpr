@@ -8,8 +8,7 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/inversores-pv/design_design-estimation-reliability-off-grid_2017.pdf
-tags:
-  - photovoltaic
+tags: [photovoltaic]
   - power-system
   - solar-energy
   - energy

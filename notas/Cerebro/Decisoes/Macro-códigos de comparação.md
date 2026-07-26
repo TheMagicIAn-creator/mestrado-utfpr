@@ -5,7 +5,7 @@ tipo: decisao
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [al-iado, cerebro, decisao, comparacao, arquitetura]
+tags: [cerebro, decisao, comparacao, arquitetura]
 ---
 
 # Macro-códigos de comparação

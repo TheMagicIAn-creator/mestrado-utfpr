@@ -5,7 +5,7 @@ tipo: conceito
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [al-iado, datasets, paderborn, pv-farms, metodologia]
+tags: [datasets, paderborn, pv-farms, metodologia]
 ---
 
 # Separação dos domínios de dados

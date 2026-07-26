@@ -4,7 +4,7 @@ autor: "autor-desconhecido"
 ano: 0000
 tema: manutencao
 arquivo: autor-desconhecido_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_0000.pdf
-tags: [literatura, manutencao, mestrado-utfpr]
+tags: [literatura, manutencao]
 data_insercao: 2026-05-23
 ---
 

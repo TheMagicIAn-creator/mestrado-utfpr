@@ -8,8 +8,7 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/confiabilidade/autor-desconhecido_analise-confiabilidade-sistemas-potencia_0000.pdf
-tags:
-  - confiabilidade
+tags: [confiabilidade]
   - sistemas-de-potencia
   - potencia
   - sistemas

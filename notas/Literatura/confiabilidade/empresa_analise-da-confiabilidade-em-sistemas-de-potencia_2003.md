@@ -4,7 +4,7 @@ autor: "Empresa"
 ano: 2003
 tema: confiabilidade
 arquivo: empresa_analise-da-confiabilidade-em-sistemas-de-potencia_2003.pdf
-tags: [literatura, confiabilidade, mestrado-utfpr]
+tags: [literatura, confiabilidade]
 data_insercao: 2026-05-23
 ---
 

@@ -8,8 +8,7 @@ relevancia: Media
 lido: false
 citado: false
 link_pdf: /literatura/ml-preditivo/jan-francisti_cesk-bud-ejovice-czech-republic_2025.pdf
-tags:
-  - Machine-learning
+tags: [Machine-learning]
   - Anomaly
   - detection
   - predictive-modeling

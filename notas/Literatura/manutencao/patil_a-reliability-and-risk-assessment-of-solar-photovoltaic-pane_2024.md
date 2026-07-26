@@ -4,7 +4,7 @@ autor: "Patil, R.B.; Khalkar, A.; Al-Dahidi, S.; Pimpalkar, R.S.; Bhandari, S.; 
 ano: 2024
 tema: manutencao
 arquivo: patil_a-reliability-and-risk-assessment-of-solar-photovoltaic-pane_2024.pdf
-tags: [literatura, manutencao, mestrado-utfpr]
+tags: [literatura, manutencao]
 data_insercao: 2026-05-23
 ---
 

@@ -4,7 +4,7 @@ autor: "Abhishek Ahirwar, Sonali R Nandanwar"
 ano: 2025
 tema: ml-preditivo
 arquivo: ahirwar_enhanced-anomaly-detection-in-solar-power-plants-using-hybri_2025.pdf
-tags: [literatura, ml-preditivo, mestrado-utfpr]
+tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

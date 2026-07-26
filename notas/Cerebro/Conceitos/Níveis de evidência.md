@@ -5,7 +5,7 @@ tipo: conceito
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [al-iado, evidencia, metodologia, banca]
+tags: [evidencia, metodologia, banca]
 ---
 
 # Níveis de evidência

@@ -4,7 +4,7 @@ autor: "Sergio O. Frontin"
 ano: 2013
 tema: sinais-eletricos
 arquivo: frontin_equipam-entos-d-e-alta-te-nsao_2013.pdf
-tags: [literatura, sinais-eletricos, mestrado-utfpr]
+tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-17
 ---
 

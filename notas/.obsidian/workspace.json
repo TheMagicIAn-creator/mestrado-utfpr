@@ -16,8 +16,19 @@
               "icon": "lucide-git-fork",
               "title": "Graph view"
             }
+          },
+          {
+            "id": "a9e90527b26f34d3",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -222,8 +233,10 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "b0c1a4d045194a5e",
+  "active": "a9e90527b26f34d3",
   "lastOpenFiles": [
+    "conflict-files-obsidian-git.md",
+    "Cerebro/Como usar o grafo.md",
     "Cerebro/Conceitos/Modelagem de normalidade.md",
     "sessoes/2026-07-24_12-34_sessao_web.md",
     "sessoes/2026-07-23_21-46_sessao_web.md",
@@ -249,8 +262,6 @@
     "sessoes_arquivadas/2026-07-22_17-15_sessao_web.md",
     "memorias/2026-07-22_18-11-53_consolidado.md",
     "memorias/2026-07-22_18-16-58_consolidado.md",
-    "memorias/resultados-fase5-ml.md",
-    "sessoes_arquivadas/2026-07-20_09-19_sessao_web.md",
     "Literatura/sinais-eletricos",
     "codigo_apoio/re_indexador_memoria.py",
     "codigo_apoio",

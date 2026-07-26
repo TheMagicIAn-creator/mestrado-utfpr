@@ -8,8 +8,7 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/inversores-pv/bhandari-s_case-study-sustainability-2024_2024.pdf
-tags:
-  - solar
+tags: [solar]
   - pv-systems
   - fmea
   - rpn

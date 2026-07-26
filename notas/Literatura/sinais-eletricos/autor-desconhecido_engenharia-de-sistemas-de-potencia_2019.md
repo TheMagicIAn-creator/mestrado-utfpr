@@ -4,7 +4,7 @@ autor: "autor-desconhecido"
 ano: 2019
 tema: sinais-eletricos
 arquivo: autor-desconhecido_engenharia-de-sistemas-de-potencia_2019.pdf
-tags: [literatura, sinais-eletricos, mestrado-utfpr]
+tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-17
 ---
 

@@ -4,7 +4,7 @@ autor: "Aprender Elétrica"
 ano: "s.d."
 tema: sinais-eletricos
 arquivo: eletrica_subestacoes-de-energia-definicoes-conceitos-e-aplicacoes_0000.pdf
-tags: [literatura, sinais-eletricos, mestrado-utfpr]
+tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-23
 ---
 

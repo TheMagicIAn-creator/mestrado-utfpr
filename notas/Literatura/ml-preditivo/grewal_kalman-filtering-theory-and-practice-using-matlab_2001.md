@@ -4,7 +4,7 @@ autor: "Grewal, Mohinder S. e Andrews, Angus"
 ano: 2001
 tema: ml-preditivo
 arquivo: grewal_kalman-filtering-theory-and-practice-using-matlab_2001.pdf
-tags: [literatura, ml-preditivo, mestrado-utfpr]
+tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

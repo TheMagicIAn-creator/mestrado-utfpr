@@ -8,8 +8,7 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/manutencao/carpinetti-l_fmea-ingles-failure-mode-effect_2016.pdf
-tags:
-  - fmea
+tags: [fmea]
   - fmeca
   - blocos
   - diagrama

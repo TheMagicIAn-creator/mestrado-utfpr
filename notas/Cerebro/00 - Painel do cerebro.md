@@ -5,7 +5,7 @@ tipo: contexto
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [al-iado, cerebro, moc, mestrado]
+tags: [cerebro, moc]
 ---
 
 # Painel do cérebro Al IAdo PV

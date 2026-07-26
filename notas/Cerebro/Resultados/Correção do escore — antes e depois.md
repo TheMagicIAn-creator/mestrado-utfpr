@@ -5,7 +5,7 @@ tipo: resultado
 status: ativo
 confianca: alta
 nivel_evidencia: E2
-tags: [al-iado, cerebro, resultado, escore, weibull]
+tags: [cerebro, resultado, escore, weibull]
 ---
 
 # Correção do escore — antes e depois

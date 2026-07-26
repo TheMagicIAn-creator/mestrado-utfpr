@@ -4,7 +4,7 @@ autor: "Sairaj V. Dhople, Alejandro D. Domínguez-García"
 ano: 2012
 tema: inversores-pv
 arquivo: dhople_estimation-of-photovoltaic-system-reliability-and-performanc_2012.pdf
-tags: [literatura, inversores-pv, mestrado-utfpr]
+tags: [literatura, inversores-pv]
 data_insercao: 2026-05-23
 ---
 
