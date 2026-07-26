@@ -8,11 +8,7 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/manutencao/criticality-analysis_sakurada-eduardo-yuji-tecnicas-analise_1998.pdf
-tags: [fmea]
-  - analise
-  - fmeca
-  - comparação
-  - formulário
+tags: [fmea, analise, fmeca, comparação, formulário]
 ---
 
 # Sakurada Eduardo Yuji Tecnicas Analise

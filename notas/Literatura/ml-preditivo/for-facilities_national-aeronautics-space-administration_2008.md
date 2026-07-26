@@ -8,10 +8,7 @@ relevancia: Media
 lido: false
 citado: false
 link_pdf: /literatura/ml-preditivo/for-facilities_national-aeronautics-space-administration_2008.pdf
-tags: [maintenance]
-  - reliability
-  - centered
-  - facilities
+tags: [maintenance, reliability, centered, facilities]
 ---
 
 # National Aeronautics Space Administration

@@ -8,10 +8,7 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/manutencao/muhammad-fakhrul_maintenance-method-maintain-reliability-fan_2020.pdf
-tags: [maintenance]
-  - monitoring
-  - reliability
-  - interval
+tags: [maintenance, monitoring, reliability, interval]
 ---
 
 # Maintenance Method Maintain Reliability Fan

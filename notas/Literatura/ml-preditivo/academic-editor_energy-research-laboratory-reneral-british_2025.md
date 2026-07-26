@@ -8,12 +8,7 @@ relevancia: Media
 lido: false
 citado: false
 link_pdf: /literatura/ml-preditivo/academic-editor_energy-research-laboratory-reneral-british_2025.pdf
-tags: [energy]
-  - management
-  - sustainable-energy
-  - reliability
-  - fmea
-  - fmeca
+tags: [energy, management, sustainable-energy, reliability, fmea, fmeca]
 ---
 
 # Energy Research Laboratory Reneral British

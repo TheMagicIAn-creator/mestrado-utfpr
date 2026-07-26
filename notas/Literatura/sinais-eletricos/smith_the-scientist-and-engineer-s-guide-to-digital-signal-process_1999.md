@@ -6,6 +6,8 @@ tema: sinais-eletricos
 arquivo: smith_the-scientist-and-engineer-s-guide-to-digital-signal-process_1999.pdf
 tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-23
+revisar: true
+motivo_revisao: "titulo-suspeito"
 ---
 
 # The Scientist and Engineer's Guide to Digital Signal Processing

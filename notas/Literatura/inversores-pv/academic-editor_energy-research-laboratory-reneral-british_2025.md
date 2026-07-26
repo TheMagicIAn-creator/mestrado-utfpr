@@ -8,15 +8,7 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/inversores-pv/academic-editor_energy-research-laboratory-reneral-british_2025.pdf
-tags: [laboratory]
-  - research
-  - pesquisa
-  - solar
-  - inverter
-  - predictive
-  - pv
-  - risk-analysis
-  - sustainable-energy
+tags: [laboratory, research, pesquisa, solar, inverter, predictive, pv, risk-analysis, sustainable-energy]
 ---
 
 # Energy Research Laboratory Reneral British

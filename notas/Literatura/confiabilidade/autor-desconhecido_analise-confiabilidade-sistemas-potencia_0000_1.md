@@ -8,11 +8,9 @@ relevancia: Alta
 lido: true
 citado: false
 link_pdf: /literatura/confiabilidade/autor-desconhecido_analise-confiabilidade-sistemas-potencia_0000_1.pdf
-tags: [confiabilidade]
-  - estado
-  - falha
-  - falhas
-  - componentes
+tags: [confiabilidade, estado, falha, falhas, componentes]
+revisar: true
+motivo_revisao: "autor-invalido,ano-invalido"
 ---
 
 # Analise Confiabilidade Sistemas Potencia

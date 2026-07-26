@@ -6,6 +6,8 @@ tema: sinais-eletricos
 arquivo: eletrica_subestacoes-de-energia-definicoes-conceitos-e-aplicacoes_0000.pdf
 tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-23
+revisar: true
+motivo_revisao: "ano-invalido"
 ---
 
 # Subestações de Energia: Definições, Conceitos e Aplicações

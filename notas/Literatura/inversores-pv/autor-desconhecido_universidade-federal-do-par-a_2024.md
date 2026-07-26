@@ -6,6 +6,8 @@ tema: inversores-pv
 arquivo: autor-desconhecido_universidade-federal-do-par-a_2024.pdf
 tags: [literatura, inversores-pv]
 data_insercao: 2026-05-20
+revisar: true
+motivo_revisao: "autor-invalido,titulo-suspeito"
 ---
 
 # UNIVERSIDADE FEDERAL DO PAR ´A
