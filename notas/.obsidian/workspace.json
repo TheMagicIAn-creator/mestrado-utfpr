@@ -8,7 +8,7 @@
         "type": "tabs",
         "children": [
           {
-            "id": "b0c1a4d045194a5e",
+            "id": "a9e90527b26f34d3",
             "type": "leaf",
             "state": {
               "type": "graph",
@@ -16,23 +16,8 @@
               "icon": "lucide-git-fork",
               "title": "Graph view"
             }
-          },
-          {
-            "id": "a9e90527b26f34d3",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Literatura/inversores-pv/autor-desconhecido_universidade-federal-do-par-a_2024.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "autor-desconhecido_universidade-federal-do-par-a_2024"
-            }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -239,16 +224,19 @@
   },
   "active": "a9e90527b26f34d3",
   "lastOpenFiles": [
+    "Literatura/confiabilidade/empresa_analise-da-confiabilidade-em-sistemas-de-potencia_2003.md",
+    "Literatura/confiabilidade/autor-desconhecido_analise-confiabilidade-sistemas-potencia_0000_1.md",
+    "Literatura/confiabilidade/autor-desconhecido_analise-confiabilidade-sistemas-potencia_0000.md",
+    "Literatura/inversores-pv/autor-desconhecido_universidade-federal-do-par-a_2024.md",
+    "Cerebro/00 - Painel do cerebro.md",
+    "Templates/Nota do Al IAdo.md",
+    "Literatura/confiabilidade/joshi_reliability-estimation-for-components-of-photovoltaic-system_1996.md",
     "Literatura/inversores-pv/autor-desconhecido_steve-voss-tassos-golnas-steve_2009.md",
     "Literatura/inversores-pv/academic-editor_energy-research-laboratory-reneral-british_2025.md",
     "Literatura/confiabilidade/xavier_analise-de-confiabilidade-em-sistemas-de-potencia_2005.md",
     "Literatura/confiabilidade/universidade-federal_prof-benjamim-rodrigues-menezes-orientador_2008.md",
     "Literatura/confiabilidade/silva_avaliacao-da-confiabilidade-em-sistemas-eletricos-com-base-n_2008.md",
     "Literatura/confiabilidade/lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_2001.md",
-    "Literatura/confiabilidade/joshi_reliability-estimation-for-components-of-photovoltaic-system_1996.md",
-    "Literatura/confiabilidade/empresa_analise-da-confiabilidade-em-sistemas-de-potencia_2003.md",
-    "Literatura/confiabilidade/autor-desconhecido_analise-confiabilidade-sistemas-potencia_0000_1.md",
-    "Literatura/confiabilidade/autor-desconhecido_analise-confiabilidade-sistemas-potencia_0000.md",
     "Literatura/ml-preditivo/loredana-cristaldi_citation-loredana-cristaldi-mohamed-khalil_2017.md",
     "Cerebro/Resultados/Correção do escore — antes e depois.md",
     "conflict-files-obsidian-git.md",
@@ -263,9 +251,6 @@
     "Cerebro/Conceitos/Escore localizado.md",
     "Cerebro/Decisoes/Arquitetura Gemini e Groq.md",
     "Cerebro/Conceitos/Separação dos domínios de dados.md",
-    "Cerebro/Conceitos/Níveis de evidência.md",
-    "Templates/Nota do Al IAdo.md",
-    "Cerebro/00 - Painel do cerebro.md",
     "Literatura/sinais-eletricos",
     "codigo_apoio/re_indexador_memoria.py",
     "codigo_apoio",
