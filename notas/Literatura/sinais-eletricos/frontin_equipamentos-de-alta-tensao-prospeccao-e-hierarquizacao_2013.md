@@ -4,7 +4,7 @@ autor: "Frontin"
 ano: 2013
 tema: sinais-eletricos
 arquivo: frontin_equipamentos-de-alta-tensao-prospeccao-e-hierarquizacao_2013.pdf
-tags: [literatura, sinais-eletricos, mestrado-utfpr]
+tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-23
 ---
 

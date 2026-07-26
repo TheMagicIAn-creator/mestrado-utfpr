@@ -8,8 +8,7 @@ relevancia: Media
 lido: false
 citado: false
 link_pdf: /literatura/ml-preditivo/forest-framework_isolation-forest-algorithm-usually-set_2026.pdf
-tags:
-  - deep
+tags: [deep]
   - Machine-learning
   - learning
   - deep-learning

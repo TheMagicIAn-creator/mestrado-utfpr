@@ -4,7 +4,7 @@ autor: "Grewal"
 ano: 2002
 tema: sinais-eletricos
 arquivo: grewal_power-electronics-chapter-8_2002.pdf
-tags: [literatura, sinais-eletricos, mestrado-utfpr]
+tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-23
 ---
 

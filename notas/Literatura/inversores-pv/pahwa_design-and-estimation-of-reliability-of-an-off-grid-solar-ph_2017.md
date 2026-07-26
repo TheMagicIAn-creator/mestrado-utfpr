@@ -4,7 +4,7 @@ autor: "Pahwa, Mandeep Singh; Rahman, Anisur"
 ano: 2017
 tema: inversores-pv
 arquivo: pahwa_design-and-estimation-of-reliability-of-an-off-grid-solar-ph_2017.pdf
-tags: [literatura, inversores-pv, mestrado-utfpr]
+tags: [literatura, inversores-pv]
 data_insercao: 2026-05-23
 ---
 

@@ -4,7 +4,7 @@ autor: "Liljaniemi, Antti and Paavilainen, Heikki"
 ano: 2020
 tema: ml-preditivo
 arquivo: liljaniemi_using-digital-twin-technology-in-engineering-education-cours_2020.pdf
-tags: [literatura, ml-preditivo, mestrado-utfpr]
+tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-22
 ---
 

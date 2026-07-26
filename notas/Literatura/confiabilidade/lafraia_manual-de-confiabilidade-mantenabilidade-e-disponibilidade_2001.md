@@ -4,7 +4,7 @@ autor: "Joâo Ricardo Barusso Lafraia"
 ano: 2001
 tema: confiabilidade
 arquivo: lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_2001.pdf
-tags: [literatura, confiabilidade, mestrado-utfpr]
+tags: [literatura, confiabilidade]
 data_insercao: 2026-05-23
 ---
 

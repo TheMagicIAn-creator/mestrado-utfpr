@@ -4,7 +4,7 @@ autor: "Ibrahim, Mariam; Alsheikh, Ahmad; Awaysheh, Feras M.; Alshehri, Mohammad
 ano: 2022
 tema: ml-preditivo
 arquivo: ibrahim_machine-learning-schemes-for-anomaly-detection-in-solar-powe_2022.pdf
-tags: [literatura, ml-preditivo, mestrado-utfpr]
+tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

@@ -4,7 +4,7 @@ autor: "Muhammad Fakhrul Muqauwim, Hendrik Elvian Gayuh Prasetya, Radina Anggun 
 ano: 2020
 tema: manutencao
 arquivo: muqauwim_analysis-of-optimal-maintenance-interval-on-id-fan-using-rel_2020.pdf
-tags: [literatura, manutencao, mestrado-utfpr]
+tags: [literatura, manutencao]
 data_insercao: 2026-05-23
 ---
 

@@ -4,7 +4,7 @@ autor: "P. R. MISHRA e J. C. JOSHI"
 ano: 1996
 tema: confiabilidade
 arquivo: joshi_reliability-estimation-for-components-of-photovoltaic-system_1996.pdf
-tags: [literatura, confiabilidade, mestrado-utfpr]
+tags: [literatura, confiabilidade]
 data_insercao: 2026-05-23
 ---
 

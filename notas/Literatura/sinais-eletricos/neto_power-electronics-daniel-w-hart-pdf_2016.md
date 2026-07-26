@@ -4,7 +4,7 @@ autor: "JOÃO NETO"
 ano: 2016
 tema: sinais-eletricos
 arquivo: neto_power-electronics-daniel-w-hart-pdf_2016.pdf
-tags: [literatura, sinais-eletricos, mestrado-utfpr]
+tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-17
 ---
 

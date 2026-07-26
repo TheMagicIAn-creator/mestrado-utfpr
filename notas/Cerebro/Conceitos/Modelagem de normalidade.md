@@ -5,7 +5,7 @@ tipo: conceito
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [al-iado, cerebro, conceito, autoencoder, metodologia]
+tags: [cerebro, conceito, autoencoder, metodologia]
 ---
 
 # Modelagem de normalidade

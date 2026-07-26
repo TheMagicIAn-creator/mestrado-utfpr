@@ -4,7 +4,7 @@ autor: "Smith, Steven W"
 ano: 1999
 tema: sinais-eletricos
 arquivo: smith_the-scientist-and-engineer-s-guide-to-digital-signal-process_1999.pdf
-tags: [literatura, sinais-eletricos, mestrado-utfpr]
+tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-23
 ---
 

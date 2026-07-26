@@ -4,7 +4,7 @@ autor: "SAKURADA, Eduardo Yuji"
 ano: 1998
 tema: manutencao
 arquivo: sakurada_as-tecnicas-de-analise-do-modos-de-falhas-e-seus-efeitos-e-a_1998.pdf
-tags: [literatura, manutencao, mestrado-utfpr]
+tags: [literatura, manutencao]
 data_insercao: 2026-05-23
 ---
 

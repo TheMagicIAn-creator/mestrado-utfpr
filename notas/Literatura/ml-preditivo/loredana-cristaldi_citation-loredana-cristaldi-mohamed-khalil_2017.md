@@ -8,8 +8,7 @@ relevancia: Media
 lido: false
 citado: false
 link_pdf: /literatura/ml-preditivo/loredana-cristaldi_citation-loredana-cristaldi-mohamed-khalil_2017.pdf
-tags:
-  - reliability-assessment
+tags: [reliability-assessment]
   - root-cause-analysis-of-failures
   - Markov-process
   - photovoltaic-systems

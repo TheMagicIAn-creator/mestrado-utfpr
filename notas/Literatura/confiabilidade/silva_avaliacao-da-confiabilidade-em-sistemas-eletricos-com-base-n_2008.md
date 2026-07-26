@@ -4,7 +4,7 @@ autor: "João Luis Reis e Silva"
 ano: 2008
 tema: confiabilidade
 arquivo: silva_avaliacao-da-confiabilidade-em-sistemas-eletricos-com-base-n_2008.pdf
-tags: [literatura, confiabilidade, mestrado-utfpr]
+tags: [literatura, confiabilidade]
 data_insercao: 2026-05-23
 ---
 

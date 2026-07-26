@@ -4,7 +4,7 @@ autor: "Branco, P.; Monteiro, F.; Sarquis, E."
 ano: 2024
 tema: inversores-pv
 arquivo: branco_identifying-critical-failures-in-pv-systems-based-on-pv-inve_2024.pdf
-tags: [literatura, inversores-pv, mestrado-utfpr]
+tags: [literatura, inversores-pv]
 data_insercao: 2026-05-22
 ---
 

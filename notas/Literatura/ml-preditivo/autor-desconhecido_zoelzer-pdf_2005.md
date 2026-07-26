@@ -4,7 +4,7 @@ autor: "autor-desconhecido"
 ano: 2005
 tema: ml-preditivo
 arquivo: autor-desconhecido_zoelzer-pdf_2005.pdf
-tags: [literatura, ml-preditivo, mestrado-utfpr]
+tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-22
 ---
 

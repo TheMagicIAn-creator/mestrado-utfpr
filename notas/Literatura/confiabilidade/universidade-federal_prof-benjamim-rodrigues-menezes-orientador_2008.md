@@ -8,8 +8,7 @@ relevancia: Media
 lido: true
 citado: false
 link_pdf: /literatura/confiabilidade/universidade-federal_prof-benjamim-rodrigues-menezes-orientador_2008.pdf
-tags:
-  - energia
+tags: [energia]
   - minas
   - qualidade
 ---

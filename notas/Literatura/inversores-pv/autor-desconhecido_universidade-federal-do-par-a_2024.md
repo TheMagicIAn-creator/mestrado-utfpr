@@ -4,7 +4,7 @@ autor: "autor-desconhecido"
 ano: 2024
 tema: inversores-pv
 arquivo: autor-desconhecido_universidade-federal-do-par-a_2024.pdf
-tags: [literatura, inversores-pv, mestrado-utfpr]
+tags: [literatura, inversores-pv]
 data_insercao: 2026-05-20
 ---
 

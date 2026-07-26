@@ -4,7 +4,7 @@ autor: "James Stewart"
 ano: 2018
 tema: ml-preditivo
 arquivo: stewart_calculo-volume-1_2018.pdf
-tags: [literatura, ml-preditivo, mestrado-utfpr]
+tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-18
 ---
 
