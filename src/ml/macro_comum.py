@@ -77,6 +77,7 @@ def avaliar_deteccao(nome: str, cor: str, scorer, janelas_calib: list,
            "n_calib": len(janelas_calib), "n_aval": len(janelas_aval),
            "severidades": [float(s) for s in SEVERIDADES], "falhas": {}}
 
+    scorer_cache_sev1: dict = {}      # escores em severidade 1.0, por falha
     for falha in FALHAS:
         fid, fn = falha["id"], FUNCOES_FALHA[falha["id"]]
         por_sev, scores_altos = {}, []
@@ -89,6 +90,8 @@ def avaliar_deteccao(nome: str, cor: str, scorer, janelas_calib: list,
             s = np.asarray(scorer(inj), dtype=float)
             if sev >= 0.5:
                 scores_altos.append(s)
+            if float(sev) == 1.0:
+                scorer_cache_sev1[fid] = s
             det = s > limiar
             lo, hi = intervalo_wilson(int(det.sum()), len(det))
             por_sev[float(sev)] = {
@@ -102,8 +105,18 @@ def avaliar_deteccao(nome: str, cor: str, scorer, janelas_calib: list,
             auc = float(roc_auc_score(y, np.r_[s_sau, s_alto]))
         else:
             auc = float("nan")
+        # TPR em FPR FIXO (10%) — ponto de operação derivado da própria ROC.
+        # Não depende do limiar calibrado, que é degenerado com poucas janelas
+        # (p99 de ~17 amostras ≈ o máximo → o detector nunca dispara). É esta a
+        # taxa de detecção comparável entre métodos, não a do limiar absoluto.
+        s_sev1 = np.asarray(scorer_cache_sev1.get(fid, []), dtype=float)
+        tpr_fpr10 = float("nan")
+        if len(s_sau) and len(s_sev1):
+            corte_fpr = float(np.quantile(s_sau, 0.90))   # FPR alvo = 10%
+            tpr_fpr10 = float((s_sev1 > corte_fpr).mean())
         res["falhas"][fid] = {"nome": falha["nome"], "npr": falha["npr"],
-                              "cor": falha["cor"], "auc": auc, "por_sev": por_sev}
+                              "cor": falha["cor"], "auc": auc,
+                              "tpr_fpr10": tpr_fpr10, "por_sev": por_sev}
     return res
 
 
@@ -112,15 +125,22 @@ def avaliar_deteccao(nome: str, cor: str, scorer, janelas_calib: list,
 # ============================================================
 
 def tabela_enxuta(resultados: list[dict]) -> str:
-    """Tabela Markdown compacta: método × falha → AUC, detecção@sev1.0, FP."""
-    linhas = ["| Método | Falha (NPR) | AUC | Detecção @sev=1.0 | FP saudável |",
+    """Tabela Markdown compacta, com as métricas COMPARÁVEIS entre métodos.
+
+    AUC e TPR@FPR=10% independem do limiar — são as colunas de comparação. A
+    detecção no limiar calibrado fica como referência operacional, mas com
+    poucas janelas de calibração ela é conservadora demais (p99 de ~17 amostras
+    ≈ máximo) e NÃO deve ser usada para ranquear métodos.
+    """
+    linhas = ["| Método | Falha (NPR) | AUC | TPR @FPR=10% | Detecção no limiar |",
               "|---|---|---|---|---|"]
     for r in resultados:
         for fid, f in r["falhas"].items():
             det = f["por_sev"].get(1.0, {}).get("taxa", float("nan"))
+            tpr = f.get("tpr_fpr10", float("nan"))
             linhas.append(
                 f"| {r['nome']} | {f['nome']} (NPR={f['npr']}) | "
-                f"{f['auc']:.3f} | {det * 100:.0f}% | {r['fp_pct']:.1f}% |"
+                f"{f['auc']:.3f} | {tpr * 100:.0f}% | {det * 100:.0f}% |"
             )
     return "\n".join(linhas)
 
@@ -136,10 +156,11 @@ def salvar_saidas(resultados: list[dict], pasta: Path, prefixo: str = "comparaca
     (pasta / f"{prefixo}_tabela.md").write_text(tabela_enxuta(resultados), encoding="utf-8")
     with (pasta / f"{prefixo}_tabela.csv").open("w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
-        w.writerow(["metodo", "falha", "npr", "auc", "deteccao_sev1", "fp_pct"])
+        w.writerow(["metodo", "falha", "npr", "auc", "tpr_fpr10", "deteccao_limiar", "fp_pct"])
         for r in resultados:
             for fid, f in r["falhas"].items():
                 w.writerow([r["nome"], f["nome"], f["npr"], round(f["auc"], 4),
+                            round(f.get("tpr_fpr10", float("nan")), 4),
                             round(f["por_sev"].get(1.0, {}).get("taxa", float("nan")), 4),
                             round(r["fp_pct"], 2)])
     (pasta / f"{prefixo}_resultado.json").write_text(

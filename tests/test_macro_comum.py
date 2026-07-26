@@ -25,9 +25,9 @@ def _resultado(nome: str, auc_ct: float, det_ct: float, auc_ig: float,
         "fp_pct": fp, "severidades": sevs,
         "falhas": {
             "contator_ac": {"nome": "Contator AC", "npr": 315, "cor": "#2a78d6",
-                            "auc": auc_ct, "por_sev": por_sev(det_ct)},
+                            "auc": auc_ct, "tpr_fpr10": det_ct, "por_sev": por_sev(det_ct)},
             "igbt": {"nome": "IGBT", "npr": 90, "cor": "#1baf7a",
-                     "auc": auc_ig, "por_sev": por_sev(det_ig)},
+                     "auc": auc_ig, "tpr_fpr10": det_ig, "por_sev": por_sev(det_ig)},
         },
     }
 
@@ -51,7 +51,7 @@ def test_salvar_saidas_gera_md_csv_json_e_png(tmp_path):
     # CSV enxuto: 6 colunas de dados, 4 linhas (2 métodos × 2 falhas)
     with (tmp_path / "cmp_tabela.csv").open(encoding="utf-8") as fh:
         linhas = list(csv.reader(fh))
-    assert linhas[0] == ["metodo", "falha", "npr", "auc", "deteccao_sev1", "fp_pct"]
+    assert linhas[0] == ["metodo", "falha", "npr", "auc", "tpr_fpr10", "deteccao_limiar", "fp_pct"]
     assert len(linhas) == 5
     # JSON é recarregável (auditoria)
     dados = json.loads((tmp_path / "cmp_resultado.json").read_text(encoding="utf-8"))
