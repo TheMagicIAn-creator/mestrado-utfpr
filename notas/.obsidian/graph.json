@@ -4,7 +4,7 @@
   "showTags": true,
   "showAttachments": true,
   "hideUnresolved": true,
-  "showOrphans": false,
+  "showOrphans": true,
   "collapse-color-groups": false,
   "colorGroups": [
     {
@@ -43,7 +43,7 @@
       }
     },
     {
-      "query": "tag:mcc",
+      "query": "tag:#rcm  ",
       "color": {
         "a": 1,
         "rgb": 5419488
@@ -62,6 +62,13 @@
         "a": 1,
         "rgb": 5431008
       }
+    },
+    {
+      "query": "tag:#weibull-rul  ",
+      "color": {
+        "a": 1,
+        "rgb": 12119551
+      }
     }
   ],
   "collapse-display": true,
@@ -69,11 +76,11 @@
   "textFadeMultiplier": 0,
   "nodeSizeMultiplier": 1,
   "lineSizeMultiplier": 1,
-  "collapse-forces": false,
+  "collapse-forces": true,
   "centerStrength": 0.0545738045738046,
   "repelStrength": 9.49064449064449,
   "linkStrength": 0.703222453222453,
   "linkDistance": 169,
-  "scale": 0.06699744995282315,
+  "scale": 0.13168724279835092,
   "close": false
 }

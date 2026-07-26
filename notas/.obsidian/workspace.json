@@ -4,17 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "8446c1e3ca0faab3",
+        "id": "a1d79e10221785e9",
         "type": "tabs",
         "children": [
           {
-            "id": "a9e90527b26f34d3",
+            "id": "0f198604c082c272",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "sessoes_arquivadas/2026-06-11_15-33-14_avaliacao_agente_100.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "2026-06-11_15-33-14_avaliacao_agente_100"
             }
           }
         ]
@@ -49,7 +53,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "tag:weibull-rul",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -223,8 +227,11 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "a9e90527b26f34d3",
+  "active": "0f198604c082c272",
   "lastOpenFiles": [
+    "sessoes_arquivadas/2026-05-27_20-50-18_avaliacao_agente_100.md",
+    "memorias/resultados-fase5-ml.md",
+    "Literatura/ml-preditivo/open-eng_gineering-education-virtual-learning-environment_2020.md",
     "Literatura/inversores-pv/data-set_marius-stender-oliver-wallscheid-joachim_0000.md",
     "Literatura/sinais-eletricos/frontin_equipam-entos-d-e-alta-te-nsao-prospeccao-e-hierarquizacao-d_2013.md",
     "Literatura/confiabilidade/autor-desconhecido_analise-confiabilidade-sistemas-potencia_0000.md",
@@ -248,10 +255,7 @@
     "Cerebro/Como usar o grafo.md",
     "Cerebro/Conceitos/Modelagem de normalidade.md",
     "sessoes/2026-07-24_12-34_sessao_web.md",
-    "sessoes/2026-07-23_21-46_sessao_web.md",
     "Cerebro/Resultados",
-    "Cerebro/Decisoes/Macro-códigos de comparação.md",
-    "Cerebro/Decisoes/Arquitetura da equipe de modelos.md",
     "Literatura/sinais-eletricos",
     "codigo_apoio/re_indexador_memoria.py",
     "codigo_apoio",
