@@ -3,12 +3,12 @@ titulo: Reliability Prediction Ofpv Inverters Mil
 autor: Reliability Prediction
 ano: 2015
 tema: ML Preditivo
+tags: [literatura, failure-rate, mil-hdbk-217f-n2, pv-micro, inverter, reliabilityprediction, inversor-pv, confiabilidade, manutencao]
 subtema: Ml Preditivo
 relevancia: Media
-lido: false
-citado: false
+lido: False
+citado: False
 link_pdf: /literatura/ml-preditivo/reliability-prediction_reliability-prediction-ofpv-inverters-mil_2015.pdf
-tags: [Failure-rate, MIL-HDBK-217F-N2, PV-micro, inverter, Reliabilityprediction]
 ---
 
 # Reliability Prediction Ofpv Inverters Mil

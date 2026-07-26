@@ -3,14 +3,14 @@ titulo: Therefore Distinct Between Digital Model
 autor: Digital Twin
 ano: 2018
 tema: ML Preditivo
+revisar: true
+motivo_revisao: titulo-invalido
+tags: [literatura, digital, model, shadow, twin, production, manutencao, titulo-invalido]
 subtema: Ml Preditivo
 relevancia: Media
-lido: false
-citado: false
+lido: False
+citado: False
 link_pdf: /literatura/ml-preditivo/digital-twin_therefore-distinct-between-digital-model_2018.pdf
-tags: Digital Model, Digital Shadow, Digital Twin, Production
-revisar: true
-motivo_revisao: "titulo-suspeito"
 ---
 
 # Therefore Distinct Between Digital Model

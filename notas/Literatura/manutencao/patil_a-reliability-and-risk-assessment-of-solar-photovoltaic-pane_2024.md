@@ -1,10 +1,10 @@
 ---
-titulo: "A Reliability and Risk Assessment of Solar Photovoltaic Panels Using a Failure Mode and Effects Anal"
-autor: "Patil, R.B.; Khalkar, A.; Al-Dahidi, S.; Pimpalkar, R.S.; Bhandari, S.; Pecht, M."
+titulo: A Reliability and Risk Assessment of Solar Photovoltaic Panels Using a Failure Mode and Effects Anal
+autor: Patil, R.B.; Khalkar, A.; Al-Dahidi, S.; Pimpalkar, R.S.; Bhandari, S.; Pecht, M.
 ano: 2024
 tema: manutencao
+tags: [literatura, manutencao, inversor-pv, confiabilidade, fmea]
 arquivo: patil_a-reliability-and-risk-assessment-of-solar-photovoltaic-pane_2024.pdf
-tags: [literatura, manutencao]
 data_insercao: 2026-05-23
 ---
 

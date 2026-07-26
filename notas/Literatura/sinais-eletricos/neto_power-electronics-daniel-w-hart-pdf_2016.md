@@ -1,10 +1,10 @@
 ---
-titulo: "Power Electronics - Daniel W.Hart.pdf"
-autor: "JOÃO NETO"
+titulo: Power Electronics - Daniel W.Hart.pdf
+autor: JOÃO NETO
 ano: 2016
 tema: sinais-eletricos
+tags: [literatura, sinais-eletricos, inversor-pv]
 arquivo: neto_power-electronics-daniel-w-hart-pdf_2016.pdf
-tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-17
 ---
 

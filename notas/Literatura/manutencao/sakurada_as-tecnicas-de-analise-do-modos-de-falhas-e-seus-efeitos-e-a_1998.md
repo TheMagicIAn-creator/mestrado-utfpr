@@ -1,10 +1,10 @@
 ---
-titulo: "As técnicas de Análise do Modos de Falhas e seus Efeitos e Análise da Árvore de Falhas no desenvolvi"
-autor: "SAKURADA, Eduardo Yuji"
+titulo: As técnicas de Análise do Modos de Falhas e seus Efeitos e Análise da Árvore de Falhas no desenvolvi
+autor: SAKURADA, Eduardo Yuji
 ano: 1998
 tema: manutencao
+tags: [literatura, manutencao, fmea, fmeca]
 arquivo: sakurada_as-tecnicas-de-analise-do-modos-de-falhas-e-seus-efeitos-e-a_1998.pdf
-tags: [literatura, manutencao]
 data_insercao: 2026-05-23
 ---
 

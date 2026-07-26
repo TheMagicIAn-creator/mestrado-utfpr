@@ -1,13 +1,13 @@
 ---
-titulo: "zoelzer.pdf"
-autor: "autor-desconhecido"
+titulo: zoelzer.pdf
+autor: autor-desconhecido
 ano: 2005
 tema: ml-preditivo
-arquivo: autor-desconhecido_zoelzer-pdf_2005.pdf
-tags: [literatura, ml-preditivo]
-data_insercao: 2026-05-22
 revisar: true
-motivo_revisao: "autor-invalido,titulo-suspeito"
+motivo_revisao: autor-invalido,titulo-invalido
+tags: [literatura, ml-preditivo, manutencao, autor-invalido, titulo-invalido]
+arquivo: autor-desconhecido_zoelzer-pdf_2005.pdf
+data_insercao: 2026-05-22
 ---
 
 # zoelzer.pdf

@@ -3,12 +3,12 @@ titulo: Design Estimation Reliability Off Grid
 autor: Design
 ano: 2017
 tema: Inversores PV
+tags: [literatura, photovoltaic, power-system, solar-energy, energy, reliability, weibull, distribution, reliabilityprediction, block, diagrams, inversor-pv, confiabilidade, weibull-rul]
 subtema: Inversores Pv
 relevancia: Alta
-lido: true
-citado: false
+lido: True
+citado: False
 link_pdf: /literatura/inversores-pv/design_design-estimation-reliability-off-grid_2017.pdf
-tags: [photovoltaic, power-system, solar-energy, energy, reliability, weibull, distribution, Reliabilityprediction, block, diagrams]
 ---
 
 # Design Estimation Reliability Off Grid

@@ -3,14 +3,14 @@ titulo: Steve Voss Tassos Golnas Steve
 autor: Autor Desconhecido
 ano: 2009
 tema: Inversores PV
+revisar: true
+motivo_revisao: autor-invalido
+tags: [literatura, system, systems, solar, paper, inversor-pv, manutencao, autor-invalido]
 subtema: Inversores Pv
 relevancia: Alta
-lido: true
-citado: false
+lido: True
+citado: False
 link_pdf: /literatura/inversores-pv/autor-desconhecido_steve-voss-tassos-golnas-steve_2009.pdf
-tags: [system, systems, solar, data, paper]
-revisar: true
-motivo_revisao: "autor-invalido"
 ---
 
 # Steve Voss Tassos Golnas Steve

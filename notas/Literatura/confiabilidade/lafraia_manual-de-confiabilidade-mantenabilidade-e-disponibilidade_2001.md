@@ -1,10 +1,10 @@
 ---
-titulo: "Manual de Confiabilidade, Mantenabilidade e Disponibilidade"
-autor: "Joâo Ricardo Barusso Lafraia"
+titulo: Manual de Confiabilidade, Mantenabilidade e Disponibilidade
+autor: Joâo Ricardo Barusso Lafraia
 ano: 2001
 tema: confiabilidade
+tags: [literatura, confiabilidade, weibull-rul, manutencao, fmea]
 arquivo: lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_2001.pdf
-tags: [literatura, confiabilidade]
 data_insercao: 2026-05-23
 ---
 

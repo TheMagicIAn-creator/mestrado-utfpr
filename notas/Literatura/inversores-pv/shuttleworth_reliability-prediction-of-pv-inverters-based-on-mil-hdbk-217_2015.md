@@ -1,10 +1,10 @@
 ---
-titulo: "Reliability Prediction of PV Inverters Based on MIL-HDBK-217F N2"
-autor: "Firas Obeidat and Roger Shuttleworth"
+titulo: Reliability Prediction of PV Inverters Based on MIL-HDBK-217F N2
+autor: Firas Obeidat and Roger Shuttleworth
 ano: 2015
 tema: inversores-pv
+tags: [literatura, inversores-pv, inversor-pv, confiabilidade]
 arquivo: shuttleworth_reliability-prediction-of-pv-inverters-based-on-mil-hdbk-217_2015.pdf
-tags: [literatura, inversores-pv]
 data_insercao: 2026-05-23
 ---
 

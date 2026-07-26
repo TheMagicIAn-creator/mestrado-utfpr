@@ -1,10 +1,10 @@
 ---
-titulo: "Gestão da qualidade (Cap. 6)"
-autor: "Carpinetti, L. C. R."
+titulo: Gestão da qualidade (Cap. 6)
+autor: Carpinetti, L. C. R.
 ano: 2016
 tema: manutencao
+tags: [literatura, manutencao, fmea]
 arquivo: carpinetti_gestao-da-qualidade-cap-6_2016.pdf
-tags: [literatura, manutencao]
 data_insercao: 2026-05-23
 ---
 

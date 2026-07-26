@@ -1,3 +1,8 @@
+---
+titulo: 2026 05 29 18 20 08 avaliacao respostas reais
+tags: [sessao-arquivada, deteccao-anomalia, inversor-pv, weibull-rul, fmea, paderborn, manutencao]
+---
+
 # Avaliacao de respostas reais (Groq) - 36 perguntas
 
 - Data: 2026-05-29_18-20-08

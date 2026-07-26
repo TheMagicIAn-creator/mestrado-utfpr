@@ -1,10 +1,10 @@
 ---
-titulo: "Digital Signal Processing System Analysis and Design"
-autor: "Diniz, Paulo S. R. e Silva, Eduardo A. B. da e Netto, Sergio L."
+titulo: Digital Signal Processing System Analysis and Design
+autor: Diniz, Paulo S. R. e Silva, Eduardo A. B. da e Netto, Sergio L.
 ano: 2021
 tema: sinais-eletricos
-arquivo: diniz_digital-signal-processing-system-analysis-and-design_2021.pdf
 tags: [literatura, sinais-eletricos]
+arquivo: diniz_digital-signal-processing-system-analysis-and-design_2021.pdf
 data_insercao: 2026-05-23
 ---
 

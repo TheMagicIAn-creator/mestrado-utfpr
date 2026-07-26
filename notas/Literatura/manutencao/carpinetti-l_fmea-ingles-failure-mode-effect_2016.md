@@ -3,12 +3,12 @@ titulo: Fmea Ingles Failure Mode Effect
 autor: Carpinetti L
 ano: 2016
 tema: Manutencao
+tags: [literatura, fmea, fmeca, blocos, diagrama, efeitos, falhas, gravidade, manutencao]
 subtema: Manutencao
 relevancia: Alta
-lido: true
-citado: false
+lido: True
+citado: False
 link_pdf: /literatura/manutencao/carpinetti-l_fmea-ingles-failure-mode-effect_2016.pdf
-tags: [fmea, fmeca, blocos, diagrama, efeitos, falhas, gravidade]
 ---
 
 # Fmea Ingles Failure Mode Effect

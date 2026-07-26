@@ -1,10 +1,10 @@
 ---
-titulo: "Machine learning based explainable fault detection of vacuum pumps in PV solar cell manufacturing"
-autor: "Ajay Narayanan, Dr. Kedar Kulkarni, Fery Riswan, Muhammad Azzrul Bin Salehan"
+titulo: Machine learning based explainable fault detection of vacuum pumps in PV solar cell manufacturing
+autor: Ajay Narayanan, Dr. Kedar Kulkarni, Fery Riswan, Muhammad Azzrul Bin Salehan
 ano: 2023
 tema: ml-preditivo
+tags: [literatura, ml-preditivo, inversor-pv, machine-learning, deteccao-anomalia, manutencao]
 arquivo: narayanan_machine-learning-based-explainable-fault-detection-of-vacuum_2023.pdf
-tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

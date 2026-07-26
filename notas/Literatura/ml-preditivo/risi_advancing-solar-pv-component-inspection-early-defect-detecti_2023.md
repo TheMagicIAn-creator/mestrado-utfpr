@@ -1,10 +1,10 @@
 ---
 titulo: "Advancing Solar PV Component Inspection: Early Defect Detection with UA V Based Thermal Imaging and "
-autor: "Al Reem Majid Ali Al Risi, Fatma Hassan Khamis Al-Zaabi, Azza Marwan Salim Al Washahi, Raqiya Khalid Mohammed Al-Maaini, Murali Krishna Boddu"
+autor: Al Reem Majid Ali Al Risi, Fatma Hassan Khamis Al-Zaabi, Azza Marwan Salim Al Washahi, Raqiya Khalid Mohammed Al-Maaini, Murali Krishna Boddu
 ano: 2023
 tema: ml-preditivo
+tags: [literatura, ml-preditivo, inversor-pv, manutencao, machine-learning]
 arquivo: risi_advancing-solar-pv-component-inspection-early-defect-detecti_2023.pdf
-tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

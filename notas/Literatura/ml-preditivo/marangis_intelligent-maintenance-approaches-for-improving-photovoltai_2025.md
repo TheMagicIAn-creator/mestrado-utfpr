@@ -1,10 +1,10 @@
 ---
-titulo: "Intelligent Maintenance Approaches for Improving Photovoltaic System Performance and Reliability"
-autor: "Demetris Marangis, Georgios Tziolis, Andreas Livera, George Makrides, Andreas Kyprianou, George E. Georghiou"
+titulo: Intelligent Maintenance Approaches for Improving Photovoltaic System Performance and Reliability
+autor: Demetris Marangis, Georgios Tziolis, Andreas Livera, George Makrides, Andreas Kyprianou, George E. Georghiou
 ano: 2025
 tema: ml-preditivo
+tags: [literatura, ml-preditivo, manutencao, inversor-pv, confiabilidade]
 arquivo: marangis_intelligent-maintenance-approaches-for-improving-photovoltai_2025.pdf
-tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

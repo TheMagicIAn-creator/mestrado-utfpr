@@ -1,10 +1,10 @@
 ---
-titulo: "A Self-Tuning Reinforcement Learning–Driven Isolation Forest Framework for Scalable and Efficient An"
-autor: "Gaurav Sharma · Savita Khurana · Bhawna Sharma · Geetanjali Sharma"
+titulo: A Self-Tuning Reinforcement Learning–Driven Isolation Forest Framework for Scalable and Efficient An
+autor: Gaurav Sharma · Savita Khurana · Bhawna Sharma · Geetanjali Sharma
 ano: 2026
 tema: ml-preditivo
+tags: [literatura, ml-preditivo, deteccao-anomalia, inversor-pv, manutencao]
 arquivo: sharma_a-self-tuning-reinforcement-learning-driven-isolation-forest_2026.pdf
-tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

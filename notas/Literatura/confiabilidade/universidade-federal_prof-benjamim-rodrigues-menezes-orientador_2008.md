@@ -3,14 +3,14 @@ titulo: Prof Benjamim Rodrigues Menezes Orientador
 autor: Universidade Federal
 ano: 2008
 tema: Confiabilidade
+revisar: true
+motivo_revisao: titulo-invalido
+tags: [literatura, energia, minas, qualidade, confiabilidade, titulo-invalido]
 subtema: Confiabilidade
 relevancia: Media
-lido: true
-citado: false
+lido: True
+citado: False
 link_pdf: /literatura/confiabilidade/universidade-federal_prof-benjamim-rodrigues-menezes-orientador_2008.pdf
-tags: [energia, minas, qualidade]
-revisar: true
-motivo_revisao: "titulo-suspeito"
 ---
 
 # Prof Benjamim Rodrigues Menezes Orientador

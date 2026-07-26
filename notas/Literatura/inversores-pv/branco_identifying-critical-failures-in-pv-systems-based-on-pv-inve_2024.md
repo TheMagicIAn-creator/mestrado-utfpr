@@ -1,10 +1,10 @@
 ---
 titulo: "Identifying Critical Failures in PV Systems Based on PV Inverters’ Monitoring Unit: A Techno-Economi"
-autor: "Branco, P.; Monteiro, F.; Sarquis, E."
+autor: Branco, P.; Monteiro, F.; Sarquis, E.
 ano: 2024
 tema: inversores-pv
+tags: [literatura, inversores-pv, inversor-pv]
 arquivo: branco_identifying-critical-failures-in-pv-systems-based-on-pv-inve_2024.pdf
-tags: [literatura, inversores-pv]
 data_insercao: 2026-05-22
 ---
 

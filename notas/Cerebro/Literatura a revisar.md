@@ -1,11 +1,11 @@
 ---
-al_iado: true
-titulo: "Literatura a revisar"
+titulo: Literatura a revisar
 tipo: contexto
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [cerebro, vault, literatura]
+al_iado: true
+tags: [literatura, cerebro, vault, confiabilidade, manutencao]
 ---
 
 # Literatura a revisar

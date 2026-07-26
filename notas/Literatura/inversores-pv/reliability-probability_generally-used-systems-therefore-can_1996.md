@@ -3,12 +3,12 @@ titulo: Generally Used Systems Therefore Can
 autor: Reliability Probability
 ano: 1996
 tema: Inversores PV
+tags: [literatura, reliability, probability-of-success, derating, redundancy, inversor-pv, confiabilidade]
 subtema: Inversores Pv
 relevancia: Alta
-lido: true
-citado: false
+lido: True
+citado: False
 link_pdf: /literatura/inversores-pv/reliability-probability_generally-used-systems-therefore-can_1996.pdf
-tags: [reliability, probability-of-success, derating, redundancy]
 ---
 
 # Generally Used Systems Therefore Can

@@ -3,12 +3,12 @@ titulo: Energy Research Laboratory Reneral British
 autor: Academic Editor
 ano: 2025
 tema: Inversores PV
+tags: [literatura, laboratory, research, pesquisa, solar, inverter, predictive, pv, risk-analysis, sustainable-energy, confiabilidade, inversor-pv, fmea]
 subtema: Inversores Pv
 relevancia: Alta
-lido: true
-citado: false
+lido: True
+citado: False
 link_pdf: /literatura/inversores-pv/academic-editor_energy-research-laboratory-reneral-british_2025.pdf
-tags: [laboratory, research, pesquisa, solar, inverter, predictive, pv, risk-analysis, sustainable-energy]
 ---
 
 # Energy Research Laboratory Reneral British

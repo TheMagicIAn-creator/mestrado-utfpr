@@ -1,10 +1,10 @@
 ---
-titulo: "Enhanced Anomaly Detection in Solar Power Plants Using Hybrid Machine Learning Techniques"
-autor: "Abhishek Ahirwar, Sonali R Nandanwar"
+titulo: Enhanced Anomaly Detection in Solar Power Plants Using Hybrid Machine Learning Techniques
+autor: Abhishek Ahirwar, Sonali R Nandanwar
 ano: 2025
 tema: ml-preditivo
+tags: [literatura, ml-preditivo, deteccao-anomalia, inversor-pv, machine-learning, manutencao]
 arquivo: ahirwar_enhanced-anomaly-detection-in-solar-power-plants-using-hybri_2025.pdf
-tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

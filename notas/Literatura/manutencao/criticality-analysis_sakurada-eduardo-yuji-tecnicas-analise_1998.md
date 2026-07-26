@@ -3,12 +3,12 @@ titulo: Sakurada Eduardo Yuji Tecnicas Analise
 autor: Criticality Analysis
 ano: 1998
 tema: Manutencao
+tags: [literatura, fmea, analise, fmeca, comparação, formulário, manutencao]
 subtema: Manutencao
 relevancia: Alta
-lido: true
-citado: false
+lido: True
+citado: False
 link_pdf: /literatura/manutencao/criticality-analysis_sakurada-eduardo-yuji-tecnicas-analise_1998.pdf
-tags: [fmea, analise, fmeca, comparação, formulário]
 ---
 
 # Sakurada Eduardo Yuji Tecnicas Analise

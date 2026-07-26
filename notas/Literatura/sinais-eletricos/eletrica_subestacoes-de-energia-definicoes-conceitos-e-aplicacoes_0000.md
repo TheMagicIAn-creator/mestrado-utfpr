@@ -1,13 +1,13 @@
 ---
 titulo: "Subestações de Energia: Definições, Conceitos e Aplicações"
-autor: "Aprender Elétrica"
-ano: "s.d."
+autor: Aprender Elétrica
+ano: s.d.
 tema: sinais-eletricos
-arquivo: eletrica_subestacoes-de-energia-definicoes-conceitos-e-aplicacoes_0000.pdf
-tags: [literatura, sinais-eletricos]
-data_insercao: 2026-05-23
 revisar: true
-motivo_revisao: "ano-invalido"
+motivo_revisao: ano-invalido
+tags: [literatura, sinais-eletricos, ano-invalido]
+arquivo: eletrica_subestacoes-de-energia-definicoes-conceitos-e-aplicacoes_0000.pdf
+data_insercao: 2026-05-23
 ---
 
 # Subestações de Energia: Definições, Conceitos e Aplicações

@@ -1,3 +1,8 @@
+---
+titulo: indice literatura
+tags: [literatura]
+---
+
 # 📚 Índice da Literatura — Mestrado UTFPR
 
 ## 📊 Todos os Artigos

@@ -1,10 +1,10 @@
 ---
 titulo: "Data Set Description: Three-Phase IGBT Two-Level Inverter for Electrical Drives"
-autor: "Marius Stender, Oliver Wallscheid, Joachim Böcker"
+autor: Marius Stender, Oliver Wallscheid, Joachim Böcker
 ano: 2020
 tema: inversores-pv
+tags: [literatura, inversores-pv, inversor-pv, paderborn, igbt]
 arquivo: stender_data-set-description-three-phase-igbt-two-level-inverter-for_2020.pdf
-tags: [literatura, inversores-pv]
 data_insercao: 2026-05-23
 ---
 

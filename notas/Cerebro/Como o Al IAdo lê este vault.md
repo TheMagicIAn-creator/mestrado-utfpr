@@ -1,11 +1,11 @@
 ---
-al_iado: true
-titulo: "Como o Al IAdo lê este vault"
+titulo: Como o Al IAdo lê este vault
 tipo: contexto
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [cerebro, vault, al-iado-fluxo]
+al_iado: true
+tags: [cerebro, vault, al-iado-fluxo, escore-localizado]
 ---
 
 # Como o Al IAdo lê este vault

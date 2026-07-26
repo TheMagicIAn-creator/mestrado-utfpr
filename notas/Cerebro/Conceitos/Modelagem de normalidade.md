@@ -1,11 +1,11 @@
 ---
-al_iado: true
-titulo: "Modelagem de normalidade com Autoencoder"
+titulo: Modelagem de normalidade com Autoencoder
 tipo: conceito
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [cerebro, conceito, autoencoder, metodologia]
+al_iado: true
+tags: [cerebro, conceito, autoencoder, metodologia, escore-localizado, machine-learning, paderborn, manutencao, fmeca]
 ---
 
 # Modelagem de normalidade

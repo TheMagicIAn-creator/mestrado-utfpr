@@ -1,10 +1,10 @@
 ---
 titulo: "Equipamentos de Alta Tensão: Prospeccao e Hierarquizacao"
-autor: "Frontin"
+autor: Frontin
 ano: 2013
 tema: sinais-eletricos
+tags: [literatura, sinais-eletricos, confiabilidade]
 arquivo: frontin_equipamentos-de-alta-tensao-prospeccao-e-hierarquizacao_2013.pdf
-tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-23
 ---
 
