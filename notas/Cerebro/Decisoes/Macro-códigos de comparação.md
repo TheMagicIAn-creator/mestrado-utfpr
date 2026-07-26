@@ -5,11 +5,7 @@ tipo: decisao
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-<<<<<<< HEAD
 tags: [cerebro, decisao, comparacao, arquitetura]
-=======
-tags: [al-iado, cerebro, decisao, comparacao, arquitetura]
->>>>>>> origin/main
 ---
 
 # Macro-códigos de comparação
