@@ -30,13 +30,30 @@ import numpy as np
 # AVALIAÇÃO (scorer plugável)
 # ============================================================
 
-def avaliar_deteccao(nome: str, cor: str, scorer, janelas_holdout: list,
-                     seed: int = 42) -> dict:
+PURGA = 2   # janelas descartadas na fronteira (sobreposição de 50% nas features)
+
+
+def dividir_calibracao_avaliacao(janelas: list, frac_calib: float = 0.4,
+                                 purga: int = PURGA) -> tuple[list, list]:
+    """Separa o holdout saudável em bloco de CALIBRAÇÃO e bloco de AVALIAÇÃO.
+
+    Blocos contíguos no tempo, com purga na fronteira. O limiar é fixado no
+    primeiro; FP, AUC e injeção são medidos SÓ no segundo — que o método nunca
+    viu. Sem isso, o FP reportado é ~alvo por construção (in-sample) e não
+    evidencia generalização.
+    """
+    n = len(janelas)
+    n_cal = max(1, int(n * frac_calib))
+    return janelas[:n_cal], janelas[min(n, n_cal + purga):]
+
+
+def avaliar_deteccao(nome: str, cor: str, scorer, janelas_calib: list,
+                     janelas_aval: list, seed: int = 42) -> dict:
     """Avalia UM método sobre a injeção FMECA por severidade.
 
     scorer: callable(list[DataFrame]) -> np.ndarray de scores (1 por janela).
-    Retorna dict uniforme: limiar auto-calibrado, FP saudável, e por falha o
-    AUC (saudável × severidades altas) e a detecção por severidade com IC.
+    `janelas_calib` fixa o limiar; `janelas_aval` (disjunto, nunca visto) dá o
+    FP, os negativos do AUC e a base da injeção. Retorna dict uniforme.
     """
     from sklearn.metrics import roc_auc_score
 
@@ -44,18 +61,20 @@ def avaliar_deteccao(nome: str, cor: str, scorer, janelas_holdout: list,
     from src.ml.estatistica import intervalo_wilson
     from src.ml import escore_anomalia as ea
 
-    s_sau = np.asarray(scorer(janelas_holdout), dtype=float)
-    # limiar auto-calibrado (mesmo critério do pipeline; igual para os 2 métodos)
-    n = len(s_sau)
-    corte = max(1, int(n * 0.8))
-    if n - corte >= 3:
-        limiar, percentil = ea.limiar_por_fp_alvo(s_sau[:corte], s_sau[corte:], 1.0)
+    s_cal = np.asarray(scorer(janelas_calib), dtype=float)   # fixa o limiar
+    s_sau = np.asarray(scorer(janelas_aval), dtype=float)    # mede FP (não visto)
+    # Limiar do bloco de CALIBRAÇÃO; auto-ajustado ao FP alvo contra a cauda do
+    # próprio bloco. Nunca enxerga o bloco de avaliação.
+    if len(s_cal) >= 10:
+        corte = max(1, int(len(s_cal) * 0.8))
+        limiar, percentil = ea.limiar_por_fp_alvo(s_cal[:corte], s_cal[corte:], 1.0)
     else:
-        limiar, percentil = float(np.percentile(s_sau, 99)), 99.0
-    fp = float((s_sau > limiar).mean() * 100.0)
+        limiar, percentil = float(np.percentile(s_cal, 99)), 99.0
+    fp = float((s_sau > limiar).mean() * 100.0)   # FP HONESTO: bloco não visto
 
     res = {"nome": nome, "cor": cor, "limiar": float(limiar),
            "percentil": float(percentil), "fp_pct": fp,
+           "n_calib": len(janelas_calib), "n_aval": len(janelas_aval),
            "severidades": [float(s) for s in SEVERIDADES], "falhas": {}}
 
     for falha in FALHAS:
@@ -65,7 +84,7 @@ def avaliar_deteccao(nome: str, cor: str, scorer, janelas_holdout: list,
             inj = [
                 fn(j, float(sev), seed=20_000 + i) if fid == "contator_ac"
                 else fn(j, float(sev))
-                for i, j in enumerate(janelas_holdout)
+                for i, j in enumerate(janelas_aval)
             ]
             s = np.asarray(scorer(inj), dtype=float)
             if sev >= 0.5:
