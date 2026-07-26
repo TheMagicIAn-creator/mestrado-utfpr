@@ -5,7 +5,11 @@ tipo: decisao
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
+<<<<<<< HEAD
 tags: [cerebro, decisao, arquitetura, gemini]
+=======
+tags: [al-iado, cerebro, decisao, arquitetura, gemini]
+>>>>>>> origin/main
 ---
 
 # Arquitetura da equipe de modelos

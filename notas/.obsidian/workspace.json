@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "memorias/2026-07-22_12-01-44_consolidado.md",
+                "file": "sessoes/2026-07-24_12-34_sessao_web.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "2026-07-22_12-01-44_consolidado"
+              "title": "2026-07-24_12-34_sessao_web"
             }
           }
         ]
@@ -226,11 +226,24 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "b0c1a4d045194a5e",
+  "active": "ccf58489bd6f1a90",
   "lastOpenFiles": [
+    "sessoes/2026-07-23_21-46_sessao_web.md",
+    "Cerebro/Resultados/Correção do escore — antes e depois.md",
+    "Cerebro/Resultados",
+    "Cerebro/Decisoes/Macro-códigos de comparação.md",
+    "Cerebro/Decisoes/Arquitetura da equipe de modelos.md",
+    "Cerebro/Conceitos/Modelagem de normalidade.md",
+    "Cerebro/Conceitos/FMECA e detectabilidade empírica.md",
+    "Cerebro/Conceitos/Escore localizado.md",
+    "Cerebro/Decisoes/Arquitetura Gemini e Groq.md",
+    "Cerebro/Conceitos/Separação dos domínios de dados.md",
+    "Cerebro/Conceitos/Níveis de evidência.md",
+    "Templates/Nota do Al IAdo.md",
+    "Cerebro/00 - Painel do cerebro.md",
+    "memorias/2026-07-22_12-01-44_consolidado.md",
     "memorias/2026-07-23_21-32-38_consolidado.md",
     "sessoes/2026-07-24_12-34_sessao_web.md",
-    "sessoes/2026-07-23_21-46_sessao_web.md",
     "sessoes_arquivadas/2026-07-23_21-29_sessao_web.md",
     "sessoes_arquivadas/2026-07-23_21-11_sessao_web.md",
     "sessoes_arquivadas/2026-07-22_18-23_sessao_web.md",
@@ -240,20 +253,8 @@
     "sessoes_arquivadas/2026-07-22_17-15_sessao_web.md",
     "memorias/2026-07-22_18-11-53_consolidado.md",
     "memorias/2026-07-22_18-16-58_consolidado.md",
-    "Cerebro/Conceitos/Separação dos domínios de dados.md",
-    "Cerebro/Conceitos/Níveis de evidência.md",
     "memorias/resultados-fase5-ml.md",
     "sessoes_arquivadas/2026-07-20_09-19_sessao_web.md",
-    "sessoes/2026-07-20_09-12_sessao_web.md",
-    "sessoes/2026-07-20_09-17_sessao_web.md",
-    "sessoes/2026-07-20_09-19_sessao_web.md",
-    "Literatura/manutencao/administration_nasa-reliability-centered-maintenance-guide-for-facilities-a_2008.md",
-    "sessoes_arquivadas/2026-05-27_20-35-11_avaliacao_agente_100.md",
-    "sessoes_arquivadas/2026-05-30_07-38_sessao_web.md",
-    "sessoes_arquivadas/2026-05-30_09-34_sessao_web.md",
-    "sessoes_arquivadas/2026-07-20_09-17_sessao_web.md",
-    "sessoes_arquivadas/2026-07-20_09-12_sessao_web.md",
-    "sessoes_arquivadas/2026-07-20_08-24_sessao_web.md",
     "Literatura/sinais-eletricos",
     "codigo_apoio/re_indexador_memoria.py",
     "codigo_apoio",

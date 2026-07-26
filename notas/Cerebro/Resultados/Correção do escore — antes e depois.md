@@ -5,7 +5,11 @@ tipo: resultado
 status: ativo
 confianca: alta
 nivel_evidencia: E2
+<<<<<<< HEAD
 tags: [cerebro, resultado, escore, weibull]
+=======
+tags: [al-iado, cerebro, resultado, escore, weibull]
+>>>>>>> origin/main
 ---
 
 # Correção do escore — antes e depois

@@ -1,0 +1,4 @@
+metodo,falha,npr,auc,deteccao_sev1,fp_pct
+Ibrahim 2022 (AE-LSTM temporal),Contator AC,315,0.965,0.7045,2.27
+Ibrahim 2022 (AE-LSTM temporal),IGBT,90,0.9015,0.0227,2.27
+Ibrahim 2022 (AE-LSTM temporal),Fusível AC,30,0.8357,0.0227,2.27
