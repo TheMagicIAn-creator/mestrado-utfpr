@@ -1,4 +1,6 @@
 ---
+revisar: true
+motivo_revisao: "autor-suspeito"
 titulo: Therefore Distinct Between Digital Model
 autor: Digital Twin
 ano: 2018

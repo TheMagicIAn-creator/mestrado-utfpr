@@ -127,7 +127,9 @@ def construir_scorer(det: dict):
 def executar(n_janelas: int | None = None) -> dict:
     from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas_holdout
     from src.ml.injecao_falhas import ARQUIVO_CSV, N_JANELAS_SMD
-    from src.ml.macro_comum import avaliar_deteccao, salvar_saidas
+    from src.ml.macro_comum import (
+        avaliar_deteccao, dividir_calibracao_avaliacao, salvar_saidas,
+    )
     from src.ml import escore_anomalia as ea
 
     _log("=" * 60)
@@ -144,8 +146,13 @@ def executar(n_janelas: int | None = None) -> dict:
     del df
     _log(f"  {len(janelas)} janelas não sobrepostas do bloco de teste")
 
+    # Calibração e avaliação DISJUNTAS (com purga): o limiar sai do 1º bloco;
+    # FP/AUC/injeção vêm do 2º, que o detector nunca viu.
+    j_cal, j_aval = dividir_calibracao_avaliacao(janelas)
+    _log(f"  calibração={len(j_cal)} | avaliação={len(j_aval)} (disjuntos)")
+
     _log("\n  Avaliando detecção por severidade (injeção FMECA no sinal)...")
-    resultado = avaliar_deteccao(NOME, "#2a78d6", construir_scorer(det), janelas)
+    resultado = avaliar_deteccao(NOME, "#2a78d6", construir_scorer(det), j_cal, j_aval)
 
     _log(f"\n  Limiar auto-calibrado = {resultado['limiar']:.4f} "
          f"(percentil {resultado['percentil']:.1f}) | FP saudável "

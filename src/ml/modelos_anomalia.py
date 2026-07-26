@@ -61,14 +61,18 @@ def sequencias_com_contexto(contexto_normal, itens, L: int):
     ctx = np.asarray(contexto_normal, dtype=np.float32)
     it = np.asarray(itens, dtype=np.float32)
     n, F = it.shape
+    n_ctx = len(ctx)
     seqs = np.zeros((n, L, F), dtype=np.float32)
     for i in range(n):
         for t in range(L):
             if t == L - 1:
                 seqs[i, t] = it[i]                 # último passo = a janela atual
             else:
-                pos = i - (L - 1) + t              # passo do histórico
-                seqs[i, t] = ctx[pos] if pos >= 0 else ctx[0]
+                # passo do histórico; limitado ao intervalo válido do contexto
+                # (o contexto pode ser menor que os itens — ex.: contexto vem do
+                # bloco de calibração e os itens do bloco de avaliação).
+                pos = min(max(i - (L - 1) + t, 0), n_ctx - 1)
+                seqs[i, t] = ctx[pos]
     return seqs
 
 

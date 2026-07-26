@@ -1,4 +1,6 @@
 ---
+revisar: true
+motivo_revisao: "abstract-editorial"
 titulo: "Digital Image Processing"
 autor: "Rafael C. Gonzalez, Richard E. Woods"
 ano: 2008
