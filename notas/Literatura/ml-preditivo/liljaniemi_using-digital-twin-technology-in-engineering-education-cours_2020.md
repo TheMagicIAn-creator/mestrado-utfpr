@@ -1,10 +1,10 @@
 ---
-titulo: "Using Digital Twin Technology in Engineering Education – Course Concept to Explore Benefits and Barr"
-autor: "Liljaniemi, Antti and Paavilainen, Heikki"
+titulo: Using Digital Twin Technology in Engineering Education – Course Concept to Explore Benefits and Barr
+autor: Liljaniemi, Antti and Paavilainen, Heikki
 ano: 2020
 tema: ml-preditivo
+tags: [literatura, ml-preditivo, manutencao]
 arquivo: liljaniemi_using-digital-twin-technology-in-engineering-education-cours_2020.pdf
-tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-22
 ---
 

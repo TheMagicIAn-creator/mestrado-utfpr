@@ -3,12 +3,12 @@ titulo: National Aeronautics Space Administration
 autor: For Facilities
 ano: 2008
 tema: Manutencao
+tags: [literatura, nasa, fmea, fmeca, reinforcement, rcm, maintainability, manutencao, confiabilidade]
 subtema: Manutencao
 relevancia: Alta
-lido: true
-citado: false
+lido: True
+citado: False
 link_pdf: /literatura/manutencao/for-facilities_national-aeronautics-space-administration_2008.pdf
-tags: [nasa, fmea, fmeca, reinforcement, rcm, maintainability]
 ---
 
 # National Aeronautics Space Administration

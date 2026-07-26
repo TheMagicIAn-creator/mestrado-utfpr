@@ -1,10 +1,10 @@
 ---
-titulo: "Discrete-Time Signal Processing"
-autor: "Alan V. Oppenheim"
+titulo: Discrete-Time Signal Processing
+autor: Alan V. Oppenheim
 ano: 2020
 tema: sinais-eletricos
-arquivo: oppenheim_discrete-time-signal-processing_2020.pdf
 tags: [literatura, sinais-eletricos]
+arquivo: oppenheim_discrete-time-signal-processing_2020.pdf
 data_insercao: 2026-05-17
 ---
 

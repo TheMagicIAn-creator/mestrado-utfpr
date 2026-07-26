@@ -1,9 +1,10 @@
 ---
-data: 2026-05-18
+titulo: 2026 05 18 consolidado
 tipo: memoria-consolidada
+tags: [memoria, consolidado, fmea, inversor-pv, machine-learning, deteccao-anomalia, fmeca, autoencoder]
+data: 2026-05-18
 sessoes_incluidas: 20
 periodo: 2026-05-16 a 2026-05-18
-tags: [memoria, consolidado]
 ---
 
 # Memória Consolidada — 18/05/2026

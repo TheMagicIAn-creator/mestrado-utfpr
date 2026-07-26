@@ -3,12 +3,12 @@ titulo: Cutting Edge Technologies Such Internet
 autor: Intelligent Maintenance
 ano: 2025
 tema: ML Preditivo
+tags: [literatura, maintenance, artificial-inteligence, performance, photovoltaic, predictive-maintenance, reliability, manutencao, inversor-pv, confiabilidade]
 subtema: Ml Preditivo
 relevancia: Media
-lido: false
-citado: false
+lido: False
+citado: False
 link_pdf: /literatura/ml-preditivo/intelligent-maintenance_cutting-edge-technologies-such-internet_2025.pdf
-tags: [maintenance, artificial-inteligence, performance, photovoltaic, predictive-maintenance, reliability]
 ---
 
 # Cutting Edge Technologies Such Internet

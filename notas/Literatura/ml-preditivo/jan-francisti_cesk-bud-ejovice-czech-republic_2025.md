@@ -3,12 +3,12 @@ titulo: Cesk Bud Ejovice Czech Republic
 autor: Jan Francisti
 ano: 2025
 tema: ML Preditivo
+tags: [literatura, machine-learning, anomaly, detection, predictive-modeling, solar-pv-inverters, inversor-pv, deteccao-anomalia, manutencao, autoencoder]
 subtema: Ml Preditivo
 relevancia: Media
-lido: false
-citado: false
+lido: False
+citado: False
 link_pdf: /literatura/ml-preditivo/jan-francisti_cesk-bud-ejovice-czech-republic_2025.pdf
-tags: [Machine-learning, Anomaly, detection, predictive-modeling, solar-pv-inverters]
 ---
 
 # Cesk Bud Ejovice Czech Republic

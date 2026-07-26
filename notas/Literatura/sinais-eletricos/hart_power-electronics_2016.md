@@ -1,10 +1,10 @@
 ---
-titulo: "Power Electronics"
-autor: "Daniel W. Hart"
+titulo: Power Electronics
+autor: Daniel W. Hart
 ano: 2016
 tema: sinais-eletricos
+tags: [literatura, sinais-eletricos, inversor-pv]
 arquivo: hart_power-electronics_2016.pdf
-tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-22
 ---
 

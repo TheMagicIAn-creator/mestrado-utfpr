@@ -1,3 +1,8 @@
+---
+titulo: resultados fase5 ml
+tags: [memoria, paderborn, deteccao-anomalia, machine-learning, inversor-pv, evidencia-e2, autoencoder]
+---
+
 # Resultados da Fase 5 - Pipeline de ML
 
 > Gerado em 02/06/2026 18:39

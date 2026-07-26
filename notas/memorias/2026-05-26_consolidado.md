@@ -1,10 +1,11 @@
 ---
-data: 2026-05-26
+titulo: 2026 05 26 consolidado
 tipo: memoria-consolidada
+tags: [memoria, consolidado]
+data: 2026-05-26
 sessoes_incluidas: 6
 interacoes_totais: 25
 periodo: 2026-05-25 a 2026-05-26
-tags: [memoria, consolidado]
 ---
 
 # Memória Consolidada — 26/05/2026

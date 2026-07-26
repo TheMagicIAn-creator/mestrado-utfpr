@@ -1,11 +1,11 @@
 ---
-al_iado: true
-titulo: "Níveis de evidência"
+titulo: Níveis de evidência
 tipo: conceito
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [evidencia, metodologia, banca]
+al_iado: true
+tags: [cerebro, evidencia, metodologia, banca, fmeca, evidencia-e2]
 ---
 
 # Níveis de evidência

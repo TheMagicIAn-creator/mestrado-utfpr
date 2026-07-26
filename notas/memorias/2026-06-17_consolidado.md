@@ -1,10 +1,11 @@
 ---
-data: 2026-06-17
+titulo: 2026 06 17 consolidado
 tipo: memoria-consolidada
+tags: [memoria, consolidado, deteccao-anomalia, weibull-rul, inversor-pv, fmea, paderborn, autoencoder]
+data: 2026-06-17
 sessoes_incluidas: 10
 interacoes_totais: 30
 periodo: 2026-06-02 a 2026-06-17
-tags: [memoria, consolidado]
 ---
 
 > [!warning] DIVERGÊNCIA WEIBULL CONHECIDA

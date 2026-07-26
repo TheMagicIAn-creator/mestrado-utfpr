@@ -3,12 +3,12 @@ titulo: Reliance Industries Limited
 autor: Ajay Narayanan
 ano: 2023
 tema: ML Preditivo
+tags: [literatura, pv-solar-cell-manufacturing, fault, detection, diagnosis, machine-learning, inversor-pv, manutencao, deteccao-anomalia]
 subtema: Ml Preditivo
 relevancia: Media
-lido: false
-citado: false
+lido: False
+citado: False
 link_pdf: /literatura/ml-preditivo/ajay-narayanan_reliance-industries-limited_2023.pdf
-tags: [PV-solar-cell-manufacturing, fault, detection, diagnosis, Machine-learning]
 ---
 
 # Reliance Industries Limited

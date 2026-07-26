@@ -1,11 +1,11 @@
 ---
-al_iado: true
-titulo: "Correção do escore — antes e depois"
+titulo: Correção do escore — antes e depois
 tipo: resultado
 status: ativo
 confianca: alta
 nivel_evidencia: E2
-tags: [cerebro, resultado, escore, weibull]
+al_iado: true
+tags: [cerebro, resultado, escore, weibull, weibull-rul, escore-localizado, igbt, fmeca, paderborn, fusivel-ac]
 ---
 
 # Correção do escore — antes e depois

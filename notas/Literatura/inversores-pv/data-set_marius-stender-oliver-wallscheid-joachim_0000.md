@@ -3,12 +3,12 @@ titulo: Marius Stender Oliver Wallscheid Joachim
 autor: Data Set
 ano: 2020
 tema: Inversores PV
+tags: [literatura, reliability-assessment, solar-pv-inverters, set, inverter, electrical-drive, inversor-pv, paderborn]
 subtema: Inversores Pv
 relevancia: Alta
-lido: true
-citado: false
+lido: True
+citado: False
 link_pdf: /literatura/inversores-pv/data-set_marius-stender-oliver-wallscheid-joachim_0000.pdf
-tags: [data, reliability-assessment, solar-pv-inverters, set, inverter, electrical-drive]
 ---
 
 # Marius Stender Oliver Wallscheid Joachim

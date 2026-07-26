@@ -1,10 +1,10 @@
 ---
 titulo: "Kalman filtering: theory and practice using MATLAB"
-autor: "Grewal, Mohinder S. e Andrews, Angus"
+autor: Grewal, Mohinder S. e Andrews, Angus
 ano: 2001
 tema: ml-preditivo
+tags: [literatura, ml-preditivo, manutencao]
 arquivo: grewal_kalman-filtering-theory-and-practice-using-matlab_2001.pdf
-tags: [literatura, ml-preditivo]
 data_insercao: 2026-05-23
 ---
 

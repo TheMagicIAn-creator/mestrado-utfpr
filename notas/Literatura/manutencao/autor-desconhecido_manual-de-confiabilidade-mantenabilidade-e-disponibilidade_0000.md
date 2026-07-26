@@ -1,13 +1,13 @@
 ---
-titulo: "Manual de Confiabilidade, Mantenabilidade e Disponibilidade"
-autor: "autor-desconhecido"
-ano: 0000
+titulo: Manual de Confiabilidade, Mantenabilidade e Disponibilidade
+autor: autor-desconhecido
+ano: 0
 tema: manutencao
-arquivo: autor-desconhecido_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_0000.pdf
-tags: [literatura, manutencao]
-data_insercao: 2026-05-23
 revisar: true
-motivo_revisao: "autor-invalido,ano-invalido"
+motivo_revisao: autor-invalido
+tags: [literatura, manutencao, confiabilidade, fmea, autor-invalido]
+arquivo: autor-desconhecido_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_0000.pdf
+data_insercao: 2026-05-23
 ---
 
 # Manual de Confiabilidade, Mantenabilidade e Disponibilidade

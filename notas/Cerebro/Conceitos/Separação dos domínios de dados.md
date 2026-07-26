@@ -1,11 +1,11 @@
 ---
-al_iado: true
-titulo: "Separação dos domínios de dados"
+titulo: Separação dos domínios de dados
 tipo: conceito
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [datasets, paderborn, pv-farms, metodologia]
+al_iado: true
+tags: [cerebro, datasets, paderborn, pv-farms, metodologia, inversor-pv, evidencia-e2, deteccao-anomalia]
 ---
 
 # Separação dos domínios de dados

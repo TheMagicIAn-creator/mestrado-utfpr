@@ -1,10 +1,10 @@
 ---
 titulo: "Digital Twin in manufacturing: A categorical literature review and classification"
-autor: "Werner Kritzinger, Matthias Karner, Georg Traar, Jan Henjes, Wilfried Sihn"
+autor: Werner Kritzinger, Matthias Karner, Georg Traar, Jan Henjes, Wilfried Sihn
 ano: 2018
 tema: sinais-eletricos
-arquivo: kritzinger_digital-twin-in-manufacturing-a-categorical-literature-revie_2018.pdf
 tags: [literatura, sinais-eletricos]
+arquivo: kritzinger_digital-twin-in-manufacturing-a-categorical-literature-revie_2018.pdf
 data_insercao: 2026-05-22
 ---
 

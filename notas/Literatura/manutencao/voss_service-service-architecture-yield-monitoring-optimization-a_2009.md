@@ -1,10 +1,10 @@
 ---
-titulo: "Service & service architecture – yield monitoring, optimization and reporting for commercial-scale s"
-autor: "Steve Voss, Dr. Tassos Golnas, Steve Hester & Mark Culpepper, Sun Edison LLC"
+titulo: Service & service architecture – yield monitoring, optimization and reporting for commercial-scale s
+autor: Steve Voss, Dr. Tassos Golnas, Steve Hester & Mark Culpepper, Sun Edison LLC
 ano: 2009
 tema: manutencao
+tags: [literatura, manutencao, inversor-pv]
 arquivo: voss_service-service-architecture-yield-monitoring-optimization-a_2009.pdf
-tags: [literatura, manutencao]
 data_insercao: 2026-05-23
 ---
 

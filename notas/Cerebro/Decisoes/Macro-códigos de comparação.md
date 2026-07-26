@@ -1,11 +1,11 @@
 ---
-al_iado: true
-titulo: "Macro-códigos de comparação"
+titulo: Macro-códigos de comparação
 tipo: decisao
 status: ativo
 confianca: alta
 nivel_evidencia: projeto
-tags: [cerebro, decisao, comparacao, arquitetura]
+al_iado: true
+tags: [cerebro, decisao, comparacao, arquitetura, autoencoder, machine-learning, fmeca, sinais-eletricos, escore-localizado]
 ---
 
 # Macro-códigos de comparação

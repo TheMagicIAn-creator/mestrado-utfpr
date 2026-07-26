@@ -3,12 +3,12 @@ titulo: National Aeronautics Space Administration
 autor: For Facilities
 ano: 2008
 tema: ML Preditivo
+tags: [literatura, maintenance, reliability, centered, facilities, manutencao, rcm, confiabilidade]
 subtema: Ml Preditivo
 relevancia: Media
-lido: false
-citado: false
+lido: False
+citado: False
 link_pdf: /literatura/ml-preditivo/for-facilities_national-aeronautics-space-administration_2008.pdf
-tags: [maintenance, reliability, centered, facilities]
 ---
 
 # National Aeronautics Space Administration

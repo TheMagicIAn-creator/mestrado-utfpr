@@ -3,12 +3,12 @@ titulo: Citation Ibrahim Alsheikh
 autor: Awaysheh Fm
 ano: 2022
 tema: ML Preditivo
+tags: [literatura, anomaly, detection, machine, learning, time, series, analysis, correlation, machine-learning, inversor-pv, deteccao-anomalia, autoencoder, manutencao]
 subtema: Ml Preditivo
 relevancia: Media
-lido: false
-citado: false
+lido: False
+citado: False
 link_pdf: /literatura/ml-preditivo/awaysheh-fm_citation-ibrahim-alsheikh_2022.pdf
-tags: anomaly detection, machine learning, time series analysis, correlation
 ---
 
 # Citation Ibrahim Alsheikh

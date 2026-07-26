@@ -1,10 +1,10 @@
 ---
-titulo: "Digital Signal Processing System Analysis and Design, Second Edition"
-autor: "Paulo S. R. Diniz"
+titulo: Digital Signal Processing System Analysis and Design, Second Edition
+autor: Paulo S. R. Diniz
 ano: 2021
 tema: sinais-eletricos
-arquivo: diniz_digital-signal-processing-system-analysis-and-design-second-_2021.pdf
 tags: [literatura, sinais-eletricos]
+arquivo: diniz_digital-signal-processing-system-analysis-and-design-second-_2021.pdf
 data_insercao: 2026-05-17
 ---
 

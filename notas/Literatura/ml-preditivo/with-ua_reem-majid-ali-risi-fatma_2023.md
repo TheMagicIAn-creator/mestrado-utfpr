@@ -3,12 +3,12 @@ titulo: Reem Majid Ali Risi Fatma
 autor: With Ua
 ano: 2023
 tema: ML Preditivo
+tags: [literatura, solar-energy, thermal, defect, inversor-pv, machine-learning, manutencao]
 subtema: Ml Preditivo
 relevancia: Alta
-lido: false
-citado: false
+lido: False
+citado: False
 link_pdf: /literatura/ml-preditivo/with-ua_reem-majid-ali-risi-fatma_2023.pdf
-tags: [solar-energy, thermal, defect]
 ---
 
 # Reem Majid Ali Risi Fatma

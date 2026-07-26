@@ -1,9 +1,10 @@
 ---
-data: 2026-05-20
+titulo: 2026 05 20 consolidado
 tipo: memoria-consolidada
+tags: [memoria, consolidado, inversor-pv, fmea, manutencao, fmeca, weibull-rul, machine-learning]
+data: 2026-05-20
 sessoes_incluidas: 4
 periodo: 2026-05-18 a 2026-05-20
-tags: [memoria, consolidado]
 ---
 
 # Memória Consolidada — 20/05/2026

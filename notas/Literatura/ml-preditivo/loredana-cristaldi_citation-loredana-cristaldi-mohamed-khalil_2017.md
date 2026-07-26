@@ -3,12 +3,12 @@ titulo: Citation Loredana Cristaldi Mohamed Khalil
 autor: Loredana Cristaldi
 ano: 2017
 tema: ML Preditivo
+tags: [literatura, reliability-assessment, root-cause-analysis-of-failures, markov-process, photovoltaic-systems, balance-of-system, fmeca, inversor-pv, confiabilidade, manutencao, fmea]
 subtema: Ml Preditivo
 relevancia: Media
-lido: false
-citado: false
+lido: False
+citado: False
 link_pdf: /literatura/ml-preditivo/loredana-cristaldi_citation-loredana-cristaldi-mohamed-khalil_2017.pdf
-tags: [reliability-assessment, root-cause-analysis-of-failures, Markov-process, photovoltaic-systems, balance-of-system, fmeca]
 ---
 
 # Citation Loredana Cristaldi Mohamed Khalil

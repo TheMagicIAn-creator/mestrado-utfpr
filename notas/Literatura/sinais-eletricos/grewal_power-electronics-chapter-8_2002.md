@@ -1,10 +1,10 @@
 ---
-titulo: "Power Electronics Chapter 8"
-autor: "Grewal"
+titulo: Power Electronics Chapter 8
+autor: Grewal
 ano: 2002
 tema: sinais-eletricos
+tags: [literatura, sinais-eletricos, inversor-pv]
 arquivo: grewal_power-electronics-chapter-8_2002.pdf
-tags: [literatura, sinais-eletricos]
 data_insercao: 2026-05-23
 ---
 

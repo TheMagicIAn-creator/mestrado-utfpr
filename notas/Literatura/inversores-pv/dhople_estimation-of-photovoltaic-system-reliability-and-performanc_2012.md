@@ -1,10 +1,10 @@
 ---
-titulo: "Estimation of Photovoltaic System Reliability and Performance Metrics"
-autor: "Sairaj V. Dhople, Alejandro D. Domínguez-García"
+titulo: Estimation of Photovoltaic System Reliability and Performance Metrics
+autor: Sairaj V. Dhople, Alejandro D. Domínguez-García
 ano: 2012
 tema: inversores-pv
+tags: [literatura, inversores-pv, inversor-pv, confiabilidade]
 arquivo: dhople_estimation-of-photovoltaic-system-reliability-and-performanc_2012.pdf
-tags: [literatura, inversores-pv]
 data_insercao: 2026-05-23
 ---
 

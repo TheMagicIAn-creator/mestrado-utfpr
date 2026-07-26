@@ -3,12 +3,12 @@ titulo: Energy Research Laboratory Reneral British
 autor: Academic Editor
 ano: 2025
 tema: ML Preditivo
+tags: [literatura, energy, management, sustainable-energy, reliability, fmea, fmeca, confiabilidade, inversor-pv, manutencao]
 subtema: Ml Preditivo
 relevancia: Media
-lido: false
-citado: false
+lido: False
+citado: False
 link_pdf: /literatura/ml-preditivo/academic-editor_energy-research-laboratory-reneral-british_2025.pdf
-tags: [energy, management, sustainable-energy, reliability, fmea, fmeca]
 ---
 
 # Energy Research Laboratory Reneral British

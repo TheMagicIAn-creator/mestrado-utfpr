@@ -3,12 +3,12 @@ titulo: Maintenance Method Maintain Reliability Fan
 autor: Muhammad Fakhrul
 ano: 2020
 tema: Manutencao
+tags: [literatura, maintenance, monitoring, reliability, interval, manutencao, fmea, confiabilidade, rcm, weibull-rul]
 subtema: Manutencao
 relevancia: Alta
-lido: true
-citado: false
+lido: True
+citado: False
 link_pdf: /literatura/manutencao/muhammad-fakhrul_maintenance-method-maintain-reliability-fan_2020.pdf
-tags: [maintenance, monitoring, reliability, interval]
 ---
 
 # Maintenance Method Maintain Reliability Fan

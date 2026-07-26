@@ -3,12 +3,12 @@ titulo: Isolation Forest Algorithm Usually Set
 autor: Forest Framework
 ano: 2026
 tema: ML Preditivo
+tags: [literatura, deep, machine-learning, learning, deep-learning, solar, power, reinforcement, reinforcement-learning, isolation-forest, forest, isolation, anomaly, anomaly-detection, detection, deteccao-anomalia, inversor-pv, manutencao, autoencoder]
 subtema: Ml Preditivo
 relevancia: Media
-lido: false
-citado: false
+lido: False
+citado: False
 link_pdf: /literatura/ml-preditivo/forest-framework_isolation-forest-algorithm-usually-set_2026.pdf
-tags: [deep, Machine-learning, learning, deep-learning, solar, power, reinforcement, reinforcement-learning, isolation-forest, forest, isolation, Anomaly, anomaly-detection, detection]
 ---
 
 # Isolation Forest Algorithm Usually Set

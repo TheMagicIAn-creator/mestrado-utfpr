@@ -3,12 +3,12 @@ titulo: Filipe Monteiro Eduardo Sarquis Paulo
 autor: Branco P
 ano: 2024
 tema: ML Preditivo
+tags: [literatura, failure, mode, and, effects, analysis, fmea, photovoltaic, system, reliability, monitoring, inversor-pv, manutencao, confiabilidade]
 subtema: Ml Preditivo
 relevancia: Media
-lido: false
-citado: false
+lido: False
+citado: False
 link_pdf: /literatura/ml-preditivo/branco-p_filipe-monteiro-eduardo-sarquis-paulo_2024.pdf
-tags: failure mode and effects analysis (FMEA), photovoltaic system, reliability, monitoring
 ---
 
 # Filipe Monteiro Eduardo Sarquis Paulo
