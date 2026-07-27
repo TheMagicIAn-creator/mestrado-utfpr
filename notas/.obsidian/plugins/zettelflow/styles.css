@@ -1,0 +1,1630 @@
+@charset "UTF-8";
+
+/* src/styles/main.scss */
+@keyframes fadeIn {
+  from {
+    opacity: 0.6;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.6;
+  }
+}
+@keyframes flashFrames {
+  0% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  75% {
+    opacity: 0.75;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.zettelkasten-flow__dragging {
+  z-index: 9999;
+  border: 2px solid var(--background-modifier-border);
+  border-radius: 0.25rem;
+  background-color: var(--background-secondary);
+  box-shadow: 0 0.125rem 0.25rem var(--background-modifier-border);
+}
+.zettelkasten-flow__sortable {
+  touch-action: none;
+}
+.zettelkasten-flow__modal {
+  width: var(--modal-width);
+  height: var(--modal-height);
+  max-width: var(--modal-max-width);
+  max-height: var(--modal-max-height);
+}
+.zettelkasten-flow__modal-navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5em 1em;
+  border-bottom: 1px solid #ccc;
+}
+.zettelkasten-flow__modal-navbar h2 {
+  margin: 0;
+  font-size: 1.5em;
+  font-weight: bold;
+}
+.zettelkasten-flow__navbar-button-group {
+  display: flex;
+  gap: 0.5em;
+}
+.zettelkasten-flow__modal-navbar button {
+  margin-left: auto;
+}
+.zettelkasten-flow__modal-reader-type-section {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.zettelkasten-flow__modal-reader-type-section p {
+  margin: 0;
+  margin-right: 10px;
+  font-weight: bold;
+}
+zettelkasten-flow__.modal-reader-type-section .icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.zettelkasten-flow__modal-reader-general-section {
+  margin-bottom: 20px;
+}
+.zettelkasten-flow__modal-reader-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  border: 2px dashed var(--background-modifier-border-focus);
+  background-color: var(--background-modifier-border);
+  border-radius: 10px;
+}
+.zettelkasten-flow__modal-reader-section .setting-item {
+  margin-bottom: 15px;
+}
+.zettelkasten-flow__modal-reader-section .setting-item button {
+  margin-top: 5px;
+}
+.zettelkasten-flow__options-modal {
+  padding: 20px;
+}
+.zettelkasten-flow__options-modal-title {
+  text-align: center;
+  margin-bottom: 15px;
+}
+.zettelkasten-flow__options-modal-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.zettelkasten-flow__options-modal-button {
+  width: 100%;
+  text-align: center;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: none;
+  background-color: var(--background-modifier-accent);
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.zettelkasten-flow__options-modal-button:hover {
+  background-color: var(--background-primary);
+}
+.zettelkasten-flow__readable-setting-item .setting-item-info {
+  max-width: 50%;
+}
+.zettelkasten-flow__readable-setting-item .setting-item-control {
+  min-width: 50%;
+}
+.zettelkasten-flow__readable-setting-item .search-input-container {
+  width: -webkit-fill-available;
+}
+.zettelkasten-flow__backlink {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 0.5rem;
+}
+.zettelkasten-flow__backlink-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.zettelkasten-flow__backlink-left > div {
+  margin-bottom: 1rem;
+}
+.zettelkasten-flow__backlink-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.zettelkasten-flow__backlink-right > div {
+  margin-bottom: 1rem;
+}
+.zettelkasten-flow__preview {
+  padding: 0.2rem;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 0.25rem;
+}
+.zettelkasten-flow__navbar {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+}
+.zettelkasten-flow__navbar_icons {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: right;
+  margin-right: 1rem;
+}
+.zettelkasten-flow__navbar_button_group {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  margin-right: 1rem;
+}
+.zettelkasten-flow__navbar_button_group > button {
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  margin-right: 0.5rem;
+  background:
+    linear-gradient(
+      to bottom,
+      var(--navbar-button-hover),
+      var(--navbar-button-hover)) no-repeat,
+    var(--button-initial-color);
+  background-size: 100% 0;
+  background-position: 0 100%;
+  transition: background-size 0.2s ease-in-out, background-position 0.2s ease-in-out;
+}
+.zettelkasten-flow__navbar_button_group > button:hover {
+  background-size: 100% 100%;
+}
+.zettelkasten-flow__navbar_skip_button {
+  color: var(--interactive-accent);
+  --navbar-button-hover: var(--interactive-accent-hover);
+  --button-initial-color: var(--interactive-accent);
+}
+.zettelkasten-flow__navbar_build_button {
+  color: var(--background-secondary);
+  --navbar-button-hover: var(--background-modifier-error);
+  --button-initial-color: var(--background-primary);
+}
+.zettelkasten-flow__search-results {
+  position: fixed;
+  z-index: 9999;
+  background-color: var(--background-secondary);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 5px var(--background-modifier-border);
+  max-height: min(200px, 45vh);
+  overflow-y: auto;
+  transition: all 0.1s ease;
+  animation: fadeIn 0.1s ease forwards;
+}
+.zettelkasten-flow__search-hidden {
+  animation: fadeOut 0.3s ease forwards;
+}
+.zettelkasten-flow__search-selected {
+  background-color: var(--color-accent);
+  transition: background-color 0.3s ease;
+}
+.zettelkasten-flow__search-results li {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.zettelkasten-flow__search-results li:hover {
+  background-color: var(--background-modifier-hover);
+}
+.zettelkasten-flow__search-results li:focus {
+  outline: none;
+  background-color: var(--background-modifier-focus);
+}
+.zettelkasten-flow__selectable-search {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  font-family: var(--font-family, Arial, sans-serif);
+  margin-bottom: 1rem;
+}
+.zettelkasten-flow__selectable-search-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 4px;
+  padding: 0.5rem;
+  background-color: var(--background-secondary, #f5f5f5);
+}
+.zettelkasten-flow__selectable-pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  flex-grow: 1;
+  align-items: center;
+  gap: 0.5rem;
+}
+.zettelkasten-flow__selectable-pill {
+  display: flex;
+  align-items: center;
+  padding: 0.2em 0.4em;
+  background-color: var(--accent-color, #007bff);
+  border: none;
+  border-radius: 12px;
+  color: var(--text-normal, #ffffff);
+  cursor: default;
+  transition: background-color 0.3s, border-radius 0.3s;
+}
+.zettelkasten-flow__selectable-pill:hover {
+  background-color: var(--accent-color-hover, #0056b3);
+}
+.zettelkasten-flow__pill-label {
+  margin-right: 0.4rem;
+  font-size: 0.9rem;
+}
+.zettelkasten-flow__pill-remove-button {
+  background: none;
+  border: none;
+  color: var(--text-normal, #ffffff) !important;
+  background-color: var(--accent-color, #007bff) !important;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+}
+.zettelkasten-flow__pill-remove-button:hover {
+  color: var(--selection, #ff4d4d);
+}
+.zettelkasten-flow__selectable-search-header > input {
+  flex-grow: 1;
+  border: none;
+  outline: none;
+  padding: 0.3em;
+  min-width: 150px;
+  background-color: transparent;
+  color: var(--text-normal, #000000);
+}
+.zettelkasten-flow__selectable-search-header > input::placeholder {
+  color: var(--text-muted, #999999);
+}
+.zettelkasten-flow__clear-all-button {
+  background: none;
+  border: none;
+  color: var(--selection, #ff4d4d);
+  cursor: pointer;
+  margin-left: 0.5rem;
+  padding: 0.3em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.zettelkasten-flow__clear-all-button:hover {
+  color: var(--selection-hover, #cc0000);
+}
+.zettelkasten-flow__selectable-search-results {
+  position: relative;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: var(--background-primary, #ffffff);
+  border: 1px solid var(--border-color, #ccc);
+  border-top: none;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 0 0 4px 4px;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.zettelkasten-flow__search-option {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  color: var(--text-normal, #000000);
+}
+.zettelkasten-flow__search-option:hover,
+.zettelkasten-flow__search-selected {
+  background-color: var(--selection, #f1f1f1);
+}
+.zettelkasten-flow__no-results {
+  padding: 0.5rem 1rem;
+  color: var(--text-muted, #999999);
+}
+.zettelkasten-flow__confirm-button {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: var(--accent-color, #007bff);
+  color: var(--text-normal, #ffffff);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+.zettelkasten-flow__confirm-button:hover {
+  background-color: var(--accent-color-hover, #0056b3);
+}
+.zettelkasten-flow__loading,
+.zettelkasten-flow__error {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-normal, #333333);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.zettelkasten-flow__error {
+  color: var(--selection, #ff4d4d);
+}
+.zettelkasten-flow__loading-icon,
+.zettelkasten-flow__error-icon {
+  margin-right: 0.5rem;
+}
+.zettelkasten-flow__accordion {
+  border: 1px solid var(--background-secondary);
+  border-radius: 4px;
+  transition: opacity 0.2s ease;
+  opacity: 1;
+}
+.zettelkasten-flow__accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background-color: var(--color-accent);
+  border-bottom: 1px solid var(--background-secondary);
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+.zettelkasten-flow__accordion-header:hover {
+  background-color: var(--color-accent-hover);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+.zettelkasten-flow__accordion-header-info {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-width: 15%;
+}
+.zettelkasten-flow__accordion-header-info .zettelkasten-flow__input-group {
+  margin-left: 10px;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.zettelkasten-flow__accordion-header-info label {
+  margin-right: 10px;
+}
+.zettelkasten-flow__accordion-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.zettelkasten-flow__accordion-header-actions .zettelkasten-flow__input-group {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.zettelkasten-flow__accordion-header-actions .zettelkasten-flow__input-group input,
+.zettelkasten-flow__accordion-header-actions .zettelkasten-flow__input-group textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+.zettelkasten-flow__accordion-header-actions button,
+.zettelkasten-flow__accordion-header-actions .mobile-option-setting-drag-icon {
+  flex: 0 0 auto;
+}
+.zettelkasten-flow__accordion-header-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.zettelkasten-flow__accordion-header-actions button:hover {
+  background-color: var(--background-modifier-hover);
+}
+.zettelkasten-flow__accordion-header-actions button:focus {
+  outline: none;
+}
+.zettelkasten-flow__accordion-body {
+  max-height: 0;
+  overflow: hidden;
+  transition:
+    max-height 0.2s ease-out,
+    opacity 0.1s ease-out,
+    padding 0.2s ease-out;
+  opacity: 0;
+  padding: 0 15px;
+}
+.zettelkasten-flow__accordion-body.open {
+  max-height: 500em;
+  opacity: 1;
+  padding: 15px;
+}
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.zettelkasten-flow__accordion.entrance {
+  animation: slideDown 0.3s ease forwards;
+}
+@keyframes slideUp {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+.zettelkasten-flow__accordion.exit {
+  animation: slideUp 0.3s ease forwards;
+}
+.zettelkasten-flow__accordion-header-remove {
+  cursor: pointer;
+}
+.zettelkasten-flow__accordion-header-remove:hover {
+  background-color: var(--background-modifier-error);
+}
+@media (max-width: 550px) {
+  .zettelkasten-flow__accordion-header-info {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .zettelkasten-flow__accordion-header-info .zettelkasten-flow__input-group {
+    width: 100%;
+    margin-left: 0;
+  }
+  .zettelkasten-flow__accordion-header-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .zettelkasten-flow__accordion-header-actions .zettelkasten-flow__input-group {
+    width: 100%;
+  }
+}
+.zettelkasten-flow__input-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin-left: 10px;
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: 0;
+  min-width: 0;
+}
+.zettelkasten-flow__input-group input,
+.zettelkasten-flow__input-group textarea {
+  color: var(--text-normal);
+  width: 100%;
+  padding: 12px 14px;
+  border: solid 1.5px var(--background-secondary);
+  border-radius: 0.25rem;
+  background: none;
+  outline: none;
+  font-size: 1rem;
+  box-sizing: border-box;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.zettelkasten-flow__input-group input:focus,
+.zettelkasten-flow__input-group input:valid,
+.zettelkasten-flow__input-group textarea:focus,
+.zettelkasten-flow__input-group textarea:valid {
+  border-color: var(--text-accent);
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.5);
+}
+.zettelkasten-flow__input-group input::placeholder,
+.zettelkasten-flow__input-group textarea::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+.zettelkasten-flow__input-group input:disabled,
+.zettelkasten-flow__input-group textarea:disabled {
+  background-color: var(--background-secondary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.zettelkasten-flow__input-label {
+  color: var(--text-accent);
+  pointer-events: none;
+  transform: translateY(0.4rem);
+  transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: absolute;
+  left: 15px;
+  top: 0;
+}
+.zettelkasten-flow__input-group input:focus ~ .zettelkasten-flow__input-label,
+.zettelkasten-flow__input-group input:valid ~ .zettelkasten-flow__input-label,
+.zettelkasten-flow__input-group textarea:focus ~ .zettelkasten-flow__input-label,
+.zettelkasten-flow__input-group textarea:valid ~ .zettelkasten-flow__input-label {
+  transform: translateY(-50%) scale(0.8);
+  background-color: var(--background-primary);
+  padding: 0 0.2em;
+  color: var(--text-normal);
+}
+.zettelkasten-flow__settings-item {
+  border-top: 1px solid var(--background-modifier-border);
+  background-color: var(--background-secondary);
+  width: 100%;
+  font-size: 16px;
+  display: flex;
+  align-items: flex-start;
+  padding: 12px;
+  color: var(--text-muted);
+  justify-content: space-between;
+}
+.zettelkasten-flow__setting-button-group {
+  display: flex;
+  justify-content: flex-end;
+  flex-grow: 1;
+  flex-shrink: 0;
+  max-width: 25px;
+}
+.zettelkasten-flow__setting-button-group > div {
+  margin-left: 12px;
+}
+.zettelkasten-flow__settings-toggle-group {
+  align-self: flex-end;
+}
+.zettelkasten-flow__settings-toggle-group > div {
+  display: flex;
+  align-items: center;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+.zettelkasten-flow__settings-toggle-group .checkbox-container {
+  margin-right: 10px;
+}
+.zettelkasten-flow__settings-toggle-group .zettelkasten-flow__setting-item-label {
+  margin-bottom: 0;
+}
+.zettelkasten-flow__debug-container {
+  margin-top: 20px;
+}
+.zettelkasten-flow__output-container {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--mod-ui-border);
+  border-radius: 4px;
+  background-color: var(--background-secondary);
+  white-space: pre-wrap;
+}
+.zettelkasten-flow__success-output {
+  color: var(--text-normal);
+  background-color: var(--interactive-success);
+  padding: 10px;
+  border-radius: 4px;
+}
+.zettelkasten-flow__error-output {
+  color: var(--error-fg);
+  background-color: var(--background-modifier-error);
+  padding: 10px;
+  border-radius: 4px;
+}
+.zettelkasten-flow__run-button {
+  margin-right: 10px;
+}
+.zettelkasten-flow__clear-button {
+  background-color: var(--interactive-accent);
+  color: var(--text-normal);
+}
+.zettelkasten-flow__progress-bar-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 1em 0;
+}
+.zettelkasten-flow__progress-bar-container > label {
+  font-size: 1em;
+  color: var(--color-base-100);
+  margin-bottom: 0.5em;
+}
+.zettelkasten-flow__progress-bar-container > progress {
+  width: 100%;
+  height: 20px;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: var(--background-secondary);
+}
+.zettelkasten-flow__progress-bar-container > progress::-webkit-progress-bar {
+  background-color: var(--background-secondary);
+}
+.zettelkasten-flow__progress-bar-container > progress::-webkit-progress-value {
+  background-color: var(--color-green);
+}
+.zettelkasten-flow__progress-bar-container > progress::-moz-progress-bar {
+  background-color: var(--color-green);
+}
+.zettelkasten-flow__actions-management-add {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px 20px;
+  flex-direction: column;
+}
+.zettelkasten-flow__actions-management-add-button-active,
+.zettelkasten-flow__actions-management-add-button {
+  color: var(--text-normal);
+  width: 35px;
+  height: 35;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.3s;
+  font-size: 24px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+.zettelkasten-flow__actions-management-add-button {
+  background-color: var(--background-modifier-info);
+}
+.zettelkasten-flow__actions-management-add-button-active {
+  background-color: var(--background-modifier-success);
+  transform: rotate(45deg);
+}
+.zettelkasten-flow__actions-management-add-menu,
+.zettelkasten-flow__actions-management-add-menu-show {
+  background-color: var(--background-secondary);
+  padding: 15px;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  min-width: 100%;
+  margin-top: 20px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: opacity 0.3s, max-height 0.3s;
+}
+.zettelkasten-flow__actions-management-add-menu {
+  opacity: 0;
+  max-height: 0;
+  display: none;
+}
+.zettelkasten-flow__actions-management-add-menu-show {
+  opacity: 1;
+  max-height: 1000px;
+}
+.zettelkasten-flow__actions-management-add-menu-search {
+  width: 100%;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid var(--background-modifier-border);
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+.zettelkasten-flow__actions-management-add-card-custom {
+  background-color: var(--background-modifier-active);
+}
+.zettelkasten-flow__actions-management-add-card {
+  background-color: var(--background-secondary);
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+  flex: 1;
+  border: 1px solid var(--background-modifier-border);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+}
+.zettelkasten-flow__actions-management-add-card:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+.zettelkasten-flow__actions-management-add-card-icon {
+  margin-bottom: 10px;
+}
+.zettelkasten-flow__actions-management-add-card-header {
+  width: 100%;
+  text-align: center;
+}
+.zettelkasten-flow__actions-management-add-card-header label {
+  font-weight: bold;
+  font-size: 18px;
+}
+.zettelkasten-flow__actions-management-add-card-link {
+  text-decoration: none;
+  color: var(--text-accent);
+  font-size: 14px;
+  margin-top: 5px;
+  display: inline-block;
+}
+.zettelkasten-flow__actions-management-add-card-body {
+  font-size: 14px;
+  color: var(--text-muted);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 3em;
+  line-height: 1.5em;
+}
+.zettelkasten-flow__actions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.zettelkasten-flow__actions-list > .zettelkasten-flow__actions-management-add-card {
+  flex: 1 1 calc(33.333% - 10px);
+  max-width: calc(33.333% - 10px);
+}
+@media (max-width: 600px) {
+  .zettelkasten-flow__actions-management-add {
+    flex-direction: column;
+  }
+  .zettelkasten-flow__actions-list {
+    flex-direction: column;
+  }
+  .zettelkasten-flow__actions-list > .zettelkasten-flow__actions-management-add-card {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+}
+.zettelkasten-flow__community-templates-gallery {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.zettelkasten-flow__community-templates-gallery-title {
+  margin: 0;
+  font-size: 1.4rem;
+  color: var(--text-normal);
+}
+.zettelkasten-flow__community-templates-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.zettelkasten-flow__community-templates-search {
+  width: 60%;
+  padding: 0.5rem;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius);
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+}
+.zettelkasten-flow__community-templates-filters {
+  display: flex;
+  gap: 0.5rem;
+}
+.zettelkasten-flow__community-templates-filter-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius);
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.zettelkasten-flow__community-templates-filter-button:hover {
+  background-color: var(--background-secondary);
+}
+.zettelkasten-flow__community-templates-filter-button.is-active {
+  border-color: var(--interactive-accent);
+  border: 2px solid var(--interactive-accent);
+}
+.zettelkasten-flow__community-templates-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.zettelkasten-flow__community-templates-card {
+  position: relative;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  background-color: var(--background-primary);
+  cursor: default;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+.zettelkasten-flow__community-templates-card:hover {
+  background-color: var(--background-secondary);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+.zettelkasten-flow__community-templates-filter-button-is-active {
+  background-color: var(--interactive-accent);
+  color: var(--text-inverse);
+  border-color: var(--interactive-accent);
+}
+.zettelkasten-flow__template-type-step {
+  border-left: 4px solid var(--color-accent);
+}
+.zettelkasten-flow__template-type-action {
+  border-left: 4px solid var(--code-important);
+}
+.zettelkasten-flow__template-type-markdown {
+  border-left: 4px solid var(--background-modifier-border);
+}
+.zettelkasten-flow__template-type-flow {
+  border-left: 4px solid var(--code-keyword);
+}
+.zettelkasten-flow__community-templates-card-type-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: var(--text-inverse);
+}
+.zettelkasten-flow__template-type-step .zettelkasten-flow__community-templates-card-type-badge {
+  background-color: var(--color-accent);
+}
+.zettelkasten-flow__template-type-action .zettelkasten-flow__community-templates-card-type-badge {
+  background-color: var(--code-important);
+}
+.zettelkasten-flow__template-type-markdown .zettelkasten-flow__community-templates-card-type-badge {
+  background-color: var(--background-modifier-border);
+}
+.zettelkasten-flow__template-type-flow .zettelkasten-flow__community-templates-card-type-badge {
+  background-color: var(--code-keyword);
+}
+.zettelkasten-flow__community-templates-card-icon {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 24px;
+  height: 24px;
+  opacity: 0.7;
+}
+.zettelkasten-flow__template-type-step .zettelkasten-flow__community-templates-card-icon {
+  fill: var(--color-accent);
+}
+.zettelkasten-flow__template-type-action .zettelkasten-flow__community-templates-card-icon {
+  fill: var(--code-important);
+}
+.zettelkasten-flow__template-type-markdown .zettelkasten-flow__community-templates-card-icon {
+  fill: var(--background-modifier-border);
+}
+.zettelkasten-flow__community-templates-card-title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-normal);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.zettelkasten-flow__community-templates-card-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.zettelkasten-flow__community-templates-card-description {
+  margin: 0.5rem 0;
+  color: var(--text-normal);
+}
+.zettelkasten-flow__community-templates-card-meta {
+  color: var(--text-faint);
+  font-size: 0.85rem;
+}
+.zettelkasten-flow__community-templates-card-actions {
+  margin-top: 0.5rem;
+  text-align: right;
+}
+.zettelkasten-flow__community-templates-uninstall-button {
+  padding: 0.3rem 0.7rem;
+  border: none;
+  border-radius: var(--radius);
+  background-color: var(--text-accent);
+  color: var(--text-inverse);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.zettelkasten-flow__community-templates-uninstall-button:hover {
+  background-color: var(--interactive-accent);
+}
+.zettelkasten-flow__community-templates-sentinel {
+  height: 1px;
+  margin: 1rem 0;
+}
+.zettelkasten-flow__community-templates-load-status {
+  color: var(--text-faint);
+  font-style: italic;
+}
+.zettelkasten-flow__community-templates-no-results {
+  color: var(--text-faint);
+  font-style: italic;
+}
+.zettelkasten-flow__flow-nodes-container {
+  margin-top: 0.5rem;
+}
+.zettelkasten-flow__flow-node-type-section {
+  margin-bottom: 1rem;
+}
+.zettelkasten-flow__flow-nodes-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0.5rem 0 1rem;
+}
+.zettelkasten-flow__flow-node-item {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius);
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+}
+.zettelkasten-flow__flow-node-accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  background-color: var(--background-secondary);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.zettelkasten-flow__flow-node-accordion-header:hover {
+  background-color: var(--background-modifier-hover);
+}
+.zettelkasten-flow__flow-node-accordion-header.expanded {
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.zettelkasten-flow__flow-node-title {
+  font-weight: 500;
+  flex-grow: 1;
+}
+.zettelkasten-flow__flow-node-toggle {
+  color: var(--text-accent);
+  font-size: 0.9rem;
+  margin-left: 0.5rem;
+  transition: transform 0.2s ease;
+}
+.zettelkasten-flow__flow-node-accordion-content {
+  padding: 1rem;
+  background-color: var(--background-primary);
+}
+.zettelkasten-flow__flow-node-color {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.zettelkasten-flow__flow-node-color-badge {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  margin-left: 0.5rem;
+  border: 1px solid var(--background-modifier-border);
+}
+.zettelkasten-flow__flow-node-text {
+  margin-top: 0.5rem;
+  white-space: pre-wrap;
+}
+.zettelkasten-flow__flow-node-actions {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.zettelkasten-flow__modal-reader-action-section {
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background-color: var(--background-secondary-alt);
+  border-radius: var(--radius);
+}
+.zettelkasten-flow__modal-reader-section {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: var(--background-primary);
+  border-radius: var(--radius);
+  border: 1px solid var(--background-modifier-border);
+}
+.zettelkasten-flow__flow-edges-container {
+  margin-top: 0.5rem;
+}
+.zettelkasten-flow__flow-edges-list {
+  list-style-type: none;
+  padding: 0;
+}
+.zettelkasten-flow__flow-edge-item {
+  margin-bottom: 0.5rem;
+}
+.zettelkasten-flow__flow-edge-header {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  background-color: var(--background-secondary);
+  border-radius: var(--radius);
+}
+.zettelkasten-flow__flow-edge-color-badge {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  margin-left: 0.5rem;
+  border: 1px solid var(--background-modifier-border);
+}
+.zettelkasten-flow__property-hooks-manager {
+  margin: 1rem 0;
+}
+.zettelkasten-flow__property-hooks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.zettelkasten-flow__property-hooks-header h3 {
+  margin: 0;
+  font-size: var(--font-ui-medium);
+}
+.zettelkasten-flow__property-hooks-add-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: var(--font-ui-small);
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.zettelkasten-flow__property-hooks-add-button:hover {
+  background-color: var(--interactive-accent-hover);
+}
+.zettelkasten-flow__property-hooks-empty {
+  color: var(--text-muted);
+  padding: 1rem;
+  text-align: center;
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+}
+.zettelkasten-flow__property-hooks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.zettelkasten-flow__property-hooks-item {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background-color: var(--background-secondary);
+  overflow: hidden;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease,
+    height 0.3s ease;
+}
+.zettelkasten-flow__property-hooks-item.entrance {
+  opacity: 0;
+  transform: translateY(-20px);
+  animation: slide-in 0.3s ease forwards;
+}
+.zettelkasten-flow__property-hooks-item.exit {
+  opacity: 1;
+  animation: slide-out 0.3s ease forwards;
+}
+@keyframes slide-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes slide-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+.zettelkasten-flow__property-hooks-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: var(--background-secondary-alt);
+  border-bottom: 1px solid var(--background-modifier-border);
+  user-select: none;
+  flex-wrap: nowrap;
+  gap: 12px;
+}
+.zettelkasten-flow__property-hooks-item-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  overflow: hidden;
+  flex: 1;
+}
+.zettelkasten-flow__property-hooks-item-info strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.zettelkasten-flow__property-type-badge {
+  font-size: var(--font-ui-smaller);
+  background-color: var(--color-accent);
+  color: var(--text-normal);
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.zettelkasten-flow__property-hooks-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.zettelkasten-flow__property-hooks-edit-button,
+.zettelkasten-flow__property-hooks-delete-button {
+  background-color: transparent;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+  height: 24px;
+  width: 24px;
+  flex-shrink: 0;
+}
+.zettelkasten-flow__property-hooks-edit-button {
+  color: var(--text-normal);
+}
+.zettelkasten-flow__property-hooks-delete-button {
+  color: var(--text-error);
+}
+.zettelkasten-flow__property-hooks-edit-button:hover {
+  background-color: var(--interactive-hover);
+}
+.zettelkasten-flow__property-hooks-delete-button:hover {
+  background-color: var(--background-modifier-error);
+  color: white;
+}
+.zettelkasten-flow__property-hooks-drag-handle {
+  color: var(--text-muted);
+  cursor: grab;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  height: 24px;
+  width: 24px;
+  flex-shrink: 0;
+}
+.zettelkasten-flow__property-hooks-drag-handle:active {
+  cursor: grabbing;
+}
+.zettelkasten-flow__property-hooks-item-editor {
+  padding: 12px;
+  background-color: var(--background-primary);
+}
+.zettelkasten-flow__property-hook-field {
+  margin-bottom: 1rem;
+}
+.zettelkasten-flow__property-hook-field label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+.zettelkasten-flow__property-hook-script-hint {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  margin-bottom: 0.5rem;
+}
+.zettelkasten-flow__property-hook-editor-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.zettelkasten-flow__property-hook-cancel-button,
+.zettelkasten-flow__property-hook-save-button {
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: var(--font-ui-small);
+  border: 1px solid var(--background-modifier-border);
+}
+.zettelkasten-flow__property-hook-cancel-button {
+  background-color: var(--background-secondary);
+  color: var(--text-normal);
+}
+.zettelkasten-flow__property-hook-save-button {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+.zettelkasten-flow__property-hook-cancel-button:hover {
+  background-color: var(--background-secondary-alt);
+}
+.zettelkasten-flow__property-hook-save-button:hover {
+  background-color: var(--interactive-accent-hover);
+}
+.zettelkasten-flow__property-hook-save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.zettelkasten-flow__property-hook-selector {
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 1rem;
+  z-index: 1000;
+  width: 300px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+.zettelkasten-flow__property-hook-selector input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+  margin-bottom: 1rem;
+}
+.zettelkasten-flow__property-hook-selector-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.zettelkasten-flow__property-hook-selector-buttons button {
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: var(--font-ui-small);
+  border: 1px solid var(--background-modifier-border);
+}
+.zettelkasten-flow__property-hooks-code-editor {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  height: 150px;
+  overflow: auto;
+  font-family: var(--font-monospace);
+  line-height: 1.5;
+  font-size: var(--font-ui-small);
+}
+.zettelkasten-flow__modal-navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--zf-gap);
+  padding: 8px 2px 4px;
+}
+.zettelkasten-flow__modal-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.zettelkasten-flow__types-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--zf-gap);
+  width: 100%;
+  padding: 8px 2px 12px;
+}
+.zettelkasten-flow__search-wrap {
+  flex: 1;
+}
+.zettelkasten-flow__search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--zf-border);
+  border-radius: 12px;
+  background: var(--background-primary);
+  outline: none;
+}
+.zettelkasten-flow__search-input:focus {
+  border-color: var(--zf-accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--zf-accent) 20%, transparent);
+}
+.zettelkasten-flow__types-cards-wrap {
+  padding: 0;
+}
+.zettelkasten-flow__cards {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: transparent;
+}
+.zettelkasten-flow__cards thead {
+  display: none;
+}
+.zettelkasten-flow__cards > tbody {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 2px;
+}
+.zettelkasten-flow__types-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--background-primary);
+  border: 3px solid var(--background-secondary);
+  border-radius: var(--zf-radius);
+  box-shadow: var(--zf-shadow);
+  padding: var(--zf-pad);
+}
+.zettelkasten-flow__types-row-with-hook {
+  background: var(--background-modifier-active-hover);
+}
+.zettelkasten-flow__types-row > td {
+  display: block;
+  padding: 0;
+  border: 0;
+}
+.zettelkasten-flow__name-type-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.zettelkasten-flow__name-type-container > td:first-child {
+  flex-grow: 1;
+}
+.zettelkasten-flow__name-type-container .zettelkasten-flow__name-input {
+  width: 100%;
+}
+.zettelkasten-flow__name-type-container .zettelkasten-flow__type-icon-trigger {
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+.zettelkasten-flow__name-type-container .zettelkasten-flow__type-icon-trigger:hover {
+  background-color: var(--background-modifier-hover);
+}
+.zettelkasten-flow__name-type-container .zettelkasten-flow__type-icon-trigger svg {
+  width: 20px;
+  height: 20px;
+}
+.zettelkasten-flow__name-input,
+.zettelkasten-flow__type-select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--zf-border);
+  border-radius: 10px;
+  background: var(--background-primary);
+  outline: none;
+}
+.zettelkasten-flow__name-input:focus,
+.zettelkasten-flow__type-select:focus {
+  border-color: var(--zf-accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--zf-accent) 20%, transparent);
+}
+.zettelkasten-flow__actions-cell {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 4px;
+}
+.zettelkasten-flow__edit-btn,
+.zettelkasten-flow__delete-btn,
+.zettelkasten-flow__add-row-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--zf-border);
+  background: var(--background-secondary, transparent);
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition:
+    transform 0.06s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.zettelkasten-flow__edit-btn:hover,
+.zettelkasten-flow__delete-btn:hover,
+.zettelkasten-flow__add-row-btn:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--zf-accent) 50%, var(--zf-border));
+}
+.zettelkasten-flow__edit-btn {
+  background: color-mix(in oklab, var(--zf-accent) 8%, transparent);
+  border-color: color-mix(in oklab, var(--zf-accent) 30%, var(--zf-border));
+}
+.zettelkasten-flow__delete-btn {
+  background: color-mix(in oklab, crimson 8%, transparent);
+  border-color: color-mix(in oklab, crimson 30%, var(--zf-border));
+}
+.zettelkasten-flow__add-row-btn {
+  margin-top: 8px;
+}
+.zettelkasten-flow__types-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+@media (max-width: 480px) {
+  .zettelkasten-flow__cards > tbody {
+    grid-template-columns: 1fr;
+  }
+}
+.zettelkasten-flow__code-editor-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 4px;
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+}
+.zettelkasten-flow__completion {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: var(--background-secondary);
+  color: var(--text-normal);
+}
+.zettelkasten-flow__cm-completion-container {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.zettelkasten-flow__cm-completion-badge {
+  margin-right: 6px;
+  font-size: 1.1em;
+  color: var(--text-accent, var(--text-muted));
+}
+.zettelkasten-flow__cm-cm-completion-label {
+  flex-grow: 1;
+  font-weight: bold;
+}
+.zettelkasten-flow__cm-completion-type {
+  margin-left: 6px;
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+.zettelkasten-flow__settings-developer-section {
+  background-color: var(--background-modifier-error);
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 1rem;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+}
+.zettelkasten-flow__display-grid {
+  display: grid;
+}
+.zettelkasten-flow__invalid input {
+  border: 1px solid var(--background-modifier-error) !important;
+  box-shadow: 0.125rem 0.25rem var(--background-modifier-error);
+}
+.zettelkasten-flow__invalid label {
+  color: var(--background-modifier-error) !important;
+}
+.zettelkasten-flow__group {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 0.5rem;
+}
+.zettelkasten-flow__input_group {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.zettelkasten-flow__input_group > div {
+  margin-right: 10px;
+}
+.zettelkasten-flow__input_item {
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+.zettelkasten-flow__icon > .custom-icon {
+  fill: var(--text-normal);
+}
+.zettelkasten-flow__header {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.zettelkasten-flow__header p {
+  text-align: center;
+  size: var(--h2-size);
+  font-weight: var(--h2-weight);
+  color: var(--h2-color);
+  margin-left: auto;
+  margin-right: auto;
+}
+.zettelkasten-flow__header button {
+  width: 3rem;
+}
+.zettelkasten-flow__header button:disabled {
+  display: none;
+}
+.zettelkasten-flow__section {
+  margin-bottom: 1rem;
+}
+.zettelkasten-flow__select-group input {
+  margin-bottom: 0.5rem;
+  border-radius: 0.25rem;
+  display: none;
+}
+.zettelkasten-flow__option {
+  background-color: rgba(var(--canvas-color), 0.25);
+  border-color: rgba(var(--canvas-color), 0.5);
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 1rem;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  box-shadow: 0 0.125rem 0.25rem var(--color-accent);
+  transition: all 0.2s ease-in-out;
+}
+.zettelkasten-flow__option:hover {
+  border: 1px solid var(--input-shadow-hover);
+  box-shadow: 0 0.5rem 1rem var(--color-accent);
+}
+.zettelkasten-flow__option label {
+  margin-right: 10px;
+}
+.zettelkasten-flow__selected {
+  border-color: var(--background-modifier-success);
+  box-shadow: 0 0.125rem 0.25rem var(--background-modifier-success);
+}
+.zettelkasten-flow__accordion-header-label:hover {
+  transform: scale(1.1);
+  transition: transform 0.2s ease-in-out;
+}
+.zettelkasten-flow__welcome-tutorial li {
+  padding-bottom: 0.35rem;
+}

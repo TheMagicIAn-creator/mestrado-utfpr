@@ -1,0 +1,19 @@
+{
+  "loggerEnabled": false,
+  "uniquePrefixEnabled": false,
+  "uniquePrefix": "YYYYMMDDHHmmss",
+  "foldersFlowsPath": "_ZettelFlow/folders",
+  "tableOfContentEnabled": true,
+  "installedTemplates": {
+    "steps": {},
+    "actions": {}
+  },
+  "communitySettings": {
+    "url": "http://127.0.0.1:8000",
+    "markdownTemplateFolder": "_ZettelFlowMdTemplates"
+  },
+  "hooks": {
+    "properties": {},
+    "folderFlowPath": "_ZettelFlow/hooks"
+  }
+}

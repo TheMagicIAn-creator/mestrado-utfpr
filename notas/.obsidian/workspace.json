@@ -220,7 +220,9 @@
       "templates:Insert template": false,
       "command-palette:Open command palette": false,
       "bases:Create new base": false,
-      "obsidian-git:Open Git source control": false
+      "obsidian-git:Open Git source control": false,
+      "zettelflow:Create a new Zettel Note": false,
+      "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
   "active": "0f198604c082c272",
