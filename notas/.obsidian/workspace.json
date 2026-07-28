@@ -11,10 +11,14 @@
             "id": "0f198604c082c272",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "sessoes/2026-07-24_12-34_sessao_web.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "2026-07-24_12-34_sessao_web"
             }
           }
         ]
@@ -232,8 +236,9 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "ccf58489bd6f1a90",
+  "active": "0f198604c082c272",
   "lastOpenFiles": [
+    "sessoes/2026-07-27_22-47_sessao_web.md",
     "Untitled.canvas",
     "sessoes_arquivadas/2026-05-16_16-25_sessao.md",
     "Untitled 1.base",
