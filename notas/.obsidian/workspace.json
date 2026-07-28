@@ -70,8 +70,7 @@
               "title": "Bookmarks"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "horizontal",
@@ -233,7 +232,7 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "4916ca3677715f85",
+  "active": "ccf58489bd6f1a90",
   "lastOpenFiles": [
     "Untitled.canvas",
     "sessoes_arquivadas/2026-05-16_16-25_sessao.md",
