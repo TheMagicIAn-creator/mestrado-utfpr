@@ -177,11 +177,9 @@
             "type": "leaf",
             "state": {
               "type": "file-properties",
-              "state": {
-                "file": "Literatura/sinais-ca/digital-twin_therefore-distinct-between-digital-model_2018.md"
-              },
+              "state": {},
               "icon": "lucide-info",
-              "title": "File properties for digital-twin_therefore-distinct-between-digital-model_2018"
+              "title": "File properties"
             }
           },
           {
@@ -202,6 +200,16 @@
               "state": {},
               "icon": "git-pull-request",
               "title": "Source Control"
+            }
+          },
+          {
+            "id": "1ac97cd75c842769",
+            "type": "leaf",
+            "state": {
+              "type": "advanced-tables-toolbar",
+              "state": {},
+              "icon": "spreadsheet",
+              "title": "Advanced Tables"
             }
           }
         ],
@@ -225,8 +233,14 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "0f198604c082c272",
+  "active": "4916ca3677715f85",
   "lastOpenFiles": [
+    "Untitled.canvas",
+    "sessoes_arquivadas/2026-05-16_16-25_sessao.md",
+    "Untitled 1.base",
+    "sessoes_arquivadas/2026-05-21_19-10_sessao_web.md",
+    "Untitled.base",
+    "sessoes_arquivadas/2026-06-13_23-58-24_avaliacao_agente_100.md",
     "sessoes_arquivadas/2026-06-11_15-55-19_avaliacao_agente_100.md",
     "Literatura/indice-literatura.md",
     "sessoes_arquivadas/2026-05-29_17-41-21_avaliacao_agente_100.md",
@@ -249,10 +263,6 @@
     "Literatura/confiabilidade/joshi_reliability-estimation-for-components-of-photovoltaic-system_1996.md",
     "Literatura/confiabilidade/xavier_analise-de-confiabilidade-em-sistemas-de-potencia_2005.md",
     "Literatura/confiabilidade/universidade-federal_prof-benjamim-rodrigues-menezes-orientador_2008.md",
-    "Literatura/confiabilidade/silva_avaliacao-da-confiabilidade-em-sistemas-eletricos-com-base-n_2008.md",
-    "Literatura/confiabilidade/lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_2001.md",
-    "Literatura/ml-preditivo/loredana-cristaldi_citation-loredana-cristaldi-mohamed-khalil_2017.md",
-    "Cerebro/Resultados/Correção do escore — antes e depois.md",
     "Cerebro/Resultados",
     "Literatura/sinais-eletricos",
     "codigo_apoio/re_indexador_memoria.py",
@@ -260,8 +270,6 @@
     "Literatura/sinais-ca",
     "Literatura/ml-preditivo",
     "Literatura/manutencao",
-    "Literatura/inversores-pv",
-    "Literatura/confiabilidade",
-    "Literatura"
+    "Literatura/inversores-pv"
   ]
 }
