@@ -1,8 +1,8 @@
 {
   "stage": "rul_weibull",
-  "created_at": "2026-07-22T19:17:53.768249-03:00",
-  "git_commit": "74e19b4f2443464303cd2c4104ab55acb2856d38",
-  "code_sha256": "e0c54440d4a1b2d47711f4d74b07e423051ae31d381147ef6c9abd52ac8a6ba8",
+  "created_at": "2026-07-27T23:01:07.766553-03:00",
+  "git_commit": "2b250bae1b833cdc390fb4bfb3403bd4bb8b3713",
+  "code_sha256": "77f108f4c5fbde6be298839941fc3a26f5131112a3af9e4690424aab8817106c",
   "parameters": {
     "n_traj": 100,
     "n_steps": 120,
@@ -12,14 +12,14 @@
     "max_censura_rul_pct": 50.0
   },
   "input_artifacts": {
-    "validacao:0:validacao_roc.png": "dc0804a254656960061d0ec0b49bb1c1227e871ea0f97df9063a9624f62615e0",
-    "validacao:1:validacao_pr.png": "bef1d060ccefbf97dec8da93b74ad88af8db7259ca845766aaaef74dcef44a9f",
-    "validacao:2:validacao_matriz.png": "0f788f49956d776b9a698272b02b35e60c262668afd555a7a3c33c09ee928ee8",
-    "validacao:3:validacao_matrizes_severidades.png": "49ccb712dd846885f2a7d7ca694e61584c2c0dcad8272cfc1189eb9e2158e2c3",
-    "validacao:4:validacao_metricas.png": "fbd9d85fdf2f5050bbe48863635a6bd66fb8930083eb2d841a67134be3e648a2",
-    "validacao:5:validacao_tabela.csv": "19ed12467194dd9037e89e45ca0294fbbca3a3c8bd7eff3e351796076b51f2b3",
-    "validacao:6:validacao_tabela.md": "8c16c84cf37092d5c7737e84114d538d43b6013b72b1fa549abfece7e51fa0ea",
-    "validacao:7:validacao_report.json": "43e3e0f0183b58e3bb7fbbb421c1079d1279ede5894626a120b51a9e99c4b5b6"
+    "validacao:0:validacao_roc.png": "23be28ecb5f63c4f50e038a94c523b79a10f0d1d27da1b63f09ab347cbd6d4d2",
+    "validacao:1:validacao_pr.png": "5c9e93f0321b24b1a22b0b0bed63973cdf81aededf601a57b90064e76706caf2",
+    "validacao:2:validacao_matriz.png": "6b555ecc2f0023a19773292802c412d429c117a46dbb22a010e4b7b44c5550b3",
+    "validacao:3:validacao_matrizes_severidades.png": "4aac490ec5cd2c2e974e8f9a837c4ea9d8924b84cde84fe8d99339baf20fe784",
+    "validacao:4:validacao_metricas.png": "fd36f6ea1f62cdc9df4b6779c0d5f6f6d6604438b35feaf90370eec9565a997c",
+    "validacao:5:validacao_tabela.csv": "1f4ad1210ba497ee5caddb24fb9635d1c428f9e07bcdfdedd67fc762a555f021",
+    "validacao:6:validacao_tabela.md": "eea4dfeaeb8f8ca284c7158627a04e170a4f1ee2276f9cc808bc469079e080d8",
+    "validacao:7:validacao_report.json": "e21c3a17a4354939b124b508435f5712557b51fc84b8d0bed1ef4680b8878e6c"
   },
   "outputs": [
     "resultados/autoencoder/weibull_ttf.png",
