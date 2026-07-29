@@ -2235,18 +2235,44 @@ def _corrigir_descricao_visual(resposta: str, imagens: list[dict] | None) -> str
     return corrigida
 
 
+def _dados_sao_inventario(mensagem: str) -> bool:
+    """True quando a mensagem é tabela/inventário longo.
+
+    Nesses casos o texto cru é preservado: parafrasear uma tabela de métricas
+    ou um catálogo de 39 referências arrisca truncar ou distorcer. Para
+    respostas curtas (status, confirmações), o LLM pode falar à vontade.
+    """
+    if not mensagem:
+        return False
+    if "|---" in mensagem or "| --- " in mensagem:      # tabela markdown
+        return True
+    itens = sum(1 for l in mensagem.splitlines() if l.lstrip().startswith(("- ", "* ", "|")))
+    return itens > 8 or len(mensagem) > 1800
+
+
 def comentar_resultado(pergunta: str, resultado: dict, perfil: str, llm) -> str:
+    """Transforma o resultado de uma ferramenta em RESPOSTA.
+
+    Por padrão o LLM fala — é ele quem dá voz, contexto e leitura técnica. O
+    texto cru só passa direto quando parafrasear seria arriscado (tabela de
+    métricas, catálogo longo) ou quando a ferramenta exige literalidade.
+
+    Antes, `resposta_pronta` (36 ferramentas!) silenciava o LLM e o agente
+    despejava o texto da ferramenta — soava robótico mesmo com o roteamento
+    correto. Agora `resposta_pronta` significa "os dados são autoritativos",
+    não "não fale".
+    """
     autoral = _quer_resposta_autoral(pergunta)
-    # Tabela crua (resposta direta) SÓ quando NÃO é pedido autoral. Se o
-    # Rodolfo pediu opinião/interpretação ("sua opinião", "o que isso
-    # significa"), os dados viram EVIDÊNCIA para o LLM interpretar — mesmo
-    # em ferramentas determinísticas (forcar_resposta_direta). Era esse
-    # atalho que fazia o agente "despejar a tabela" em vez de opinar.
+    mensagem = resultado.get("mensagem", "")
+
+    # Literalidade obrigatória: só quando a ferramenta força OU quando os dados
+    # são um inventário/tabela — e nunca quando o pedido é autoral.
     if not autoral and (resultado.get("forcar_resposta_direta")
-                        or resultado.get("resposta_pronta")):
-        return resultado.get("mensagem", "")
+                        or (resultado.get("resposta_pronta")
+                            and _dados_sao_inventario(mensagem))):
+        return mensagem
     if llm is None:
-        return resultado.get("mensagem", "")
+        return mensagem
 
     status = "SUCESSO" if resultado.get("ok") else "FALHA"
     perfil_txt = (perfil or "").strip()[:4000]
@@ -2306,9 +2332,13 @@ proporcional. Se o resultado mencionar imagens, elas serão renderizadas no chat
 "RUL restrita" é Kaplan-Meier não paramétrica; não a chame de paramétrica. NPR
 é criticidade FMECA e não causa a frequência de eventos simulados."""
     try:
-        from langchain_core.messages import HumanMessage
+        try:
+            from langchain_core.messages import HumanMessage
 
-        resposta = texto_da_resposta(llm.invoke([HumanMessage(content=prompt)]))
+            entrada = [HumanMessage(content=prompt)]
+        except ImportError:      # sem langchain: manda texto puro
+            entrada = prompt
+        resposta = texto_da_resposta(llm.invoke(entrada))
         return _corrigir_descricao_visual(resposta, resultado.get("imagens"))
     except Exception:
         return resultado.get("mensagem", "")
