@@ -1,4 +1,4 @@
-metodo,falha,npr,auc,deteccao_sev1,fp_pct
-Proposto (AE denso + escore localizado),Contator AC,315,1.0,0.8,0.0
-Proposto (AE denso + escore localizado),IGBT,90,0.9776,0.2,0.0
-Proposto (AE denso + escore localizado),Fusível AC,30,0.9275,0.0,0.0
+metodo,falha,npr,auc,tpr_fpr10,deteccao_limiar,fp_pct
+Proposto (AE denso + escore localizado),Contator AC,315,1.0,1.0,0.8,0.0
+Proposto (AE denso + escore localizado),IGBT,90,0.9776,1.0,0.2,0.0
+Proposto (AE denso + escore localizado),Fusível AC,30,0.9275,1.0,0.0,0.0
