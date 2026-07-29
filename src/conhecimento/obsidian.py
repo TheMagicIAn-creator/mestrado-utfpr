@@ -64,6 +64,44 @@ _INTENCAO_HISTORICA = re.compile(
 _PRIMEIRO_REGISTRO = re.compile(r"(?i)\b(primeir[ao]|mais antig[ao]|inicial)\b")
 _ULTIMO_REGISTRO = re.compile(r"(?i)\b([uú]ltim[ao]|mais recent[ea]|atual)\b")
 
+# ── Inventário: "quais as 10 últimas memórias consolidadas?" ────────────────
+# Pergunta de CONTAGEM/LISTA não pode ser respondida por busca semântica: o
+# top-K devolve uma AMOSTRA, e o LLM a apresenta como se fosse o total. Foi
+# exatamente o que aconteceu — 26 memórias consolidadas no vault, e a resposta
+# afirmou "apenas 4", confirmando o número quando contestada. Aqui a contagem
+# vem da varredura dos metadados do índice, sem embeddings e sem LLM.
+_PEDIDO_INVENTARIO = re.compile(
+    r"(?i)\b(quais|quantas?|quantos|list[ae]|listar|liste|relacione|enumere|"
+    r"mostre|me\s+d[êe])\b"
+)
+_ALVOS_INVENTARIO: tuple[tuple[str, re.Pattern, frozenset[str]], ...] = (
+    (
+        "memórias consolidadas",
+        re.compile(r"(?i)(mem[oó]rias?\s+consolidad|consolida[çc][õo]es|"
+                   r"consolidad[oa]s?\b)"),
+        frozenset({"memoria_consolidada"}),
+    ),
+    (
+        "memórias validadas",
+        re.compile(r"(?i)mem[oó]rias?\s+validad"),
+        frozenset({"memoria_validada"}),
+    ),
+    (
+        "sessões",
+        re.compile(r"(?i)\b(sess[oõ]es|sess[ãa]o)\b"),
+        frozenset({"sessao_atual", "sessao_arquivada"}),
+    ),
+)
+# "resuma a última sessão" quer CONTEÚDO, não inventário — segue para o RAG.
+_QUER_CONTEUDO = re.compile(
+    r"(?i)(resum|conte[uú]do|assunto|discut|aconteceu|falamos|sobre\s+o\s+que)"
+)
+_QUANTIDADE = re.compile(r"(?i)\b(\d{1,3})\s*(?:[uú]ltim|mais\s+recent|primeir)")
+# Plural-cientes, e SÓ para a ordenação do inventário: _PRIMEIRO_REGISTRO e
+# _ULTIMO_REGISTRO servem à consulta cronológica (um único registro) e não
+# casam "primeiras"/"últimas"; alterá-los mudaria aquele comportamento.
+_ORDEM_ANTIGA = re.compile(r"(?i)\b(primeir[ao]s?|mais\s+antig[ao]s?|iniciais?)\b")
+
 
 @dataclass(frozen=True)
 class NotaObsidian:
@@ -648,6 +686,107 @@ def responder_consulta_cronologica(colecao, pergunta: str) -> str | None:
         f"O registro está em `{registro['arquivo']}` e tem o título "
         f"**{registro['titulo']}**. Essa identificação vem da ordenação dos "
         "metadados e nomes de arquivo do índice completo, não de similaridade semântica."
+    )
+
+
+def inventario_por_classe(colecao, classes) -> list[dict[str, str]]:
+    """Todos os registros das classes pedidas, um por ARQUIVO, do mais recente.
+
+    Varre os metadados do índice inteiro e deduplica por `caminho_obsidian`
+    (uma nota vira vários chunks). A ordenação usa o NOME do arquivo, que
+    começa pelo carimbo de data — cronologia por nome, não por similaridade.
+    """
+    alvo = frozenset(classes)
+    try:
+        dados = colecao.get(include=["metadatas"])
+    except Exception:
+        return []
+    ids = dados.get("ids") or []
+    metas = dados.get("metadatas") or []
+
+    por_arquivo: dict[str, dict[str, str]] = {}
+    for ordem, meta in enumerate(metas):
+        meta = meta or {}
+        if str(meta.get("classe_fonte", "")) not in alvo:
+            continue
+        caminho = str(
+            meta.get("caminho_obsidian")
+            or (ids[ordem] if ordem < len(ids) else "")
+        )
+        if not caminho or caminho in por_arquivo:
+            continue
+        nome = Path(caminho).name
+        por_arquivo[caminho] = {
+            "arquivo": caminho,
+            "nome": nome,
+            "titulo": str(meta.get("titulo", "") or Path(caminho).stem),
+            "data": str(meta.get("data_registro", "") or ""),
+            "classe": str(meta.get("classe_fonte", "")),
+        }
+    return sorted(por_arquivo.values(), key=lambda item: item["nome"], reverse=True)
+
+
+def _data_legivel(item: dict[str, str]) -> str:
+    match = re.search(r"(20\d{2})-(\d{2})-(\d{2})(?:[_-](\d{2})-(\d{2}))?",
+                      item["nome"])
+    if not match:
+        return item.get("data", "") or "—"
+    ano, mes, dia, hora, minuto = match.groups()
+    legivel = f"{dia}/{mes}/{ano}"
+    return f"{legivel} {hora}:{minuto}" if hora and minuto else legivel
+
+
+def responder_inventario_vault(colecao, pergunta: str) -> str | None:
+    """Responde "quais/quantas <memórias|sessões>" contando de fato.
+
+    Retorna None quando a pergunta não é de inventário — aí segue o fluxo
+    normal de RAG.
+    """
+    # "as 10 últimas memórias consolidadas" é pedido de inventário sem verbo —
+    # a quantidade explícita basta como gatilho.
+    pediu = bool(_PEDIDO_INVENTARIO.search(pergunta) or _QUANTIDADE.search(pergunta))
+    if not pediu or _QUER_CONTEUDO.search(pergunta):
+        return None
+
+    for rotulo, padrao, classes in _ALVOS_INVENTARIO:
+        if padrao.search(pergunta):
+            break
+    else:
+        return None
+
+    itens = inventario_por_classe(colecao, classes)
+    if not itens:
+        return None
+
+    total = len(itens)
+    pedido = _QUANTIDADE.search(pergunta)
+    limite = min(int(pedido.group(1)), total) if pedido else min(10, total)
+    if _ORDEM_ANTIGA.search(pergunta):
+        recorte, ordem = itens[-limite:][::-1], "mais antigas"
+    else:
+        recorte, ordem = itens[:limite], "mais recentes"
+
+    linhas = [
+        f"| {i} | {_data_legivel(item)} | `{item['nome']}` |"
+        for i, item in enumerate(recorte, start=1)
+    ]
+    cabecalho = (
+        f"O vault tem **{total} {rotulo}** indexadas. "
+        f"{'Todas' if limite >= total else f'As {limite} {ordem}'}:"
+    )
+    rodape = (
+        "\n\nContagem obtida varrendo os metadados do índice — não é uma amostra "
+        "de busca semântica."
+    )
+    if limite < total:
+        rodape = (
+            f"\n\nAs outras {total - limite} continuam indexadas e pesquisáveis."
+            + rodape
+        )
+    return (
+        f"{cabecalho}\n\n| # | Data | Arquivo |\n| ---: | :--- | :--- |\n"
+        + "\n".join(linhas)
+        + rodape
     )
 
 

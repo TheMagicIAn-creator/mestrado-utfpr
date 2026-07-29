@@ -1561,18 +1561,25 @@ def responder_com_rag(pergunta: str,
 
     # Consultas simples de primeiro/último registro são resolvidas pela ordem
     # dos metadados. Isso evita que o LLM troque cronologia por similaridade.
+    # Inventário ("quais as 10 últimas memórias consolidadas?") vem ANTES: é
+    # pergunta de contagem, e busca semântica devolveria uma amostra que o LLM
+    # apresentaria como total. A contagem sai da varredura dos metadados.
     try:
-        from src.conhecimento.obsidian import responder_consulta_cronologica
+        from src.conhecimento.obsidian import (
+            responder_consulta_cronologica,
+            responder_inventario_vault,
+        )
 
-        resposta_cronologica = responder_consulta_cronologica(
-            colecao_obsidian, pergunta
+        resposta_direta = (
+            responder_inventario_vault(colecao_obsidian, pergunta)
+            or responder_consulta_cronologica(colecao_obsidian, pergunta)
         )
     except Exception:
-        resposta_cronologica = None
-    if resposta_cronologica:
+        resposta_direta = None
+    if resposta_direta:
         with st.chat_message("assistant", avatar="⚡"):
-            st.markdown(resposta_cronologica)
-        return resposta_cronologica
+            st.markdown(resposta_direta)
+        return resposta_direta
 
     # ── Atalho: cumprimento/casual responde local sem RAG/LLM ────
     # Vale MESMO com o LLM conectado: um "olá" não deve acionar o modelo pesado
