@@ -70,7 +70,9 @@ jobs:
             tests/test_multiagente.py \
             tests/test_exec_isolado.py \
             tests/test_seguranca.py \
-            tests/test_protocolos_artigos.py
+            tests/test_protocolos_artigos.py \
+            tests/test_interface_minimalista.py \
+            tests/test_inventario_vault.py
 
       - name: Lint (ruff, nao bloqueante)
         continue-on-error: true

@@ -3,8 +3,17 @@ streamlit_app.py - Al IAdo PV
 Interface conversacional do agente.
 
 Resultados e execucoes do pipeline de ML aparecem pelo chat, conforme
-solicitacao em prompt. A interface usa componentes nativos do Streamlit
-para preservar a estetica original — sem overrides de CSS pesados.
+solicitacao em prompt.
+
+Design (minimalista, 2026-07): a tela e o chat. Tudo que nao e conversa
+recua para a barra lateral, e o que na barra nao e status recua para
+expanders. Regras que valem para qualquer coisa nova aqui:
+
+  - a tela inicial diz QUEM e o agente em uma linha, nao explica o que ele
+    faz em paragrafos (o chat ensina isso na pratica);
+  - estado saudavel ocupa uma linha; so a falha ganha espaco e cor;
+  - o CSS ajusta escala e respiro usando as variaveis de tema do Streamlit,
+    sem fixar cor de fundo — claro e escuro seguem nativos.
 """
 
 from __future__ import annotations
@@ -41,29 +50,252 @@ st.set_page_config(
 )
 
 
-# CSS minimo: mantem o menu principal visivel, pois nele fica
-# Settings -> Theme para alternar entre claro/escuro nativo do Streamlit.
+# Paleta: a MESMA dos graficos (src/ml/estilo_graficos) — a interface e a
+# figura falam a mesma lingua visual.
+_CORES_ESTADO = {
+    "ok": "#1baf7a",
+    "alerta": "#eda100",
+    "erro": "#e34948",
+    "neutro": "#898781",
+}
+
+
+def _html_pensando(rotulo: str = "Pensando") -> str:
+    """Texto com brilho pulsante, exibido enquanto a resposta não começa.
+
+    Sempre montado AQUI, a partir de uma string nossa — nunca a partir da
+    saída do LLM. É o que permite renderizá-lo com HTML habilitado sem abrir
+    o texto do modelo para injeção (o streaming segue em Markdown puro).
+    """
+    return f'<span class="alp-pensando">{rotulo}…</span>'
+
+
+def _estado(rotulo: str, nivel: str = "ok") -> str:
+    """Indicador de estado: um ponto colorido e uma linha de texto.
+
+    Substitui os blocos st.success/st.warning empilhados na barra lateral —
+    saude do sistema nao precisa de caixa colorida de altura cheia.
+    """
+    cor = _CORES_ESTADO.get(nivel, _CORES_ESTADO["neutro"])
+    return (
+        f'<div class="alp-estado">'
+        f'<span class="alp-ponto" style="background:{cor}"></span>{rotulo}</div>'
+    )
+
+
+# CSS: mantem o menu principal visivel, pois nele fica Settings -> Theme
+# para alternar entre claro/escuro nativo do Streamlit. Cores neutras usam
+# rgba cinza (legivel nos dois temas); nada de background fixo.
 _CSS_MINIMO = """
 <style>
+:root {
+    --alp-acento: #2a78d6;
+    --alp-linha: rgba(128, 128, 128, 0.20);
+    --alp-linha-forte: rgba(128, 128, 128, 0.34);
+    --alp-fraco: rgba(128, 128, 128, 0.95);
+}
+
+/* ── chrome do Streamlit ───────────────────────────────────────────── */
 .stDeployButton,
 [data-testid="stAppDeployButton"] { display: none; }
+[data-testid="stHeader"] {
+    background: transparent;
+    height: 2.5rem;
+}
+
+/* ── coluna de leitura ─────────────────────────────────────────────── */
+/* Estreita de proposito: linha longa cansa e "espalha" o layout. 1160px
+   ainda comporta os paineis largos (teto de exibicao das figuras: 1080). */
 .block-container {
-    max-width: min(1680px, calc(100vw - 2.5rem));
-    padding-top: 4rem;
+    max-width: min(1160px, calc(100vw - 3rem));
+    padding-top: 2.2rem;
     padding-left: 1.25rem;
     padding-right: 1.25rem;
 }
 [data-testid="stChatMessage"] {
-    max-width: min(1320px, 100%);
+    max-width: 100%;
+    padding: 0.15rem 0;
+    background: transparent;
+}
+[data-testid="stChatMessage"] [data-testid="stChatMessageAvatarUser"],
+[data-testid="stChatMessage"] [data-testid="stChatMessageAvatarAssistant"] {
+    font-size: 0.9rem;
 }
 [data-testid="stBottomBlockContainer"],
 [data-testid="stChatInput"] {
-    max-width: min(1680px, calc(100vw - 2.5rem));
+    max-width: min(1160px, calc(100vw - 3rem));
 }
 [data-testid="stBottomBlockContainer"] {
     padding-left: 1.25rem;
     padding-right: 1.25rem;
+    padding-bottom: 0.85rem;
 }
+[data-testid="stChatInput"] {
+    border-radius: 14px;
+    border: 1px solid var(--alp-linha-forte);
+}
+
+/* ── botoes compactos ──────────────────────────────────────────────── */
+/* Eram todos "stretch" em altura cheia; dominavam o chat e a barra. */
+.stButton > button,
+.stDownloadButton > button,
+[data-testid="stPopover"] > div > button {
+    border-radius: 9px;
+    border: 1px solid var(--alp-linha-forte);
+    font-size: 0.80rem;
+    font-weight: 500;
+    line-height: 1.25;
+    padding: 0.30rem 0.72rem;
+    min-height: 0;
+}
+.stButton > button p,
+.stDownloadButton > button p,
+[data-testid="stPopover"] > div > button p {
+    font-size: 0.80rem;
+}
+.stButton > button:hover,
+.stDownloadButton > button:hover,
+[data-testid="stPopover"] > div > button:hover {
+    border-color: var(--alp-acento);
+    color: var(--alp-acento);
+}
+
+/* ── barra lateral ─────────────────────────────────────────────────── */
+[data-testid="stSidebar"] {
+    border-right: 1px solid var(--alp-linha);
+}
+[data-testid="stSidebarContent"] {
+    padding-top: 1.15rem;
+}
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+[data-testid="stSidebar"] [data-testid="stExpander"] details {
+    border: none;
+    border-top: 1px solid var(--alp-linha);
+    border-radius: 0;
+}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary {
+    padding: 0.5rem 0.15rem;
+    font-size: 0.80rem;
+}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {
+    color: var(--alp-acento);
+}
+[data-testid="stSidebar"] hr { margin: 0.7rem 0; }
+
+.alp-marca {
+    font-size: 1.02rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+.alp-sub {
+    font-size: 0.72rem;
+    color: var(--alp-fraco);
+    margin: 0.1rem 0 0.85rem;
+}
+.alp-estado {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    font-size: 0.75rem;
+    color: var(--alp-fraco);
+}
+.alp-ponto {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+/* Numeros da base: linha unica, sem o bloco gigante do st.metric. */
+.alp-stats {
+    display: flex;
+    gap: 0.35rem;
+    margin: 0.85rem 0 0.2rem;
+}
+.alp-stats > div {
+    flex: 1;
+    padding: 0.42rem 0.1rem;
+    border: 1px solid var(--alp-linha);
+    border-radius: 9px;
+    text-align: center;
+    line-height: 1.15;
+}
+.alp-stats b {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+.alp-stats span {
+    font-size: 0.64rem;
+    color: var(--alp-fraco);
+    letter-spacing: 0.01em;
+}
+
+/* ── tela inicial ──────────────────────────────────────────────────── */
+.alp-hero {
+    text-align: center;
+    margin: 4.5rem auto 1.6rem;
+    max-width: 34rem;
+}
+.alp-hero-icone {
+    font-size: 1.7rem;
+    line-height: 1;
+    margin-bottom: 0.7rem;
+}
+.alp-hero h1 {
+    font-size: 1.42rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    margin: 0;
+    padding: 0;
+}
+.alp-hero p {
+    font-size: 0.86rem;
+    color: var(--alp-fraco);
+    margin: 0.45rem 0 0;
+}
+
+/* ── espera: brilho pulsante ("shimmer") ───────────────────────────── */
+/* Cobre o intervalo entre o Enter e o primeiro token, que antes era um
+   spinner generico. O gradiente corre pelo texto via background-clip,
+   entao a animacao e so a posicao do fundo — nao repinta layout. */
+@keyframes alp-brilho {
+    from { background-position: 180% 0; }
+    to   { background-position: -80% 0; }
+}
+.alp-pensando {
+    display: inline-block;
+    font-size: 0.92rem;
+    font-weight: 500;
+    background-image: linear-gradient(
+        90deg,
+        var(--alp-fraco) 0%,
+        var(--alp-fraco) 42%,
+        var(--alp-acento) 50%,
+        var(--alp-fraco) 58%,
+        var(--alp-fraco) 100%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: alp-brilho 1.9s linear infinite;
+}
+/* Sem movimento para quem pediu no sistema: vira texto cinza estatico. */
+@media (prefers-reduced-motion: reduce) {
+    .alp-pensando {
+        animation: none;
+        background-image: none;
+        color: var(--alp-fraco);
+        -webkit-text-fill-color: var(--alp-fraco);
+    }
+}
+
+/* ── conteudo ──────────────────────────────────────────────────────── */
 [data-testid="stImage"],
 .stImage {
     max-width: 100%;
@@ -118,8 +350,9 @@ _CSS_MINIMO = """
         padding-right: 0.5rem;
     }
     .block-container {
-        padding-top: 3.5rem;
+        padding-top: 1.6rem;
     }
+    .alp-hero { margin-top: 2.4rem; }
     [data-testid="stMarkdownContainer"] table {
         font-size: 0.82rem;
     }
@@ -459,131 +692,122 @@ def _carregar_metadados_pendentes() -> dict:
     }
 
 
-def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian) -> None:
+def _estado_persistencia() -> tuple[str, str, str]:
+    """(nivel, rotulo, detalhe) da persistencia na nuvem.
+
+    Saude vira UMA linha; so o problema abre espaco. A regra que originou
+    este bloco continua valendo: cada alvo e avaliado em separado, para um
+    alvo com sucesso nunca mascarar outro falhando em silencio.
+    """
+    try:
+        from src.conhecimento.persistencia_nuvem import diagnostico
+
+        diag = diagnostico()
+    except Exception as exc:  # noqa: BLE001
+        return "alerta", "Persistência: diagnóstico indisponível", type(exc).__name__
+
+    if not diag["ativa"]:
+        return (
+            "alerta",
+            f"Persistência desligada ({diag['resumo']})",
+            f"{diag['detalhe']} Sem isto, sessões e memórias somem a cada reboot.",
+        )
+
+    falhas = [
+        f"{info.get('rotulo', '')}: {info.get('detalhe', '')}"
+        for info in diag.get("por_alvo", {}).values()
+        if info.get("estado") == "erro"
+    ]
+    if falhas:
+        return (
+            "erro",
+            "Persistência FALHANDO",
+            " · ".join(falhas)
+            + " Verifique a permissão Contents: Read and write do token.",
+        )
+    return "ok", "Persistência na nuvem ativa", ""
+
+
+def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian,
+                       relatorio: list | None = None) -> None:
+    from src.conhecimento.obsidian import contar_notas_indexadas
+    from src.core.config import MARCADOR_BUILD
+
     with st.sidebar:
-        st.markdown("## Al IAdo PV")
-        st.caption("Assistente de pesquisa | Mestrado UTFPR")
-        from src.core.config import MARCADOR_BUILD
+        st.markdown(
+            '<div class="alp-marca">⚡ Al IAdo PV</div>'
+            '<div class="alp-sub">Mestrado UTFPR · Engenharia Elétrica</div>',
+            unsafe_allow_html=True,
+        )
 
-        st.caption(f"🏷️ build: {MARCADOR_BUILD}")
-
-        # Persistência na nuvem — logo após o build e à prova de falha, para o
-        # silêncio nunca mais esconder que sessões/memórias não estão sendo
-        # salvas. (Antes ficava no fim e podia nem ser alcançado.)
-        try:
-            from src.conhecimento.persistencia_nuvem import diagnostico
-
-            diag = diagnostico()
-            if not diag["ativa"]:
-                st.warning(
-                    f"☁️ Persistência na nuvem DESLIGADA ({diag['resumo']}): "
-                    f"{diag['detalhe']} Sem isto, sessões/memórias somem a cada reboot."
-                )
-            else:
-                # Uma linha POR ALVO — nunca mais um alvo com sucesso mascara o
-                # outro falhando silenciosamente no mesmo turno (era o bug que
-                # perdeu uma memória sem nenhum aviso visível).
-                tem_erro = False
-                linhas = []
-                for info in diag.get("por_alvo", {}).values():
-                    estado = info.get("estado")
-                    rotulo = info.get("rotulo", "")
-                    if estado == "ok":
-                        linhas.append(f"{rotulo}: ✓")
-                    elif estado == "erro":
-                        tem_erro = True
-                        linhas.append(f"{rotulo}: ❌ FALHOU ({info.get('detalhe', '')})")
-                    else:
-                        linhas.append(f"{rotulo}: aguardando 1º commit")
-                texto = "☁️ Persistência na nuvem ativa — " + " · ".join(linhas)
-                if tem_erro:
-                    st.error(texto + " Verifique a permissão Contents: Read and write do token.")
-                else:
-                    st.caption(texto)
-        except Exception as exc:
-            st.caption(f"☁️ Persistência: diagnóstico indisponível ({type(exc).__name__}).")
-
+        # ── estado (uma linha quando tudo vai bem) ──────────────────────
         equipe = st.session_state.get("equipe")
         if equipe is None:
-            st.warning("Equipe de IA desconectada")
+            st.markdown(_estado("Equipe de IA desconectada", "erro"),
+                        unsafe_allow_html=True)
             erro = st.session_state.get("erro_equipe")
             if erro:
                 st.caption(erro)
-            if st.button("Ativar equipe", width="stretch", type="primary"):
+            if st.button("Ativar equipe", type="primary", width="stretch"):
                 conectar_equipe(forcar=True)
                 st.rerun()
         else:
-            st.success("Equipe de IA ativa")
-            st.caption("Gemini Flash: conversa e síntese (padrão estável)")
-            st.caption("Gemini Flash: auditoria de evidências e memória")
+            st.markdown(_estado("Equipe Gemini ativa"), unsafe_allow_html=True)
 
-        st.divider()
-        st.markdown("**Base de conhecimento**")
-        c1, c2 = st.columns(2)
-        c1.metric("Literatura", colecao.count())
-        c2.metric("Sessões", colecao_sessoes.count())
+        nivel_p, rotulo_p, detalhe_p = _estado_persistencia()
+        st.markdown(_estado(rotulo_p, nivel_p), unsafe_allow_html=True)
+        if detalhe_p:
+            st.caption(detalhe_p)
+
+        # ── base de conhecimento em números ─────────────────────────────
         memorias = equipe.memoria.contar() if equipe is not None else 0
-        from src.conhecimento.obsidian import contar_notas_indexadas
-
-        notas_obsidian = contar_notas_indexadas(colecao_obsidian)
-        st.caption(
-            f"Vault Obsidian: {notas_obsidian} notas pesquisáveis · "
-            f"memórias validadas: {memorias}. Literatura, memória e resultados "
-            "são acessados pelo chat."
+        st.markdown(
+            '<div class="alp-stats">'
+            f'<div><b>{colecao.count()}</b><span>literatura</span></div>'
+            f'<div><b>{contar_notas_indexadas(colecao_obsidian)}</b><span>notas</span></div>'
+            f'<div><b>{memorias}</b><span>memórias</span></div>'
+            '</div>',
+            unsafe_allow_html=True,
         )
 
         # Fallback: o caminho normal da nuvem restaura o snapshot portátil no
         # carregamento. O botão só aparece se o snapshot estiver ausente/inválido.
         if colecao.count() == 0:
             st.caption("⚠️ Literatura não indexada (base vazia).")
-            if st.button(
-                "Indexar literatura",
-                icon=":material/sync:",
-                width="stretch",
-                help="Reconstrói a base a partir dos PDFs de literatura/. "
-                     "Use apenas se a restauração automática não estiver disponível.",
-            ):
+            if st.button("Indexar literatura", icon=":material/sync:",
+                         width="stretch",
+                         help="Reconstrói a base a partir dos PDFs de literatura/."):
                 try:
                     from src.conhecimento.indexador import indexar_literatura
+
                     with st.spinner("Indexando literatura… alguns minutos."):
                         resumo = indexar_literatura(modelo=modelo)
                     if resumo["erros"]:
-                        st.warning(
-                            f"Indexação concluída com {resumo['erros']} erro(s)."
-                        )
-                    st.success("Literatura indexada! Atualizando…")
+                        st.warning(f"Indexação concluída com {resumo['erros']} erro(s).")
                     st.rerun()
                 except Exception as exc:  # noqa: BLE001
                     st.error(f"Falha ao indexar: {exc}")
 
-        st.divider()
-        st.markdown("**Comandos por prompt**")
-        from src.ml.pipeline import capacidade_recalculo_pipeline
-
-        if capacidade_recalculo_pipeline()["disponivel"]:
-            st.caption(
-                "Use o chat para rodar pipeline, comparar artigos, recalcular, "
-                "apagar artefatos, pedir gráficos ou discutir resultados."
-            )
-        else:
-            st.caption(
-                "Modo consulta: peça resultados, tabelas, gráficos, comparações "
-                "e interpretação. O recálculo permanece no PC com os datasets."
+        metadados_pendentes = _carregar_metadados_pendentes()
+        if metadados_pendentes:
+            st.markdown(
+                _estado(f"{len(metadados_pendentes)} PDF(s) com metadados pendentes",
+                        "alerta"),
+                unsafe_allow_html=True,
             )
 
-        st.divider()
-        st.markdown("**Documentos**")
-        arquivo_pdf = st.file_uploader(
-            "Adicionar PDF",
-            type=["pdf"],
-            label_visibility="collapsed",
-        )
-        if arquivo_pdf is not None:
-            if st.button("Enviar para processamento", width="stretch"):
+        st.markdown("")
+
+        # ── tudo que não é estado recua para expanders ──────────────────
+        with st.expander("Documentos"):
+            arquivo_pdf = st.file_uploader("Adicionar PDF", type=["pdf"],
+                                           label_visibility="collapsed")
+            if arquivo_pdf is not None and st.button("Enviar para processamento"):
                 # Sanitiza o nome vindo do navegador (anti path-traversal) e
                 # confirma que o destino fica DENTRO de novos_pdfs/.
                 from src.core.seguranca import (
-                    caminho_dentro_do_projeto, nome_arquivo_seguro,
+                    caminho_dentro_do_projeto,
+                    nome_arquivo_seguro,
                 )
 
                 pasta_novos = RAIZ_PROJETO / "novos_pdfs"
@@ -593,125 +817,107 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian) -> No
                 destino.write_bytes(arquivo_pdf.getbuffer())
                 st.success("PDF enviado. O watcher processará automaticamente.")
 
-        st.divider()
-        st.markdown("**Sessão**")
-        if st.button("Limpar conversa", width="stretch"):
-            st.session_state.mensagens = []
-            st.session_state.caminho_sessao = None
-            st.rerun()
-
-        with st.expander("🔧 Diagnóstico"):
-            renderizar_diagnostico(colecao, colecao_sessoes, colecao_obsidian)
-
-        metadados_pendentes = _carregar_metadados_pendentes()
-        if metadados_pendentes:
-            st.caption(
-                f"⚠️ {len(metadados_pendentes)} PDF(s) com metadados "
-                "pendentes — detalhes em Manutenção avançada."
-            )
-
-        with st.expander("Manutenção avançada"):
-            st.caption("Use apenas quando quiser forçar tarefas administrativas.")
+        with st.expander("Manutenção"):
             feedback = st.session_state.pop("feedback_manutencao", None)
             if feedback:
                 st.success(feedback)
+
             if metadados_pendentes:
-                st.warning(
-                    f"{len(metadados_pendentes)} PDF(s) com autor/ano "
-                    "incompletos. Confira na fonte antes de citar."
-                )
+                st.caption("PDF(s) com autor/ano incompletos — confira na fonte "
+                           "antes de citar:")
                 for nome, info in metadados_pendentes.items():
                     st.caption(
                         f"• {nome} — {info.get('autor_atual') or 'autor ?'} "
-                        f"({info.get('ano_atual') or '????'}) | "
-                        f"registrado em {info.get('registrado', '?')}"
+                        f"({info.get('ano_atual') or '????'})"
                     )
-            if st.button("Consolidar memória", width="stretch"):
+
+            col_a, col_b = st.columns(2, gap="small")
+            if col_a.button("Consolidar memória", width="stretch"):
                 try:
                     from src.conhecimento.consolidar_memoria import consolidar
 
-                    ok = consolidar(forcar=True)
                     st.session_state.feedback_manutencao = (
-                        "Memória consolidada." if ok else "Nada a consolidar."
+                        "Memória consolidada." if consolidar(forcar=True)
+                        else "Nada a consolidar."
                     )
                     st.rerun()
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
                     st.error(f"Erro: {exc}")
-
-            if st.button("Corrigir metadados ruins", width="stretch"):
+            if col_b.button("Corrigir metadados", width="stretch"):
                 try:
                     from src.orquestrador import reprocessar_metadados_ruins
 
-                    st.session_state.feedback_manutencao = (
-                        reprocessar_metadados_ruins()
-                    )
+                    st.session_state.feedback_manutencao = reprocessar_metadados_ruins()
                     st.rerun()
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
                     st.error(f"Erro: {exc}")
 
-        st.caption("Tema claro/escuro: menu ⋮ → Settings → Theme")
+        with st.expander("Diagnóstico"):
+            st.caption(f"build: {MARCADOR_BUILD}")
+            renderizar_diagnostico(colecao, colecao_sessoes, colecao_obsidian)
+            novidades = [
+                str(item) for item in (relatorio or [])
+                if item and "nenhum pendente" not in str(item).lower()
+            ]
+            if novidades:
+                st.caption("**Inicialização**")
+                for item in novidades:
+                    st.caption(f"• {item}")
+
+        if st.session_state.get("mensagens"):
+            st.markdown("")
+            if st.button("Limpar conversa", icon=":material/close:"):
+                st.session_state.mensagens = []
+                st.session_state.caminho_sessao = None
+                st.rerun()
+
+        # Só a data e o número: o marcador completo (com a descrição da
+        # entrega) fica no Diagnóstico, senão quebra em três linhas aqui.
+        st.caption(" · ".join(MARCADOR_BUILD.split(" · ")[:2]))
 
 
-def renderizar_topo(relatorio: list) -> None:
-    equipe_ativa = st.session_state.get("equipe") is not None
-
-    col_titulo, col_status = st.columns([4, 1.1])
-    with col_titulo:
-        st.markdown("## Al IAdo PV")
-        st.caption(
-            "Pesquisa aplicada, confiabilidade e Machine Learning para falhas CA "
-            "em inversores fotovoltaicos | UTFPR"
-        )
-    with col_status:
-        if equipe_ativa:
-            st.success("Equipe Gemini")
-        else:
-            st.warning("Ative a equipe")
-
-    novidades = [
-        str(item)
-        for item in relatorio
-        if item and "nenhum pendente" not in str(item).lower()
-    ]
-    if novidades:
-        with st.expander("Novidades processadas na inicialização", expanded=False):
-            for item in novidades:
-                st.write(item)
+# Atalhos da tela inicial: rótulo curto no botão, pergunta completa enviada
+# ao agente. Servem de exemplo do que ele faz — sem parágrafo explicando.
+_SUGESTOES_LOCAL = [
+    ("Comparar com a literatura", "Compare meu método com a literatura por AUC."),
+    ("Status do pipeline", "Como estão as etapas do pipeline?"),
+    ("Weibull e RUL", "Rode a análise de Weibull e interprete MTTF e B10."),
+]
+_SUGESTOES_CONSULTA = [
+    ("Comparar com a literatura", "Compare meu método com a literatura por AUC."),
+    ("Resultados publicados", "Mostre os resultados de validação publicados."),
+    ("Weibull e RUL", "Interprete os resultados de Weibull, MTTF e B10."),
+]
 
 
 def renderizar_boas_vindas() -> None:
+    """Tela inicial: identidade em duas linhas e três atalhos. Nada mais.
+
+    A versão anterior abria com um bloco de instruções e cinco exemplos em
+    lista — texto que o pesquisador já sabe e relia a cada sessão.
+    """
     from src.conhecimento.agente import _saudacao_pelo_horario
     from src.ml.pipeline import capacidade_recalculo_pipeline
 
-    saudacao = _saudacao_pelo_horario()
-    calculo_local = capacidade_recalculo_pipeline()["disponivel"]
-    capacidade = (
-        "posso rodar etapas do pipeline, comparar experimentos"
-        if calculo_local else
-        "posso consultar os resultados publicados e comparar experimentos"
-    )
-    st.info(
-        f"**{saudacao}, Rodolfo.**\n\n"
-        f"Peça em linguagem natural: {capacidade}, explicar métricas, "
-        "mostrar gráficos ou discutir decisões "
-        "metodológicas da dissertação."
+    st.markdown(
+        '<div class="alp-hero">'
+        '<div class="alp-hero-icone">⚡</div>'
+        f'<h1>{_saudacao_pelo_horario()}, Rodolfo.</h1>'
+        '<p>Falhas CA em inversores fotovoltaicos — confiabilidade, '
+        'detecção de anomalia e Machine Learning.</p>'
+        '</div>',
+        unsafe_allow_html=True,
     )
 
-    st.markdown("##### Exemplos de prompt")
-    acao_weibull = (
-        "Rode a análise de Weibull e depois interprete MTTF e B10."
-        if calculo_local else
-        "Interprete os resultados publicados de Weibull, MTTF e B10."
-    )
-    exemplos = [
-        "Explique os resultados de validação e mostre as curvas ROC.",
-        acao_weibull,
-        "Compare os experimentos de anomalia por AUC.",
-        "What does the literature say about LCL filter faults?",
-        "Explique en español qué modelo parece más confiable.",
-    ]
-    for exemplo in exemplos:
-        st.markdown(f"- _{exemplo}_")
+    sugestoes = (_SUGESTOES_LOCAL if capacidade_recalculo_pipeline()["disponivel"]
+                 else _SUGESTOES_CONSULTA)
+    # Margens laterais deixam os atalhos alinhados com o texto do herói,
+    # em vez de esticados de ponta a ponta da tela.
+    colunas = st.columns([1, *([2] * len(sugestoes)), 1], gap="small")[1:-1]
+    for coluna, (rotulo, prompt) in zip(colunas, sugestoes):
+        if coluna.button(rotulo, key=f"sugestao_{rotulo}", width="stretch"):
+            st.session_state.pergunta_pendente = prompt
+            st.rerun()
 
 
 def stream_resposta(prompt: str, llm):
@@ -752,6 +958,14 @@ def stream_resposta_limpa(conteudo, llm, placeholder, refs_md: str) -> str:
     texto = ""
     cursor = "▌"
     gasto = 0.0  # tempo ja "datilografado"; apos o orcamento, revela direto
+
+    # Espera ativa: o brilho ocupa o intervalo (as vezes varios segundos, com
+    # RAG + auditoria) entre o pedido e o primeiro token. O primeiro pedaco de
+    # texto sobrescreve o placeholder e o faz sumir.
+    # A partir daqui NADA usa unsafe_allow_html: o texto do modelo continua
+    # sendo renderizado como Markdown puro, com HTML escapado.
+    placeholder.markdown(_html_pensando(), unsafe_allow_html=True)
+
     for chunk in llm.stream([HumanMessage(content=conteudo)]):
         novo = chunk.content or ""
         if not novo:
@@ -867,15 +1081,15 @@ def _botao_download(img: dict, alvo=None, *, compacto: bool = False) -> None:
     _DL_KEY[0] += 1
     legenda = img.get("caption") or p.name
     destino.download_button(
-        label="Baixar PNG" if compacto else f"Baixar — {legenda}",
+        label="PNG" if compacto else "Baixar",
         data=dados,
         file_name=p.name,
         mime="image/png",
         key=f"dl_{_DL_KEY[0]}",
         icon=":material/download:",
-        help=f"Salvar {p.name}",
+        help=f"Salvar {legenda} ({p.name})",
         on_click="ignore",
-        width="stretch",
+        width="stretch" if compacto else "content",
     )
 
 
@@ -884,14 +1098,15 @@ def _botao_download_texto(texto: str, nome: str, alvo=None) -> None:
     destino = alvo if alvo is not None else st
     _DL_KEY[0] += 1
     destino.download_button(
-        label=f"Baixar {nome}",
+        label="Baixar .txt",
         data=(texto or "").encode("utf-8"),
         file_name=nome,
         mime="text/plain",
         key=f"dl_txt_{_DL_KEY[0]}",
         icon=":material/download:",
+        help=f"Salvar {nome}",
         on_click="ignore",
-        width="stretch",
+        width="content",
     )
 
 
@@ -903,11 +1118,11 @@ def _controles_antevisao(img: dict, alvo=None) -> None:
         return
 
     legenda = img.get("caption") or p.name
-    destino.markdown(f"**{legenda}**")
+    destino.caption(legenda)
     col_ver, col_baixar = destino.columns(2, gap="small")
     _DL_KEY[0] += 1
     with col_ver.popover(
-        "Visualizar",
+        "Ver",
         icon=":material/visibility:",
         help="Abrir antevisão responsiva sem baixar o arquivo",
         width="stretch",
@@ -1279,8 +1494,18 @@ def _contexto_recente(n_trocas: int = 4) -> str:
 def responder_com_ferramenta(pergunta: str, perfil: str, llm) -> tuple[str, list[dict]]:
     from src.conhecimento.ferramentas import decidir_acao, processar_com_ferramentas
 
-    with st.spinner("Interpretando o pedido..."):
+    # O roteamento passa pelo LLM, então demora o bastante para a tela parecer
+    # travada. Um balão de assistente com o brilho pulsante ocupa essa espera —
+    # e é descartado logo depois, seja qual for o caminho escolhido.
+    espera = st.empty()
+    with espera.container():
+        with st.chat_message("assistant", avatar="⚡"):
+            st.markdown(_html_pensando("Interpretando o pedido"),
+                        unsafe_allow_html=True)
+    try:
         decisao = decidir_acao(pergunta, llm)
+    finally:
+        espera.empty()
 
     if not decisao["usar_ferramenta"]:
         return "", []
@@ -1336,18 +1561,25 @@ def responder_com_rag(pergunta: str,
 
     # Consultas simples de primeiro/último registro são resolvidas pela ordem
     # dos metadados. Isso evita que o LLM troque cronologia por similaridade.
+    # Inventário ("quais as 10 últimas memórias consolidadas?") vem ANTES: é
+    # pergunta de contagem, e busca semântica devolveria uma amostra que o LLM
+    # apresentaria como total. A contagem sai da varredura dos metadados.
     try:
-        from src.conhecimento.obsidian import responder_consulta_cronologica
+        from src.conhecimento.obsidian import (
+            responder_consulta_cronologica,
+            responder_inventario_vault,
+        )
 
-        resposta_cronologica = responder_consulta_cronologica(
-            colecao_obsidian, pergunta
+        resposta_direta = (
+            responder_inventario_vault(colecao_obsidian, pergunta)
+            or responder_consulta_cronologica(colecao_obsidian, pergunta)
         )
     except Exception:
-        resposta_cronologica = None
-    if resposta_cronologica:
+        resposta_direta = None
+    if resposta_direta:
         with st.chat_message("assistant", avatar="⚡"):
-            st.markdown(resposta_cronologica)
-        return resposta_cronologica
+            st.markdown(resposta_direta)
+        return resposta_direta
 
     # ── Atalho: cumprimento/casual responde local sem RAG/LLM ────
     # Vale MESMO com o LLM conectado: um "olá" não deve acionar o modelo pesado
@@ -1436,9 +1668,9 @@ def responder_com_rag(pergunta: str,
     )
 
     with st.chat_message("assistant", avatar="⚡"):
+        placeholder = st.empty()
         try:
             refs_md = formatar_referencias_markdown(citacoes)
-            placeholder = st.empty()
             resposta = stream_resposta_limpa(
                 conteudo_humano,
                 st.session_state.llm,
@@ -1459,6 +1691,10 @@ def responder_com_rag(pergunta: str,
                 resposta = aviso.strip() + "\n\n" + resposta
                 placeholder.markdown(resposta)
         except Exception as exc:
+            # Se a falha veio antes do primeiro token, o placeholder ainda
+            # exibe o brilho de espera — sem isto, ele pulsaria para sempre
+            # logo acima da mensagem de erro.
+            placeholder.empty()
             erro = str(exc)
             erro_baixo = erro.lower()
             if "413" in erro or "Request too large" in erro:
@@ -1646,8 +1882,10 @@ def main() -> None:
         st.error(f"Erro ao carregar o agente: {exc}")
         return
 
-    renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian)
-    renderizar_topo(relatorio)
+    # Sem cabeçalho no corpo: a identidade fica na barra lateral e a área
+    # principal é só a conversa. O relatório de inicialização virou uma
+    # seção do Diagnóstico, em vez de um expander no topo de toda sessão.
+    renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian, relatorio)
 
     renderizar_chat(
         perfil,
