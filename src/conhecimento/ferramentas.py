@@ -1036,14 +1036,27 @@ def registrar_no_cerebro(progresso=None, pergunta: str = "",
             nivel_evidencia = redigida.get("nivel_evidencia", nivel_evidencia)
 
     if not titulo.strip() or not conteudo.strip():
+        # Distingue os dois motivos: sem conversa anterior (app recém-aberto,
+        # histórico vazio) x falha ao redigir. Antes, os dois davam a mesma
+        # mensagem vaga, e o pesquisador não sabia o que fazer.
+        sem_contexto = not str(contexto).strip()
+        motivo = (
+            "Não há conversa anterior nesta sessão para eu saber o que é "
+            "\"esse resultado\" — o app foi reaberto e o histórico está vazio."
+            if sem_contexto else
+            "Não consegui redigir a nota a partir da conversa."
+        )
         return {
             "ok": False,
             "etapa": "Registro no cérebro",
             "mensagem": (
-                "Não consegui montar a nota sozinho. Me diga **o que** guardar "
-                "(um resumo do ponto) que eu registro.\n\n"
-                f"Tipos: {', '.join(sorted(TIPOS))}.\n"
-                f"Tags válidas: {', '.join(sorted(TAGS_VALIDAS))}."
+                f"⚠️ **A nota NÃO foi criada.** {motivo}\n\n"
+                "Peça de novo dizendo **o que** guardar — por exemplo:\n"
+                "> _\"registre no cérebro: no IGBT o método proposto detecta a "
+                "partir da severidade 0,50 contra 1,00 do AE-LSTM (AUC 0,978 vs "
+                "0,909). Evidência E2.\"_\n\n"
+                "Ou rode a etapa primeiro (ex.: \"mostre o Weibull\") e então "
+                "peça para guardar — aí eu leio o resultado da própria conversa."
             ),
             "imagens": [],
             "resposta_pronta": True,
@@ -2346,6 +2359,13 @@ def comentar_resultado(pergunta: str, resultado: dict, perfil: str, llm) -> str:
     """
     autoral = _quer_resposta_autoral(pergunta)
     mensagem = resultado.get("mensagem", "")
+
+    # FALHA é reportada LITERALMENTE, sempre. Deixar o LLM reescrever um erro
+    # produzia resposta genérica que escondia o problema — o pesquisador via um
+    # texto plausível e não sabia que a ação não aconteceu. Erro tem de aparecer
+    # como erro, inclusive quando o pedido é autoral.
+    if resultado.get("ok") is False and mensagem:
+        return mensagem
 
     # Literalidade obrigatória: só quando a ferramenta força OU quando os dados
     # são um inventário/tabela — e nunca quando o pedido é autoral.

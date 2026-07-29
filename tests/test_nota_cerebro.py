@@ -82,7 +82,7 @@ def test_ferramenta_registrada_no_roteador():
 def test_pede_ajuda_quando_nao_consegue_redigir():
     # sem LLM e sem contexto, não há como compor a nota — pede ao pesquisador
     r = fr.registrar_no_cerebro(pergunta="guarde no cérebro")
-    assert not r["ok"] and "me diga" in r["mensagem"].lower()
+    assert not r["ok"] and "não foi criada" in r["mensagem"].lower()
 
 
 # ── redação automática: "guarde ESSE resultado" (pedido dêitico) ─────────────
@@ -125,7 +125,7 @@ def test_llm_redige_a_nota_a_partir_do_contexto(tmp_path, monkeypatch):
 
 def test_sem_contexto_nem_llm_pede_ajuda():
     r = fr.registrar_no_cerebro(pergunta="guarde no cérebro", llm=None, contexto="")
-    assert not r["ok"] and "Me diga" in r["mensagem"]
+    assert not r["ok"] and "NÃO foi criada" in r["mensagem"]
 
 
 def test_executar_ferramenta_repassa_llm_e_contexto(tmp_path, monkeypatch):
@@ -148,3 +148,40 @@ def test_ferramentas_antigas_nao_quebram_com_os_novos_parametros():
     r = fr.executar_ferramenta("consultar_status_pipeline", pergunta="status",
                                llm=_LLMRedator(), contexto="qualquer coisa")
     assert isinstance(r, dict) and "mensagem" in r
+
+
+# ── falha NUNCA pode ser reescrita pelo LLM ──────────────────────────────────
+
+def test_falha_e_reportada_literalmente(monkeypatch):
+    """Erro reescrito pelo LLM escondia que a acao nao aconteceu."""
+    class LLMInventor:
+        def invoke(self, _m):
+            class R:
+                content = "Estou alinhado com o escopo do seu mestrado..."
+            return R()
+
+    falha = {"ok": False, "mensagem": "⚠️ **A nota NÃO foi criada.** Motivo X.",
+             "resposta_pronta": True}
+    saida = fr.comentar_resultado("guarde no cérebro", falha, "", LLMInventor())
+    assert "NÃO foi criada" in saida
+    assert "alinhado com o escopo" not in saida
+
+
+def test_falha_literal_mesmo_em_pedido_autoral():
+    class LLMInventor:
+        def invoke(self, _m):
+            class R:
+                content = "Na minha opinião, tudo certo!"
+            return R()
+
+    falha = {"ok": False, "mensagem": "⚠️ Falhou por tal motivo."}
+    saida = fr.comentar_resultado("na sua opinião, guarde isso", falha, "", LLMInventor())
+    assert "Falhou" in saida
+
+
+def test_sem_contexto_explica_o_motivo_real():
+    r = fr.registrar_no_cerebro(pergunta="guarde esse resultado no cérebro",
+                                llm=None, contexto="")
+    assert not r["ok"]
+    assert "histórico está vazio" in r["mensagem"]
+    assert "NÃO foi criada" in r["mensagem"]
