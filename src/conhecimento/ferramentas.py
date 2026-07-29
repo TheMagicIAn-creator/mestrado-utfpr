@@ -839,6 +839,7 @@ def limpar_resultados_ml(progresso=None, pergunta: str = "") -> dict:
         ),
         "imagens": [],
         "resposta_pronta": True,
+        "acao_executada": True,   # apagou artefato: o fato e literal
     }
 
 
@@ -1074,6 +1075,10 @@ def registrar_no_cerebro(progresso=None, pergunta: str = "",
         "mensagem": res["mensagem"],
         "imagens": [],
         "resposta_pronta": True,
+        # CONFIRMAÇÃO DE AÇÃO EXECUTADA é literal (ver comentar_resultado).
+        # Sem isto, o LLM substituía "Nota criada em X.md" por uma análise do
+        # tema e o pesquisador não sabia se o arquivo existia.
+        "acao_executada": True,
     }
 
 
@@ -2360,11 +2365,16 @@ def comentar_resultado(pergunta: str, resultado: dict, perfil: str, llm) -> str:
     autoral = _quer_resposta_autoral(pergunta)
     mensagem = resultado.get("mensagem", "")
 
-    # FALHA é reportada LITERALMENTE, sempre. Deixar o LLM reescrever um erro
-    # produzia resposta genérica que escondia o problema — o pesquisador via um
-    # texto plausível e não sabia que a ação não aconteceu. Erro tem de aparecer
-    # como erro, inclusive quando o pedido é autoral.
-    if resultado.get("ok") is False and mensagem:
+    # FATO DE EXECUÇÃO é reportado LITERALMENTE, sempre — mesmo em pedido
+    # autoral. Vale para os dois lados:
+    #   - FALHA: deixar o LLM reescrever o erro produzia texto plausível que
+    #     escondia o problema; o pesquisador não sabia que a ação não ocorreu.
+    #   - CONFIRMAÇÃO de ação (nota criada, artefato apagado): o LLM trocava
+    #     "Nota criada em X.md" por uma análise do tema, e o pesquisador ficava
+    #     sem saber se o arquivo existia.
+    # Opinião se dá sobre DADOS; sobre o que aconteceu, vale o fato.
+    if mensagem and (resultado.get("ok") is False
+                     or resultado.get("acao_executada")):
         return mensagem
 
     # Literalidade obrigatória: só quando a ferramenta força OU quando os dados
