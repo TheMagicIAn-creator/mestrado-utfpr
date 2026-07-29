@@ -97,6 +97,27 @@ ESPEC_FERRAMENTAS = [
         ),
     },
     {
+        "name": "registrar_no_cerebro",
+        "description": (
+            "REGISTRA conhecimento curado como nota no Cerebro/ do vault "
+            "Obsidian (conceito, decisao metodologica, resultado validado, "
+            "hipotese). Use quando o pesquisador pedir para GUARDAR, REGISTRAR, "
+            "ANOTAR ou DOCUMENTAR algo no cerebro/vault/Obsidian — ex.: "
+            "'guarde esse resultado no cerebro', 'registre essa decisao', "
+            "'anote isso no vault'. Voce deve REDIGIR o texto da nota em "
+            "Markdown e passar: titulo, conteudo, tipo (conceito|decisao|"
+            "resultado|contexto|hipotese|experimento), tags (nos comuns da "
+            "dissertacao: fmea, fmeca, rcm, manutencao, confiabilidade, "
+            "weibull-rul, inversor-pv, contator-ac, igbt, fusivel-ac, "
+            "autoencoder, deteccao-anomalia, escore-localizado, "
+            "machine-learning, sinais-eletricos, paderborn, evidencia-e2, "
+            "comparacao-literatura, metodologia), nivel_evidencia "
+            "(projeto|E1|E2|literatura) e fonte (artefato de origem, se "
+            "houver). NAO use para memorizar preferencia do usuario (isso e a "
+            "memoria validada) nem para consultar notas existentes (isso e RAG)."
+        ),
+    },
+    {
         "name": "buscar_web",
         "description": (
             "Busca rapida na Wikipedia/DuckDuckGo para lookups factuais que "
@@ -582,6 +603,21 @@ def _quer_consultar_resultados_experimentos(pergunta: str) -> bool:
     return tem_exp and (tem_resultado or _quer_resposta_autoral(pergunta))
 
 
+def _quer_registrar_no_cerebro(pergunta: str) -> bool:
+    """Pedido explicito de GRAVAR conhecimento curado no vault.
+
+    Exige verbo de registro E destino (cerebro/vault/obsidian/nota) — evita
+    confundir com a memoria validada ("lembre que prefiro...") ou com consulta.
+    """
+    txt = _normalizar(pergunta)
+    verbos = ("registre", "registrar", "guarde", "guardar", "anote", "anotar",
+              "documente", "documentar", "salve como nota", "crie uma nota",
+              "criar nota", "adicione ao cerebro", "registra", "anota")
+    destinos = ("cerebro", "vault", "obsidian", "nota curada", "nas notas",
+                "no cerebro", "como nota")
+    return any(v in txt for v in verbos) and any(d in txt for d in destinos)
+
+
 def _quer_limpar(pergunta: str) -> bool:
     txt = _normalizar(pergunta)
     termos = (
@@ -916,6 +952,52 @@ def rodar_pipeline_completo(progresso=None, pergunta: str = "") -> dict:
         "etapa": "Pipeline completo",
         "mensagem": mensagem,
         "imagens": resumo.get("imagens", []),
+        "resposta_pronta": True,
+    }
+
+
+def registrar_no_cerebro(progresso=None, pergunta: str = "",
+                         titulo: str = "", conteudo: str = "",
+                         tipo: str = "contexto", tags: list | None = None,
+                         nivel_evidencia: str = "projeto",
+                         fonte: str = "") -> dict:
+    """Registra conhecimento curado como NOTA no `Cerebro/` do vault Obsidian.
+
+    É a peça que faltava para o agente usar o vault como REPOSITÓRIO (e não só
+    como leitura): fecha o ciclo entrada → consulta → saída → **registro**.
+
+    Sem `titulo`/`conteudo` explícitos, orienta o LLM a fornecê-los — o texto da
+    nota é redigido por ele, não extraído por regex da pergunta.
+    """
+    from src.conhecimento.nota_cerebro import (
+        TAGS_VALIDAS, TIPOS, registrar_nota_cerebro,
+    )
+
+    if not titulo.strip() or not conteudo.strip():
+        return {
+            "ok": False,
+            "etapa": "Registro no cérebro",
+            "mensagem": (
+                "Para registrar no cérebro preciso de **título** e **conteúdo** "
+                "da nota (o texto em Markdown que deve ficar guardado).\n\n"
+                f"Tipos: {', '.join(sorted(TIPOS))}.\n"
+                f"Tags válidas: {', '.join(sorted(TAGS_VALIDAS))}."
+            ),
+            "imagens": [],
+            "resposta_pronta": True,
+        }
+
+    if progresso:
+        progresso(f"Registrando nota no cérebro: {titulo}...")
+    res = registrar_nota_cerebro(
+        titulo=titulo, conteudo=conteudo, tipo=tipo, tags=tags,
+        nivel_evidencia=nivel_evidencia, fonte=fonte,
+    )
+    return {
+        "ok": res["ok"],
+        "etapa": "Registro no cérebro",
+        "mensagem": res["mensagem"],
+        "imagens": [],
         "resposta_pronta": True,
     }
 
@@ -1575,6 +1657,7 @@ _DESPACHO = {
     "listar_experimentos_artigos": listar_experimentos_artigos,
     "rodar_experimento_artigo": rodar_experimento_artigo,
     "comparar_experimentos_auc": comparar_experimentos_auc,
+    "registrar_no_cerebro": registrar_no_cerebro,
 }
 
 
@@ -1877,6 +1960,12 @@ def _decisao_rapida(pergunta: str) -> dict | None:
 
     if not _parece_pedido_de_ferramenta(pergunta):
         return {"usar_ferramenta": False, "ferramenta": None}
+
+    # Registro no cérebro: "guarde/registre/anote isso no cérebro/vault".
+    # Vem antes da limpeza porque "registre" nao e destrutivo e nao deve cair
+    # em nenhum outro roteamento.
+    if _quer_registrar_no_cerebro(pergunta):
+        return {"usar_ferramenta": True, "ferramenta": "registrar_no_cerebro"}
 
     # Limpeza explícita ("apague", "limpe...") tem prioridade sobre tudo.
     if _quer_limpar(pergunta):
