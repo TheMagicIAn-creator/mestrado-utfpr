@@ -2069,20 +2069,50 @@ def _decisao_rapida(pergunta: str) -> dict | None:
     return None
 
 
-def decidir_acao(pergunta: str, llm) -> dict:
-    """
-    Decide se a pergunta deve acionar uma ferramenta.
-    Usa regras rapidas primeiro e LLM apenas quando a intencao e ambigua.
-    """
-    decisao = _decisao_rapida(pergunta)
-    if decisao is not None:
-        return decisao
+def _guardas_criticas(pergunta: str) -> dict | None:
+    """Regras que DEVEM decidir antes do LLM — onde errar é caro ou irreversível.
 
+    São poucas de propósito. Todo o resto vai para o roteamento semântico, que
+    entende paráfrase e frase torta. Duas famílias:
+
+    (a) NEGATIVAS — impedem o uso de ferramenta. Sem elas, uma declaração de
+        memória ("Lembre-se: decidimos injetar...") virava execução de pipeline
+        e a memória nunca era criada; e um pedido de CÓDIGO devolvia artefato
+        salvo em vez de o LLM escrever o código.
+    (b) DESTRUTIVAS — apagar artefatos. Um falso positivo do LLM aqui custa
+        recálculo; a palavra-chave explícita é mais segura.
+    """
+    if _e_declaracao_memoria(pergunta):          # (a) declaração → memória
+        return {"usar_ferramenta": False, "ferramenta": None}
+    if _quer_codigo_snippet(pergunta):           # (a) "escreva um código..."
+        return {"usar_ferramenta": False, "ferramenta": None}
+    if _quer_literatura_tematica(pergunta):      # (a) busca bibliográfica → RAG
+        return {"usar_ferramenta": False, "ferramenta": None}
+    if _quer_limpar_experimentos(pergunta):      # (b) destrutivo
+        return {"usar_ferramenta": True, "ferramenta": "limpar_experimentos_artigos"}
+    if _quer_limpar(pergunta):                   # (b) destrutivo
+        return {"usar_ferramenta": True, "ferramenta": "limpar_resultados_ml"}
+    return None
+
+
+def _rotear_por_llm(pergunta: str, llm) -> dict | None:
+    """Roteamento SEMÂNTICO: o LLM escolhe a ferramenta pelo catálogo.
+
+    Retorna None se o LLM falhar/estiver indisponível — aí o chamador cai na
+    cascata de palavras-chave, que segue existindo como rede de segurança.
+    """
+    if llm is None:
+        return None
     catalogo = "\n".join(f"- {f['name']}: {f['description']}" for f in ESPEC_FERRAMENTAS)
-    prompt = f"""Voce roteia pedidos para ferramentas de ML.
+    prompt = f"""Voce roteia pedidos do pesquisador para ferramentas de ML.
 
-Ferramentas:
+Ferramentas disponiveis:
 {catalogo}
+
+Regras:
+- Escolha a ferramenta SO se o pedido realmente exigir executar/consultar algo.
+- Pergunta conceitual, pedido de explicacao, opiniao ou redacao => sem ferramenta.
+- Na duvida entre conversar e acionar ferramenta, prefira SEM ferramenta.
 
 Mensagem do usuario:
 "{pergunta}"
@@ -2091,17 +2121,57 @@ Responda apenas JSON valido:
 {{"usar_ferramenta": true/false, "ferramenta": "nome_ou_null"}}
 """
     try:
-        from langchain_core.messages import HumanMessage
+        # HumanMessage quando o langchain estiver disponível; senão manda o
+        # texto puro (a maioria dos wrappers aceita). Sem isto, a ausência do
+        # pacote derrubava o roteamento semântico INTEIRO em silêncio.
+        try:
+            from langchain_core.messages import HumanMessage
 
-        resposta = texto_da_resposta(llm.invoke([HumanMessage(content=prompt)]))
-        limpo = re.sub(r"```json?\n?", "", resposta.strip()).replace("```", "").strip()
+            entrada = [HumanMessage(content=prompt)]
+        except ImportError:
+            entrada = prompt
+
+        resposta = texto_da_resposta(llm.invoke(entrada))
+        limpo = re.sub(r"```json?\n?", "", str(resposta).strip()).replace("```", "").strip()
         dados = json.loads(limpo)
         nomes = {f["name"] for f in ESPEC_FERRAMENTAS}
         ferramenta = dados.get("ferramenta")
         if dados.get("usar_ferramenta") and ferramenta in nomes:
             return {"usar_ferramenta": True, "ferramenta": ferramenta}
+        if dados.get("usar_ferramenta") is False:
+            return {"usar_ferramenta": False, "ferramenta": None}
     except Exception:
         pass
+    return None
+
+
+def decidir_acao(pergunta: str, llm) -> dict:
+    """Decide se a pergunta deve acionar uma ferramenta.
+
+    Ordem (fluidez primeiro, segurança onde importa):
+      1. GUARDAS CRÍTICAS por palavra-chave — negativas e destrutivas;
+      2. ROTEAMENTO SEMÂNTICO pelo LLM — entende paráfrase, frase torta, pedido
+         indireto. É o caminho principal;
+      3. CASCATA de palavras-chave — rede de segurança quando o LLM falha ou
+         está indisponível (offline, cota, erro de rede).
+
+    Antes, a cascata de 27 gatilhos vinha PRIMEIRO e capturava quase tudo — o
+    roteamento semântico existia mas quase nunca era alcançado, e o agente
+    parecia "de gatilho". A inversão custa uma chamada de LLM por mensagem
+    (decisão consciente: latência trocada por fluidez).
+    """
+    guarda = _guardas_criticas(pergunta)
+    if guarda is not None:
+        return guarda
+
+    semantico = _rotear_por_llm(pergunta, llm)
+    if semantico is not None:
+        return semantico
+
+    decisao = _decisao_rapida(pergunta)
+    if decisao is not None:
+        return decisao
+
     return {"usar_ferramenta": False, "ferramenta": None}
 
 
