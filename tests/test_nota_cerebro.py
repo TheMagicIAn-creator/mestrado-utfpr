@@ -185,3 +185,30 @@ def test_sem_contexto_explica_o_motivo_real():
     assert not r["ok"]
     assert "histórico está vazio" in r["mensagem"]
     assert "NÃO foi criada" in r["mensagem"]
+
+
+def test_confirmacao_de_acao_e_literal_mesmo_em_pedido_autoral():
+    """O LLM trocava 'Nota criada em X.md' por uma analise do tema."""
+    class LLMAnalista:
+        def invoke(self, _m):
+            class R:
+                content = ("A análise dos resultados de RUL consolida a "
+                           "viabilidade metodológica da dissertação...")
+            return R()
+
+    ok = {"ok": True, "acao_executada": True, "resposta_pronta": True,
+          "mensagem": "Nota criada no cérebro: **Resultado RUL** (`x.md`)."}
+    for pedido in ("guarde esse resultado no cérebro",
+                   "na sua opinião, guarde esse resultado"):
+        saida = fr.comentar_resultado(pedido, ok, "", LLMAnalista())
+        assert "Nota criada no cérebro" in saida, pedido
+        assert "viabilidade metodológica" not in saida, pedido
+
+
+def test_registro_marca_acao_executada(tmp_path, monkeypatch):
+    import src.conhecimento.nota_cerebro as nc
+    monkeypatch.setattr(nc, "PASTA_CEREBRO_OBSIDIAN", tmp_path)
+    r = fr.registrar_no_cerebro(
+        pergunta="guarde no cérebro", llm=_LLMRedator("N"),
+        contexto="Al IAdo PV: censura caiu de 70% para 13%.")
+    assert r["ok"] and r.get("acao_executada") is True
