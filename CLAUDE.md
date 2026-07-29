@@ -302,7 +302,7 @@ Automação que roda FORA do orquestrador:
 
 Ações MANUAIS (não são automáticas):
 - Corrigir metadados "autor-desconhecido" → botão
-  "Corrigir metadados ruins" (Manutenção avançada no app)
+  "Corrigir metadados" (barra lateral → Manutenção)
 - EDA e treino do classificador PV → sob demanda,
   pelas ferramentas do chat
 
