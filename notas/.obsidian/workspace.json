@@ -49,7 +49,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "tag:#inversion",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -70,7 +70,8 @@
               "title": "Bookmarks"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
@@ -234,6 +235,8 @@
   },
   "active": "7b470dd149c3dc39",
   "lastOpenFiles": [
+    "memorias/resultados-fase5-ml.md",
+    "sessoes_arquivadas/2026-06-14_01-01-10_avaliacao_agente_100.md",
     "Cerebro/Resultados/Estimativas Exploratórias de RUL e Análise de Weibull (E2).md",
     "sessoes/2026-07-29_13-37_sessao_web.md",
     "sessoes_arquivadas/2026-07-29_10-47_sessao_web.md",
@@ -258,8 +261,6 @@
     "sessoes_arquivadas/2026-07-21_21-57_sessao_web.md",
     "memorias/2026-07-27_23-04-14_consolidado.md",
     "sessoes_arquivadas/2026-07-20_09-19_sessao_web.md",
-    "sessoes_arquivadas/2026-06-11_15-44-40_avaliacao_agente_100.md",
-    "sessoes_arquivadas/2026-05-28_22-33-10_avaliacao_agente_100.md",
     "Untitled.canvas",
     "Untitled 1.base",
     "Untitled.base",
