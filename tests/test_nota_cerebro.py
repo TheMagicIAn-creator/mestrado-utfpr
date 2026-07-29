@@ -79,6 +79,72 @@ def test_ferramenta_registrada_no_roteador():
     assert "registrar_no_cerebro" in nomes
 
 
-def test_pede_titulo_e_conteudo_quando_faltam():
+def test_pede_ajuda_quando_nao_consegue_redigir():
+    # sem LLM e sem contexto, não há como compor a nota — pede ao pesquisador
     r = fr.registrar_no_cerebro(pergunta="guarde no cérebro")
-    assert not r["ok"] and "título" in r["mensagem"].lower()
+    assert not r["ok"] and "me diga" in r["mensagem"].lower()
+
+
+# ── redação automática: "guarde ESSE resultado" (pedido dêitico) ─────────────
+
+class _LLMRedator:
+    """LLM de teste que devolve a nota pronta em JSON."""
+
+    def __init__(self, titulo="Resultado da comparação"):
+        self.titulo, self.viu_contexto = titulo, None
+
+    def invoke(self, entrada):
+        self.viu_contexto = str(entrada)
+
+        class R:
+            content = (
+                '{"titulo": "%s", "conteudo": "AUC 0.978 vs 0.909 no IGBT.",'
+                ' "tipo": "resultado", "tags": ["igbt", "comparacao-literatura"],'
+                ' "nivel_evidencia": "E2"}' % self.titulo
+            )
+        return R()
+
+
+def test_llm_redige_a_nota_a_partir_do_contexto(tmp_path, monkeypatch):
+    import src.conhecimento.nota_cerebro as nc
+    monkeypatch.setattr(nc, "PASTA_CEREBRO_OBSIDIAN", tmp_path)
+
+    llm = _LLMRedator()
+    r = fr.registrar_no_cerebro(
+        pergunta="guarde esse resultado no cérebro",
+        llm=llm,
+        contexto="Rodolfo: rode a comparação\nAl IAdo PV: AUC 0.978 vs 0.909 no IGBT.",
+    )
+    assert r["ok"], r["mensagem"]
+    assert "Resultado da comparação" in r["mensagem"]
+    # o LLM precisa ter recebido o contexto (senão escreveria sobre o tema errado)
+    assert "0.978" in llm.viu_contexto
+    nota = (tmp_path / "Resultados" / "Resultado da comparação.md").read_text(encoding="utf-8")
+    assert "AUC 0.978" in nota and "nivel_evidencia: E2" in nota
+
+
+def test_sem_contexto_nem_llm_pede_ajuda():
+    r = fr.registrar_no_cerebro(pergunta="guarde no cérebro", llm=None, contexto="")
+    assert not r["ok"] and "Me diga" in r["mensagem"]
+
+
+def test_executar_ferramenta_repassa_llm_e_contexto(tmp_path, monkeypatch):
+    """A ferramenta só funciona se o despacho REPASSAR llm/contexto."""
+    import src.conhecimento.nota_cerebro as nc
+    monkeypatch.setattr(nc, "PASTA_CEREBRO_OBSIDIAN", tmp_path)
+
+    r = fr.executar_ferramenta(
+        "registrar_no_cerebro",
+        pergunta="guarde esse resultado no cérebro",
+        llm=_LLMRedator("Nota via despacho"),
+        contexto="Al IAdo PV: censura do IGBT caiu de 70% para 13%.",
+    )
+    assert r["ok"], r["mensagem"]
+    assert (tmp_path / "Resultados" / "Nota via despacho.md").exists()
+
+
+def test_ferramentas_antigas_nao_quebram_com_os_novos_parametros():
+    """Só quem declara llm/contexto recebe — as demais seguem intactas."""
+    r = fr.executar_ferramenta("consultar_status_pipeline", pergunta="status",
+                               llm=_LLMRedator(), contexto="qualquer coisa")
+    assert isinstance(r, dict) and "mensagem" in r
