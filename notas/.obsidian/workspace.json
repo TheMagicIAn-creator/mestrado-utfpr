@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "4335d8433fe71a03",
+        "id": "f8e20d225ce525bf",
         "type": "tabs",
         "children": [
           {
-            "id": "af0b01aa3567a553",
+            "id": "7b470dd149c3dc39",
             "type": "leaf",
             "state": {
               "type": "graph",
@@ -232,8 +232,16 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "af0b01aa3567a553",
+  "active": "7b470dd149c3dc39",
   "lastOpenFiles": [
+    "Cerebro/Resultados/Estimativas Exploratórias de RUL e Análise de Weibull (E2).md",
+    "sessoes/2026-07-29_13-37_sessao_web.md",
+    "sessoes_arquivadas/2026-07-29_10-47_sessao_web.md",
+    "sessoes_arquivadas/2026-07-29_10-35_sessao_web.md",
+    "sessoes_arquivadas/2026-07-29_10-21_sessao_web.md",
+    "sessoes_arquivadas/2026-07-29_10-08_sessao_web.md",
+    "sessoes_arquivadas/2026-07-28_13-40_sessao_web.md",
+    "memorias/2026-07-29_13-33-49_consolidado.md",
     "Cerebro/Resultados/Resultados Exploratórios de RUL e Ajuste Weibull (Evidência E2).md",
     "sessoes/2026-07-29_10-47_sessao_web.md",
     "Cerebro/Resultados/Resultados Exploratórios de Confiabilidade Weibull e RUL (E2).md",
@@ -252,17 +260,9 @@
     "sessoes_arquivadas/2026-07-20_09-19_sessao_web.md",
     "sessoes_arquivadas/2026-06-11_15-44-40_avaliacao_agente_100.md",
     "sessoes_arquivadas/2026-05-28_22-33-10_avaliacao_agente_100.md",
-    "sessoes_arquivadas/2026-05-27_20-38-58_avaliacao_agente_100.md",
-    "sessoes_arquivadas/2026-05-26_07-02_sessao_web.md",
-    "sessoes_arquivadas/2026-05-20_22-03_sessao_web.md",
-    "Literatura/ml-preditivo/open-eng_gineering-education-virtual-learning-environment_2020.md",
-    "sessoes/2026-07-24_12-34_sessao_web.md",
     "Untitled.canvas",
-    "sessoes_arquivadas/2026-05-16_16-25_sessao.md",
     "Untitled 1.base",
-    "sessoes_arquivadas/2026-05-21_19-10_sessao_web.md",
     "Untitled.base",
-    "sessoes_arquivadas/2026-06-13_23-58-24_avaliacao_agente_100.md",
     "Cerebro/Resultados",
     "Literatura/sinais-eletricos",
     "codigo_apoio/re_indexador_memoria.py",
