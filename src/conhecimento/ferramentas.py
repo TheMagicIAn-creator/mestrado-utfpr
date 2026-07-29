@@ -956,11 +956,60 @@ def rodar_pipeline_completo(progresso=None, pergunta: str = "") -> dict:
     }
 
 
+def _redigir_nota_com_llm(pergunta: str, contexto: str, llm) -> dict | None:
+    """Pede ao LLM que REDIJA a nota a partir do que acabou de ser discutido.
+
+    O pedido do pesquisador costuma ser dêitico ("guarde ESSE resultado"), então
+    o conteúdo só existe no contexto da conversa — não na frase. Retorna None se
+    o LLM falhar (o chamador então pede título/conteúdo explicitamente).
+    """
+    if llm is None or not str(contexto).strip():
+        return None
+    from src.conhecimento.nota_cerebro import TAGS_VALIDAS, TIPOS
+
+    prompt = f"""Voce redige uma NOTA CURADA para o vault Obsidian do mestrado.
+
+Conversa recente (o pesquisador quer guardar algo DAQUI):
+---
+{str(contexto)[-6000:]}
+---
+
+Pedido: "{pergunta}"
+
+Escreva a nota em Markdown. Regras:
+- Registre o que foi efetivamente discutido/obtido — NAO invente numero nem fonte.
+- Se houver metricas, cite-as exatamente como apareceram.
+- Seja conciso e util para consulta futura (o pesquisador vai reler isto meses depois).
+- Marque ressalvas de evidencia quando os dados forem sinteticos (E2).
+
+Responda APENAS JSON valido:
+{{"titulo": "...", "conteudo": "markdown da nota",
+  "tipo": "um de: {'|'.join(sorted(TIPOS))}",
+  "tags": ["escolha entre: {', '.join(sorted(TAGS_VALIDAS))}"],
+  "nivel_evidencia": "projeto|E1|E2|literatura"}}
+"""
+    try:
+        try:
+            from langchain_core.messages import HumanMessage
+
+            entrada = [HumanMessage(content=prompt)]
+        except ImportError:
+            entrada = prompt
+        bruto = texto_da_resposta(llm.invoke(entrada))
+        limpo = re.sub(r"```json?\n?", "", str(bruto).strip()).replace("```", "").strip()
+        dados = json.loads(limpo)
+        if dados.get("titulo") and dados.get("conteudo"):
+            return dados
+    except Exception:
+        pass
+    return None
+
+
 def registrar_no_cerebro(progresso=None, pergunta: str = "",
                          titulo: str = "", conteudo: str = "",
                          tipo: str = "contexto", tags: list | None = None,
                          nivel_evidencia: str = "projeto",
-                         fonte: str = "") -> dict:
+                         fonte: str = "", llm=None, contexto: str = "") -> dict:
     """Registra conhecimento curado como NOTA no `Cerebro/` do vault Obsidian.
 
     É a peça que faltava para o agente usar o vault como REPOSITÓRIO (e não só
@@ -973,13 +1022,26 @@ def registrar_no_cerebro(progresso=None, pergunta: str = "",
         TAGS_VALIDAS, TIPOS, registrar_nota_cerebro,
     )
 
+    # Sem título/conteúdo explícitos, o LLM REDIGE a nota a partir da conversa —
+    # é o caso normal, já que o pedido costuma ser "guarde ESSE resultado".
+    if not titulo.strip() or not conteudo.strip():
+        if progresso:
+            progresso("Redigindo a nota a partir da conversa...")
+        redigida = _redigir_nota_com_llm(pergunta, contexto, llm)
+        if redigida:
+            titulo = redigida.get("titulo", "") or titulo
+            conteudo = redigida.get("conteudo", "") or conteudo
+            tipo = redigida.get("tipo", tipo) or tipo
+            tags = redigida.get("tags", tags)
+            nivel_evidencia = redigida.get("nivel_evidencia", nivel_evidencia)
+
     if not titulo.strip() or not conteudo.strip():
         return {
             "ok": False,
             "etapa": "Registro no cérebro",
             "mensagem": (
-                "Para registrar no cérebro preciso de **título** e **conteúdo** "
-                "da nota (o texto em Markdown que deve ficar guardado).\n\n"
+                "Não consegui montar a nota sozinho. Me diga **o que** guardar "
+                "(um resumo do ponto) que eu registro.\n\n"
                 f"Tipos: {', '.join(sorted(TIPOS))}.\n"
                 f"Tags válidas: {', '.join(sorted(TAGS_VALIDAS))}."
             ),
@@ -1661,7 +1723,18 @@ _DESPACHO = {
 }
 
 
-def executar_ferramenta(nome: str, progresso=None, pergunta: str = "") -> dict:
+def executar_ferramenta(nome: str, progresso=None, pergunta: str = "",
+                        llm=None, contexto: str = "") -> dict:
+    """Executa a ferramenta `nome`.
+
+    `llm` e `contexto` (últimas trocas da conversa) são REPASSADOS apenas às
+    ferramentas que os aceitam — hoje `registrar_no_cerebro`, que precisa
+    REDIGIR a nota a partir do que acabou de ser discutido. Sem isso, ela era
+    chamada sem título/conteúdo e só podia pedir os dados de volta, e o agente
+    acabava *descrevendo* a nota no chat em vez de gravá-la.
+    """
+    import inspect
+
     funcao = _DESPACHO.get(nome)
     if funcao is None:
         return {
@@ -1671,7 +1744,16 @@ def executar_ferramenta(nome: str, progresso=None, pergunta: str = "") -> dict:
             "imagens": [],
             "resposta_pronta": True,
         }
-    return funcao(progresso=progresso, pergunta=pergunta)
+    extras = {}
+    try:
+        aceita = inspect.signature(funcao).parameters
+        if "llm" in aceita:
+            extras["llm"] = llm
+        if "contexto" in aceita:
+            extras["contexto"] = contexto
+    except (TypeError, ValueError):
+        pass
+    return funcao(progresso=progresso, pergunta=pergunta, **extras)
 
 
 # Mapeamento "ordem cronológica" do pipeline → nome da ferramenta.
@@ -2348,7 +2430,10 @@ def processar_com_ferramentas(pergunta: str,
                               perfil: str,
                               llm,
                               progresso=None,
-                              decisao: dict | None = None) -> dict:
+                              decisao: dict | None = None,
+                              contexto: str = "") -> dict:
+    """`contexto` são as últimas trocas da conversa — necessário para pedidos
+    dêiticos ("guarde ESSE resultado"), em que o conteúdo não está na frase."""
     if decisao is None:
         decisao = decidir_acao(pergunta, llm)
 
@@ -2368,6 +2453,8 @@ def processar_com_ferramentas(pergunta: str,
         ferramenta,
         progresso=progresso,
         pergunta=pergunta,
+        llm=llm,
+        contexto=contexto,
     )
     resposta = comentar_resultado(pergunta, resultado, perfil, llm)
 

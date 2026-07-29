@@ -1267,6 +1267,15 @@ def _tratar_snippet(pergunta: str, modelo, conteudo_usuario: str) -> str | None:
     return None
 
 
+def _contexto_recente(n_trocas: int = 4) -> str:
+    """Últimas trocas da conversa, para pedidos dêiticos ("guarde ESSE resultado")."""
+    msgs = st.session_state.get("mensagens", [])[-(n_trocas * 2):]
+    return "\n\n".join(
+        f"{'Rodolfo' if m.get('role') == 'user' else 'Al IAdo PV'}: {m.get('content', '')}"
+        for m in msgs if m.get("content")
+    )
+
+
 def responder_com_ferramenta(pergunta: str, perfil: str, llm) -> tuple[str, list[dict]]:
     from src.conhecimento.ferramentas import decidir_acao, processar_com_ferramentas
 
@@ -1284,6 +1293,7 @@ def responder_com_ferramenta(pergunta: str, perfil: str, llm) -> tuple[str, list
                 llm=llm,
                 progresso=status.write,
                 decisao=decisao,
+                contexto=_contexto_recente(),
             )
             ok = bool(saida["resultado"] and saida["resultado"].get("ok"))
             status.update(
