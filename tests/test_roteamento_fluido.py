@@ -99,3 +99,49 @@ def test_guardas_criticas_sao_poucas():
     import inspect
     fonte = inspect.getsource(fr._guardas_criticas)
     assert fonte.count("return {") <= 6
+
+
+# ── 4. a RESPOSTA também é fluida (o LLM fala, não despeja) ──────────────────
+
+def test_status_curto_vai_para_o_llm():
+    """'como tá o pipeline?' deve virar conversa, não despejo de bullets."""
+    msg = ("## Status do pipeline de ML\n\n- **Features CA**: pronto\n"
+           "- **Autoencoder**: pronto\n- **RUL / Weibull**: pronto\n")
+    assert not fr._dados_sao_inventario(msg)
+    llm = LLMFalso()
+
+    class R:
+        content = "Tá tudo pronto! As cinco etapas concluíram."
+    llm.invoke = lambda _m: R()
+    saida = fr.comentar_resultado(
+        "e aí, como tá o pipeline?",
+        {"ok": True, "mensagem": msg, "resposta_pronta": True}, "", llm)
+    assert "Tá tudo pronto" in saida, "o LLM precisa dar voz ao resultado"
+
+
+def test_tabela_de_metricas_permanece_literal():
+    """Parafrasear tabela de métricas arriscaria distorcer número."""
+    tabela = "| Método | AUC |\n|---|---|\n| Proposto | 0.978 |\n| Ibrahim | 0.909 |"
+    assert fr._dados_sao_inventario(tabela)
+    saida = fr.comentar_resultado(
+        "mostre os resultados",   # não-autoral ("comparação" já é autoral)
+        {"ok": True, "mensagem": tabela, "resposta_pronta": True}, "", LLMFalso())
+    assert saida == tabela, "tabela deve passar intacta"
+
+
+def test_inventario_longo_permanece_literal():
+    inventario = "\n".join(f"- referência {i}" for i in range(30))
+    assert fr._dados_sao_inventario(inventario)
+
+
+def test_pedido_autoral_sempre_passa_pelo_llm():
+    tabela = "| a | b |\n|---|---|\n| 1 | 2 |"
+    llm = LLMFalso()
+
+    class R:
+        content = "Na minha leitura, o método proposto se destaca."
+    llm.invoke = lambda _m: R()
+    saida = fr.comentar_resultado(
+        "na sua opinião, o que esses números significam?",
+        {"ok": True, "mensagem": tabela, "resposta_pronta": True}, "", llm)
+    assert "minha leitura" in saida
