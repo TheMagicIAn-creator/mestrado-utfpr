@@ -88,7 +88,8 @@ class _StreamlitFalso(types.ModuleType):
                 n = spec if isinstance(spec, int) else len(spec)
                 return [_Ctx(self) for _ in range(n)]
             if curto in {"expander", "popover", "spinner", "status",
-                         "container", "empty", "chat_message", "form"}:
+                         "container", "empty", "chat_message", "form",
+                         "sidebar"}:
                 return _Ctx(self)
             return None
         return chamada
@@ -100,7 +101,10 @@ class _StreamlitFalso(types.ModuleType):
 
 
 _STUBS = {
-    "src.conhecimento.agente": {"_saudacao_pelo_horario": lambda: "Boa tarde"},
+    "src.conhecimento.agente": {
+        "_saudacao_pelo_horario": lambda: "Boa tarde",
+        "remover_bloco_fontes_llm": lambda t: t,
+    },
     "src.ml.pipeline": {
         "capacidade_recalculo_pipeline": lambda: {"disponivel": True},
         "NOMES_ETAPAS": {}, "estado_pipeline": lambda: {},
@@ -138,7 +142,15 @@ def ui(request):
 
     alvos = {"streamlit": st, "langchain_core": lc,
              "langchain_core.messages": msgs,
-             "src.interface.streamlit_app": None}
+             "src.interface.streamlit_app": None,
+             # Trocados pelos helpers _persistencia()/_ferramentas() dentro dos
+             # testes. Precisam ser restaurados: outros módulos de teste
+             # importam os reais (test_roteamento_fluido, test_nota_cerebro,
+             # test_persistencia_nuvem) e receberiam o dublê.
+             "src.conhecimento.ferramentas": sys.modules.get(
+                 "src.conhecimento.ferramentas"),
+             "src.conhecimento.persistencia_nuvem": sys.modules.get(
+                 "src.conhecimento.persistencia_nuvem")}
     for nome, attrs in _STUBS.items():
         mod = types.ModuleType(nome)
         mod.__dict__.update(attrs)
@@ -292,4 +304,127 @@ def test_sem_cabecalho_no_corpo_da_pagina(ui):
     app, _st = ui
     assert not hasattr(app, "renderizar_topo"), (
         "o cabeçalho duplicava a identidade da barra lateral"
+    )
+
+
+# ── animação de espera ───────────────────────────────────────────────────────
+
+class _Placeholder:
+    """Registra o que foi escrito, na ordem, com os kwargs de cada escrita."""
+
+    def __init__(self):
+        self.escritas: list[tuple[str, dict]] = []
+        self.limpezas = 0
+
+    def markdown(self, corpo, **kwargs):
+        self.escritas.append((str(corpo), kwargs))
+
+    def empty(self):
+        self.limpezas += 1
+
+
+class _LLMStream:
+    def __init__(self, pedacos=("Olá", " Rodolfo"), erro=None):
+        self.pedacos, self.erro = pedacos, erro
+
+    def stream(self, _mensagens):
+        if self.erro:
+            raise self.erro
+        for p in self.pedacos:
+            yield type("C", (), {"content": p})()
+
+
+@pytest.fixture
+def _sem_pausa(ui, monkeypatch):
+    """Zera a cadência de digitação para o teste não dormir."""
+    app, _st = ui
+    monkeypatch.setattr(app, "VELOCIDADE_DIGITACAO", 0.0)
+    return app
+
+
+def test_brilho_aparece_antes_do_primeiro_token(_sem_pausa):
+    app = _sem_pausa
+    ph = _Placeholder()
+    app.stream_resposta_limpa("prompt", _LLMStream(), ph, "")
+
+    primeira, kwargs = ph.escritas[0]
+    assert "alp-pensando" in primeira, "a espera deve começar com o brilho"
+    assert kwargs.get("unsafe_allow_html") is True
+
+
+def test_primeiro_token_substitui_o_brilho(_sem_pausa):
+    app = _sem_pausa
+    ph = _Placeholder()
+    final = app.stream_resposta_limpa("prompt", _LLMStream(), ph, "")
+
+    assert "alp-pensando" not in ph.escritas[-1][0]
+    assert "Olá" in final and "Rodolfo" in final
+    # o brilho aparece uma única vez, no início
+    assert sum(1 for corpo, _k in ph.escritas if "alp-pensando" in corpo) == 1
+
+
+def test_texto_do_modelo_nunca_e_renderizado_como_html(_sem_pausa):
+    """O brilho é string nossa; a saída do LLM segue em Markdown escapado.
+
+    Habilitar HTML no streaming abriria a resposta do modelo para injeção —
+    o brilho não pode custar isso.
+    """
+    app = _sem_pausa
+    ph = _Placeholder()
+    app.stream_resposta_limpa("prompt", _LLMStream(("<script>alert(1)</script>",)),
+                              ph, "")
+    for corpo, kwargs in ph.escritas:
+        if kwargs.get("unsafe_allow_html"):
+            assert "alp-pensando" in corpo, (
+                f"HTML habilitado para conteúdo não-nosso: {corpo[:60]!r}"
+            )
+
+
+def test_html_de_espera_e_montado_a_partir_de_string_nossa(ui):
+    app, _st = ui
+    assert "alp-pensando" in app._html_pensando()
+    assert app._html_pensando("Interpretando o pedido").endswith("…</span>")
+
+
+def test_animacao_respeita_prefers_reduced_motion(ui):
+    app, _st = ui
+    css = app._CSS_MINIMO
+    assert "@keyframes alp-brilho" in css
+    assert "prefers-reduced-motion" in css
+
+
+def _ferramentas(decidir):
+    mod = types.ModuleType("src.conhecimento.ferramentas")
+    mod.decidir_acao = decidir
+    mod.processar_com_ferramentas = lambda **kw: {
+        "resposta": "pronto", "resultado": {"ok": True, "imagens": []},
+    }
+    sys.modules["src.conhecimento.ferramentas"] = mod
+
+
+def test_roteamento_mostra_brilho_e_o_descarta(ui):
+    """Sem o descarte, o balão de espera ficaria pulsando sob a resposta."""
+    app, st = ui
+    _ferramentas(lambda _p, _llm: {"usar_ferramenta": False, "ferramenta": None})
+    st.session_state["mensagens"] = []
+
+    app.responder_com_ferramenta("e aí?", "", object())
+    nomes = st.registro.nomes()
+    assert "alp-pensando" in st.registro.html(), "faltou o brilho na espera"
+    assert nomes.count("empty") >= 2, "o balão de espera não foi descartado"
+
+
+def test_brilho_e_descartado_mesmo_se_o_roteamento_falhar(ui):
+    app, st = ui
+
+    def explode(_p, _llm):
+        raise RuntimeError("LLM fora do ar")
+
+    _ferramentas(explode)
+    st.session_state["mensagens"] = []
+
+    with pytest.raises(RuntimeError):
+        app.responder_com_ferramenta("e aí?", "", object())
+    assert st.registro.nomes().count("empty") >= 2, (
+        "o finally deve limpar a espera também no caminho de erro"
     )

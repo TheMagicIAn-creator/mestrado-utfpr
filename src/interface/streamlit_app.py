@@ -60,6 +60,16 @@ _CORES_ESTADO = {
 }
 
 
+def _html_pensando(rotulo: str = "Pensando") -> str:
+    """Texto com brilho pulsante, exibido enquanto a resposta não começa.
+
+    Sempre montado AQUI, a partir de uma string nossa — nunca a partir da
+    saída do LLM. É o que permite renderizá-lo com HTML habilitado sem abrir
+    o texto do modelo para injeção (o streaming segue em Markdown puro).
+    """
+    return f'<span class="alp-pensando">{rotulo}…</span>'
+
+
 def _estado(rotulo: str, nivel: str = "ok") -> str:
     """Indicador de estado: um ponto colorido e uma linha de texto.
 
@@ -247,6 +257,42 @@ _CSS_MINIMO = """
     font-size: 0.86rem;
     color: var(--alp-fraco);
     margin: 0.45rem 0 0;
+}
+
+/* ── espera: brilho pulsante ("shimmer") ───────────────────────────── */
+/* Cobre o intervalo entre o Enter e o primeiro token, que antes era um
+   spinner generico. O gradiente corre pelo texto via background-clip,
+   entao a animacao e so a posicao do fundo — nao repinta layout. */
+@keyframes alp-brilho {
+    from { background-position: 180% 0; }
+    to   { background-position: -80% 0; }
+}
+.alp-pensando {
+    display: inline-block;
+    font-size: 0.92rem;
+    font-weight: 500;
+    background-image: linear-gradient(
+        90deg,
+        var(--alp-fraco) 0%,
+        var(--alp-fraco) 42%,
+        var(--alp-acento) 50%,
+        var(--alp-fraco) 58%,
+        var(--alp-fraco) 100%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: alp-brilho 1.9s linear infinite;
+}
+/* Sem movimento para quem pediu no sistema: vira texto cinza estatico. */
+@media (prefers-reduced-motion: reduce) {
+    .alp-pensando {
+        animation: none;
+        background-image: none;
+        color: var(--alp-fraco);
+        -webkit-text-fill-color: var(--alp-fraco);
+    }
 }
 
 /* ── conteudo ──────────────────────────────────────────────────────── */
@@ -912,6 +958,14 @@ def stream_resposta_limpa(conteudo, llm, placeholder, refs_md: str) -> str:
     texto = ""
     cursor = "▌"
     gasto = 0.0  # tempo ja "datilografado"; apos o orcamento, revela direto
+
+    # Espera ativa: o brilho ocupa o intervalo (as vezes varios segundos, com
+    # RAG + auditoria) entre o pedido e o primeiro token. O primeiro pedaco de
+    # texto sobrescreve o placeholder e o faz sumir.
+    # A partir daqui NADA usa unsafe_allow_html: o texto do modelo continua
+    # sendo renderizado como Markdown puro, com HTML escapado.
+    placeholder.markdown(_html_pensando(), unsafe_allow_html=True)
+
     for chunk in llm.stream([HumanMessage(content=conteudo)]):
         novo = chunk.content or ""
         if not novo:
@@ -1440,8 +1494,18 @@ def _contexto_recente(n_trocas: int = 4) -> str:
 def responder_com_ferramenta(pergunta: str, perfil: str, llm) -> tuple[str, list[dict]]:
     from src.conhecimento.ferramentas import decidir_acao, processar_com_ferramentas
 
-    with st.spinner("Interpretando o pedido..."):
+    # O roteamento passa pelo LLM, então demora o bastante para a tela parecer
+    # travada. Um balão de assistente com o brilho pulsante ocupa essa espera —
+    # e é descartado logo depois, seja qual for o caminho escolhido.
+    espera = st.empty()
+    with espera.container():
+        with st.chat_message("assistant", avatar="⚡"):
+            st.markdown(_html_pensando("Interpretando o pedido"),
+                        unsafe_allow_html=True)
+    try:
         decisao = decidir_acao(pergunta, llm)
+    finally:
+        espera.empty()
 
     if not decisao["usar_ferramenta"]:
         return "", []
@@ -1597,9 +1661,9 @@ def responder_com_rag(pergunta: str,
     )
 
     with st.chat_message("assistant", avatar="⚡"):
+        placeholder = st.empty()
         try:
             refs_md = formatar_referencias_markdown(citacoes)
-            placeholder = st.empty()
             resposta = stream_resposta_limpa(
                 conteudo_humano,
                 st.session_state.llm,
@@ -1620,6 +1684,10 @@ def responder_com_rag(pergunta: str,
                 resposta = aviso.strip() + "\n\n" + resposta
                 placeholder.markdown(resposta)
         except Exception as exc:
+            # Se a falha veio antes do primeiro token, o placeholder ainda
+            # exibe o brilho de espera — sem isto, ele pulsaria para sempre
+            # logo acima da mensagem de erro.
+            placeholder.empty()
             erro = str(exc)
             erro_baixo = erro.lower()
             if "413" in erro or "Request too large" in erro:
