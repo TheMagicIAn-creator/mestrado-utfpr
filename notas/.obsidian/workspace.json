@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "a1d79e10221785e9",
+        "id": "4335d8433fe71a03",
         "type": "tabs",
         "children": [
           {
-            "id": "0f198604c082c272",
+            "id": "af0b01aa3567a553",
             "type": "leaf",
             "state": {
               "type": "graph",
@@ -232,8 +232,12 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "0f198604c082c272",
+  "active": "af0b01aa3567a553",
   "lastOpenFiles": [
+    "Cerebro/Resultados/Resultados Exploratórios de RUL e Ajuste Weibull (Evidência E2).md",
+    "sessoes/2026-07-29_10-47_sessao_web.md",
+    "Cerebro/Resultados/Resultados Exploratórios de Confiabilidade Weibull e RUL (E2).md",
+    "sessoes/2026-07-29_10-35_sessao_web.md",
     "sessoes/2026-07-29_10-21_sessao_web.md",
     "sessoes/2026-07-29_10-08_sessao_web.md",
     "sessoes/2026-07-28_09-07_sessao_web.md",
@@ -259,10 +263,6 @@
     "sessoes_arquivadas/2026-05-21_19-10_sessao_web.md",
     "Untitled.base",
     "sessoes_arquivadas/2026-06-13_23-58-24_avaliacao_agente_100.md",
-    "sessoes_arquivadas/2026-06-11_15-55-19_avaliacao_agente_100.md",
-    "Literatura/indice-literatura.md",
-    "sessoes_arquivadas/2026-05-29_17-41-21_avaliacao_agente_100.md",
-    "sessoes_arquivadas/2026-06-11_15-33-14_avaliacao_agente_100.md",
     "Cerebro/Resultados",
     "Literatura/sinais-eletricos",
     "codigo_apoio/re_indexador_memoria.py",
