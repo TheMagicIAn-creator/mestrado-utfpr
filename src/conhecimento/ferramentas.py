@@ -1558,6 +1558,7 @@ def treinar_classificador_pv(progresso=None, pergunta: str = "") -> dict:
 def avaliar_classificador_pv(progresso=None, pergunta: str = "") -> dict:
     """Mostra métricas + limitações do classificador PV Farms já treinado."""
     import json
+    from pathlib import Path
 
     from src.core.config import RAIZ_PROJETO
     from src.ml.classificador_pv_infer import AVISO_DOMINIO
