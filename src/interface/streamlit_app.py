@@ -33,11 +33,6 @@ from langchain_core.messages import HumanMessage
 
 from src.core.config import RAIZ_PROJETO
 from src.core.tempo import agora_local
-from src.core.conversa_export import (
-    montar_transcricao,
-    nome_arquivo_conversa,
-    quer_exportar_conversa,
-)
 
 sys.path.insert(0, str(RAIZ_PROJETO))
 
@@ -1394,92 +1389,25 @@ def persistir_sessao_web() -> None:
         pass
 
 
-def _fechar_turno_simples(conteudo_usuario: str, resposta: str, modelo) -> None:
+def _fechar_turno_simples(conteudo_usuario: str, resposta: str, modelo,
+                          anexo_txt: dict | None = None) -> None:
     """Registra um par (usuário, assistente) resolvido localmente — sem LLM —
-    na sessão, igual ao fluxo normal (para persistir e indexar)."""
+    na sessão, igual ao fluxo normal (para persistir e indexar).
+
+    `anexo_txt` guarda o download junto da mensagem: o Streamlit re-renderiza
+    o histórico a cada rerun, e sem isso o botão de baixar a conversa sumiria
+    no turno seguinte.
+    """
     st.session_state.mensagens.append(
         {"role": "user", "content": conteudo_usuario, "imagens": []}
     )
-    st.session_state.mensagens.append(
-        {"role": "assistant", "content": resposta, "imagens": []}
-    )
+    mensagem = {"role": "assistant", "content": resposta, "imagens": []}
+    if anexo_txt:
+        mensagem["export_txt"] = anexo_txt
+    st.session_state.mensagens.append(mensagem)
     salvar_sessao(
         conteudo_usuario, resposta, [], len(st.session_state.mensagens) // 2, modelo
     )
-
-
-def _tratar_snippet(pergunta: str, modelo, conteudo_usuario: str) -> str | None:
-    """Cofre de trechos verbatim. Retorna a resposta (str) se tratou o pedido,
-    ou None se a mensagem não é sobre snippets (segue o fluxo normal)."""
-    from src.conhecimento import snippets as snp
-
-    # RECUPERAR primeiro ('guardei' contém 'guarde'): recall IDÊNTICO, sem LLM.
-    if snp.quer_recuperar_snippet(pergunta):
-        registro = snp.recuperar_snippet(pergunta)
-        itens = snp.carregar_snippets()
-        if registro is None:
-            resposta = (
-                "Não encontrei nenhum trecho salvo ainda. Depois que o código "
-                "aparecer no chat, diga *'guarde este script'* que eu guardo "
-                "idêntico para recuperar quando quiser."
-            )
-        else:
-            resposta = snp.formatar_snippet_para_chat(registro, total=len(itens))
-        with st.chat_message("assistant", avatar="⚡"):
-            st.markdown(resposta)
-        _fechar_turno_simples(conteudo_usuario, resposta, modelo)
-        return resposta
-
-    # LISTAR
-    if snp.quer_listar_snippets(pergunta):
-        resposta = snp.formatar_lista_snippets(snp.carregar_snippets())
-        with st.chat_message("assistant", avatar="⚡"):
-            st.markdown(resposta)
-        _fechar_turno_simples(conteudo_usuario, resposta, modelo)
-        return resposta
-
-    # SALVAR: pega o código da mensagem atual ou do bloco mais recente do chat.
-    if snp.quer_salvar_snippet(pergunta):
-        bloco = snp.ultimo_bloco_codigo(pergunta, st.session_state.get("mensagens"))
-        if not bloco:
-            resposta = (
-                "Não achei nenhum bloco de código para guardar. Cole o código "
-                "(entre ``` ```), ou peça primeiro que eu escreva o script e "
-                "depois diga *'guarde este script'*."
-            )
-        else:
-            try:
-                reg = snp.salvar_snippet(bloco["codigo"], linguagem=bloco.get("linguagem", ""))
-                # Persiste no Git para sobreviver a reboot/consolidação.
-                try:
-                    from src.conhecimento.persistencia_nuvem import (
-                        persistencia_ativa,
-                        persistir_arquivo,
-                    )
-
-                    if persistencia_ativa():
-                        persistir_arquivo(
-                            snp.ARQUIVO_SNIPPETS,
-                            mensagem=f"chore(snippet): guarda trecho {reg['rotulo']}",
-                            alvo="snippet",
-                        )
-                except Exception:
-                    pass
-                n = len(reg["codigo"].splitlines())
-                resposta = (
-                    f"✅ Guardei o trecho como **{reg['rotulo']}** "
-                    f"({reg.get('linguagem') or 'texto'}, {n} linhas), **idêntico**. "
-                    f"Para recuperá-lo exatamente assim (mesmo após reboot), peça: "
-                    f"*'me manda o script {reg['rotulo']} que salvei'*."
-                )
-            except Exception as exc:
-                resposta = f"Não consegui guardar o trecho ({type(exc).__name__})."
-        with st.chat_message("assistant", avatar="⚡"):
-            st.markdown(resposta)
-        _fechar_turno_simples(conteudo_usuario, resposta, modelo)
-        return resposta
-
-    return None
 
 
 def _contexto_recente(n_trocas: int = 4) -> str:
@@ -1494,37 +1422,48 @@ def _contexto_recente(n_trocas: int = 4) -> str:
 def responder_com_ferramenta(pergunta: str, perfil: str, llm) -> tuple[str, list[dict]]:
     from src.conhecimento.ferramentas import decidir_acao, processar_com_ferramentas
 
-    # O roteamento passa pelo LLM, então demora o bastante para a tela parecer
-    # travada. Um balão de assistente com o brilho pulsante ocupa essa espera —
-    # e é descartado logo depois, seja qual for o caminho escolhido.
+    # A máquina não aparece. Em vez da caixa "Executando solicitação..." com o
+    # log rolando dentro, existe UMA linha pulsante que troca de texto conforme
+    # o trabalho anda — o pesquisador lê "Treinando o classificador PV Farms",
+    # não "Acionando ferramenta: treinar_classificador_pv".
+    #
+    # A informação não se perde: o mesmo callback de progresso que alimentava a
+    # caixa agora alimenta a linha. O que sai de cena é o nome interno da
+    # ferramenta (que foi para o log) e o contorno de painel de execução.
     espera = st.empty()
-    with espera.container():
-        with st.chat_message("assistant", avatar="⚡"):
-            st.markdown(_html_pensando("Interpretando o pedido"),
-                        unsafe_allow_html=True)
+
+    def _pulsar(texto: str) -> None:
+        rotulo = str(texto).strip().rstrip(".…") or "Trabalhando nisso"
+        with espera.container():
+            with st.chat_message("assistant", avatar="⚡"):
+                st.markdown(_html_pensando(rotulo), unsafe_allow_html=True)
+
+    _pulsar("Interpretando o pedido")
     try:
         decisao = decidir_acao(pergunta, llm)
-    finally:
+    except Exception:
         espera.empty()
+        raise
 
     if not decisao["usar_ferramenta"]:
+        espera.empty()
         return "", []
 
+    try:
+        saida = processar_com_ferramentas(
+            pergunta=pergunta,
+            perfil=perfil,
+            llm=llm,
+            progresso=_pulsar,
+            decisao=decisao,
+            contexto=_contexto_recente(),
+        )
+    finally:
+        # Sai de cena SEMPRE: se a ferramenta levantar, o balão pulsante não
+        # pode sobreviver acima da mensagem de erro.
+        espera.empty()
+
     with st.chat_message("assistant", avatar="⚡"):
-        with st.status("Executando solicitação...", expanded=True) as status:
-            saida = processar_com_ferramentas(
-                pergunta=pergunta,
-                perfil=perfil,
-                llm=llm,
-                progresso=status.write,
-                decisao=decisao,
-                contexto=_contexto_recente(),
-            )
-            ok = bool(saida["resultado"] and saida["resultado"].get("ok"))
-            status.update(
-                label="Solicitação concluída" if ok else "Solicitação terminou com erro",
-                state="complete" if ok else "error",
-            )
         resposta = saida["resposta"] or "Sem resposta."
         imagens = saida["resultado"].get("imagens", []) if saida["resultado"] else []
         # Trava anti-invenção TAMBÉM no caminho de ferramenta/web: 'norma IEC/ISO'
@@ -1556,42 +1495,13 @@ def responder_com_rag(pergunta: str,
         formatar_referencias_markdown,
         montar_conteudo_humano,
         preparar_prompt,
-        resposta_interacao_simples,
     )
 
     # Consultas simples de primeiro/último registro são resolvidas pela ordem
     # dos metadados. Isso evita que o LLM troque cronologia por similaridade.
-    # Inventário ("quais as 10 últimas memórias consolidadas?") vem ANTES: é
-    # pergunta de contagem, e busca semântica devolveria uma amostra que o LLM
-    # apresentaria como total. A contagem sai da varredura dos metadados.
-    try:
-        from src.conhecimento.obsidian import (
-            responder_consulta_cronologica,
-            responder_inventario_vault,
-        )
-
-        resposta_direta = (
-            responder_inventario_vault(colecao_obsidian, pergunta)
-            or responder_consulta_cronologica(colecao_obsidian, pergunta)
-        )
-    except Exception:
-        resposta_direta = None
-    if resposta_direta:
-        with st.chat_message("assistant", avatar="⚡"):
-            st.markdown(resposta_direta)
-        return resposta_direta
-
-    # ── Atalho: cumprimento/casual responde local sem RAG/LLM ────
-    # Vale MESMO com o LLM conectado: um "olá" não deve acionar o modelo pesado
-    # (lento e sujeito a 503). Nunca atalha com anexos: o pesquisador quer o
-    # arquivo lido.
-    if not anexos:
-        resposta_simples = resposta_interacao_simples(pergunta)
-        if resposta_simples:
-            with st.chat_message("assistant", avatar="⚡"):
-                st.markdown(resposta_simples)
-            return resposta_simples
-
+    # Inventário do vault, cronologia e saudação já foram tratados por
+    # resolver_atalho() em renderizar_chat, antes do roteador de ferramentas —
+    # ver src/conhecimento/atalhos.py. Aqui chega só o que precisa de RAG.
     if st.session_state.llm is None:
         with st.chat_message("assistant", avatar="⚡"):
             resposta = (
@@ -1759,44 +1669,26 @@ def renderizar_chat(
     with st.chat_message("user", avatar="🔬"):
         st.markdown(conteudo_usuario)
 
-    # Atalho: exportar a conversa em .txt. Intercepta ANTES do LLM — o modelo
-    # não cria arquivos (só alucinaria "gerei"); aqui montamos o transcrito real
-    # e oferecemos o download, que persiste via renderizar_mensagem.
-    if not anexos and quer_exportar_conversa(pergunta):
-        carimbo = f"{agora_local():%Y-%m-%d_%H-%M}"
-        transcricao = montar_transcricao(
-            st.session_state.mensagens,
-            exportado_em=f"{agora_local():%d/%m/%Y às %H:%M} (America/Sao_Paulo)",
-        )
-        nome_arq = nome_arquivo_conversa(carimbo)
-        trocas = sum(1 for m in st.session_state.mensagens if m.get("role") == "user")
-        resposta = (
-            f"📄 Preparei o histórico completo desta conversa "
-            f"({trocas} {'troca' if trocas == 1 else 'trocas'}) em **{nome_arq}**. "
-            "Clique no botão abaixo para baixar — o texto traz cada mensagem na íntegra."
-        )
-        with st.chat_message("assistant", avatar="⚡"):
-            st.markdown(resposta)
-            _botao_download_texto(transcricao, nome_arq)
-        st.session_state.mensagens.append({
-            "role": "user", "content": conteudo_usuario, "imagens": [],
-        })
-        st.session_state.mensagens.append({
-            "role": "assistant", "content": resposta, "imagens": [],
-            "export_txt": {"data": transcricao, "file_name": nome_arq},
-        })
-        salvar_sessao(
-            conteudo_usuario, resposta, [],
-            len(st.session_state.mensagens) // 2, modelo,
-        )
-        return
-
-    # Atalho: cofre de TRECHOS VERBATIM. Intercepta ANTES do LLM para o recall
-    # ser IDÊNTICO ao salvo (o LLM re-escreveria o código do zero). Persiste no
-    # Git, então sobrevive a consolidação + reboot.
+    # UM ponto para todos os atalhos determinísticos — exportar conversa, cofre
+    # de trechos, inventário do vault, cronologia e saudação. A ordem e o
+    # motivo de cada um vivem em src/conhecimento/atalhos.py, não espalhados
+    # aqui no meio do render. Com anexo, nenhum se aplica: o pesquisador quer o
+    # arquivo lido, e isso é trabalho do RAG.
     if not anexos:
-        resposta_snip = _tratar_snippet(pergunta, modelo, conteudo_usuario)
-        if resposta_snip is not None:
+        from src.conhecimento.atalhos import resolver_atalho
+
+        atalho = resolver_atalho(pergunta, {
+            "mensagens": st.session_state.mensagens,
+            "colecao_obsidian": colecao_obsidian,
+        })
+        if atalho is not None:
+            with st.chat_message("assistant", avatar="⚡"):
+                st.markdown(atalho.texto)
+                if atalho.anexo_txt:
+                    _botao_download_texto(atalho.anexo_txt["data"],
+                                          atalho.anexo_txt["file_name"])
+            _fechar_turno_simples(conteudo_usuario, atalho.texto, modelo,
+                                  anexo_txt=atalho.anexo_txt)
             return
 
     # Com anexos, ir direto ao RAG (que le o arquivo). Pular o roteador de

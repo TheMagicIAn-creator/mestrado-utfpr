@@ -72,7 +72,8 @@ jobs:
             tests/test_seguranca.py \
             tests/test_protocolos_artigos.py \
             tests/test_interface_minimalista.py \
-            tests/test_inventario_vault.py
+            tests/test_inventario_vault.py \
+            tests/test_atalhos.py
 
       # BLOQUEANTE e deliberadamente estreito: so nomes que nao existem.
       # F821 undefined name / F822 undefined em __all__ / F823 uso antes da
