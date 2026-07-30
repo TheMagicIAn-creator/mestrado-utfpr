@@ -16,6 +16,7 @@ import json
 import re
 import unicodedata
 from dataclasses import dataclass, field
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
 
@@ -689,41 +690,90 @@ def responder_consulta_cronologica(colecao, pergunta: str) -> str | None:
     )
 
 
-def inventario_por_classe(colecao, classes) -> list[dict[str, str]]:
-    """Todos os registros das classes pedidas, um por ARQUIVO, do mais recente.
+# Onde cada classe VIVE no disco, e o que de fato conta como membro dela.
+# O padrao de nome importa: `_classe_da_nota` classifica pela PASTA, entao
+# qualquer .md em notas/memorias/ virava "memoria_consolidada" -- foi assim
+# que `resultados-fase5-ml.md`, que nao e consolidacao, entrou na contagem.
+_PASTAS_INVENTARIO: dict[str, tuple[str, str]] = {
+    "memoria_consolidada": ("memorias", "*_consolidado.md"),
+    "memoria_validada": ("Cerebro/Memorias validadas", "*.md"),
+    "sessao_atual": ("sessoes", "*.md"),
+    "sessao_arquivada": ("sessoes_arquivadas", "*.md"),
+}
 
-    Varre os metadados do índice inteiro e deduplica por `caminho_obsidian`
-    (uma nota vira vários chunks). A ordenação usa o NOME do arquivo, que
-    começa pelo carimbo de data — cronologia por nome, não por similaridade.
+
+def _no_disco(classes) -> dict[str, str]:
+    """Arquivos que EXISTEM no vault, por classe — independente do índice.
+
+    O vault e versionado no Git, entao esses arquivos estao presentes tambem
+    na nuvem, mesmo quando o snapshot portatil do indice esta defasado. Sem
+    isto, a contagem responde "o que eu consigo buscar" quando o pesquisador
+    perguntou "o que existe" — foi o que produziu "15" para um vault de 26.
+    """
+    achados: dict[str, str] = {}
+    for classe in classes:
+        subpasta, padrao = _PASTAS_INVENTARIO.get(classe, (None, None))
+        if not subpasta:
+            continue
+        base = PASTA_VAULT_OBSIDIAN / subpasta
+        if not base.is_dir():
+            continue
+        for caminho in base.glob(padrao):
+            if caminho.is_file():
+                achados[caminho.name] = classe
+    return achados
+
+
+def inventario_por_classe(colecao, classes) -> list[dict]:
+    """Registros das classes pedidas, um por ARQUIVO, do mais recente.
+
+    Une DUAS fontes e marca a diferença em `indexado`:
+      - o disco, que responde "o que existe";
+      - o índice, que responde "o que eu consigo buscar".
+
+    Divergir é normal na nuvem, onde o índice vem de um snapshot portátil que
+    só é regenerado sob demanda. O que não pode é a diferença ficar invisível.
+    A ordenação usa o NOME do arquivo, que começa pelo carimbo de data —
+    cronologia por nome, não por similaridade.
     """
     alvo = frozenset(classes)
+    padroes = {c: _PASTAS_INVENTARIO.get(c, (None, "*.md"))[1] for c in alvo}
+
+    por_nome: dict[str, dict] = {}
+
+    # 1) disco — a verdade sobre o que existe
+    for nome, classe in _no_disco(alvo).items():
+        por_nome[nome] = {"arquivo": nome, "nome": nome, "titulo": Path(nome).stem,
+                          "data": "", "classe": classe, "indexado": False}
+
+    # 2) índice — o que é pesquisável
     try:
         dados = colecao.get(include=["metadatas"])
     except Exception:
-        return []
+        dados = {}
     ids = dados.get("ids") or []
-    metas = dados.get("metadatas") or []
-
-    por_arquivo: dict[str, dict[str, str]] = {}
-    for ordem, meta in enumerate(metas):
+    for ordem, meta in enumerate(dados.get("metadatas") or []):
         meta = meta or {}
-        if str(meta.get("classe_fonte", "")) not in alvo:
+        classe = str(meta.get("classe_fonte", ""))
+        if classe not in alvo:
             continue
-        caminho = str(
-            meta.get("caminho_obsidian")
-            or (ids[ordem] if ordem < len(ids) else "")
-        )
-        if not caminho or caminho in por_arquivo:
+        caminho = str(meta.get("caminho_obsidian")
+                      or (ids[ordem] if ordem < len(ids) else ""))
+        if not caminho:
             continue
         nome = Path(caminho).name
-        por_arquivo[caminho] = {
-            "arquivo": caminho,
-            "nome": nome,
-            "titulo": str(meta.get("titulo", "") or Path(caminho).stem),
-            "data": str(meta.get("data_registro", "") or ""),
-            "classe": str(meta.get("classe_fonte", "")),
-        }
-    return sorted(por_arquivo.values(), key=lambda item: item["nome"], reverse=True)
+        # Mesmo filtro de nome do disco: a classificação por pasta sozinha
+        # deixa passar arquivo que não é da classe.
+        if not fnmatch(nome, padroes.get(classe, "*.md")):
+            continue
+        item = por_nome.setdefault(nome, {"arquivo": caminho, "nome": nome,
+                                          "classe": classe, "indexado": False})
+        item["indexado"] = True
+        item["arquivo"] = caminho
+        item["titulo"] = str(meta.get("titulo", "") or Path(caminho).stem)
+        item["data"] = str(meta.get("data_registro", "") or item.get("data", ""))
+
+    return sorted(por_nome.values(), key=lambda item: item["nome"], reverse=True)
 
 
 def _data_legivel(item: dict[str, str]) -> str:
@@ -768,25 +818,40 @@ def responder_inventario_vault(colecao, pergunta: str) -> str | None:
 
     linhas = [
         f"| {i} | {_data_legivel(item)} | `{item['nome']}` |"
+        + ("" if item.get("indexado") else " ⚠️")
         for i, item in enumerate(recorte, start=1)
     ]
     cabecalho = (
-        f"O vault tem **{total} {rotulo}** indexadas. "
+        f"O vault tem **{total} {rotulo}**. "
         f"{'Todas' if limite >= total else f'As {limite} {ordem}'}:"
     )
-    rodape = (
-        "\n\nContagem obtida varrendo os metadados do índice — não é uma amostra "
-        "de busca semântica."
-    )
+
+    partes = []
     if limite < total:
-        rodape = (
-            f"\n\nAs outras {total - limite} continuam indexadas e pesquisáveis."
-            + rodape
+        partes.append(f"As outras {total - limite} também estão no vault.")
+
+    # A defasagem do índice PRECISA aparecer. Antes, a resposta dizia
+    # "N indexadas" e o pesquisador lia "N existem" — na nuvem, onde o índice
+    # vem de um snapshot congelado, isso escondia 12 de 26 consolidações.
+    fora = [i for i in itens if not i.get("indexado")]
+    if fora:
+        partes.append(
+            f"⚠️ **{len(fora)} de {total} ainda não estão no índice de busca** "
+            f"(marcadas com ⚠️ acima): elas existem no vault, mas eu não consigo "
+            "recuperá-las por conteúdo. O índice portátil da nuvem só é "
+            "regenerado sob demanda — para incluí-las, rode no PC "
+            "`python scripts/reconstruir_cerebro_obsidian.py` e commite "
+            "`artefatos/obsidian_indexado.jsonl.gz`."
         )
+    partes.append(
+        "Contagem obtida listando os arquivos do vault e cruzando com os "
+        "metadados do índice — não é amostra de busca semântica."
+    )
     return (
         f"{cabecalho}\n\n| # | Data | Arquivo |\n| ---: | :--- | :--- |\n"
         + "\n".join(linhas)
-        + rodape
+        + "\n\n"
+        + "\n\n".join(partes)
     )
 
 
