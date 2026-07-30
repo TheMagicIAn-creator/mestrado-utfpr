@@ -393,12 +393,23 @@ def test_animacao_respeita_prefers_reduced_motion(ui):
     assert "prefers-reduced-motion" in css
 
 
-def _ferramentas(decidir):
+def _ferramentas(decidir, progressos=(), erro=None):
+    """Dublê do módulo de ferramentas.
+
+    `progressos` são as mensagens que a ferramenta emitiria enquanto trabalha;
+    `erro` faz a execução levantar, para checar a limpeza do balão de espera.
+    """
     mod = types.ModuleType("src.conhecimento.ferramentas")
     mod.decidir_acao = decidir
-    mod.processar_com_ferramentas = lambda **kw: {
-        "resposta": "pronto", "resultado": {"ok": True, "imagens": []},
-    }
+
+    def _processar(**kw):
+        for msg in progressos:
+            kw["progresso"](msg)
+        if erro:
+            raise erro
+        return {"resposta": "pronto", "resultado": {"ok": True, "imagens": []}}
+
+    mod.processar_com_ferramentas = _processar
     sys.modules["src.conhecimento.ferramentas"] = mod
 
 
@@ -428,3 +439,70 @@ def test_brilho_e_descartado_mesmo_se_o_roteamento_falhar(ui):
     assert st.registro.nomes().count("empty") >= 2, (
         "o finally deve limpar a espera também no caminho de erro"
     )
+
+
+# ── a máquina não aparece ────────────────────────────────────────────────────
+
+_USA_FERRAMENTA = lambda _p, _llm: {"usar_ferramenta": True, "ferramenta": "x"}  # noqa: E731
+
+
+def test_sem_caixa_de_execucao(ui):
+    """Era st.status("Executando solicitação...") com o log rolando dentro."""
+    app, st = ui
+    _ferramentas(_USA_FERRAMENTA, progressos=["Lendo artefatos de resultado..."])
+    st.session_state["mensagens"] = []
+
+    app.responder_com_ferramenta("mostre os resultados", "", object())
+    nomes = st.registro.nomes()
+    assert "status" not in nomes, "a caixa de execução não deve mais existir"
+    assert not any("Executando solicitação" in str(a)
+                   for _n, a, _k in st.registro.chamadas)
+
+
+def test_progresso_vira_texto_do_brilho(ui):
+    """A informação não se perde: cada etapa aparece na linha pulsante."""
+    app, st = ui
+    _ferramentas(_USA_FERRAMENTA,
+                 progressos=["Treinando o classificador PV Farms (CC)...",
+                             "Lendo artefatos de resultado..."])
+    st.session_state["mensagens"] = []
+
+    app.responder_com_ferramenta("treine o classificador", "", object())
+    html = st.registro.html()
+    assert "Treinando o classificador PV Farms (CC)" in html
+    assert "Lendo artefatos de resultado" in html
+    # cada mensagem é renderizada COMO brilho, não como texto solto
+    for corpo, kwargs in [(a[0], k) for n, a, k in st.registro.chamadas
+                          if n.endswith("markdown") and a]:
+        if "Treinando o classificador" in str(corpo):
+            assert "alp-pensando" in str(corpo) and kwargs.get("unsafe_allow_html")
+
+
+def test_nome_interno_da_ferramenta_nao_vai_para_a_tela(ui):
+    app, st = ui
+    _ferramentas(_USA_FERRAMENTA, progressos=["Lendo status do pipeline..."])
+    st.session_state["mensagens"] = []
+
+    app.responder_com_ferramenta("como está o pipeline?", "", object())
+    assert "Acionando ferramenta" not in st.registro.html()
+
+
+def test_brilho_sai_de_cena_se_a_ferramenta_levantar(ui):
+    """Sem o finally, o balão pulsaria para sempre acima do erro."""
+    app, st = ui
+    _ferramentas(_USA_FERRAMENTA, progressos=["Rodando..."],
+                 erro=RuntimeError("pipeline quebrou"))
+    st.session_state["mensagens"] = []
+
+    with pytest.raises(RuntimeError):
+        app.responder_com_ferramenta("rode o pipeline", "", object())
+    assert st.registro.nomes().count("empty") >= 2
+
+
+def test_progresso_vazio_nao_apaga_o_rotulo(ui):
+    app, st = ui
+    _ferramentas(_USA_FERRAMENTA, progressos=["   ", "..."])
+    st.session_state["mensagens"] = []
+
+    app.responder_com_ferramenta("faça algo", "", object())
+    assert "Trabalhando nisso" in st.registro.html()

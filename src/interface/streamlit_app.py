@@ -1494,37 +1494,48 @@ def _contexto_recente(n_trocas: int = 4) -> str:
 def responder_com_ferramenta(pergunta: str, perfil: str, llm) -> tuple[str, list[dict]]:
     from src.conhecimento.ferramentas import decidir_acao, processar_com_ferramentas
 
-    # O roteamento passa pelo LLM, então demora o bastante para a tela parecer
-    # travada. Um balão de assistente com o brilho pulsante ocupa essa espera —
-    # e é descartado logo depois, seja qual for o caminho escolhido.
+    # A máquina não aparece. Em vez da caixa "Executando solicitação..." com o
+    # log rolando dentro, existe UMA linha pulsante que troca de texto conforme
+    # o trabalho anda — o pesquisador lê "Treinando o classificador PV Farms",
+    # não "Acionando ferramenta: treinar_classificador_pv".
+    #
+    # A informação não se perde: o mesmo callback de progresso que alimentava a
+    # caixa agora alimenta a linha. O que sai de cena é o nome interno da
+    # ferramenta (que foi para o log) e o contorno de painel de execução.
     espera = st.empty()
-    with espera.container():
-        with st.chat_message("assistant", avatar="⚡"):
-            st.markdown(_html_pensando("Interpretando o pedido"),
-                        unsafe_allow_html=True)
+
+    def _pulsar(texto: str) -> None:
+        rotulo = str(texto).strip().rstrip(".…") or "Trabalhando nisso"
+        with espera.container():
+            with st.chat_message("assistant", avatar="⚡"):
+                st.markdown(_html_pensando(rotulo), unsafe_allow_html=True)
+
+    _pulsar("Interpretando o pedido")
     try:
         decisao = decidir_acao(pergunta, llm)
-    finally:
+    except Exception:
         espera.empty()
+        raise
 
     if not decisao["usar_ferramenta"]:
+        espera.empty()
         return "", []
 
+    try:
+        saida = processar_com_ferramentas(
+            pergunta=pergunta,
+            perfil=perfil,
+            llm=llm,
+            progresso=_pulsar,
+            decisao=decisao,
+            contexto=_contexto_recente(),
+        )
+    finally:
+        # Sai de cena SEMPRE: se a ferramenta levantar, o balão pulsante não
+        # pode sobreviver acima da mensagem de erro.
+        espera.empty()
+
     with st.chat_message("assistant", avatar="⚡"):
-        with st.status("Executando solicitação...", expanded=True) as status:
-            saida = processar_com_ferramentas(
-                pergunta=pergunta,
-                perfil=perfil,
-                llm=llm,
-                progresso=status.write,
-                decisao=decisao,
-                contexto=_contexto_recente(),
-            )
-            ok = bool(saida["resultado"] and saida["resultado"].get("ok"))
-            status.update(
-                label="Solicitação concluída" if ok else "Solicitação terminou com erro",
-                state="complete" if ok else "error",
-            )
         resposta = saida["resposta"] or "Sem resposta."
         imagens = saida["resultado"].get("imagens", []) if saida["resultado"] else []
         # Trava anti-invenção TAMBÉM no caminho de ferramenta/web: 'norma IEC/ISO'

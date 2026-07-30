@@ -2477,8 +2477,16 @@ def processar_com_ferramentas(pergunta: str,
         }
 
     ferramenta = decisao["ferramenta"]
-    if progresso:
-        progresso(f"Acionando ferramenta: {ferramenta}")
+    # O NOME da ferramenta é detalhe de implementação: vai para o log, não
+    # para a tela. Cada ferramenta emite o próprio progresso em linguagem de
+    # gente ("Treinando o classificador PV Farms (CC)..."), e é isso que o
+    # pesquisador deve ler enquanto espera.
+    try:
+        from src.core.logs import get_logger
+
+        get_logger(__name__).info("ferramenta acionada: %s", ferramenta)
+    except Exception:  # noqa: BLE001 - log nunca pode derrubar a execução
+        pass
 
     resultado = executar_ferramenta(
         ferramenta,
