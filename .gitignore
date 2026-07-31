@@ -67,3 +67,22 @@ desktop.ini
 .codex-remote-attachments/
 
 novos_pdfs/*.pdf
+
+# ========================
+# ESTADO DO OBSIDIAN (não é conteúdo)
+# ========================
+# workspace.json (quais painéis estão abertos, scroll) e graph.json
+# (configuração da visão de grafo) são reescritos pelo Obsidian a cada uso.
+# Versionados, travavam todo `git checkout`/`git pull` com "local changes
+# would be overwritten" — aconteceu em duas máquinas — e desfaziam qualquer
+# ajuste de grafo no próximo commit. Poluíram 39 commits.
+#
+# As NOTAS continuam versionadas. Só o estado de janela sai.
+# Plugins, temas e configurações compartilháveis também seguem versionados.
+notas/.obsidian/workspace.json
+notas/.obsidian/graph.json
+.obsidian/workspace.json
+.obsidian/graph.json
+
+# Cache do plugin Smart Connections (embeddings locais, regenerável).
+notas/.smart-env/
