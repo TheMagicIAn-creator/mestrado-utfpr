@@ -21,6 +21,30 @@ import os
 # os pontos de entrada (app, terminal, scripts, bateria).
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
+# ── Rede corporativa / inspeção TLS ─────────────────────────────────────────
+# Em rede com proxy que reassina TLS (o caso da Petrobras), o certificado raiz
+# da empresa está na LOJA DO SISTEMA — é como o navegador confia nela — mas o
+# Python usa o bundle do `certifi`, que não a conhece. Resultado: baixar o
+# modelo de embeddings do HuggingFace falha com
+#   [SSL: CERTIFICATE_VERIFY_FAILED] self-signed certificate in certificate chain
+# enquanto o `pip` funciona, porque aponta para um espelho interno marcado
+# como trusted-host (que PULA a verificação, não a resolve).
+#
+# `truststore` faz o Python usar a loja do sistema, mantendo a verificação
+# ativa — o oposto de desligar a checagem. É OPT-IN por variável de ambiente:
+# fora da rede corporativa nada muda, e o comportamento em casa e na nuvem
+# continua o do certifi.
+#
+#   AL_IADO_CERT_SISTEMA=1   no .env da máquina corporativa
+if os.getenv("AL_IADO_CERT_SISTEMA", "").strip().lower() in {"1", "true", "sim"}:
+    try:
+        import truststore
+
+        truststore.inject_into_ssl()
+    except Exception as _exc:  # noqa: BLE001 - nunca derrubar o app por isto
+        print(f"[config] certificados do sistema indisponíveis ({_exc}); "
+              "seguindo com o bundle padrão do certifi.")
+
 from pathlib import Path
 from dotenv import load_dotenv
 
