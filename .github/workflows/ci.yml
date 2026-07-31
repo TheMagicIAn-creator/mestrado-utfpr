@@ -74,7 +74,8 @@ jobs:
             tests/test_interface_minimalista.py \
             tests/test_inventario_vault.py \
             tests/test_atalhos.py \
-            tests/test_graficos_autoencoder.py
+            tests/test_graficos_autoencoder.py \
+            tests/test_comparacao_macro.py
 
       # BLOQUEANTE e deliberadamente estreito: so nomes que nao existem.
       # F821 undefined name / F822 undefined em __all__ / F823 uso antes da

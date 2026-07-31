@@ -22,8 +22,15 @@ def test_roteamento_classificador():
 
 
 def test_nao_colide_com_experimento():
+    """"experimento" não pode ser confundido com o classificador PV.
+
+    O destino mudou: `rodar_experimento_artigo` foi aposentado junto com o
+    framework E1, e qualquer pedido de experimento passa a ler a comparação
+    publicada dos macro-códigos. O que o teste protege continua o mesmo — a
+    não colisão com as ferramentas do classificador.
+    """
     d = _decisao_rapida("rode o experimento do ghoneim") or {}
-    assert d.get("ferramenta") == "rodar_experimento_artigo"
+    assert d.get("ferramenta") == "consultar_comparacao_macro"
 
 
 def test_classificar_sem_json_pede_json():
@@ -48,7 +55,7 @@ def test_ferramentas_de_leitura_executam():
     """
     seguras = [
         "consultar_status_pipeline", "consultar_resultados", "consultar_datasets",
-        "listar_base_bibliografica", "listar_experimentos_artigos",
+        "listar_base_bibliografica", "consultar_comparacao_macro",
         "avaliar_classificador_pv",
     ]
     for nome in seguras:

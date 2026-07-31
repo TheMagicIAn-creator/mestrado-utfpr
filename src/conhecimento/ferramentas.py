@@ -82,6 +82,18 @@ ESPEC_FERRAMENTAS = [
         ),
     },
     {
+        "name": "consultar_comparacao_macro",
+        "description": (
+            "Compara o METODO PROPOSTO (Autoencoder denso + escore localizado) "
+            "com a LITERATURA (AE-LSTM temporal do Ibrahim 2022) por AUC e por "
+            "SMD, lendo a comparacao ja publicada. Nunca treina. Use sempre "
+            "que o usuario pedir para comparar o metodo dele com a literatura, "
+            "com o Ibrahim ou com o AE-LSTM: 'compare meu metodo com a "
+            "literatura', 'como estou frente ao Ibrahim', 'meu detector e "
+            "melhor que o AE-LSTM?', 'mostre a comparacao', 'qual o SMD'."
+        ),
+    },
+    {
         "name": "consultar_status_pipeline",
         "description": (
             "Mostra quais etapas do pipeline ja estao prontas e quais ainda "
@@ -138,24 +150,6 @@ ESPEC_FERRAMENTAS = [
         ),
     },
     {
-        "name": "listar_experimentos_artigos",
-        "description": (
-            "Lista os EXPERIMENTOS de ML por artigo-base (Francisti, Ibrahim) "
-            "e o status de cada modelo. Use "
-            "quando o usuario perguntar quais experimentos existem, quais "
-            "modelos rodam, ou o que da para testar com base nos artigos."
-        ),
-    },
-    {
-        "name": "limpar_experimentos_artigos",
-        "description": (
-            "Apaga artefatos/resultados dos experimentos por artigo-base "
-            "(Francisti, Ibrahim), mediante "
-            "confirmacao explicita. Use quando o usuario pedir para apagar, "
-            "limpar, excluir ou resetar experimentos por artigo."
-        ),
-    },
-    {
         "name": "consultar_datasets",
         "description": (
             "Explica os datasets do projeto (Paderborn e PV Farms): finalidade, "
@@ -195,31 +189,6 @@ ESPEC_FERRAMENTAS = [
             "Classifica uma amostra PV Farms enviada como JSON. Use quando o "
             "usuario pedir para classificar uma amostra. Valida colunas e avisa "
             "que e dominio CC (nao diagnostica falhas CA)."
-        ),
-    },
-    {
-        "name": "rodar_experimento_artigo",
-        "description": (
-            "Treina e avalia os modelos de ML de um ou mais artigos-base e "
-            "compara os resultados (AUC/F1 ou acuracia). Use quando o usuario "
-            "pedir para RODAR/TESTAR um experimento de um artigo: 'rode o "
-            "experimento do Ibrahim', 'teste os modelos do Francisti'. Tarefa "
-            "pesada (treina modelos). Para comparar resultados ja gerados, use "
-            "consultar_resultados."
-        ),
-    },
-    {
-        "name": "comparar_experimentos_auc",
-        "description": (
-            "Compara o METODO PROPOSTO (Autoencoder do pipeline) com a "
-            "literatura (Francisti, Ibrahim) pelo AUC, no MESMO banco de "
-            "teste — a unica metrica comparavel entre protocolos. Exibe "
-            "tabela ranqueada, grafico e a validacao E2 nativa a parte. "
-            "Usa o modelo JA treinado (nunca treina). Use quando o usuario "
-            "pedir para COMPARAR os experimentos/modelos de anomalia: 'compare "
-            "os experimentos de anomalia', 'compare por AUC', 'qual e o melhor "
-            "modelo de anomalia'. NAO usa para rodar — apenas le os resultados "
-            "ja salvos."
         ),
     },
 ]
@@ -547,9 +516,15 @@ def _quer_comparar_auc_experimentos(pergunta: str) -> bool:
                "qual o melhor modelo de anomalia", "analise os experimentos".
     Ex. False: "rode o experimento e compare", "compare as abordagens de ML".
     """
+    txt = _normalizar(pergunta)
+    # Confronto direto com o concorrente, nomeando-o. Vem ANTES do desvio por
+    # "rodar" porque desde a aposentadoria do framework E1 não há mais o que
+    # rodar por aqui: qualquer forma do pedido lê a comparação publicada.
+    # "meu detector e melhor que o AE-LSTM?" escapava de todos os padrões.
+    if any(t in txt for t in ("ae-lstm", "ae lstm", "aelstm", "ibrahim")):
+        return True
     if _quer_rodar_experimento(pergunta):
         return False
-    txt = _normalizar(pergunta)
     # Pedidos compostos de apresentação devem ler os artefatos já calculados.
     # A ferramenta de banco comum gera somente a comparação AUC e, por isso,
     # não consegue cumprir matrizes, contagens ou formatos gráficos pedidos.
@@ -1158,6 +1133,93 @@ def listar_base_bibliografica(progresso=None, pergunta: str = "") -> dict:
     }
 
 
+def consultar_comparacao_macro(progresso=None, pergunta: str = "") -> dict:
+    """Comparação vigente: método proposto × AE-LSTM do Ibrahim, por AUC e SMD.
+
+    Lê `resultados/macro/` — a FONTE ÚNICA de resultado de anomalia desde que os
+    macro-códigos substituíram o framework por artigo. Não treina nem recalcula:
+    só apresenta o que está publicado, então funciona também na nuvem.
+
+    Existe porque essa pasta era inalcançável pelo chat: `resultados/experimentos/`
+    foi deletada em `9fe0322` e nenhuma ferramenta lia `resultados/macro/`. Pedir
+    "compare meu método com a literatura" caía num caminho morto.
+    """
+    import json
+    from pathlib import Path
+
+    from src.core.config import RAIZ_PROJETO
+
+    if progresso:
+        progresso("Lendo a comparação publicada (proposto × Ibrahim)...")
+
+    pasta = Path(RAIZ_PROJETO) / "resultados" / "macro"
+    tabela = pasta / "comparacao_tabela.md"
+    dados = pasta / "comparacao_resultado.json"
+    if not tabela.is_file() or not dados.is_file():
+        return {
+            "ok": False, "etapa": "Comparação com a literatura",
+            "mensagem": (
+                "Ainda não há comparação publicada em `resultados/macro/`. "
+                "Rode no PC: `python -m src.ml.macro_comparar`."
+            ),
+            "imagens": [], "resposta_pronta": True, "forcar_resposta_direta": True,
+        }
+
+    try:
+        metodos = json.loads(dados.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return {
+            "ok": False, "etapa": "Comparação com a literatura",
+            "mensagem": f"A comparação publicada está ilegível: {exc}",
+            "imagens": [], "resposta_pronta": True, "forcar_resposta_direta": True,
+        }
+
+    # Protocolo: sai do próprio artefato, não de constante escrita aqui.
+    protocolo = [
+        f"- **{m.get('nome', '?')}** — limiar no percentil "
+        f"{m.get('percentil', '?')}, FP {m.get('fp_pct', 0):.1f}%, "
+        f"{m.get('n_calib', '?')} janelas de calibração e "
+        f"{m.get('n_aval', '?')} de avaliação"
+        for m in metodos
+    ]
+
+    msg = (
+        "## Método proposto × literatura\n\n"
+        + tabela.read_text(encoding="utf-8").strip()
+        + "\n\n**Protocolo de cada método**\n"
+        + "\n".join(protocolo)
+        + "\n\n**Como ler**\n"
+        "- **SMD** é a menor severidade em que o método detecta a falha em ≥95% "
+        "das janelas, com o falso positivo travado em 10%. **Menor é melhor** — "
+        "é o *pickup* do detector.\n"
+        "- Em severidade 1,0 todos saturam em 100%: é o SMD que discrimina.\n\n"
+        "**Ressalvas** — evidência **E2** (falha sintética injetada no sinal, "
+        "fundamentada na FMECA): mostra que o detector responde à assinatura "
+        "elétrica esperada, **não** desempenho em campo. Amostra pequena "
+        f"({metodos[0].get('n_aval', '?')} janelas), então os valores são "
+        "consistentes, não precisos. A grade de severidade é discreta "
+        "(0,05…1,0): um SMD de 0,50 significa \"falhou em 0,3, passou em 0,5\"."
+    )
+
+    imagens = []
+    for arquivo, legenda in (
+        ("comparacao_deteccao_severidade.png", "Detecção por severidade — proposto × Ibrahim"),
+        ("proposto_deteccao_severidade.png", "Método proposto — detecção por severidade"),
+        ("ibrahim_deteccao_severidade.png", "Ibrahim (AE-LSTM) — detecção por severidade"),
+    ):
+        caminho = pasta / arquivo
+        if caminho.is_file():
+            imagens.append({
+                "path": str(caminho), "caption": legenda,
+                "group": "Comparação com a literatura", "inline": False,
+            })
+
+    return {
+        "ok": True, "etapa": "Comparação com a literatura",
+        "mensagem": msg, "imagens": imagens, "resposta_pronta": True,
+    }
+
+
 def listar_experimentos_artigos(progresso=None, pergunta: str = "") -> dict:
     """Catálogo dos experimentos de ML por artigo-base + status dos modelos."""
     if progresso:
@@ -1732,12 +1794,9 @@ _DESPACHO = {
     "avaliar_classificador_pv": avaliar_classificador_pv,
     "classificar_amostra_pv": classificar_amostra_pv,
     "limpar_resultados_ml": limpar_resultados_ml,
-    "limpar_experimentos_artigos": limpar_experimentos_artigos,
     "buscar_web": buscar_na_web,
     "listar_base_bibliografica": listar_base_bibliografica,
-    "listar_experimentos_artigos": listar_experimentos_artigos,
-    "rodar_experimento_artigo": rodar_experimento_artigo,
-    "comparar_experimentos_auc": comparar_experimentos_auc,
+    "consultar_comparacao_macro": consultar_comparacao_macro,
     "registrar_no_cerebro": registrar_no_cerebro,
 }
 
@@ -2015,23 +2074,17 @@ def _decisao_rapida(pergunta: str) -> dict | None:
     if _quer_codigo_snippet(pergunta):
         return {"usar_ferramenta": False, "ferramenta": None}
 
-    if _quer_limpar_experimentos(pergunta):
-        return {"usar_ferramenta": True, "ferramenta": "limpar_experimentos_artigos"}
-
     if _quer_literatura_tematica(pergunta):
         return {"usar_ferramenta": False, "ferramenta": None}
 
-    # Experimentos de ML por artigo — checados ANTES do catálogo de literatura,
-    # pois "experimento" é um sinal mais específico que "artigo" genérico.
-    # RODAR > COMPARAR AUC > CONSULTAR (do mais específico para o mais geral).
-    if _quer_rodar_experimento(pergunta):
-        return {"usar_ferramenta": True, "ferramenta": "rodar_experimento_artigo"}
-    if _quer_comparar_auc_experimentos(pergunta):
-        return {"usar_ferramenta": True, "ferramenta": "comparar_experimentos_auc"}
-    if _quer_consultar_resultados_experimentos(pergunta):
-        return {"usar_ferramenta": True, "ferramenta": "consultar_resultados"}
-    if _quer_catalogo_experimentos(pergunta):
-        return {"usar_ferramenta": True, "ferramenta": "listar_experimentos_artigos"}
+    # Comparação com a literatura — os macro-códigos são a fonte única desde
+    # que o framework por artigo (protocolo E1) foi aposentado. Qualquer
+    # variação do pedido cai na comparação PUBLICADA; nada aqui treina.
+    if (_quer_comparar_auc_experimentos(pergunta)
+            or _quer_rodar_experimento(pergunta)
+            or _quer_catalogo_experimentos(pergunta)
+            or _quer_consultar_resultados_experimentos(pergunta)):
+        return {"usar_ferramenta": True, "ferramenta": "consultar_comparacao_macro"}
 
     # Datasets do projeto (Paderborn CA / PV Farms CC) — explicação determinística.
     if _quer_consultar_datasets(pergunta):
@@ -2189,8 +2242,6 @@ def _guardas_criticas(pergunta: str) -> dict | None:
         return {"usar_ferramenta": False, "ferramenta": None}
     if _quer_literatura_tematica(pergunta):      # (a) busca bibliográfica → RAG
         return {"usar_ferramenta": False, "ferramenta": None}
-    if _quer_limpar_experimentos(pergunta):      # (b) destrutivo
-        return {"usar_ferramenta": True, "ferramenta": "limpar_experimentos_artigos"}
     if _quer_limpar(pergunta):                   # (b) destrutivo
         return {"usar_ferramenta": True, "ferramenta": "limpar_resultados_ml"}
     return None

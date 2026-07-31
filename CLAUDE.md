@@ -160,14 +160,21 @@ Planejados (sem implementação no pacote):
 - LSTM/GRU dedicados a séries temporais no pipeline
 
 ## Experimentos por Artigo-Base
-O módulo src/ml/experimentos_artigos.py permite ao Rodolfo
-rodar e comparar os modelos de ML dos artigos-base, por
-escolha dele — pela barra lateral (🧪 multiseleção + botão
-"Rodar selecionados" + quadro comparativo) ou pelo chat
-("rode o experimento do Ibrahim", "compare os experimentos
-de anomalia"). Cada artigo é um experimento reproduzível;
-os resultados são salvos em resultados/experimentos/<key>/
-(resultado.json, relatorio.txt, comparacao.png).
+APOSENTADO DO CHAT (2026-07-30). O framework
+src/ml/experimentos_artigos.py + protocolos_artigos.py continua
+no repositório — histórico e reprodutibilidade preservados —
+mas NÃO é mais acionável pelo agente. Motivo: a pasta
+resultados/experimentos/ foi deletada em 9fe0322 quando os
+macro-códigos a substituíram, e rodá-lo recriaria artefatos de
+protocolo E1 conflitantes com os E2 vigentes, sem aviso.
+
+FONTE ÚNICA de resultado de anomalia: os macro-códigos, em
+resultados/macro/. Qualquer pedido de comparação com a
+literatura ("compare meu método", "sou melhor que o AE-LSTM?",
+"rode o experimento do Ibrahim") cai na ferramenta
+consultar_comparacao_macro, que LÊ a comparação publicada e
+nunca treina. Para recalcular: python -m src.ml.macro_comparar
+no PC.
 
 PAPEL DOS EXPERIMENTOS: são COMPARAÇÃO com a literatura, não
 são o método da dissertação (esse é o pipeline principal —
@@ -204,13 +211,19 @@ principal usa injeção FMECA no SINAL bruto (E2); os experimentos
 usam injeção no espaço de FEATURES (E1). Não são diretamente
 comparáveis por F1 — só por AUC.
 
-COMPARAÇÃO COM A LITERATURA (ferramenta comparar_experimentos_
-auc; "compare meu método com a literatura"): pontua o Autoencoder
-JÁ TREINADO no MESMO banco de teste dos experimentos (E1, seed 42)
-e monta tabela+gráfico ranqueados por AUC, com a validação E2
-nativa reportada à parte. Nunca treina; sem modelo salvo, avisa
-"rode o pipeline primeiro". Artefatos: resultados/comparacao/
-(src/ml/comparacao_literatura.py).
+COMPARAÇÃO COM A LITERATURA (ferramenta consultar_comparacao_
+macro; "compare meu método com a literatura"): LÊ a comparação
+publicada em resultados/macro/ — método proposto (AE denso +
+escore localizado) × AE-LSTM temporal do Ibrahim, por AUC e por
+SMD@FPR=10%, ambos sob o MESMO protocolo E2 (injeção FMECA no
+sinal, por severidade). Nunca treina; sem comparação publicada,
+orienta a rodar macro_comparar no PC. Sempre carrega as
+ressalvas (E2, n pequeno, grade de severidade discreta).
+
+NUNCA misturar com os números do framework aposentado: 0,588
+(E1, injeção em features, p99 congelado, teste balanceado) e
+0,909 (E2, por severidade, FP auto-calibrado) vêm do MESMO
+modelo sob protocolos diferentes. Não vão na mesma tabela.
 
 Anomalia é avaliada com PROTOCOLO PRÓPRIO POR ARTIGO
 (src/ml/protocolos_artigos.py): split temporal com purga,
