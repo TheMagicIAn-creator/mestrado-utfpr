@@ -23,21 +23,37 @@ from src.ml.proveniencia import sha256_arquivo  # noqa: E402
 BASE = Path(RAIZ_PROJETO) / "dados" / "brutos"
 MANIFESTO = Path(RAIZ_PROJETO) / "dados" / "dataset_manifest.json"
 
+# Mínimo de linhas para o arquivo ser UTILIZÁVEL, não só existir.
+# O Kaggle serve uma PRÉVIA de 100 linhas quando se clica no arquivo dentro
+# da página em vez do botão Download do dataset. A prévia parseia, tem hash
+# válido e passava como ✅ — só quebrava lá adiante, no janelamento, com um
+# erro que não aponta para o download.
+#
+# Para o Paderborn o piso vem dos parâmetros reais de features_ca (JANELA e
+# SOBREPOSICAO): abaixo de uma janela completa não se extrai nada.
+try:
+    from src.ml.features_ca import JANELA as _JANELA
+except Exception:  # noqa: BLE001 - o diagnóstico não pode depender do pipeline
+    _JANELA = 1024
+
 DATASETS = [
     {
         "nome": "PV Farms (treino)", "arquivo": "train_data.csv",
         "sep": ";", "rotulo": "class", "dominio": "CC",
         "uso": "classificação supervisionada de falhas CC",
+        "min_linhas": 1000,
     },
     {
         "nome": "PV Farms (teste)", "arquivo": "test_data.csv",
         "sep": ";", "rotulo": "class", "dominio": "CC",
         "uso": "avaliação supervisionada",
+        "min_linhas": 200,
     },
     {
         "nome": "Paderborn", "arquivo": "Inverter_Data_Set.csv",
         "sep": ",", "rotulo": None, "dominio": "CA",
         "uso": "modelagem de normalidade (inversor saudável)",
+        "min_linhas": _JANELA,
     },
 ]
 
@@ -63,11 +79,20 @@ def verificar(silencioso: bool = False) -> dict:
         }
         if existe:
             n_linhas = max(0, _contar_linhas(caminho) - 1)  # menos cabeçalho
+            minimo = int(ds.get("min_linhas", 0))
+            truncado = bool(minimo and n_linhas < minimo)
             info.update({
                 "linhas": n_linhas,
                 "sha256": sha256_arquivo(caminho),
                 "tamanho_bytes": caminho.stat().st_size,
+                "utilizavel": not truncado,
+                "min_linhas": minimo,
             })
+            if truncado:
+                info["aviso"] = (
+                    f"apenas {n_linhas} linhas, mínimo {minimo} — provável "
+                    "prévia do Kaggle; baixe pelo botão Download do dataset"
+                )
             # colunas + classes (apenas para os pequenos rotulados)
             if ds["rotulo"]:
                 try:
@@ -82,10 +107,20 @@ def verificar(silencioso: bool = False) -> dict:
         registros[ds["nome"]] = info
 
         if not silencioso:
-            marca = "✅" if existe else "❌"
-            extra = (f"{info.get('linhas', '?')} linhas | sha={str(info.get('sha256'))[:12]}…"
-                     if existe else "AUSENTE (baixe localmente)")
+            if not existe:
+                marca, extra = "❌", "AUSENTE (baixe localmente)"
+            elif not info.get("utilizavel", True):
+                marca, extra = "❌", (
+                    f"{info['linhas']} linhas — TRUNCADO "
+                    f"(mínimo {info['min_linhas']})"
+                )
+            else:
+                marca = "✅"
+                extra = (f"{info['linhas']} linhas | "
+                         f"sha={str(info.get('sha256'))[:12]}…")
             print(f"  {marca} {ds['nome']:20s} [{ds['dominio']}] {extra}")
+            if info.get("aviso"):
+                print(f"     → {info['aviso']}")
 
     if any(r["presente"] for r in registros.values()):
         MANIFESTO.write_text(
