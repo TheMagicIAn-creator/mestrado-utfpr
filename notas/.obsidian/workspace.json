@@ -16,8 +16,23 @@
               "icon": "lucide-git-fork",
               "title": "Graph view"
             }
+          },
+          {
+            "id": "23264c31af8cbeb4",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "conflict-files-obsidian-git.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "conflict-files-obsidian-git"
+            }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -37,7 +52,9 @@
               "type": "file-explorer",
               "state": {
                 "sortOrder": "alphabetical",
-                "autoReveal": false
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
               },
               "icon": "lucide-folder-closed",
               "title": "Files"
@@ -49,7 +66,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "tag:#inversion",
+                "query": "tag:#literatura",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -70,8 +87,7 @@
               "title": "Bookmarks"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "horizontal",
@@ -233,44 +249,44 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "7b470dd149c3dc39",
+  "active": "23264c31af8cbeb4",
   "lastOpenFiles": [
-    "Literatura/ml-preditivo/open-eng_gineering-education-virtual-learning-environment_2020.md",
-    "memorias/resultados-fase5-ml.md",
-    "sessoes_arquivadas/2026-06-14_01-01-10_avaliacao_agente_100.md",
-    "Cerebro/Resultados/Estimativas Exploratórias de RUL e Análise de Weibull (E2).md",
+    "conflict-files-obsidian-git.md",
+    "sessoes/2026-07-29_14-53_sessao_web.md",
+    "sessoes/2026-07-29_14-29_sessao_web.md",
     "sessoes/2026-07-29_13-37_sessao_web.md",
-    "sessoes_arquivadas/2026-07-29_10-47_sessao_web.md",
-    "sessoes_arquivadas/2026-07-29_10-35_sessao_web.md",
-    "sessoes_arquivadas/2026-07-29_10-21_sessao_web.md",
-    "sessoes_arquivadas/2026-07-29_10-08_sessao_web.md",
-    "sessoes_arquivadas/2026-07-28_13-40_sessao_web.md",
+    "sessoes_arquivadas/2026-07-28_09-07_sessao_web.md",
+    "Literatura/confiabilidade/lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_2001.md",
+    "Literatura/confiabilidade/empresa_analise-da-confiabilidade-em-sistemas-de-potencia_2003.md",
+    "Literatura/confiabilidade/autor-desconhecido_analise-confiabilidade-sistemas-potencia_0000_1.md",
+    "Literatura/confiabilidade/autor-desconhecido_analise-confiabilidade-sistemas-potencia_0000.md",
+    "Cerebro/00 - Painel do cerebro.md",
+    "sessoes/2026-07-29_18-53_sessao_web.md",
+    "sessoes/2026-07-29_19-51_sessao_web.md",
     "memorias/2026-07-29_13-33-49_consolidado.md",
-    "Cerebro/Resultados/Resultados Exploratórios de RUL e Ajuste Weibull (Evidência E2).md",
-    "sessoes/2026-07-29_10-47_sessao_web.md",
-    "Cerebro/Resultados/Resultados Exploratórios de Confiabilidade Weibull e RUL (E2).md",
-    "sessoes/2026-07-29_10-35_sessao_web.md",
-    "sessoes/2026-07-29_10-21_sessao_web.md",
-    "sessoes/2026-07-29_10-08_sessao_web.md",
-    "sessoes/2026-07-28_09-07_sessao_web.md",
-    "memorias/2026-07-27_23-13-51_consolidado.md",
-    "sessoes_arquivadas/2026-07-27_22-47_sessao_web.md",
-    "sessoes/2026-07-27_22-47_sessao_web.md",
-    "sessoes_arquivadas/2026-07-22_18-23_sessao_web.md",
-    "sessoes_arquivadas/2026-07-24_12-34_sessao_web.md",
-    "sessoes_arquivadas/2026-07-23_21-46_sessao_web.md",
-    "sessoes_arquivadas/2026-07-21_21-57_sessao_web.md",
+    "sessoes_arquivadas/2026-05-16_16-25_sessao.md",
+    "sessoes_arquivadas/2026-07-28_12-25_sessao_web.md",
+    "sessoes_arquivadas/2026-07-28_13-40_sessao_web.md",
+    "sessoes_arquivadas/2026-07-29_10-08_sessao_web.md",
+    "sessoes_arquivadas/2026-07-29_10-21_sessao_web.md",
     "memorias/2026-07-27_23-04-14_consolidado.md",
+    "memorias/2026-07-27_23-13-51_consolidado.md",
+    "memorias/2026-07-28_13-40-07_consolidado.md",
+    "Cerebro/Resultados/Resultados Exploratórios de RUL e Ajuste Weibull (Evidência E2).md",
+    "Cerebro/Resultados/Resultados Exploratórios de Confiabilidade Weibull e RUL (E2).md",
+    "Cerebro/Resultados/Estimativas Exploratórias de RUL e Análise de Weibull (E2).md",
+    "Cerebro/Resultados/Correção do escore — antes e depois.md",
+    "Cerebro/Decisoes/Macro-códigos de comparação.md",
+    "Cerebro/Resultados",
+    "Cerebro/Memorias validadas",
+    "Cerebro/Decisoes",
+    "Cerebro/Conceitos",
+    "Cerebro",
     "Untitled.canvas",
     "Untitled 1.base",
     "Untitled.base",
-    "Cerebro/Resultados",
     "Literatura/sinais-eletricos",
     "codigo_apoio/re_indexador_memoria.py",
-    "codigo_apoio",
-    "Literatura/sinais-ca",
-    "Literatura/ml-preditivo",
-    "Literatura/manutencao",
-    "Literatura/inversores-pv"
+    "codigo_apoio"
   ]
 }

@@ -16,6 +16,7 @@ import json
 import re
 import unicodedata
 from dataclasses import dataclass, field
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
 
@@ -63,6 +64,44 @@ _INTENCAO_HISTORICA = re.compile(
 )
 _PRIMEIRO_REGISTRO = re.compile(r"(?i)\b(primeir[ao]|mais antig[ao]|inicial)\b")
 _ULTIMO_REGISTRO = re.compile(r"(?i)\b([uú]ltim[ao]|mais recent[ea]|atual)\b")
+
+# ── Inventário: "quais as 10 últimas memórias consolidadas?" ────────────────
+# Pergunta de CONTAGEM/LISTA não pode ser respondida por busca semântica: o
+# top-K devolve uma AMOSTRA, e o LLM a apresenta como se fosse o total. Foi
+# exatamente o que aconteceu — 26 memórias consolidadas no vault, e a resposta
+# afirmou "apenas 4", confirmando o número quando contestada. Aqui a contagem
+# vem da varredura dos metadados do índice, sem embeddings e sem LLM.
+_PEDIDO_INVENTARIO = re.compile(
+    r"(?i)\b(quais|quantas?|quantos|list[ae]|listar|liste|relacione|enumere|"
+    r"mostre|me\s+d[êe])\b"
+)
+_ALVOS_INVENTARIO: tuple[tuple[str, re.Pattern, frozenset[str]], ...] = (
+    (
+        "memórias consolidadas",
+        re.compile(r"(?i)(mem[oó]rias?\s+consolidad|consolida[çc][õo]es|"
+                   r"consolidad[oa]s?\b)"),
+        frozenset({"memoria_consolidada"}),
+    ),
+    (
+        "memórias validadas",
+        re.compile(r"(?i)mem[oó]rias?\s+validad"),
+        frozenset({"memoria_validada"}),
+    ),
+    (
+        "sessões",
+        re.compile(r"(?i)\b(sess[oõ]es|sess[ãa]o)\b"),
+        frozenset({"sessao_atual", "sessao_arquivada"}),
+    ),
+)
+# "resuma a última sessão" quer CONTEÚDO, não inventário — segue para o RAG.
+_QUER_CONTEUDO = re.compile(
+    r"(?i)(resum|conte[uú]do|assunto|discut|aconteceu|falamos|sobre\s+o\s+que)"
+)
+_QUANTIDADE = re.compile(r"(?i)\b(\d{1,3})\s*(?:[uú]ltim|mais\s+recent|primeir)")
+# Plural-cientes, e SÓ para a ordenação do inventário: _PRIMEIRO_REGISTRO e
+# _ULTIMO_REGISTRO servem à consulta cronológica (um único registro) e não
+# casam "primeiras"/"últimas"; alterá-los mudaria aquele comportamento.
+_ORDEM_ANTIGA = re.compile(r"(?i)\b(primeir[ao]s?|mais\s+antig[ao]s?|iniciais?)\b")
 
 
 @dataclass(frozen=True)
@@ -648,6 +687,171 @@ def responder_consulta_cronologica(colecao, pergunta: str) -> str | None:
         f"O registro está em `{registro['arquivo']}` e tem o título "
         f"**{registro['titulo']}**. Essa identificação vem da ordenação dos "
         "metadados e nomes de arquivo do índice completo, não de similaridade semântica."
+    )
+
+
+# Onde cada classe VIVE no disco, e o que de fato conta como membro dela.
+# O padrao de nome importa: `_classe_da_nota` classifica pela PASTA, entao
+# qualquer .md em notas/memorias/ virava "memoria_consolidada" -- foi assim
+# que `resultados-fase5-ml.md`, que nao e consolidacao, entrou na contagem.
+_PASTAS_INVENTARIO: dict[str, tuple[str, str]] = {
+    "memoria_consolidada": ("memorias", "*_consolidado.md"),
+    "memoria_validada": ("Cerebro/Memorias validadas", "*.md"),
+    "sessao_atual": ("sessoes", "*.md"),
+    "sessao_arquivada": ("sessoes_arquivadas", "*.md"),
+}
+
+
+def _no_disco(classes) -> dict[str, str]:
+    """Arquivos que EXISTEM no vault, por classe — independente do índice.
+
+    O vault e versionado no Git, entao esses arquivos estao presentes tambem
+    na nuvem, mesmo quando o snapshot portatil do indice esta defasado. Sem
+    isto, a contagem responde "o que eu consigo buscar" quando o pesquisador
+    perguntou "o que existe" — foi o que produziu "15" para um vault de 26.
+    """
+    achados: dict[str, str] = {}
+    for classe in classes:
+        subpasta, padrao = _PASTAS_INVENTARIO.get(classe, (None, None))
+        if not subpasta:
+            continue
+        base = PASTA_VAULT_OBSIDIAN / subpasta
+        if not base.is_dir():
+            continue
+        for caminho in base.glob(padrao):
+            if caminho.is_file():
+                achados[caminho.name] = classe
+    return achados
+
+
+def inventario_por_classe(colecao, classes) -> list[dict]:
+    """Registros das classes pedidas, um por ARQUIVO, do mais recente.
+
+    Une DUAS fontes e marca a diferença em `indexado`:
+      - o disco, que responde "o que existe";
+      - o índice, que responde "o que eu consigo buscar".
+
+    Divergir é normal na nuvem, onde o índice vem de um snapshot portátil que
+    só é regenerado sob demanda. O que não pode é a diferença ficar invisível.
+    A ordenação usa o NOME do arquivo, que começa pelo carimbo de data —
+    cronologia por nome, não por similaridade.
+    """
+    alvo = frozenset(classes)
+    padroes = {c: _PASTAS_INVENTARIO.get(c, (None, "*.md"))[1] for c in alvo}
+
+    por_nome: dict[str, dict] = {}
+
+    # 1) disco — a verdade sobre o que existe
+    for nome, classe in _no_disco(alvo).items():
+        por_nome[nome] = {"arquivo": nome, "nome": nome, "titulo": Path(nome).stem,
+                          "data": "", "classe": classe, "indexado": False}
+
+    # 2) índice — o que é pesquisável
+    try:
+        dados = colecao.get(include=["metadatas"])
+    except Exception:
+        dados = {}
+    ids = dados.get("ids") or []
+    for ordem, meta in enumerate(dados.get("metadatas") or []):
+        meta = meta or {}
+        classe = str(meta.get("classe_fonte", ""))
+        if classe not in alvo:
+            continue
+        caminho = str(meta.get("caminho_obsidian")
+                      or (ids[ordem] if ordem < len(ids) else ""))
+        if not caminho:
+            continue
+        nome = Path(caminho).name
+        # Mesmo filtro de nome do disco: a classificação por pasta sozinha
+        # deixa passar arquivo que não é da classe.
+        if not fnmatch(nome, padroes.get(classe, "*.md")):
+            continue
+        item = por_nome.setdefault(nome, {"arquivo": caminho, "nome": nome,
+                                          "classe": classe, "indexado": False})
+        item["indexado"] = True
+        item["arquivo"] = caminho
+        item["titulo"] = str(meta.get("titulo", "") or Path(caminho).stem)
+        item["data"] = str(meta.get("data_registro", "") or item.get("data", ""))
+
+    return sorted(por_nome.values(), key=lambda item: item["nome"], reverse=True)
+
+
+def _data_legivel(item: dict[str, str]) -> str:
+    match = re.search(r"(20\d{2})-(\d{2})-(\d{2})(?:[_-](\d{2})-(\d{2}))?",
+                      item["nome"])
+    if not match:
+        return item.get("data", "") or "—"
+    ano, mes, dia, hora, minuto = match.groups()
+    legivel = f"{dia}/{mes}/{ano}"
+    return f"{legivel} {hora}:{minuto}" if hora and minuto else legivel
+
+
+def responder_inventario_vault(colecao, pergunta: str) -> str | None:
+    """Responde "quais/quantas <memórias|sessões>" contando de fato.
+
+    Retorna None quando a pergunta não é de inventário — aí segue o fluxo
+    normal de RAG.
+    """
+    # "as 10 últimas memórias consolidadas" é pedido de inventário sem verbo —
+    # a quantidade explícita basta como gatilho.
+    pediu = bool(_PEDIDO_INVENTARIO.search(pergunta) or _QUANTIDADE.search(pergunta))
+    if not pediu or _QUER_CONTEUDO.search(pergunta):
+        return None
+
+    for rotulo, padrao, classes in _ALVOS_INVENTARIO:
+        if padrao.search(pergunta):
+            break
+    else:
+        return None
+
+    itens = inventario_por_classe(colecao, classes)
+    if not itens:
+        return None
+
+    total = len(itens)
+    pedido = _QUANTIDADE.search(pergunta)
+    limite = min(int(pedido.group(1)), total) if pedido else min(10, total)
+    if _ORDEM_ANTIGA.search(pergunta):
+        recorte, ordem = itens[-limite:][::-1], "mais antigas"
+    else:
+        recorte, ordem = itens[:limite], "mais recentes"
+
+    linhas = [
+        f"| {i} | {_data_legivel(item)} | `{item['nome']}` |"
+        + ("" if item.get("indexado") else " ⚠️")
+        for i, item in enumerate(recorte, start=1)
+    ]
+    cabecalho = (
+        f"O vault tem **{total} {rotulo}**. "
+        f"{'Todas' if limite >= total else f'As {limite} {ordem}'}:"
+    )
+
+    partes = []
+    if limite < total:
+        partes.append(f"As outras {total - limite} também estão no vault.")
+
+    # A defasagem do índice PRECISA aparecer. Antes, a resposta dizia
+    # "N indexadas" e o pesquisador lia "N existem" — na nuvem, onde o índice
+    # vem de um snapshot congelado, isso escondia 12 de 26 consolidações.
+    fora = [i for i in itens if not i.get("indexado")]
+    if fora:
+        partes.append(
+            f"⚠️ **{len(fora)} de {total} ainda não estão no índice de busca** "
+            f"(marcadas com ⚠️ acima): elas existem no vault, mas eu não consigo "
+            "recuperá-las por conteúdo. O índice portátil da nuvem só é "
+            "regenerado sob demanda — para incluí-las, rode no PC "
+            "`python scripts/reconstruir_cerebro_obsidian.py` e commite "
+            "`artefatos/obsidian_indexado.jsonl.gz`."
+        )
+    partes.append(
+        "Contagem obtida listando os arquivos do vault e cruzando com os "
+        "metadados do índice — não é amostra de busca semântica."
+    )
+    return (
+        f"{cabecalho}\n\n| # | Data | Arquivo |\n| ---: | :--- | :--- |\n"
+        + "\n".join(linhas)
+        + "\n\n"
+        + "\n\n".join(partes)
     )
 
 

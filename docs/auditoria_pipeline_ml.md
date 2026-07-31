@@ -404,6 +404,42 @@ desta auditoria (`af9338e`):
 | `limiar.json`, `weibull_results.json`, `injecao_falhas_report.json`, `validacao_tabela.csv` | Regenerados; valores conferidos manualmente (tabela acima) |
 | `curva_treino.png`, `distribuicao_erro.png`, `erro_temporal.png` | **Hash IDÊNTICO ao commit `af9338e`** (anterior a todas as correções desta auditoria) — **nunca foram regenerados** nesta rodada |
 
+> **Correção (2026-07-30) — este achado estava errado para 1 dos 3, e a causa
+> real era outra.**
+>
+> Reconferindo por `git hash-object`: `distribuicao_erro.png` **é diferente** de
+> `af9338e` — foi regenerado em `1f29ebd` ("resultados: regenera graficos do
+> autoencoder", 23/07). Só `curva_treino.png` e `erro_temporal.png` estavam
+> idênticos.
+>
+> E a leitura de "ficaram para trás num merge" provavelmente está errada. Os três
+> plotam **MSE**, não o escore localizado. O `limiar_mse` não mudou (2,5454 em
+> `af9338e` e hoje) e o `diagnostico_autoencoder.npz` é byte-idêntico. Com
+> `SEED=42`, é esperado que figuras de dados que não mudaram saiam iguais. O que
+> mudou em `distribuicao_erro.png` foi o **código de plotagem** (14 bins), não o
+> dado.
+>
+> **O que de fato estava quebrado era a ferramenta de conserto.**
+> `regenerar_graficos_autoencoder()` — escrita justamente para este caso, sem
+> nenhum chamador e sem teste — repassava o dicionário cru de `limiar.json` aos
+> plots. Mas o campo `limiar` ali passou a ser o **operacional do escore
+> localizado (7,83)**, enquanto os gráficos são de MSE (p99 ≈ 2,55). Executá-la
+> desenharia a linha de limiar acima de quase todos os pontos e reportaria ~4
+> alarmes em vez de 14 — **figura errada, não figura atualizada**. Quem tentasse
+> fechar este item pela via óbvia teria piorado o artefato.
+>
+> Correções aplicadas:
+> - `_info_em_escala_mse()` converte o JSON salvo para a escala de MSE antes de
+>   plotar (e recalcula `fp_test_pct` na mesma escala);
+> - os plots foram movidos para `src/ml/graficos_autoencoder.py`, que **não
+>   importa `torch`** — antes, regenerar uma figura a partir de artefatos exigia
+>   a stack de ML inteira, inclusive na nuvem em modo consulta;
+> - `tests/test_graficos_autoencoder.py` (8 testes) fixa o comportamento; um
+>   deles falha se o limiar operacional voltar a influenciar um gráfico de MSE.
+>
+> As três figuras foram regeneradas em 2026-07-30 **sem dataset e sem retreino**,
+> só a partir de `diagnostico_autoencoder.npz` + `limiar.json`.
+
 Interpretação: o `injecao_falhas.py`/`validacao.py`/`rul_weibull.py` rodaram
 com o modelo e o limiar corretos (por isso os números batem), mas as três
 figuras específicas do **próprio `autoencoder.py`** ficaram de uma execução
@@ -425,6 +461,27 @@ imagens devem mudar de estilo.
 | MSE (antes) | 1,1% | **1,1%** |
 | Localizado (agora) | 1,1% | **6,8%** |
 
+> **Correção (2026-07-30).** O 6,8% acima é da rodada de **23/07**, com percentil
+> **fixo** em p99. Ele não é mais o valor vigente. Rastreando `limiar.json` pelo
+> histórico:
+>
+> | Rodada | Percentil | FP no teste isolado |
+> |---|---|---|
+> | 21/07 (`af9338e`) | p99 fixo | 1,1% |
+> | 23/07 | p99 fixo | 6,8% |
+> | **24–27/07 (vigente)** | **p99,9 automático** | **10,2%** |
+>
+> Consequência para o plano de mitigação: **"usar um percentil mais conservador"
+> já foi tentado**. A auto-calibração (`limiar_por_fp_alvo`) entrou, escolheu o
+> percentil mais alto da escada (p99,9) e o FP medido *subiu*. É opção testada e
+> insuficiente, não opção em aberto. Restam aumentar o bloco de calibração — que
+> apenas redistribui as 457 janelas, sem criar dados — e suavizar a estimativa do
+> limiar por bootstrap.
+>
+> Com 88 janelas de teste, cada falso alarme vale 1,14 ponto percentual: os 10,2%
+> são 9 alarmes. A amostra é pequena demais para o número ser preciso, o que é
+> parte do problema.
+
 O limiar do escore localizado generaliza pior da calibração (91 janelas) para
 o teste isolado (88 janelas) do que o MSE médio generalizava. Hipótese mais
 provável: o top-k de resíduos padronizados é uma estatística de cauda (ordem
@@ -444,8 +501,8 @@ localizado; (c) suavizar a estimativa do limiar com bootstrap.
 
 | # | Item | Status |
 |---|---|---|
-| Regenerar `curva_treino.png`/`distribuicao_erro.png`/`erro_temporal.png` | ✅ **feito** (rerun local, verificado por hash) |
-| Investigar/mitigar FP=6,8% no teste isolado | **Pendente** — decisão de projeto |
+| Regenerar `curva_treino.png`/`distribuicao_erro.png`/`erro_temporal.png` | ✅ **feito em 2026-07-30** — ver a correção abaixo; o "feito" anterior era falso |
+| Investigar/mitigar FP no teste isolado | **Pendente** — hoje 10,2%, não 6,8% (ver §17-A) |
 | #2 AE-LSTM fiel ao Ibrahim | ✅ **feito** (§20) |
 | #3 grounding do AE denso (texto) | Pendente |
 | #6 ReLU do encoder | Pendente |
@@ -592,6 +649,36 @@ LSTM sobre o eixo das features): o `metricas.csv` traz
 não a nova `p99_erro_seq_temporal_calibracao`. Os números (AUC AE-LSTM=0,659;
 IF=0,589) são do modelo antigo. **Ação:** `git pull` + re-rodar o experimento
 do Ibrahim para obter o AE-LSTM temporal fiel, que é a comparação válida.
+
+> **Correção (2026-07-30) — esta ação já foi executada, e depois superada.**
+>
+> 1. O rerun **ocorreu em 24/07**: o `metricas.csv` daquela data já traz
+>    `threshold_source=p99_erro_seq_temporal_calibracao` (a string nova) e
+>    **AUC AE-LSTM = 0,588**, não 0,659.
+> 2. Em 27/07 (`9fe0322`) a pasta `resultados/experimentos/` inteira foi
+>    **deletada**, quando os macro-códigos substituíram o framework por artigo.
+>
+> Portanto o **0,659 não deve ser citado em lugar nenhum** — nem como resultado
+> antigo, porque o valor correto daquele caminho já era 0,588.
+>
+> **Não confundir os dois números.** 0,588 e 0,909 medem coisas diferentes:
+>
+> | | Framework por artigo | Macro-código (vigente) |
+> |---|---|---|
+> | Injeção | espaço de features (**E1**) | sinal bruto (**E2**) |
+> | Limiar | p99 congelado | auto-calibrado, FP ≈ 1% |
+> | Teste | balanceado | por severidade |
+> | Métrica | F1, matriz de confusão | AUC, SMD@FPR=10% |
+> | AE-LSTM | 0,588 (apagado) | **0,909** (IGBT) |
+>
+> Os dois caminhos chamam o **mesmo** modelo (`src/ml/modelos_anomalia.py`), com
+> os mesmos hiperparâmetros. A diferença é inteiramente de protocolo — por isso
+> os valores não vão na mesma tabela.
+>
+> Para eliminar o risco de recriar artefatos E1 conflitantes sem perceber, o
+> framework por artigo foi **aposentado do roteador do agente** (os módulos
+> seguem no repositório, preservando o histórico). Os macro-códigos são a fonte
+> única de resultado de anomalia.
 
 ---
 
