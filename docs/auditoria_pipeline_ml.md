@@ -590,6 +590,62 @@ pesquisador calibrar no dado real (não dá para escolher o valor sem o dataset)
 real e escolher o par que traz o FP do teste para ~1–2% mantendo o recall do
 IGBT/Fusível. É o item a levar com números para a orientadora.
 
+> **Resultado NEGATIVO (2026-08-01) — três estimadores testados e rejeitados.**
+>
+> A hipótese era que o FP alto viesse da má ESTIMATIVA do limiar (o escore
+> localizado é estatística de cauda, e o percentil amostral de uma cauda com ~73
+> janelas é ruidoso). Testados por simulação, medindo a dispersão do limiar
+> entre amostras distintas da mesma população:
+>
+> | Estimador | Dispersão | Erro absoluto médio |
+> |---|---|---|
+> | Percentil empírico (atual) | 3,67 | 3,26 |
+> | Bootstrap (mediana das réplicas) | 3,61 (**−2%**) | — |
+> | Ajuste paramétrico lognormal | 2,41 (−34%) | 2,04 (−37%) |
+> | EVT / Pareto generalizada na cauda | 4,16 (**pior**) | 3,48 (**pior**) |
+>
+> **Bootstrap não serve:** ganho de ~2%, dentro do ruído. Era esperado —
+> bootstrap estima a distribuição amostral a partir de UMA amostra; não
+> acrescenta informação que a amostra não tem.
+>
+> **Ajuste paramétrico não é seguro.** O ganho de 37% acima foi obtido com a
+> população gerada como lognormal e ajustada como lognormal. Sob
+> especificação ERRADA, o erro explode:
+>
+> | População | Ganho do ajuste lognormal |
+> |---|---|
+> | Lognormal (modelo certo) | +37% |
+> | Gama | **−239%** |
+> | Mistura bimodal | **−163%** |
+> | Weibull | **−495%** |
+>
+> Como a distribuição real do escore localizado não é conhecida nem
+> verificável com 73 janelas, o risco é inaceitável.
+>
+> **Conclusão:** o percentil empírico permanece. O limite é o **tamanho da
+> amostra**, não o estimador — e nenhum estimador cria informação ausente.
+> Restam os caminhos que mexem no DADO, não na estatística: mais calibração
+> (que rouba do treino ou do teste, pois o total é fixo em 457 janelas) e `k`
+> maior, que torna o escore menos dependente da cauda. Ambos agora
+> configuráveis por env.
+>
+> **Restrição arquitetural descoberta ao tentar parametrizar o split.** A ideia
+> de expor `TRAIN/CALIB/TEST_RATIO` por variável de ambiente foi implementada e
+> **revertida**: `src/ml/pipeline.py::_parametros_do_fonte` lê essas constantes
+> por **AST, sem importar o módulo**, para registrar a proveniência num ambiente
+> sem `torch`. `float(os.getenv(...))` não é literal, e a leitura falha (4
+> testes de proveniência quebraram).
+>
+> Ensinar o leitor a entender `os.getenv` seria pior: o manifesto passaria a
+> gravar o **default** em vez do valor efetivamente usado — o oposto do que
+> proveniência serve. Para varrer o split, editar a constante e registrar a
+> rodada. É deliberado, e agora está documentado no próprio arquivo.
+>
+> O que o bootstrap **serve** para: quantificar a incerteza do limiar
+> (`incerteza_do_limiar`). No dado simulado, o IC95 tem largura de ~83% do
+> próprio limiar — o que sugere que boa parte da diferença de FP entre
+> configurações pode ser ruído, e deve ser reportada como tal.
+
 ## 23. #6 — ReLU no gargalo do encoder: por que NÃO mexer agora
 
 O encoder termina em `ReLU` no espaço latente (`autoencoder.py`), o que zera

@@ -66,6 +66,7 @@ def _log(*args, sep=" ", end="\n", flush=None):
 
 
 import json
+import os
 import pickle
 import argparse
 import numpy as np
@@ -96,6 +97,19 @@ EPOCHS         = 150    # épocas de treinamento
 BATCH_SIZE     = 32     # amostras por batch
 LR             = 1e-3   # taxa de aprendizado (Adam)
 DROPOUT        = 0.2    # regularização
+# Split temporal. MANTIDO COMO LITERAL de propósito: src/ml/pipeline.py lê
+# estas constantes por AST, SEM importar o módulo, para registrar a proveniência
+# num ambiente sem torch (ver _parametros_do_fonte). Trocar por os.getenv()
+# quebra essa leitura — e "consertar" o leitor para entender getenv seria pior,
+# porque o manifesto passaria a gravar o DEFAULT em vez do valor efetivamente
+# usado, que é exatamente o oposto do que proveniência serve.
+#
+# Para varrer o split num experimento, edite aqui e registre a rodada; não há
+# atalho por variável de ambiente, e isso é deliberado.
+#
+# RESSALVA: o total de janelas é FIXO (457 no dataset atual). Aumentar a
+# calibração não cria dados — rouba do treino (piora o modelo) ou do teste
+# (piora a confiança na medida de FP).
 TRAIN_RATIO    = 0.60   # treino do modelo
 CALIB_RATIO    = 0.20   # early stopping + calibracao do limiar
 TEST_RATIO     = 0.20   # avaliacao saudavel final, nunca usada no ajuste

@@ -45,9 +45,62 @@ _PERCENTIL_ENV = os.getenv("AL_IADO_ESCORE_PERCENTIL")
 PERCENTIL_LIMIAR = float(_PERCENTIL_ENV) if _PERCENTIL_ENV else 99.0
 AUTO_PERCENTIL = _PERCENTIL_ENV is None
 FP_ALVO = float(os.getenv("AL_IADO_ESCORE_FP_ALVO", "1.0"))  # % de FP alvo (auto)
+# Semente do bootstrap usado para MEDIR a incerteza do limiar (não para
+# alterá-lo — ver incerteza_do_limiar).
+SEED_BOOTSTRAP = int(os.getenv("AL_IADO_ESCORE_BOOTSTRAP_SEED", "42"))
 
 
-def limiar_por_fp_alvo(scores_ajuste, scores_val, fp_alvo_pct: float = 1.0,
+def incerteza_do_limiar(amostra, p: float, n_boot: int = 500,
+                        seed: int = SEED_BOOTSTRAP,
+                        confianca: float = 95.0) -> dict:
+    """Incerteza AMOSTRAL do limiar, por bootstrap — não é uma correção dele.
+
+    Devolve ``{limiar, ic_low, ic_high, n_boot, largura_relativa}``. Serve para
+    responder "quanto do FP medido é ruído de estimativa?", que é pergunta
+    legítima com 73 janelas de calibração e um quantil de cauda.
+
+    IMPORTANTE, para não se repetir o erro que motivou esta função: bootstrap
+    **não reduz** a variância do limiar entre amostras diferentes. Medido neste
+    projeto, a mediana das réplicas melhora a dispersão em ~2% — nada. É
+    esperado: o bootstrap estima a distribuição amostral a partir de UMA
+    amostra; não acrescenta informação que a amostra não tem.
+
+    Também foram testados e REJEITADOS como substitutos do percentil empírico:
+
+    - **ajuste paramétrico** (lognormal): ótimo quando a distribuição está
+      certa (erro −37%), **catastrófico quando errada** (erro até 5× maior em
+      gama, Weibull e mistura bimodal). Como a distribuição real do escore
+      localizado não é conhecida nem verificável, o risco é inaceitável;
+    - **EVT / Pareto generalizada na cauda**: pior que o empírico neste regime
+      — com 73 pontos sobram ~18 excedências acima do 75º percentil, poucas
+      para ajustar a GPD de forma estável.
+
+    O percentil empírico permanece a escolha certa: é o estimador robusto, e o
+    limite é o tamanho da amostra, não o estimador.
+    """
+    a = np.asarray(amostra, dtype=float)
+    pontual = float(np.percentile(a, p))
+    if n_boot <= 0 or len(a) < 8:
+        return {"limiar": pontual, "ic_low": float("nan"),
+                "ic_high": float("nan"), "n_boot": 0,
+                "largura_relativa": float("nan")}
+    rng = np.random.default_rng(seed)
+    replicas = np.array([
+        np.percentile(rng.choice(a, size=len(a), replace=True), p)
+        for _ in range(int(n_boot))
+    ], dtype=float)
+    margem = (100.0 - confianca) / 2.0
+    lo = float(np.percentile(replicas, margem))
+    hi = float(np.percentile(replicas, 100.0 - margem))
+    return {
+        "limiar": pontual, "ic_low": lo, "ic_high": hi, "n_boot": int(n_boot),
+        # Quanto o limiar "balança" em relação ao próprio valor. Acima de ~0,3
+        # o número não sustenta comparação fina de FP entre configurações.
+        "largura_relativa": float((hi - lo) / pontual) if pontual else float("nan"),
+    }
+
+
+def limiar_por_fp_alvo(scores_ajuste, scores_val, fp_alvo_pct: float | None = None,
                        percentis=(99.0, 99.3, 99.5, 99.7, 99.9)) -> tuple[float, float]:
     """Auto-calibra o limiar visando o FP alvo, SEM ajuste manual.
 
@@ -55,13 +108,21 @@ def limiar_por_fp_alvo(scores_ajuste, scores_val, fp_alvo_pct: float = 1.0,
     falso positivo em ``scores_val`` (bloco saudável NÃO visto) fica <=
     ``fp_alvo_pct``. Se nenhum atinge o alvo, usa o maior percentil (mais
     conservador). Assim o limiar generaliza melhor para dado saudável novo.
+
+    ``fp_alvo_pct=None`` usa ``FP_ALVO`` (env), em vez de um literal fixado no
+    chamador — era o que `macro_comum` fazia, ignorando a configuração.
+
+    O estimador é o percentil EMPÍRICO, deliberadamente. Ver
+    `incerteza_do_limiar` para o registro de por que bootstrap e ajuste
+    paramétrico foram testados e rejeitados como substitutos.
     """
+    alvo = FP_ALVO if fp_alvo_pct is None else float(fp_alvo_pct)
     a = np.asarray(scores_ajuste, dtype=float)
     v = np.asarray(scores_val, dtype=float)
     escolhido = float(percentis[-1])
     for p in percentis:
         lim = float(np.percentile(a, p))
-        if float((v > lim).mean() * 100.0) <= fp_alvo_pct:
+        if float((v > lim).mean() * 100.0) <= alvo:
             escolhido = float(p)
             break
     return float(np.percentile(a, escolhido)), escolhido

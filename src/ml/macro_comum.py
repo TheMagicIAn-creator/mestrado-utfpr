@@ -23,6 +23,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import os
+
 import numpy as np
 
 
@@ -31,6 +33,12 @@ import numpy as np
 # ============================================================
 
 PURGA = 2   # janelas descartadas na fronteira (sobreposição de 50% nas features)
+
+
+# Fração do bloco de calibração usada para AJUSTAR o limiar; o restante mede o
+# FP fora da amostra. O mesmo 80/20 existe em autoencoder.py — nomeado aqui para
+# a varredura poder variá-lo sem caçar literais.
+FRACAO_AJUSTE_LIMIAR = float(os.getenv("AL_IADO_FRACAO_AJUSTE_LIMIAR", "0.8"))
 
 
 def dividir_calibracao_avaliacao(janelas: list, frac_calib: float = 0.4,
@@ -66,8 +74,11 @@ def avaliar_deteccao(nome: str, cor: str, scorer, janelas_calib: list,
     # Limiar do bloco de CALIBRAÇÃO; auto-ajustado ao FP alvo contra a cauda do
     # próprio bloco. Nunca enxerga o bloco de avaliação.
     if len(s_cal) >= 10:
-        corte = max(1, int(len(s_cal) * 0.8))
-        limiar, percentil = ea.limiar_por_fp_alvo(s_cal[:corte], s_cal[corte:], 1.0)
+        corte = max(1, int(len(s_cal) * FRACAO_AJUSTE_LIMIAR))
+        # fp_alvo_pct=None => usa ea.FP_ALVO. Antes havia um 1.0 literal aqui,
+        # que ignorava AL_IADO_ESCORE_FP_ALVO e tornava a varredura de
+        # calibração impossível de conduzir pelo macro.
+        limiar, percentil = ea.limiar_por_fp_alvo(s_cal[:corte], s_cal[corte:])
     else:
         limiar, percentil = float(np.percentile(s_cal, 99)), 99.0
     fp = float((s_sau > limiar).mean() * 100.0)   # FP HONESTO: bloco não visto
