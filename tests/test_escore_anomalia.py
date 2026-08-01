@@ -87,3 +87,92 @@ def test_limiar_por_fp_alvo_respeita_o_alvo():
     # invariante: ou atinge o alvo, ou usa o percentil mais conservador (99.9)
     assert fp <= 1.0 or perc == 99.9
     assert 99.0 <= perc <= 99.9
+
+
+# ── incerteza do limiar, e por que NÃO tentamos "melhorar" o estimador ───────
+
+def test_limiar_continua_sendo_o_percentil_empirico():
+    """Regressão do resultado publicado: o estimador não pode ter mudado.
+
+    Bootstrap e ajuste paramétrico foram testados como substitutos e
+    rejeitados (ver docstring de `incerteza_do_limiar`). Se alguém trocar o
+    estimador, os resultados de `resultados/macro/` deixam de valer.
+    """
+    import numpy as np
+
+    from src.ml.escore_anomalia import limiar_por_fp_alvo
+
+    rng = np.random.default_rng(7)
+    a, v = rng.lognormal(0, 1, 73), rng.lognormal(0, 1, 18)
+    limiar, p = limiar_por_fp_alvo(a, v, 1.0)
+    assert limiar == float(np.percentile(a, p))
+
+
+def test_fp_alvo_vem_da_configuracao_quando_nao_informado():
+    """macro_comum passava 1.0 literal e ignorava AL_IADO_ESCORE_FP_ALVO."""
+    import numpy as np
+
+    from src.ml import escore_anomalia as ea
+
+    rng = np.random.default_rng(3)
+    a, v = rng.lognormal(0, 1, 80), rng.lognormal(0, 1, 20)
+    assert ea.limiar_por_fp_alvo(a, v) == ea.limiar_por_fp_alvo(a, v, ea.FP_ALVO)
+
+
+def test_incerteza_devolve_intervalo_que_contem_o_limiar():
+    import numpy as np
+
+    from src.ml.escore_anomalia import incerteza_do_limiar
+
+    a = np.random.default_rng(11).lognormal(0, 1, 73)
+    inc = incerteza_do_limiar(a, 99.0, n_boot=300)
+    assert inc["ic_low"] <= inc["limiar"] <= inc["ic_high"]
+    assert inc["n_boot"] == 300
+    assert inc["largura_relativa"] > 0
+
+
+def test_incerteza_e_reprodutivel_por_semente():
+    import numpy as np
+
+    from src.ml.escore_anomalia import incerteza_do_limiar
+
+    a = np.random.default_rng(11).lognormal(0, 1, 73)
+    assert (incerteza_do_limiar(a, 99.0, n_boot=200, seed=1)
+            == incerteza_do_limiar(a, 99.0, n_boot=200, seed=1))
+
+
+def test_incerteza_degrada_com_amostra_pequena():
+    """Com < 8 pontos o bootstrap daria falsa sensação de estabilidade."""
+    import numpy as np
+    from math import isnan
+
+    from src.ml.escore_anomalia import incerteza_do_limiar
+
+    inc = incerteza_do_limiar(np.array([1.0, 2.0, 3.0]), 99.0)
+    assert inc["n_boot"] == 0 and isnan(inc["ic_low"])
+
+
+def test_bootstrap_NAO_reduz_variancia_entre_amostras():
+    """Fixa o resultado NEGATIVO que motivou não usar bootstrap no limiar.
+
+    Se algum dia este teste falhar (isto é: o bootstrap passar a reduzir
+    dispersão de forma relevante), a decisão registrada deve ser reavaliada.
+    Hoje o ganho medido é ~2% — dentro do ruído.
+    """
+    import numpy as np
+
+    pop = np.random.default_rng(0).lognormal(0, 1, 50_000)
+    simples, boot = [], []
+    for s in range(25):
+        x = np.random.default_rng(100 + s).choice(pop, 73, replace=False)
+        simples.append(float(np.percentile(x, 99.0)))
+        r = np.random.default_rng(42)
+        boot.append(float(np.median([
+            np.percentile(r.choice(x, len(x), replace=True), 99.0)
+            for _ in range(100)
+        ])))
+    ganho = 1.0 - float(np.std(boot)) / float(np.std(simples))
+    assert ganho < 0.15, (
+        f"bootstrap passou a reduzir dispersão em {ganho:.0%} — reavaliar a "
+        "decisão de manter o percentil empírico"
+    )
