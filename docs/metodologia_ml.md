@@ -17,7 +17,75 @@ combinado é conceitual/arquitetural — não fusão de dados.
 
 Pipeline principal: `features_ca → autoencoder → injecao_falhas → validacao → rul_weibull`.
 
-## 2. Limiar do Autoencoder
+## 2. Arquitetura do Autoencoder — o que é citável e o que é escolha nossa
+
+Separar as duas coisas é o que sustenta o capítulo diante da banca.
+
+**Fundamentado em Ibrahim et al. (2022).** A modelagem de normalidade por
+Autoencoder e o uso do **erro de reconstrução como escore de anomalia** seguem o
+artigo (§3.1, eq. 1–3). A pergunta "por que Autoencoder?" tem resposta citável.
+
+**Escolha deliberada nossa: AE denso sobre features, não AE-LSTM temporal.**
+Ibrahim usa AE-LSTM sobre o sinal; aqui se usa um Autoencoder **denso sobre
+features espectrais** derivadas da FMECA (RMS, THD, harmônicos 5/7/11/13,
+desbalanceamento). Três razões, nesta ordem de peso:
+
+1. **A recorrência é redundante para o alvo.** A dinâmica intra-janela relevante
+   às falhas CA já está condensada nas features espectrais de cada janela de
+   ~102 ms. A LSTM reaprenderia, no eixo do tempo, o que a FFT já resolveu.
+2. **Features nomeadas habilitam o escore localizado.** O escore é a média dos
+   top-k resíduos padronizados **por feature**, o que permite atribuir o desvio a
+   "harmônico 5 da fase A" e ligá-lo ao modo de falha da FMECA. Um AE-LSTM sobre
+   sinal bruto perderia essa rastreabilidade — e é ela que conecta a detecção à
+   RCM, que é o eixo da dissertação.
+3. **A escolha é validada empiricamente, não por conveniência.** O AE-LSTM fiel
+   ao artigo é mantido como **concorrente** na comparação (`resultados/macro/`),
+   sob o mesmo protocolo E2. A vantagem do método proposto no IGBT — e o
+   **empate** no Fusível AC, cuja assinatura é de banda larga — é exatamente o
+   que a escolha do escore prevê.
+
+### Como os hiperparâmetros foram escolhidos
+
+Profundidade fixada a priori; largura varrida. O precedente é o do próprio
+artigo-base: Ibrahim (2022), §5.2, fixa a profundidade por simplificação
+(*"the number of hidden layers was chosen to be four layers"*) e **otimiza
+apenas o número de neurônios por camada** (Tabela 2). O mesmo protocolo aqui:
+topologia 109→64→32→16 com profundidade fixa, e o espaço latente varrido em
+{8, 16, 32} pela loss de calibração.
+
+> **Estado:** a varredura ainda **não foi executada** — exige rerun local com o
+> dataset bruto. Até que seja, os valores vigentes (latente=16, épocas=150,
+> lr=1e-3, dropout=0,2) devem ser apresentados como **defaults**, não como
+> resultado de busca. Escrever o contrário seria afirmar evidência inexistente.
+
+### Lacuna declarada
+
+O acervo indexado **não contém nenhum artigo de Autoencoder denso sobre features
+handcrafted com topologia reportada** — verificado por varredura em
+`literatura/` e `notas/Literatura/`. Ibrahim ancora o *método* de escolher
+hiperparâmetros, não as dimensões em si.
+
+Por isso a fundamentação acima é redigida como **escolha justificada**, não como
+"segue a referência X". Buscar uma âncora direta (família provável: AE denso
+sobre features de vibração/corrente em máquinas rotativas) está registrado em
+`notas/Cerebro/Literatura a revisar.md` como melhoria futura de redação — não
+como bloqueio.
+
+### Pendência conhecida: ReLU no gargalo
+
+O encoder termina em `ReLU` no espaço latente (`src/ml/autoencoder.py:140-141`),
+o que zera componentes negativas e reduz a capacidade efetiva de representação.
+Há uma inconsistência interna que reforça o ponto: a **saída do decoder é
+linear**, com comentário justificando a escolha (`autoencoder.py:150-151`); o
+gargalo não recebeu o mesmo tratamento.
+
+**Decisão: não alterar isoladamente.** Trocar a ativação invalida os mesmos
+números que a varredura de hiperparâmetros invalidaria, e o checkpoint não
+versiona essa escolha (risco de `state_dict` incompatível ao recarregar o modelo
+nas etapas seguintes). As duas mudanças **rodam juntas**, numa única rodada de
+revalidação. Ver `docs/auditoria_pipeline_ml.md`, §23.
+
+## 3. Limiar do Autoencoder
 
 - **Limiar operacional = percentil 99** do erro de reconstrução saudável no
   bloco temporal de **calibração**
@@ -27,7 +95,7 @@ Pipeline principal: `features_ca → autoencoder → injecao_falhas → validaca
 - **p95 = referência adicional.**
 - O artefato `limiar.json` registra `threshold_method = "p99"` + os três valores.
 
-## 3. Validação sintética interna E2 (limiar congelado)
+## 4. Validação sintética interna E2 (limiar congelado)
 
 `src/ml/validacao.py` carrega o limiar de `limiar.json` (**congelado**) e calcula
 as métricas nesse limiar fixo — **não** otimiza o limiar no conjunto de teste.
@@ -42,14 +110,14 @@ Benchmarks exploratórios (ex.: `experimentos_artigos.py`) que escolhem o limiar
 no próprio conjunto avaliado são rotulados `threshold_source =
 exploratorio_no_conjunto_avaliado` → **E1**, não estimativa de generalização.
 
-## 4. Divisão temporal com purga (anti-vazamento)
+## 5. Divisão temporal com purga (anti-vazamento)
 
 Janelas com 50% de sobreposição **não** podem ser divididas aleatoriamente
 (janelas vizinhas quase idênticas vazariam entre treino/val/teste).
 `src/ml/split_temporal.py::split_temporal_com_purga` faz blocos contíguos no
 tempo com zona de **purga** na fronteira.
 
-## 5. Níveis de evidência (E0–E3)
+## 6. Níveis de evidência (E0–E3)
 
 | Nível | Significado |
 |---|---|
@@ -61,7 +129,7 @@ tempo com zona de **purga** na fronteira.
 O agente **sempre** informa o nível e **nunca** trata E1/E2 como prova de
 desempenho industrial.
 
-## 6. Falhas sintéticas (schema + calibração)
+## 7. Falhas sintéticas (schema + calibração)
 
 Cada falha injetada (`FALHAS` em `injecao_falhas.py`) declara: `evidence_level`
 (E2), `hipotese_fisica`, `sinais`, `formula`, `severity_definition`, `source` e
@@ -74,7 +142,7 @@ e a **SMD₉₅** (menor severidade cuja taxa pontual é ≥ 95%). O campo
 `smd_95_conservadora` exige também limite inferior do IC ≥ 95%; quando n é
 insuficiente, permanece nulo em vez de transmitir certeza artificial.
 
-## 7. Weibull e RUL sintéticos
+## 8. Weibull e RUL sintéticos
 
 - Uma trajetória mantém a **mesma janela-base** enquanto a severidade cresce;
   não mistura ativos/regimes operacionais a cada passo. Realizações estocásticas
@@ -93,14 +161,14 @@ insuficiente, permanece nulo em vez de transmitir certeza artificial.
 - MTTF, B10 e ambas as formas de RUL estão em **passos sintéticos E2**. Mesmo com ajuste
   convergente, não equivalem a horas, ciclos ou vida física de campo.
 
-## 8. Métricas
+## 9. Métricas
 
 Schema único (`_metricas_classificacao`): accuracy, **balanced_accuracy**,
 precision, recall, f1, **MCC**, AUC, **specificity** (= TN/(TN+FP) no binário) +
 **specificity_macro_ovr** (média one-vs-rest) + `specificity_tipo`,
 **FPR/FNR** (binário), matriz de confusão.
 
-## 9. Proveniência e reprodutibilidade
+## 10. Proveniência e reprodutibilidade
 
 - **Manifesto por etapa** (`proveniencia.py`): `code_sha256`, `parameters`,
   hash dos artefatos upstream, outputs, `git_commit`. Estados **ready / stale /
@@ -112,7 +180,7 @@ precision, recall, f1, **MCC**, AUC, **specificity** (= TN/(TN+FP) no binário) 
 - **Datasets** validados por `scripts/verificar_datasets.py` (SHA-256, linhas);
   dados brutos não são versionados.
 
-## 10. Protocolos de avaliação POR ARTIGO (anti "erro de simulação")
+## 11. Protocolos de avaliação POR ARTIGO (anti "erro de simulação")
 
 Antes, todos os experimentos de anomalia compartilhavam um harness único:
 split **aleatório** de janelas sobrepostas (vazamento temporal) e limiar

@@ -46,6 +46,28 @@ não de leitura. Cada uma está marcada com `revisar: true` no frontmatter
 | [[gonzalez_0136095577-pdf_2007]] | abstract-editorial | Rafael C. Gonzalez | 2007 |
 | [[smith_the-scientist-and-engineer-s-guide-to-digital-signal-process_1999]] | titulo-suspeito | Smith, Steven W | 1999 |
 
+## Busca aberta — âncora para a arquitetura do AE denso
+
+**O que falta:** o acervo não tem **nenhum** artigo de Autoencoder **denso sobre
+features handcrafted** com a topologia reportada. Verificado por varredura em
+`literatura/` e `notas/Literatura/`.
+
+O que o acervo cobre hoje: AE-LSTM temporal (Ibrahim 2022), AE híbrido com
+Isolation Forest (Ahirwar 2025), AE como extrator de indicador de saúde em
+review (Marangis 2025), features + XAI sem AE (Narayanan 2023). Francisti (2025)
+**não usa** autoencoder, apesar de a ficha automática sugerir que sim.
+
+**Por que não bloqueia:** Ibrahim (2022) §5.2 e Tabela 2 ancoram o *método* de
+escolher hiperparâmetros — profundidade fixa a priori, largura varrida — e é
+esse o protocolo adotado. A fundamentação está redigida em
+`docs/metodologia_ml.md`, §2, como **escolha justificada**, não como "segue a
+referência X".
+
+**Onde procurar, se for buscar:** AE denso sobre features de vibração ou
+corrente em **máquinas rotativas** — a literatura de rolamentos (Case Western
+Reserve, Paderborn bearing) costuma reportar topologia. Melhoria de redação,
+não pré-requisito.
+
 ## Regra
 
 Ficha de `Literatura/` **nunca** é citação — cite sempre o PDF em `literatura/`.
