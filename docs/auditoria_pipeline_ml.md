@@ -602,6 +602,28 @@ Recomendação: fazer junto da **varredura de hiperparâmetros (#3)**, numa roda
 deliberada de re-treino, não isoladamente. Fica registrado como melhoria
 pendente consciente, não esquecida.
 
+> **Amarração explícita (2026-08-01).** As duas mudanças — trocar a ativação do
+> gargalo e varrer `latente ∈ {8,16,32}` — **invalidam exatamente os mesmos
+> números**: limiar, validação E2, SMD, TTF do Weibull e a comparação com o
+> Ibrahim. Rodá-las em momentos separados custaria **duas** revalidações
+> completas do pipeline e produziria uma janela em que os artefatos publicados
+> correspondem a uma arquitetura que já não é a do código.
+>
+> Portanto elas formam **uma única tarefa**, não duas pendências independentes.
+> O critério de conclusão do item #6 (ReLU) é o mesmo do #3 (hiperparâmetros):
+> uma rodada de re-treino que produza, de uma vez, o modelo com gargalo linear e
+> o latente escolhido por evidência.
+>
+> **Argumento adicional a favor da troca**, que não estava registrado: a saída do
+> decoder **já é linear**, com comentário justificando a escolha em
+> `autoencoder.py:150-151` ("Saída linear — sem ativação, features
+> normalizadas"). O mesmo raciocínio se aplica ao gargalo, que também produz um
+> vetor de valores normalizados sem sinal definido — ele só não recebeu o mesmo
+> tratamento. É inconsistência interna, não decisão deliberada.
+>
+> Enquanto a rodada não acontece, `docs/metodologia_ml.md` §2 apresenta os
+> hiperparâmetros como **defaults**, não como resultado de busca.
+
 ## 24. Revisão de código das mudanças da sessão (/code-review)
 
 Revisão de correção dos módulos alterados/criados nesta sessão

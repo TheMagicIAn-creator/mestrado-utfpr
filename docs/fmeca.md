@@ -95,3 +95,18 @@ Um componente pode ter D baixo (fácil de detectar em campo) e, ainda assim, o
 Autoencoder ter dificuldade com sua assinatura no sinal — ou vice-versa. Essa
 relação (o detector proposto melhora, iguala ou fica aquém do D de campo?) é
 um resultado a discutir na dissertação, não uma inconsistência.
+
+> **Tensão em aberto com `docs/retroalimentacao_fmeca.md`.** Aquele documento
+> propõe **substituir** o D julgado pelo D medido e recalcular o NPR. O
+> parágrafo acima trata as duas grandezas como **distintas**. As duas posições
+> não são compatíveis, e a escolha **não** foi feita — é decisão da orientadora.
+>
+> Enquanto não houver decisão, **vale este documento**: os S/O/D da tabela acima
+> seguem como estipulados pelo pesquisador, e nenhum NPR é recalculado a partir
+> de resultado do detector. Nenhuma linha de código implementa a conversão.
+>
+> A folha de decisão para a reunião — com as opções, a régua proposta e o efeito
+> aritmético de cada faixa sobre o NPR — está em
+> `docs/decisao_retroalimentacao_fmeca.md`. Ela mostra que **28 das 64**
+> combinações de faixa invertem a ordem de criticidade atual, o que afetaria a
+> prioridade de injeção de falhas da dissertação.

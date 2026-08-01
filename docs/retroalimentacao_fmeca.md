@@ -5,11 +5,26 @@ Status: **PROPOSTA (E0)** — elo metodológico entre o FMECA estático do TCC
 este documento existe para que a ponte TCC → dissertação seja explícita e
 defensável perante a banca.
 
+> **Pré-condição não satisfeita.** Esta proposta assume que detectabilidade em
+> **sinal elétrico** e detectabilidade **em campo/manutenção** são a mesma
+> grandeza. `docs/fmeca.md` (seção "Ressalva metodológica") afirma o contrário:
+> que são conceitos **distintos**, e que a relação entre eles é um resultado a
+> discutir — não uma substituição.
+>
+> **As duas posições não são compatíveis**, e a escolha é da orientadora. Até
+> que ela ocorra, prevalece `docs/fmeca.md`: nada aqui é implementado, e nenhum
+> NPR é recalculado.
+>
+> Para a reunião: `docs/decisao_retroalimentacao_fmeca.md` traz as opções, a
+> régua e — o ponto que a banca vai cobrar — o fato de que **28 das 64**
+> combinações de faixa invertem a ordem de criticidade, que é o critério de
+> prioridade de injeção da dissertação.
+
 ## A ideia em uma frase
 
 O TCC atribuiu notas de Detecção (D) por julgamento de literatura; a
 dissertação MEDE a capacidade de detecção do monitoramento proposto — logo, os
-resultados do detector podem substituir o D julgado por um D medido,
+resultados do detector **poderiam** substituir o D julgado por um D medido,
 recalculando o NPR e fechando o ciclo do RCM.
 
 ## Mapeamento proposto
