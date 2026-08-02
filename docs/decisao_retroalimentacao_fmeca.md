@@ -90,6 +90,66 @@ pura sobre a régua — não diz em que faixa cada componente cai.
 
 ---
 
+## Nossa recomendação
+
+Levamos uma proposta, não só um leque. Duas partes.
+
+### Parte 1 — emendar a régua: `D_novo = min(D_original, D_medido)`
+
+A régua como está tem um **defeito**: faz o NPR **subir** em **56 das 64**
+combinações. Um componente que o detector trata bem ficaria classificado como
+*mais* crítico do que antes — o oposto do que retroalimentação deveria produzir.
+
+A emenda vem da lógica da situação, não dos resultados: **o monitoramento
+proposto é adicional ao que já existe em campo.** Acrescentar um detector não
+torna nenhuma falha mais difícil de detectar. Portanto D só pode melhorar
+(diminuir) ou ficar igual — nunca piorar.
+
+Efeito da emenda:
+
+| Régua | NPR sobe | Ordem de criticidade inverte |
+|---|---:|---:|
+| Substituir D (como proposto) | **56/64** | 28/64 |
+| `min(D_original, D_medido)` | **0/64** | **12/64** |
+
+O caso `SMD nula → manter D original` já é um caso particular do `min`, então a
+emenda **simplifica** a régua em vez de acrescentar exceção.
+
+### Parte 2 — adotar a opção C (cenário paralelo)
+
+A FMECA original permanece **oficial**; o NPR recalculado entra como **análise
+de sensibilidade**, rotulada "NPR projetado sob validação sintética (E2)".
+
+Por quê, e não a substituição direta:
+
+- **Não exige assumir o que `fmeca.md` nega.** A substituição direta pressupõe
+  que detectabilidade em sinal e em campo são a mesma grandeza. Como cenário
+  paralelo, a pergunta vira "o que aconteceria com a criticidade *se* o
+  monitoramento proposto estivesse instalado?" — que é respondível sem igualar
+  as duas grandezas.
+- **Preserva a narrativa metodológica.** A prioridade de injeção segue o NPR
+  original; nada do que já foi produzido precisa ser rejustificado.
+- **Fecha o ciclo do RCM mesmo assim** — que é a contribuição que liga o TCC à
+  dissertação.
+- **É prática padrão** apresentar recálculo sob evidência mais fraca como
+  análise de sensibilidade, não como substituição do valor de referência.
+
+O custo é ter duas tabelas. Numa dissertação, isso é uma tabela a mais, não um
+problema.
+
+### O que ainda precisa da orientadora
+
+Mesmo com a recomendação, três pontos são dela:
+
+1. **Aceitar ou recusar a emenda `min`** — é decisão metodológica, não técnica.
+2. **Congelar a régua agora**, antes de qualquer número ser olhado. Se a
+   decisão vier depois dos resultados, o argumento fica circular e a banca
+   desmonta.
+3. **Decidir o que fazer com a ressalva de `fmeca.md`** — mantê-la como está
+   (as grandezas são distintas, e o cenário paralelo não as iguala) ou revisá-la.
+
+---
+
 ## Opções
 
 **A. Substituir D pelo medido.** Fecha o ciclo do RCM de forma explícita e é o
