@@ -200,7 +200,7 @@ def _plotar(saida: dict, FALHAS, pasta) -> None:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from src.ml.estilo_graficos import (
-        COR_ALERTA, TAM, aplicar_estilo, salvar_figura,
+        COR_ALERTA, COR_METODO, COR_NEUTRA, TAM, aplicar_estilo, salvar_figura,
     )
 
     aplicar_estilo()
@@ -213,8 +213,17 @@ def _plotar(saida: dict, FALHAS, pasta) -> None:
         por = info["por_sev"]
         y_mse = [por[str(s)]["taxa_mse"] * 100 for s in sevs]
         y_loc = [por[str(s)]["taxa_localizado"] * 100 for s in sevs]
-        ax.plot(sevs, y_mse, "o-", color="#898781", label="MSE médio (atual)")
-        ax.plot(sevs, y_loc, "s-", color=falha["cor"], label="Localizado (top-k)")
+        # A cor codifica o MÉTODO, não a falha — a falha já está no título do
+        # painel. Antes, a linha do escore localizado usava `falha["cor"]`
+        # (azul, verde, amarelo), enquanto a legenda — desenhada só no primeiro
+        # painel — anunciava "Localizado (top-k)" em azul. Nos painéis do IGBT
+        # e do Fusível a legenda ficava simplesmente errada.
+        #
+        # Convenção de src/ml/estilo_graficos.py: COR_METODO para o método
+        # proposto, COR_NEUTRA para o baseline; "a cor segue a entidade, nunca
+        # o rank". É a mesma leitura dos gráficos de comparação com o Ibrahim.
+        ax.plot(sevs, y_mse, "o-", color=COR_NEUTRA, label="MSE médio (atual)")
+        ax.plot(sevs, y_loc, "s-", color=COR_METODO, label="Localizado (top-k)")
         ax.axhline(saida["alvo_smd"] * 100, color=COR_ALERTA, linestyle="--",
                    linewidth=1.5, label=f"Alvo SMD {saida['alvo_smd']*100:.0f}%")
         ax.set_title(f"{falha['nome']} (NPR={falha['npr']})", fontsize=10)
