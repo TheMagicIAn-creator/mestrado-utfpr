@@ -12,6 +12,22 @@ onde `torch` não existe. Estas funções precisam apenas de numpy e matplotlib.
 Todas plotam **MSE**, não o escore localizado. A comparação MSE × localizado
 vive em `src/ml/diagnostico_escore.py`.
 
+⚠️ EDITOU UM PLOT AQUI? REGENERE AS FIGURAS.
+============================================
+O manifesto de proveniência da etapa `autoencoder` hasheia **um** arquivo
+(`src/ml/pipeline.py::_code_path`), e esse arquivo é `autoencoder.py`. Como os
+plots saíram de lá, editar uma função deste módulo **não** marca a etapa como
+`stale` — os PNGs em `resultados/autoencoder/` ficariam de código antigo sem
+aviso.
+
+Optou-se por NÃO estender o hash a múltiplos arquivos: isso marcaria a etapa
+como stale hoje e pediria um retreino, arriscando os números por um problema
+cosmético (os PNGs são renderização; nenhum resultado depende deles).
+
+O conserto é barato e não precisa de dataset nem de torch:
+
+    python -c "from src.ml.graficos_autoencoder import regenerar_graficos_autoencoder as r; r()"
+
 Autor: Rodolfo Torres (UTFPR)
 """
 

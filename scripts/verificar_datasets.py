@@ -32,9 +32,16 @@ MANIFESTO = Path(RAIZ_PROJETO) / "dados" / "dataset_manifest.json"
 # Para o Paderborn o piso vem dos parâmetros reais de features_ca (JANELA e
 # SOBREPOSICAO): abaixo de uma janela completa não se extrai nada.
 try:
-    from src.ml.features_ca import JANELA as _JANELA
+    from src.ml.features_ca import JANELA as _JANELA, SOBREPOSICAO as _PASSO
 except Exception:  # noqa: BLE001 - o diagnóstico não pode depender do pipeline
-    _JANELA = 1024
+    _JANELA, _PASSO = 1024, 512
+
+# Uma janela só passa no piso e quebra adiante: o holdout precisa de DEZENAS de
+# janelas não sobrepostas para o split temporal, a calibração e o Weibull. Um
+# piso de 50 janelas (~26 mil linhas) separa "prévia do Kaggle" de "dataset
+# utilizável" sem exigir o tamanho exato do arquivo de referência.
+_MIN_JANELAS_UTEIS = 50
+_MIN_LINHAS_PADERBORN = (_MIN_JANELAS_UTEIS - 1) * _PASSO + _JANELA
 
 DATASETS = [
     {
@@ -53,7 +60,7 @@ DATASETS = [
         "nome": "Paderborn", "arquivo": "Inverter_Data_Set.csv",
         "sep": ",", "rotulo": None, "dominio": "CA",
         "uso": "modelagem de normalidade (inversor saudável)",
-        "min_linhas": _JANELA,
+        "min_linhas": _MIN_LINHAS_PADERBORN,
     },
 ]
 

@@ -1,9 +1,24 @@
 """
 varrer_calibracao.py — Al IAdo PV
 
-Varre `k` (top-k do escore localizado) × `percentil` (limiar) e reporta, para
-cada par: falso positivo no bloco saudável, **o intervalo de confiança do
-limiar**, e a detecção por falha da FMECA.
+Varre `k` (top-k do escore localizado) e reporta a detecção de cada falha da
+FMECA num **ponto de operação FIXO** (FPR = 10%), lido da própria ROC.
+
+POR QUE SÓ `k`, E NÃO `k × percentil`
+=====================================
+A primeira versão varria os dois e ranqueava pela detecção no limiar DE CADA
+configuração. Isso é degenerado: baixar o percentil baixa o limiar, o que
+sempre aumenta a detecção. Com a coluna de FP removida (ela não é mensurável
+com 44 janelas), o topo da tabela era **sempre** o percentil mais permissivo —
+a varredura só sabia recomendar mais falso positivo.
+
+O percentil não é propriedade do detector: ele escolhe ONDE sentar na curva
+ROC. Quem muda a curva é o `k`, porque muda o escore. Comparar detectores exige
+o MESMO ponto de operação — é o que `macro_comum.avaliar_deteccao` já faz com
+`corte_fpr = quantile(s_sau, 0.90)`, e é o que se usa aqui.
+
+Resultado: a varredura decide `k` (o que ela pode decidir) e não opina sobre o
+percentil (o que ela não pode).
 
 POR QUE ESTE SCRIPT EXISTE
 ==========================
@@ -12,27 +27,17 @@ para ~1–2% mantendo o recall". A recomendação estava no documento havia
 semanas, e **o script nunca existiu** — o bloqueio nunca foi o dataset nem o
 torch, era não haver código.
 
-POR QUE O IC DO LIMIAR APARECE EM TODA LINHA
-============================================
-Medido em `src/ml/escore_anomalia.incerteza_do_limiar`: com ~73 janelas de
-calibração, o IC95 do limiar tem largura da ordem do próprio limiar. Isso
-significa que **duas configurações podem diferir em FP por puro ruído de
-estimativa**. Escolher o "melhor par" olhando só o FP pontual é escolher ruído.
-
-A coluna `ic_rel` é o guarda-costas dessa leitura: acima de ~0,3, diferenças
-finas de FP entre linhas não sustentam conclusão.
-
 O QUE ESTE SCRIPT **NÃO** FAZ
 =============================
 Não troca o estimador do limiar. Bootstrap, ajuste paramétrico e EVT foram
 testados e rejeitados (ver docstring de `incerteza_do_limiar` e
 docs/auditoria_pipeline_ml.md §22): o limite é o TAMANHO DA AMOSTRA, não o
-estimador. Este script varre o que de fato dá para mexer — `k` e o percentil.
+estimador. Este script varre o que de fato muda o detector: o `k`.
 
 Uso (na máquina com o dataset e o modelo treinado):
 
     python scripts/varrer_calibracao.py
-    python scripts/varrer_calibracao.py --k 5 10 15 --percentil 99 99.5 99.9
+    python scripts/varrer_calibracao.py --k 3 5 8 10
 
 Saída: tabela no terminal + `resultados/autoencoder/varredura_calibracao.csv`
 e `.json`. Não sobrescreve nenhum artefato do pipeline.
@@ -59,14 +64,13 @@ configurar_saida_utf8()
 from src.ml.escore_anomalia import (  # noqa: E402
     ajustar_estatistica_residuo,
     escore_localizado,
-    incerteza_do_limiar,
 )
 from src.ml.estatistica import intervalo_wilson  # noqa: E402
 
 K_PADRAO = (5, 10, 15)
-PERCENTIL_PADRAO = (99.0, 99.5, 99.9)
-# Acima disto, o limiar "balança" demais para sustentar comparação fina de FP.
-IC_REL_SUSPEITO = 0.30
+# FPR do ponto de operação. MESMO valor de macro_comum.avaliar_deteccao, para a
+# varredura e a comparação com a literatura falarem a mesma língua.
+FPR_OPERACAO = 0.10
 
 
 def _carregar_contexto():
@@ -128,60 +132,59 @@ def _carregar_contexto():
     }
 
 
-def _residuos_da_falha(ctx, fn, sev):
-    """Resíduos das janelas com a falha injetada na severidade `sev`."""
-    return np.vstack([
-        ctx["_residuo"](fn(j.copy(), sev), ctx["modelo"], ctx["scaler"],
-                        ctx["device"], ctx["colunas"])
-        for j in ctx["janelas"]
-    ])
+def _residuos_da_falha(ctx, fn, sev, fid):
+    """Resíduos das janelas com a falha injetada na severidade `sev`.
+
+    O Contator AC é ruído gaussiano: sem semente POR JANELA, todas recebem a
+    mesma realização e a falha de maior NPR (315) acaba medida numa única
+    amostra de ruído. `macro_comum.py:97` já passa `seed=20_000 + i`; aqui
+    faltava — as janelas eram idênticas entre si.
+    """
+    saida = []
+    for i, j in enumerate(ctx["janelas"]):
+        alvo = (fn(j.copy(), sev, seed=20_000 + i) if fid == "contator_ac"
+                else fn(j.copy(), sev))
+        saida.append(ctx["_residuo"](alvo, ctx["modelo"], ctx["scaler"],
+                                     ctx["device"], ctx["colunas"]))
+    return np.vstack(saida)
 
 
-def varrer(ks=K_PADRAO, percentis=PERCENTIL_PADRAO) -> list[dict]:
+def varrer(ks=K_PADRAO) -> list[dict]:
     ctx = _carregar_contexto()
     if ctx is None:
         return []
 
-    # Resíduos das falhas são caros e NÃO dependem de k nem do percentil —
-    # calculados uma vez só, fora da varredura.
-    print("  ⏳ Injetando falhas (uma vez; independe de k e do percentil)...")
-    residuos_falha = {}
-    for falha in ctx["FALHAS"]:
-        fid = falha["id"]
-        fn = ctx["FUNCOES_FALHA"][fid]
-        for sev in ctx["SEVERIDADES"]:
-            residuos_falha[(fid, float(sev))] = _residuos_da_falha(ctx, fn, sev)
-    print(f"  ✅ {len(residuos_falha)} combinações falha × severidade")
+    # Só a severidade MÁXIMA é usada. A versão anterior calculava as 7
+    # severidades (21 matrizes, ~2100 extrações de feature) e descartava 18.
+    sev_max = float(max(ctx["SEVERIDADES"]))
+    print(f"  ⏳ Injetando falhas em severidade {sev_max} (não dependem de k)...")
+    residuos_falha = {
+        falha["id"]: _residuos_da_falha(ctx, ctx["FUNCOES_FALHA"][falha["id"]],
+                                        sev_max, falha["id"])
+        for falha in ctx["FALHAS"]
+    }
+    print(f"  ✅ {len(residuos_falha)} falhas")
+
+    # A régua μ/σ não depende de k — calculada uma vez.
+    stats = ajustar_estatistica_residuo(ctx["residuos_sau"])
 
     linhas = []
     for k in ks:
-        stats = ajustar_estatistica_residuo(ctx["residuos_sau"])
         s_sau = escore_localizado(ctx["residuos_sau"], stats, k=k)
-        for p in percentis:
-            inc = incerteza_do_limiar(s_sau, p)
-            limiar = inc["limiar"]
-            n_fp = int((s_sau > limiar).sum())
-            lo, hi = intervalo_wilson(n_fp, len(s_sau))
-            linha = {
-                "k": int(k), "percentil": float(p), "limiar": limiar,
-                # FP IN-SAMPLE: o limiar é o percentil DESTE mesmo conjunto.
-                # Serve para pôr todas as configurações no MESMO ponto de
-                # operação nominal — que é o que torna a comparação de detecção
-                # justa —, mas NÃO é estimativa de generalização.
-                "fp_pct": float(n_fp / len(s_sau) * 100.0),
-                "fp_ic_low": float(lo * 100.0), "fp_ic_high": float(hi * 100.0),
-                "n_saudavel": int(len(s_sau)),
-                "ic_low": inc["ic_low"], "ic_high": inc["ic_high"],
-                "ic_rel": inc["largura_relativa"],
-            }
-            for falha in ctx["FALHAS"]:
-                fid = falha["id"]
-                # Detecção na severidade MÁXIMA — o teto do que a configuração
-                # alcança. A SMD por severidade fica com os macro-códigos.
-                r = residuos_falha[(fid, float(max(ctx["SEVERIDADES"])))]
-                s = escore_localizado(r, stats, k=k)
-                linha[f"rec_{fid}"] = float((s > limiar).mean() * 100.0)
-            linhas.append(linha)
+        # Ponto de operação FIXO, lido da ROC do próprio k. É o que torna a
+        # comparação entre valores de k justa — e o que impede o ranking de
+        # degenerar para "quem tem o limiar mais baixo vence".
+        corte = float(np.quantile(s_sau, 1.0 - FPR_OPERACAO))
+        linha = {"k": int(k), "corte_fpr": corte, "fpr_alvo": FPR_OPERACAO,
+                 "n_saudavel": int(len(s_sau))}
+        for falha in ctx["FALHAS"]:
+            fid = falha["id"]
+            s = escore_localizado(residuos_falha[fid], stats, k=k)
+            det = s > corte
+            lo, hi = intervalo_wilson(int(det.sum()), len(det))
+            linha[f"rec_{fid}"] = float(det.mean() * 100.0)
+            linha[f"ic_{fid}"] = (float(lo * 100.0), float(hi * 100.0))
+        linhas.append(linha)
     return linhas
 
 
@@ -190,44 +193,38 @@ def _imprimir(linhas: list[dict]) -> None:
         return
     fids = [c[4:] for c in linhas[0] if c.startswith("rec_")]
     n = linhas[0]["n_saudavel"]
-    resolucao = 100.0 / n   # menor FP não-nulo mensurável
+    fpr = linhas[0]["fpr_alvo"]
 
-    cab = (f"{'k':>3} {'perc':>6} {'limiar':>9} {'ic_rel':>7}  "
-           + " ".join(f"{f[:10]:>11}" for f in fids))
-    print("\n" + cab)
-    print("-" * len(cab))
-    # Ordena pela PIOR detecção — é o que a varredura consegue discriminar.
+    cab = f"{'k':>3}  " + "  ".join(f"{f[:12]:>22}" for f in fids)
+    print(f"\n  Detecção em severidade máxima, FPR fixo em {fpr:.0%} "
+          f"(IC95 de Wilson, n={n})\n")
+    print("  " + cab)
+    print("  " + "-" * len(cab))
     for ln in sorted(linhas, key=lambda x: -min(x[f"rec_{f}"] for f in fids)):
-        alerta = " ⚠️" if ln["ic_rel"] > IC_REL_SUSPEITO else "  "
-        print(f"{ln['k']:>3} {ln['percentil']:>6.1f} {ln['limiar']:>9.4f} "
-              f"{ln['ic_rel']:>7.2f}{alerta}"
-              + " ".join(f"{ln[f'rec_{f}']:>10.1f}%" for f in fids))
+        celulas = []
+        for f in fids:
+            lo, hi = ln[f"ic_{f}"]
+            celulas.append(f"{ln[f'rec_{f}']:>5.1f}% [{lo:>4.0f}–{hi:>3.0f}]")
+        print(f"  {ln['k']:>3}  " + "  ".join(f"{c:>22}" for c in celulas))
 
     print("\n  Ordenado pela PIOR detecção entre as falhas (maior é melhor).")
-    print(f"  ⚠️ = IC do limiar acima de {IC_REL_SUSPEITO:.0%} do próprio valor.")
-
-    print(f"\n  A coluna FP foi RETIRADA da tabela de propósito.")
-    print(f"  Com {n} janelas saudáveis, o menor FP não-nulo mensurável é "
-          f"{resolucao:.2f}% — a resolução é grosseira demais para distinguir")
-    print("  1% de 2%. Além disso, o limiar é o percentil DESTE mesmo conjunto,")
-    print("  então o FP aqui é IN-SAMPLE: ele vale ~(100−percentil)% por")
-    print("  construção, para qualquer configuração. Está no CSV, com o")
-    print("  intervalo de Wilson ao lado, para auditoria — não para decisão.")
-    print("\n  O que a varredura DECIDE, e decide bem: qual k e qual percentil")
-    print("  entregam mais detecção com todas as configurações no MESMO ponto")
-    print("  de operação nominal. Para FP de generalização, o número honesto é")
-    print("  o do bloco de teste isolado do pipeline (resultados/.../limiar.json).")
+    print("  O ponto de operação é o MESMO para todo k — lido da ROC de cada")
+    print("  um. Sem isso o ranking degenera: limiar menor sempre detecta mais.")
+    print("\n  O PERCENTIL não é varrido, e não é omissão: ele escolhe onde")
+    print("  sentar na ROC, não muda a curva. Quem muda a curva é o k. O")
+    print("  percentil operacional é decidido pelo pipeline, com o alvo de")
+    print("  falso positivo verificado em bloco não visto.")
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[2])
-    ap.add_argument("--k", type=int, nargs="+", default=list(K_PADRAO))
-    ap.add_argument("--percentil", type=float, nargs="+",
-                    default=list(PERCENTIL_PADRAO))
+    ap = argparse.ArgumentParser(
+        description="Compara valores de k do escore localizado em FPR fixo.")
+    ap.add_argument("--k", type=int, nargs="+", default=list(K_PADRAO),
+                    help="valores de k (top-k) a comparar")
     args = ap.parse_args()
 
     print("AL IADO PV — varredura de calibração (k × percentil)")
-    linhas = varrer(args.k, args.percentil)
+    linhas = varrer(args.k)
     if not linhas:
         return 1
     _imprimir(linhas)
@@ -244,8 +241,9 @@ def main() -> int:
         json.dumps({"evidence_level": "E2", "linhas": linhas},
                    ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\n  📄 {pasta / 'varredura_calibracao.csv'}")
-    print("\n  Escolha o par pelo FP E pela detecção — e reporte o FP com o IC")
-    print("  ao lado. Um FP menor com IC largo não é melhora demonstrada.")
+    print("\n  Escolha o k pela detecção da PIOR falha, checando os IC: com "
+          f"{linhas[0]['n_saudavel']} janelas eles são largos, e diferenças")
+    print("  pequenas entre valores de k podem não ser reais.")
     return 0
 
 
