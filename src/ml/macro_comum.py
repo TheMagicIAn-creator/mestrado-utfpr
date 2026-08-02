@@ -23,8 +23,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import os
-
 import numpy as np
 
 
@@ -36,9 +34,14 @@ PURGA = 2   # janelas descartadas na fronteira (sobreposição de 50% nas featur
 
 
 # Fração do bloco de calibração usada para AJUSTAR o limiar; o restante mede o
-# FP fora da amostra. O mesmo 80/20 existe em autoencoder.py — nomeado aqui para
-# a varredura poder variá-lo sem caçar literais.
-FRACAO_AJUSTE_LIMIAR = float(os.getenv("AL_IADO_FRACAO_AJUSTE_LIMIAR", "0.8"))
+# FP fora da amostra.
+#
+# CONSTANTE, não configurável, e isso é deliberado: a comparação com o Ibrahim
+# só vale porque os dois métodos passam pelo MESMO protocolo E2. Um valor por
+# ambiente permitiria rodar os dois lados em protocolos diferentes sem que o
+# artefato registrasse — e 1,0 esvaziaria o bloco de validação, fazendo a
+# calibração cair em silêncio no percentil mais conservador.
+FRACAO_AJUSTE_LIMIAR = 0.8
 
 
 def dividir_calibracao_avaliacao(janelas: list, frac_calib: float = 0.4,
