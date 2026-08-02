@@ -883,3 +883,51 @@ rerun local com dataset.
 **Status do framework antigo:** mantido no repositório por ora (não removido),
 mas os macro-códigos passam a ser o caminho recomendado para a comparação da
 dissertação.
+
+## 29. Varredura de `k` RODADA no PC — resultado e decisão (2026-08-02)
+
+A recomendação de §22 ("varrer `k` × percentil") ficou aberta por semanas. O
+bloqueio nunca foi o dataset nem o `torch`: **o script não existia**. Ele agora
+existe (`scripts/varrer_calibracao.py`) e foi rodado na máquina do pesquisador.
+
+Antes disso a varredura precisou ser corrigida duas vezes (§ do `/code-review`,
+PR #84): ranqueava a detecção no limiar DE CADA configuração — degenerado,
+porque limiar menor sempre detecta mais — e não passava semente por janela na
+falha do Contator, de modo que as 44 janelas recebiam ruído idêntico.
+
+**Só `k` é varrido, e isso não é omissão.** O percentil não é propriedade do
+detector: ele escolhe ONDE sentar na ROC, não muda a curva. Quem muda a curva é
+o `k`, porque muda o escore. Comparar configurações exige o MESMO ponto de
+operação — FPR = 10%, o mesmo de `macro_comum.avaliar_deteccao`.
+
+Detecção em severidade máxima, FPR fixo em 10% (IC95 de Wilson, n=44):
+
+| `k` | Contator AC (NPR 315) | IGBT (NPR 90) | Fusível AC (NPR 30) |
+|----:|----------------------:|--------------:|--------------------:|
+| 5   | 100,0% [92–100]       | 95,5% [85–99] | 100,0% [92–100]     |
+| 10  | 100,0% [92–100]       | 95,5% [85–99] | 100,0% [92–100]     |
+| 15  | 100,0% [92–100]       | 95,5% [85–99] | **70,5% [56–82]**   |
+
+**Decisão: mantém-se `k = 5`.** Justificativa em três partes:
+
+1. As três falhas cruzam o alvo de 95% neste ponto de operação — melhor do que
+   a auditoria supunha em §3.1.
+2. `k = 5` e `k = 10` são **indistinguíveis, por efeito de teto**: severidade
+   máxima é o caso fácil e ambos saturam. Quem separaria os dois é a severidade
+   MÍNIMA detectável, não a máxima. Medir a SMD por `k` custaria 7× a injeção e
+   uma rodada de recálculo para, no melhor caso, confirmar o vigente — não se
+   paga, e a varredura foi deixada em severidade máxima de propósito.
+3. A tendência sustenta o `k` pequeno pelo mecanismo certo: o Fusível AC é
+   perda parcial de fase, concentrada em poucos canais. Agregar 15 resíduos
+   dilui exatamente o que caracteriza a falha; agregar 5 preserva. É a razão de
+   ser do escore localizado aparecendo no dado.
+
+Para a banca, a pergunta "por que 5 e não 10" se responde sem medição
+adicional: são equivalentes em detecção, e 5 é o mais localizado.
+
+**Correção de registro.** O corpo da PR #84 trazia uma tabela apresentada como
+saída deste script (IGBT 86,4%; Fusível 88,6%; `k=15` → 9,1%). Ela **não era**:
+eram linhas de p99 da varredura ANTIGA, num ponto de operação mais estrito,
+rotuladas por engano como o resultado novo. A afirmação derivada de que
+`k = 15` derrubava o Fusível para ~9% é falsa; a queda real é 100% → 70,5%.
+Os números válidos são os da tabela acima.

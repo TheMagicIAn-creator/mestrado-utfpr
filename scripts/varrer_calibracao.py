@@ -223,7 +223,7 @@ def main() -> int:
                     help="valores de k (top-k) a comparar")
     args = ap.parse_args()
 
-    print("AL IADO PV — varredura de calibração (k × percentil)")
+    print("AL IADO PV — varredura de calibração (k, em FPR fixo)")
     linhas = varrer(args.k)
     if not linhas:
         return 1
