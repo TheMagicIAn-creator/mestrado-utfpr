@@ -625,6 +625,44 @@ IGBT/Fusível. É o item a levar com números para a orientadora.
 > teste isolado** do pipeline (88 janelas, `limiar.json`) — e mesmo lá a
 > resolução é 1,14 ponto por alarme.
 
+> **Divergência de percentil entre pipeline e macros — investigada e MANTIDA
+> (2026-08-02).**
+>
+> Os dois artefatos operam em pontos diferentes:
+>
+> | Artefato | k | percentil | limiar |
+> |---|---:|---:|---:|
+> | Pipeline (`limiar.json`) | 5 | 99,9 (auto) | 7,83 |
+> | Macros (comparação Ibrahim) | 5 | 99,0 | — |
+>
+> Diferem porque a auto-calibração é orientada pelo dado, e os blocos de
+> calibração dos dois caminhos não são os mesmos.
+>
+> **Alinhar em p99,0 foi considerado e REJEITADO.** O custo não é o que parecia:
+>
+> | limiar | FP em janelas saudáveis | trajetórias no Weibull |
+> |---:|---:|---:|
+> | 7,83 (p99,9, vigente) | **13,6%** | 38 |
+> | 5,79 (p99,0) | **25,0%** | 33 |
+>
+> Baixar o limiar **dobra o falso positivo**: uma em cada quatro janelas
+> saudáveis passaria a disparar alarme. Para manutenção preditiva isso é
+> inutilizável — e o FP alto é justamente o problema que o §22 investiga.
+>
+> **E o benefício não existe.** `AUC` e `SMD@FPR=10%` — os dois números que
+> carregam a comparação com o Ibrahim — **não dependem do limiar calibrado**:
+> o AUC é independente de limiar por definição, e a SMD lê o ponto de operação
+> direto da ROC (`corte_fpr = quantile(s_sau, 0.90)` em `macro_comum.py`),
+> exatamente para não herdar a instabilidade de uma calibração pequena.
+>
+> A divergência afeta apenas `fp_pct` e `taxa`/`atinge_smd` no relatório dos
+> macros — colunas secundárias — e **nenhuma conclusão da dissertação**.
+>
+> **Decisão: manter.** Alinhar seria degradar o detector para resolver uma
+> inconsistência que não afeta resultado nenhum. O que faltava era isto estar
+> escrito; ao apresentar, declarar o percentil de cada artefato e a
+> independência do AUC/SMD em relação a ele.
+
 > **Resultado NEGATIVO (2026-08-01) — três estimadores testados e rejeitados.**
 >
 > A hipótese era que o FP alto viesse da má ESTIMATIVA do limiar (o escore
