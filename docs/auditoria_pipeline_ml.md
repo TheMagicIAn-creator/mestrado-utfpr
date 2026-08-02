@@ -590,6 +590,41 @@ pesquisador calibrar no dado real (não dá para escolher o valor sem o dataset)
 real e escolher o par que traz o FP do teste para ~1–2% mantendo o recall do
 IGBT/Fusível. É o item a levar com números para a orientadora.
 
+> **VARREDURA EXECUTADA (2026-08-02, `scripts/varrer_calibracao.py`, no PC do
+> pesquisador, 44 janelas saudáveis do holdout).** Detecção em severidade
+> máxima, todas as configurações no mesmo ponto de operação nominal:
+>
+> | k | percentil | Contator AC | IGBT | Fusível AC |
+> |---:|---:|---:|---:|---:|
+> | **5** | **99,0** | 100% | **86,4%** | **88,6%** |
+> | 5 | 99,5 | 100% | 86,4% | 79,5% |
+> | 5 | 99,9 | 100% | 86,4% | 70,5% |
+> | 10 | 99,0 | 100% | 79,5% | **18,2%** |
+> | 10 | 99,9 | 100% | 68,2% | 11,4% |
+> | 15 | 99,0 | 100% | 68,2% | **9,1%** |
+> | 15 | 99,9 | 100% | 56,8% | 6,8% |
+>
+> **A recomendação de subir `k` para reduzir FP estava errada, e o erro é
+> grande.** Com `k=15` o Fusível AC cai de 88,6% para **9,1%** — o detector
+> fica praticamente cego para a falha. Coerente com a causa-raiz do §3.1: a
+> perda parcial de fase mexe em pouquíssimas features, e agregar mais termos
+> no top-k dilui exatamente o sinal que se quer ver. Subir o percentil tem o
+> mesmo efeito, mais suave (88,6% → 70,5%).
+>
+> **Conclusão: `k=5, p99` — a configuração vigente — é a melhor das nove.** A
+> varredura não trouxe ajuste; trouxe *evidência* de que a escolha atual é a
+> certa, que é o que faltava para ela deixar de ser "a esmo".
+>
+> **O FP não é decidível nesta amostra.** Com 44 janelas, o menor FP não-nulo
+> mensurável é 1/44 = **2,27%** — resolução grosseira demais para distinguir 1%
+> de 2%. Todas as nove linhas deram exatamente 2,27%, o que é artefato de
+> quantização, não resultado. A coluna foi retirada da tabela do script (segue
+> no CSV, com intervalo de Wilson, para auditoria).
+>
+> Para FP de generalização, o número honesto continua sendo o do **bloco de
+> teste isolado** do pipeline (88 janelas, `limiar.json`) — e mesmo lá a
+> resolução é 1,14 ponto por alarme.
+
 > **Resultado NEGATIVO (2026-08-01) — três estimadores testados e rejeitados.**
 >
 > A hipótese era que o FP alto viesse da má ESTIMATIVA do limiar (o escore

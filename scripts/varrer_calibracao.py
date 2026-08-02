@@ -61,6 +61,7 @@ from src.ml.escore_anomalia import (  # noqa: E402
     escore_localizado,
     incerteza_do_limiar,
 )
+from src.ml.estatistica import intervalo_wilson  # noqa: E402
 
 K_PADRAO = (5, 10, 15)
 PERCENTIL_PADRAO = (99.0, 99.5, 99.9)
@@ -159,9 +160,17 @@ def varrer(ks=K_PADRAO, percentis=PERCENTIL_PADRAO) -> list[dict]:
         for p in percentis:
             inc = incerteza_do_limiar(s_sau, p)
             limiar = inc["limiar"]
+            n_fp = int((s_sau > limiar).sum())
+            lo, hi = intervalo_wilson(n_fp, len(s_sau))
             linha = {
                 "k": int(k), "percentil": float(p), "limiar": limiar,
-                "fp_pct": float((s_sau > limiar).mean() * 100.0),
+                # FP IN-SAMPLE: o limiar é o percentil DESTE mesmo conjunto.
+                # Serve para pôr todas as configurações no MESMO ponto de
+                # operação nominal — que é o que torna a comparação de detecção
+                # justa —, mas NÃO é estimativa de generalização.
+                "fp_pct": float(n_fp / len(s_sau) * 100.0),
+                "fp_ic_low": float(lo * 100.0), "fp_ic_high": float(hi * 100.0),
+                "n_saudavel": int(len(s_sau)),
                 "ic_low": inc["ic_low"], "ic_high": inc["ic_high"],
                 "ic_rel": inc["largura_relativa"],
             }
@@ -180,19 +189,34 @@ def _imprimir(linhas: list[dict]) -> None:
     if not linhas:
         return
     fids = [c[4:] for c in linhas[0] if c.startswith("rec_")]
-    cab = (f"{'k':>3} {'perc':>6} {'limiar':>9} {'FP%':>6} {'ic_rel':>7}  "
+    n = linhas[0]["n_saudavel"]
+    resolucao = 100.0 / n   # menor FP não-nulo mensurável
+
+    cab = (f"{'k':>3} {'perc':>6} {'limiar':>9} {'ic_rel':>7}  "
            + " ".join(f"{f[:10]:>11}" for f in fids))
     print("\n" + cab)
     print("-" * len(cab))
-    for ln in sorted(linhas, key=lambda x: (x["fp_pct"], -min(
-            x[f"rec_{f}"] for f in fids))):
+    # Ordena pela PIOR detecção — é o que a varredura consegue discriminar.
+    for ln in sorted(linhas, key=lambda x: -min(x[f"rec_{f}"] for f in fids)):
         alerta = " ⚠️" if ln["ic_rel"] > IC_REL_SUSPEITO else "  "
         print(f"{ln['k']:>3} {ln['percentil']:>6.1f} {ln['limiar']:>9.4f} "
-              f"{ln['fp_pct']:>6.2f} {ln['ic_rel']:>7.2f}{alerta}"
+              f"{ln['ic_rel']:>7.2f}{alerta}"
               + " ".join(f"{ln[f'rec_{f}']:>10.1f}%" for f in fids))
-    print(f"\n  ⚠️ = IC do limiar acima de {IC_REL_SUSPEITO:.0%} do próprio valor: "
-          "diferenças finas de FP entre estas linhas podem ser ruído.")
-    print("  Ordenado por FP crescente; empate desfeito pela pior detecção.")
+
+    print("\n  Ordenado pela PIOR detecção entre as falhas (maior é melhor).")
+    print(f"  ⚠️ = IC do limiar acima de {IC_REL_SUSPEITO:.0%} do próprio valor.")
+
+    print(f"\n  A coluna FP foi RETIRADA da tabela de propósito.")
+    print(f"  Com {n} janelas saudáveis, o menor FP não-nulo mensurável é "
+          f"{resolucao:.2f}% — a resolução é grosseira demais para distinguir")
+    print("  1% de 2%. Além disso, o limiar é o percentil DESTE mesmo conjunto,")
+    print("  então o FP aqui é IN-SAMPLE: ele vale ~(100−percentil)% por")
+    print("  construção, para qualquer configuração. Está no CSV, com o")
+    print("  intervalo de Wilson ao lado, para auditoria — não para decisão.")
+    print("\n  O que a varredura DECIDE, e decide bem: qual k e qual percentil")
+    print("  entregam mais detecção com todas as configurações no MESMO ponto")
+    print("  de operação nominal. Para FP de generalização, o número honesto é")
+    print("  o do bloco de teste isolado do pipeline (resultados/.../limiar.json).")
 
 
 def main() -> int:
