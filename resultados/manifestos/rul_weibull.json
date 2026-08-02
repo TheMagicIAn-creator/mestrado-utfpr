@@ -1,7 +1,7 @@
 {
   "stage": "rul_weibull",
-  "created_at": "2026-07-27T23:01:07.766553-03:00",
-  "git_commit": "2b250bae1b833cdc390fb4bfb3403bd4bb8b3713",
+  "created_at": "2026-08-02T01:42:07.141344-03:00",
+  "git_commit": "c9748e55f2220da6bb237e3d2b02dc0e7133a2a3",
   "code_sha256": "77f108f4c5fbde6be298839941fc3a26f5131112a3af9e4690424aab8817106c",
   "parameters": {
     "n_traj": 100,
