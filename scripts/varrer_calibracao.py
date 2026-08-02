@@ -90,7 +90,7 @@ def _carregar_contexto():
         N_JANELAS_SMD,
         SEVERIDADES,
     )
-    from src.core.utils import carregar_pickle_com_sidecar
+    from src.core.seguranca import carregar_pickle_com_sidecar
 
     pasta = Path(RAIZ_PROJETO) / "resultados" / "autoencoder"
     faltando = [n for n in ("modelo_autoencoder.pt", "scaler.pkl")
