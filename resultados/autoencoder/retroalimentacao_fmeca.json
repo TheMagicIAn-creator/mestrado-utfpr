@@ -7,6 +7,7 @@
   "regra": "D_proj = min(D_campo, D_mon); S e O inalterados",
   "limiar_operacional": 7.826175715408156,
   "threshold_method": "p99",
+  "percentil_efetivo": 99.9,
   "ordem_oficial": [
     "contator_ac",
     "igbt",

@@ -247,3 +247,47 @@ def test_markdown_traz_as_ressalvas_junto_dos_numeros(tmp_path):
     assert "E2" in md
     assert "Tab. 4.8" in md
     assert "NPR de campo" in md
+
+
+# ------------------------------------------------------------------
+# Ponto de operação: percentil EFETIVO, não o rótulo de método
+# ------------------------------------------------------------------
+
+def test_percentil_efetivo_vem_do_limiar_json(tmp_path):
+    """`threshold_method` diz "p99"; a auto-calibração escolheu 99,9.
+
+    Imprimir "(p99)" numa tabela destinada à dissertação seria enganoso — são
+    pontos de operação diferentes. A divergência está documentada, e a saída
+    tem de mostrar o valor que de fato vigora.
+    """
+    arq = _relatorio_sintetico(tmp_path, {
+        "contator_ac": {"1.0": 1.0}, "igbt": {"1.0": 0.85},
+        "fusivel_ac": {"1.0": 1.0},
+    })
+    (tmp_path / "limiar.json").write_text(
+        json.dumps({"percentil_limiar": 99.9, "percentil_auto": True}),
+        encoding="utf-8")
+    res = tabela_retroalimentacao(arq)
+    assert res["percentil_efetivo"] == 99.9
+    md = formatar_markdown(res)
+    assert "percentil 99.9" in md
+    assert "(p99)" not in md
+
+
+def test_sem_limiar_json_cai_no_rotulo_sem_inventar_precisao(tmp_path):
+    arq = _relatorio_sintetico(tmp_path, {
+        "contator_ac": {"1.0": 1.0}, "igbt": {"1.0": 0.85},
+        "fusivel_ac": {"1.0": 1.0},
+    })
+    res = tabela_retroalimentacao(arq)
+    assert res["percentil_efetivo"] is None
+    assert "método p99" in formatar_markdown(res)
+
+
+def test_limiar_json_corrompido_nao_derruba_a_tabela(tmp_path):
+    arq = _relatorio_sintetico(tmp_path, {
+        "contator_ac": {"1.0": 1.0}, "igbt": {"1.0": 0.85},
+        "fusivel_ac": {"1.0": 1.0},
+    })
+    (tmp_path / "limiar.json").write_text("{ nao e json", encoding="utf-8")
+    assert tabela_retroalimentacao(arq)["percentil_efetivo"] is None

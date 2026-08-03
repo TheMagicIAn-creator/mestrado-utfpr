@@ -196,11 +196,35 @@ def carregar_pod_mon(caminho: Path | str) -> dict:
     return {"curvas": curvas, "meta": meta}
 
 
+def percentil_efetivo(caminho_validacao: Path | str) -> float | None:
+    """Percentil REALMENTE usado no limiar, lido de ``limiar.json`` ao lado.
+
+    ``validacao_report.json`` só carrega ``threshold_method = "p99"``, que é um
+    RÓTULO DE MÉTODO — não o percentil. Com a auto-calibração ligada
+    (``percentil_auto``), o valor escolhido foi 99,9. Imprimir "(p99)" numa
+    tabela destinada à dissertação seria enganoso: são pontos de operação
+    diferentes, e a divergência já está documentada (PR #83).
+
+    Devolve ``None`` se ``limiar.json`` não estiver ao lado — o rótulo de
+    método continua sendo mostrado, sem inventar precisão que não se tem.
+    """
+    arq = Path(caminho_validacao).parent / "limiar.json"
+    if not arq.exists():
+        return None
+    try:
+        dados = json.loads(arq.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    valor = dados.get("percentil_limiar")
+    return float(valor) if isinstance(valor, (int, float)) else None
+
+
 def tabela_retroalimentacao(caminho_validacao: Path | str,
                             severidade: float = SEVERIDADE_REFERENCIA) -> dict:
     """Monta a tabela de NPR projetado a partir dos artefatos vigentes."""
     lido = carregar_pod_mon(caminho_validacao)
     curvas, meta = lido["curvas"], lido["meta"]
+    percentil = percentil_efetivo(caminho_validacao)
 
     linhas = []
     for falha in falhas_da_fmeca():
@@ -250,6 +274,7 @@ def tabela_retroalimentacao(caminho_validacao: Path | str,
         "regra": "D_proj = min(D_campo, D_mon); S e O inalterados",
         "limiar_operacional": meta.get("limiar_operacional"),
         "threshold_method": meta.get("threshold_method"),
+        "percentil_efetivo": percentil,
         "ordem_oficial": ordem_oficial,
         "ordem_projetada": ordem_projetada,
         "ordem_inverte": ordem_oficial != ordem_projetada,
@@ -260,12 +285,17 @@ def tabela_retroalimentacao(caminho_validacao: Path | str,
 def formatar_markdown(resultado: dict) -> str:
     """Tabela legível para colar na dissertação, com as ressalvas junto."""
     sev = resultado["severidade_referencia"]
+    # O percentil EFETIVO, não o rótulo de método: `threshold_method` diz "p99"
+    # enquanto a auto-calibração escolheu 99,9. Ver `percentil_efetivo`.
+    pct = resultado.get("percentil_efetivo")
+    ponto = (f"percentil {pct:g} (auto-calibrado)" if pct is not None
+             else f"método {resultado.get('threshold_method')}")
     linhas = [
         "# Retroalimentação da FMECA — NPR projetado (E2)",
         "",
         (f"Severidade de referência: **{sev}** · "
-         f"Limiar operacional: **{resultado.get('limiar_operacional')}** "
-         f"({resultado.get('threshold_method')})"),
+         f"Limiar operacional: **{resultado.get('limiar_operacional')}** — "
+         f"{ponto}"),
         "",
         ("| Componente | S | O | D_campo | NPR oficial | POD_mon | "
          "não detecta | D_mon | D_proj | NPR projetado |"),
@@ -318,7 +348,12 @@ def main() -> int:
     origem = pasta / ARQUIVO_VALIDACAO
     if not origem.exists():
         print(f"  ❌ Não encontrado: {origem}")
-        print("     Rode antes: python src/ml/validacao.py")
+        print("\n     Este artefato é VERSIONADO no Git. Se ele sumiu da sua")
+        print("     cópia local, restaure — não recalcule:")
+        print(f"\n         git restore {PASTA_PADRAO.as_posix()}/{ARQUIVO_VALIDACAO}")
+        print("\n     Rodar `python src/ml/validacao.py` sobrescreveria o")
+        print("     artefato com uma nova execução, mudando números já")
+        print("     publicados. Só faça isso se o Autoencoder foi retreinado.")
         return 1
 
     resultado = tabela_retroalimentacao(origem, args.severidade)

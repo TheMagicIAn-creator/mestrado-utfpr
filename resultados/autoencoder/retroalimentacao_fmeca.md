@@ -1,6 +1,6 @@
 # Retroalimentação da FMECA — NPR projetado (E2)
 
-Severidade de referência: **1.0** · Limiar operacional: **7.826175715408156** (p99)
+Severidade de referência: **1.0** · Limiar operacional: **7.826175715408156** — percentil 99.9 (auto-calibrado)
 
 | Componente | S | O | D_campo | NPR oficial | POD_mon | não detecta | D_mon | D_proj | NPR projetado |
 |---|--:|--:|--:|--:|--:|--:|--:|--:|--:|
