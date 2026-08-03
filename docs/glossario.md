@@ -15,8 +15,24 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
   (nunca da FMEA; D isolado NUNCA é o NPR). FMECA aplicada do TCC (Apêndice E):
   inversor 210, subsistema CA 150. FMECA consolidada da dissertação
   (docs/fmeca.md, fonte única): Contator AC 315, IGBT 90, Fusível AC 30.
-- **S / O / D**: Severidade, Ocorrência, Detecção (1–10; D=10 significa
-  falha muito difícil de detectar).
+- **S / O / D_campo**: Severidade, Ocorrência e dificuldade de **detecção em
+  campo** (1–10; maior = pior). Apesar do nome "Detecção", a Tab. 4.8 do TCC
+  define o índice em **percentual de NÃO detectar** (D=1 → 0–5%; D=10 →
+  86–100%) — ele cresce com o fracasso em detectar. O subscrito `campo` separa
+  esse índice **julgado** da detectabilidade **medida** do detector proposto.
+  Nunca escrever `D` sozinho. Fonte única: `docs/nomenclatura_deteccao.md`.
+- **POD_mon(s)**: probabilidade de detecção pelo **monitoramento proposto** na
+  severidade `s`, medida sob E2 no limiar operacional congelado (0–1, maior =
+  melhor). Raiz consagrada: curva POD do **MIL-HDBK-1823A** (ensaios não
+  destrutivos). O subscrito é obrigatório — em sistemas de potência, `POD` nu é
+  *Power Oscillation Damping*. É o mesmo número que o `recall` da validação,
+  lido como propriedade do método de inspeção.
+- **D_mon**: o índice da mesma Tab. 4.8 obtido de `1 − POD_mon(s_ref)`. Não é
+  índice rival do D_campo: é o mesmo índice, **medido** em vez de julgado, para
+  outro meio de detecção. `D_proj = min(D_campo, D_mon)` — o monitoramento é
+  adicional ao que já existe, logo nunca piora o índice.
+- **NPR projetado**: `S × O × D_proj`, sob evidência **E2**. Análise de
+  sensibilidade; a FMECA oficial continua sendo `docs/fmeca.md`.
 - **Weibull (2 parâmetros)**: distribuição de vida com forma **beta** (β>1 →
   desgaste progressivo; β≈1 → falhas aleatórias; β<1 → mortalidade infantil)
   e escala **eta** (vida característica, 63,2% de falhas acumuladas).
@@ -45,7 +61,9 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
   μ+3σ é referência comparativa, não o limiar em uso.
 - **SMD** (Severidade Mínima Detectável): menor severidade injetada em que o
   erro médio cruza o limiar. `SMD nula` = falha não detectada em nenhuma
-  severidade testada (achado de limitação, não erro de execução).
+  severidade testada (achado de limitação, não erro de execução). É o análogo
+  do **a₉₀** do MIL-HDBK-1823A — o menor defeito detectado com 90% de
+  probabilidade em ensaios não destrutivos.
 - **Severidade**: fator 0–1 que escala a intensidade da falha injetada
   (grade do pipeline: 0.05–1.0 em 7 níveis).
 - **Injeção sintética orientada pela FMECA**: perturbação apenas das

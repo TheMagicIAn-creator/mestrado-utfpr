@@ -23,8 +23,17 @@
   extensa + perda relevante; 5 = não-operação ou perda severa.
 - **O — Ocorrência** (escala 1–10): 1 = remota (10⁻⁷/ano); 2–3 = baixa (10⁻⁶);
   4–5 = moderada (10⁻⁵); 6–7 = alta (10⁻⁴); 8–10 = muito alta (10⁻²).
-- **D — Detecção** (escala 1–10): 1 = remota (0–5% de não detectar) …
-  10 = muito alta (86–100% de não detectar).
+- **D_campo — Detecção em campo** (escala 1–10): 1 = remota (0–5% de não
+  detectar) … 10 = muito alta (86–100% de não detectar).
+
+> **Leia com atenção o que a escala mede.** Apesar do nome "Detecção", a Tab.
+> 4.8 é definida em **percentual de NÃO detectar**: o índice cresce com o
+> FRACASSO em detectar. Isso tem duas consequências. (1) O subscrito `campo`
+> passa a ser obrigatório, para separar este índice **julgado** da
+> detectabilidade **medida** do detector proposto (`POD_mon`) — nunca escrever
+> `D` sozinho. (2) A conversão de uma para a outra **não é uma régua que
+> escolhemos**: `1 − POD_mon` é exatamente a grandeza em que a escala está
+> escrita. Fonte única da nomenclatura: `docs/nomenclatura_deteccao.md`.
 
 ## Seleção dos componentes (justificativa bibliográfica)
 
@@ -89,24 +98,28 @@ incipiente) — são estágios distintos e complementares do mesmo modo de falha
 
 ## Ressalva metodológica (importante para a banca)
 
-O índice **D da FMECA** (dificuldade de detecção **em campo/manutenção**, Tab.
-4.8) e a **detectabilidade empírica do Autoencoder** são conceitos distintos.
-Um componente pode ter D baixo (fácil de detectar em campo) e, ainda assim, o
-Autoencoder ter dificuldade com sua assinatura no sinal — ou vice-versa. Essa
-relação (o detector proposto melhora, iguala ou fica aquém do D de campo?) é
-um resultado a discutir na dissertação, não uma inconsistência.
+O índice **D_campo** (dificuldade de detecção **em campo/manutenção**, Tab.
+4.8) e a **detectabilidade empírica do Autoencoder** (`POD_mon`) são conceitos
+distintos. Um componente pode ter D_campo baixo (fácil de detectar em campo) e,
+ainda assim, o Autoencoder ter dificuldade com sua assinatura no sinal — ou
+vice-versa. Essa relação (o detector proposto melhora, iguala ou fica aquém do
+D_campo?) é um resultado a discutir na dissertação, não uma inconsistência.
 
-> **Tensão em aberto com `docs/retroalimentacao_fmeca.md`.** Aquele documento
-> propõe **substituir** o D julgado pelo D medido e recalcular o NPR. O
-> parágrafo acima trata as duas grandezas como **distintas**. As duas posições
-> não são compatíveis, e a escolha **não** foi feita — é decisão da orientadora.
+> **Tensão RESOLVIDA (2026-08-03).** `docs/retroalimentacao_fmeca.md` propunha
+> **substituir** o D julgado pelo D medido; o parágrafo acima trata as duas
+> grandezas como distintas. A saída não foi escolher um lado: foi **dar nomes
+> distintos** e manter as duas tabelas.
 >
-> Enquanto não houver decisão, **vale este documento**: os S/O/D da tabela acima
-> seguem como estipulados pelo pesquisador, e nenhum NPR é recalculado a partir
-> de resultado do detector. Nenhuma linha de código implementa a conversão.
+> - `D_campo` — o índice desta tabela, julgado. **Nada muda aqui**: os S/O/D da
+>   FMECA consolidada seguem como estipulados pelo pesquisador, e a FMECA
+>   oficial da dissertação é esta.
+> - `POD_mon(s)` — a detectabilidade medida, grandeza própria, com nome próprio.
+> - `D_mon` e o **NPR projetado** — cenário de sensibilidade sob E2, calculado
+>   por `src/ml/retroalimentacao_fmeca.py`, publicado em
+>   `resultados/autoencoder/retroalimentacao_fmeca.md`, **separado** desta
+>   tabela.
 >
-> A folha de decisão para a reunião — com as opções, a régua proposta e o efeito
-> aritmético de cada faixa sobre o NPR — está em
-> `docs/decisao_retroalimentacao_fmeca.md`. Ela mostra que **28 das 64**
-> combinações de faixa invertem a ordem de criticidade atual, o que afetaria a
-> prioridade de injeção de falhas da dissertação.
+> As grandezas continuam distintas — é justamente por isso que uma não
+> substitui a outra. A conversão `POD_mon → D_mon` deixou de ser uma régua a
+> calibrar: a Tab. 4.8 é definida em % de não detectar, e `1 − POD_mon` é essa
+> mesma grandeza. Ver `docs/nomenclatura_deteccao.md`.

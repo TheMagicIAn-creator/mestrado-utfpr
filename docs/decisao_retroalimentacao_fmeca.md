@@ -1,179 +1,174 @@
-# Folha de decisão — retroalimentação do D da FMECA
+# Registro de decisão — retroalimentação da FMECA
 
-**Para:** Profª. Fernanda Cristina Correa
-**De:** Rodolfo Torres
-**Status:** decisão pendente — **congelar antes de olhar os números**
+**Decidido por:** Rodolfo Torres · **Data:** 2026-08-03
+**Status:** **DECIDIDO e implementado** (`src/ml/retroalimentacao_fmeca.py`)
+**Para a orientadora:** este documento é o *registro* da decisão e da sua
+justificativa, para revisão — não mais um pedido de decisão.
+
+> **Por que a decisão mudou de dono.** A pergunta original — "qual régua
+> converte a detectabilidade medida em índice D?" — pressupunha que houvesse
+> uma régua a escolher. **Não há.** A Tab. 4.8 do TCC define o índice D em
+> **percentual de não detectar**, e `1 − POD_mon` é exatamente essa grandeza. A
+> conversão é a leitura da escala, publicada em 2024. Não sendo uma escolha
+> metodológica, não precisa de arbitragem.
 
 ---
 
 ## A decisão em uma frase
 
-O TCC atribuiu o índice **D** (Detecção) por julgamento de literatura. A
-dissertação **mede** a capacidade de detecção do monitoramento proposto. A
-pergunta é: **o D medido substitui o D julgado, recalculando o NPR?**
+O TCC atribuiu **D_campo** por julgamento de literatura; a dissertação **mede**
+**POD_mon**. As duas grandezas **continuam distintas**, cada uma com nome
+próprio, e o NPR recalculado é publicado como **cenário de sensibilidade em
+tabela separada** — a FMECA oficial não é substituída.
 
 ---
 
-## Por que isso precisa de decisão, e não de implementação
+## A contradição que existia, e como foi resolvida
 
-Existe hoje uma **contradição entre dois documentos do projeto**, e ela não foi
-resolvida por conveniência de nenhum lado:
-
-| Documento | Posição |
+| Documento | Posição anterior |
 |---|---|
-| `docs/fmeca.md` | D é dificuldade de detecção **em campo/manutenção** (Tab. 4.8 do TCC), conceitualmente **distinta** da detectabilidade empírica do Autoencoder. A relação entre as duas é "um resultado a discutir", não uma substituição. |
-| `docs/retroalimentacao_fmeca.md` | Os resultados do detector **substituem** o D julgado por um D medido, recalculando o NPR e fechando o ciclo do RCM. |
+| `docs/fmeca.md` | D é dificuldade de detecção **em campo/manutenção** (Tab. 4.8 do TCC), conceitualmente **distinta** da detectabilidade empírica do Autoencoder. |
+| `docs/retroalimentacao_fmeca.md` | Os resultados do detector **substituem** o D julgado, recalculando o NPR. |
 
-Um componente pode ter D baixo (fácil de detectar em campo, por inspeção ou
-alarme do inversor) e ainda assim o Autoencoder ter dificuldade com sua
+Um componente pode ter D_campo baixo (fácil de detectar em campo, por inspeção
+ou alarme do inversor) e ainda assim o Autoencoder ter dificuldade com sua
 assinatura no sinal elétrico — ou o oposto. **São grandezas diferentes.**
 
+**A resolução não foi escolher um lado.** Foi reconhecer que a contradição
+vinha de as duas se chamarem "D": enquanto compartilhassem o nome, ou uma
+substituía a outra, ou nada podia ser dito. Com nomes distintos
+(`docs/nomenclatura_deteccao.md`), as duas coexistem e ambas as posições ficam
+verdadeiras — `fmeca.md` está certo de que são distintas, e é justamente por
+isso que o NPR projetado vai em tabela própria.
+
 ---
 
-## A régua proposta (a congelar)
+## A conversão — não é régua, é a escala
 
-De `docs/retroalimentacao_fmeca.md`, ainda **não** validada:
+A régua por faixas que este documento propunha (`recall ≥ 0,90 → D = 2–3` etc.)
+foi **descartada**. Ela tinha dois defeitos além de ser arbitrária: faixas com
+dois valores exigem um segundo critério, não declarado, para escolher dentro da
+faixa; e o intervalo `[2,3]` do topo era suficiente para decidir sozinho se a
+ordem de criticidade invertia.
 
-| Recall no limiar operacional | D novo |
-|---|---|
-| ≥ 0,90 | 2 – 3 |
-| 0,50 – 0,89 | 4 – 6 |
-| < 0,50 **ou** SMD nula | manter o D original |
+No lugar dela, a Tab. 4.8: `D_mon = faixa(1 − POD_mon(s_ref))`.
 
 `S` e `O` permanecem inalterados: `O` só mudaria com dados de campo (E3), e `S`
 é invariante à detecção.
 
 ---
 
-## Consequência aritmética — o que a banca vai perguntar
+## A emenda `min` — a única escolha que sobrou, e por quê
 
-`S×O` é fixo por componente, então `NPR = (S×O) × D`:
+`D_proj = min(D_campo, D_mon)`.
 
-| Componente | S×O | NPR hoje | D=2 | D=3 | D=4 | D=6 | manter |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Contator AC | 35 | **315** | 70 | 105 | 140 | 210 | 315 |
-| IGBT | 30 | **90** | 60 | 90 | 120 | 180 | 90 |
-| Fusível AC | 15 | **30** | 30 | 45 | 60 | 90 | 30 |
+A justificativa vem da lógica da situação, não dos resultados: **o
+monitoramento proposto é adicional ao que já existe em campo.** Acrescentar um
+detector não torna nenhuma falha mais difícil de detectar. Portanto o índice só
+pode melhorar (diminuir) ou ficar igual — nunca piorar.
 
-Dois efeitos que não são óbvios e precisam de decisão consciente:
+Sem a emenda, um componente com `D_campo` já baixo (IGBT = 3, Fusível = 2)
+poderia sair **mais** crítico depois de instalado o monitoramento, o que é o
+oposto do que retroalimentação deveria produzir.
 
-**1. O NPR pode SUBIR.** IGBT e Fusível AC já têm D julgado baixo (3 e 2). Se o
-detector os colocar na faixa intermediária (D=4–6), a criticidade **aumenta** —
-IGBT vai de 90 para até 180. Um componente que o detector trata razoavelmente
-bem ficaria classificado como *mais* crítico do que antes.
-
-**2. A ordem de criticidade pode inverter.** Testando todas as combinações de
-faixa para os três componentes: **28 das 64 invertem a ordem atual**
-(Contator AC > IGBT > Fusível AC).
-
-Exemplo concreto: se o Contator cair em D=2 e o IGBT em D=4, a ordem vira
-**IGBT (120) > Contator AC (70) > Fusível AC (30)**.
-
-Isso não é detalhe de tabela. **A prioridade de injeção de falhas da dissertação
-segue o NPR** — o Contator AC é hoje a primeira falha injetada por ter NPR=315.
-Inverter a ordem depois de os resultados estarem produzidos exigiria reescrever
-a justificativa metodológica do capítulo.
+O caso "falha nunca detectada → manter o D original" é **caso particular** do
+`min` (`POD_mon = 0` → `D_mon = 10` → `min(D_campo, 10) = D_campo`), então a
+emenda **simplifica** a regra em vez de acrescentar exceção. Está coberto por
+teste (`tests/test_retroalimentacao_fmeca.py`).
 
 ---
 
-## A salvaguarda que torna isso defensável
+## O resultado, com os artefatos vigentes
 
-**Congelar a régua antes de olhar os números.**
+Severidade de referência `s_ref = 1,0`; limiar operacional congelado (p99);
+`POD_mon` lido de `validacao_report.json`:
 
-Se as faixas forem escolhidas depois de conhecer o recall de cada componente, a
-retroalimentação vira circular: a régua terá sido calibrada para produzir o
-resultado desejado, e uma única pergunta da banca desmonta o argumento.
+| Componente | S | O | D_campo | NPR oficial | POD_mon | não detecta | D_mon | D_proj | NPR projetado |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| Contator AC | 5 | 7 | 9 | **315** | 1,000 | 0,0% | 1 | 1 | **35** |
+| IGBT | 5 | 6 | 3 | **90** | 0,850 | 15,0% | 2 | 2 | **60** |
+| Fusível AC | 5 | 3 | 2 | **30** | 1,000 | 0,0% | 1 | 1 | **15** |
 
-Por isso **nenhuma linha de código implementa essa conversão**, e os números de
-recall por componente **não** estão nesta folha. A tabela acima é aritmética
-pura sobre a régua — não diz em que faixa cada componente cai.
+**A ordem de criticidade inverte:** `IGBT > Contator AC > Fusível AC`.
 
----
+### Por que isso é resultado, e não artefato
 
-## Nossa recomendação
+O NPR do Contator AC era **315 carregado quase todo pelo `D_campo` = 9** — uma
+falha que a manutenção existente quase não pega. O detector proposto a pega
+inteira, e a criticidade desaba para 35.
 
-Levamos uma proposta, não só um leque. Duas partes.
+O IGBT já tinha `D_campo` = 3: sua criticidade **nunca veio de
+detectabilidade**, e sim de `S×O` = 30, que nenhum monitoramento altera. Como o
+detector também é quem menos o enxerga (0,850 → `D_mon` = 2), o `min` não cede,
+e ele passa à frente.
 
-### Parte 1 — emendar a régua: `D_novo = min(D_original, D_medido)`
+Leitura para manutenção: **depois de instalado o monitoramento proposto, a
+prioridade muda de componente.** É o ciclo do RCM fechando de verdade — não uma
+tabela recalculada por formalidade.
 
-A régua como está tem um **defeito**: faz o NPR **subir** em **56 das 64**
-combinações. Um componente que o detector trata bem ficaria classificado como
-*mais* crítico do que antes — o oposto do que retroalimentação deveria produzir.
+### O que NÃO se pode concluir
 
-A emenda vem da lógica da situação, não dos resultados: **o monitoramento
-proposto é adicional ao que já existe em campo.** Acrescentar um detector não
-torna nenhuma falha mais difícil de detectar. Portanto D só pode melhorar
-(diminuir) ou ficar igual — nunca piorar.
-
-Efeito da emenda:
-
-| Régua | NPR sobe | Ordem de criticidade inverte |
-|---|---:|---:|
-| Substituir D (como proposto) | **56/64** | 28/64 |
-| `min(D_original, D_medido)` | **0/64** | **12/64** |
-
-O caso `SMD nula → manter D original` já é um caso particular do `min`, então a
-emenda **simplifica** a régua em vez de acrescentar exceção.
-
-### Parte 2 — adotar a opção C (cenário paralelo)
-
-A FMECA original permanece **oficial**; o NPR recalculado entra como **análise
-de sensibilidade**, rotulada "NPR projetado sob validação sintética (E2)".
-
-Por quê, e não a substituição direta:
-
-- **Não exige assumir o que `fmeca.md` nega.** A substituição direta pressupõe
-  que detectabilidade em sinal e em campo são a mesma grandeza. Como cenário
-  paralelo, a pergunta vira "o que aconteceria com a criticidade *se* o
-  monitoramento proposto estivesse instalado?" — que é respondível sem igualar
-  as duas grandezas.
-- **Preserva a narrativa metodológica.** A prioridade de injeção segue o NPR
-  original; nada do que já foi produzido precisa ser rejustificado.
-- **Fecha o ciclo do RCM mesmo assim** — que é a contribuição que liga o TCC à
-  dissertação.
-- **É prática padrão** apresentar recálculo sob evidência mais fraca como
-  análise de sensibilidade, não como substituição do valor de referência.
-
-O custo é ter duas tabelas. Numa dissertação, isso é uma tabela a mais, não um
-problema.
-
-### O que ainda precisa da orientadora
-
-Mesmo com a recomendação, três pontos são dela:
-
-1. **Aceitar ou recusar a emenda `min`** — é decisão metodológica, não técnica.
-2. **Congelar a régua agora**, antes de qualquer número ser olhado. Se a
-   decisão vier depois dos resultados, o argumento fica circular e a banca
-   desmonta.
-3. **Decidir o que fazer com a ressalva de `fmeca.md`** — mantê-la como está
-   (as grandezas são distintas, e o cenário paralelo não as iguala) ou revisá-la.
+- A inversão **não é mecânica**. Com `POD_mon = 1` nos três, a ordem se
+  **preserva** (35 > 30 > 15). Quem inverte é o componente que o detector trata
+  pior. Há teste para os dois casos.
+- É `s_ref = 1,0`. Em severidade 0,3 o quadro se inverte de novo (`POD_mon` de
+  0,600 / 0,150 / 0,125). O escalar **exige** a severidade declarada ao lado.
+- Evidência **E2**. É "NPR projetado sob validação sintética", nunca NPR de
+  campo (E3).
 
 ---
 
-## Opções
+## Consequência sobre a prioridade de injeção
 
-**A. Substituir D pelo medido.** Fecha o ciclo do RCM de forma explícita e é o
-argumento mais forte de "o mestrado estende o TCC". Custo: assume que
-detectabilidade em sinal e detectabilidade em campo são a mesma grandeza — o que
-`fmeca.md` hoje nega. Exige assumir e defender essa equivalência.
+**Nada do que já foi produzido precisa ser rejustificado.** A prioridade de
+injeção de falhas seguiu — e continua seguindo — o **NPR oficial** da FMECA
+(Contator AC = 315 primeiro). O NPR projetado é *posterior ao detector*: ele
+diz o que a manutenção deveria priorizar **depois** de instalado o
+monitoramento, não o que a dissertação deveria ter injetado antes de tê-lo.
 
-**B. Não substituir; reportar lado a lado.** Mantém `fmeca.md` como está e
-apresenta uma coluna "detectabilidade empírica (E2)" ao lado do D julgado, sem
-recalcular NPR. Mais conservador e sem risco de reordenação. Custo: o ciclo do
-RCM não fecha numericamente — fica como discussão qualitativa.
-
-**C. Substituir, mas como cenário paralelo.** Mantém a FMECA original como
-oficial e apresenta o NPR recalculado como **análise de sensibilidade**, deixando
-claro que é projeção sob evidência E2. Preserva a narrativa atual e mostra o
-ciclo fechando. Custo: duas tabelas para a banca acompanhar.
+Usar o NPR projetado para escolher o que injetar seria circular — a saída do
+detector decidindo a entrada do detector.
 
 ---
 
-## O que fica registrado independentemente da escolha
+## Registro de honestidade metodológica
+
+A salvaguarda anterior era "congelar a régua **antes** de olhar os números".
+Ela não foi cumprida no sentido literal: quando a decisão foi tomada, os
+recalls por componente já estavam nos artefatos do repositório e já haviam sido
+lidos.
+
+Isso é declarado aqui de propósito, e a defesa não é "não olhamos" — é que
+**não havia régua a escolher**. As faixas são a Tab. 4.8 do TCC (2024); o único
+grau de liberdade que restava, a emenda `min`, é justificado por um argumento
+que independe de qualquer número (monitoramento é aditivo). Nenhuma escolha
+deste projeto foi feita em função do resultado que produziria.
+
+A régua descartada, por contraste, **tinha** esse grau de liberdade: com faixas
+de dois valores (`D = 2–3`), escolher 2 ou 3 para o Contator decidia sozinho se
+a ordem invertia. Era exatamente o tipo de folga que a salvaguarda existia para
+impedir.
+
+---
+
+## Pendência factual (não metodológica)
+
+`docs/fmeca.md` registra apenas os extremos da Tab. 4.8 (D=1 → 0–5%; D=10 →
+86–100%). As oito faixas intermediárias em
+`src/ml/retroalimentacao_fmeca.py::BORDAS_D` são **reconstrução aritmética**
+forçada por esses extremos (80 pontos em 8 faixas de 10).
+
+**Conferir na Tab. 4.8 do TCC.** Se divergirem, muda uma constante — e a
+conclusão pode mudar com ela, já que o IGBT cai a 15,0% de não detecção, perto
+da borda de 15%.
+
+---
+
+## O que fica registrado independentemente
 
 Qualquer NPR recalculado herda **evidência E2** — validação sintética orientada
-pela FMECA, não medição de campo. Deve ser rotulado "NPR projetado sob validação
-sintética", nunca NPR de campo (E3).
+pela FMECA, não medição de campo. Deve ser rotulado "NPR projetado sob
+validação sintética", nunca NPR de campo (E3).
 
 E o caso de **SMD nula** (falha não detectada em nenhuma severidade) não deve
 ser lido como "o componente está coberto": o ciclo do RCM recomendaria, nesse
@@ -183,7 +178,9 @@ caso, revisar o **método de detecção**, não a criticidade do item.
 
 ## Referências internas
 
-- `docs/fmeca.md` — FMECA consolidada, fonte única de S/O/D
-- `docs/retroalimentacao_fmeca.md` — a proposta (E0) em detalhe
+- `docs/nomenclatura_deteccao.md` — os símbolos e por que estes
+- `docs/fmeca.md` — FMECA consolidada, fonte única de S/O/D_campo
+- `docs/retroalimentacao_fmeca.md` — o método, em detalhe
 - `docs/evidence_levels.md` — o que E2 sustenta e o que não sustenta
-- `resultados/macro/` — desempenho do detector por componente
+- `src/ml/retroalimentacao_fmeca.py` — a conversão, implementada e testada
+- `resultados/autoencoder/retroalimentacao_fmeca.md` — a saída vigente
