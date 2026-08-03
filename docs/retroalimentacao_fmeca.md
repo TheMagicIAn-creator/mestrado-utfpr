@@ -52,10 +52,11 @@ Ela deixou de ser necessária: **não há régua**. As faixas são as da Tab. 4.
 publicadas em 2024, antes de qualquer medição deste projeto. Não há o que
 congelar porque não há o que escolher.
 
-> ⚠️ Pendência factual (não metodológica): `docs/fmeca.md` registra só os
-> extremos da Tab. 4.8. As faixas intermediárias em
-> `src/ml/retroalimentacao_fmeca.py::BORDAS_D` são reconstrução aritmética e
-> devem ser conferidas no TCC. Se divergirem, muda **uma constante**.
+> As dez faixas da Tab. 4.8 estão transcritas em
+> `src/ml/retroalimentacao_fmeca.py::BORDAS_D` e travadas por teste contra a
+> tabela publicada (Torres, 2024, p. 50), conferida no PDF indexado em
+> `literatura/inversores-pv/`. Editar a constante sem voltar à fonte reprova
+> a CI — de propósito.
 
 ## Salvaguardas obrigatórias
 

@@ -74,20 +74,17 @@ A Tab. 4.8 do TCC define o índice em **percentual de não detectar**.
 `1 − POD_mon` é exatamente essa grandeza. Logo a conversão é a **leitura da
 escala**, não uma régua a calibrar:
 
-| D | Não detecta | | D | Não detecta |
-|---:|---:|---|---:|---:|
-| 1 | 0 – 5% | | 6 | 46 – 55% |
-| 2 | 6 – 15% | | 7 | 56 – 65% |
-| 3 | 16 – 25% | | 8 | 66 – 75% |
-| 4 | 26 – 35% | | 9 | 76 – 85% |
-| 5 | 36 – 45% | | 10 | 86 – 100% |
+| D | Não detecta | Rótulo | | D | Não detecta | Rótulo |
+|---:|---:|---|---|---:|---:|---|
+| 1 | 0 – 5% | Remota | | 6 | 46 – 55% | Moderada |
+| 2 | 6 – 15% | Baixa | | 7 | 56 – 65% | Alta |
+| 3 | 16 – 25% | Baixa | | 8 | 66 – 75% | Alta |
+| 4 | 26 – 35% | Moderada | | 9 | 76 – 85% | Muito alta |
+| 5 | 36 – 45% | Moderada | | 10 | 86 – 100% | Muito alta |
 
-> ⚠️ **A CONFERIR na Tab. 4.8 do TCC.** `docs/fmeca.md` registra apenas os dois
-> extremos (D=1 → 0–5%; D=10 → 86–100%). As oito faixas intermediárias acima
-> são **reconstrução aritmética** forçada por esses extremos: 80 pontos
-> percentuais (6–85) divididos em 8 faixas de 10. Se a Tab. 4.8 usar outras
-> faixas, valem as dela — e `src/ml/retroalimentacao_fmeca.py` muda em uma
-> constante.
+Transcrita de **Torres (2024), Tabela 4.8, p. 50** — colunas "Probabilidade de
+Não Detectar a Falha", "Probabilidade do Defeito Afetar o Cliente (%)" e "Rank".
+Conferida no PDF indexado em `literatura/inversores-pv/`.
 
 **Por que isso encerra a circularidade.** A objeção que travava a
 retroalimentação era: "se vocês escolheram as faixas depois de ver os

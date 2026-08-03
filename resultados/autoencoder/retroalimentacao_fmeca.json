@@ -2,8 +2,60 @@
   "evidence_level": "E2",
   "evidence_note": "NPR projetado sob validação sintética orientada pela FMECA (E2). NÃO é NPR de campo (E3). A FMECA oficial permanece docs/fmeca.md; isto é análise de sensibilidade.",
   "severidade_referencia": 1.0,
-  "fonte_escala_d": "Torres (2024), TCC, Tab. 4.8 — índice D em % de não detectar",
-  "escala_d_a_conferir": "Faixas intermediárias reconstruídas dos extremos registrados em docs/fmeca.md; conferir na Tab. 4.8 do TCC.",
+  "fonte_escala_d": "Torres (2024), TCC, Tabela 4.8 (p. 50) — índice de detecção em probabilidade de NÃO detectar a falha",
+  "escala_d_conferida": true,
+  "escala_d": [
+    {
+      "d": 1,
+      "ate_pct": 5.0,
+      "rotulo": "Remota"
+    },
+    {
+      "d": 2,
+      "ate_pct": 15.0,
+      "rotulo": "Baixa"
+    },
+    {
+      "d": 3,
+      "ate_pct": 25.0,
+      "rotulo": "Baixa"
+    },
+    {
+      "d": 4,
+      "ate_pct": 35.0,
+      "rotulo": "Moderada"
+    },
+    {
+      "d": 5,
+      "ate_pct": 45.0,
+      "rotulo": "Moderada"
+    },
+    {
+      "d": 6,
+      "ate_pct": 55.0,
+      "rotulo": "Moderada"
+    },
+    {
+      "d": 7,
+      "ate_pct": 65.0,
+      "rotulo": "Alta"
+    },
+    {
+      "d": 8,
+      "ate_pct": 75.0,
+      "rotulo": "Alta"
+    },
+    {
+      "d": 9,
+      "ate_pct": 85.0,
+      "rotulo": "Muito alta"
+    },
+    {
+      "d": 10,
+      "ate_pct": 100.0,
+      "rotulo": "Muito alta"
+    }
+  ],
   "regra": "D_proj = min(D_campo, D_mon); S e O inalterados",
   "limiar_operacional": 7.826175715408156,
   "threshold_method": "p99",
@@ -34,6 +86,8 @@
       ],
       "nao_deteccao_pct": 0.0,
       "d_mon": 1,
+      "d_mon_rotulo": "Remota",
+      "d_campo_rotulo": "Muito alta",
       "d_projetado": 1,
       "npr_projetado": 35,
       "curva_pod_mon": {
@@ -56,6 +110,8 @@
       ],
       "nao_deteccao_pct": 15.0,
       "d_mon": 2,
+      "d_mon_rotulo": "Baixa",
+      "d_campo_rotulo": "Baixa",
       "d_projetado": 2,
       "npr_projetado": 60,
       "curva_pod_mon": {
@@ -78,6 +134,8 @@
       ],
       "nao_deteccao_pct": 0.0,
       "d_mon": 1,
+      "d_mon_rotulo": "Remota",
+      "d_campo_rotulo": "Baixa",
       "d_projetado": 1,
       "npr_projetado": 15,
       "curva_pod_mon": {

@@ -23,8 +23,17 @@
   extensa + perda relevante; 5 = não-operação ou perda severa.
 - **O — Ocorrência** (escala 1–10): 1 = remota (10⁻⁷/ano); 2–3 = baixa (10⁻⁶);
   4–5 = moderada (10⁻⁵); 6–7 = alta (10⁻⁴); 8–10 = muito alta (10⁻²).
-- **D_campo — Detecção em campo** (escala 1–10): 1 = remota (0–5% de não
-  detectar) … 10 = muito alta (86–100% de não detectar).
+- **D_campo — Detecção em campo** (escala 1–10), transcrita da Tab. 4.8
+  (p. 50), colunas "Probabilidade de Não Detectar a Falha" / "Probabilidade do
+  Defeito Afetar o Cliente (%)" / "Rank":
+
+  | D | Não detecta | Rótulo | | D | Não detecta | Rótulo |
+  |---:|---:|---|---|---:|---:|---|
+  | 1 | 0 – 5% | Remota | | 6 | 46 – 55% | Moderada |
+  | 2 | 6 – 15% | Baixa | | 7 | 56 – 65% | Alta |
+  | 3 | 16 – 25% | Baixa | | 8 | 66 – 75% | Alta |
+  | 4 | 26 – 35% | Moderada | | 9 | 76 – 85% | Muito alta |
+  | 5 | 36 – 45% | Moderada | | 10 | 86 – 100% | Muito alta |
 
 > **Leia com atenção o que a escala mede.** Apesar do nome "Detecção", a Tab.
 > 4.8 é definida em **percentual de NÃO detectar**: o índice cresce com o
