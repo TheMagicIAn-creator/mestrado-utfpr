@@ -51,7 +51,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "tag:#literatura",
+                "query": "tag:#inversor-pv",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -72,7 +72,8 @@
               "title": "Bookmarks"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
@@ -234,8 +235,9 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "4916ca3677715f85",
+  "active": "34e899608753eb7d",
   "lastOpenFiles": [
+    "sessoes/2026-08-02_23-34_sessao_web.md",
     "sessoes/2026-08-02_01-35_sessao_web.md",
     "conflict-files-obsidian-git.md",
     "sessoes/2026-07-29_14-53_sessao_web.md",
@@ -261,7 +263,6 @@
     "Cerebro/Resultados/Resultados Exploratórios de RUL e Ajuste Weibull (Evidência E2).md",
     "Cerebro/Resultados/Resultados Exploratórios de Confiabilidade Weibull e RUL (E2).md",
     "Cerebro/Resultados/Estimativas Exploratórias de RUL e Análise de Weibull (E2).md",
-    "Cerebro/Resultados/Correção do escore — antes e depois.md",
     "Cerebro/Resultados",
     "Cerebro/Memorias validadas",
     "Cerebro/Decisoes",
