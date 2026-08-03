@@ -318,7 +318,12 @@ def main() -> int:
     origem = pasta / ARQUIVO_VALIDACAO
     if not origem.exists():
         print(f"  ❌ Não encontrado: {origem}")
-        print("     Rode antes: python src/ml/validacao.py")
+        print("\n     Este artefato é VERSIONADO no Git. Se ele sumiu da sua")
+        print("     cópia local, restaure — não recalcule:")
+        print(f"\n         git restore {PASTA_PADRAO.as_posix()}/{ARQUIVO_VALIDACAO}")
+        print("\n     Rodar `python src/ml/validacao.py` sobrescreveria o")
+        print("     artefato com uma nova execução, mudando números já")
+        print("     publicados. Só faça isso se o Autoencoder foi retreinado.")
         return 1
 
     resultado = tabela_retroalimentacao(origem, args.severidade)
