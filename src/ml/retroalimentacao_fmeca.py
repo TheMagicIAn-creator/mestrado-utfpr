@@ -63,22 +63,44 @@ from pathlib import Path
 # ============================================================
 # ESCALA Tab. 4.8 — bordas SUPERIORES de "% de não detectar"
 # ============================================================
-# Lookup por borda superior, e não por par (lo, hi), de propósito: a Tab. 4.8 é
-# escrita em percentuais inteiros (0–5, 6–15, ...), o que deixa buracos para
-# valores fracionários — 5,5% não cai em faixa nenhuma. Com bordas superiores a
-# cobertura é contínua e o comportamento nos limites fica explícito.
+# TRANSCRITA do TCC (Torres, 2024, Tabela 4.8, p. 50), conferida no PDF em
+# literatura/inversores-pv/torres_aplicacao-da-metodologia-*_2024.pdf:
 #
-# ⚠️  A CONFERIR na Tab. 4.8 do TCC. docs/fmeca.md registra apenas os extremos
-#     (D=1 → 0–5%; D=10 → 86–100%). As oito faixas intermediárias são
-#     RECONSTRUÇÃO ARITMÉTICA forçada por esses extremos: 80 pontos percentuais
-#     (6–85) divididos em 8 faixas de 10. Se a tabela do TCC usar outras
-#     faixas, é ESTA constante que muda — e só ela.
+#   Probabilidade de Não   | Probabilidade do Defeito | Rank
+#   Detectar a Falha       | Afetar o Cliente (%)     |
+#   -----------------------+--------------------------+------
+#   Remota                 |   0 –   5                |   1
+#   Baixa                  |   6 –  15                |   2
+#                          |  16 –  25                |   3
+#   Moderada               |  26 –  35                |   4
+#                          |  36 –  45                |   5
+#                          |  46 –  55                |   6
+#   Alta                   |  56 –  65                |   7
+#                          |  66 –  75                |   8
+#   Muito alta             |  76 –  85                |   9
+#                          |  86 – 100                |  10
+#
+# Lookup por borda superior, e não por par (lo, hi), de propósito: a tabela é
+# escrita em percentuais inteiros, o que deixa buracos para valores
+# fracionários — 5,5% não cairia em faixa nenhuma. Com bordas superiores a
+# cobertura é contínua e o comportamento nos limites fica explícito.
 BORDAS_D: tuple[tuple[int, float], ...] = (
     (1, 5.0), (2, 15.0), (3, 25.0), (4, 35.0), (5, 45.0),
     (6, 55.0), (7, 65.0), (8, 75.0), (9, 85.0), (10, 100.0),
 )
 
-FONTE_ESCALA = "Torres (2024), TCC, Tab. 4.8 — índice D em % de não detectar"
+# Rótulo qualitativo da Tab. 4.8 (células mescladas na coluna da esquerda).
+ROTULOS_D: dict[int, str] = {
+    1: "Remota", 2: "Baixa", 3: "Baixa",
+    4: "Moderada", 5: "Moderada", 6: "Moderada",
+    7: "Alta", 8: "Alta",
+    9: "Muito alta", 10: "Muito alta",
+}
+
+FONTE_ESCALA = (
+    "Torres (2024), TCC, Tabela 4.8 (p. 50) — índice de detecção em "
+    "probabilidade de NÃO detectar a falha"
+)
 
 # Severidade de referência quando um ESCALAR é inevitável. É a assinatura
 # incipiente plenamente desenvolvida — a mais próxima do modo terminal que a
@@ -160,6 +182,16 @@ def indice_d(fracao_nao_deteccao: float) -> int:
         if pct <= borda:
             return d
     return BORDAS_D[-1][0]  # inalcançável: a última borda é 100.0
+
+
+def rotulo_d(d: int) -> str:
+    """Rótulo qualitativo da Tab. 4.8 ("Baixa", "Moderada", ...).
+
+    Existe porque a tabela do TCC traz o rank ao lado de um qualificador, e
+    reproduzir os dois na dissertação evita que o leitor tenha de decorar a
+    escala para ler a linha.
+    """
+    return ROTULOS_D.get(int(d), "")
 
 
 def d_projetado(d_campo: int, d_mon: int) -> int:
@@ -251,6 +283,8 @@ def tabela_retroalimentacao(caminho_validacao: Path | str,
             "pod_mon_ic": list(ponto["ic"]),
             "nao_deteccao_pct": round((1.0 - pod) * 100.0, 6),
             "d_mon": d_mon,
+            "d_mon_rotulo": rotulo_d(d_mon),
+            "d_campo_rotulo": rotulo_d(d_campo),
             "d_projetado": d_proj,
             "npr_projetado": s * o * d_proj,
             "curva_pod_mon": {str(k): v["pod"] for k, v in sorted(curva.items())},
@@ -267,10 +301,10 @@ def tabela_retroalimentacao(caminho_validacao: Path | str,
         ),
         "severidade_referencia": severidade,
         "fonte_escala_d": FONTE_ESCALA,
-        "escala_d_a_conferir": (
-            "Faixas intermediárias reconstruídas dos extremos registrados em "
-            "docs/fmeca.md; conferir na Tab. 4.8 do TCC."
-        ),
+        "escala_d_conferida": True,
+        "escala_d": [
+            {"d": d, "ate_pct": b, "rotulo": ROTULOS_D[d]} for d, b in BORDAS_D
+        ],
         "regra": "D_proj = min(D_campo, D_mon); S e O inalterados",
         "limiar_operacional": meta.get("limiar_operacional"),
         "threshold_method": meta.get("threshold_method"),
@@ -305,7 +339,8 @@ def formatar_markdown(resultado: dict) -> str:
         linhas.append(
             f"| {r['componente']} | {r['s']} | {r['o']} | {r['d_campo']} | "
             f"**{r['npr_oficial']}** | {r['pod_mon']:.3f} | "
-            f"{r['nao_deteccao_pct']:.1f}% | {r['d_mon']} | {r['d_projetado']} | "
+            f"{r['nao_deteccao_pct']:.1f}% | {r['d_mon']} ({r['d_mon_rotulo']}) | "
+            f"{r['d_projetado']} | "
             f"**{r['npr_projetado']}** |"
         )
     linhas += [
@@ -327,8 +362,8 @@ def formatar_markdown(resultado: dict) -> str:
         ("> Evidência **E2**. NPR projetado sob validação sintética, não NPR "
          "de campo. A FMECA oficial permanece `docs/fmeca.md`."),
         "",
-        ("> As faixas intermediárias da escala D são reconstrução aritmética "
-         "— conferir na Tab. 4.8 do TCC (ver `docs/nomenclatura_deteccao.md`)."),
+        ("> Escala de detecção transcrita de Torres (2024), Tabela 4.8, p. 50 "
+         "— \"probabilidade de não detectar a falha\"."),
     ]
     return "\n".join(linhas)
 

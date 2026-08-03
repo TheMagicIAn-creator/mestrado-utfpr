@@ -151,16 +151,32 @@ impedir.
 
 ---
 
-## Pendência factual (não metodológica)
+## Pendência factual — FECHADA (2026-08-03)
 
-`docs/fmeca.md` registra apenas os extremos da Tab. 4.8 (D=1 → 0–5%; D=10 →
-86–100%). As oito faixas intermediárias em
-`src/ml/retroalimentacao_fmeca.py::BORDAS_D` são **reconstrução aritmética**
-forçada por esses extremos (80 pontos em 8 faixas de 10).
+A versão anterior deste documento registrava que as faixas intermediárias da
+Tab. 4.8 eram **reconstrução aritmética**, feita a partir dos dois extremos que
+`docs/fmeca.md` trazia, e pediam conferência no TCC.
 
-**Conferir na Tab. 4.8 do TCC.** Se divergirem, muda uma constante — e a
-conclusão pode mudar com ela, já que o IGBT cai a 15,0% de não detecção, perto
-da borda de 15%.
+**Conferidas.** O PDF do TCC está indexado no próprio repositório
+(`literatura/inversores-pv/torres_aplicacao-da-metodologia-*_2024.pdf`), e a
+Tabela 4.8 (p. 50) traz:
+
+| D | Não detecta | Rótulo | | D | Não detecta | Rótulo |
+|---:|---:|---|---|---:|---:|---|
+| 1 | 0 – 5% | Remota | | 6 | 46 – 55% | Moderada |
+| 2 | 6 – 15% | Baixa | | 7 | 56 – 65% | Alta |
+| 3 | 16 – 25% | Baixa | | 8 | 66 – 75% | Alta |
+| 4 | 26 – 35% | Moderada | | 9 | 76 – 85% | Muito alta |
+| 5 | 36 – 45% | Moderada | | 10 | 86 – 100% | Muito alta |
+
+A reconstrução batia **exatamente**. Nenhum número da tabela de NPR projetado
+muda.
+
+Em particular, o ponto que estava frágil: o IGBT mede 15,0% de não detecção, e
+a faixa 2 do TCC é "6 – 15" **inclusive** — logo `D_mon = 2` ("Baixa") e o NPR
+projetado de 60 está confirmado. Havia teste para essa borda antes mesmo da
+conferência; agora há também um teste que trava as dez faixas contra a tabela
+publicada, para que ninguém edite a constante sem voltar à fonte.
 
 ---
 

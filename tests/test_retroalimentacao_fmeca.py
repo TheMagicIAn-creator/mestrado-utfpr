@@ -20,6 +20,7 @@ from src.ml.retroalimentacao_fmeca import (
     d_projetado,
     formatar_markdown,
     indice_d,
+    rotulo_d,
     tabela_retroalimentacao,
 )
 
@@ -245,7 +246,7 @@ def test_markdown_traz_as_ressalvas_junto_dos_numeros(tmp_path):
         "contator_ac": 1.0, "igbt": 0.85, "fusivel_ac": 1.0,
     }))
     assert "E2" in md
-    assert "Tab. 4.8" in md
+    assert "4.8" in md and "Torres (2024)" in md   # a escala é citada na fonte
     assert "NPR de campo" in md
 
 
@@ -291,3 +292,55 @@ def test_limiar_json_corrompido_nao_derruba_a_tabela(tmp_path):
     })
     (tmp_path / "limiar.json").write_text("{ nao e json", encoding="utf-8")
     assert tabela_retroalimentacao(arq)["percentil_efetivo"] is None
+
+
+# ------------------------------------------------------------------
+# Fidelidade à Tab. 4.8 do TCC (transcrita, não reconstruída)
+# ------------------------------------------------------------------
+
+def test_faixas_batem_com_a_tabela_do_tcc():
+    """Transcrição literal de Torres (2024), Tabela 4.8, p. 50.
+
+    A tabela é a FONTE da conversão POD_mon → D_mon. Se alguém editar
+    `BORDAS_D` sem voltar ao TCC, este teste reprova — é o que impede a régua
+    de virar escolha nossa outra vez.
+    """
+    faixas_tcc = {1: (0, 5), 2: (6, 15), 3: (16, 25), 4: (26, 35), 5: (36, 45),
+                  6: (46, 55), 7: (56, 65), 8: (66, 75), 9: (76, 85),
+                  10: (86, 100)}
+    for d, (lo, hi) in faixas_tcc.items():
+        assert indice_d(lo / 100.0) == d, f"borda inferior de D={d}"
+        assert indice_d(hi / 100.0) == d, f"borda superior de D={d}"
+
+
+def test_rotulos_qualitativos_da_tabela():
+    """Células mescladas da coluna 'Probabilidade de Não Detectar a Falha'."""
+    assert [rotulo_d(d) for d in range(1, 11)] == [
+        "Remota", "Baixa", "Baixa", "Moderada", "Moderada", "Moderada",
+        "Alta", "Alta", "Muito alta", "Muito alta",
+    ]
+
+
+def test_igbt_em_15_por_cento_fica_em_D2_baixa(tmp_path):
+    """O número mais frágil da tabela: 15,0% é a borda EXATA de D=2.
+
+    A Tab. 4.8 define a faixa 2 como 6–15 (inclusive), então 15,0% é D=2 e o
+    NPR projetado do IGBT é 60. Se fosse D=3, seria 90.
+    """
+    res = _tabela_com_recall_maximo(tmp_path, {
+        "contator_ac": 1.0, "igbt": 0.85, "fusivel_ac": 1.0,
+    })
+    igbt = next(r for r in res["linhas"] if r["id"] == "igbt")
+    assert igbt["nao_deteccao_pct"] == 15.0
+    assert igbt["d_mon"] == 2
+    assert igbt["d_mon_rotulo"] == "Baixa"
+    assert igbt["npr_projetado"] == 60
+
+
+def test_escala_publicada_no_resultado_para_auditoria(tmp_path):
+    res = _tabela_com_recall_maximo(tmp_path, {
+        "contator_ac": 1.0, "igbt": 0.85, "fusivel_ac": 1.0,
+    })
+    assert res["escala_d_conferida"] is True
+    assert "Tabela 4.8" in res["fonte_escala_d"]
+    assert len(res["escala_d"]) == 10
