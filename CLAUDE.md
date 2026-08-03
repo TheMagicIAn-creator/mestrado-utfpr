@@ -73,9 +73,20 @@ O inversor responde por 43% dos tickets e 36% da energia
 perdida em SFVs (Golnas, 2012 apud Torres). São ESTAS as
 falhas injetadas — não LCL/desbalanceamento/sensor.
 
-Ressalva: o índice D da FMECA (detecção EM CAMPO) e a
-detectabilidade empírica do Autoencoder são distintos — a
-relação entre eles é resultado a discutir (docs/fmeca.md).
+NOMENCLATURA (fonte única: docs/nomenclatura_deteccao.md).
+Nunca escrever "D" sozinho — são grandezas distintas:
+- D_campo: índice FMECA de detecção EM CAMPO, julgado, 1–10,
+  maior = pior. É o D de NPR = S×O×D. Tab. 4.8 do TCC define
+  a escala em % de NÃO detectar.
+- POD_mon(s): probabilidade de detecção pelo MONITORAMENTO
+  proposto na severidade s, medida sob E2 no limiar congelado
+  (0–1, maior = melhor). Raiz: curva POD do MIL-HDBK-1823A.
+  Subscrito obrigatório — POD nu é Power Oscillation Damping.
+- D_mon = faixa(1 − POD_mon); D_proj = min(D_campo, D_mon).
+A conversão NÃO é régua nossa: é a leitura da Tab. 4.8, e por
+isso não há circularidade a temer. NPR projetado sai em tabela
+SEPARADA (E2); a FMECA oficial de docs/fmeca.md não muda.
+Calculado por src/ml/retroalimentacao_fmeca.py.
 
 ## Metodologia da Dissertação
 Detecção de anomalias por modelagem de normalidade:

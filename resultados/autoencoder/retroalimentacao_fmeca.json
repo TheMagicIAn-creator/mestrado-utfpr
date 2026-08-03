@@ -1,0 +1,89 @@
+{
+  "evidence_level": "E2",
+  "evidence_note": "NPR projetado sob validação sintética orientada pela FMECA (E2). NÃO é NPR de campo (E3). A FMECA oficial permanece docs/fmeca.md; isto é análise de sensibilidade.",
+  "severidade_referencia": 1.0,
+  "fonte_escala_d": "Torres (2024), TCC, Tab. 4.8 — índice D em % de não detectar",
+  "escala_d_a_conferir": "Faixas intermediárias reconstruídas dos extremos registrados em docs/fmeca.md; conferir na Tab. 4.8 do TCC.",
+  "regra": "D_proj = min(D_campo, D_mon); S e O inalterados",
+  "limiar_operacional": 7.826175715408156,
+  "threshold_method": "p99",
+  "ordem_oficial": [
+    "contator_ac",
+    "igbt",
+    "fusivel_ac"
+  ],
+  "ordem_projetada": [
+    "igbt",
+    "contator_ac",
+    "fusivel_ac"
+  ],
+  "ordem_inverte": true,
+  "linhas": [
+    {
+      "id": "contator_ac",
+      "componente": "Contator AC",
+      "s": 5,
+      "o": 7,
+      "d_campo": 9,
+      "npr_oficial": 315,
+      "pod_mon": 1.0,
+      "pod_mon_ic": [
+        0.9123783988027135,
+        1.0
+      ],
+      "nao_deteccao_pct": 0.0,
+      "d_mon": 1,
+      "d_projetado": 1,
+      "npr_projetado": 35,
+      "curva_pod_mon": {
+        "0.3": 0.6,
+        "0.5": 1.0,
+        "1.0": 1.0
+      }
+    },
+    {
+      "id": "igbt",
+      "componente": "IGBT",
+      "s": 5,
+      "o": 6,
+      "d_campo": 3,
+      "npr_oficial": 90,
+      "pod_mon": 0.85,
+      "pod_mon_ic": [
+        0.709276756335103,
+        0.9293881228267964
+      ],
+      "nao_deteccao_pct": 15.0,
+      "d_mon": 2,
+      "d_projetado": 2,
+      "npr_projetado": 60,
+      "curva_pod_mon": {
+        "0.3": 0.15,
+        "0.5": 0.525,
+        "1.0": 0.85
+      }
+    },
+    {
+      "id": "fusivel_ac",
+      "componente": "Fusível AC",
+      "s": 5,
+      "o": 3,
+      "d_campo": 2,
+      "npr_oficial": 30,
+      "pod_mon": 1.0,
+      "pod_mon_ic": [
+        0.9123783988027135,
+        1.0
+      ],
+      "nao_deteccao_pct": 0.0,
+      "d_mon": 1,
+      "d_projetado": 1,
+      "npr_projetado": 15,
+      "curva_pod_mon": {
+        "0.3": 0.125,
+        "0.5": 0.175,
+        "1.0": 1.0
+      }
+    }
+  ]
+}
