@@ -69,6 +69,20 @@ desktop.ini
 novos_pdfs/*.pdf
 
 # ========================
+# BACKUPS E RASCUNHOS LOCAIS
+# ========================
+_backup_notas/
+atual.zip
+teste.py
+distribuicao_erro_reconstrucao.png
+notas/app_backup.txt
+notas/Untitled*.base
+notas/Untitled*.canvas
+
+# Vault Obsidian antigo na raiz; o vault ativo fica em notas/.
+.obsidian/
+
+# ========================
 # ESTADO DO OBSIDIAN (não é conteúdo)
 # ========================
 # workspace.json (quais painéis estão abertos, scroll) e graph.json
@@ -81,6 +95,7 @@ novos_pdfs/*.pdf
 # Plugins, temas e configurações compartilháveis também seguem versionados.
 notas/.obsidian/workspace.json
 notas/.obsidian/graph.json
+notas/.obsidian/plugins/obsidian-git/obsidian_askpass.sh
 .obsidian/workspace.json
 .obsidian/graph.json
 
