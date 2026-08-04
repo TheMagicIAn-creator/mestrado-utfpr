@@ -31,9 +31,41 @@
   "epochs_treinadas": 75,
   "epoca_melhor": 55,
   "loss_val_melhor": 0.3536356455022162,
-  "fp_val_pct": 10.227272727272728,
+  "fp_val_pct": 4.395604395604396,
   "fp_calib_pct": 4.395604395604396,
   "fp_test_pct": 10.227272727272728,
+  "fp_mse_p99": {
+    "calibracao": {
+      "count": 1,
+      "n": 91,
+      "rate_pct": 1.098901098901099,
+      "ci95_low_pct": 0.19424713318492126,
+      "ci95_high_pct": 5.964935668650615
+    },
+    "teste": {
+      "count": 1,
+      "n": 88,
+      "rate_pct": 1.1363636363636365,
+      "ci95_low_pct": 0.20087853177044762,
+      "ci95_high_pct": 6.159493892298563
+    }
+  },
+  "fp_score_operacional": {
+    "calibracao": {
+      "count": 4,
+      "n": 91,
+      "rate_pct": 4.395604395604396,
+      "ci95_low_pct": 1.7224366444117332,
+      "ci95_high_pct": 10.763093384266353
+    },
+    "teste": {
+      "count": 9,
+      "n": 88,
+      "rate_pct": 10.227272727272727,
+      "ci95_low_pct": 5.474450061182731,
+      "ci95_high_pct": 18.3072484235246
+    }
+  },
   "split_temporal": {
     "protocolo": "treino_60_calibracao_20_teste_20_com_purga",
     "limites": {
@@ -142,6 +174,6 @@
       456
     ]
   },
-  "data_treino": "2026-08-04T00:15:49.179166-03:00",
+  "data_treino": "2026-08-04T07:59:47.513219-03:00",
   "device": "cpu"
 }

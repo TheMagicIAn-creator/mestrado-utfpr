@@ -1,13 +1,13 @@
 {
   "manifest_version": 2,
   "stage": "validacao",
-  "created_at": "2026-08-04T00:22:18.212431-03:00",
-  "git_commit": "a1c1aa10c6176fd379dcee48eb9617812fb4d435",
+  "created_at": "2026-08-04T08:00:34.809895-03:00",
+  "git_commit": "c65b0789ecb15dd7a6f94109c40c3af51050f205",
   "code_hash_mode": "text_lf_utf8",
   "code_sha256": "b6c86d6493573e4f3a4e1d9e0eb8ffad5869a88a6f301f57e17440f1f40f06ee",
   "code_dependencies": {
     "src.ml.features_ca": "fdb785e3d6398250b90de7fbd17fb3093b092d60752436e51312d4af370f0ad1",
-    "src.ml.autoencoder": "fbd947536bc03f567b8294733fa2d92ca9abbc8720d2cdb41993cb48a8497781",
+    "src.ml.autoencoder": "af67e26d14675f985ab48239b8f9e2ca8759b8c058e946019342f292f32f3ce0",
     "src.ml.dados_avaliacao": "bff782018b640e3b8dd763e60b5885958e9fdf507fab7af4055fee1972b9a6db",
     "src.ml.escore_anomalia": "92647a318125cb58ae304e4d572f527b09a5dbf84afc5b8b977e3d44e1f77e84",
     "src.ml.estatistica": "fde4d602db680706252a6e11c9bb9a2aa84e27b6911275beec7f4148538a4515",

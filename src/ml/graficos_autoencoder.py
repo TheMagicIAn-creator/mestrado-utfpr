@@ -1,8 +1,9 @@
 """
 graficos_autoencoder.py - Al IAdo PV
 
-As três figuras que documentam a CALIBRAÇÃO do Autoencoder: convergência do
-treino, distribuição do erro de reconstrução e erro ao longo do tempo.
+As três figuras e a tabela que documentam a CALIBRAÇÃO do Autoencoder:
+convergência do treino, distribuição do erro de reconstrução, erro ao longo do
+tempo e resumo tabular com excedências/IC95%.
 
 Vive separado de `autoencoder.py` por um motivo concreto: aquele módulo importa
 `torch` no topo, então regenerar uma figura a partir de artefatos já salvos
@@ -12,19 +13,12 @@ onde `torch` não existe. Estas funções precisam apenas de numpy e matplotlib.
 Todas plotam **MSE**, não o escore localizado. A comparação MSE × localizado
 vive em `src/ml/diagnostico_escore.py`.
 
-⚠️ EDITOU UM PLOT AQUI? REGENERE AS FIGURAS.
-============================================
-O manifesto de proveniência da etapa `autoencoder` hasheia **um** arquivo
-(`src/ml/pipeline.py::_code_path`), e esse arquivo é `autoencoder.py`. Como os
-plots saíram de lá, editar uma função deste módulo **não** marca a etapa como
-`stale` — os PNGs em `resultados/autoencoder/` ficariam de código antigo sem
-aviso.
-
-Optou-se por NÃO estender o hash a múltiplos arquivos: isso marcaria a etapa
-como stale hoje e pediria um retreino, arriscando os números por um problema
-cosmético (os PNGs são renderização; nenhum resultado depende deles).
-
-O conserto é barato e não precisa de dataset nem de torch:
+EDITOU UM PLOT AQUI? REGENERE AS FIGURAS.
+=========================================
+Desde os manifestos v2, este módulo entra em `code_dependencies` da etapa
+`autoencoder`; portanto mudanças aqui marcam a etapa como `stale`. Se a mudança
+for apenas de apresentação, a regeneração barata a partir dos vetores salvos
+continua disponível e não precisa de dataset nem de torch:
 
     python -c "from src.ml.graficos_autoencoder import regenerar_graficos_autoencoder as r; r()"
 
@@ -46,12 +40,16 @@ import matplotlib.pyplot as plt  # noqa: E402
 from src.core.logs import get_logger  # noqa: E402
 from src.ml.estilo_graficos import (  # noqa: E402
     COR_ALERTA,
+    COR_NAO_DETECTADO,
+    COR_REFERENCIA,
     COR_SUCESSO,
+    COR_TEXTO_SEC,
     PALETA,
     TAM,
     aplicar_estilo,
     salvar_figura,
 )
+from src.ml.estatistica import intervalo_wilson  # noqa: E402
 
 aplicar_estilo()
 
@@ -72,6 +70,182 @@ def _log(*args, sep=" ", end="\n", flush=None):
     _logger.info(texto.rstrip("\n"))
 
 
+def resumo_excedencia(valores: np.ndarray, limiar: float) -> dict:
+    """Conta excedências e adiciona IC95% de Wilson para a proporção."""
+    arr = np.asarray(valores, dtype=float)
+    n = int(len(arr))
+    k = int((arr > float(limiar)).sum()) if n else 0
+    taxa = float(100.0 * k / n) if n else float("nan")
+    ci_low, ci_high = intervalo_wilson(k, n)
+    return {
+        "count": k,
+        "n": n,
+        "rate_pct": taxa,
+        "ci95_low_pct": float(ci_low * 100.0),
+        "ci95_high_pct": float(ci_high * 100.0),
+    }
+
+
+def _fmt(valor: float | int | None, casas: int = 4) -> str:
+    if valor is None:
+        return "-"
+    try:
+        v = float(valor)
+    except (TypeError, ValueError):
+        return "-"
+    if not np.isfinite(v):
+        return "-"
+    return f"{v:.{casas}f}"
+
+
+def _fmt_excedencia(resumo: dict) -> str:
+    if not resumo or not resumo.get("n"):
+        return "-"
+    return (
+        f"{resumo['count']}/{resumo['n']} = {resumo['rate_pct']:.2f}% "
+        f"[{resumo['ci95_low_pct']:.2f}; {resumo['ci95_high_pct']:.2f}]"
+    )
+
+
+def _resumo_vetor(valores: np.ndarray) -> dict:
+    arr = np.asarray(valores, dtype=float)
+    arr = arr[np.isfinite(arr)]
+    if not len(arr):
+        return {
+            "n_janelas": 0,
+            "mediana": float("nan"),
+            "iqr": float("nan"),
+            "p95": float("nan"),
+            "p99": float("nan"),
+            "max": float("nan"),
+        }
+    q25, q75 = np.percentile(arr, [25, 75])
+    return {
+        "n_janelas": int(len(arr)),
+        "mediana": float(np.median(arr)),
+        "iqr": float(q75 - q25),
+        "p95": float(np.percentile(arr, 95)),
+        "p99": float(np.percentile(arr, 99)),
+        "max": float(np.max(arr)),
+    }
+
+
+def _linha_calibracao(nome: str, mse: np.ndarray, score: np.ndarray | None,
+                      limiar_mse: float, limiar_score: float) -> dict:
+    resumo_mse = _resumo_vetor(mse)
+    exc_mse = resumo_excedencia(mse, limiar_mse)
+    resumo_score = _resumo_vetor(score) if score is not None else {}
+    exc_score = (
+        resumo_excedencia(score, limiar_score) if score is not None else {}
+    )
+    return {
+        "bloco": nome,
+        **{f"mse_{k}": v for k, v in resumo_mse.items()},
+        "mse_ref_p99_count": exc_mse.get("count"),
+        "mse_ref_p99_rate_pct": exc_mse.get("rate_pct"),
+        "mse_ref_p99_ci95_low_pct": exc_mse.get("ci95_low_pct"),
+        "mse_ref_p99_ci95_high_pct": exc_mse.get("ci95_high_pct"),
+        **{f"score_operacional_{k}": v for k, v in resumo_score.items()},
+        "score_operacional_count": exc_score.get("count"),
+        "score_operacional_rate_pct": exc_score.get("rate_pct"),
+        "score_operacional_ci95_low_pct": exc_score.get("ci95_low_pct"),
+        "score_operacional_ci95_high_pct": exc_score.get("ci95_high_pct"),
+    }
+
+
+def salvar_resumo_calibracao(
+    erros_treino: np.ndarray,
+    erros_calibracao: np.ndarray,
+    erros_teste: np.ndarray,
+    info_limiar: dict,
+    pasta: Path,
+    *,
+    scores_treino: np.ndarray | None = None,
+    scores_calibracao: np.ndarray | None = None,
+    scores_teste: np.ndarray | None = None,
+) -> tuple[Path, Path]:
+    """Grava tabela CSV/Markdown de calibração com contagens e IC95%."""
+    limiar_mse = float(info_limiar.get(
+        "mse_p99", info_limiar.get("limiar_p99", info_limiar["limiar"])
+    ))
+    limiar_score = float(info_limiar.get(
+        "score_threshold", info_limiar.get("limiar_operacional", info_limiar["limiar"])
+    ))
+    metodo = info_limiar.get("score_method") or info_limiar.get("metodo_escore") or "mse"
+    percentil = info_limiar.get(
+        "threshold_effective_percentile", info_limiar.get("percentil_limiar")
+    )
+    linhas = [
+        _linha_calibracao("treino", erros_treino, scores_treino, limiar_mse, limiar_score),
+        _linha_calibracao(
+            "calibracao", erros_calibracao, scores_calibracao,
+            limiar_mse, limiar_score,
+        ),
+        _linha_calibracao(
+            "teste_isolado", erros_teste, scores_teste,
+            limiar_mse, limiar_score,
+        ),
+    ]
+    df = pd.DataFrame(linhas)
+    csv_path = pasta / "calibracao_autoencoder.csv"
+    md_path = pasta / "calibracao_autoencoder.md"
+    df.to_csv(csv_path, index=False)
+
+    ponto = str(metodo)
+    if percentil is not None:
+        ponto += f" / percentil efetivo {_fmt(percentil, 1)}"
+    texto = [
+        "# Calibração acadêmica do Autoencoder",
+        "",
+        (
+            "> Split temporal com purga. O bloco de teste isolado não participa "
+            "do scaler, do early stopping nem da escolha de limiar."
+        ),
+        "",
+        f"- Escore operacional: `{ponto}`.",
+        f"- Limiar operacional (`score_threshold`): `{_fmt(limiar_score, 6)}`.",
+        f"- Referência MSE p99 para gráficos de reconstrução: `{_fmt(limiar_mse, 6)}`.",
+        "- Intervalos entre colchetes são IC95% de Wilson para a proporção de excedências.",
+        "",
+        "| Bloco | n | MSE mediana | MSE IQR | MSE p99 | > ref. MSE p99 | "
+        "Escore mediana | > limiar operacional |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for row in linhas:
+        exc_mse = {
+            "count": row.get("mse_ref_p99_count"),
+            "n": row.get("mse_n_janelas"),
+            "rate_pct": row.get("mse_ref_p99_rate_pct"),
+            "ci95_low_pct": row.get("mse_ref_p99_ci95_low_pct"),
+            "ci95_high_pct": row.get("mse_ref_p99_ci95_high_pct"),
+        }
+        exc_score = {
+            "count": row.get("score_operacional_count"),
+            "n": row.get("score_operacional_n_janelas"),
+            "rate_pct": row.get("score_operacional_rate_pct"),
+            "ci95_low_pct": row.get("score_operacional_ci95_low_pct"),
+            "ci95_high_pct": row.get("score_operacional_ci95_high_pct"),
+        }
+        texto.append(
+            f"| {row['bloco']} | {int(row['mse_n_janelas'])} | "
+            f"{_fmt(row['mse_mediana'])} | {_fmt(row['mse_iqr'])} | "
+            f"{_fmt(row['mse_p99'])} | {_fmt_excedencia(exc_mse)} | "
+            f"{_fmt(row.get('score_operacional_mediana'))} | "
+            f"{_fmt_excedencia(exc_score)} |"
+        )
+    texto.extend([
+        "",
+        (
+            "Observação metodológica: os gráficos `distribuicao_erro.png` e "
+            "`erro_temporal.png` estão na escala MSE; a decisão operacional do "
+            "pipeline usa o escore canônico registrado em `limiar.json`."
+        ),
+        "",
+    ])
+    md_path.write_text("\n".join(texto), encoding="utf-8")
+    return csv_path, md_path
+
+
 def plotar_curvas(hist_treino: list, hist_val: list,
                   epoca_melhor: int, pasta: Path):
     """Curvas de loss por época."""
@@ -90,6 +264,24 @@ def plotar_curvas(hist_treino: list, hist_val: list,
     ax.set_ylabel("MSE Loss")
     ax.set_title("Autoencoder — convergência do treinamento\n"
                  "A calibração orienta o early stopping; o teste permanece isolado")
+    if hist_val:
+        melhor_val = min(hist_val)
+        final_val = hist_val[-1]
+        ax.text(
+            0.985, 0.06,
+            (
+                f"épocas: {len(hist_treino)}\n"
+                f"melhor época: {epoca_melhor}\n"
+                f"loss calib. mín.: {melhor_val:.4f}\n"
+                f"loss calib. final: {final_val:.4f}"
+            ),
+            transform=ax.transAxes,
+            ha="right",
+            va="bottom",
+            fontsize=8.5,
+            color=COR_TEXTO_SEC,
+            bbox={"boxstyle": "round,pad=0.35", "fc": "white", "ec": "#e1e0d9"},
+        )
     ax.legend(ncol=2)
     caminho = pasta / "curva_treino.png"
     salvar_figura(
@@ -138,7 +330,7 @@ def plotar_distribuicao(erros_treino: np.ndarray,
     limiar = info_limiar["limiar"]
     for ax in (ax_hist, ax_ecdf):
         ax.axvline(limiar, color=COR_ALERTA, linewidth=2, linestyle="--",
-                   label=f"p99 calibração = {limiar:.4f}")
+                   label=f"Referência MSE p99 = {limiar:.4f}")
 
     # μ+kσ entra apenas como REFERÊNCIA comparativa (não é o limiar em uso).
     mu3s = info_limiar.get("limiar_mu3sigma", info_limiar.get("limiar_mu3s"))
@@ -146,7 +338,26 @@ def plotar_distribuicao(erros_treino: np.ndarray,
         ax_hist.axvline(mu3s, color="#898781", linewidth=1.5, linestyle=":",
                         label=f"μ+{info_limiar['k']:.0f}σ = {mu3s:.4f}")
 
-    fp = info_limiar.get("fp_test_pct")
+    fp_teste = resumo_excedencia(erros_teste, limiar)
+    fp_calib = resumo_excedencia(erros_calibracao, limiar)
+    ax_ecdf.axhline(
+        0.99, color=COR_REFERENCIA, linewidth=1.1, linestyle=":",
+        label="Probabilidade 0,99",
+    )
+    ax_ecdf.text(
+        0.03,
+        0.08,
+        (
+            "Excedência acima da referência MSE p99\n"
+            f"calibração: {_fmt_excedencia(fp_calib)}\n"
+            f"teste isolado: {_fmt_excedencia(fp_teste)}"
+        ),
+        transform=ax_ecdf.transAxes,
+        fontsize=8.5,
+        color=COR_TEXTO_SEC,
+        bbox={"boxstyle": "round,pad=0.35", "fc": "white", "ec": "#e1e0d9"},
+    )
+    fp = fp_teste.get("rate_pct")
     ax_hist.set_xscale("log")
     ax_hist.set_xlabel("Erro de reconstrução (MSE, escala log)")
     ax_hist.set_ylabel("Densidade")
@@ -159,16 +370,46 @@ def plotar_distribuicao(erros_treino: np.ndarray,
     ax_ecdf.set_title("Cauda superior — ECDF")
     ax_ecdf.legend(fontsize=8)
     fig.suptitle(
-        "Calibração do detector em dados saudáveis"
-        + (f" — falsos positivos no teste: {fp:.2f}%" if isinstance(fp, (int, float)) else "")
+        "Referência MSE do autoencoder em dados saudáveis"
+        + (f" — excedência MSE no teste: {fp:.2f}%" if isinstance(fp, (int, float)) else "")
     )
     caminho = pasta / "distribuicao_erro.png"
     salvar_figura(
         fig,
         caminho,
-        "O limiar é estimado somente na calibração; o bloco de teste não participa do ajuste.",
+        (
+            "A linha pontilhada vermelha é referência de MSE; a decisão "
+            "operacional localizada está registrada em limiar.json."
+        ),
     )
     _log(f"   📊 {caminho.name}")
+
+
+def _sombrear_split_temporal(ax, tempos: np.ndarray, split: dict | None) -> None:
+    if not split:
+        return
+    limites = split.get("limites") or {}
+    blocos = [
+        ("treino", "Treino", PALETA[0]),
+        ("val", "Calibração", PALETA[1]),
+        ("teste", "Teste isolado", PALETA[2]),
+    ]
+    n = len(tempos)
+    for chave, rotulo, cor in blocos:
+        intervalo = limites.get(chave) or []
+        if len(intervalo) != 2:
+            continue
+        ini, fim = int(intervalo[0]), int(intervalo[1])
+        if not (0 <= ini < fim <= n):
+            continue
+        ax.axvspan(
+            float(tempos[ini]),
+            float(tempos[fim - 1]),
+            color=cor,
+            alpha=0.055,
+            label=rotulo,
+            zorder=0,
+        )
 
 
 def plotar_erro_temporal(erros: np.ndarray,
@@ -177,24 +418,33 @@ def plotar_erro_temporal(erros: np.ndarray,
                          indices_teste: np.ndarray | None = None):
     """Erro de reconstrução ao longo do tempo."""
     fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
+    _sombrear_split_temporal(ax, tempos, info_limiar.get("split_temporal"))
     ax.plot(tempos, erros, color=PALETA[0], alpha=0.8, linewidth=0.8)
     ax.axhline(info_limiar["limiar"], color=COR_ALERTA, linestyle="--",
-               linewidth=1.5, label=f"Limiar = {info_limiar['limiar']:.4f}")
+               linewidth=1.5, label=f"Referência MSE p99 = {info_limiar['limiar']:.4f}")
     alarmes = erros > info_limiar["limiar"]
     ax.scatter(tempos[alarmes], erros[alarmes], color=COR_ALERTA, s=22,
-               zorder=3, label="Alarme em dado saudável")
-    if indices_teste is not None and len(indices_teste):
+               zorder=3, label="Acima da referência MSE")
+    if (
+        not info_limiar.get("split_temporal")
+        and indices_teste is not None
+        and len(indices_teste)
+    ):
         inicio_teste = float(tempos[int(indices_teste[0])])
-        ax.axvspan(inicio_teste, float(tempos[-1]), color=PALETA[2], alpha=0.08,
+        ax.axvspan(inicio_teste, float(tempos[-1]), color=COR_NAO_DETECTADO, alpha=0.08,
                    label="Bloco de teste isolado")
     ax.set_xlabel("Tempo (s)")
     ax.set_ylabel("Erro de Reconstrução (MSE)")
     ax.set_yscale("log")
-    ax.set_title("Erro temporal — Paderborn saudável\n"
-                 "Pontos vermelhos são falsos alarmes, não falhas confirmadas")
+    ax.set_title("Erro temporal de reconstrução em dados saudáveis\n"
+                 "Referência MSE p99; decisão operacional localizada em limiar.json")
     ax.legend()
     caminho = pasta / "erro_temporal.png"
-    salvar_figura(fig, caminho)
+    salvar_figura(
+        fig,
+        caminho,
+        "As faixas mostram o split temporal com purga; pontos acima da referência não são falhas confirmadas.",
+    )
     _log(f"   📊 {caminho.name}")
 
 
@@ -250,4 +500,14 @@ def regenerar_graficos_autoencoder(pasta: Path = PASTA_SAIDA) -> bool:
                 diag["erros_todos"], diag["tempos"], info_mse, pasta,
                 indices_teste=diag["indices_teste"],
             )
+        salvar_resumo_calibracao(
+            diag["erros_treino"], diag["erros_calibracao"],
+            diag["erros_teste"], info, pasta,
+            scores_treino=diag["scores_operacionais_treino"]
+            if "scores_operacionais_treino" in diag.files else None,
+            scores_calibracao=diag["scores_operacionais_calibracao"]
+            if "scores_operacionais_calibracao" in diag.files else None,
+            scores_teste=diag["scores_operacionais_teste"]
+            if "scores_operacionais_teste" in diag.files else None,
+        )
     return True

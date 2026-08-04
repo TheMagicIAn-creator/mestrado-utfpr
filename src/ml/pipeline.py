@@ -138,6 +138,8 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/scaler.pkl",
             "resultados/autoencoder/limiar.json",
             "resultados/autoencoder/diagnostico_autoencoder.npz",
+            "resultados/autoencoder/calibracao_autoencoder.csv",
+            "resultados/autoencoder/calibracao_autoencoder.md",
             "resultados/autoencoder/curva_treino.png",
             "resultados/autoencoder/distribuicao_erro.png",
             "resultados/autoencoder/erro_temporal.png",
@@ -240,6 +242,8 @@ ARTEFATOS_PUBLICADOS: dict[str, tuple[str, ...]] = {
     "autoencoder": (
         "resultados/manifestos/autoencoder.json",
         "resultados/autoencoder/limiar.json",
+        "resultados/autoencoder/calibracao_autoencoder.csv",
+        "resultados/autoencoder/calibracao_autoencoder.md",
         "resultados/autoencoder/distribuicao_erro.png",
     ),
     "injecao_falhas": (
