@@ -27,6 +27,15 @@ def test_hash_muda_com_conteudo(tmp_path):
     assert P.sha256_arquivo(tmp_path / "naoexiste") is None
 
 
+def test_hash_textual_normalizado_ignora_crlf(tmp_path):
+    a = tmp_path / "a.py"
+    b = tmp_path / "b.py"
+    a.write_bytes(b"print(1)\nprint(2)\n")
+    b.write_bytes(b"print(1)\r\nprint(2)\r\n")
+    assert P.sha256_arquivo(a) != P.sha256_arquivo(b)
+    assert P.sha256_arquivo_texto_normalizado(a) == P.sha256_arquivo_texto_normalizado(b)
+
+
 def test_comparar_detecta_parametros(tmp_path):
     code = _escreve(tmp_path / "code.py", "print(1)")
     out = _escreve(tmp_path / "out.json", "{}")
@@ -43,6 +52,48 @@ def test_comparar_detecta_upstream(tmp_path):
     _escreve(up, "v2")  # upstream regenerado
     m2 = P.gerar_manifesto("s", code, {}, {"features": up}, [out])
     assert any("upstream" in x for x in P.comparar(m1, m2))
+
+
+def test_manifesto_v2_registra_dependencias_e_outputs(tmp_path):
+    code = _escreve(tmp_path / "code.py")
+    dep = _escreve(tmp_path / "dep.py")
+    out = _escreve(tmp_path / "out.json", "{}")
+    m = P.gerar_manifesto("s", code, {}, {}, [out], code_dependencies={"dep": dep})
+    assert m["manifest_version"] == 2
+    assert m["code_hash_mode"] == "text_lf_utf8"
+    assert m["code_dependencies"]["dep"] == P.sha256_arquivo_texto_normalizado(dep)
+    assert list(m["output_artifacts"].values()) == [P.sha256_arquivo(out)]
+
+
+def test_estado_stale_quando_dependencia_cientifica_muda(tmp_path, monkeypatch):
+    monkeypatch.setattr(P, "PASTA_MANIFESTOS", tmp_path / "man")
+    code = _escreve(tmp_path / "code.py", "v1")
+    dep = _escreve(tmp_path / "dep.py", "v1")
+    out = _escreve(tmp_path / "out.json", "{}")
+    P.salvar_manifesto(
+        P.gerar_manifesto("s", code, {}, {}, [out], code_dependencies={"dep": dep})
+    )
+    assert P.estado_etapa("s", [out], code, {}, {}, {"dep": dep})["estado"] == P.READY
+    _escreve(dep, "v2")
+    res = P.estado_etapa("s", [out], code, {}, {}, {"dep": dep})
+    assert res["estado"] == P.STALE
+    assert any("dependência" in motivo for motivo in res["motivos"])
+
+
+def test_manifesto_v1_existente_vira_stale_sem_quebrar_leitura(tmp_path, monkeypatch):
+    monkeypatch.setattr(P, "PASTA_MANIFESTOS", tmp_path / "man")
+    code = _escreve(tmp_path / "code.py", "v1")
+    out = _escreve(tmp_path / "out.json", "{}")
+    P.salvar_manifesto({
+        "stage": "s",
+        "code_sha256": P.sha256_arquivo(code),
+        "parameters": {},
+        "input_artifacts": {},
+        "outputs": [str(out)],
+    })
+    res = P.estado_etapa("s", [out], code, {}, {})
+    assert res["estado"] == P.STALE
+    assert "manifesto v2 ausente" in res["motivos"]
 
 
 def test_estado_pending_sem_artefato(tmp_path, monkeypatch):
@@ -122,6 +173,14 @@ def test_pipeline_registra_todos_artefatos_upstream():
     inputs = _inputs_da_etapa(get_stage("autoencoder"))
     assert any("features_paderborn.parquet" in key for key in inputs)
     assert any("features_paderborn_stats.csv" in key for key in inputs)
+
+
+def test_pipeline_registra_dependencias_cientificas():
+    from src.ml.pipeline import _code_dependencies, get_stage
+
+    deps = _code_dependencies(get_stage("autoencoder"))
+    assert "src.ml.escore_anomalia" in deps
+    assert "src.ml.split_temporal" in deps
 
 
 def test_status_markdown_usa_estado_trivalorado():

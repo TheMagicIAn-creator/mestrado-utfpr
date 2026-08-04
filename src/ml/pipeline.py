@@ -31,6 +31,7 @@ class PipelineStage:
     artifacts: tuple[str, ...]
     depends_on: tuple[str, ...] = ()
     parameter_names: tuple[str, ...] = ()
+    code_dependencies: tuple[str, ...] = ()
 
     def paths(self) -> list[Path]:
         return [RAIZ_PROJETO / rel for rel in self.artifacts]
@@ -108,6 +109,7 @@ STAGES: dict[str, PipelineStage] = {
         module="src.ml.features_ca",
         function="executar_features_ca",
         parameter_names=("FS", "F0", "JANELA", "SOBREPOSICAO", "HARMONICOS"),
+        code_dependencies=("src.ml.estilo_graficos",),
         artifacts=(
             "dados/processados/features_paderborn.parquet",
             "dados/processados/features_paderborn_stats.csv",
@@ -124,6 +126,12 @@ STAGES: dict[str, PipelineStage] = {
             "LATENTE_DIM", "EPOCHS", "BATCH_SIZE", "LR", "SIGMA",
             "THRESHOLD_METHOD", "SEED", "TRAIN_RATIO", "CALIB_RATIO",
             "TEST_RATIO",
+        ),
+        code_dependencies=(
+            "src.ml.escore_anomalia",
+            "src.ml.split_temporal",
+            "src.ml.graficos_autoencoder",
+            "src.ml.estilo_graficos",
         ),
         artifacts=(
             "resultados/autoencoder/modelo_autoencoder.pt",
@@ -142,6 +150,14 @@ STAGES: dict[str, PipelineStage] = {
         module="src.ml.injecao_falhas",
         function="executar_injecao_falhas",
         parameter_names=("SEVERIDADES", "ALVO_SMD", "N_JANELAS_SMD"),
+        code_dependencies=(
+            "src.ml.features_ca",
+            "src.ml.autoencoder",
+            "src.ml.dados_avaliacao",
+            "src.ml.escore_anomalia",
+            "src.ml.estatistica",
+            "src.ml.estilo_graficos",
+        ),
         artifacts=(
             "resultados/autoencoder/injecao_falhas_resultados.png",
             "resultados/autoencoder/injecao_falhas_comparacao.png",
@@ -156,6 +172,15 @@ STAGES: dict[str, PipelineStage] = {
         module="src.ml.validacao",
         function="executar_validacao",
         parameter_names=("SEVS_VALIDACAO", "N_JANELAS_SAUDAVEL", "N_JANELAS_FALHA"),
+        code_dependencies=(
+            "src.ml.features_ca",
+            "src.ml.autoencoder",
+            "src.ml.dados_avaliacao",
+            "src.ml.escore_anomalia",
+            "src.ml.estatistica",
+            "src.ml.injecao_falhas",
+            "src.ml.estilo_graficos",
+        ),
         artifacts=(
             "resultados/autoencoder/validacao_roc.png",
             "resultados/autoencoder/validacao_pr.png",
@@ -176,6 +201,15 @@ STAGES: dict[str, PipelineStage] = {
         parameter_names=(
             "N_TRAJ", "N_STEPS", "BATCH_INFERENCIA", "N_BOOTSTRAP",
             "MIN_EVENTOS_WEIBULL", "MAX_CENSURA_RUL_PCT",
+        ),
+        code_dependencies=(
+            "src.ml.features_ca",
+            "src.ml.autoencoder",
+            "src.ml.dados_avaliacao",
+            "src.ml.escore_anomalia",
+            "src.ml.estatistica",
+            "src.ml.injecao_falhas",
+            "src.ml.estilo_graficos",
         ),
         artifacts=(
             "resultados/autoencoder/weibull_ttf.png",
@@ -299,6 +333,21 @@ def _code_path(stage: PipelineStage) -> str:
         return ""
 
 
+def _code_dependencies(stage: PipelineStage) -> dict[str, str]:
+    """Módulos científicos compartilhados que também invalidam a etapa."""
+    from importlib.util import find_spec
+
+    deps: dict[str, str] = {}
+    for module in stage.code_dependencies:
+        try:
+            spec = find_spec(module)
+        except Exception:
+            continue
+        if spec and spec.origin:
+            deps[module] = spec.origin
+    return deps
+
+
 def _inputs_da_etapa(stage: PipelineStage) -> dict:
     """Todos os artefatos upstream, para detectar qualquer regeneração relevante."""
     inputs: dict[str, str] = {}
@@ -319,6 +368,7 @@ def registrar_manifesto(key: str, parameters: dict | None = None,
         manifesto = gerar_manifesto(
             key, _code_path(stage), parametros,
             _inputs_da_etapa(stage), [str(p) for p in stage.paths()],
+            code_dependencies=_code_dependencies(stage),
             evidence_level=evidence_level,
         )
         salvar_manifesto(manifesto)
@@ -338,6 +388,7 @@ def estado_etapa_completo(key: str) -> dict:
     return estado_etapa(
         key, [str(p) for p in stage.paths()],
         _code_path(stage), stage.parameters(), _inputs_da_etapa(stage),
+        _code_dependencies(stage),
     )
 
 

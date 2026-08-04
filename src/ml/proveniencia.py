@@ -22,6 +22,7 @@ import hashlib
 import json
 import subprocess
 from pathlib import Path
+from collections.abc import Iterable
 
 from src.core.config import RAIZ_PROJETO
 from src.core.tempo import agora_local
@@ -46,8 +47,38 @@ def sha256_arquivo(caminho) -> str | None:
     return h.hexdigest()
 
 
+def sha256_arquivo_texto_normalizado(caminho) -> str | None:
+    """SHA-256 textual estável entre Windows/Linux (CRLF, CR e LF -> LF)."""
+    p = Path(caminho)
+    if not p.exists() or not p.is_file():
+        return None
+    texto = p.read_text(encoding="utf-8")
+    texto = texto.replace("\r\n", "\n").replace("\r", "\n")
+    return hashlib.sha256(texto.encode("utf-8")).hexdigest()
+
+
 def sha256_texto(texto: str) -> str:
     return hashlib.sha256(texto.encode("utf-8")).hexdigest()
+
+
+def _mapear_arquivos(arquivos) -> list[tuple[str, object]]:
+    if not arquivos:
+        return []
+    if isinstance(arquivos, dict):
+        return [(str(nome), caminho) for nome, caminho in arquivos.items()]
+    if isinstance(arquivos, (str, bytes, Path)):
+        arquivos = [arquivos]
+    elif not isinstance(arquivos, Iterable):
+        arquivos = [arquivos]
+    return [(to_project_relative_path(caminho), caminho) for caminho in arquivos]
+
+
+def _hashes_arquivos(arquivos, *, texto_normalizado: bool = False) -> dict[str, str | None]:
+    func = sha256_arquivo_texto_normalizado if texto_normalizado else sha256_arquivo
+    return {
+        nome: func(caminho)
+        for nome, caminho in _mapear_arquivos(arquivos)
+    }
 
 
 def _git_commit() -> str:
@@ -68,6 +99,7 @@ def gerar_manifesto(
     input_artifacts: dict | None,
     outputs,
     *,
+    code_dependencies: dict | Iterable | None = None,
     created_at: str | None = None,
     evidence_level: str | None = None,
 ) -> dict:
@@ -75,18 +107,27 @@ def gerar_manifesto(
     Monta o manifesto de uma etapa. `input_artifacts` é {nome: caminho}; o
     manifesto guarda o HASH de cada entrada (não o caminho), para detectar
     regeneração upstream. `code_path` é o arquivo-fonte da etapa.
+
+    Manifesto v2:
+    - normaliza CRLF/LF antes de hashear código Python;
+    - registra dependências científicas compartilhadas;
+    - registra hash de cada saída, não apenas seu caminho.
     """
+    outputs_lista = [to_project_relative_path(o) for o in (outputs or [])]
     manifesto = {
+        "manifest_version": 2,
         "stage": stage,
         "created_at": created_at or agora_local().isoformat(),
         "git_commit": _git_commit(),
-        "code_sha256": sha256_arquivo(code_path) or "",
+        "code_hash_mode": "text_lf_utf8",
+        "code_sha256": sha256_arquivo_texto_normalizado(code_path) or "",
+        "code_dependencies": _hashes_arquivos(
+            code_dependencies or {}, texto_normalizado=True
+        ),
         "parameters": parameters or {},
-        "input_artifacts": {
-            nome: sha256_arquivo(caminho)
-            for nome, caminho in (input_artifacts or {}).items()
-        },
-        "outputs": [to_project_relative_path(o) for o in (outputs or [])],
+        "input_artifacts": _hashes_arquivos(input_artifacts or {}),
+        "outputs": outputs_lista,
+        "output_artifacts": _hashes_arquivos(outputs or {}),
     }
     if evidence_level:
         manifesto["evidence_level"] = evidence_level
@@ -119,12 +160,26 @@ def comparar(manifesto_salvo: dict | None, manifesto_atual: dict) -> list[str]:
     if not manifesto_salvo:
         return ["sem manifesto"]
     motivos = []
+    versao_salva = int(manifesto_salvo.get("manifest_version") or 1)
+    versao_atual = int(manifesto_atual.get("manifest_version") or 1)
+    if versao_salva < versao_atual:
+        motivos.append("manifesto v2 ausente")
     if manifesto_salvo.get("code_sha256") != manifesto_atual.get("code_sha256"):
         motivos.append("código da etapa alterado")
+    if versao_salva >= 2 and (
+        manifesto_salvo.get("code_dependencies")
+        != manifesto_atual.get("code_dependencies")
+    ):
+        motivos.append("dependência científica alterada")
     if manifesto_salvo.get("parameters") != manifesto_atual.get("parameters"):
         motivos.append("parâmetros alterados")
     if manifesto_salvo.get("input_artifacts") != manifesto_atual.get("input_artifacts"):
         motivos.append("artefato upstream regenerado")
+    if versao_salva >= 2 and (
+        manifesto_salvo.get("output_artifacts")
+        != manifesto_atual.get("output_artifacts")
+    ):
+        motivos.append("artefato de saída alterado")
     return motivos
 
 
@@ -134,6 +189,7 @@ def estado_etapa(
     code_path,
     parameters: dict | None = None,
     input_artifacts: dict | None = None,
+    code_dependencies: dict | Iterable | None = None,
 ) -> dict:
     """
     Retorna {"estado": ready|stale|pending, "motivos": [...]}.
@@ -151,6 +207,9 @@ def estado_etapa(
     if not salvo:
         return {"estado": PENDING, "motivos": ["sem manifesto de proveniência"]}
 
-    atual = gerar_manifesto(stage, code_path, parameters, input_artifacts, artefatos)
+    atual = gerar_manifesto(
+        stage, code_path, parameters, input_artifacts, artefatos,
+        code_dependencies=code_dependencies,
+    )
     motivos = comparar(salvo, atual)
     return {"estado": (STALE if motivos else READY), "motivos": motivos}

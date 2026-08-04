@@ -175,11 +175,13 @@ precision, recall, f1, **MCC**, AUC, **specificity** (= TN/(TN+FP) no binário) 
 
 ## 10. Proveniência e reprodutibilidade
 
-- **Manifesto por etapa** (`proveniencia.py`): `code_sha256`, `parameters`,
-  hash dos artefatos upstream, outputs, `git_commit`. Estados **ready / stale /
-  pending** (`estado_pipeline()`), exibidos no chat e na sidebar. Um artefato
-  **sem manifesto = não verificado (pending)** — nunca válido só por existir.
-  Nada é apagado automaticamente; recalcular é sob comando (com confirmação).
+- **Manifesto v2 por etapa** (`proveniencia.py`): `code_sha256` normalizado para
+  LF, `code_dependencies`, `parameters`, hash dos artefatos upstream,
+  `output_artifacts` e `git_commit`. Estados **ready / stale / pending**
+  (`estado_pipeline()`), exibidos no chat e na sidebar. Um artefato **sem
+  manifesto = não verificado (pending)**; manifesto v1 = **stale** até
+  regenerar. Nada é apagado automaticamente; recalcular é sob comando (com
+  confirmação).
 - **Caminhos relativos** nos artefatos (`to_project_relative_path`), resolvidos
   para absoluto só na interface.
 - **Datasets** validados por `scripts/verificar_datasets.py` (SHA-256, linhas);

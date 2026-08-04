@@ -9,6 +9,7 @@ pandas
 scipy
 scikit-learn
 matplotlib
+pyarrow
 python-dotenv
 requests
 pypdf

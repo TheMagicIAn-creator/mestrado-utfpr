@@ -1,0 +1,15 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "leve: teste rapido, sem dataset bruto, ChromaDB real, torch obrigatorio ou rede",
+    "integracao: teste de integracao local/optional dependency; pode ser pulado quando a dependencia nao existe",
+    "pesado: teste que exige servico, ChromaDB real, dataset bruto, treino, ou custo alto demais para CI leve",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]
