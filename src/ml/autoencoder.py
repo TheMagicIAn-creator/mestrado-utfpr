@@ -39,6 +39,8 @@ Uso:
 Autor: Rodolfo Torres (UTFPR)
 """
 
+from __future__ import annotations
+
 try:
     from src.core.logs import get_logger as _get_logger
 except ModuleNotFoundError:  # execução direta: python src/ml/<arquivo>.py
@@ -81,12 +83,33 @@ aplicar_estilo()
 from pathlib import Path
 from src.core.tempo import agora_local
 
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
+try:
+    import torch
+    import torch.nn as nn
+    from torch.utils.data import DataLoader, TensorDataset
+except ModuleNotFoundError:
+    torch = None
+    DataLoader = TensorDataset = None
+
+    class _NNIndisponivel:
+        Module = object
+
+        def __getattr__(self, nome):
+            raise ModuleNotFoundError(
+                "O PyTorch e necessario para treinar ou executar o autoencoder."
+            )
+
+    nn = _NNIndisponivel()
 from sklearn.preprocessing import RobustScaler
 
 from src.ml import escore_anomalia as ea
+
+
+def _exigir_torch() -> None:
+    if torch is None:
+        raise ModuleNotFoundError(
+            "O PyTorch e necessario para treinar ou executar o autoencoder."
+        )
 
 # ── Caminhos ─────────────────────────────────────────────────
 RAIZ           = Path(__file__).parent.parent.parent
@@ -141,6 +164,7 @@ class Autoencoder(nn.Module):
 
     def __init__(self, n_features: int, latente_dim: int = 16,
                  dropout: float = 0.2):
+        _exigir_torch()
         super().__init__()
 
         self.encoder = nn.Sequential(
@@ -183,6 +207,7 @@ def treinar(modelo, loader_treino, loader_val,
     Loop de treinamento com early stopping.
     Retorna (historico_treino, historico_val, epoca_melhor).
     """
+    _exigir_torch()
     criterio  = nn.MSELoss()
     otimizador = torch.optim.Adam(modelo.parameters(), lr=lr)
     scheduler  = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -261,6 +286,7 @@ def calcular_erros(modelo, X_tensor: torch.Tensor,
     Calcula o erro de reconstrução (MSE) por janela.
     Retorna array de shape (n_janelas,).
     """
+    _exigir_torch()
     modelo.eval()
     erros = []
     with torch.no_grad():
@@ -350,6 +376,8 @@ def executar_autoencoder(
     seed         : int   = SEED,
 ) -> bool:
     """Pipeline completo de treinamento do Autoencoder."""
+
+    _exigir_torch()
 
     _log("=" * 60)
     _log("  AL IADO PV — AUTOENCODER (Paderborn)")

@@ -31,7 +31,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-import chromadb
 from pypdf import PdfReader
 
 from src.core.utils import parsear_nome_arquivo
@@ -531,6 +530,8 @@ def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path
     try:
         arquivo_hash = calcular_hash_arquivo(caminho_pdf)
 
+        import chromadb
+
         client = chromadb.PersistentClient(path=str(pasta_chromadb))
         colecao = client.get_or_create_collection(
             name=NOME_COLECAO,
@@ -736,6 +737,8 @@ def indexar_sessao(caminho_md: Path, modelo_embeddings, pasta_chromadb: Path) ->
 
     if not chunks:
         return 0
+
+    import chromadb
 
     client = chromadb.PersistentClient(path=str(pasta_chromadb))
     colecao_sessoes = client.get_or_create_collection(

@@ -32,7 +32,6 @@ except Exception:
 
 from pathlib import Path
 from dotenv import load_dotenv
-import chromadb
 from src.core.utils import parsear_nome_arquivo
 from src.core.tempo import FUSO_PADRAO, agora_local
 from src.core.config import (
@@ -40,7 +39,6 @@ from src.core.config import (
     NOME_COLECAO_SESSOES, NOME_COLECAO_OBSIDIAN, MODELO_EMBEDDINGS,
     N_RESULTADOS,
 )
-from langchain_core.messages import HumanMessage
 from src.conhecimento.leitor_anexos import montar_bloco_texto_anexos, tem_imagem
 from src.conhecimento.provedores import eh_multimodal, texto_da_resposta
 
@@ -365,6 +363,8 @@ def inicializar_agente(llm_externo=None):
             "\n❌ Base de conhecimento não encontrada!\n"
             "   Execute primeiro: python src/indexador.py"
         )
+
+    import chromadb
 
     client = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
 
@@ -2365,6 +2365,8 @@ def perguntar(
     conteudo_humano = montar_conteudo_humano(
         prompt, anexos, eh_multimodal(nome_provedor)
     )
+    from langchain_core.messages import HumanMessage
+
     mensagens = [HumanMessage(content=conteudo_humano)]
     texto_completo = ""
 
