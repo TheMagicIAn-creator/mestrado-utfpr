@@ -38,6 +38,8 @@ Uso:
 Autor: Rodolfo Torres (UTFPR)
 """
 
+from __future__ import annotations
+
 try:
     from src.core.logs import get_logger as _get_logger
 except ModuleNotFoundError:  # execução direta: python src/ml/<arquivo>.py
@@ -80,8 +82,8 @@ import matplotlib.gridspec as gridspec
 import matplotlib
 matplotlib.use("Agg")
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import torch
 from sklearn.metrics import (
     roc_curve, auc, precision_recall_curve,
     confusion_matrix, classification_report,
@@ -89,12 +91,16 @@ from sklearn.metrics import (
 )
 
 from src.ml.features_ca     import extrair_janela, JANELA, FS
-from src.ml.autoencoder      import Autoencoder
 from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas_holdout
 from src.ml.estatistica import bootstrap_auc_ci, intervalo_wilson
 from src.ml.injecao_falhas   import (
     FUNCOES_FALHA, FALHAS,
 )
+
+if TYPE_CHECKING:
+    import torch
+
+    from src.ml.autoencoder import Autoencoder
 
 # ── Caminhos ─────────────────────────────────────────────────
 RAIZ        = Path(__file__).parent.parent.parent
@@ -487,6 +493,9 @@ def executar_validacao() -> bool:
         if not arq.exists():
             _log(f"   ❌ {arq.name} não encontrado")
             return False
+
+    import torch
+    from src.ml.autoencoder import Autoencoder
 
     checkpoint = torch.load(arq_modelo, map_location="cpu",
                             weights_only=False)
