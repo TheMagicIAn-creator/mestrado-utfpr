@@ -9,7 +9,6 @@ from src.conhecimento.agente import deve_consultar_literatura
 from src.conhecimento.ferramentas import (
     _decisao_rapida,
     decidir_acao,
-    limpar_experimentos_artigos,
 )
 
 
@@ -63,12 +62,12 @@ def test_citar_fonte_sem_inventar_nao_desliga_literatura():
     assert deve_consultar_literatura(pergunta)
 
 
-def test_compare_autores_com_artefatos_consulta_resultados_sem_treinar():
+def test_compare_autores_com_artefatos_consulta_macro_sem_treinar():
     pergunta = (
         "Compare Sharma, Ibrahim e Ahirwar usando somente os artefatos "
         "recalculados do repositório. Mostre gráficos e matrizes."
     )
-    assert _ferramenta(pergunta) == "consultar_resultados"
+    assert _ferramenta(pergunta) == "consultar_comparacao_macro"
 
 
 def test_resultados_locais_vs_replicacoes_consulta_proveniencia():
@@ -79,45 +78,38 @@ def test_resultados_locais_vs_replicacoes_consulta_proveniencia():
     assert _ferramenta(pergunta) == "consultar_resultados"
 
 
-def test_apagar_experimentos_tem_rota_propria_e_confirmacao():
-    assert _ferramenta("Quero que apague os experimentos.") == "limpar_experimentos_artigos"
-    res = limpar_experimentos_artigos(pergunta="Quero que apague os experimentos.")
-    assert res["ok"]
-    assert "CONFIRMAR LIMPEZA EXPERIMENTOS" in res["mensagem"]
-    assert "dados brutos" in res["mensagem"].lower()
+def test_apagar_experimentos_nao_reativa_framework_e1_aposentado():
+    assert _ferramenta("Quero que apague os experimentos.") == "consultar_comparacao_macro"
 
 
-# ── comparar_experimentos_auc ─────────────────────────────────────────────────
+# ── comparação macro publicada ────────────────────────────────────────────────
 
-def test_compare_experimentos_de_anomalia_vai_para_auc():
-    """Sessão 14/06 bug: 'compare os experimentos de anomalia' devolvia narrativa LLM."""
-    assert _ferramenta("compare os experimentos de anomalia") == "comparar_experimentos_auc"
-
-
-def test_compare_por_auc_vai_para_auc():
-    assert _ferramenta("compare os experimentos por AUC") == "comparar_experimentos_auc"
+def test_compare_experimentos_de_anomalia_vai_para_macro():
+    assert _ferramenta("compare os experimentos de anomalia") == "consultar_comparacao_macro"
 
 
-def test_comparar_modelos_de_anomalia_vai_para_auc():
-    assert _ferramenta("comparar os modelos de anomalia") == "comparar_experimentos_auc"
+def test_compare_por_auc_vai_para_macro():
+    assert _ferramenta("compare os experimentos por AUC") == "consultar_comparacao_macro"
 
 
-def test_qual_melhor_modelo_anomalia_vai_para_auc():
-    assert _ferramenta("qual o melhor modelo de anomalia") == "comparar_experimentos_auc"
+def test_comparar_modelos_de_anomalia_vai_para_macro():
+    assert _ferramenta("comparar os modelos de anomalia") == "consultar_comparacao_macro"
 
 
-def test_rode_experimento_nao_confunde_com_auc():
-    """Rodar um experimento NÃO deve ir para comparar_experimentos_auc."""
-    assert _ferramenta("rode o experimento do francisti") == "rodar_experimento_artigo"
+def test_qual_melhor_modelo_anomalia_vai_para_macro():
+    assert _ferramenta("qual o melhor modelo de anomalia") == "consultar_comparacao_macro"
 
 
-def test_compare_autores_sem_experimento_vai_para_consultar_resultados():
-    """Teste de regressão: autores nomeados + artefatos = consultar_resultados."""
+def test_rode_experimento_le_o_publicado_em_vez_de_treinar():
+    assert _ferramenta("rode o experimento do francisti") == "consultar_comparacao_macro"
+
+
+def test_compare_autores_sem_experimento_vai_para_macro_publicada():
     pergunta = (
         "Compare Sharma, Ibrahim e Ahirwar usando somente os artefatos "
         "recalculados do repositório. Mostre gráficos e matrizes."
     )
-    assert _ferramenta(pergunta) == "consultar_resultados"
+    assert _ferramenta(pergunta) == "consultar_comparacao_macro"
 
 
 def test_compare_abordagens_ml_nao_vai_para_auc():

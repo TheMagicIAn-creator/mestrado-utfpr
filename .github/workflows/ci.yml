@@ -42,42 +42,26 @@ jobs:
         run: |
           python -c "import src.core.config, src.core.utils, src.conhecimento.indice_lexical, src.conhecimento.memoria_persistente, src.conhecimento.multiagente, src.ml.split_temporal, src.ml.proveniencia; print('import OK')"
 
-      - name: Testes unitarios leves (sem torch/chromadb)
+      - name: Conferir selecao do CI por marcadores
         run: |
-          python -m pytest -p no:cacheprovider -q -W ignore \
-            tests/test_consistencia_docs.py \
-            tests/test_formatacao_estilo.py \
-            tests/test_comparacao_literatura.py \
-            tests/test_inteligencia_agente.py \
-            tests/test_split_temporal.py \
-            tests/test_proveniencia.py \
-            tests/test_pipeline_stale.py \
-            tests/test_caminhos.py \
-            tests/test_metricas.py \
-            tests/test_abordagens.py \
-            tests/test_confirmacao_destrutiva.py \
-            tests/test_logs.py \
-            tests/test_memoria_separada.py \
-            tests/test_web_confianca.py \
-            tests/test_index_lock.py \
-            tests/test_classificador_infer.py \
-            tests/test_classificador_tools.py \
-            tests/test_retrieval_metrics.py \
-            tests/test_embeddings.py \
-            tests/test_provedores_leves.py \
-            tests/test_indice_lexical.py \
-            tests/test_memoria_persistente.py \
-            tests/test_multiagente.py \
-            tests/test_exec_isolado.py \
-            tests/test_seguranca.py \
-            tests/test_protocolos_artigos.py \
-            tests/test_interface_minimalista.py \
-            tests/test_inventario_vault.py \
-            tests/test_atalhos.py \
-            tests/test_graficos_autoencoder.py \
+          python -m pytest --collect-only -q -m "not pesado" > /tmp/ci-tests.txt
+          cat /tmp/ci-tests.txt
+          for alvo in \
+            tests/test_escore_anomalia.py \
+            tests/test_limiar.py \
+            tests/test_smd.py \
+            tests/test_ae_lstm_temporal.py \
             tests/test_comparacao_macro.py \
-            tests/test_imports_scripts.py \
-            tests/test_retroalimentacao_fmeca.py
+            tests/test_proveniencia.py
+          do
+            grep -q "$alvo" /tmp/ci-tests.txt || {
+              echo "::error::$alvo ficou fora da selecao do CI"; exit 1;
+            }
+          done
+
+      - name: Testes unitarios nao pesados
+        run: |
+          python -m pytest -p no:cacheprovider -q -W ignore -m "not pesado"
 
       # BLOQUEANTE e deliberadamente estreito: so nomes que nao existem.
       # F821 undefined name / F822 undefined em __all__ / F823 uso antes da

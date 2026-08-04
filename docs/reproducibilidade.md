@@ -1,9 +1,11 @@
 # Reprodutibilidade — Al IAdo PV
 
 ## Proveniência e estado das etapas
-Cada etapa do pipeline grava um **manifesto** (`resultados/manifestos/<etapa>.json`)
-com `code_sha256`, `parameters`, hash dos artefatos upstream, outputs e
-`git_commit`. O estado é de 3 valores (`estado_pipeline()`):
+Cada etapa do pipeline grava um **manifesto v2**
+(`resultados/manifestos/<etapa>.json`) com `code_sha256` normalizado para LF
+(`code_hash_mode = text_lf_utf8`), `code_dependencies`, `parameters`, hash dos
+artefatos upstream, `output_artifacts` e `git_commit`. O estado é de 3 valores
+(`estado_pipeline()`):
 
 - **ready** — artefatos presentes e manifesto compatível;
 - **stale** — artefatos existem, mas o código, os parâmetros ou um artefato
@@ -13,6 +15,8 @@ com `code_sha256`, `parameters`, hash dos artefatos upstream, outputs e
 Um artefato **nunca** é tratado como válido só por existir. Nada é apagado
 automaticamente; recalcular é sob comando explícito (com confirmação em duas
 etapas para ações destrutivas).
+Manifestos v1 continuam legíveis, mas aparecem como **stale** até serem
+regenerados no schema v2.
 
 ## Portabilidade
 - Artefatos gravam **caminhos relativos** ao projeto (`to_project_relative_path`),
