@@ -51,6 +51,8 @@ Uso:
 Autor: Rodolfo Torres (UTFPR)
 """
 
+from __future__ import annotations
+
 try:
     from src.core.logs import get_logger as _get_logger
 except ModuleNotFoundError:  # execução direta: python src/ml/<arquivo>.py
@@ -95,14 +97,18 @@ from pathlib import Path
 from scipy.stats import weibull_min
 from scipy.special import gamma as gamma_func, gammaincc
 from scipy.optimize import minimize
+from typing import TYPE_CHECKING
 
-import torch
 from src.ml.features_ca   import extrair_janela, JANELA, FS
-from src.ml.autoencoder   import Autoencoder
 from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas_holdout
 from src.ml.injecao_falhas import (
     FUNCOES_FALHA, FALHAS,
 )
+
+if TYPE_CHECKING:
+    import torch
+
+    from src.ml.autoencoder import Autoencoder
 
 # ── Caminhos ─────────────────────────────────────────────────
 RAIZ        = Path(__file__).parent.parent.parent
@@ -776,6 +782,9 @@ def executar_rul_weibull() -> bool:
         if not arq.exists():
             _log(f"   ❌ {arq.name} não encontrado")
             return False
+
+    import torch
+    from src.ml.autoencoder import Autoencoder
 
     checkpoint = torch.load(PASTA_AE/"modelo_autoencoder.pt",
                             map_location="cpu", weights_only=False)

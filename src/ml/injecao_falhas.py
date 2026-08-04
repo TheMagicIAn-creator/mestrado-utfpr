@@ -50,6 +50,8 @@ Uso:
 Autor: Rodolfo Torres (UTFPR)
 """
 
+from __future__ import annotations
+
 try:
     from src.core.logs import get_logger as _get_logger
 except ModuleNotFoundError:  # execução direta: python src/ml/<arquivo>.py
@@ -91,15 +93,19 @@ aplicar_estilo()
 import matplotlib
 matplotlib.use("Agg")
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import torch
 from src.ml.features_ca import (
     extrair_janela, JANELA, FS, F0,
     COLUNAS_CORRENTE, COLUNAS_TENSAO, COLUNA_DC, FASES
 )
-from src.ml.autoencoder import Autoencoder
 from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas_holdout
 from src.ml.estatistica import intervalo_wilson
+
+if TYPE_CHECKING:
+    import torch
+
+    from src.ml.autoencoder import Autoencoder
 
 # ── Caminhos ─────────────────────────────────────────────────
 RAIZ          = Path(__file__).parent.parent.parent
@@ -438,6 +444,9 @@ def executar_injecao_falhas() -> bool:
             _log(f"   ❌ Não encontrado: {arq.name}")
             _log("   Execute primeiro: python src/ml/autoencoder.py")
             return False
+
+    import torch
+    from src.ml.autoencoder import Autoencoder
 
     checkpoint = torch.load(arq_modelo, map_location="cpu",
                             weights_only=False)
