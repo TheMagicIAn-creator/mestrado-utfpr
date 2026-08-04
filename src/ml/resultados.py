@@ -33,6 +33,22 @@ def _fmt(valor, casas: int = 3) -> str:
     return fmt_num(valor, casas)
 
 
+def _fmt_excedencia(info: dict | None, fallback_pct=None) -> str:
+    if not isinstance(info, dict):
+        return f"{_fmt(fallback_pct, 2)}%" if fallback_pct is not None else "-"
+    count = info.get("count")
+    n = info.get("n")
+    taxa = info.get("rate_pct")
+    low = info.get("ci95_low_pct")
+    high = info.get("ci95_high_pct")
+    if count is None or n is None or taxa is None:
+        return f"{_fmt(fallback_pct, 2)}%" if fallback_pct is not None else "-"
+    return (
+        f"{count}/{n} = {_fmt(taxa, 2)}% "
+        f"[{_fmt(low, 2)}; {_fmt(high, 2)}]"
+    )
+
+
 def _normalizar(texto: str) -> str:
     import unicodedata
 
@@ -313,9 +329,9 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
     if "autoencoder" in focos:
         caminho_qualidade = RAIZ_PROJETO / "dados" / "processados" / "features_paderborn_qualidade.png"
         _add_img(imagens, caminho_qualidade, "Features - diagnostico espectral e F0", grupo="Qualidade dos dados", ordem=5, ordem_grupo=5)
-        _add_img(imagens, "curva_treino.png", "Autoencoder - curva de treinamento", grupo="Autoencoder", ordem=10, ordem_grupo=10)
-        _add_img(imagens, "distribuicao_erro.png", "Autoencoder - distribuicao do erro", grupo="Autoencoder", ordem=20, ordem_grupo=10)
-        _add_img(imagens, "erro_temporal.png", "Autoencoder - erro temporal", grupo="Autoencoder", ordem=30, ordem_grupo=10)
+        _add_img(imagens, "curva_treino.png", "Autoencoder - convergencia treino/calibracao", grupo="Autoencoder", ordem=10, ordem_grupo=10)
+        _add_img(imagens, "distribuicao_erro.png", "Autoencoder - distribuicao MSE e ECDF", grupo="Autoencoder", ordem=20, ordem_grupo=10)
+        _add_img(imagens, "erro_temporal.png", "Autoencoder - erro MSE temporal por split", grupo="Autoencoder", ordem=30, ordem_grupo=10)
     if "injecao" in focos:
         _add_img(imagens, "injecao_falhas_resultados.png", "Falhas sinteticas - erro por severidade", grupo="Injecao de falhas", ordem=10, tipo="comparacao", ordem_grupo=20)
         _add_img(imagens, "injecao_falhas_comparacao.png", "Falhas sinteticas - taxa de deteccao e IC95%", grupo="Injecao de falhas", ordem=20, tipo="comparacao", ordem_grupo=20)
@@ -431,6 +447,8 @@ def _resumo_autoencoder() -> str | None:
         ponto_operacao = f"{metodo} / percentil efetivo {_fmt(percentil, 1)}"
     else:
         ponto_operacao = str(metodo)
+    fp_score = (d.get("fp_score_operacional") or {}).get("teste")
+    fp_mse = (d.get("fp_mse_p99") or {}).get("teste")
     return (
         "## Autoencoder - modelo de normalidade\n\n"
         "| Métrica | Valor |\n"
@@ -443,10 +461,12 @@ def _resumo_autoencoder() -> str | None:
         f"| Janelas de treino | {d.get('n_janelas_treino', '-')} |\n"
         f"| Janelas de calibração | {d.get('n_janelas_calibracao', '-')} |\n"
         f"| Janelas de teste | {d.get('n_janelas_teste', '-')} |\n"
-        f"| Falsos positivos no teste isolado | {_fmt(d.get('fp_test_pct', d.get('fp_val_pct')), 2)}% |\n"
+        f"| FP teste - escore operacional | {_fmt_excedencia(fp_score, d.get('fp_test_pct', d.get('fp_val_pct')))} |\n"
+        f"| FP teste - referência MSE p99 | {_fmt_excedencia(fp_mse)} |\n"
         f"| Épocas treinadas | {d.get('epochs_treinadas', '-')} |\n\n"
-        "Leitura rápida: o detector está calibrado por erro de reconstrução. "
-        "Quanto maior a distância entre erro de falha e limiar, mais clara é a anomalia."
+        "Leitura rápida: o detector usa o escore operacional registrado em "
+        "`limiar.json`; os gráficos principais de reconstrução permanecem na "
+        "escala MSE e são acompanhados por `calibracao_autoencoder.md`."
     )
 
 

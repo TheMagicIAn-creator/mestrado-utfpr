@@ -99,6 +99,10 @@ revalidação. Ver `docs/auditoria_pipeline_ml.md`, §23.
   `limiar`, `k`, `k_localizado`) e acrescenta nomes inequívocos:
   `score_method`, `score_threshold`, `mse_p99`, `sigma_multiplier`, `top_k`,
   `threshold_fallback_percentile` e `threshold_effective_percentile`.
+- A auditoria tabular de calibração fica em
+  `resultados/autoencoder/calibracao_autoencoder.{csv,md}`: ela reporta, por
+  bloco temporal, mediana/IQR/p99 do MSE e excedências acima da referência MSE
+  p99 e do limiar operacional, sempre com IC95% de Wilson.
 
 ## 4. Validação sintética interna E2 (limiar congelado)
 

@@ -204,6 +204,33 @@ def checar_limiar(aud: Auditoria) -> dict | None:
         )
         aud.exigir(int(split.get("purge_janelas", 0)) >= 1, "limiar: purga ausente")
 
+    fp_score = dados.get("fp_score_operacional") or {}
+    fp_mse = dados.get("fp_mse_p99") or {}
+    for nome, bloco in (("score operacional", fp_score), ("MSE p99", fp_mse)):
+        for parte in ("calibracao", "teste"):
+            item = bloco.get(parte) or {}
+            aud.exigir(int(item.get("n", 0)) > 0, f"limiar: FP {nome}/{parte} sem n")
+            aud.exigir(
+                0 <= _numero(item.get("rate_pct")) <= 100,
+                f"limiar: FP {nome}/{parte} fora de [0,100]",
+            )
+            aud.exigir(
+                0 <= _numero(item.get("ci95_low_pct")) <= _numero(item.get("ci95_high_pct")) <= 100,
+                f"limiar: IC95 {nome}/{parte} inválido",
+            )
+
+    linhas_cal = aud.csv(PASTA_AE / "calibracao_autoencoder.csv")
+    aud.exigir(len(linhas_cal) == 3, "calibracao_autoencoder.csv: deve ter treino/calibracao/teste")
+    blocos_cal = {linha.get("bloco") for linha in linhas_cal}
+    aud.exigir(
+        blocos_cal == {"treino", "calibracao", "teste_isolado"},
+        f"calibracao_autoencoder.csv: blocos {sorted(blocos_cal)}",
+    )
+    aud.exigir(
+        (PASTA_AE / "calibracao_autoencoder.md").is_file(),
+        "calibracao_autoencoder.md: ausente",
+    )
+
     print(
         f"• autoencoder: treino={dados['n_janelas_treino']}, "
         f"calibração={dados['n_janelas_calibracao']}, "

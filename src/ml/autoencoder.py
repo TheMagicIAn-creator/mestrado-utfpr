@@ -27,6 +27,8 @@ Saída   : resultados/autoencoder/
             modelo_autoencoder.pt   ← pesos do modelo
             scaler.pkl              ← RobustScaler ajustado
             limiar.json             ← limiar de anomalia + metadados
+            calibracao_autoencoder.csv/md
+                                    ← auditoria tabular da calibração
             curva_treino.png        ← loss por época
             distribuicao_erro.png   ← distribuição do erro + limiar
 
@@ -328,6 +330,8 @@ from src.ml.graficos_autoencoder import (  # noqa: E402,F401
     plotar_distribuicao,
     plotar_erro_temporal,
     regenerar_graficos_autoencoder,
+    resumo_excedencia,
+    salvar_resumo_calibracao,
 )
 
 # ============================================================
@@ -454,6 +458,8 @@ def executar_autoencoder(
         limiar_loc = float(np.percentile(
             ea.escore_localizado(R_calib, estat_residuo), percentil_usado))
     sc_loc_calib = ea.escore_localizado(R_calib, estat_residuo)
+    sc_loc_treino = ea.escore_localizado(
+        ea.residuo_por_feature(modelo, X_treino, device), estat_residuo)
     sc_loc_teste = ea.escore_localizado(
         ea.residuo_por_feature(modelo, X_teste, device), estat_residuo)
     sc_loc_all = ea.escore_localizado(
@@ -467,9 +473,11 @@ def executar_autoencoder(
     k_loc  = ea.K_LOCALIZADO
     if metodo == "localizado":
         limiar_op = limiar_loc
+        sc_op_treino = sc_loc_treino
         sc_op_calib, sc_op_teste, sc_op_all = sc_loc_calib, sc_loc_teste, sc_loc_all
     else:
         limiar_op = limiar_mse
+        sc_op_treino = erros_treino
         sc_op_calib, sc_op_teste, sc_op_all = erros_calib, erros_teste, erros_all
 
     _log(f"\n🎯 Escore operacional: {ea.descricao_metodo(metodo, k_loc)}")
@@ -481,6 +489,10 @@ def executar_autoencoder(
     fp_calib = float((sc_op_calib > limiar_op).mean() * 100)
     fp_teste = float((sc_op_teste > limiar_op).mean() * 100)
     fp_all = float((sc_op_all > limiar_op).mean() * 100)
+    fp_mse_calib = resumo_excedencia(erros_calib, limiar_mse)
+    fp_mse_teste = resumo_excedencia(erros_teste, limiar_mse)
+    fp_score_calib = resumo_excedencia(sc_op_calib, limiar_op)
+    fp_score_teste = resumo_excedencia(sc_op_teste, limiar_op)
     _log(f"\n   Falsos positivos (calibração): {fp_calib:.1f}%")
     _log(f"   Falsos positivos (teste isolado): {fp_teste:.1f}%")
     _log(f"   Falsos positivos (all): {fp_all:.1f}%")
@@ -545,9 +557,17 @@ def executar_autoencoder(
         "epochs_treinadas"  : len(hist_t),
         "epoca_melhor"      : ep_melhor,
         "loss_val_melhor"   : float(min(hist_v)),
-        "fp_val_pct"        : float(fp_teste),
+        "fp_val_pct"        : float(fp_calib),
         "fp_calib_pct"      : float(fp_calib),
         "fp_test_pct"       : float(fp_teste),
+        "fp_mse_p99"        : {
+            "calibracao": fp_mse_calib,
+            "teste": fp_mse_teste,
+        },
+        "fp_score_operacional": {
+            "calibracao": fp_score_calib,
+            "teste": fp_score_teste,
+        },
         "split_temporal"    : {
             "protocolo": "treino_60_calibracao_20_teste_20_com_purga",
             "limites": split["limites"],
@@ -570,6 +590,10 @@ def executar_autoencoder(
         erros_calibracao=erros_calib.astype(np.float32),
         erros_teste=erros_teste.astype(np.float32),
         erros_todos=erros_all.astype(np.float32),
+        scores_operacionais_treino=sc_op_treino.astype(np.float32),
+        scores_operacionais_calibracao=sc_op_calib.astype(np.float32),
+        scores_operacionais_teste=sc_op_teste.astype(np.float32),
+        scores_operacionais_todos=sc_op_all.astype(np.float32),
         tempos=np.asarray(tempos if tempos is not None else [], dtype=np.float32),
         indices_teste=idx_teste.astype(np.int32),
         epoca_melhor=np.asarray([ep_melhor], dtype=np.int32),
@@ -584,6 +608,7 @@ def executar_autoencoder(
     _log(f"\n📊 Gerando gráficos...")
     plotar_curvas(hist_t, hist_v, ep_melhor, pasta_saida)
     info_mse["fp_test_pct"] = float((erros_teste > limiar_mse).mean() * 100)
+    info_mse["split_temporal"] = metadados["split_temporal"]
     plotar_distribuicao(
         erros_treino, erros_calib, erros_teste, info_mse, pasta_saida
     )
@@ -591,6 +616,12 @@ def executar_autoencoder(
         plotar_erro_temporal(
             erros_all, tempos, info_mse, pasta_saida, indices_teste=idx_teste
         )
+    salvar_resumo_calibracao(
+        erros_treino, erros_calib, erros_teste, metadados, pasta_saida,
+        scores_treino=sc_op_treino,
+        scores_calibracao=sc_op_calib,
+        scores_teste=sc_op_teste,
+    )
 
     # ── 10. Resumo final ─────────────────────────────────────
     _log(f"\n{'='*60}")

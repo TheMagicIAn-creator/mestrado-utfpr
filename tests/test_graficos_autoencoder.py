@@ -24,6 +24,7 @@ import numpy as np
 from src.ml.graficos_autoencoder import (
     _info_em_escala_mse,
     regenerar_graficos_autoencoder,
+    salvar_resumo_calibracao,
 )
 
 
@@ -82,6 +83,10 @@ def _artefatos(pasta, n=40):
         epoca_melhor=np.asarray([17], dtype=np.int32),
         erros_treino=erros, erros_calibracao=erros[:10], erros_teste=erros[:8],
         erros_todos=erros, tempos=np.arange(n, dtype=float),
+        scores_operacionais_treino=erros * 3,
+        scores_operacionais_calibracao=erros[:10] * 3,
+        scores_operacionais_teste=erros[:8] * 3,
+        scores_operacionais_todos=erros * 3,
         indices_teste=np.arange(n - 8, n),
     )
     (pasta / "limiar.json").write_text(json.dumps(_LIMIAR_JSON), encoding="utf-8")
@@ -90,10 +95,17 @@ def _artefatos(pasta, n=40):
 def test_regenera_as_tres_figuras_sem_torch(tmp_path):
     _artefatos(tmp_path)
     assert regenerar_graficos_autoencoder(tmp_path) is True
-    for nome in ("curva_treino.png", "distribuicao_erro.png", "erro_temporal.png"):
+    for nome in (
+        "curva_treino.png",
+        "distribuicao_erro.png",
+        "erro_temporal.png",
+        "calibracao_autoencoder.csv",
+        "calibracao_autoencoder.md",
+    ):
         arquivo = tmp_path / nome
         assert arquivo.is_file(), nome
-        assert arquivo.stat().st_size > 5000, f"{nome} saiu vazio"
+        minimo = 5000 if arquivo.suffix == ".png" else 100
+        assert arquivo.stat().st_size > minimo, f"{nome} saiu vazio"
 
 
 def test_regenerar_recusa_sem_artefatos(tmp_path):
@@ -127,3 +139,33 @@ def test_figura_muda_quando_o_limiar_de_mse_muda(tmp_path):
     assert _hash_erro_temporal(so_mse) != base, (
         "mudar o limiar de MSE tem de mudar a figura"
     )
+
+
+def test_resumo_calibracao_documenta_ic95_e_duas_escalas(tmp_path):
+    erros_treino = np.array([0.10, 0.20, 0.30, 3.00])
+    erros_calib = np.array([0.10, 0.20, 0.30, 2.60])
+    erros_teste = np.array([0.10, 0.20, 0.30, 4.00])
+    scores_teste = np.array([1.0, 2.0, 3.0, 9.0])
+    info = dict(
+        _LIMIAR_JSON,
+        score_method="localizado",
+        score_threshold=7.826175715408156,
+        threshold_effective_percentile=99.9,
+        mse_p99=_LIMIAR_JSON["limiar_mse"],
+    )
+
+    csv_path, md_path = salvar_resumo_calibracao(
+        erros_treino, erros_calib, erros_teste, info, tmp_path,
+        scores_treino=np.array([1.0, 2.0, 3.0, 4.0]),
+        scores_calibracao=np.array([1.0, 2.0, 3.0, 8.0]),
+        scores_teste=scores_teste,
+    )
+
+    md = md_path.read_text(encoding="utf-8")
+    csv = csv_path.read_text(encoding="utf-8")
+    assert "IC95% de Wilson" in md
+    assert "Referência MSE p99" in md
+    assert "limiar operacional" in md
+    assert "localizado / percentil efetivo 99.9" in md
+    assert "score_operacional_rate_pct" in csv
+    assert "teste_isolado" in csv
