@@ -1,6 +1,6 @@
 # Validação sintética interna E2
 
-> Holdout temporal não sobreposto; limiar p99 congelado na calibração.
+> Holdout temporal não sobreposto; limiar operacional congelado na calibração.
 
 | Falha | Sev. | AUC-ROC (IC95%) | Recall (IC95%) | FNR | Especificidade | n/classe |
 |---|---:|---:|---:|---:|---:|---:|

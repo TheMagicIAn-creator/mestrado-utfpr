@@ -14,14 +14,14 @@
   "limiar_mu3sigma": 2.2560129165649414,
   "limiar_mu3s": 2.2560129165649414,
   "threshold_source": "bloco_calibracao_temporal",
+  "top_k": 5,
+  "threshold_fallback_percentile": 99.0,
+  "threshold_effective_percentile": 99.9,
   "metodo_escore": "localizado",
   "limiar_mse": 2.5454330444335938,
   "limiar_localizado": 7.826175715408156,
   "k_localizado": 5,
-  "top_k": 5,
   "percentil_limiar": 99.9,
-  "threshold_fallback_percentile": 99.0,
-  "threshold_effective_percentile": 99.9,
   "percentil_auto": true,
   "n_janelas_treino": 274,
   "n_janelas_calibracao": 91,
@@ -142,6 +142,6 @@
       456
     ]
   },
-  "data_treino": "2026-08-02T01:37:23.189849-03:00",
+  "data_treino": "2026-08-04T00:15:49.179166-03:00",
   "device": "cpu"
 }
