@@ -58,7 +58,17 @@ def test_limiar_json_declara_threshold_method():
         assert d.get("top_k") == d.get("k_localizado")
         assert d.get("threshold_effective_percentile") == d.get("percentil_limiar")
     else:
-        assert d.get("score_threshold") == d.get("limiar_p99")
+        if d.get("threshold_policy") == "fpr_empirico_maximo":
+            assert d.get("score_threshold") == d.get("limiar_mse_operacional")
+        else:
+            assert d.get("score_threshold") == d.get("limiar_p99")
+    if d.get("threshold_policy") == "fpr_empirico_maximo":
+        assert d.get("score_reference_source") == "bloco_treino_saudavel"
+        assert d.get("threshold_constraint_satisfied") is True
+        assert (
+            d.get("threshold_observed_calibration_fpr_pct")
+            <= d.get("threshold_target_fpr_pct")
+        )
     assert "limiar_mu3sigma" in d
 
 

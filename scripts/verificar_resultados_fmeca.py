@@ -177,14 +177,23 @@ def checar_limiar(aud: Auditoria) -> dict | None:
             "limiar: percentil efetivo abaixo do fallback declarado",
         )
     else:
-        aud.exigir(
-            _proximo(_numero(dados.get("limiar")), _numero(dados.get("limiar_p99"))),
-            "limiar: score mse deve usar o p99 registrado",
-        )
-        aud.exigir(
-            _proximo(percentil_efetivo, percentil_fallback),
-            "limiar: percentil efetivo do score mse difere do fallback",
-        )
+        if dados.get("threshold_policy") == "fpr_empirico_maximo":
+            aud.exigir(
+                _proximo(
+                    _numero(dados.get("limiar")),
+                    _numero(dados.get("limiar_mse_operacional")),
+                ),
+                "limiar: score mse difere do limiar MSE operacional",
+            )
+        else:
+            aud.exigir(
+                _proximo(_numero(dados.get("limiar")), _numero(dados.get("limiar_p99"))),
+                "limiar: score mse legado deve usar o p99 registrado",
+            )
+            aud.exigir(
+                _proximo(percentil_efetivo, percentil_fallback),
+                "limiar: percentil efetivo do score mse difere do fallback",
+            )
     for campo in ("n_janelas_treino", "n_janelas_calibracao", "n_janelas_teste"):
         aud.exigir(int(dados.get(campo, 0)) > 0, f"limiar: {campo} deve ser positivo")
 
@@ -217,6 +226,45 @@ def checar_limiar(aud: Auditoria) -> dict | None:
             aud.exigir(
                 0 <= _numero(item.get("ci95_low_pct")) <= _numero(item.get("ci95_high_pct")) <= 100,
                 f"limiar: IC95 {nome}/{parte} inválido",
+            )
+
+    politica = dados.get("threshold_policy")
+    if politica == "fpr_empirico_maximo":
+        alvo = _numero(dados.get("threshold_target_fpr_pct"))
+        observado = _numero(dados.get("threshold_observed_calibration_fpr_pct"))
+        observado_tabela = _numero((fp_score.get("calibracao") or {}).get("rate_pct"))
+        n_calibracao = int(dados.get("n_janelas_calibracao", 0))
+        max_excedencias = int(dados.get("threshold_allowed_exceedances", -1))
+        aud.exigir(0 <= alvo < 100, "limiar: threshold_target_fpr_pct inválido")
+        aud.exigir(
+            observado <= alvo + 1e-12,
+            f"limiar: FPR de calibração {observado:.4g}% excede alvo {alvo:.4g}%",
+        )
+        aud.exigir(
+            _proximo(observado, observado_tabela),
+            "limiar: FPR observado diverge de fp_score_operacional/calibracao",
+        )
+        aud.exigir(
+            max_excedencias == math.floor(n_calibracao * alvo / 100.0 + 1e-12),
+            "limiar: orçamento de excedências não corresponde ao alvo",
+        )
+        aud.exigir(
+            dados.get("threshold_constraint_satisfied") is True,
+            "limiar: restrição de FPR não foi marcada como satisfeita",
+        )
+        aud.exigir(
+            dados.get("score_reference_source") == "bloco_treino_saudavel",
+            "limiar: régua do escore deve vir do bloco de treino saudável",
+        )
+        resolucao = _numero(dados.get("threshold_sample_resolution_pct"))
+        if resolucao > alvo:
+            aud.exigir(
+                dados.get("threshold_target_resolvable") is False,
+                "limiar: alvo abaixo da resolução deve ser marcado como não resolvível",
+            )
+            aud.aviso(
+                f"limiar: alvo {alvo:g}% abaixo da resolução amostral "
+                f"{resolucao:.2f}%; zero FP observado não certifica taxa de campo"
             )
 
     linhas_cal = aud.csv(PASTA_AE / "calibracao_autoencoder.csv")
@@ -274,6 +322,18 @@ def checar_injecao(aud: Auditoria, limiar: dict | None) -> dict | None:
             ),
             "injeção: percentil efetivo diverge de limiar.json",
         )
+        if limiar.get("threshold_policy"):
+            aud.exigir(
+                dados.get("threshold_policy") == limiar.get("threshold_policy"),
+                "injeção: política de limiar diverge de limiar.json",
+            )
+            aud.exigir(
+                _proximo(
+                    _numero(dados.get("threshold_target_fpr_pct")),
+                    _numero(limiar.get("threshold_target_fpr_pct")),
+                ),
+                "injeção: alvo de FPR diverge de limiar.json",
+            )
 
     protocolo = dados.get("protocolo_avaliacao") or {}
     aud.exigir(protocolo.get("sem_sobreposicao") is True, "injeção: janelas devem ser não sobrepostas")
@@ -371,6 +431,18 @@ def checar_validacao(aud: Auditoria, limiar: dict | None) -> dict | None:
             ),
             "validação: percentil efetivo diverge de limiar.json",
         )
+        if limiar.get("threshold_policy"):
+            aud.exigir(
+                meta.get("threshold_policy") == limiar.get("threshold_policy"),
+                "validação: política de limiar diverge de limiar.json",
+            )
+            aud.exigir(
+                _proximo(
+                    _numero(meta.get("threshold_target_fpr_pct")),
+                    _numero(limiar.get("threshold_target_fpr_pct")),
+                ),
+                "validação: alvo de FPR diverge de limiar.json",
+            )
 
     casos = {k: v for k, v in dados.items() if k != "__meta__" and isinstance(v, dict)}
     esperados = {

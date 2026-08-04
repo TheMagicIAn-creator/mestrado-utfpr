@@ -52,7 +52,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | Arquivo | O que faz |
 |---|---|
 | `features_ca.py` | Etapa 1: extrai features de tempo/frequência/inter-fase do Paderborn. |
-| `autoencoder.py` | Etapa 2: Autoencoder de normalidade + limiar operacional (p99). |
+| `autoencoder.py` | Etapa 2: Autoencoder + limiar com FPR empírico máximo (1% por padrão); p99 permanece como referência MSE. |
 | `injecao_falhas.py` | Etapa 3: falhas sintéticas orientadas pelo FMEA + SMD. |
 | `validacao.py` | Etapa 4: métricas no limiar congelado (ROC/PR/F1/AUC). |
 | `rul_weibull.py` | Etapa 5: TTF, Weibull 2P, RUL condicional. |

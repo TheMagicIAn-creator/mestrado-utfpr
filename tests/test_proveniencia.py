@@ -146,6 +146,7 @@ def test_pipeline_captura_parametros_das_etapas():
     assert auto["epochs"] > 0
     assert auto["latente_dim"] > 0
     assert auto["threshold_method"] == "p99"
+    assert auto["operational_threshold_policy"] == "fpr_empirico_maximo"
 
     validacao = get_stage("validacao").parameters()
     assert validacao["n_janelas_saudavel"] > 0
@@ -165,6 +166,7 @@ def test_pipeline_le_parametros_sem_importar_modulo_pesado(monkeypatch):
 
     assert auto["epochs"] > 0
     assert auto["threshold_method"] == "p99"
+    assert auto["operational_threshold_policy"] == "fpr_empirico_maximo"
 
 
 def test_pipeline_registra_todos_artefatos_upstream():

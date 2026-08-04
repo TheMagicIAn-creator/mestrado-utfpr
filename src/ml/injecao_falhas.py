@@ -667,7 +667,20 @@ def executar_injecao_falhas() -> bool:
             "detector). Não é validação experimental externa (E3). A injeção de "
             "ruído do sensor é um PROXY e exige calibração física."
         ),
-        "threshold_method": "p99",
+        "threshold_method": info_limiar.get("threshold_method", "p99"),
+        "threshold_policy": info_limiar.get("threshold_policy"),
+        "threshold_target_fpr_pct": info_limiar.get("threshold_target_fpr_pct"),
+        "threshold_observed_calibration_fpr_pct": info_limiar.get(
+            "threshold_observed_calibration_fpr_pct"
+        ),
+        "threshold_sample_resolution_pct": info_limiar.get(
+            "threshold_sample_resolution_pct"
+        ),
+        "threshold_target_resolvable": info_limiar.get("threshold_target_resolvable"),
+        "threshold_constraint_satisfied": info_limiar.get(
+            "threshold_constraint_satisfied"
+        ),
+        "score_reference_source": info_limiar.get("score_reference_source"),
         "score_method": info_limiar.get(
             "score_method", info_limiar.get("metodo_escore")
         ),

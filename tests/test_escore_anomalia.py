@@ -84,28 +84,47 @@ def test_limiar_por_fp_alvo_respeita_o_alvo():
     val = rng.normal(0, 1, size=1000)
     lim, perc = ea.limiar_por_fp_alvo(ajuste, val, fp_alvo_pct=1.0)
     fp = (val > lim).mean() * 100
-    # invariante: ou atinge o alvo, ou usa o percentil mais conservador (99.9)
-    assert fp <= 1.0 or perc == 99.9
-    assert 99.0 <= perc <= 99.9
+    assert fp <= 1.0
+    assert 99.0 <= perc <= 100.0
 
 
 # ── incerteza do limiar, e por que NÃO tentamos "melhorar" o estimador ───────
 
-def test_limiar_continua_sendo_o_percentil_empirico():
-    """Regressão do resultado publicado: o estimador não pode ter mudado.
+def test_calibracao_fpr_1pct_com_91_janelas_exige_zero_excedencias():
+    """A amostra real não pode esconder 1/91 = 1,10% sob o rótulo de 1%."""
+    scores = np.linspace(0.0, 9.0, 91)
+    info = ea.calibrar_limiar_fpr(scores, 1.0)
 
-    Bootstrap e ajuste paramétrico foram testados como substitutos e
-    rejeitados (ver docstring de `incerteza_do_limiar`). Se alguém trocar o
-    estimador, os resultados de `resultados/macro/` deixam de valer.
-    """
-    import numpy as np
+    assert info["limiar"] == scores.max()
+    assert info["max_excedencias"] == 0
+    assert info["excedencias_observadas"] == 0
+    assert info["fpr_observado_pct"] == 0.0
+    assert info["percentil_efetivo"] == 100.0
+    assert info["resolucao_amostral_pct"] == 100.0 / 91.0
+    assert info["alvo_resolvivel_na_amostra"] is False
+    assert info["restricao_satisfeita"] is True
 
-    from src.ml.escore_anomalia import limiar_por_fp_alvo
 
-    rng = np.random.default_rng(7)
-    a, v = rng.lognormal(0, 1, 73), rng.lognormal(0, 1, 18)
-    limiar, p = limiar_por_fp_alvo(a, v, 1.0)
-    assert limiar == float(np.percentile(a, p))
+def test_calibracao_fpr_permite_apenas_floor_do_orcamento():
+    scores = np.arange(1000, dtype=float)
+    info = ea.calibrar_limiar_fpr(scores, 1.0)
+
+    assert info["max_excedencias"] == 10
+    assert info["excedencias_observadas"] == 10
+    assert info["fpr_observado_pct"] == 1.0
+    assert info["limiar"] == 989.0
+    assert info["alvo_resolvivel_na_amostra"] is True
+
+
+def test_calibracao_fpr_rejeita_amostra_invalida():
+    import pytest
+
+    with pytest.raises(ValueError):
+        ea.calibrar_limiar_fpr([], 1.0)
+    with pytest.raises(ValueError):
+        ea.calibrar_limiar_fpr([1.0, np.nan], 1.0)
+    with pytest.raises(ValueError):
+        ea.calibrar_limiar_fpr([1.0], 100.0)
 
 
 def test_fp_alvo_vem_da_configuracao_quando_nao_informado():

@@ -927,6 +927,21 @@ def executar_rul_weibull() -> bool:
                 "adequação nem substitui validação com dados run-to-failure."
             ),
             "protocolo_avaliacao": meta_holdout,
+            "threshold_policy": info_limiar.get("threshold_policy"),
+            "threshold_target_fpr_pct": info_limiar.get("threshold_target_fpr_pct"),
+            "threshold_observed_calibration_fpr_pct": info_limiar.get(
+                "threshold_observed_calibration_fpr_pct"
+            ),
+            "threshold_sample_resolution_pct": info_limiar.get(
+                "threshold_sample_resolution_pct"
+            ),
+            "threshold_target_resolvable": info_limiar.get(
+                "threshold_target_resolvable"
+            ),
+            "threshold_constraint_satisfied": info_limiar.get(
+                "threshold_constraint_satisfied"
+            ),
+            "score_reference_source": info_limiar.get("score_reference_source"),
         },
         "parametros_simulacao": {
             "n_trajetorias_max": N_TRAJ,

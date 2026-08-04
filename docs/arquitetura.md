@@ -29,7 +29,7 @@ src/
 │   ├── estatistica.py    ICs, bootstrap e métricas metodológicas
 │   ├── exec_etapa_isolada.py executa etapa pesada em subprocesso
 │   ├── features_ca.py    features CA do Paderborn
-│   ├── autoencoder.py    modelo de normalidade (limiar p99)
+│   ├── autoencoder.py    modelo de normalidade (limiar por FPR empírico máximo)
 │   ├── injecao_falhas.py falhas sintéticas FMEA (schema E2) + SMD_95
 │   ├── validacao.py      validação interna E2 (holdout, ROC+PR, ICs)
 │   ├── rul_weibull.py    RUL / Weibull

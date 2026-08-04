@@ -449,11 +449,23 @@ def _resumo_autoencoder() -> str | None:
         ponto_operacao = str(metodo)
     fp_score = (d.get("fp_score_operacional") or {}).get("teste")
     fp_mse = (d.get("fp_mse_p99") or {}).get("teste")
+    alvo_fpr = d.get("threshold_target_fpr_pct")
+    resolucao_fpr = d.get("threshold_sample_resolution_pct")
+    politica = d.get("threshold_policy") or "percentil legado"
+    nota_resolucao = ""
+    if d.get("threshold_target_resolvable") is False:
+        nota_resolucao = (
+            " O alvo está abaixo da resolução da calibração; zero eventos "
+            "observados não certifica a taxa de campo."
+        )
     return (
         "## Autoencoder - modelo de normalidade\n\n"
         "| Métrica | Valor |\n"
         "|---|---:|\n"
         f"| Escore operacional | {ponto_operacao} |\n"
+        f"| Política do limiar | {politica} |\n"
+        f"| FPR-alvo na calibração | {_fmt(alvo_fpr, 2)}% |\n"
+        f"| Resolução amostral da calibração | {_fmt(resolucao_fpr, 2)}% |\n"
         f"| Limiar operacional | {_fmt(d.get('score_threshold', d.get('limiar')), 4)} |\n"
         f"| Referência MSE p99 | {_fmt(d.get('mse_p99', d.get('limiar_p99')), 4)} |\n"
         f"| Média baseline | {_fmt(d.get('mu'), 4)} |\n"
@@ -467,6 +479,7 @@ def _resumo_autoencoder() -> str | None:
         "Leitura rápida: o detector usa o escore operacional registrado em "
         "`limiar.json`; os gráficos principais de reconstrução permanecem na "
         "escala MSE e são acompanhados por `calibracao_autoencoder.md`."
+        + nota_resolucao
     )
 
 

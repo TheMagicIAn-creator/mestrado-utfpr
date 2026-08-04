@@ -593,6 +593,10 @@ def executar_validacao() -> bool:
                 "auc_roc_ci_low": res["auc_roc_ci_low"],
                 "auc_roc_ci_high": res["auc_roc_ci_high"],
                 "threshold_method": info_limiar.get("threshold_method", "p99"),
+                "threshold_policy": info_limiar.get("threshold_policy"),
+                "threshold_target_fpr_pct": info_limiar.get(
+                    "threshold_target_fpr_pct"
+                ),
                 "score_method": info_limiar.get(
                     "score_method", info_limiar.get("metodo_escore")
                 ),
@@ -667,6 +671,21 @@ def executar_validacao() -> bool:
                 "otimizado no teste. Não é prova de desempenho industrial (E3)."
             ),
             "threshold_method": info_limiar.get("threshold_method", "p99"),
+            "threshold_policy": info_limiar.get("threshold_policy"),
+            "threshold_target_fpr_pct": info_limiar.get("threshold_target_fpr_pct"),
+            "threshold_observed_calibration_fpr_pct": info_limiar.get(
+                "threshold_observed_calibration_fpr_pct"
+            ),
+            "threshold_sample_resolution_pct": info_limiar.get(
+                "threshold_sample_resolution_pct"
+            ),
+            "threshold_target_resolvable": info_limiar.get(
+                "threshold_target_resolvable"
+            ),
+            "threshold_constraint_satisfied": info_limiar.get(
+                "threshold_constraint_satisfied"
+            ),
+            "score_reference_source": info_limiar.get("score_reference_source"),
             "score_method": info_limiar.get(
                 "score_method", info_limiar.get("metodo_escore")
             ),

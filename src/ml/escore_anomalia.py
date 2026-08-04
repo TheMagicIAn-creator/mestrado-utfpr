@@ -36,15 +36,19 @@ import numpy as np
 # ── Configuração operacional (env, com padrões seguros) ─────────────────────
 METODO_ESCORE = os.getenv("AL_IADO_ESCORE_ANOMALIA", "localizado").strip().lower()
 K_LOCALIZADO = int(os.getenv("AL_IADO_ESCORE_K", "5"))
-# Limiar operacional pelo percentil do erro saudável. Por PADRÃO o percentil é
-# AUTO-CALIBRADO para a taxa de falso positivo alvo (FP_ALVO) num bloco de
-# calibração NÃO visto — sem ajuste manual (o escore localizado top-k é uma
-# estatística de cauda, ruidosa com pouca calibração; ver docs/auditoria §25).
-# Definir AL_IADO_ESCORE_PERCENTIL fixa o percentil manualmente (desliga o auto).
+# Limiar operacional por taxa máxima de falso positivo EMPÍRICA no bloco de
+# calibração. O corte usa uma ordem estatística: permite no máximo
+# floor(n_calib * FP_ALVO / 100) excedências. Com 91 janelas e alvo de 1%, isso
+# significa zero excedências, sem fingir que a amostra consegue resolver 1%
+# (sua menor taxa não nula é 1/91 = 1,10%).
+#
+# Definir AL_IADO_ESCORE_PERCENTIL fixa um percentil manual (desliga a política
+# automática) para reprodução de rodadas antigas.
 _PERCENTIL_ENV = os.getenv("AL_IADO_ESCORE_PERCENTIL")
 PERCENTIL_LIMIAR = float(_PERCENTIL_ENV) if _PERCENTIL_ENV else 99.0
 AUTO_PERCENTIL = _PERCENTIL_ENV is None
 FP_ALVO = float(os.getenv("AL_IADO_ESCORE_FP_ALVO", "1.0"))  # % de FP alvo (auto)
+POLITICA_LIMIAR = "fpr_empirico_maximo"
 # Semente do bootstrap usado para MEDIR a incerteza do limiar (não para
 # alterá-lo — ver incerteza_do_limiar).
 SEED_BOOTSTRAP = int(os.getenv("AL_IADO_ESCORE_BOOTSTRAP_SEED", "42"))
@@ -100,14 +104,66 @@ def incerteza_do_limiar(amostra, p: float, n_boot: int = 500,
     }
 
 
+def calibrar_limiar_fpr(scores_calibracao,
+                        fp_alvo_pct: float | None = None) -> dict:
+    """Fixa um limiar que respeita o FPR empírico máximo na calibração.
+
+    A decisão de anomalia do pipeline é ``score > limiar``. Para ``n`` escores
+    saudáveis, permitimos no máximo ``floor(n * alvo / 100)`` valores acima do
+    corte e escolhemos a ordem estatística correspondente. O teste final não é
+    recebido por esta função e, portanto, não pode contaminar o limiar.
+
+    O retorno distingue duas ideias que não podem ser confundidas:
+
+    - ``fpr_observado_pct``: restrição empírica, garantida no bloco usado;
+    - ``resolucao_amostral_pct``: menor FPR não nulo que a amostra consegue
+      medir. Se ela for maior que o alvo, o resultado não certifica 1% fora da
+      amostra, mesmo quando a calibração observada tem zero excedências.
+    """
+    alvo = FP_ALVO if fp_alvo_pct is None else float(fp_alvo_pct)
+    if not 0.0 <= alvo < 100.0:
+        raise ValueError("fp_alvo_pct deve estar em [0, 100)")
+
+    scores = np.asarray(scores_calibracao, dtype=float).reshape(-1)
+    if scores.size == 0:
+        raise ValueError("scores_calibracao não pode ser vazio")
+    if not np.isfinite(scores).all():
+        raise ValueError("scores_calibracao deve conter apenas valores finitos")
+
+    n = int(scores.size)
+    max_excedencias = int(np.floor(n * alvo / 100.0 + 1e-12))
+    max_excedencias = min(max_excedencias, n - 1)
+    ordem = np.sort(scores)
+    indice_corte = n - max_excedencias - 1
+    limiar = float(ordem[indice_corte])
+    excedencias = int(np.count_nonzero(scores > limiar))
+    fpr_observado = float(excedencias / n * 100.0)
+    resolucao = float(100.0 / n)
+
+    return {
+        "limiar": limiar,
+        "politica": POLITICA_LIMIAR,
+        "fp_alvo_pct": alvo,
+        "n_calibracao": n,
+        "max_excedencias": max_excedencias,
+        "excedencias_observadas": excedencias,
+        "fpr_observado_pct": fpr_observado,
+        "percentil_efetivo": float((indice_corte + 1) / n * 100.0),
+        "resolucao_amostral_pct": resolucao,
+        "alvo_resolvivel_na_amostra": bool(resolucao <= alvo),
+        "restricao_satisfeita": bool(fpr_observado <= alvo + 1e-12),
+    }
+
+
 def limiar_por_fp_alvo(scores_ajuste, scores_val, fp_alvo_pct: float | None = None,
                        percentis=(99.0, 99.3, 99.5, 99.7, 99.9)) -> tuple[float, float]:
     """Auto-calibra o limiar visando o FP alvo, SEM ajuste manual.
 
     Retorna (limiar, percentil): o MENOR percentil de ``scores_ajuste`` cujo
     falso positivo em ``scores_val`` (bloco saudável NÃO visto) fica <=
-    ``fp_alvo_pct``. Se nenhum atinge o alvo, usa o maior percentil (mais
-    conservador). Assim o limiar generaliza melhor para dado saudável novo.
+    ``fp_alvo_pct``. Se nenhum candidato atinge o alvo, sobe o corte até a ordem
+    estatística conservadora de ``scores_val``; não retorna silenciosamente um
+    limiar que viola a própria meta.
 
     ``fp_alvo_pct=None`` usa ``FP_ALVO`` (env), em vez de um literal fixado no
     chamador — era o que `macro_comum` fazia, ignorando a configuração.
@@ -124,8 +180,11 @@ def limiar_por_fp_alvo(scores_ajuste, scores_val, fp_alvo_pct: float | None = No
         lim = float(np.percentile(a, p))
         if float((v > lim).mean() * 100.0) <= alvo:
             escolhido = float(p)
-            break
-    return float(np.percentile(a, escolhido)), escolhido
+            return lim, escolhido
+
+    guarda = calibrar_limiar_fpr(v, alvo)
+    limiar = max(float(np.percentile(a, escolhido)), float(guarda["limiar"]))
+    return limiar, 100.0
 
 # Nome canônico do artefato com a régua por-feature (μ/σ do |resíduo| saudável).
 ARQUIVO_ESTATISTICA = "estatistica_residuo.npz"

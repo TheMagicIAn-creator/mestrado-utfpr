@@ -7,8 +7,9 @@ Fundamentação:
   O Autoencoder aprende a reconstruir o comportamento SAUDÁVEL do inversor
   a partir do dataset de Paderborn. Em operação real, sinais anômalos
   (falhas) produzem erro de reconstrução alto — acima do limiar operacional
-  (percentil 99 do erro saudável). μ + 3σ é mantido apenas como referência
-  teórica comparativa, não como limiar operacional.
+  calibrado para no máximo 1% de falso positivo empírico no bloco saudável.
+  O p99 e μ + 3σ são mantidos como referências comparativas, não como a
+  política operacional.
 
   Esta abordagem é adequada porque dados de falha raramente estão
   disponíveis em manutenção preditiva real (Ibrahim, 2022; Ahirwar, 2025).
@@ -19,8 +20,8 @@ Arquitetura:
   Latente : 16 dimensões
   Decoder : 16 → 32 → 64 → n_features  (ReLU + saída Linear)
   Loss    : MSE — erro de reconstrução por janela
-  Limiar  : percentil 99 do erro saudável no bloco de calibração (operacional);
-            μ + 3σ é referência comparativa, não o limiar em uso
+  Limiar  : ordem estatística do bloco de calibração que limita o FPR empírico
+            ao alvo (1% por padrão); p99 e μ + 3σ são referências
 
 Entrada : dados/processados/features_paderborn.parquet
 Saída   : resultados/autoencoder/
@@ -140,8 +141,9 @@ CALIB_RATIO    = 0.20   # early stopping + calibracao do limiar
 TEST_RATIO     = 0.20   # avaliacao saudavel final, nunca usada no ajuste
 PACIENCIA      = 20     # early stopping: épocas sem melhora
 SIGMA          = 3.0    # fator k da REFERÊNCIA μ+kσ (comparativa); o limiar
-                        # operacional é o percentil 99, não μ+kσ
+                        # operacional usa a política de FPR, não μ+kσ
 THRESHOLD_METHOD = "p99"
+OPERATIONAL_THRESHOLD_POLICY = "fpr_empirico_maximo"
 SEED           = 42
 
 # Colunas de metadado (não entram no modelo)
@@ -302,18 +304,17 @@ def calcular_erros(modelo, X_tensor: torch.Tensor,
 def calcular_limiar(erros_calibracao: np.ndarray,
                     sigma: float = SIGMA) -> dict:
     """
-    Define o limiar de anomalia do Autoencoder.
+    Calcula as referências históricas do MSE.
 
-    DEFINIÇÃO OFICIAL (não confundir):
-    - Limiar OPERACIONAL = percentil 99 do erro de reconstrução saudável no
-      bloco temporal de calibração.
-      Controla diretamente a taxa de falso positivo (~1%) e é robusto a
-      distribuições assimétricas com poucas janelas.
+    NÃO CONFUNDIR:
+    - Referência MSE = percentil 99 do erro de reconstrução saudável.
     - Referência COMPARATIVA = μ + 3σ (assume normalidade; só para comparação
       teórica, NUNCA usado como limiar operacional).
     - Referência ADICIONAL = percentil 95.
 
-    O campo `threshold_method` registra explicitamente o método em uso.
+    As chaves legadas ``limiar``/``score_threshold`` permanecem p99 para quem
+    chama esta função isoladamente. ``executar_autoencoder`` substitui essas
+    chaves pelo corte da política operacional de FPR máximo.
     """
     mu      = float(erros_calibracao.mean())
     sig     = float(erros_calibracao.std())
@@ -322,16 +323,16 @@ def calcular_limiar(erros_calibracao: np.ndarray,
     mu_3sig = mu + sigma * sig
 
     return {
-        "threshold_method"  : "p99",        # método operacional em uso
-        "limiar"            : p99,          # operacional (chave de compat. retroativa)
-        "limiar_operacional": p99,          # operacional explícito = percentil 99
+        "threshold_method"  : "p99",        # rótulo legado da referência MSE
+        "limiar"            : p99,          # compatibilidade; sobrescrito no pipeline
+        "limiar_operacional": p99,          # compatibilidade; sobrescrito no pipeline
         "score_method"      : "mse",
         "score_threshold"   : p99,
         "mu"                : mu,
         "sigma"             : sig,
         "k"                 : sigma,        # legado: multiplicador de sigma
         "sigma_multiplier"  : sigma,
-        "limiar_p99"        : p99,          # operacional: percentil 99
+        "limiar_p99"        : p99,          # referência MSE: percentil 99
         "mse_p99"           : p99,
         "limiar_p95"        : p95,          # referência adicional
         "limiar_mu3sigma"   : mu_3sig,      # referência teórica comparativa
@@ -434,6 +435,50 @@ def executar_autoencoder(
     _log(f"   Calib. : {len(X_calib)} janelas")
     _log(f"   Teste  : {len(X_teste)} janelas (isolado)")
 
+    # Diagnóstico de cobertura do regime saudável. É somente descritivo: o
+    # teste nunca altera scaler, régua ou limiar. No dataset atual, esta medida
+    # torna explícito quando calibração e teste ocupam faixas de F0 diferentes.
+    regime_f0 = None
+    if "f0_estimado" in df.columns:
+        def _resumo_f0(indices) -> dict:
+            valores = df.iloc[np.asarray(indices, dtype=int)][
+                "f0_estimado"
+            ].to_numpy(float)
+            q25, mediana, q75 = np.percentile(valores, [25, 50, 75])
+            return {
+                "n": int(len(valores)),
+                "media_hz": float(np.mean(valores)),
+                "desvio_hz": float(np.std(valores)),
+                "mediana_hz": float(mediana),
+                "q25_hz": float(q25),
+                "q75_hz": float(q75),
+                "min_hz": float(np.min(valores)),
+                "max_hz": float(np.max(valores)),
+            }
+
+        regime_f0 = {
+            "treino": _resumo_f0(idx_tr),
+            "calibracao": _resumo_f0(idx_calib),
+            "teste": _resumo_f0(idx_teste),
+        }
+        iqr_calib = max(
+            regime_f0["calibracao"]["q75_hz"] - regime_f0["calibracao"]["q25_hz"],
+            1e-9,
+        )
+        deslocamento = abs(
+            regime_f0["teste"]["mediana_hz"]
+            - regime_f0["calibracao"]["mediana_hz"]
+        ) / iqr_calib
+        regime_f0["deslocamento_mediana_calib_teste_iqr"] = float(deslocamento)
+        regime_f0["alerta_drift"] = bool(deslocamento > 1.5)
+        if regime_f0["alerta_drift"]:
+            _log(
+                "   ⚠️  Regime F0 deslocado entre calibração e teste: "
+                f"{regime_f0['calibracao']['mediana_hz']:.2f} → "
+                f"{regime_f0['teste']['mediana_hz']:.2f} Hz "
+                f"({deslocamento:.1f} IQR da calibração)"
+            )
+
     # ── 3. DataLoaders ───────────────────────────────────────
     ds_treino = TensorDataset(torch.from_numpy(X_treino))
     ds_val    = TensorDataset(torch.from_numpy(X_calib))
@@ -466,28 +511,15 @@ def executar_autoencoder(
     erros_all    = calcular_erros(modelo, torch.from_numpy(X_all),    device)
 
     # Resíduo por feature → régua saudável (μ/σ) do escore LOCALIZADO. A régua
-    # vem do bloco de CALIBRAÇÃO (saudável, fora do ajuste de pesos do AE).
-    # Régua por-feature + limiar do escore localizado. Por PADRÃO (sem env de
-    # percentil) o limiar é AUTO-CALIBRADO: régua e candidatos vêm de um
-    # sub-bloco de calibração e o percentil é o menor cujo FP num sub-bloco NÃO
-    # VISTO fica ≤ FP_ALVO. Assim o falso positivo se auto-regula, sem ajuste
-    # manual (docs/auditoria §25). Com poucas janelas, cai para o percentil fixo.
+    # é definida no TREINO, que no dataset atual cobre os regimes de F0 baixo e
+    # alto. A calibração fixa o corte (e também guia o early stopping). Isso
+    # impede que uma régua estimada no regime estreito da calibração transforme
+    # mudança de F0 saudável em anomalia no teste.
+    R_treino = ea.residuo_por_feature(modelo, X_treino, device)
     R_calib = ea.residuo_por_feature(modelo, X_calib, device)
-    if ea.AUTO_PERCENTIL and len(R_calib) >= 40:
-        corte_cal = int(len(R_calib) * 0.8)
-        R_fit, R_val = R_calib[:corte_cal], R_calib[corte_cal:]
-        estat_residuo = ea.ajustar_estatistica_residuo(R_fit)
-        sc_fit = ea.escore_localizado(R_fit, estat_residuo)
-        sc_val = ea.escore_localizado(R_val, estat_residuo)
-        limiar_loc, percentil_usado = ea.limiar_por_fp_alvo(sc_fit, sc_val, ea.FP_ALVO)
-    else:
-        estat_residuo = ea.ajustar_estatistica_residuo(R_calib)
-        percentil_usado = ea.PERCENTIL_LIMIAR
-        limiar_loc = float(np.percentile(
-            ea.escore_localizado(R_calib, estat_residuo), percentil_usado))
+    estat_residuo = ea.ajustar_estatistica_residuo(R_treino)
     sc_loc_calib = ea.escore_localizado(R_calib, estat_residuo)
-    sc_loc_treino = ea.escore_localizado(
-        ea.residuo_por_feature(modelo, X_treino, device), estat_residuo)
+    sc_loc_treino = ea.escore_localizado(R_treino, estat_residuo)
     sc_loc_teste = ea.escore_localizado(
         ea.residuo_por_feature(modelo, X_teste, device), estat_residuo)
     sc_loc_all = ea.escore_localizado(
@@ -497,21 +529,55 @@ def executar_autoencoder(
     info_mse = calcular_limiar(erros_calib, sigma)      # p99/p95/μ+3σ do MSE
     limiar_mse = float(info_mse["limiar"])
 
+    def _calibracao_manual(scores: np.ndarray, percentil: float) -> dict:
+        limiar_manual = float(np.percentile(scores, percentil))
+        excedencias = int(np.count_nonzero(scores > limiar_manual))
+        return {
+            "limiar": limiar_manual,
+            "politica": "percentil_manual",
+            "fp_alvo_pct": None,
+            "n_calibracao": int(len(scores)),
+            "max_excedencias": None,
+            "excedencias_observadas": excedencias,
+            "fpr_observado_pct": float(excedencias / len(scores) * 100.0),
+            "percentil_efetivo": float(percentil),
+            "resolucao_amostral_pct": float(100.0 / len(scores)),
+            "alvo_resolvivel_na_amostra": None,
+            "restricao_satisfeita": None,
+        }
+
+    if ea.AUTO_PERCENTIL:
+        calib_loc = ea.calibrar_limiar_fpr(sc_loc_calib, ea.FP_ALVO)
+        calib_mse = ea.calibrar_limiar_fpr(erros_calib, ea.FP_ALVO)
+    else:
+        calib_loc = _calibracao_manual(sc_loc_calib, ea.PERCENTIL_LIMIAR)
+        calib_mse = _calibracao_manual(erros_calib, ea.PERCENTIL_LIMIAR)
+    limiar_loc = float(calib_loc["limiar"])
+    limiar_mse_operacional = float(calib_mse["limiar"])
+
     metodo = ea.METODO_ESCORE            # 'localizado' (padrão) ou 'mse'
     k_loc  = ea.K_LOCALIZADO
     if metodo == "localizado":
         limiar_op = limiar_loc
+        calibracao_op = calib_loc
         sc_op_treino = sc_loc_treino
         sc_op_calib, sc_op_teste, sc_op_all = sc_loc_calib, sc_loc_teste, sc_loc_all
     else:
-        limiar_op = limiar_mse
+        limiar_op = limiar_mse_operacional
+        calibracao_op = calib_mse
         sc_op_treino = erros_treino
         sc_op_calib, sc_op_teste, sc_op_all = erros_calib, erros_teste, erros_all
 
     _log(f"\n🎯 Escore operacional: {ea.descricao_metodo(metodo, k_loc)}")
-    _log(f"   Limiar MSE (p99)        = {limiar_mse:.6f}")
-    _log(f"   Limiar localizado (p99) = {limiar_loc:.6f}")
+    _log(f"   Referência MSE (p99)    = {limiar_mse:.6f}")
+    _log(f"   Limiar MSE operacional  = {limiar_mse_operacional:.6f}")
+    _log(f"   Limiar localizado       = {limiar_loc:.6f}")
     _log(f"   Limiar OPERACIONAL      = {limiar_op:.6f}  ← método '{metodo}'")
+    if ea.AUTO_PERCENTIL:
+        _log(
+            f"   Restrição de calibração = FPR ≤ {ea.FP_ALVO:.2f}% | "
+            f"máx. {calibracao_op['max_excedencias']} excedência(s)"
+        )
 
     # A calibração fixa o limiar; o teste fornece a estimativa final de FP.
     fp_calib = float((sc_op_calib > limiar_op).mean() * 100)
@@ -534,14 +600,26 @@ def executar_autoencoder(
     info_limiar["score_threshold"] = limiar_op
     info_limiar["metodo_escore"] = metodo
     info_limiar["limiar_mse"] = limiar_mse
+    info_limiar["limiar_mse_operacional"] = limiar_mse_operacional
     info_limiar["mse_p99"] = limiar_mse
     info_limiar["limiar_localizado"] = limiar_loc
     info_limiar["k_localizado"] = k_loc
     info_limiar["top_k"] = k_loc if metodo == "localizado" else None
+    percentil_usado = float(calibracao_op["percentil_efetivo"])
     info_limiar["percentil_limiar"] = percentil_usado
     info_limiar["threshold_fallback_percentile"] = ea.PERCENTIL_LIMIAR
     info_limiar["threshold_effective_percentile"] = percentil_usado
-    info_limiar["percentil_auto"] = bool(ea.AUTO_PERCENTIL and len(R_calib) >= 40)
+    info_limiar["percentil_auto"] = bool(ea.AUTO_PERCENTIL)
+    info_limiar["threshold_policy"] = calibracao_op["politica"]
+    info_limiar["threshold_target_fpr_pct"] = calibracao_op["fp_alvo_pct"]
+    info_limiar["threshold_allowed_exceedances"] = calibracao_op["max_excedencias"]
+    info_limiar["threshold_observed_exceedances"] = calibracao_op["excedencias_observadas"]
+    info_limiar["threshold_observed_calibration_fpr_pct"] = calibracao_op["fpr_observado_pct"]
+    info_limiar["threshold_sample_resolution_pct"] = calibracao_op["resolucao_amostral_pct"]
+    info_limiar["threshold_target_resolvable"] = calibracao_op["alvo_resolvivel_na_amostra"]
+    info_limiar["threshold_constraint_satisfied"] = calibracao_op["restricao_satisfeita"]
+    info_limiar["score_reference_source"] = "bloco_treino_saudavel"
+    info_limiar["score_reference_n_janelas"] = int(len(R_treino))
     limiar = limiar_op
 
     # ── 8. Salva artefatos ───────────────────────────────────
@@ -596,6 +674,7 @@ def executar_autoencoder(
             "calibracao": fp_score_calib,
             "teste": fp_score_teste,
         },
+        "regime_f0": regime_f0,
         "split_temporal"    : {
             "protocolo": "treino_60_calibracao_20_teste_20_com_purga",
             "limites": split["limites"],

@@ -87,9 +87,15 @@ revalidação. Ver `docs/auditoria_pipeline_ml.md`, §23.
 
 ## 3. Limiar do Autoencoder
 
-- **Limiar operacional = `score_threshold` do `score_method` vigente.** Na
-  execução atual, o método operacional é o escore **localizado**; por isso o
-  valor operacional não deve ser rotulado como MSE p99.
+- **Limiar operacional = `score_threshold` do `score_method` vigente.** Por
+  padrão, ele é a ordem estatística da calibração que limita o FPR empírico a
+  `threshold_target_fpr_pct` (1%). O método operacional continua sendo o escore
+  **localizado**; o valor não deve ser rotulado como MSE p99.
+- A régua por feature do escore localizado é estimada no bloco de **treino
+  saudável**, enquanto o corte é fixado no bloco de **calibração temporal**
+  (que também guia o early stopping). Essa separação da régua reduz sua
+  sensibilidade a um único regime de F0; não transforma a calibração em um
+  segundo holdout independente.
 - **MSE p99 = referência do erro de reconstrução médio**, registrada em
   `mse_p99` / `limiar_p99`.
 - **μ + 3σ = referência comparativa** (assume normalidade) — **nunca** o limiar
@@ -98,7 +104,13 @@ revalidação. Ver `docs/auditoria_pipeline_ml.md`, §23.
 - O artefato `limiar.json` preserva campos legados (`threshold_method`,
   `limiar`, `k`, `k_localizado`) e acrescenta nomes inequívocos:
   `score_method`, `score_threshold`, `mse_p99`, `sigma_multiplier`, `top_k`,
-  `threshold_fallback_percentile` e `threshold_effective_percentile`.
+  `threshold_fallback_percentile`, `threshold_effective_percentile`,
+  `threshold_policy`, `threshold_target_fpr_pct`,
+  `threshold_observed_calibration_fpr_pct`,
+  `threshold_sample_resolution_pct` e `score_reference_source`.
+- O alvo de 1% é uma restrição **empírica**. Se `100/n_calib > 1%`, o artefato
+  marca `threshold_target_resolvable=false`; zero excedências não deve ser
+  descrito como certificação de taxa de campo.
 - A auditoria tabular de calibração fica em
   `resultados/autoencoder/calibracao_autoencoder.{csv,md}`: ela reporta, por
   bloco temporal, mediana/IQR/p99 do MSE e excedências acima da referência MSE

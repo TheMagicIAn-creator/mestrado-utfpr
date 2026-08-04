@@ -124,8 +124,8 @@ STAGES: dict[str, PipelineStage] = {
         function="executar_autoencoder",
         parameter_names=(
             "LATENTE_DIM", "EPOCHS", "BATCH_SIZE", "LR", "SIGMA",
-            "THRESHOLD_METHOD", "SEED", "TRAIN_RATIO", "CALIB_RATIO",
-            "TEST_RATIO",
+            "THRESHOLD_METHOD", "OPERATIONAL_THRESHOLD_POLICY", "SEED",
+            "TRAIN_RATIO", "CALIB_RATIO", "TEST_RATIO",
         ),
         code_dependencies=(
             "src.ml.escore_anomalia",
