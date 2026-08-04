@@ -286,7 +286,7 @@ def plotar_roc(resultados: dict, limiar: float, pasta: Path):
     salvar_figura(
         fig,
         arq,
-        "Os círculos marcam o limiar p99 congelado; faixas na legenda são IC95% bootstrap da AUC.",
+        "Os círculos marcam o limiar operacional congelado; faixas na legenda são IC95% bootstrap da AUC.",
     )
     _log(f"   📊 {arq.name}")
 
@@ -390,7 +390,7 @@ def plotar_matrizes_todas_severidades(resultados: dict, pasta: Path):
         len(FALHAS), len(SEVS_VALIDACAO),
         figsize=TAM["painel_9"], layout="constrained",
     )
-    fig.suptitle("Matrizes de confusão — todas as severidades no limiar p99")
+    fig.suptitle("Matrizes de confusão — todas as severidades no limiar operacional")
 
     for linha, falha in enumerate(FALHAS):
         for coluna, sev in enumerate(SEVS_VALIDACAO):
@@ -584,6 +584,16 @@ def executar_validacao() -> bool:
                 "auc_roc_ci_low": res["auc_roc_ci_low"],
                 "auc_roc_ci_high": res["auc_roc_ci_high"],
                 "threshold_method": info_limiar.get("threshold_method", "p99"),
+                "score_method": info_limiar.get(
+                    "score_method", info_limiar.get("metodo_escore")
+                ),
+                "score_threshold": info_limiar.get(
+                    "score_threshold", info_limiar.get("limiar")
+                ),
+                "threshold_effective_percentile": info_limiar.get(
+                    "threshold_effective_percentile",
+                    info_limiar.get("percentil_limiar"),
+                ),
                 "threshold_source": info_limiar.get(
                     "threshold_source", "bloco_calibracao_temporal"
                 ),
@@ -626,7 +636,7 @@ def executar_validacao() -> bool:
         )
     arq_md.write_text(
         "# Validação sintética interna E2\n\n"
-        "> Holdout temporal não sobreposto; limiar p99 congelado na calibração.\n\n"
+        "> Holdout temporal não sobreposto; limiar operacional congelado na calibração.\n\n"
         + cabecalho + "\n".join(linhas_md) + "\n",
         encoding="utf-8",
     )
@@ -648,6 +658,24 @@ def executar_validacao() -> bool:
                 "otimizado no teste. Não é prova de desempenho industrial (E3)."
             ),
             "threshold_method": info_limiar.get("threshold_method", "p99"),
+            "score_method": info_limiar.get(
+                "score_method", info_limiar.get("metodo_escore")
+            ),
+            "score_threshold": info_limiar.get(
+                "score_threshold", info_limiar.get("limiar")
+            ),
+            "mse_p99": info_limiar.get("mse_p99", info_limiar.get("limiar_p99")),
+            "sigma_multiplier": info_limiar.get(
+                "sigma_multiplier", info_limiar.get("k")
+            ),
+            "top_k": info_limiar.get("top_k", info_limiar.get("k_localizado")),
+            "threshold_fallback_percentile": info_limiar.get(
+                "threshold_fallback_percentile"
+            ),
+            "threshold_effective_percentile": info_limiar.get(
+                "threshold_effective_percentile",
+                info_limiar.get("percentil_limiar"),
+            ),
             "threshold_source": info_limiar.get(
                 "threshold_source", "bloco_calibracao_temporal"
             ),
@@ -665,7 +693,7 @@ def executar_validacao() -> bool:
                 f"prevalência de {PREVALENCIA_RARA:.0%} (regra de Bayes no ponto "
                 "de operação). AUC, recall (TPR) e specificity independem da "
                 "prevalência; só precision/F1 mudam. Nesta execução, o limiar "
-                f"p99 produziu {fp_holdout} {rotulo_fp} em "
+                f"limiar operacional produziu {fp_holdout} {rotulo_fp} em "
                 f"{n_neg_holdout} janelas saudáveis (FPR={fpr_holdout:.2%}). "
                 "Esse FPR observado reduz de forma relevante a precisão projetada "
                 "para o regime raro. Como o holdout é pequeno, o valor tem resolução "

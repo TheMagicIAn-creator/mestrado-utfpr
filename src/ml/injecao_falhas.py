@@ -636,7 +636,7 @@ def executar_injecao_falhas() -> bool:
     ax.axhline(ALVO_SMD, color=COR_ALERTA, linestyle="--",
                label=f"Alvo SMD = {ALVO_SMD:.0%}")
     ax.set_xlabel("Severidade da falha")
-    ax.set_ylabel("Taxa de detecção no limiar p99")
+    ax.set_ylabel("Taxa de detecção no limiar operacional")
     ax.set_ylim(-0.03, 1.03)
     ax.set_yticks(np.linspace(0, 1, 6), labels=[f"{v:.0%}" for v in np.linspace(0, 1, 6)])
     ax.set_title("Detectabilidade por severidade\nIntervalos de Wilson de 95%")
@@ -659,6 +659,24 @@ def executar_injecao_falhas() -> bool:
             "ruído do sensor é um PROXY e exige calibração física."
         ),
         "threshold_method": "p99",
+        "score_method": info_limiar.get(
+            "score_method", info_limiar.get("metodo_escore")
+        ),
+        "score_threshold": info_limiar.get(
+            "score_threshold", info_limiar.get("limiar")
+        ),
+        "mse_p99": info_limiar.get("mse_p99", info_limiar.get("limiar_p99")),
+        "sigma_multiplier": info_limiar.get(
+            "sigma_multiplier", info_limiar.get("k")
+        ),
+        "top_k": info_limiar.get("top_k", info_limiar.get("k_localizado")),
+        "threshold_fallback_percentile": info_limiar.get(
+            "threshold_fallback_percentile"
+        ),
+        "threshold_effective_percentile": info_limiar.get(
+            "threshold_effective_percentile",
+            info_limiar.get("percentil_limiar"),
+        ),
         "threshold_source": info_limiar.get(
             "threshold_source", "bloco_calibracao_temporal"
         ),

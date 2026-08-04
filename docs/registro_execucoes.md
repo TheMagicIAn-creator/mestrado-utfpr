@@ -9,7 +9,7 @@ nos artefatos JSON — este registro guarda apenas o CONTEXTO de cada execução
 Regra de uso: ao rodar o pipeline, acrescentar uma linha com data, motivo e
 o commit. Nunca editar linhas antigas — este arquivo é só-acréscimo.
 
-| Data | Limiar p99 | Épocas AE | Motivo da execução | Commit | Observações |
+| Data | Limiar operacional | Épocas AE | Motivo da execução | Commit | Observações |
 |---|---:|---:|---|---|---|
 | ~2026-05-24 | 2.9103 | 84 | Primeira execução completa (Fase 5) | — | Números registrados nas memórias de 24–30/05. SUBSTITUÍDA. |
 | 2026-06-17 | 2.0785 | 150 | Reexecução após curadoria/refino do treino | 0ce1e77 | SUBSTITUÍDA — artefatos removidos no reset de 2026-07-07 (histórico recuperável no git). Achados da execução: SMD do desbalanceamento = null (não detectada em nenhuma severidade — limitação, ver evidence_levels.md); KS rejeitava Weibull nas 3 famílias. |

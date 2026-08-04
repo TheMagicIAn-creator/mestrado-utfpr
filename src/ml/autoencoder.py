@@ -297,14 +297,21 @@ def calcular_limiar(erros_calibracao: np.ndarray,
         "threshold_method"  : "p99",        # método operacional em uso
         "limiar"            : p99,          # operacional (chave de compat. retroativa)
         "limiar_operacional": p99,          # operacional explícito = percentil 99
+        "score_method"      : "mse",
+        "score_threshold"   : p99,
         "mu"                : mu,
         "sigma"             : sig,
-        "k"                 : sigma,
+        "k"                 : sigma,        # legado: multiplicador de sigma
+        "sigma_multiplier"  : sigma,
         "limiar_p99"        : p99,          # operacional: percentil 99
+        "mse_p99"           : p99,
         "limiar_p95"        : p95,          # referência adicional
         "limiar_mu3sigma"   : mu_3sig,      # referência teórica comparativa
         "limiar_mu3s"       : mu_3sig,      # alias de compat. retroativa
         "threshold_source"  : "bloco_calibracao_temporal",
+        "top_k"             : None,
+        "threshold_fallback_percentile": 99.0,
+        "threshold_effective_percentile": 99.0,
     }
 
 
@@ -483,11 +490,17 @@ def executar_autoencoder(
     info_limiar = dict(info_mse)
     info_limiar["limiar"] = limiar_op
     info_limiar["limiar_operacional"] = limiar_op
+    info_limiar["score_method"] = metodo
+    info_limiar["score_threshold"] = limiar_op
     info_limiar["metodo_escore"] = metodo
     info_limiar["limiar_mse"] = limiar_mse
+    info_limiar["mse_p99"] = limiar_mse
     info_limiar["limiar_localizado"] = limiar_loc
     info_limiar["k_localizado"] = k_loc
+    info_limiar["top_k"] = k_loc if metodo == "localizado" else None
     info_limiar["percentil_limiar"] = percentil_usado
+    info_limiar["threshold_fallback_percentile"] = ea.PERCENTIL_LIMIAR
+    info_limiar["threshold_effective_percentile"] = percentil_usado
     info_limiar["percentil_auto"] = bool(ea.AUTO_PERCENTIL and len(R_calib) >= 40)
     limiar = limiar_op
 

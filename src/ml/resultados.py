@@ -425,11 +425,19 @@ def _resumo_autoencoder() -> str | None:
     d = _json(PASTA_AE / "limiar.json")
     if not d:
         return None
+    metodo = d.get("score_method") or d.get("metodo_escore") or "mse"
+    percentil = d.get("threshold_effective_percentile", d.get("percentil_limiar"))
+    if percentil is not None:
+        ponto_operacao = f"{metodo} / percentil efetivo {_fmt(percentil, 1)}"
+    else:
+        ponto_operacao = str(metodo)
     return (
         "## Autoencoder - modelo de normalidade\n\n"
         "| Métrica | Valor |\n"
         "|---|---:|\n"
-        f"| Limiar p99 | {_fmt(d.get('limiar'), 4)} |\n"
+        f"| Escore operacional | {ponto_operacao} |\n"
+        f"| Limiar operacional | {_fmt(d.get('score_threshold', d.get('limiar')), 4)} |\n"
+        f"| Referência MSE p99 | {_fmt(d.get('mse_p99', d.get('limiar_p99')), 4)} |\n"
         f"| Média baseline | {_fmt(d.get('mu'), 4)} |\n"
         f"| Desvio baseline | {_fmt(d.get('sigma'), 4)} |\n"
         f"| Janelas de treino | {d.get('n_janelas_treino', '-')} |\n"
@@ -547,7 +555,7 @@ def _resumo_validacao() -> str | None:
         )
     leitura = [
         "\n**Leitura honesta:** a AUC mede a separação por *ranking* (independe "
-        "do limiar). No PONTO DE OPERAÇÃO (limiar p99 congelado), o recall pode "
+        "do limiar). No PONTO DE OPERAÇÃO (limiar operacional congelado), o recall pode "
         "ser bem menor que a AUC sugere."
     ]
     if cego:
