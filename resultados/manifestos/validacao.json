@@ -1,8 +1,19 @@
 {
+  "manifest_version": 2,
   "stage": "validacao",
-  "created_at": "2026-08-02T23:36:34.125351-03:00",
-  "git_commit": "ed05852eaa2a7f0ecb3ed5f1c74eede2a1b2bef4",
-  "code_sha256": "6b1edeb3b5173dd92b7d1c5b841f93b96281caa0d907f9b4ce0b6a44ad398303",
+  "created_at": "2026-08-04T00:22:18.212431-03:00",
+  "git_commit": "a1c1aa10c6176fd379dcee48eb9617812fb4d435",
+  "code_hash_mode": "text_lf_utf8",
+  "code_sha256": "b6c86d6493573e4f3a4e1d9e0eb8ffad5869a88a6f301f57e17440f1f40f06ee",
+  "code_dependencies": {
+    "src.ml.features_ca": "fdb785e3d6398250b90de7fbd17fb3093b092d60752436e51312d4af370f0ad1",
+    "src.ml.autoencoder": "fbd947536bc03f567b8294733fa2d92ca9abbc8720d2cdb41993cb48a8497781",
+    "src.ml.dados_avaliacao": "bff782018b640e3b8dd763e60b5885958e9fdf507fab7af4055fee1972b9a6db",
+    "src.ml.escore_anomalia": "92647a318125cb58ae304e4d572f527b09a5dbf84afc5b8b977e3d44e1f77e84",
+    "src.ml.estatistica": "fde4d602db680706252a6e11c9bb9a2aa84e27b6911275beec7f4148538a4515",
+    "src.ml.injecao_falhas": "622cc1a1bb9b63f042d4f9a767dab0d80ba57dd7c3a119f801bb6b4c955da4e1",
+    "src.ml.estilo_graficos": "70fc7373198ee5e3058834f71d6101a7a2546e4bc3f655f867ba810ee8a03e68"
+  },
   "parameters": {
     "sevs_validacao": [
       0.3,
@@ -14,8 +25,8 @@
   },
   "input_artifacts": {
     "injecao_falhas:0:injecao_falhas_resultados.png": "c9ffab0705ffbd0e24a74bbe6dc60d182a12a2d41ee32d5885d39eb224fa2c9e",
-    "injecao_falhas:1:injecao_falhas_comparacao.png": "b28511ea0b90c04405dcbd03ed76ffd10d4f590c0cd849c09f5cbf62e78ba369",
-    "injecao_falhas:2:injecao_falhas_report.json": "ccfa5a9dbf7a56f10c2bac738be0e3d063ad15373f834abf1e20ddafad58e90b",
+    "injecao_falhas:1:injecao_falhas_comparacao.png": "f27496779a93bbf7747e57098b4322e6e88729cdd9831acb0bc7ed0bccbb514a",
+    "injecao_falhas:2:injecao_falhas_report.json": "1176a91373fe113c1a5dfe44a6d7182855c60946652616d3feddc9d3022c10ae",
     "injecao_falhas:3:injecao_smd_tabela.csv": "27c41944e7124c286db89586cb777a46ae16a5dfaad1b62ec57287d7ade7a928"
   },
   "outputs": [
@@ -27,5 +38,15 @@
     "resultados/autoencoder/validacao_tabela.csv",
     "resultados/autoencoder/validacao_tabela.md",
     "resultados/autoencoder/validacao_report.json"
-  ]
+  ],
+  "output_artifacts": {
+    "resultados/autoencoder/validacao_roc.png": "640c87f1a79e1c0326641f26ee6951fcddd09ef54ab3b03ce95f88e9f052aa5e",
+    "resultados/autoencoder/validacao_pr.png": "5c9e93f0321b24b1a22b0b0bed63973cdf81aededf601a57b90064e76706caf2",
+    "resultados/autoencoder/validacao_matriz.png": "78083b2e2f309cc8ca5eef906ffb19a3db193f274c60888a33c2d6a381b97e63",
+    "resultados/autoencoder/validacao_matrizes_severidades.png": "bfe60c4f2ff25c951a6ad0a556dcb570caef044298a3c645c301d4917bd03ea8",
+    "resultados/autoencoder/validacao_metricas.png": "fd36f6ea1f62cdc9df4b6779c0d5f6f6d6604438b35feaf90370eec9565a997c",
+    "resultados/autoencoder/validacao_tabela.csv": "6b6d99e6d68fbde5b3b16087cf4d71eb729be2833c297b8d7d59f3a8d093519b",
+    "resultados/autoencoder/validacao_tabela.md": "2c2f36deb366b86b8d2653f931be05e73017422724ed760e41a8fc3576c7fcc4",
+    "resultados/autoencoder/validacao_report.json": "7bf72149a6bcf769425ee49caedbdfd9f788cd8592f015ceb5423db562190cef"
+  }
 }

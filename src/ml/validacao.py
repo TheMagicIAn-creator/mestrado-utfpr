@@ -345,7 +345,7 @@ def plotar_matrizes(resultados: dict, pasta: Path):
     fig, axes = plt.subplots(
         1, 3, figsize=TAM["painel_3"], layout="constrained"
     )
-    fig.suptitle("Matrizes de Confusão — Severidade 1.0 (Limiar Operacional p99)",
+    fig.suptitle("Matrizes de Confusão — Severidade 1.0 (limiar operacional)",
                  fontsize=12, fontweight="bold")
 
     for ax, falha in zip(axes, FALHAS):
@@ -385,7 +385,7 @@ def plotar_matrizes(resultados: dict, pasta: Path):
     arq = pasta / "validacao_matriz.png"
     salvar_figura(
         fig, arq,
-        "Matriz no ponto operacional p99; linhas = classe real, colunas = predição.",
+        "Matriz no ponto operacional; linhas = classe real, colunas = predição.",
     )
     _log(f"   📊 {arq.name}")
 
@@ -701,7 +701,7 @@ def executar_validacao() -> bool:
                 "reportamos também precision_raro/f1_raro reprojetados para "
                 f"prevalência de {PREVALENCIA_RARA:.0%} (regra de Bayes no ponto "
                 "de operação). AUC, recall (TPR) e specificity independem da "
-                "prevalência; só precision/F1 mudam. Nesta execução, o limiar "
+                "prevalência; só precision/F1 mudam. Nesta execução, o "
                 f"limiar operacional produziu {fp_holdout} {rotulo_fp} em "
                 f"{n_neg_holdout} janelas saudáveis (FPR={fpr_holdout:.2%}). "
                 "Esse FPR observado reduz de forma relevante a precisão projetada "

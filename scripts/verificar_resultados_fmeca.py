@@ -5,7 +5,7 @@ Uso:
     python scripts/verificar_resultados_fmeca.py
 
 O verificador cruza os formatos publicados (JSON/CSV/PNG) e valida a
-metodologia vigente: holdout temporal com purga, limiar p99 de calibração,
+metodologia vigente: holdout temporal com purga, limiar operacional congelado,
 SMD probabilística com Wilson, validação sintética E2 e Weibull com censura à
 direita. Ausência de ajuste por poucos eventos é um resultado válido, não uma
 falha do verificador; nesses casos, a RUL restrita por Kaplan-Meier deve
@@ -24,6 +24,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 PASTA_AE = RAIZ / "resultados" / "autoencoder"
 PASTA_EXP = RAIZ / "resultados" / "experimentos"
 PASTA_CMP = RAIZ / "resultados" / "comparacao"
+PASTA_MACRO = RAIZ / "resultados" / "macro"
 
 ESPERADO = {
     "contator_ac": {"nome": "Contator AC", "s": 5, "o": 7, "d": 9, "npr": 315},
@@ -100,6 +101,18 @@ def _proximo(a: float, b: float, tolerancia: float = 1e-8) -> bool:
     )
 
 
+def _texto_ponto_operacao(dados: dict) -> str:
+    metodo = dados.get("score_method") or dados.get("metodo_escore")
+    if not metodo:
+        metodo = f"método {dados.get('threshold_method', 'desconhecido')}"
+    percentil = _numero(
+        dados.get("threshold_effective_percentile", dados.get("percentil_limiar"))
+    )
+    if math.isfinite(percentil):
+        return f"{metodo} / percentil efetivo {percentil:.1f}"
+    return str(metodo)
+
+
 def _smd_calculada(valores: dict, alvo: float, *, conservadora: bool) -> float | None:
     for severidade in sorted(float(v) for v in valores):
         item = valores[str(severidade)] if str(severidade) in valores else valores[str(severidade).rstrip("0").rstrip(".")]
@@ -114,15 +127,64 @@ def checar_limiar(aud: Auditoria) -> dict | None:
     if not dados:
         return None
 
-    aud.exigir(dados.get("threshold_method") == "p99", "limiar: método deve ser p99")
+    aud.exigir(
+        dados.get("threshold_method") == "p99",
+        "limiar: threshold_method legado deve permanecer p99",
+    )
     aud.exigir(
         dados.get("threshold_source") == "bloco_calibracao_temporal",
         "limiar: origem deve ser o bloco de calibração temporal",
     )
+    score_method = dados.get("score_method") or dados.get("metodo_escore")
+    aud.exigir(score_method in {"mse", "localizado"}, "limiar: score_method inválido")
     aud.exigir(
-        _proximo(_numero(dados.get("limiar")), _numero(dados.get("limiar_p99"))),
-        "limiar: valor operacional difere do p99 registrado",
+        _proximo(_numero(dados.get("mse_p99")), _numero(dados.get("limiar_p99"))),
+        "limiar: mse_p99 difere do limiar_p99 legado",
     )
+    aud.exigir(
+        _proximo(_numero(dados.get("limiar")), _numero(dados.get("score_threshold"))),
+        "limiar: valor operacional difere do score_threshold",
+    )
+    aud.exigir(
+        _proximo(
+            _numero(dados.get("limiar_operacional")),
+            _numero(dados.get("score_threshold")),
+        ),
+        "limiar: limiar_operacional difere do score_threshold",
+    )
+    percentil_efetivo = _numero(
+        dados.get("threshold_effective_percentile", dados.get("percentil_limiar"))
+    )
+    percentil_fallback = _numero(dados.get("threshold_fallback_percentile"), 99.0)
+    if score_method == "localizado":
+        aud.exigir(
+            _proximo(
+                _numero(dados.get("limiar")),
+                _numero(dados.get("limiar_localizado")),
+            ),
+            "limiar: escore localizado difere de limiar_localizado",
+        )
+        aud.exigir(
+            _proximo(_numero(dados.get("top_k")), _numero(dados.get("k_localizado"))),
+            "limiar: top_k difere de k_localizado",
+        )
+        aud.exigir(
+            _proximo(percentil_efetivo, _numero(dados.get("percentil_limiar"))),
+            "limiar: percentil efetivo difere do percentil_limiar",
+        )
+        aud.exigir(
+            percentil_efetivo >= percentil_fallback,
+            "limiar: percentil efetivo abaixo do fallback declarado",
+        )
+    else:
+        aud.exigir(
+            _proximo(_numero(dados.get("limiar")), _numero(dados.get("limiar_p99"))),
+            "limiar: score mse deve usar o p99 registrado",
+        )
+        aud.exigir(
+            _proximo(percentil_efetivo, percentil_fallback),
+            "limiar: percentil efetivo do score mse difere do fallback",
+        )
     for campo in ("n_janelas_treino", "n_janelas_calibracao", "n_janelas_teste"):
         aud.exigir(int(dados.get(campo, 0)) > 0, f"limiar: {campo} deve ser positivo")
 
@@ -146,6 +208,7 @@ def checar_limiar(aud: Auditoria) -> dict | None:
         f"• autoencoder: treino={dados['n_janelas_treino']}, "
         f"calibração={dados['n_janelas_calibracao']}, "
         f"teste={dados['n_janelas_teste']}, "
+        f"ponto={_texto_ponto_operacao(dados)}, "
         f"FP teste={_numero(dados.get('fp_test_pct')):.2f}%"
     )
     return dados
@@ -165,6 +228,24 @@ def checar_injecao(aud: Auditoria, limiar: dict | None) -> dict | None:
         aud.exigir(
             _proximo(_numero(dados.get("limiar")), _numero(limiar.get("limiar"))),
             "injeção: limiar diverge de limiar.json",
+        )
+        aud.exigir(
+            dados.get("score_method") == limiar.get("score_method"),
+            "injeção: score_method diverge de limiar.json",
+        )
+        aud.exigir(
+            _proximo(
+                _numero(dados.get("score_threshold")),
+                _numero(limiar.get("score_threshold")),
+            ),
+            "injeção: score_threshold diverge de limiar.json",
+        )
+        aud.exigir(
+            _proximo(
+                _numero(dados.get("threshold_effective_percentile")),
+                _numero(limiar.get("threshold_effective_percentile")),
+            ),
+            "injeção: percentil efetivo diverge de limiar.json",
         )
 
     protocolo = dados.get("protocolo_avaliacao") or {}
@@ -222,7 +303,7 @@ def checar_injecao(aud: Auditoria, limiar: dict | None) -> dict | None:
             taxa_json = ((probabilistica.get(fid) or {}).get("taxa_deteccao") or {}).get(str(float(sev)).rstrip("0").rstrip("."))
         aud.exigir(_proximo(_numero(linha.get("taxa_deteccao")), _numero(taxa_json)), f"injeção CSV/JSON divergem em {fid}/sev={sev}")
 
-    print("• injeção: FMECA, SMD95, Wilson e CSV cruzados")
+    print(f"• injeção: FMECA, SMD95, Wilson e CSV cruzados ({_texto_ponto_operacao(dados)})")
     for fid in ESPERADO:
         bloco = probabilistica.get(fid) or {}
         print(
@@ -244,6 +325,24 @@ def checar_validacao(aud: Auditoria, limiar: dict | None) -> dict | None:
         aud.exigir(
             _proximo(_numero(meta.get("limiar_operacional")), _numero(limiar.get("limiar"))),
             "validação: limiar diverge de limiar.json",
+        )
+        aud.exigir(
+            meta.get("score_method") == limiar.get("score_method"),
+            "validação: score_method diverge de limiar.json",
+        )
+        aud.exigir(
+            _proximo(
+                _numero(meta.get("score_threshold")),
+                _numero(limiar.get("score_threshold")),
+            ),
+            "validação: score_threshold diverge de limiar.json",
+        )
+        aud.exigir(
+            _proximo(
+                _numero(meta.get("threshold_effective_percentile")),
+                _numero(limiar.get("threshold_effective_percentile")),
+            ),
+            "validação: percentil efetivo diverge de limiar.json",
         )
 
     casos = {k: v for k, v in dados.items() if k != "__meta__" and isinstance(v, dict)}
@@ -278,8 +377,27 @@ def checar_validacao(aud: Auditoria, limiar: dict | None) -> dict | None:
         caso = casos.get(chave) or {}
         for metrica in ("f1", "auc_roc", "recall", "specificity", "fnr"):
             aud.exigir(_proximo(_numero(linha.get(metrica)), _numero(caso.get(metrica))), f"validação CSV/JSON divergem em {chave}/{metrica}")
+        if limiar:
+            aud.exigir(
+                linha.get("score_method") == limiar.get("score_method"),
+                f"validação CSV/limiar divergem em {chave}/score_method",
+            )
+            aud.exigir(
+                _proximo(
+                    _numero(linha.get("score_threshold")),
+                    _numero(limiar.get("score_threshold")),
+                ),
+                f"validação CSV/limiar divergem em {chave}/score_threshold",
+            )
+            aud.exigir(
+                _proximo(
+                    _numero(linha.get("threshold_effective_percentile")),
+                    _numero(limiar.get("threshold_effective_percentile")),
+                ),
+                f"validação CSV/limiar divergem em {chave}/percentil efetivo",
+            )
 
-    print("• validação: 9 cenários, matrizes, ICs e CSV cruzados")
+    print(f"• validação: 9 cenários, matrizes, ICs e CSV cruzados ({_texto_ponto_operacao(meta)})")
     for fid in ESPERADO:
         caso = casos.get(f"{fid}_sev1.0") or {}
         print(
@@ -433,15 +551,50 @@ def checar_experimentos(aud: Auditoria) -> None:
     if presentes:
         print(f"• experimentos: {presentes}/2 artefatos comparativos presentes")
 
-    comparacao = PASTA_CMP / "comparacao_literatura.json"
-    if not comparacao.is_file():
-        aud.aviso("comparação com a literatura: artefato ausente")
-    else:
-        dados = aud.json(comparacao) or {}
-        familias = set((dados.get("auc_por_falha_metodo") or {}).keys())
-        aud.exigir(not (familias & IDS_ANTIGOS), "comparação: ids antigos presentes")
-        aud.exigir(familias == set(ESPERADO), f"comparação: famílias {sorted(familias)}")
-        print("• comparação com a literatura: artefato presente")
+    legado = PASTA_CMP / "comparacao_literatura.json"
+    if legado.is_file():
+        aud.aviso(
+            "comparação E1 legada presente em resultados/comparacao; "
+            "a fonte vigente é resultados/macro"
+        )
+
+    macro = PASTA_MACRO / "comparacao_resultado.json"
+    tabela = PASTA_MACRO / "comparacao_tabela.md"
+    if not macro.is_file():
+        aud.aviso("macrocomparação vigente: artefato ausente")
+        return
+    dados_macro = aud.json(macro)
+    if not isinstance(dados_macro, list):
+        aud.erro("macrocomparação: comparacao_resultado.json deve ser lista")
+        return
+    aud.exigir(tabela.is_file(), "macrocomparação: comparacao_tabela.md ausente")
+
+    nomes = {str(item.get("nome", "")) for item in dados_macro if isinstance(item, dict)}
+    aud.exigir(any("Proposto" in nome for nome in nomes), "macrocomparação: método proposto ausente")
+    aud.exigir(any("Ibrahim" in nome for nome in nomes), "macrocomparação: Ibrahim ausente")
+    for item in dados_macro:
+        if not isinstance(item, dict):
+            aud.erro("macrocomparação: item inválido")
+            continue
+        nome = str(item.get("nome", "sem_nome"))
+        familias = item.get("falhas") or {}
+        ids = set(familias)
+        aud.exigir(not (ids & IDS_ANTIGOS), f"macrocomparação[{nome}]: ids antigos presentes")
+        aud.exigir(ids == set(ESPERADO), f"macrocomparação[{nome}]: famílias {sorted(ids)}")
+        aud.exigir(0 <= _numero(item.get("fp_pct")) <= 100, f"macrocomparação[{nome}]: fp_pct inválido")
+        aud.exigir(int(item.get("n_calib", 0)) > 0, f"macrocomparação[{nome}]: n_calib inválido")
+        aud.exigir(int(item.get("n_aval", 0)) > 0, f"macrocomparação[{nome}]: n_aval inválido")
+        for fid, esperado in ESPERADO.items():
+            falha = familias.get(fid) or {}
+            aud.exigir(falha.get("npr") == esperado["npr"], f"macrocomparação[{nome}/{fid}]: NPR incorreto")
+            aud.exigir(0 <= _numero(falha.get("auc")) <= 1, f"macrocomparação[{nome}/{fid}]: AUC inválido")
+            aud.exigir(0 <= _numero(falha.get("tpr_fpr10")) <= 1, f"macrocomparação[{nome}/{fid}]: TPR inválido")
+            por_sev = falha.get("por_sev") or {}
+            aud.exigir(bool(por_sev), f"macrocomparação[{nome}/{fid}]: severidades ausentes")
+            for sev, metricas in por_sev.items():
+                taxa = _numero((metricas or {}).get("taxa"))
+                aud.exigir(0 <= taxa <= 1, f"macrocomparação[{nome}/{fid}/sev={sev}]: taxa inválida")
+    print(f"• macrocomparação: {len(dados_macro)} métodos, famílias FMECA e tabela publicados")
 
 
 def main() -> int:

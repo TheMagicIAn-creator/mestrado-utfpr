@@ -3,6 +3,13 @@
     "evidence_level": "E2",
     "evidence_note": "Validação sintética orientada pelo FMEA: classe negativa = janelas saudáveis; classe positiva = falhas injetadas (ground truth). Limiar CONGELADO, carregado de limiar.json — NÃO otimizado no teste. Não é prova de desempenho industrial (E3).",
     "threshold_method": "p99",
+    "score_method": "localizado",
+    "score_threshold": 7.826175715408156,
+    "mse_p99": 2.5454330444335938,
+    "sigma_multiplier": 3.0,
+    "top_k": 5,
+    "threshold_fallback_percentile": 99.0,
+    "threshold_effective_percentile": 99.9,
     "threshold_source": "bloco_calibracao_temporal",
     "limiar_operacional": 7.826175715408156,
     "protocolo_avaliacao": {
@@ -115,7 +122,7 @@
     "falsos_positivos_holdout": 5,
     "n_saudaveis_holdout": 40,
     "fpr_holdout": 0.125,
-    "nota_regime_raro": "O teste é balanceado (50% falha) para estimar TPR/FPR com estabilidade, mas falhas CA são RARAS em operação. Por isso reportamos também precision_raro/f1_raro reprojetados para prevalência de 5% (regra de Bayes no ponto de operação). AUC, recall (TPR) e specificity independem da prevalência; só precision/F1 mudam. Nesta execução, o limiar p99 produziu 5 falsos positivos em 40 janelas saudáveis (FPR=12.50%). Esse FPR observado reduz de forma relevante a precisão projetada para o regime raro. Como o holdout é pequeno, o valor tem resolução amostral limitada e não deve ser interpretado como taxa de campo."
+    "nota_regime_raro": "O teste é balanceado (50% falha) para estimar TPR/FPR com estabilidade, mas falhas CA são RARAS em operação. Por isso reportamos também precision_raro/f1_raro reprojetados para prevalência de 5% (regra de Bayes no ponto de operação). AUC, recall (TPR) e specificity independem da prevalência; só precision/F1 mudam. Nesta execução, o limiar operacional produziu 5 falsos positivos em 40 janelas saudáveis (FPR=12.50%). Esse FPR observado reduz de forma relevante a precisão projetada para o regime raro. Como o holdout é pequeno, o valor tem resolução amostral limitada e não deve ser interpretado como taxa de campo."
   },
   "contator_ac_sev0.3": {
     "precision": 0.8275862068965517,

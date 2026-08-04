@@ -1,8 +1,18 @@
 {
+  "manifest_version": 2,
   "stage": "injecao_falhas",
-  "created_at": "2026-08-02T23:36:11.179991-03:00",
-  "git_commit": "f73e83ee2472eb3fae0dedae4ec101b2cd0ac08b",
-  "code_sha256": "ac93cc1d175e908078e25417b673871033eafed81e056ba2e1d39fb77da28392",
+  "created_at": "2026-08-04T00:22:18.111199-03:00",
+  "git_commit": "a1c1aa10c6176fd379dcee48eb9617812fb4d435",
+  "code_hash_mode": "text_lf_utf8",
+  "code_sha256": "622cc1a1bb9b63f042d4f9a767dab0d80ba57dd7c3a119f801bb6b4c955da4e1",
+  "code_dependencies": {
+    "src.ml.features_ca": "fdb785e3d6398250b90de7fbd17fb3093b092d60752436e51312d4af370f0ad1",
+    "src.ml.autoencoder": "fbd947536bc03f567b8294733fa2d92ca9abbc8720d2cdb41993cb48a8497781",
+    "src.ml.dados_avaliacao": "bff782018b640e3b8dd763e60b5885958e9fdf507fab7af4055fee1972b9a6db",
+    "src.ml.escore_anomalia": "92647a318125cb58ae304e4d572f527b09a5dbf84afc5b8b977e3d44e1f77e84",
+    "src.ml.estatistica": "fde4d602db680706252a6e11c9bb9a2aa84e27b6911275beec7f4148538a4515",
+    "src.ml.estilo_graficos": "70fc7373198ee5e3058834f71d6101a7a2546e4bc3f655f867ba810ee8a03e68"
+  },
   "parameters": {
     "severidades": [
       0.05,
@@ -17,9 +27,9 @@
     "n_janelas_smd": 100
   },
   "input_artifacts": {
-    "autoencoder:0:modelo_autoencoder.pt": "76f361ccad56652a9c66c4964ac105624edfcdf44ec9982238b5edf1dd484d50",
+    "autoencoder:0:modelo_autoencoder.pt": "1347e3876cc96f20fcded19a532aebca6142496237d8ecd941b396ceef8e91fd",
     "autoencoder:1:scaler.pkl": "6410b906f4aea04bdb010da6465df9753f6d52d2def529e29e110c0fe521edad",
-    "autoencoder:2:limiar.json": "28783ff657e6a31247b1e1692968a0cd13a4adddc3418647a1f01404d7035389",
+    "autoencoder:2:limiar.json": "1c8a810a80c82686315fa5c172fe1f404289e552376bf55f2de065185058b61e",
     "autoencoder:3:diagnostico_autoencoder.npz": "42b46cddc75f946d718f0224c3ec7c41205a98c5e5e5c28858353454e308e4b9",
     "autoencoder:4:curva_treino.png": "97d4c60948a18a3db3481130fb1651c55768eebdc0d5d030414ba2d3ccfa3aa0",
     "autoencoder:5:distribuicao_erro.png": "36f7b6e811016ae265191fb3a20417190b1f9f459dca57beb47d65a8a9c86a1e",
@@ -30,5 +40,11 @@
     "resultados/autoencoder/injecao_falhas_comparacao.png",
     "resultados/autoencoder/injecao_falhas_report.json",
     "resultados/autoencoder/injecao_smd_tabela.csv"
-  ]
+  ],
+  "output_artifacts": {
+    "resultados/autoencoder/injecao_falhas_resultados.png": "c9ffab0705ffbd0e24a74bbe6dc60d182a12a2d41ee32d5885d39eb224fa2c9e",
+    "resultados/autoencoder/injecao_falhas_comparacao.png": "f27496779a93bbf7747e57098b4322e6e88729cdd9831acb0bc7ed0bccbb514a",
+    "resultados/autoencoder/injecao_falhas_report.json": "1176a91373fe113c1a5dfe44a6d7182855c60946652616d3feddc9d3022c10ae",
+    "resultados/autoencoder/injecao_smd_tabela.csv": "27c41944e7124c286db89586cb777a46ae16a5dfaad1b62ec57287d7ade7a928"
+  }
 }
