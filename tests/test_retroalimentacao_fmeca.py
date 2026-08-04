@@ -271,8 +271,26 @@ def test_percentil_efetivo_vem_do_limiar_json(tmp_path):
     res = tabela_retroalimentacao(arq)
     assert res["percentil_efetivo"] == 99.9
     md = formatar_markdown(res)
-    assert "percentil 99.9" in md
+    assert "percentil efetivo 99.9" in md
     assert "(p99)" not in md
+
+
+def test_campos_canonicos_do_limiar_nomeiam_o_escore_operacional(tmp_path):
+    arq = _relatorio_sintetico(tmp_path, {
+        "contator_ac": {"1.0": 1.0}, "igbt": {"1.0": 0.85},
+        "fusivel_ac": {"1.0": 1.0},
+    })
+    (tmp_path / "limiar.json").write_text(
+        json.dumps({
+            "score_method": "localizado",
+            "threshold_effective_percentile": 99.9,
+        }),
+        encoding="utf-8")
+    res = tabela_retroalimentacao(arq)
+    assert res["score_method"] == "localizado"
+    assert res["percentil_efetivo"] == 99.9
+    md = formatar_markdown(res)
+    assert "localizado / percentil efetivo 99.9" in md
 
 
 def test_sem_limiar_json_cai_no_rotulo_sem_inventar_precisao(tmp_path):

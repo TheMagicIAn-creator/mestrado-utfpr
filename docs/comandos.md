@@ -18,7 +18,7 @@ python -m pytest -W ignore -q           # idem, sem warnings de limpeza de tmp
 ## Pipeline de ML (recalcular — exige `dados/brutos/` local)
 ```powershell
 python src/ml/features_ca.py        # extrai features CA (Paderborn) + manifesto
-python src/ml/autoencoder.py        # treina o AE; grava limiar.json (p99) + manifesto
+python src/ml/autoencoder.py        # treina o AE; grava limiar.json (score operacional + referências) + manifesto
 python src/ml/injecao_falhas.py     # injeta falhas FMEA (E2) + schema no report
 python src/ml/validacao.py          # validação interna E2: ROC + PR + matrizes, limiar congelado
 python src/ml/rul_weibull.py        # RUL / Weibull

@@ -55,10 +55,13 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
   tratar desvios de reconstrução como anomalia — abordagem central da
   dissertação (não requer dados rotulados de falha).
 - **Erro de reconstrução**: distância entre a janela de entrada e a saída do
-  Autoencoder; o score de anomalia do pipeline.
-- **Limiar operacional (p99)**: percentil 99 do erro de reconstrução no
-  conjunto saudável de validação — congelado ANTES de ver qualquer falha.
-  μ+3σ é referência comparativa, não o limiar em uso.
+  Autoencoder; é a referência MSE do pipeline.
+- **Escore operacional**: estatística usada para decidir anomalia
+  (`score_method`). Na execução vigente é o escore localizado: média dos top-k
+  resíduos padronizados por feature.
+- **Limiar operacional**: `score_threshold` do escore operacional, congelado
+  ANTES de ver qualquer falha. `mse_p99` é a referência do erro médio de
+  reconstrução; μ+3σ é referência comparativa, não o limiar em uso.
 - **SMD** (Severidade Mínima Detectável): menor severidade injetada em que o
   erro médio cruza o limiar. `SMD nula` = falha não detectada em nenhuma
   severidade testada (achado de limitação, não erro de execução). É o análogo

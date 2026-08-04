@@ -228,6 +228,16 @@ def carregar_pod_mon(caminho: Path | str) -> dict:
     return {"curvas": curvas, "meta": meta}
 
 
+def _dados_limiar_ao_lado(caminho_validacao: Path | str) -> dict:
+    arq = Path(caminho_validacao).parent / "limiar.json"
+    if not arq.exists():
+        return {}
+    try:
+        return json.loads(arq.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
 def percentil_efetivo(caminho_validacao: Path | str) -> float | None:
     """Percentil REALMENTE usado no limiar, lido de ``limiar.json`` ao lado.
 
@@ -240,15 +250,16 @@ def percentil_efetivo(caminho_validacao: Path | str) -> float | None:
     Devolve ``None`` se ``limiar.json`` não estiver ao lado — o rótulo de
     método continua sendo mostrado, sem inventar precisão que não se tem.
     """
-    arq = Path(caminho_validacao).parent / "limiar.json"
-    if not arq.exists():
-        return None
-    try:
-        dados = json.loads(arq.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    valor = dados.get("percentil_limiar")
+    dados = _dados_limiar_ao_lado(caminho_validacao)
+    valor = dados.get("threshold_effective_percentile", dados.get("percentil_limiar"))
     return float(valor) if isinstance(valor, (int, float)) else None
+
+
+def metodo_escore_efetivo(caminho_validacao: Path | str) -> str | None:
+    """Nome canônico do escore operacional, com fallback para artefatos antigos."""
+    dados = _dados_limiar_ao_lado(caminho_validacao)
+    valor = dados.get("score_method", dados.get("metodo_escore"))
+    return str(valor) if valor else None
 
 
 def tabela_retroalimentacao(caminho_validacao: Path | str,
@@ -257,6 +268,7 @@ def tabela_retroalimentacao(caminho_validacao: Path | str,
     lido = carregar_pod_mon(caminho_validacao)
     curvas, meta = lido["curvas"], lido["meta"]
     percentil = percentil_efetivo(caminho_validacao)
+    score_method = metodo_escore_efetivo(caminho_validacao)
 
     linhas = []
     for falha in falhas_da_fmeca():
@@ -308,6 +320,7 @@ def tabela_retroalimentacao(caminho_validacao: Path | str,
         "regra": "D_proj = min(D_campo, D_mon); S e O inalterados",
         "limiar_operacional": meta.get("limiar_operacional"),
         "threshold_method": meta.get("threshold_method"),
+        "score_method": score_method,
         "percentil_efetivo": percentil,
         "ordem_oficial": ordem_oficial,
         "ordem_projetada": ordem_projetada,
@@ -322,8 +335,13 @@ def formatar_markdown(resultado: dict) -> str:
     # O percentil EFETIVO, não o rótulo de método: `threshold_method` diz "p99"
     # enquanto a auto-calibração escolheu 99,9. Ver `percentil_efetivo`.
     pct = resultado.get("percentil_efetivo")
-    ponto = (f"percentil {pct:g} (auto-calibrado)" if pct is not None
-             else f"método {resultado.get('threshold_method')}")
+    score_method = resultado.get("score_method")
+    if pct is not None and score_method:
+        ponto = f"{score_method} / percentil efetivo {pct:g}"
+    elif pct is not None:
+        ponto = f"percentil efetivo {pct:g}"
+    else:
+        ponto = f"método {resultado.get('threshold_method')}"
     linhas = [
         "# Retroalimentação da FMECA — NPR projetado (E2)",
         "",
@@ -397,7 +415,7 @@ def main() -> int:
     md = formatar_markdown(resultado)
     (pasta / "retroalimentacao_fmeca.md").write_text(md, encoding="utf-8")
     print(md)
-    print(f"\n  📄 {pasta / 'retroalimentacao_fmeca.md'}")
+    print(f"\n  Arquivo: {pasta / 'retroalimentacao_fmeca.md'}")
     return 0
 
 

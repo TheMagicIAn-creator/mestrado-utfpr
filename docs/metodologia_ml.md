@@ -87,13 +87,18 @@ revalidação. Ver `docs/auditoria_pipeline_ml.md`, §23.
 
 ## 3. Limiar do Autoencoder
 
-- **Limiar operacional = percentil 99** do erro de reconstrução saudável no
-  bloco temporal de **calibração**
-  (controla FP ≈ 1%, robusto a distribuições assimétricas).
+- **Limiar operacional = `score_threshold` do `score_method` vigente.** Na
+  execução atual, o método operacional é o escore **localizado**; por isso o
+  valor operacional não deve ser rotulado como MSE p99.
+- **MSE p99 = referência do erro de reconstrução médio**, registrada em
+  `mse_p99` / `limiar_p99`.
 - **μ + 3σ = referência comparativa** (assume normalidade) — **nunca** o limiar
   em uso.
 - **p95 = referência adicional.**
-- O artefato `limiar.json` registra `threshold_method = "p99"` + os três valores.
+- O artefato `limiar.json` preserva campos legados (`threshold_method`,
+  `limiar`, `k`, `k_localizado`) e acrescenta nomes inequívocos:
+  `score_method`, `score_threshold`, `mse_p99`, `sigma_multiplier`, `top_k`,
+  `threshold_fallback_percentile` e `threshold_effective_percentile`.
 
 ## 4. Validação sintética interna E2 (limiar congelado)
 

@@ -3,7 +3,8 @@ Sprint 1 — integridade acadêmica.
 
 Garante a definição OFICIAL do limiar de anomalia do Autoencoder:
 
-    Limiar operacional  = percentil 99 do erro de reconstrução saudável
+    Referência MSE       = percentil 99 do erro de reconstrução saudável
+    Limiar operacional   = score_threshold do score_method vigente
     Referência comparativa = μ + 3σ  (NUNCA usado como limiar em uso)
     Referência adicional   = percentil 95
 
@@ -29,6 +30,11 @@ def test_calcular_limiar_operacional_e_p99():
     assert info["threshold_method"] == "p99"
     assert info["limiar"] == info["limiar_p99"]
     assert info["limiar_operacional"] == info["limiar_p99"]
+    assert info["score_method"] == "mse"
+    assert info["score_threshold"] == info["limiar_p99"]
+    assert info["mse_p99"] == info["limiar_p99"]
+    assert info["sigma_multiplier"] == info["k"]
+    assert info["threshold_effective_percentile"] == 99.0
     assert "limiar_mu3sigma" in info
     assert "limiar_p95" in info
     # o p99 é, de fato, o percentil 99
@@ -44,13 +50,20 @@ def test_limiar_json_declara_threshold_method():
         pytest.skip("limiar.json indisponível (rode: python src/ml/autoencoder.py)")
     d = json.loads(LIMIAR_JSON.read_text(encoding="utf-8"))
     assert d.get("threshold_method") == "p99"
-    assert d.get("limiar") == d.get("limiar_p99")
-    assert d.get("limiar_operacional") == d.get("limiar_p99")
+    assert d.get("limiar") == d.get("score_threshold")
+    assert d.get("limiar_operacional") == d.get("score_threshold")
+    assert d.get("mse_p99") == d.get("limiar_p99")
+    assert d.get("score_method") in {"mse", "localizado"}
+    if d.get("score_method") == "localizado":
+        assert d.get("top_k") == d.get("k_localizado")
+        assert d.get("threshold_effective_percentile") == d.get("percentil_limiar")
+    else:
+        assert d.get("score_threshold") == d.get("limiar_p99")
     assert "limiar_mu3sigma" in d
 
 
-def test_resumo_publico_rotula_p99_nao_mu3sigma():
-    """O resumo exibido no chat nomeia o limiar como p99, não como μ+3σ."""
+def test_resumo_publico_nomeia_ponto_operacional_sem_confundir_com_mu3sigma():
+    """O resumo exibido no chat nomeia o ponto operacional, não μ+3σ."""
     if not LIMIAR_JSON.exists():
         import pytest
 
@@ -60,7 +73,9 @@ def test_resumo_publico_rotula_p99_nao_mu3sigma():
     msg = _resumo_autoencoder() or ""
     low = msg.lower()
     if "limiar" in low:
-        assert "p99" in low, "o resumo deve nomear o limiar operacional como p99"
+        assert "limiar operacional" in low
+        assert "escore operacional" in low
+        assert "mse p99" in low
     # se μ+3σ aparecer, tem de ser como referência — nunca como limiar em uso
     if "3σ" in msg or "3sigma" in low or "mu3" in low:
         assert "refer" in low
