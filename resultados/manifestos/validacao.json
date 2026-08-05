@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "stage": "validacao",
-  "created_at": "2026-08-05T01:39:59.970771-03:00",
-  "git_commit": "06ca15b4ba90f0f62ecc76a5d529f12f0db09926",
+  "created_at": "2026-08-05T07:43:47.178249-03:00",
+  "git_commit": "f324bb928339bea5e392b7f59439845842613149",
   "code_hash_mode": "text_lf_utf8",
   "code_sha256": "cf8610a89dabc205d68daac9ad315ca9920f885546296e8b1a51aecce557136d",
   "code_dependencies": {
@@ -21,8 +21,7 @@
       1.0
     ],
     "n_janelas_saudavel": 40,
-    "n_janelas_falha": 40,
-    "prevalencia_rara": 0.05
+    "n_janelas_falha": 40
   },
   "input_artifacts": {
     "injecao_falhas:0:injecao_falhas_resultados.png": "c9ffab0705ffbd0e24a74bbe6dc60d182a12a2d41ee32d5885d39eb224fa2c9e",

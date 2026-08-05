@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "stage": "rul_weibull",
-  "created_at": "2026-08-05T01:40:00.094152-03:00",
-  "git_commit": "06ca15b4ba90f0f62ecc76a5d529f12f0db09926",
+  "created_at": "2026-08-05T07:48:23.675949-03:00",
+  "git_commit": "f324bb928339bea5e392b7f59439845842613149",
   "code_hash_mode": "text_lf_utf8",
   "code_sha256": "4e9b45a487347fb3b57158625c269a80afae075ae1810536936f4368047130cf",
   "code_dependencies": {
@@ -20,10 +20,7 @@
     "batch_inferencia": 16,
     "n_bootstrap": 250,
     "min_eventos_weibull": 10,
-    "max_censura_rul_pct": 50.0,
-    "persistencia_cruzamento": 3,
-    "ttf_unidade": "passo_sintetico_de_degradacao",
-    "tempo_fisico_calibrado": false
+    "max_censura_rul_pct": 50.0
   },
   "input_artifacts": {
     "validacao:0:validacao_roc.png": "640c87f1a79e1c0326641f26ee6951fcddd09ef54ab3b03ce95f88e9f052aa5e",

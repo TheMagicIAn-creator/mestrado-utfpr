@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "stage": "autoencoder",
-  "created_at": "2026-08-05T01:39:59.670794-03:00",
-  "git_commit": "06ca15b4ba90f0f62ecc76a5d529f12f0db09926",
+  "created_at": "2026-08-05T07:42:14.210268-03:00",
+  "git_commit": "f324bb928339bea5e392b7f59439845842613149",
   "code_hash_mode": "text_lf_utf8",
   "code_sha256": "bc255cd556f54da90afb2f53c8551ac2aa310f113ddfc4fa64e7db528da08d9f",
   "code_dependencies": {
@@ -16,8 +16,6 @@
     "epochs": 150,
     "batch_size": 32,
     "lr": 0.001,
-    "dropout": 0.2,
-    "paciencia": 20,
     "sigma": 3.0,
     "threshold_method": "p99",
     "seed": 42,
@@ -43,9 +41,9 @@
     "resultados/autoencoder/erro_temporal.png"
   ],
   "output_artifacts": {
-    "resultados/autoencoder/modelo_autoencoder.pt": "488ff80cc0e29326ff785b712d9e66b1b4195afcff6e9090f9650b67a1b71ad1",
+    "resultados/autoencoder/modelo_autoencoder.pt": "771501e0cdca2bf3e2349f6b5644893c3ce59052617af513a9cdd16c961ac74e",
     "resultados/autoencoder/scaler.pkl": "6410b906f4aea04bdb010da6465df9753f6d52d2def529e29e110c0fe521edad",
-    "resultados/autoencoder/limiar.json": "5f16fe3d9f2c274a47ef5dd9fcb5c59a2af7a0b2a7246d1d91815020c8fd55e3",
+    "resultados/autoencoder/limiar.json": "5ca612c5291d276aeba7321b1cb438d56d9fb538f3c203f5afda6135453f2f5c",
     "resultados/autoencoder/diagnostico_autoencoder.npz": "80a459e9a45fe992927cd52a64a0061004d62533a171f6be8425c4efc26a9310",
     "resultados/autoencoder/calibracao_autoencoder.csv": "1df764cf543c9d4c026a2de1e25cdee3fcb234aaf3974d8bd7425b9463312928",
     "resultados/autoencoder/calibracao_autoencoder.md": "ba4114d2b10b566cc5ccd6bc08de25e01fdc8c6a5a279fdf6f4def075de60d13",
