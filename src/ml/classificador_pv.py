@@ -41,9 +41,6 @@ warnings.filterwarnings("ignore")
 
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
 
 from sklearn.preprocessing      import StandardScaler
 from sklearn.ensemble           import RandomForestClassifier, GradientBoostingClassifier
@@ -268,6 +265,7 @@ def treinar_e_avaliar(modelos, X_treino, y_treino, X_teste, y_teste) -> dict:
 
 def plotar_comparacao(resultados: dict):
     """Gráfico de barras comparando os modelos."""
+    import plotly.graph_objects as go
 
     PASTA_RESULT.mkdir(parents=True, exist_ok=True)
 
@@ -297,6 +295,7 @@ def plotar_comparacao(resultados: dict):
 
 def plotar_matriz_confusao(resultados: dict, y_teste, melhor_modelo: str):
     """Matriz de confusão do melhor modelo."""
+    import plotly.express as px
 
     y_pred  = resultados[melhor_modelo]["y_pred"]
     classes = sorted(np.unique(y_teste))
@@ -321,6 +320,7 @@ def plotar_matriz_confusao(resultados: dict, y_teste, melhor_modelo: str):
 
 def plotar_importancia(resultados: dict, nomes_features: list, melhor_modelo: str):
     """Importância das features do melhor modelo (se for baseado em árvore)."""
+    import plotly.graph_objects as go
 
     modelo = resultados[melhor_modelo]["modelo"]
 

@@ -1,9 +1,12 @@
 """Contratos diretos dos três macro-códigos acadêmicos."""
 
+import sys
+from types import SimpleNamespace
+
 import numpy as np
 
 from src.ml import escore_anomalia, features_ca, macro_comparar, macro_ibrahim, macro_proposto
-from src.ml import macro_comum, modelos_anomalia
+from src.ml import macro_comum
 
 
 class _Scaler:
@@ -55,8 +58,11 @@ def test_scorer_ibrahim_preserva_contexto_temporal(monkeypatch):
         capturado.update(base=base, atual=atual, tamanho=tamanho)
         return sequencias
 
-    monkeypatch.setattr(modelos_anomalia, "sequencias_com_contexto", com_contexto)
-    monkeypatch.setattr(modelos_anomalia, "pontuar_ae_lstm", lambda model, seq: np.array([.1, .2]))
+    modulo_falso = SimpleNamespace(
+        sequencias_com_contexto=com_contexto,
+        pontuar_ae_lstm=lambda model, seq: np.array([.1, .2]),
+    )
+    monkeypatch.setitem(sys.modules, "src.ml.modelos_anomalia", modulo_falso)
 
     escores = macro_ibrahim.construir_scorer("modelo", contexto, ["a", "b"], _Scaler())([1, 2])
 
