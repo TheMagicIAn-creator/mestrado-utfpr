@@ -6,7 +6,19 @@ get_logger escreve em logs/al_iado_pv.log (arquivo rotativo, não versionado).
 
 import logging
 
-from src.core.logs import ARQUIVO_LOG, get_logger
+from src.core.logs import ARQUIVO_LOG, adaptar_logger_como_print, get_logger
+
+
+class _LoggerEspiao:
+    def __init__(self):
+        self.mensagens_info = []
+        self.mensagens_debug = []
+
+    def info(self, mensagem):
+        self.mensagens_info.append(mensagem)
+
+    def debug(self, mensagem):
+        self.mensagens_debug.append(mensagem)
 
 
 def test_get_logger_escreve_no_arquivo():
@@ -44,3 +56,15 @@ def test_log_no_arquivo_nao_tem_emoji():
     linha = [ln for ln in conteudo.splitlines() if "8842" in ln][-1]
     assert "✅" not in linha and "⚡" not in linha and "🔄" not in linha
     assert "status" in linha and "pronto" in linha and "fim" in linha
+
+
+def test_adaptador_print_preserva_contrato_dos_scripts_ml():
+    logger = _LoggerEspiao()
+    log = adaptar_logger_como_print(logger)
+
+    log("epoca", 3, sep="=", end="\r", flush=True)
+    log("\rprogresso 50%")
+    log("   ")
+
+    assert logger.mensagens_info == ["epoca=3"]
+    assert logger.mensagens_debug == ["progresso 50%"]

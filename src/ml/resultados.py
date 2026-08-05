@@ -12,6 +12,8 @@ import json
 import re
 from pathlib import Path
 
+from src.core.texto import normalizar_sem_acentos as _normalizar
+
 from src.core.config import RAIZ_PROJETO
 from src.core.formatacao import fmt_num
 from src.core.tempo import agora_local
@@ -49,16 +51,6 @@ def _fmt_excedencia(info: dict | None, fallback_pct=None) -> str:
     )
 
 
-def _normalizar(texto: str) -> str:
-    import unicodedata
-
-    texto = texto.lower()
-    return "".join(
-        c for c in unicodedata.normalize("NFD", texto)
-        if unicodedata.category(c) != "Mn"
-    )
-
-
 _EXPERIMENTOS_ALIASES = {
     "ibrahim": "ibrahim",
 }
@@ -66,10 +58,7 @@ _EXPERIMENTOS_ANOMALIA = {"ibrahim"}
 
 
 def _slug_modelo(nome: str) -> str:
-    import unicodedata
-
-    texto = unicodedata.normalize("NFD", nome.lower())
-    texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
+    texto = _normalizar(nome)
     return re.sub(r"[^a-z0-9]+", "_", texto).strip("_") or "modelo"
 
 

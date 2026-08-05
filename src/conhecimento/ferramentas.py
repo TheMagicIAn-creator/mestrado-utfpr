@@ -12,11 +12,11 @@ from __future__ import annotations
 import json
 import re
 import shutil
-import unicodedata
 
 from src.core.config import RAIZ_PROJETO
 from src.core.logs import get_logger
 from src.core.seguranca import mascarar_segredos
+from src.core.texto import normalizar_sem_acentos as _normalizar
 from src.conhecimento.provedores import texto_da_resposta
 from src.ml.pipeline import (
     NOMES_ETAPAS,
@@ -203,14 +203,6 @@ _STAGE_BY_TOOL = {
     "rodar_validacao": "validacao",
     "rodar_weibull": "rul_weibull",
 }
-
-
-def _normalizar(texto: str) -> str:
-    texto = texto.lower()
-    return "".join(
-        c for c in unicodedata.normalize("NFD", texto)
-        if unicodedata.category(c) != "Mn"
-    )
 
 
 def _deve_forcar(pergunta: str) -> bool:

@@ -37,7 +37,7 @@ import matplotlib
 matplotlib.use("Agg")   # sem display — salva direto em arquivo
 import matplotlib.pyplot as plt  # noqa: E402
 
-from src.core.logs import get_logger  # noqa: E402
+from src.core.logs import adaptar_logger_como_print, get_logger  # noqa: E402
 from src.ml.estilo_graficos import (  # noqa: E402
     COR_ALERTA,
     COR_NAO_DETECTADO,
@@ -57,17 +57,7 @@ RAIZ = Path(__file__).parent.parent.parent
 PASTA_SAIDA = RAIZ / "resultados" / "autoencoder"
 
 _logger = get_logger("autoencoder")
-
-
-def _log(*args, sep=" ", end="\n", flush=None):
-    """Mesmo contrato do _log de autoencoder.py: progresso vai para o log."""
-    texto = sep.join(str(a) for a in args)
-    if not texto.strip():
-        return
-    if texto.startswith("\r"):
-        _logger.debug(texto.strip())
-        return
-    _logger.info(texto.rstrip("\n"))
+_log = adaptar_logger_como_print(_logger)
 
 
 def resumo_excedencia(valores: np.ndarray, limiar: float) -> dict:

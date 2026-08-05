@@ -21,22 +21,15 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-import unicodedata
-from pathlib import Path
 
 from src.core.config import PASTA_NOTAS
+from src.core.texto import normalizar_espacos as _normalizar
 
 PASTA_SNIPPETS = PASTA_NOTAS / "snippets"
 ARQUIVO_SNIPPETS = PASTA_SNIPPETS / "snippets.json"
 SCHEMA_VERSION = 1
 
 _FENCE = re.compile(r"```([\w+-]*)\r?\n(.*?)```", re.S)
-
-
-def _normalizar(texto: str) -> str:
-    base = unicodedata.normalize("NFKD", str(texto or "").lower())
-    sem = "".join(c for c in base if not unicodedata.combining(c))
-    return re.sub(r"\s+", " ", sem).strip()
 
 
 # ── Detecção de intenção ─────────────────────────────────────────────────────

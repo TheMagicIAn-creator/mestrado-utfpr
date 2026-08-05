@@ -19,19 +19,14 @@ Autor: Rodolfo Torres (UTFPR)
 from __future__ import annotations
 
 import re
-import unicodedata
+
+from src.core.texto import normalizar_busca as _normalizar
 
 MIN_OVERLAP_PADRAO = 2
 MAX_LINKS_PADRAO = 3
 
 
-def _normalizar(texto: str) -> str:
-    base = unicodedata.normalize("NFKD", str(texto or "").lower())
-    sem_acentos = "".join(c for c in base if not unicodedata.combining(c))
-    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9\s]", " ", sem_acentos)).strip()
-
-
-def _tokens(texto: str) -> set[str]:
+def _tokens_relacao(texto: str) -> set[str]:
     return {t for t in _normalizar(texto).split() if len(t) >= 4}
 
 
@@ -49,7 +44,7 @@ def notas_relacionadas(
     `itens` é a lista bruta de MemoriaPersistente.listar() (ou dados["itens"]).
     `excluir_id` evita que um item aponte para si mesmo (uso memória<->memória).
     """
-    alvo = _tokens(texto)
+    alvo = _tokens_relacao(texto)
     if not alvo:
         return []
     pontuados = []
@@ -61,7 +56,7 @@ def notas_relacionadas(
         item_id = str(item.get("id", ""))
         if excluir_id and item_id == str(excluir_id):
             continue
-        candidato = _tokens(item.get("conteudo", ""))
+        candidato = _tokens_relacao(item.get("conteudo", ""))
         overlap = len(alvo & candidato)
         if overlap >= min_overlap:
             pontuados.append((overlap, item))

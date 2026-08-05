@@ -7,14 +7,13 @@ substitui embeddings: fornece a segunda lista de candidatos para fusao RRF.
 from __future__ import annotations
 
 import json
-import re
 import sqlite3
 import threading
-import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
 from src.core.config import ARQUIVO_INDICE_LEXICAL
+from src.core.texto import normalizar_busca as _normalizar
 
 
 _LOCK = threading.RLock()
@@ -24,13 +23,7 @@ _STOPWORDS = {
 }
 
 
-def _normalizar(texto: str) -> str:
-    base = unicodedata.normalize("NFKD", str(texto).lower())
-    sem_acentos = "".join(c for c in base if not unicodedata.combining(c))
-    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9\s]", " ", sem_acentos)).strip()
-
-
-def _tokens(textos) -> list[str]:
+def _tokens_consulta(textos) -> list[str]:
     vistos = set()
     saida = []
     for texto in textos:
@@ -174,7 +167,7 @@ class IndiceLexicalSQLite:
         if not self.disponivel:
             return []
         textos = [consultas] if isinstance(consultas, str) else list(consultas)
-        tokens = _tokens(textos + list(termos or []))[:40]
+        tokens = _tokens_consulta(textos + list(termos or []))[:40]
         if not tokens:
             return []
         expressao = " OR ".join(f'"{token}"' for token in tokens)
