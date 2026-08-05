@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "stage": "injecao_falhas",
-  "created_at": "2026-08-05T01:01:35.425582-03:00",
-  "git_commit": "1fb5debc8446f78547a4e722db48d8b76d247091",
+  "created_at": "2026-08-05T01:39:59.841503-03:00",
+  "git_commit": "06ca15b4ba90f0f62ecc76a5d529f12f0db09926",
   "code_hash_mode": "text_lf_utf8",
   "code_sha256": "15c89dd4199322cfb5a4cd90febc9dd9d86108429ad6ccf7da77b2882a302b32",
   "code_dependencies": {

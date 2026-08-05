@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "stage": "features_ca",
-  "created_at": "2026-08-05T01:00:06.015866-03:00",
-  "git_commit": "1fb5debc8446f78547a4e722db48d8b76d247091",
+  "created_at": "2026-08-05T01:39:59.546899-03:00",
+  "git_commit": "06ca15b4ba90f0f62ecc76a5d529f12f0db09926",
   "code_hash_mode": "text_lf_utf8",
   "code_sha256": "fdb785e3d6398250b90de7fbd17fb3093b092d60752436e51312d4af370f0ad1",
   "code_dependencies": {

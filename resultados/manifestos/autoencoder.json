@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "stage": "autoencoder",
-  "created_at": "2026-08-05T01:00:41.379613-03:00",
-  "git_commit": "1fb5debc8446f78547a4e722db48d8b76d247091",
+  "created_at": "2026-08-05T01:39:59.670794-03:00",
+  "git_commit": "06ca15b4ba90f0f62ecc76a5d529f12f0db09926",
   "code_hash_mode": "text_lf_utf8",
   "code_sha256": "bc255cd556f54da90afb2f53c8551ac2aa310f113ddfc4fa64e7db528da08d9f",
   "code_dependencies": {
@@ -16,6 +16,8 @@
     "epochs": 150,
     "batch_size": 32,
     "lr": 0.001,
+    "dropout": 0.2,
+    "paciencia": 20,
     "sigma": 3.0,
     "threshold_method": "p99",
     "seed": 42,

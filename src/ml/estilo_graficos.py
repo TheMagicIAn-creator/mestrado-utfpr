@@ -35,7 +35,7 @@ DPI = 150
 # luminosidade e croma OK. Aqua (#1baf7a) e amarelo (#eda100) ficam abaixo
 # de 3:1 de contraste no branco → sempre acompanhar de rótulo direto.
 PALETA = [
-    "#2a78d6",  # 1 azul    — reservado ao MÉTODO PROPOSTO quando presente
+    "#2a78d6",  # 1 azul    — reservado ao METODO PROPOSTO quando presente
     "#1baf7a",  # 2 aqua
     "#eda100",  # 3 amarelo
     "#008300",  # 4 verde
@@ -44,7 +44,7 @@ PALETA = [
 ]
 
 # Papéis fixos (cor segue a entidade, nunca o rank)
-COR_METODO = PALETA[0]        # método proposto (Autoencoder do pipeline)
+COR_METODO = PALETA[0]        # metodo proposto (Autoencoder do pipeline)
 COR_NEUTRA = "#898781"        # baselines/concorrentes em comparações
 COR_REFERENCIA = "#c3c2b7"    # linhas de referência (ex.: acaso 0,5)
 COR_NAO_DETECTADO = "#d5d4cd" # marcas "apagadas" (ex.: severidade não detectada)
@@ -58,7 +58,7 @@ COR_ALERTA = "#c43d3d"
 COR_SUCESSO = "#147a3d"
 COR_INFO = "#2a78d6"
 
-# Cores canônicas por família de falha FMEA (ordem fixa da paleta;
+# Cores canônicas por família de falha FMECA (ordem fixa da paleta;
 # consumidas por injecao_falhas.FALHAS e por qualquer gráfico por família)
 CORES_FALHAS = {
     "contator_ac": PALETA[0],
@@ -66,7 +66,8 @@ CORES_FALHAS = {
     "fusivel_ac": PALETA[2],
 }
 
-# Tamanhos canônicos (polegadas). Todo gráfico deve usar um destes ou um
+# Tamanhos canônicos (polegadas).
+# Qualquer gráfico deve usar um destes ou um
 # helper dinâmico abaixo — nunca um figsize avulso.
 TAM = {
     "unico":    (12, 5),   # painel único: séries, curvas, distribuições
