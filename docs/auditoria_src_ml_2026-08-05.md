@@ -65,6 +65,9 @@ Arquivos classificados:
    honesta para converter TTF/RUL em horas, dias ou anos. O código explicita a
    duração física da janela de aquisição (`1024 / 10000 = 0.1024 s`) apenas como
    contexto do sinal, não como passo de degradação.
+   `N_TRAJ=100` é teto computacional, mas o n efetivo não excede o holdout
+   independente disponível; aumentar esse teto sem novos dados apenas repetiria
+   janelas e inflaria a confiança estatística.
 
 7. **Arquivos removidos por obsolescência**
    `resultados/comparacao/comparacao_literatura.json` e `.png` foram removidos
