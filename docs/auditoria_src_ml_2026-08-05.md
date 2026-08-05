@@ -10,6 +10,7 @@ Arquivos classificados:
 
 | Grupo | Arquivos |
 |---|---|
+| Infraestrutura do pacote | `__init__.py` |
 | Pipeline CA principal | `features_ca.py`, `autoencoder.py`, `injecao_falhas.py`, `validacao.py`, `rul_weibull.py`, `pipeline.py`, `proveniencia.py` |
 | Métricas, splits e gráficos | `escore_anomalia.py`, `estatistica.py`, `split_temporal.py`, `dados_avaliacao.py`, `graficos_autoencoder.py`, `estilo_graficos.py`, `resultados.py` |
 | Comparação acadêmica vigente | `macro_proposto.py`, `macro_ibrahim.py`, `macro_comum.py`, `macro_comparar.py`, `modelos_anomalia.py`, `experimentos_artigos.py`, `protocolos_artigos.py` |
