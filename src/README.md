@@ -52,6 +52,7 @@ ninguém). `ml/` não depende do agente. A integração RAG→ML fica concentrad
 | `web_search.py` | Busca web sem API, com classificação de confiança A–D da fonte. |
 | `provedores.py` | Adaptador leve do SDK Gemini e papéis fixos por nível (Pro/Flash/Flash-Lite). |
 | `retrieval_metrics.py` | Métricas puras de **recuperação** RAG (Recall@k, MRR, nDCG). |
+| `resultados_ml.py` | Adaptador que publica o resumo científico na memória do agente. |
 | `snippets.py` | Cofre literal e deduplicado de blocos de código. |
 | `vault_links.py` | Cria relações entre sessões e memórias validadas no Obsidian. |
 | `index_lock.py` | Lock entre threads e processos para escritas no ChromaDB. |

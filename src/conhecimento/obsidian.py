@@ -410,6 +410,21 @@ def sincronizar_obsidian(
     *,
     raiz: Path = PASTA_VAULT_OBSIDIAN,
 ) -> dict:
+    """Sincroniza o vault sob o mesmo lock das demais escritas."""
+    from src.conhecimento.index_lock import lock_indexacao
+
+    with lock_indexacao():
+        return _sincronizar_obsidian_sem_lock(
+            colecao, modelo_embeddings, raiz=raiz
+        )
+
+
+def _sincronizar_obsidian_sem_lock(
+    colecao,
+    modelo_embeddings,
+    *,
+    raiz: Path = PASTA_VAULT_OBSIDIAN,
+) -> dict:
     """Sincroniza incrementalmente todos os Markdown elegíveis do vault."""
     raiz = Path(raiz)
     raiz.mkdir(parents=True, exist_ok=True)

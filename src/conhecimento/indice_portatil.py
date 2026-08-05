@@ -251,6 +251,25 @@ def importar_colecao(
     tamanho_lote: int = 250,
     mesclar: bool = False,
 ) -> dict:
+    """Restaura um snapshot sob o mesmo lock das demais escritas."""
+    from src.conhecimento.index_lock import lock_indexacao
+
+    with lock_indexacao():
+        return _importar_colecao_sem_lock(
+            colecao,
+            origem,
+            tamanho_lote=tamanho_lote,
+            mesclar=mesclar,
+        )
+
+
+def _importar_colecao_sem_lock(
+    colecao,
+    origem: Path,
+    *,
+    tamanho_lote: int = 250,
+    mesclar: bool = False,
+) -> dict:
     """Restaura ou mescla um snapshot e valida todos os IDs declarados.
 
     O modo estrito continua exigindo uma coleção vazia. ``mesclar=True`` é

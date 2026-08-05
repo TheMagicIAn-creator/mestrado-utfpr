@@ -325,6 +325,14 @@ def salvar_consolidado(resumo: str, sessoes: list) -> Path:
 # ============================================================
 
 def atualizar_chromadb(caminho_consolidado: Path, sessoes: list):
+    """Atualiza a memória consolidada sob lock entre processos."""
+    from src.conhecimento.index_lock import lock_indexacao
+
+    with lock_indexacao():
+        return _atualizar_chromadb_sem_lock(caminho_consolidado, sessoes)
+
+
+def _atualizar_chromadb_sem_lock(caminho_consolidado: Path, sessoes: list):
     """Indexa o consolidado e só então remove os chunks substituídos."""
     import chromadb
     from src.core.config            import PASTA_CHROMADB
