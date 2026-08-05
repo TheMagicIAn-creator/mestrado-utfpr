@@ -22,19 +22,26 @@ import json
 import sys
 from pathlib import Path
 
-try:
-    sys.stdout.reconfigure(encoding="utf-8")
-    sys.stderr.reconfigure(encoding="utf-8")
-except Exception:
-    pass
-
 import streamlit as st
 from langchain_core.messages import HumanMessage
 
 from src.core.config import RAIZ_PROJETO
+from src.core.logs import get_logger
+from src.core.seguranca import mascarar_segredos
 from src.core.tempo import agora_local
+from src.core.utils import configurar_saida_utf8
 
 sys.path.insert(0, str(RAIZ_PROJETO))
+configurar_saida_utf8()
+_logger = get_logger("interface.streamlit")
+
+
+def _falha_recuperavel(operacao: str, exc: Exception, *, notificar: bool = False) -> None:
+    """Registra fallback operacional e, quando necessário, avisa no app."""
+    detalhe = mascarar_segredos(str(exc))
+    _logger.warning("%s: %s", operacao, detalhe)
+    if notificar and hasattr(st, "toast"):
+        st.toast(f"{operacao}. Detalhes registrados no log.", icon="⚠️")
 
 
 st.set_page_config(
@@ -467,8 +474,9 @@ def carregar_base():
                 from watcher import iniciar_em_background
 
                 iniciar_em_background(modelo)
-            except Exception:
-                pass
+            except Exception as exc:
+                _falha_recuperavel("Watcher em background indisponível", exc)
+                relatorio.append(f"Watcher: indisponível - {mascarar_segredos(str(exc))}")
 
             try:
                 from src.orquestrador import executar_pipeline
@@ -490,8 +498,9 @@ def carregar_base():
                 versao_lexical = str(
                     manifesto.get("hash_corpus_sha256") or versao_lexical
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                _falha_recuperavel("Manifesto do índice portátil ilegível", exc)
+                relatorio.append("Índice portátil: manifesto ilegível; usando contagem local.")
         elif colecao.count():
             # No PC, o Chroma pode ter sido reindexado sem regenerar ainda o
             # snapshot portatil. IDs amostrados detectam essa troca sem ler o
@@ -505,8 +514,8 @@ def carregar_base():
                         include=["metadatas"],
                     )
                     ids_amostra.extend(lote.get("ids") or [])
-                except Exception:
-                    pass
+                except Exception as exc:
+                    _falha_recuperavel("Amostra do índice vetorial indisponível", exc)
             versao_lexical += ":" + ":".join(map(str, ids_amostra))
         try:
             with st.spinner("Preparando a busca lexical BM25..."):
@@ -667,8 +676,9 @@ def renderizar_diagnostico(colecao, colecao_sessoes, colecao_obsidian) -> None:
                      if "ERROR" in ln]
             st.caption("Último erro: " + erros[-1][-110:] if erros
                        else "Sem erros registrados no log.")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        _falha_recuperavel("Não foi possível consultar o arquivo de log", exc)
+        st.caption("Log operacional indisponível nesta execução.")
 
 
 def _carregar_metadados_pendentes() -> dict:
@@ -1305,16 +1315,18 @@ def salvar_sessao(pergunta: str, resposta: str, imagens: list[dict], n: int, mod
             itens_memoria = equipe.memoria.listar()
             relacionadas = notas_relacionadas(f"{pergunta}\n{resposta}", itens_memoria)
             bloco += bloco_notas_relacionadas(relacionadas)
-    except Exception:
-        pass
+    except Exception as exc:
+        _falha_recuperavel("Não foi possível relacionar a sessão às memórias", exc)
 
     with open(st.session_state.caminho_sessao, "a", encoding="utf-8") as f:
         f.write(bloco)
 
     try:
         indexar_sessao(st.session_state.caminho_sessao, modelo_embeddings, PASTA_CHROMADB)
-    except Exception:
-        pass
+    except Exception as exc:
+        _falha_recuperavel(
+            "Sessão salva, mas não foi indexada na memória", exc, notificar=True
+        )
 
 
 def _cadencia_atingida() -> int:
@@ -1353,8 +1365,10 @@ def aprender_da_sessao_web() -> None:
         mensagens = st.session_state.get("mensagens") or []
         transcrito = montar_transcricao(mensagens)
         auditor.consolidar_memoria_das_sessoes(transcrito, origem="chat_web_auto")
-    except Exception:
-        pass
+    except Exception as exc:
+        _falha_recuperavel(
+            "Não foi possível atualizar a memória automática", exc, notificar=True
+        )
 
 
 def persistir_sessao_web() -> None:
@@ -1385,8 +1399,10 @@ def persistir_sessao_web() -> None:
                 mensagem=f"chore(sessao): atualiza sessao web ({n} interacoes)",
                 alvo="sessao",
             )
-    except Exception:
-        pass
+    except Exception as exc:
+        _falha_recuperavel(
+            "Sessão local salva, mas não persistida na nuvem", exc, notificar=True
+        )
 
 
 def _fechar_turno_simples(conteudo_usuario: str, resposta: str, modelo,
@@ -1530,8 +1546,12 @@ def responder_com_rag(pergunta: str,
             from src.conhecimento.obsidian import sincronizar_obsidian
 
             sincronizar_obsidian(colecao_obsidian, modelo)
-        except Exception:
-            pass
+        except Exception as exc:
+            _falha_recuperavel(
+                "Não foi possível sincronizar o Obsidian neste turno",
+                exc,
+                notificar=True,
+            )
         prompt, citacoes = preparar_prompt(
             pergunta=pergunta,
             perfil=perfil,
@@ -1804,8 +1824,11 @@ def main() -> None:
         for f in (arquivos or []):
             try:
                 anexos_bytes.append((f.name, f.getvalue()))
-            except Exception:
-                pass
+            except Exception as exc:
+                nome = getattr(f, "name", "anexo")
+                _falha_recuperavel(
+                    f"Não foi possível ler o anexo {nome}", exc, notificar=True
+                )
 
         # Só anexou arquivo, sem texto: damos um pedido padrão de leitura.
         if not (texto or "").strip() and anexos_bytes:

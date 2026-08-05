@@ -19,7 +19,10 @@ from src.core.config import (
     PASTA_SESSOES,
     RAIZ_PROJETO,
 )
+from src.core.logs import get_logger
 from src.ml.pipeline import NOMES_ETAPAS, pipeline_status
+
+_logger = get_logger("orquestrador")
 
 
 def ha_pdfs_novos() -> bool:
@@ -183,8 +186,11 @@ def reprocessar_metadados_ruins() -> str:
                                 for item in metadados[inicio:fim]
                             ],
                         )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    _logger.warning(
+                        "metadados revisados, mas atualização no ChromaDB falhou: %s",
+                        exc,
+                    )
 
             for chave in chaves_pendencia:
                 if chave not in pendencias:

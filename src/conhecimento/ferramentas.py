@@ -15,6 +15,8 @@ import shutil
 import unicodedata
 
 from src.core.config import RAIZ_PROJETO
+from src.core.logs import get_logger
+from src.core.seguranca import mascarar_segredos
 from src.conhecimento.provedores import texto_da_resposta
 from src.ml.pipeline import (
     NOMES_ETAPAS,
@@ -26,10 +28,10 @@ from src.ml.pipeline import (
     executar_etapa,
     executar_pipeline_ml,
     limpar_artefatos,
-    pipeline_status,
 )
 from src.ml.resultados import resumir_resultados
 
+_logger = get_logger("conhecimento.ferramentas")
 
 ESPEC_FERRAMENTAS = [
     {
@@ -975,8 +977,11 @@ Responda APENAS JSON valido:
         dados = json.loads(limpo)
         if dados.get("titulo") and dados.get("conteudo"):
             return dados
-    except Exception:
-        pass
+    except Exception as exc:
+        _logger.warning(
+            "LLM não estruturou a nota; usando entrada explícita: %s",
+            mascarar_segredos(str(exc)),
+        )
     return None
 
 
@@ -2185,8 +2190,11 @@ Responda apenas JSON valido:
             return {"usar_ferramenta": True, "ferramenta": ferramenta}
         if dados.get("usar_ferramenta") is False:
             return {"usar_ferramenta": False, "ferramenta": None}
-    except Exception:
-        pass
+    except Exception as exc:
+        _logger.warning(
+            "roteamento semântico falhou; usando regras locais: %s",
+            mascarar_segredos(str(exc)),
+        )
     return None
 
 
@@ -2425,12 +2433,7 @@ def processar_com_ferramentas(pergunta: str,
     # para a tela. Cada ferramenta emite o próprio progresso em linguagem de
     # gente ("Treinando o classificador PV Farms (CC)..."), e é isso que o
     # pesquisador deve ler enquanto espera.
-    try:
-        from src.core.logs import get_logger
-
-        get_logger(__name__).info("ferramenta acionada: %s", ferramenta)
-    except Exception:  # noqa: BLE001 - log nunca pode derrubar a execução
-        pass
+    _logger.info("ferramenta acionada: %s", ferramenta)
 
     resultado = executar_ferramenta(
         ferramenta,

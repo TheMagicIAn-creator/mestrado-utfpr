@@ -198,10 +198,6 @@ def treinar_e_salvar_de(
     _plotar_matriz_confusao(metricas["matriz_confusao"], nomes_classes, pasta / "matriz_confusao.png")
     _plotar_importancia_features(clf, colunas, pasta / "importancia_features.png")
 
-    try:
-        from src.ml.pipeline import registrar_manifesto  # noqa: F401
-    except Exception:
-        pass
     return {"ok": True, "n_features": len(colunas), "classes": classes,
             "metricas": metricas}
 

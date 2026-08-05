@@ -41,7 +41,7 @@ def resolve_project_path(caminho_relativo) -> Path:
     return p if p.is_absolute() else (Path(RAIZ_PROJETO) / p)
 
 
-def configurar_saida_utf8() -> None:
+def configurar_saida_utf8() -> bool:
     """
     Torna stdout/stderr à prova de emoji no Windows.
 
@@ -58,12 +58,15 @@ def configurar_saida_utf8() -> None:
     Idempotente e silenciosa: se o fluxo não suportar `reconfigure`
     (ex.: já encapsulado), apenas ignora.
     """
+    configurados = 0
     for fluxo in (sys.stdout, sys.stderr):
         try:
             fluxo.reconfigure(encoding="utf-8", errors="replace")
-        except Exception:
+            configurados += 1
+        except (AttributeError, OSError, ValueError):
             # Fluxo sem reconfigure (ou já configurado) — segue sem travar.
-            pass
+            continue
+    return configurados == 2
 
 
 def parsear_nome_arquivo(nome_arquivo: str) -> dict:

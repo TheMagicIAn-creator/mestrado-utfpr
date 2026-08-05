@@ -425,8 +425,8 @@ def _resultado_serializavel(resultado: dict) -> dict:
                 return valor.item()
             if isinstance(valor, np.ndarray):
                 return valor.tolist()
-        except Exception:
-            pass
+        except ImportError:
+            np = None
         try:
             json.dumps(valor)
             return valor
