@@ -37,9 +37,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
 
 # ============================================================
 # CONFIGURAÇÕES
@@ -136,6 +133,8 @@ def analise_fases(df: pd.DataFrame) -> pd.DataFrame:
 
 def plotar_series_temporais(df: pd.DataFrame):
     """Plota as correntes trifásicas e tensão CC."""
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
 
     PASTA_GRAFICOS.mkdir(parents=True, exist_ok=True)
 
@@ -193,6 +192,7 @@ def plotar_series_temporais(df: pd.DataFrame):
 
 def plotar_distribuicoes(df: pd.DataFrame):
     """Distribuição das correntes por fase."""
+    import plotly.graph_objects as go
 
     fig = go.Figure()
 
@@ -217,6 +217,7 @@ def plotar_distribuicoes(df: pd.DataFrame):
 
 def plotar_correlacoes(df: pd.DataFrame):
     """Matriz de correlação das variáveis principais."""
+    import plotly.express as px
 
     colunas = ["n_k", "u_dc_k", "i_a_k", "i_b_k", "i_c_k",
                "u_a_k-1", "u_b_k-1", "u_c_k-1",
@@ -241,6 +242,7 @@ def plotar_correlacoes(df: pd.DataFrame):
 
 def plotar_desequilibrio(df: pd.DataFrame):
     """Plota o desequilíbrio de fase ao longo do tempo."""
+    import plotly.graph_objects as go
 
     if "desequilibrio" not in df.columns:
         return
