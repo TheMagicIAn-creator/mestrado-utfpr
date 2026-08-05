@@ -10,11 +10,12 @@ Fluxo:
 
 Autor: Rodolfo Torres (UTFPR)
 """
-import sys
-import os
 import hashlib
+import os
 import re
+import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent))
 
 # OpenMP duplicado (torch / numpy-MKL / onnxruntime do ChromaDB) ABORTA no
@@ -27,20 +28,25 @@ os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 try:
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
-except Exception:
-    pass
+    _SAIDA_UTF8 = True
+except (AttributeError, OSError):
+    _SAIDA_UTF8 = False
 
-from pathlib import Path
 from dotenv import load_dotenv
-from src.core.utils import parsear_nome_arquivo
-from src.core.tempo import FUSO_PADRAO, agora_local
+
 from src.core.config import (
-    PASTA_CHROMADB, ARQUIVO_PERFIL, NOME_COLECAO,
-    NOME_COLECAO_SESSOES, NOME_COLECAO_OBSIDIAN, MODELO_EMBEDDINGS,
+    ARQUIVO_PERFIL, MODELO_EMBEDDINGS, NOME_COLECAO,
+    NOME_COLECAO_OBSIDIAN, NOME_COLECAO_SESSOES, PASTA_CHROMADB,
     N_RESULTADOS,
 )
+from src.core.logs import get_logger
+from src.core.tempo import FUSO_PADRAO, agora_local
 from src.conhecimento.leitor_anexos import montar_bloco_texto_anexos, tem_imagem
 from src.conhecimento.provedores import eh_multimodal, texto_da_resposta
+
+_logger = get_logger("conhecimento.agente")
+if not _SAIDA_UTF8:
+    _logger.debug("stdout/stderr não suportam reconfigure; mantendo encoding atual")
 
 ORCAMENTOS_RAG = {
     "gemini": {
@@ -848,8 +854,8 @@ def autores_indexados(colecao=None) -> set[str]:
                 if len(metas) < lote:
                     break
                 offset += lote
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.warning("não foi possível enumerar autores no ChromaDB: %s", exc)
     _AUTORES_CACHE = nomes
     _AUTOR_CANONICO_CACHE = canonicos
     _AUTOR_ARQUIVOS_CACHE = autor_arquivos
@@ -2060,8 +2066,8 @@ def buscar_contexto(
                 max_chars=obsidian_chars or 3_200,
             )
             contexto += contexto_obsidian
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.warning("busca no vault Obsidian indisponível: %s", exc)
 
     # ── Sessões legadas — fallback quando o vault não respondeu ──────────
     # obsidian_pv já inclui sessões atuais e arquivadas. sessoes_pv permanece
@@ -2092,8 +2098,8 @@ def buscar_contexto(
                     usados_ses += len(bloco)
                     if usados_ses >= limite_ses:
                         break
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.warning("fallback de sessões legadas indisponível: %s", exc)
 
     return contexto, citacoes
 
@@ -2336,8 +2342,8 @@ def perguntar(
             if streaming:
                 print(texto)
             return texto
-    except Exception:
-        pass
+    except Exception as exc:
+        _logger.warning("atalho de catálogo indisponível; seguindo para o RAG: %s", exc)
 
     prompt, citacoes = preparar_prompt(
         pergunta=pergunta,

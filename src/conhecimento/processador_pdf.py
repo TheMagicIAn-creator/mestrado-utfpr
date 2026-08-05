@@ -16,19 +16,27 @@ Autor: Rodolfo Torres (UTFPR)
 import hashlib
 import json
 import re
-import sys
 import shutil
+import sys
 import threading
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from pypdf import PdfReader
+
 from src.core.config import (
-    PASTA_LITERATURA, PASTA_NOTAS, PASTA_NOVOS_PDFS,
-    PASTA_CHROMADB, RAIZ_PROJETO,
+    PASTA_CHROMADB,
+    PASTA_LITERATURA,
+    PASTA_NOTAS,
+    PASTA_NOVOS_PDFS,
+    RAIZ_PROJETO,
 )
+from src.core.logs import get_logger
+from src.core.seguranca import mascarar_segredos
 from src.core.tempo import agora_local
+
+_logger = get_logger("conhecimento.processador_pdf")
 
 # Pasta de notas de literatura dentro do vault Obsidian
 PASTA_NOTAS_LIT = PASTA_NOTAS / "Literatura"
@@ -227,8 +235,11 @@ Nome do arquivo (pode ajudar): {nome_arquivo}
         resposta = llm.invoke_json([{"content": prompt}], max_tokens=700)
         if isinstance(resposta, dict):
             return resposta
-    except Exception:
-        pass
+    except Exception as exc:
+        _logger.warning(
+            "extração de metadados por LLM falhou; usando fallback: %s",
+            mascarar_segredos(str(exc)),
+        )
 
     return {}
 
@@ -287,8 +298,8 @@ def _extrair_via_metadados_internos(caminho_pdf: Path) -> dict:
             ano_cand = int(match_ano.group(1))
             if 1990 <= ano_cand <= agora_local().year:
                 ano = str(ano_cand)
-    except Exception:
-        pass
+    except Exception as exc:
+        _logger.warning("metadados internos do PDF ilegíveis; usando regex: %s", exc)
 
     return {"autor": autor, "titulo": titulo, "ano": ano}
 

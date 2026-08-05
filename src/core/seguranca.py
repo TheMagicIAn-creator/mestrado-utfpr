@@ -31,6 +31,10 @@ import os
 import re
 from pathlib import Path
 
+from src.core.logs import get_logger
+
+_logger = get_logger("seguranca")
+
 # Raiz do projeto: .../src/core/seguranca.py → parents[2]
 RAIZ_PROJETO = Path(__file__).resolve().parents[2]
 
@@ -173,15 +177,10 @@ def carregar_pickle_com_sidecar(caminho):
     if sidecar.exists():
         esperado = sidecar.read_text(encoding="utf-8").strip().lower()
         return carregar_pickle_verificado(alvo, esperado)
-    try:
-        from src.core.logs import get_logger
-
-        get_logger("seguranca").warning(
-            "%s sem sidecar .sha256 — carregando sem verificação de "
-            "integridade (artefato pré-hardening).", alvo.name,
-        )
-    except Exception:  # noqa: BLE001 — logging nunca bloqueia o carregamento
-        pass
+    _logger.warning(
+        "%s sem sidecar .sha256 — carregando sem verificação de "
+        "integridade (artefato pré-hardening).", alvo.name,
+    )
     with open(alvo, "rb") as f:
         return pickle.load(f)  # noqa: S301 — caminho legado documentado
 

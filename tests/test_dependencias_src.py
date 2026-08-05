@@ -1,5 +1,6 @@
 """Restrições arquiteturais mínimas entre os pacotes de src/."""
 
+import ast
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -26,3 +27,38 @@ def test_escritas_chromadb_usam_lock_canonico():
         assert "from src.conhecimento.index_lock import lock_indexacao" in fonte
         for funcao in funcoes:
             assert f"def {funcao}(" in fonte
+
+
+def _captura_excecao_ampla(handler: ast.ExceptHandler) -> bool:
+    if handler.type is None:
+        return True
+    tipos = handler.type.elts if isinstance(handler.type, ast.Tuple) else [handler.type]
+    return any(isinstance(tipo, ast.Name) and tipo.id in {"Exception", "BaseException"}
+               for tipo in tipos)
+
+
+def test_excecao_ampla_nao_pode_ser_descartada_com_pass():
+    silenciosos = []
+    for arquivo in (RAIZ / "src").rglob("*.py"):
+        arvore = ast.parse(arquivo.read_text(encoding="utf-8"))
+        for handler in (n for n in ast.walk(arvore) if isinstance(n, ast.ExceptHandler)):
+            if (_captura_excecao_ampla(handler)
+                    and len(handler.body) == 1
+                    and isinstance(handler.body[0], ast.Pass)):
+                silenciosos.append(
+                    f"{arquivo.relative_to(RAIZ).as_posix()}:{handler.lineno}"
+                )
+    assert not silenciosos, f"falhas amplas descartadas silenciosamente: {silenciosos}"
+
+
+def test_interface_avisa_falhas_operacionais_criticas():
+    fonte = (RAIZ / "src/interface/streamlit_app.py").read_text(encoding="utf-8")
+    for operacao in (
+        "Sessão salva, mas não foi indexada na memória",
+        "Não foi possível atualizar a memória automática",
+        "Sessão local salva, mas não persistida na nuvem",
+        "Não foi possível sincronizar o Obsidian neste turno",
+        "Não foi possível ler o anexo",
+    ):
+        assert operacao in fonte
+    assert "notificar=True" in fonte

@@ -19,6 +19,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from src.core.config import ARQUIVO_MEMORIA_VALIDADA, PASTA_CEREBRO_OBSIDIAN
+from src.core.logs import get_logger
+from src.core.seguranca import mascarar_segredos
+
+_logger = get_logger("conhecimento.memoria")
 
 
 SCHEMA_VERSION = 1
@@ -109,10 +113,10 @@ class MemoriaPersistente:
                 self.caminho,
                 raiz=self.pasta_obsidian,
             )
-        except Exception:
+        except Exception as exc:
             # O Markdown e uma visao derivada. Falha no espelho nunca pode
             # invalidar o JSON atomico que acabou de ser aprovado.
-            pass
+            _logger.warning("memória salva, mas espelho Obsidian falhou: %s", exc)
 
     def _persistir_nuvem(self) -> None:
         """Commita o JSON de volta ao GitHub quando na nuvem (Streamlit Cloud).
@@ -129,8 +133,11 @@ class MemoriaPersistente:
 
             if persistencia_ativa():
                 persistir_memoria_validada(self.caminho)
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.warning(
+                "memória salva localmente, mas persistência falhou: %s",
+                mascarar_segredos(str(exc)),
+            )
 
     def _ler(self, *, estrito: bool = False) -> dict:
         if not self.caminho.is_file():

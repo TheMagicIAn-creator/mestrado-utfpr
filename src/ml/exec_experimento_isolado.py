@@ -31,10 +31,13 @@ import sys
 import tempfile
 from pathlib import Path
 
+from src.core.logs import get_logger
+
 # Raiz do repositório (…/src/ml/exec_experimento_isolado.py → parents[2]).
 _RAIZ = Path(__file__).resolve().parents[2]
 
 TIMEOUT_PADRAO_S = 3600  # 1 h — cobre treino de RL/torch em CPU.
+_logger = get_logger("ml.exec_experimento_isolado")
 
 
 def _slug(texto: str) -> str:
@@ -93,8 +96,8 @@ def executar_experimento_isolado(
             progresso(f"[isolamento indisponível: {exc}; rodando in-process]")
         try:
             out.unlink()
-        except OSError:
-            pass
+        except OSError as limpeza_exc:
+            _logger.debug("arquivo temporário não removido após fallback: %s", limpeza_exc)
         return _rodar_inproc(key, progresso=progresso)
 
     ultimas: list[str] = []
@@ -110,8 +113,8 @@ def executar_experimento_isolado(
             if progresso:
                 try:
                     progresso(linha)
-                except Exception:  # noqa: BLE001 — callback do app não derruba
-                    pass
+                except Exception as callback_exc:  # noqa: BLE001 — callback não derruba
+                    _logger.warning("callback de progresso falhou: %s", callback_exc)
         proc.wait(timeout=timeout_s)
     except subprocess.TimeoutExpired:
         proc.kill()
@@ -127,8 +130,8 @@ def executar_experimento_isolado(
     except Exception as exc:  # noqa: BLE001
         try:
             proc.kill()
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as kill_exc:  # noqa: BLE001
+            _logger.warning("não foi possível encerrar subprocesso após falha: %s", kill_exc)
         _limpar(out)
         return {
             "experimento": key,
@@ -173,8 +176,8 @@ def executar_experimento_isolado(
 def _limpar(caminho: Path) -> None:
     try:
         caminho.unlink()
-    except OSError:
-        pass
+    except OSError as exc:
+        _logger.debug("arquivo temporário já ausente ou não removível: %s", exc)
 
 
 def _main(argv: list[str]) -> int:

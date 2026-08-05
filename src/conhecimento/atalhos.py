@@ -38,6 +38,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+from src.core.logs import get_logger
+from src.core.seguranca import mascarar_segredos
+
+_logger = get_logger("conhecimento.atalhos")
+
 
 @dataclass
 class Resposta:
@@ -126,8 +131,11 @@ def _cofre_de_trechos(pergunta: str, ctx: dict) -> Resposta | None:
                 mensagem=f"chore(snippet): guarda trecho {reg['rotulo']}",
                 alvo="snippet",
             )
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        _logger.warning(
+            "snippet salvo localmente, mas não persistido na nuvem: %s",
+            mascarar_segredos(str(exc)),
+        )
 
     n = len(reg["codigo"].splitlines())
     return Resposta(

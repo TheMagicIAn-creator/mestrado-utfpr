@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import re
+import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -26,6 +27,7 @@ PASTA_LOGS = Path(RAIZ_PROJETO) / "logs"
 ARQUIVO_LOG = PASTA_LOGS / "al_iado_pv.log"
 _RAIZ_LOGGER = "al_iado_pv"
 _configurado = False
+_erro_configuracao: str | None = None
 
 # Emojis/pictogramas herdados dos prints do ML poluem o LOG (e atrapalham
 # grep/Get-Content). Removemos do registro — a interface do chat NÃO passa por
@@ -57,7 +59,7 @@ class _FormatadorSemEmoji(logging.Formatter):
 
 def configurar_logging(nivel: int = logging.INFO) -> None:
     """Configura o handler rotativo uma única vez (idempotente)."""
-    global _configurado
+    global _configurado, _erro_configuracao
     if _configurado:
         return
     try:
@@ -73,9 +75,11 @@ def configurar_logging(nivel: int = logging.INFO) -> None:
         if not any(isinstance(h, RotatingFileHandler) for h in root.handlers):
             root.addHandler(handler)
         root.propagate = False
-    except Exception:
-        # Logging nunca deve derrubar a aplicação.
-        pass
+    except Exception as exc:
+        # Logging nunca deve derrubar a aplicação, mas a falha precisa aparecer.
+        _erro_configuracao = str(exc)
+        if sys.__stderr__ is not None:
+            sys.__stderr__.write(f"[logging indisponível] {_erro_configuracao}\n")
     _configurado = True
 
 
@@ -99,8 +103,10 @@ def habilitar_console(nivel: int = logging.INFO) -> None:
         from src.core.utils import configurar_saida_utf8
 
         configurar_saida_utf8()
-    except Exception:  # noqa: BLE001 — nunca bloquear a execução manual
-        pass
+    except Exception as exc:  # noqa: BLE001 — nunca bloquear a execução manual
+        logging.getLogger(_RAIZ_LOGGER).debug(
+            "não foi possível reconfigurar stdout/stderr: %s", exc
+        )
     configurar_logging()
     root = logging.getLogger(_RAIZ_LOGGER)
     ja_tem = any(

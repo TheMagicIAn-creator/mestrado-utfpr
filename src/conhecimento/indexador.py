@@ -33,17 +33,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from pypdf import PdfReader
 
-from src.core.utils import parsear_nome_arquivo
 from src.core.config import (
-    PASTA_LITERATURA,
-    PASTA_CHROMADB,
+    MODELO_EMBEDDINGS,
     NOME_COLECAO,
     NOME_COLECAO_SESSOES,
-    MODELO_EMBEDDINGS,
-    TAMANHO_CHUNK,
+    PASTA_CHROMADB,
+    PASTA_LITERATURA,
     SOBREPOSICAO,
+    TAMANHO_CHUNK,
     TAMANHO_LOTE,
 )
+from src.core.logs import get_logger
+from src.core.utils import parsear_nome_arquivo
+
+_logger = get_logger("conhecimento.indexador")
 
 # ============================================================
 # PARÂMETROS ESPECÍFICOS PARA LITERATURA
@@ -111,9 +114,9 @@ def remover_documento_antigo(colecao, nome_arquivo: str | None = None, arquivo_h
                     fim = inicio + TAMANHO_LOTE
                     colecao.delete(ids=ids[inicio:fim])
                 removidos += len(ids)
-        except Exception:
+        except Exception as exc:
             # Não interrompe indexação por resíduo antigo problemático.
-            pass
+            _logger.warning("não foi possível remover chunks antigos (%s): %s", where, exc)
 
     return removidos
 
