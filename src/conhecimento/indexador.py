@@ -507,6 +507,18 @@ def remover_itens_duplicados(
 # ============================================================
 
 def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path) -> dict:
+    """Indexa um PDF sob lock compartilhado por todos os processos."""
+    from src.conhecimento.index_lock import lock_indexacao
+
+    with lock_indexacao():
+        return _indexar_pdf_unico_sem_lock(
+            caminho_pdf, modelo_embeddings, pasta_chromadb
+        )
+
+
+def _indexar_pdf_unico_sem_lock(
+    caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path
+) -> dict:
     """
     Indexa um único PDF no ChromaDB com proteção contra duplicidade.
 
@@ -708,6 +720,16 @@ def indexar_literatura(modelo=None, pasta_chromadb: Path = PASTA_CHROMADB) -> di
 # ============================================================
 
 def indexar_sessao(caminho_md: Path, modelo_embeddings, pasta_chromadb: Path) -> int:
+    """Indexa uma sessão sob lock compartilhado por todos os processos."""
+    from src.conhecimento.index_lock import lock_indexacao
+
+    with lock_indexacao():
+        return _indexar_sessao_sem_lock(caminho_md, modelo_embeddings, pasta_chromadb)
+
+
+def _indexar_sessao_sem_lock(
+    caminho_md: Path, modelo_embeddings, pasta_chromadb: Path
+) -> int:
     """
     Indexa uma sessão salva (.md) na coleção de sessões do ChromaDB.
 

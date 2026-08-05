@@ -12,7 +12,7 @@ import json
 import re
 from pathlib import Path
 
-from src.core.config import PASTA_CHROMADB, RAIZ_PROJETO
+from src.core.config import RAIZ_PROJETO
 from src.core.formatacao import fmt_num
 from src.core.tempo import agora_local
 
@@ -607,7 +607,6 @@ def _resumo_weibull() -> str | None:
     ]
     for fid, falha in d.get("falhas", {}).items():
         p = falha.get("weibull", {})
-        beta = p.get("beta")
         def valor_ci(nome: str, casas: int = 1) -> str:
             valor = p.get(nome)
             ci = p.get(f"{nome}_ci95") or [None, None]
@@ -908,10 +907,8 @@ def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> d
     }
 
 
-def indexar_resultados_ml(modelo_embeddings) -> str:
-    """Gera resumo dos resultados e indexa na memoria do agente."""
-    from src.conhecimento.indexador import indexar_sessao
-
+def salvar_resumo_resultados_ml() -> Path:
+    """Grava uma nota versionável dos resultados, sem depender do agente."""
     saida = RAIZ_PROJETO / "notas" / "memorias" / "resultados-fase5-ml.md"
     resumo = resumir_resultados("", incluir_imagens=False)["mensagem"]
     conteudo = (
@@ -921,9 +918,4 @@ def indexar_resultados_ml(modelo_embeddings) -> str:
     )
     saida.parent.mkdir(parents=True, exist_ok=True)
     saida.write_text(conteudo, encoding="utf-8")
-
-    try:
-        indexar_sessao(saida, modelo_embeddings, PASTA_CHROMADB)
-        return "Resultados indexados. O agente ja pode discuti-los no chat."
-    except Exception as exc:
-        return f"Resumo salvo, mas houve erro ao indexar: {exc}"
+    return saida
