@@ -15,6 +15,7 @@ CLAUDE = (RAIZ / "CLAUDE.md").read_text(encoding="utf-8")
 ENV_EXAMPLE = (RAIZ / ".env.example").read_text(encoding="utf-8")
 PROVEDORES = (RAIZ / "src/conhecimento/provedores.py").read_text(encoding="utf-8")
 INDEXADOR = (RAIZ / "src/conhecimento/indexador.py").read_text(encoding="utf-8")
+README_SRC = (RAIZ / "src/README.md").read_text(encoding="utf-8")
 
 
 def test_env_example_e_arquivo_env_valido():
@@ -105,3 +106,36 @@ def test_obsidian_documentado_com_governanca_e_sem_status_bibliografico():
     assert "nunca vira citação bibliográfica" in CLAUDE
     assert "al_iado: false" in CLAUDE
     assert "sessão atual/arquivada" in CLAUDE
+
+
+def test_readme_src_inventaria_todos_os_modulos():
+    """Novo módulo não pode ficar invisível no mapa arquitetural."""
+    faltando = []
+    for pasta in ("core", "conhecimento", "ml"):
+        for arquivo in sorted((RAIZ / "src" / pasta).glob("*.py")):
+            if arquivo.name == "__init__.py":
+                continue
+            if f"`{arquivo.name}`" not in README_SRC:
+                faltando.append(f"{pasta}/{arquivo.name}")
+    assert not faltando, f"módulos ausentes de src/README.md: {faltando}"
+
+
+def test_config_nao_reintroduz_modelo_gemini_aposentado():
+    config = (RAIZ / "src/core/config.py").read_text(encoding="utf-8")
+    assert "gemini-2.5-pro" not in config
+    assert "gemini-2.5-flash" not in config
+
+
+def test_descricoes_operacionais_usam_fmeca():
+    """FMEA segue válido como conceito; a origem das falhas do projeto é FMECA."""
+    padrao = re.compile(
+        r"(?:orientad[ao]s?|fundamentad[ao]s?|assinaturas?|inje[cç][aã]o)"
+        r".{0,80}\bFMEA\b",
+        re.I | re.S,
+    )
+    achados = []
+    for py in (RAIZ / "src").rglob("*.py"):
+        texto = py.read_text(encoding="utf-8")
+        if padrao.search(texto):
+            achados.append(py.relative_to(RAIZ).as_posix())
+    assert not achados, f"descrição operacional ainda usa FMEA: {achados}"

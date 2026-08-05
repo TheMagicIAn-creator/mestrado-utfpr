@@ -14,7 +14,7 @@ Arquivos classificados:
 | Pipeline CA principal | `features_ca.py`, `autoencoder.py`, `injecao_falhas.py`, `validacao.py`, `rul_weibull.py`, `pipeline.py`, `proveniencia.py` |
 | Métricas, splits e gráficos | `escore_anomalia.py`, `estatistica.py`, `split_temporal.py`, `dados_avaliacao.py`, `graficos_autoencoder.py`, `estilo_graficos.py`, `resultados.py` |
 | Comparação acadêmica vigente | `macro_proposto.py`, `macro_ibrahim.py`, `macro_comum.py`, `macro_comparar.py`, `modelos_anomalia.py`, `experimentos_artigos.py`, `protocolos_artigos.py` |
-| Auxiliares e domínio separado | `classificador_pv.py`, `classificador_pv_infer.py`, `comparacao_literatura.py`, `diagnostico_escore.py`, `eda.py`, `exec_etapa_isolada.py`, `exec_experimento_isolado.py`, `retroalimentacao_fmeca.py` |
+| Auxiliares e domínio separado | `classificador_pv.py`, `classificador_pv_infer.py`, `diagnostico_escore.py`, `eda.py`, `exec_etapa_isolada.py`, `exec_experimento_isolado.py`, `retroalimentacao_fmeca.py` |
 
 ## Conclusões auditadas
 
@@ -73,7 +73,8 @@ Arquivos classificados:
 7. **Arquivos removidos por obsolescência**
    `resultados/comparacao/comparacao_literatura.json` e `.png` foram removidos
    porque eram o comparativo E1 legado e competiam com a fonte vigente
-   `resultados/macro/`.
+   `resultados/macro/`. O módulo gerador `src/ml/comparacao_literatura.py`
+   também foi removido no fechamento da auditoria, eliminando a segunda fonte.
 
 ## Limitações mantidas de forma explícita
 

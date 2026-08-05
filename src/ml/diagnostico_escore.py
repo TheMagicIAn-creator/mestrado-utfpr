@@ -4,9 +4,10 @@ diagnostico_escore.py — Al IAdo PV / diagnóstico (NÃO altera o pipeline)
 Compara, LADO A LADO e sem substituir nada, dois escores de anomalia sobre
 as MESMAS falhas sintéticas injetadas:
 
-  1. MSE médio  — o escore OPERACIONAL atual (média do erro de reconstrução
-     sobre todas as ~109 features). Dilui falhas localizadas.
-  2. Localizado — média dos top-k maiores resíduos PADRONIZADOS por feature
+  1. MSE médio  — referência HISTÓRICA (média do erro de reconstrução sobre
+     todas as ~109 features). Dilui falhas localizadas.
+  2. Localizado — escore OPERACIONAL atual: média dos top-k maiores resíduos
+     PADRONIZADOS por feature
      (z do |resíduo| contra a distribuição saudável). Sensível a falha que
      mexe em POUCAS features (harmônicos do IGBT, perda de fase do Fusível).
 
@@ -15,8 +16,9 @@ Contator (banda larga) porque o MSE médio dilui as falhas localizadas. Este
 script MEDE se um escore localizado recupera a detecção do IGBT/Fusível —
 sem forçar amplitude de injeção (isso seria detecção artificial).
 
-Ambos os limiares alvejam ~1% de falso positivo (percentil 99 do escore no
-bloco saudável), então a comparação é justa.
+Cada escore usa seu limiar publicado. O MSE mantém a referência p99; o
+localizado usa o percentil efetivo registrado em `limiar.json` (99,9 no
+artefato vigente), escolhido no bloco saudável de calibração.
 
 É um DIAGNÓSTICO reversível: lê os artefatos do Autoencoder já treinado,
 injeta com as MESMAS funções de src/ml/injecao_falhas.py e escreve apenas
@@ -68,6 +70,39 @@ def _wilson(sucessos: int, n: int) -> tuple[float, float]:
     from src.ml.estatistica import intervalo_wilson
 
     return intervalo_wilson(int(sucessos), int(n))
+
+
+def _limiares_comparacao(
+    info_limiar: dict,
+    score_loc_sau: np.ndarray,
+    k: int,
+) -> tuple[float, float, float, bool]:
+    """Retorna MSE p99, localizado, percentil efetivo e se ele é operacional."""
+    limiar_mse = float(
+        info_limiar.get("mse_p99", info_limiar.get("limiar_p99"))
+    )
+    percentil = float(
+        info_limiar.get(
+            "threshold_effective_percentile",
+            info_limiar.get("percentil_limiar", 99.0),
+        )
+    )
+    k_publicado = info_limiar.get("top_k", info_limiar.get("k_localizado"))
+    localizado_operacional = (
+        info_limiar.get("score_method", info_limiar.get("metodo_escore"))
+        == "localizado"
+        and k_publicado is not None
+        and int(k_publicado) == int(k)
+    )
+    if localizado_operacional:
+        limiar_loc = float(
+            info_limiar.get(
+                "score_threshold", info_limiar.get("limiar_localizado")
+            )
+        )
+    else:
+        limiar_loc = float(np.percentile(score_loc_sau, percentil))
+    return limiar_mse, limiar_loc, percentil, localizado_operacional
 
 
 # ============================================================
@@ -124,8 +159,6 @@ def executar_diagnostico(k: int = 5) -> bool:
     n_features = checkpoint["n_features"]
     latente_dim = checkpoint["latente_dim"]
     colunas_feat = checkpoint["colunas_feat"]
-    limiar_mse = float(info_limiar["limiar"])   # limiar OPERACIONAL do MSE médio
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     modelo = Autoencoder(n_features, latente_dim).to(device)
     modelo.load_state_dict(checkpoint["state_dict"])
@@ -145,16 +178,27 @@ def executar_diagnostico(k: int = 5) -> bool:
     stats = ajustar_estatistica_residuo(R_sau)
     score_loc_sau = escore_localizado(R_sau, stats, k=k)
     score_mse_sau = escore_mse_medio(R_sau)
-    limiar_loc = float(np.percentile(score_loc_sau, 99))   # ~1% FP, como o MSE
+    limiar_mse, limiar_loc, percentil_loc, loc_operacional = _limiares_comparacao(
+        info_limiar, score_loc_sau, k
+    )
 
     fp_mse = float((score_mse_sau > limiar_mse).mean() * 100)
     fp_loc = float((score_loc_sau > limiar_loc).mean() * 100)
-    _log(f"   Limiar MSE médio = {limiar_mse:.4f} (FP saudável {fp_mse:.1f}%)")
-    _log(f"   Limiar localizado = {limiar_loc:.4f} (FP saudável {fp_loc:.1f}%)")
+    _log(f"   MSE histórico p99 = {limiar_mse:.4f} (FP saudável {fp_mse:.1f}%)")
+    origem_loc = "operacional publicado" if loc_operacional else "recalculado"
+    _log(
+        f"   Localizado p{percentil_loc:g} = {limiar_loc:.4f} "
+        f"({origem_loc}; FP saudável {fp_loc:.1f}%)"
+    )
 
     # ── Injeção por falha/severidade: detecção nos DOIS escores ──
     saida = {
         "k": k, "limiar_mse": limiar_mse, "limiar_localizado": limiar_loc,
+        "score_method_operacional": info_limiar.get(
+            "score_method", info_limiar.get("metodo_escore")
+        ),
+        "threshold_effective_percentile": percentil_loc,
+        "limiar_localizado_operacional": loc_operacional,
         "fp_saudavel_mse_pct": fp_mse, "fp_saudavel_localizado_pct": fp_loc,
         "alvo_smd": ALVO_SMD, "n_janelas": len(janelas_holdout),
         "falhas": {},
@@ -222,8 +266,11 @@ def _plotar(saida: dict, FALHAS, pasta) -> None:
         # Convenção de src/ml/estilo_graficos.py: COR_METODO para o método
         # proposto, COR_NEUTRA para o baseline; "a cor segue a entidade, nunca
         # o rank". É a mesma leitura dos gráficos de comparação com o Ibrahim.
-        ax.plot(sevs, y_mse, "o-", color=COR_NEUTRA, label="MSE médio (atual)")
-        ax.plot(sevs, y_loc, "s-", color=COR_METODO, label="Localizado (top-k)")
+        ax.plot(sevs, y_mse, "o-", color=COR_NEUTRA, label="MSE médio (histórico)")
+        rotulo_loc = "Localizado (operacional)" if saida.get(
+            "limiar_localizado_operacional"
+        ) else "Localizado (top-k)"
+        ax.plot(sevs, y_loc, "s-", color=COR_METODO, label=rotulo_loc)
         ax.axhline(saida["alvo_smd"] * 100, color=COR_ALERTA, linestyle="--",
                    linewidth=1.5, label=f"Alvo SMD {saida['alvo_smd']*100:.0f}%")
         ax.set_title(f"{falha['nome']} (NPR={falha['npr']})", fontsize=10)
@@ -233,8 +280,8 @@ def _plotar(saida: dict, FALHAS, pasta) -> None:
     axes[0].legend(fontsize=8)
     salvar_figura(
         fig, pasta / "diagnostico_escore.png",
-        "Diagnóstico E2: ambos os limiares alvejam ~1% de FP no bloco saudável; "
-        "não altera o pipeline operacional.",
+        "Diagnóstico E2: MSE histórico p99 versus escore localizado no percentil "
+        f"efetivo p{saida['threshold_effective_percentile']:g}; não altera o pipeline.",
     )
     _log(f"   📊 diagnostico_escore.png")
 

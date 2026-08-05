@@ -140,12 +140,14 @@ ARQUIVO_PERFIL     = RAIZ_PROJETO / "CLAUDE.md"
 # lateral do app para confirmar QUAL versão do código está no ar (resolve a
 # ambiguidade de redeploy no Streamlit Cloud: se o marcador aqui não bate com
 # o exibido, o app está rodando código antigo e precisa de Reboot).
-MARCADOR_BUILD         = "2026-07-29 · #40 · interface minimalista, espera animada e contagem real no vault"
+MARCADOR_BUILD         = os.getenv(
+    "AL_IADO_BUILD_LABEL",
+    "2026-08-05 · auditoria geral de src · comparação acadêmica unificada",
+)
 
 MODELO_EMBEDDINGS      = "paraphrase-multilingual-MiniLM-L12-v2"
-# Modelo principal de conversa (fonte de verdade: provedores.PROVEDORES / env
-# AL_IADO_GEMINI_MODEL). O de fundo (metadados/memória) é gemini-2.5-flash.
-MODELO_GEMINI          = "gemini-2.5-pro"
+# Modelos de conversa e de fundo têm fonte única em conhecimento/provedores.py
+# e podem ser sobrescritos pelas variáveis AL_IADO_GEMINI_MODEL*.
 NOME_COLECAO           = "literatura_pv"
 NOME_COLECAO_SESSOES   = "sessoes_pv"
 NOME_COLECAO_OBSIDIAN  = "obsidian_pv"

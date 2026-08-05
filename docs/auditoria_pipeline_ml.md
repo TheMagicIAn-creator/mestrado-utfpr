@@ -156,9 +156,9 @@ natureza do dataset (inversor IGBT trifásico saudável). Ressalvas:
 ## 7. Pendente da 1ª rodada — RESOLVIDO na 2ª (§8–§10)
 
 Auditados na 2ª rodada: `protocolos_artigos.py`, `modelos_anomalia.py` e o
-PDF de Ibrahim (2022). Falta apenas varrer `experimentos_artigos.py` (1149
-linhas — harness/plotagem dos experimentos) e `comparacao_literatura.py`
-linha a linha; o essencial (protocolos + scorers + grounding) está coberto.
+PDF de Ibrahim (2022). Naquele ponto ainda faltava varrer o harness histórico;
+a campanha de 2026-08-05 encerrou essa pendência e removeu
+`comparacao_literatura.py`, substituído pela fonte única `macro_comparar.py`.
 
 ---
 
@@ -261,10 +261,10 @@ varredura simples de latente), para não ficarem "a esmo".
 
 ## 12. Pendente (honestidade de escopo)
 
-Falta varrer `experimentos_artigos.py` (harness/plotagem/AUC dos
-experimentos) e `comparacao_literatura.py` linha a linha. O núcleo
-metodológico (autoencoder, features, injeção, validação, RUL, protocolos,
-scorers e o grounding no Ibrahim) está auditado.
+Esta era a pendência ao fim da 2ª rodada. Ela foi encerrada na auditoria de
+2026-08-05: o harness foi confrontado com os macros e
+`comparacao_literatura.py` foi removido para não competir com a comparação
+vigente em `resultados/macro/`.
 
 ---
 
@@ -748,7 +748,7 @@ pendente consciente, não esquecida.
 
 Revisão de correção dos módulos alterados/criados nesta sessão
 (`escore_anomalia.py`, `modelos_anomalia.py`, `protocolos_artigos.py`,
-`comparacao_literatura.py`, `autoencoder.py`, `rul_weibull.py`):
+o então existente `comparacao_literatura.py`, `autoencoder.py`, `rul_weibull.py`):
 
 - **Sem bug de correção encontrado.** Escore central com fallback seguro
   (régua ausente → MSE); guardas de `k>n_features` e `sigma=0`; AE-LSTM temporal
