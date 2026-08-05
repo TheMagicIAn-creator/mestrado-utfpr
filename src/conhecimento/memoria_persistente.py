@@ -13,7 +13,6 @@ import math
 import os
 import re
 import threading
-import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,6 +20,7 @@ from pathlib import Path
 from src.core.config import ARQUIVO_MEMORIA_VALIDADA, PASTA_CEREBRO_OBSIDIAN
 from src.core.logs import get_logger
 from src.core.seguranca import mascarar_segredos
+from src.core.texto import normalizar_busca as _normalizar
 
 _logger = get_logger("conhecimento.memoria")
 
@@ -66,13 +66,7 @@ def _agora() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _normalizar(texto: str) -> str:
-    base = unicodedata.normalize("NFKD", str(texto).lower())
-    sem_acentos = "".join(c for c in base if not unicodedata.combining(c))
-    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9\s]", " ", sem_acentos)).strip()
-
-
-def _tokens(texto: str) -> set[str]:
+def _tokens_memoria(texto: str) -> set[str]:
     tokens = {t for t in _normalizar(texto).split() if len(t) >= 3}
     # Flexao nominal simples cobre o caso mais frequente da memoria curta
     # (resposta/respostas, objetiva/objetivas) sem introduzir dependencias.
@@ -192,8 +186,8 @@ class MemoriaPersistente:
                 "Metricas recalculaveis pertencem aos artefatos, nao a memoria."
             )
 
-        termos_conteudo = _tokens(conteudo)
-        termos_evidencia = _tokens(evidencia)
+        termos_conteudo = _tokens_memoria(conteudo)
+        termos_evidencia = _tokens_memoria(evidencia)
         if termos_conteudo and not (termos_conteudo & termos_evidencia):
             raise MemoriaInvalida(
                 "O candidato nao esta ancorado no texto do pesquisador."
@@ -279,14 +273,14 @@ class MemoriaPersistente:
         itens = self.listar(somente_ativas=True)
         if not itens:
             return []
-        termos_consulta = _tokens(consulta)
+        termos_consulta = _tokens_memoria(consulta)
         if not termos_consulta:
             return sorted(
                 itens, key=lambda i: i.get("criado_em_utc", ""), reverse=True
             )[:limite]
 
         documentos = [
-            _tokens(" ".join([i.get("conteudo", ""), i.get("escopo", "")]))
+            _tokens_memoria(" ".join([i.get("conteudo", ""), i.get("escopo", "")]))
             for i in itens
         ]
         frequencia = {

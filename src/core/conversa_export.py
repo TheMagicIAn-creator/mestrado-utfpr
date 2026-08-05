@@ -19,13 +19,8 @@ Autor: Rodolfo Torres (UTFPR)
 from __future__ import annotations
 
 import re
-import unicodedata
 
-
-def _normalizar(texto: str) -> str:
-    base = unicodedata.normalize("NFKD", str(texto or "").lower())
-    sem_acentos = "".join(c for c in base if not unicodedata.combining(c))
-    return re.sub(r"\s+", " ", sem_acentos).strip()
+from src.core.texto import normalizar_espacos as _normalizar
 
 
 # Alvos que indicam "a conversa/o histórico" como objeto do pedido.

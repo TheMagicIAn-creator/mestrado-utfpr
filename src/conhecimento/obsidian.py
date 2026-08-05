@@ -14,11 +14,12 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-import unicodedata
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
+
+from src.core.texto import normalizar_sem_acentos as _normalizar
 
 from src.core.config import (
     PASTA_CEREBRO_OBSIDIAN,
@@ -140,12 +141,7 @@ class RelatorioSincronizacao:
         }
 
 
-def _normalizar(texto: str) -> str:
-    base = unicodedata.normalize("NFKD", str(texto).lower())
-    return "".join(c for c in base if not unicodedata.combining(c))
-
-
-def _tokens(texto: str) -> set[str]:
+def _tokens_nota(texto: str) -> set[str]:
     return set(_TOKEN.findall(_normalizar(texto)))
 
 
@@ -570,7 +566,7 @@ _STOPWORDS_BUSCA = {
 
 def _termos_busca(texto: str) -> list[str]:
     return sorted(
-        (token for token in _tokens(texto) if token not in _STOPWORDS_BUSCA),
+        (token for token in _tokens_nota(texto) if token not in _STOPWORDS_BUSCA),
         key=lambda token: (-len(token), token),
     )
 
@@ -937,7 +933,7 @@ def buscar_notas_obsidian(
             str(meta.get("tags", "")), str(meta.get("wikilinks", "")),
             str(meta.get("caminho_obsidian", "")), doc,
         ])
-        sobreposicao = len(termos & _tokens(campos))
+        sobreposicao = len(termos & _tokens_nota(campos))
         confianca = {"alta": 0.12, "media": 0.06, "baixa": 0.0}.get(
             str(meta.get("confianca", "baixa")), 0.0
         )

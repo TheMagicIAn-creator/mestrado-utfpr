@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import json
 import re
-import unicodedata
 from dataclasses import dataclass, field
 
+from src.core.texto import normalizar_busca as _normalizar
 from src.conhecimento.memoria_persistente import (
     MemoriaInvalida,
     MemoriaPersistente,
@@ -25,12 +25,6 @@ STATUS_AUDITORIA = {"aprovado", "com_ressalvas", "insuficiente", "nao_aplicavel"
 
 def _texto_resposta(resposta) -> str:
     return texto_da_resposta(resposta)
-
-
-def _normalizar(texto: str) -> str:
-    base = unicodedata.normalize("NFKD", str(texto).lower())
-    sem_acentos = "".join(c for c in base if not unicodedata.combining(c))
-    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9\s]", " ", sem_acentos)).strip()
 
 
 def _json_da_resposta(llm, prompt: str, max_tokens: int) -> dict:

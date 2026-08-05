@@ -32,6 +32,7 @@ Autor: Rodolfo Torres (UTFPR)
 from __future__ import annotations
 
 try:
+    from src.core.logs import adaptar_logger_como_print as _adaptar_log
     from src.core.logs import get_logger as _get_logger
 except ModuleNotFoundError:  # execução direta
     import sys as _sys
@@ -39,15 +40,11 @@ except ModuleNotFoundError:  # execução direta
     _raiz = str(_Path(__file__).resolve().parents[2])
     if _raiz not in _sys.path:
         _sys.path.insert(0, _raiz)
+    from src.core.logs import adaptar_logger_como_print as _adaptar_log
     from src.core.logs import get_logger as _get_logger
 
 _logger = _get_logger("macro_proposto")
-
-
-def _log(*a):
-    t = " ".join(str(x) for x in a)
-    if t.strip():
-        _logger.info(t)
+_log = _adaptar_log(_logger)
 
 
 import json

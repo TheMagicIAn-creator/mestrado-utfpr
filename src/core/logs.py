@@ -89,6 +89,22 @@ def get_logger(nome: str) -> logging.Logger:
     return logging.getLogger(f"{_RAIZ_LOGGER}.{nome}")
 
 
+def adaptar_logger_como_print(logger: logging.Logger):
+    """Cria um adaptador compativel com ``print`` para scripts de ML."""
+
+    def registrar(*args, sep=" ", end="\n", flush=None):
+        del end, flush  # aceitos por compatibilidade com chamadas existentes
+        texto = sep.join(str(arg) for arg in args)
+        if not texto.strip():
+            return
+        if texto.startswith("\r"):
+            logger.debug(texto.strip())
+            return
+        logger.info(texto.rstrip("\n"))
+
+    return registrar
+
+
 def habilitar_console(nivel: int = logging.INFO) -> None:
     """
     Espelha os logs também no TERMINAL (formato curto, sem timestamp).

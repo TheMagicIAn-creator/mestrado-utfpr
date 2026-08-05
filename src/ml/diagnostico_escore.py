@@ -34,6 +34,7 @@ Autor: Rodolfo Torres (UTFPR)
 from __future__ import annotations
 
 try:
+    from src.core.logs import adaptar_logger_como_print as _adaptar_log
     from src.core.logs import get_logger as _get_logger
 except ModuleNotFoundError:  # execução direta: python src/ml/<arquivo>.py
     import sys as _sys
@@ -41,15 +42,11 @@ except ModuleNotFoundError:  # execução direta: python src/ml/<arquivo>.py
     _raiz = str(_Path(__file__).resolve().parents[2])
     if _raiz not in _sys.path:
         _sys.path.insert(0, _raiz)
+    from src.core.logs import adaptar_logger_como_print as _adaptar_log
     from src.core.logs import get_logger as _get_logger
 
 _logger = _get_logger("diagnostico_escore")
-
-
-def _log(*args):
-    texto = " ".join(str(a) for a in args)
-    if texto.strip():
-        _logger.info(texto.rstrip("\n"))
+_log = _adaptar_log(_logger)
 
 
 import json

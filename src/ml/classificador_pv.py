@@ -18,6 +18,7 @@ Autor: Rodolfo Torres (UTFPR)
 """
 
 try:
+    from src.core.logs import adaptar_logger_como_print as _adaptar_log
     from src.core.logs import get_logger as _get_logger
 except ModuleNotFoundError:  # execução direta: python src/ml/<arquivo>.py
     import sys as _sys
@@ -25,24 +26,11 @@ except ModuleNotFoundError:  # execução direta: python src/ml/<arquivo>.py
     _raiz = str(_Path(__file__).resolve().parents[2])
     if _raiz not in _sys.path:
         _sys.path.insert(0, _raiz)
+    from src.core.logs import adaptar_logger_como_print as _adaptar_log
     from src.core.logs import get_logger as _get_logger
 
 _logger = _get_logger("classificador_pv")
-
-
-def _log(*args, sep=" ", end="\n", flush=None):
-    """Progresso/sumário de ML vai para o ARQUIVO de log — o terminal
-    fica silencioso quando rodando pelo app. Scripts manuais reativam o
-    eco chamando habilitar_console() no bloco __main__. Linhas de
-    progresso com \\r são rebaixadas a DEBUG."""
-    texto = sep.join(str(a) for a in args)
-    if not texto.strip():
-        return
-    if texto.startswith("\r"):
-        _logger.debug(texto.strip())
-        return
-    _logger.info(texto.rstrip("\n"))
-
+_log = _adaptar_log(_logger)
 
 
 import sys

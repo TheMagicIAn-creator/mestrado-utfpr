@@ -19,16 +19,17 @@ ninguém). `ml/` não depende do agente. A integração RAG→ML fica concentrad
 
 ---
 
-## `core/` — fundação (8 módulos)
+## `core/` — fundação (9 módulos)
 | Arquivo | O que faz |
 |---|---|
 | `citacao_guarda.py` | Detecta citações sem lastro e monta restrições de fontes recuperadas. |
 | `config.py` | Ponto único de verdade: caminhos, constantes RAG/ML, env. |
 | `conversa_export.py` | Serializa o histórico do chat para exportação e consolidação. |
 | `formatacao.py` | Formatação compartilhada de números, métricas e tabelas Markdown. |
-| `logs.py` | Logging rotativo sem emoji (terminal legível no Windows). |
+| `logs.py` | Logging rotativo sem emoji e adaptador `print` para os scripts de ML. |
 | `seguranca.py` | Cibersegurança stdlib-only: máscara de segredos, anti path-traversal, pickle verificado por SHA-256, guarda anti-injeção. |
 | `tempo.py` | Relógio com fuso configurável e padrão `America/Sao_Paulo`. |
+| `texto.py` | Contratos compartilhados de normalização textual e busca lexical. |
 | `utils.py` | Caminhos projeto-relativos, UTF-8 no Windows, parse de `autor_titulo_ano.pdf`. |
 
 ## `conhecimento/` — o cérebro do agente / RAG
