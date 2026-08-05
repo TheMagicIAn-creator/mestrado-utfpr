@@ -109,3 +109,21 @@ def test_alta_censura_sinaliza_incerteza_sem_ocultar_rul_parametrica():
     assert ajuste["rul_reportavel"]
     assert ajuste["rul_parametrica_alta_incerteza"]
     assert ajuste["rul_restrita_disponivel"]
+
+
+def test_rul_declara_passos_sinteticos_sem_calibracao_fisica():
+    from src.ml.rul_weibull import ajustar_weibull, metadados_tempo_rul
+
+    ajuste = ajustar_weibull(
+        np.linspace(5.0, 25.0, 30),
+        np.ones(30, dtype=bool),
+        n_boot=0,
+    )
+    tempo = metadados_tempo_rul()
+
+    assert ajuste["ttf_unidade"] == "passo_sintetico_de_degradacao"
+    assert ajuste["rul_unidade"] == "passo_sintetico_de_degradacao"
+    assert ajuste["tempo_fisico_calibrado"] is False
+    assert tempo["tempo_fisico_calibrado"] is False
+    assert tempo["passo_tempo_fisico_horas"] is None
+    assert tempo["janela_aquisicao_s"] == 0.1024

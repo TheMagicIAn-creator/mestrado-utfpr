@@ -13,23 +13,20 @@ Princípios:
   fica registrado e é reportado como "requer <lib>" em vez de quebrar a corrida.
 - Métricas e artefatos padronizados para permitir comparação entre artigos.
 
-Artigos-base do NÚCLEO comparativo (enxugado para 2: baseline + concorrentes):
-  1. Francisti et al. (2025) — Z-score (Shewhart/SPC), baseline ingênuo
-  2. Ibrahim et al. (2022)   — Isolation Forest e AE-LSTM (concorrentes
-                               não-supervisionados diretos do Autoencoder;
-                               o Prophet do artigo foi cortado da curadoria)
+Artigo-base do NÚCLEO comparativo vigente:
+  1. Ibrahim et al. (2022) — AE-LSTM temporal, concorrente direto do
+                             Autoencoder denso proposto.
 
 O papel destes experimentos é COMPARAÇÃO com a literatura, não é o método da
-dissertação (esse é o pipeline principal: Autoencoder no sinal → injeção FMEA
-→ validação → Weibull). Os experimentos usam injeção FMEA no espaço de
+dissertação (esse é o pipeline principal: Autoencoder no sinal → injeção FMECA
+→ validação → Weibull). Os experimentos usam injeção FMECA no espaço de
 features (E1); o pipeline principal usa injeção no sinal bruto (E2). Não são
 diretamente comparáveis por F1 — só por AUC.
 
-Removidos da curadoria: Ghoneim (classificação CC supervisionada — segue no
-classificador_pv), Sharma (baselines supervisionados + RNN/CNN + IForest+PPO
-degenerado), o Random Forest do Francisti, Ahirwar (voto híbrido — derivativo
-do Ibrahim) e Stender (cartão de dataset, não é experimento). Ahirwar e Stender
-seguem citáveis como literatura indexada, apenas não como experimentos.
+Removidos da curadoria executável: demais benchmarks exploratórios, modelos
+supervisionados de domínio CC e modelos auxiliares do artigo-base. Eles seguem
+citáveis como literatura indexada quando forem úteis ao texto, mas não como
+experimentos de comparação quantitativa.
 
 Autor: Rodolfo Torres (UTFPR)
 """
@@ -225,29 +222,10 @@ class ExperimentoArtigo:
 
 
 # ============================================================
-# REGISTRO DOS EXPERIMENTOS (os 6 artigos)
+# REGISTRO DOS EXPERIMENTOS
 # ============================================================
 
 REGISTRO: dict[str, ExperimentoArtigo] = {
-    "francisti": ExperimentoArtigo(
-        key="francisti",
-        artigo="Predictive Modeling and Anomaly Detection in Solar PV Inverters",
-        referencia="Francisti et al. (2025)",
-        ano=2025,
-        dataset="Paderborn",
-        tarefa="anomalia",
-        descricao=(
-            "Detecção de anomalia no inversor saudável (Paderborn) com limiar "
-            "estatístico Z-score (Shewhart 3σ, controle estatístico de processo "
-            "NÃO-supervisionado), avaliada contra falhas sintéticas injetadas "
-            "(ground truth do FMEA). O Random Forest supervisionado do artigo "
-            "foi removido na curadoria (treinava nos rótulos da injeção)."
-        ),
-        modelos=(
-            ModeloSpec("Z-score (estatístico)", "anomalia"),
-        ),
-        runner="executar_anomalia",
-    ),
     "ibrahim": ExperimentoArtigo(
         key="ibrahim",
         artigo="Machine Learning Schemes for Anomaly Detection in Solar Power Plants",
@@ -256,13 +234,11 @@ REGISTRO: dict[str, ExperimentoArtigo] = {
         dataset="Paderborn",
         tarefa="anomalia",
         descricao=(
-            "Esquemas de detecção de anomalia não-supervisionada: Isolation "
-            "Forest e Autoencoder-LSTM, avaliados contra falhas injetadas. "
-            "(O Facebook Prophet do artigo foi removido da curadoria: era o "
-            "pior detector e sua dependência é frágil/instável em runtime.)"
+            "Comparativo metodológico com o Autoencoder-LSTM temporal do artigo, "
+            "avaliado contra falhas sintéticas orientadas pela FMECA no mesmo "
+            "banco comum do método proposto."
         ),
         modelos=(
-            ModeloSpec("Isolation Forest", "anomalia"),
             ModeloSpec("AE-LSTM", "rede", requer="torch"),
         ),
         runner="executar_anomalia",
@@ -907,13 +883,14 @@ def _consolidar(exp: ExperimentoArtigo, modelos_out: dict, metrica_principal: st
         "artigo": exp.artigo,
         "dataset": exp.dataset,
         "tarefa": exp.tarefa,
-        # Benchmark EXPLORATÓRIO. Anomalia usa perturbação GENÉRICA das features
-        # (não a injeção FMEA do pipeline principal, que é E2). Classificação usa
-        # PV Farms (falhas CC). Nunca é validação formal nem prova industrial.
+        # Benchmark EXPLORATÓRIO. Anomalia usa perturbação em features orientada
+        # pela FMECA; o pipeline principal usa injeção no sinal bruto (E2).
+        # Nunca é validação formal nem prova industrial.
         "evidence_level": "E1",
         "evidence_note": (
-            "E1 — benchmark exploratório (perturbação genérica / dataset rotulado "
-            "CC); não é validação formal nem desempenho industrial."
+            "E1 — benchmark exploratório (injeção sintética orientada pela "
+            "FMECA no espaço de features); não é validação formal nem "
+            "desempenho industrial."
         ),
         "data": agora_local().isoformat(timespec="seconds"),
         "metrica_principal": metrica_principal,
@@ -923,15 +900,13 @@ def _consolidar(exp: ExperimentoArtigo, modelos_out: dict, metrica_principal: st
         "melhor_valor": melhor_valor,
     }
     if metodologia:
-        # Protocolo por artigo: split temporal, injeção FMEA e a regra de
+        # Protocolo por artigo: split temporal, injeção FMECA e a regra de
         # decisão de CADA modelo — rastreabilidade completa no resultado.
         resultado["metodologia"] = metodologia
-        if metodologia.get("injecao", {}).get("tipo") == "fmea_espaco_features":
-            # A nota padrão fala em "perturbação genérica"; os protocolos
-            # usam injeção ORIENTADA PELO FMEA — a proveniência deve refletir.
+        if metodologia.get("injecao", {}).get("tipo") == "fmeca_espaco_features":
             resultado["evidence_note"] = (
                 "E1 — benchmark exploratório (injeção sintética orientada "
-                "pelo FMEA no espaço de features, com protocolo de decisão "
+                "pela FMECA no espaço de features, com protocolo de decisão "
                 "do próprio artigo); não é validação formal nem desempenho "
                 "industrial."
             )
@@ -1119,10 +1094,9 @@ def _metricas_anomalia(y_true, score, y_pred=None,
 
 def executar_anomalia(exp: ExperimentoArtigo, progresso=None) -> dict:
     # ── PROTOCOLO POR ARTIGO (caminho principal) ─────────────────────────
-    # Cada artigo tem o próprio protocolo de decisão (limiar a priori,
-    # p99 de treino, banda do Prophet, PPO em validação temporal, voto) —
-    # ver src/ml/protocolos_artigos.py. Evita o "erro de simulação" de
-    # avaliar todos os métodos sob um harness único com limiar-oráculo.
+    # O protocolo vigente é o AE-LSTM temporal do Ibrahim, com limiar congelado
+    # em calibração temporal. Evita o "erro de simulação" de avaliar métodos sob
+    # um harness único com limiar-oráculo.
     from src.ml.protocolos_artigos import executar_protocolo
 
     saida_protocolo = executar_protocolo(exp.key, progresso=progresso)
@@ -1142,7 +1116,7 @@ def executar_anomalia(exp: ExperimentoArtigo, progresso=None) -> dict:
     # cada experimento; o harness generico legado foi removido na curadoria.
     raise ValueError(
         f"Experimento '{exp.key}' nao tem protocolo de anomalia registrado "
-        f"(nucleo: francisti, ibrahim)."
+        f"(nucleo vigente: ibrahim)."
     )
 _DISPATCH_RUNNERS: dict[str, Callable] = {
     "executar_anomalia": executar_anomalia,

@@ -1,7 +1,7 @@
 {
   "__meta__": {
     "evidence_level": "E2",
-    "evidence_note": "Validação sintética orientada pelo FMEA: classe negativa = janelas saudáveis; classe positiva = falhas injetadas (ground truth). Limiar CONGELADO, carregado de limiar.json — NÃO otimizado no teste. Não é prova de desempenho industrial (E3).",
+    "evidence_note": "Validação sintética orientada pela FMECA: classe negativa = janelas saudáveis; classe positiva = falhas injetadas (ground truth). Limiar CONGELADO, carregado de limiar.json — NÃO otimizado no teste. Não é prova de desempenho industrial (E3).",
     "threshold_method": "p99",
     "score_method": "localizado",
     "score_threshold": 7.826175715408156,

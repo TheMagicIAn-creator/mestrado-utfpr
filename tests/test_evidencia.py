@@ -1,12 +1,5 @@
 """
-Sprint 1 — taxonomia de evidência + limiar exploratório (itens 3.6 e seção 5).
-
-Garante que:
-- métrica de anomalia cujo limiar é escolhido NO PRÓPRIO conjunto avaliado é
-  marcada como EXPLORATÓRIA (threshold_source);
-- decisão nativa do modelo é marcada como tal;
-- o resultado de experimento carrega evidence_level = E1 (exploratório);
-- o perfil do agente conhece a taxonomia E0–E3.
+Contratos da taxonomia de evidencia e dos limiares exploratorios.
 """
 
 
@@ -15,7 +8,7 @@ def test_metricas_anomalia_limiar_exploratorio():
 
     y_true = [0, 0, 1, 1, 0, 1]
     score = [0.10, 0.20, 0.90, 0.80, 0.15, 0.85]
-    m = _metricas_anomalia(y_true, score)  # y_pred=None → limiar no conjunto
+    m = _metricas_anomalia(y_true, score)
     assert m["threshold_source"] == "exploratorio_no_conjunto_avaliado"
     assert m["metrica_dependente_de_limiar"] == "exploratoria"
 
@@ -36,8 +29,8 @@ def test_consolidar_marca_evidence_level_e1(monkeypatch):
     monkeypatch.setattr(E, "_salvar_resultado", lambda exp, res: None)
     monkeypatch.setattr(E, "_grafico_comparacao", lambda exp, res: [])
 
-    exp = E.REGISTRO["francisti"]
-    modelos = {"Z-score (estatístico)": {"auc": 0.80, "disponivel": True}}
+    exp = E.REGISTRO["ibrahim"]
+    modelos = {"AE-LSTM": {"auc": 0.80, "disponivel": True}}
     res = E._consolidar(exp, modelos, "auc")
     assert res["evidence_level"] == "E1"
     assert "explorat" in res["evidence_note"].lower()

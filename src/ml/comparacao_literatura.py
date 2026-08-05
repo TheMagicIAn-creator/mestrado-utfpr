@@ -1,7 +1,7 @@
 """
 comparacao_literatura.py - Al IAdo PV
-Comparação do MÉTODO PROPOSTO (Autoencoder do pipeline principal) com a
-literatura (Francisti e Ibrahim), em pé de igualdade.
+Comparação do MÉTODO PROPOSTO (Autoencoder do pipeline principal) com o
+AE-LSTM de Ibrahim, em pé de igualdade.
 
 Por que este módulo existe
 --------------------------
@@ -12,8 +12,8 @@ com agregações diferentes. Comparar esses números lado a lado seria
 indefensável em banca.
 
 A solução: pontuar o Autoencoder JÁ TREINADO no MESMO banco de teste dos
-experimentos (preparar_dados_anomalia, seed=42 — split temporal com purga
-e injeção FMEA idênticos). Aí todos os métodos veem exatamente as mesmas
+experimento Ibrahim (preparar_dados_anomalia, seed=42 — split temporal com
+purga e injeção FMECA idênticos). Aí todos os métodos veem exatamente as mesmas
 janelas e o mesmo ground truth, e o AUC vira genuinamente comparável.
 
 Duplo reporte (honestidade metodológica):
@@ -44,7 +44,7 @@ PASTA_EXPERIMENTOS = RAIZ_PROJETO / "resultados" / "experimentos"
 PASTA_COMPARACAO = RAIZ_PROJETO / "resultados" / "comparacao"
 
 NOME_METODO = "Autoencoder (método proposto)"
-_EXPERIMENTOS = ("francisti", "ibrahim")
+_EXPERIMENTOS = ("ibrahim",)
 _ARTEFATOS_AE = ("modelo_autoencoder.pt", "scaler.pkl", "limiar.json")
 
 
@@ -136,7 +136,7 @@ def _pontuar_autoencoder(dados: dict) -> dict:
 # ============================================================
 
 def _linhas_experimentos(n_te_banco: int) -> tuple[list[dict], list[str]]:
-    """Extrai (linhas AUC, avisos) dos resultado.json de Francisti/Ibrahim."""
+    """Extrai (linhas AUC, avisos) do resultado.json de Ibrahim."""
     linhas, avisos = [], []
     for key in _EXPERIMENTOS:
         arq = PASTA_EXPERIMENTOS / key / "resultado.json"
@@ -160,7 +160,7 @@ def _linhas_experimentos(n_te_banco: int) -> tuple[list[dict], list[str]]:
                 )
             linhas.append({
                 "metodo": nome,
-                "papel": "baseline" if key == "francisti" else "concorrente",
+                "papel": "concorrente",
                 "fonte": d.get("referencia", key),
                 "auc": float(m["auc"]),
                 "evidencia": "E1",
@@ -261,7 +261,7 @@ def comparar_com_literatura(progresso=None) -> dict:
         }
 
     if progresso:
-        progresso("Preparando o banco comum (split temporal + injeção FMEA)...")
+        progresso("Preparando o banco comum (split temporal + injeção FMECA)...")
     from src.ml.protocolos_artigos import preparar_dados_anomalia
 
     dados = preparar_dados_anomalia(seed=42)
@@ -297,7 +297,7 @@ def comparar_com_literatura(progresso=None) -> dict:
         )
 
     info_banco = (
-        f"Banco comum E1: injeção FMEA no espaço de features, sev="
+        f"Banco comum E1: injeção FMECA no espaço de features, sev="
         f"{dados['injecao']['severidade']}, {ae['n_te']} janelas de teste, "
         f"split temporal com purga (seed 42)"
     )

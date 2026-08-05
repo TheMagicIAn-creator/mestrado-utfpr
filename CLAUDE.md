@@ -163,8 +163,8 @@ consultar_status_pipeline, nunca deste arquivo):
 - Injeção de falhas sintéticas FMECA + validação sintética interna E2
 - Análise de Weibull (confiabilidade e RUL)
 
-Disponíveis via experimentos por artigo (não no pipeline):
-- Isolation Forest, AE-LSTM (Ibrahim)
+Disponível via experimento por artigo (não no pipeline):
+- AE-LSTM temporal (Ibrahim)
 
 Planejados (sem implementação no pacote):
 - Processo Gaussiano (prognóstico com incerteza)
@@ -193,29 +193,16 @@ Autoencoder no sinal → injeção FMECA → validação → Weibull).
 Servem para mostrar que a abordagem escolhida se sustenta
 frente às alternativas. Nunca confundir os dois na dissertação.
 
-CURADORIA — núcleo comparativo enxugado para DOIS experimentos
-(um baseline ingênuo + os concorrentes diretos do Autoencoder):
-- Francisti (2025) — Z-score (Shewhart 3σ), baseline ingênuo:
-  se o Autoencoder não vence uma carta de controle 3σ, há
-  problema. (O Random Forest supervisionado do artigo foi
-  removido.)
-- Ibrahim (2022) — Isolation Forest e AE-LSTM: os concorrentes
-  não-supervisionados diretos; o AE-LSTM é primo arquitetural
-  do Autoencoder do pipeline. (O Prophet do artigo foi cortado:
-  pior detector + dependência instável em runtime.)
+CURADORIA — núcleo comparativo vigente:
+- Ibrahim (2022) — AE-LSTM temporal como concorrente direto do
+  Autoencoder denso proposto. A comparação acadêmica publicada é
+  Proposto × Ibrahim, por AUC e SMD@FPR=10%, no mesmo protocolo E2.
 
-CORTADOS (não são mais experimentos/modelos executáveis):
-- Ghoneim (2021) — classificação supervisionada CC (PV Farms),
-  fora do foco CA (segue acessível pelo classificador_pv).
-- Sharma (2026) — baselines supervisionados, RNN/CNN e
-  IForest+PPO (degenerou: recall 1.0 / especificidade 0.0).
-- Ahirwar (2025) — voto híbrido; derivativo do Ibrahim (só
-  combina os membros que o Ibrahim já roda).
-- Stender (2020) — cartão de dataset, não é experimento.
-- Facebook Prophet (modelo do Ibrahim) — pior detector do trio
-  e dependência que quebra em runtime ('stan_backend').
-Ahirwar, Stender e Prophet seguem CITÁVEIS como literatura;
-apenas não são experimentos/modelos executáveis.
+CORTADOS (não são experimentos/modelos quantitativos vigentes):
+- Francisti/Shewhart, Isolation Forest e Prophet do Ibrahim, Ghoneim,
+  Sharma, Ahirwar e Stender. Esses trabalhos seguem CITÁVEIS como
+  literatura quando forem úteis ao texto, mas não entram como modelos
+  executáveis nem como linhas da comparação publicada do AE denso.
 
 Assimetria de evidência (importante para a banca): o pipeline
 principal usa injeção FMECA no SINAL bruto (E2); os experimentos
@@ -236,20 +223,15 @@ NUNCA misturar com os números do framework aposentado: 0,588
 0,909 (E2, por severidade, FP auto-calibrado) vêm do MESMO
 modelo sob protocolos diferentes. Não vão na mesma tabela.
 
-Anomalia é avaliada com PROTOCOLO PRÓPRIO POR ARTIGO
-(src/ml/protocolos_artigos.py): split temporal com purga,
-injeção sintética orientada pela FMECA no espaço de features
-(famílias Contator AC/IGBT/Fusível AC, com detecção por
-falha) e a regra de decisão do próprio artigo — Shewhart 3σ
-(Francisti), contaminação a priori + p99 do treino congelado
-(Ibrahim: IF + AE-LSTM). Nenhum limiar enxerga os rótulos do
-teste; F1 não é comparável entre protocolos (compare por AUC).
-O resultado.json carrega o bloco "metodologia". Robustez: um
-modelo cujo pacote não está instalado vira "requer <lib>"; um
-modelo instalado que quebra em runtime vira "erro de execução"
-sem derrubar os demais (helper _rodar_modelo). Prophet, Orange3
-e stable-baselines3/gymnasium foram descartados junto
-com os experimentos Ghoneim/Sharma.
+Anomalia no framework por artigo é mantida apenas para o protocolo
+Ibrahim/AE-LSTM (src/ml/protocolos_artigos.py): split temporal com
+purga, injeção sintética orientada pela FMECA no espaço de features
+(famílias Contator AC/IGBT/Fusível AC, com detecção por falha) e
+limiar p99 congelado em calibração temporal. Nenhum limiar enxerga
+os rótulos do teste. O resultado.json carrega o bloco "metodologia".
+Robustez: um modelo cujo pacote não está instalado vira "requer
+<lib>"; um modelo instalado que quebra em runtime vira "erro de
+execução" sem derrubar o experimento (helper _rodar_modelo).
 
 ## Arquitetura do Sistema
 O projeto é um pacote Python modular. O ponto de

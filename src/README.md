@@ -53,7 +53,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 |---|---|
 | `features_ca.py` | Etapa 1: extrai features de tempo/frequência/inter-fase do Paderborn. |
 | `autoencoder.py` | Etapa 2: Autoencoder de normalidade + limiar operacional (p99). |
-| `injecao_falhas.py` | Etapa 3: falhas sintéticas orientadas pelo FMEA + SMD. |
+| `injecao_falhas.py` | Etapa 3: falhas sintéticas orientadas pela FMECA + SMD. |
 | `validacao.py` | Etapa 4: métricas no limiar congelado (ROC/PR/F1/AUC). |
 | `rul_weibull.py` | Etapa 5: TTF, Weibull 2P, RUL condicional. |
 | `pipeline.py` | Coordena estado/execução das etapas e grava manifestos. |
@@ -64,8 +64,8 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `exec_etapa_isolada.py` | Executa uma etapa pesada do pipeline em subprocesso. |
 | `eda.py` | Análise exploratória do Paderborn (Plotly). |
 | **Experimentos por artigo** | |
-| `experimentos_artigos.py` | Registry de experimentos, métricas, artefatos, runners de classificação e anomalia. |
-| `protocolos_artigos.py` | Protocolo de decisão **por artigo** (Francisti/Ibrahim) + injeção FMEA no espaço de features. |
+| `experimentos_artigos.py` | Registry do comparativo ativo Ibrahim/AE-LSTM, métricas, artefatos e runner de anomalia. |
+| `protocolos_artigos.py` | Protocolo de decisão do Ibrahim/AE-LSTM + injeção FMECA no espaço de features. |
 | `modelos_anomalia.py` | **Módulo folha**: scorer de anomalia não-supervisionado (AE-LSTM). Existe para quebrar o ciclo `experimentos`↔`protocolos`. |
 | `exec_experimento_isolado.py` | Roda experimento em subprocesso isolado (crash de lib pesada não derruba o app). |
 | **Classificação PV (CC)** | |
@@ -90,9 +90,10 @@ BM25 por RRF → reranking → Gemini Flash audita a cobertura → Gemini Pro re
 citações por página, memória classificada do Obsidian e memória validada pertinente.
 
 **2. Experimento de ML** (`ferramentas` → `experimentos_artigos`):
-roda em subprocesso isolado; cada artigo usa seu **protocolo próprio**
-(`protocolos_artigos`) com split temporal e injeção FMEA; os scorers vêm de
-`modelos_anomalia`. Resultados em `resultados/experimentos/<key>/`.
+roda em subprocesso isolado; o comparativo ativo usa o **protocolo próprio**
+do Ibrahim/AE-LSTM (`protocolos_artigos`) com split temporal e injeção FMECA;
+os scorers vêm de `modelos_anomalia`. Resultados em
+`resultados/experimentos/<key>/`.
 
 > Os entrypoints ficam na **raiz do repo** (não em `src/`): `app.py` (Streamlit),
 > `main.py` (chat no terminal) e `watcher.py` (monitora `novos_pdfs/`).

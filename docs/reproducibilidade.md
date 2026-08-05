@@ -42,7 +42,7 @@ python -m pytest                        # suíte completa (contagem: pytest --co
 ```powershell
 python src/ml/features_ca.py
 python src/ml/autoencoder.py     # limiar.json (score operacional + referências) + manifesto
-python src/ml/injecao_falhas.py  # falhas FMEA (E2) + schema
+python src/ml/injecao_falhas.py  # falhas FMECA (E2) + schema
 python src/ml/validacao.py       # ROC + PR + matriz, limiar congelado, report E2
 python src/ml/rul_weibull.py
 ```

@@ -36,7 +36,7 @@ evento, histogramas "quadrados".
 
 | Item | Situação | Ação |
 |------|----------|------|
-| Modelagem de normalidade (treinar no saudável, detectar desvio) | **Fundamentada** — `autoencoder.py:6-14` cita Ibrahim (2022) e Ahirwar (2025); é a justificativa correta para ausência de dados de falha | Manter e citar na dissertação |
+| Modelagem de normalidade (treinar no saudável, detectar desvio) | **Fundamentada** — `autoencoder.py:6-14` ancora o método em Ibrahim (2022), via erro de reconstrução em dados saudáveis | Manter e citar na dissertação |
 | Arquitetura específica (109→64→32→16, ReLU, dropout 0,2) | **Não fundamentada** — `autoencoder.py:96-150`: dimensões, profundidade e dropout são escolhas padrão, sem referência. Ibrahim (2022) usa **AE-LSTM**, não um AE denso sobre features handcrafted | Ler Ibrahim e (a) justificar o AE denso como alternativa deliberada, ou (b) citar uma referência de AE-sobre-features. **Ponta solta a fechar** |
 | Limiar = percentil 99 do erro saudável | **Fundamentado e honesto** — `autoencoder.py:262-296`; controla FP≈1%, robusto a assimetria; μ+3σ mantido só como referência | Manter |
 | Split temporal treino/calib/teste com purga | **Boa prática** — `autoencoder.py:501-522`; teste isolado nunca toca scaler/limiar | Manter |
@@ -223,16 +223,13 @@ varredura simples de latente), para não ficarem "a esmo".
 - **O quê:** o mesmo MSE médio sobre todas as features do §3.1 reaparece
   aqui. A causa-raiz é transversal ao pipeline e aos experimentos.
 
-### 10.3 [documentar] O baseline ingênuo é MAIS sensível que o AE proposto
-- **Onde:** `protocolos_artigos.py:349` — Francisti usa
-  `score = max(|z|)` sobre as features (Shewhart 3σ).
-- **O quê:** o baseline "burro" agrega por **máximo** — exatamente o que
-  detecta anomalia **localizada**. Ou seja: contra falha localizada
-  (IGBT/Fusível), o Z-score máx-|z| tende a **vencer** o AE de MSE médio.
-  Isso **reforça** a correção §3.1: se o Autoencoder não vence uma carta de
-  controle 3σ na detecção localizada, o problema é o escore médio, não o
-  método. (Alinhado ao papel do Francisti no CLAUDE.md: baseline que o AE
-  precisa vencer.)
+### 10.3 [histórico] O escore médio diluía falhas localizadas
+- **Onde:** versões antigas comparavam o AE de MSE médio com baselines
+  exploratórios de carta de controle.
+- **O quê:** o achado permanece metodologicamente útil, mas não define mais
+  uma linha comparativa vigente. A correção adotada foi interna ao método:
+  escore localizado por top-k de resíduos padronizados, preservando a
+  comparação publicada apenas contra o AE-LSTM temporal do Ibrahim.
 
 ### 10.4 [documentar] Assimetria E1 (features) × E2 (sinal) — não comparar por F1
 - **Onde:** `protocolos_artigos.py:68-104` (injeção E1 no espaço de features,
@@ -246,10 +243,10 @@ varredura simples de latente), para não ficarem "a esmo".
 
 ### 10.5 [positivo] Protocolos de comparação são metodologicamente sólidos
 - Split temporal com purga (`protocolos_artigos.py:217-221`); scaler só no
-  treino; cada método com regra de decisão **a priori** que nunca vê rótulos
-  do teste (Shewhart 3σ; IF contaminação a priori; AE-LSTM p99 congelado em
-  fatia de calibração temporal, `:428-437`); recall reportado **por família
-  de falha**; blocos de "fidelidade" honestos sobre cada adaptação. Manter.
+  treino; o AE-LSTM com regra de decisão **a priori** que nunca vê rótulos
+  do teste (p99 congelado em fatia de calibração temporal); recall reportado
+  **por família de falha**; blocos de "fidelidade" honestos sobre cada
+  adaptação. Manter.
 
 ## 11. Plano de correção priorizado (consolidado, 2 rodadas)
 
@@ -281,16 +278,12 @@ uma com lastro na literatura indexada:
 1. **Erro de reconstrução como sinal de anomalia** — Ibrahim (2022), eq. 3:
    `L(X,X̂)=‖X̂−X‖²`. Fundamentado.
 2. **Padronização por-feature do resíduo** (`z_j = (|r_j|−μ_j)/σ_j`) —
-   Francisti (2025): *"Z-scores were calculated to detect statistical
-   anomalies, defined here as deviations exceeding ±3 standard deviations
-   from the mean"*. É controle estatístico de processo (Shewhart/Z-score),
-   aqui aplicado ao **resíduo do Autoencoder** em vez do sinal bruto.
-   Fundamentado.
-3. **Agregação pelos top-k mais desviantes** — generalização robusta da regra
-   de Shewhart (que alarma pelo feature MAIS desviante, k=1) para o
-   subconjunto onde a falha localizada se concentra. O princípio "a anomalia
-   vive num subconjunto de variáveis" é o das cartas multivariadas de SPC e
-   da análise de contribuição por feature (Narayanan, 2023 — XAI de falha).
+   transforma resíduos de grandezas com escalas diferentes em uma régua comum,
+   evitando que variáveis de maior amplitude dominem o escore.
+3. **Agregação pelos top-k mais desviantes** — generalização operacional para o
+   subconjunto onde a falha localizada se concentra. O princípio é: uma falha
+   pode ser forte em poucas variáveis, então o escore não deve diluí-la no MSE
+   médio de todas as features.
 
 **Justificativa do k:** k deve refletir a cardinalidade típica da assinatura
 de falha. Pelas assinaturas FMECA (`protocolos_artigos.py:68-104`), uma falha
@@ -298,11 +291,9 @@ toca ~3–9 features (ex.: IGBT = `harm_5/7/11` × 3 fases). k=5 é um piso
 razoável; **recomenda-se justificar com uma varredura** (`diagnostico_escore.py`
 aceita `--k`) e reportar a escolha — nunca fixar sem evidência.
 
-**Relação com o baseline Francisti (papel no CLAUDE.md):** o escore localizado
-é, em essência, a regra de Shewhart do Francisti aplicada aos resíduos do AE e
-suavizada por top-k. Ou seja, o AE + escore localizado **incorpora a força do
-baseline** que ele precisava vencer — o que fecha o argumento em vez de deixá-lo
-como concorrente vencedor.
+**Relação com a curadoria atual:** o escore localizado é parte do método
+proposto, não uma linha de baseline separada. A comparação quantitativa vigente
+permanece Proposto × Ibrahim/AE-LSTM, publicada em `resultados/macro/`.
 
 ## 14. Reavaliação do gargalo de janelas (§3.5)
 
@@ -535,9 +526,9 @@ de teste dos outros modelos → comparável por AUC), cada item é pontuado como
 "a janela ATUAL dado o histórico normal precedente" — o escore é o erro de
 reconstrução no **último passo** da sequência. Alternativa possível (injetar
 um trecho temporal sustentado, mais próximo do cenário do Ibrahim) muda o
-ground truth e quebra a comparabilidade com IF/Z-score; por isso ficou de
-fora. `SEQ_LEN=8` por padrão (env `AL_IADO_AELSTM_SEQ_LEN`), a justificar por
-varredura.
+ground truth e quebra a comparação publicada Proposto × AE-LSTM; por isso
+ficou de fora. `SEQ_LEN=8` por padrão (env `AL_IADO_AELSTM_SEQ_LEN`), a
+justificar por varredura.
 
 **Testes:** `tests/test_ae_lstm_temporal.py` valida a mecânica (forma das
 sequências, contexto, e que anomalia no último passo eleva o escore). Os
@@ -860,7 +851,7 @@ Dois scripts legíveis de ponta a ponta, com **avaliação e saída idênticas**
 | Saída | tabela 5 colunas + gráfico | **o mesmo módulo** |
 
 Decisões do pesquisador: (1) avaliação nossa (E2) para os dois; (2) só o
-AE-LSTM no macro do Ibrahim (Isolation Forest fora); (3) scripts **importam e
+AE-LSTM no macro do Ibrahim (modelos auxiliares fora); (3) scripts **importam e
 orquestram** (não duplicam lógica) — legíveis para citar trechos na dissertação.
 
 **Contrato:** cada macro fornece um *scorer* `callable(list[DataFrame]) ->

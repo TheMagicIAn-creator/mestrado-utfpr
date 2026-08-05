@@ -1,24 +1,20 @@
 """
-rodar_experimentos.py — Al IAdo PV / runner CLI dos experimentos por artigo.
+rodar_experimentos.py - Al IAdo PV / runner CLI dos experimentos por artigo.
 
-Dá aos experimentos locais implementados (Francisti e Ibrahim) a MESMA
-ergonomia de linha de comando que o `python src/ml/autoencoder.py`
-tem para o pipeline principal: rodar standalone, ver a tabela de métricas, o
-protocolo de decisão usado e onde o resultado foi salvo — sem abrir o app.
+O núcleo executável vigente contém apenas Ibrahim et al. (2022), restrito ao
+AE-LSTM temporal. Este arquivo oferece o mesmo atalho de reprodutibilidade do
+pipeline principal: rodar standalone, ver métricas, protocolo de decisão e onde
+o resultado foi salvo, sem abrir o app.
 
-IMPORTANTE — isto NÃO muda a metodologia nem os números:
-  - cada experimento JÁ tem o seu protocolo próprio em
-    src/ml/protocolos_artigos.py (Shewhart, p99 em calibração, banda do
-    congelado; voto majoritário);
-  - este arquivo é só um ATALHO de execução/reprodutibilidade. O resultado é
-    idêntico ao do chat ("rode o experimento do Ghoneim") ou do
-    `executar_experimento(key)`.
+IMPORTANTE - isto não muda a metodologia nem os números:
+  - o protocolo próprio fica em src/ml/protocolos_artigos.py;
+  - a decisão do AE-LSTM usa limiar p99 congelado em calibração temporal;
+  - este arquivo é só um atalho para executar `executar_experimento(key)`.
 
 Uso:
-  python scripts/rodar_experimentos.py                 # lista os experimentos
-  python scripts/rodar_experimentos.py francisti       # roda um
-  python scripts/rodar_experimentos.py francisti ibrahim  # roda vários
-  python scripts/rodar_experimentos.py --todos         # roda todos
+  python scripts/rodar_experimentos.py          # lista os experimentos
+  python scripts/rodar_experimentos.py ibrahim  # roda o AE-LSTM do Ibrahim
+  python scripts/rodar_experimentos.py --todos  # roda todos os ativos
 """
 
 from __future__ import annotations

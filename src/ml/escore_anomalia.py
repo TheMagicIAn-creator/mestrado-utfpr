@@ -11,10 +11,9 @@ Dois escores, ambos calibrados para ~1% de falso positivo no bloco saudável:
                  IGBT, perda de fase do Fusível).
 
 Fundamentação (docs/auditoria_pipeline_ml.md §13): erro de reconstrução como
-sinal de anomalia (Ibrahim, 2022, eq. 3); padronização por-feature do resíduo
-(Francisti, 2025 — Z-score/Shewhart, aqui sobre o resíduo do AE); agregação
-top-k como generalização robusta da regra de Shewhart / SPC multivariável e da
-contribuição por feature (Narayanan, 2023).
+sinal de anomalia (Ibrahim, 2022, eq. 3); padronização por feature do resíduo
+para tornar cada variável comparável; agregação top-k como régua operacional
+interna para destacar falhas localizadas sem diluição pelo MSE médio.
 
 Método OPERACIONAL padrão: 'localizado'. Para reproduzir EXATAMENTE o pipeline
 antigo, defina a variável de ambiente:

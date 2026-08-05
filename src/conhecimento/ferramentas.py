@@ -49,7 +49,7 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "rodar_injecao_falhas",
         "description": (
-            "Executa injecao de falhas sinteticas fundamentadas no FMEA. Use "
+            "Executa injecao de falhas sinteticas fundamentadas na FMECA. Use "
             "quando o usuario pedir simulacao ou injecao de falhas."
         ),
     },
@@ -164,7 +164,7 @@ ESPEC_FERRAMENTAS = [
         "description": (
             "Explica e compara as abordagens de ML do projeto: supervisionada "
             "(classifica falhas CC conhecidas), nao supervisionada (aprende "
-            "normalidade e detecta anomalia CA) e sintetica orientada pelo FMEA. "
+            "normalidade e detecta anomalia CA) e sintetica orientada pela FMECA. "
             "Use quando o usuario pedir a diferenca entre supervisionado e nao "
             "supervisionado, ou comparar as abordagens."
         ),
@@ -307,7 +307,6 @@ def _quer_catalogo(pergunta: str) -> bool:
 # --- Experimentos de ML por artigo-base ------------------------------------
 # Sobrenome citado -> chave do experimento no registry.
 _AUTORES_EXP = {
-    "francisti": "francisti",
     "ibrahim": "ibrahim",
 }
 
@@ -337,9 +336,9 @@ def _experimentos_alvo(pergunta: str) -> list[str]:
     if alvos:
         return alvos
     if any(t in txt for t in ("anomalia", "anomalias", "anomaly", "anomalies", "anomalie", "anomalies")):
-        return ["francisti", "ibrahim"]
+        return ["ibrahim"]
     if any(t in txt for t in ("todos", "tudo", "compare", "comparar", "todas", "all", "todos", "todas", "tous", "toutes")):
-        return ["francisti", "ibrahim"]
+        return ["ibrahim"]
     return []
 
 
@@ -1385,7 +1384,7 @@ def _md_experimento(res: dict) -> tuple[str, list[dict]]:
     )
 
     # Bloco de METODOLOGIA do protocolo por artigo (split temporal, injeção
-    # FMEA e a regra de decisão de cada modelo) — rastreabilidade na resposta.
+    # FMECA e a regra de decisão de cada modelo) — rastreabilidade na resposta.
     met = res.get("metodologia")
     if met:
         linhas.append(f"\n**Protocolo do artigo** (`{met.get('protocolo', '?')}`):")
@@ -1400,14 +1399,14 @@ def _md_experimento(res: dict) -> tuple[str, list[dict]]:
         inj = met.get("injecao", {})
         if inj:
             linhas.append(
-                f"- Injeção: {inj.get('tipo', '?')} — famílias FMEA "
+                f"- Injeção: {inj.get('tipo', '?')} — famílias FMECA "
                 f"{', '.join(inj.get('falhas', []))} (severidade {inj.get('severidade')}).")
         for modelo, regra in (met.get("decisoes") or {}).items():
             linhas.append(f"- Decisão {modelo}: {regra}.")
         for nota in met.get("fidelidade", []):
             linhas.append(f"- _{nota}_")
 
-    # Detecção por família de falha FMEA (quando o protocolo reporta)
+    # Detecção por família de falha FMECA (quando o protocolo reporta)
     com_falhas = {
         nome: m["deteccao_por_falha"]
         for nome, m in res["modelos"].items()
@@ -1565,14 +1564,14 @@ def consultar_datasets(progresso=None, pergunta: str = "") -> dict:
 
 
 def comparar_abordagens_ml(progresso=None, pergunta: str = "") -> dict:
-    """Compara supervisionado x não supervisionado x sintético (FMEA), com rigor."""
+    """Compara supervisionado x não supervisionado x sintético (FMECA), com rigor."""
     msg = (
         "## Abordagens de ML na dissertação\n\n"
         "| Abordagem | O que faz | Rótulos? | No projeto |\n"
         "|---|---|---|---|\n"
         "| **Supervisionada** | classifica falhas CONHECIDAS | sim | PV Farms (**CC**): RF, AdaBoost, LogReg, Naive Bayes, CN2 |\n"
-        "| **Não supervisionada** | aprende a NORMALIDADE e detecta desvios | não | Paderborn (**CA**): Autoencoder, Isolation Forest |\n"
-        "| **Sintética (FMEA)** | valida assinaturas CA modeladas | ground truth sintético | injeção de falhas no Paderborn (**E2**) |\n\n"
+        "| **Não supervisionada** | aprende a NORMALIDADE e detecta desvios | não | Paderborn (**CA**): Autoencoder denso e AE-LSTM do Ibrahim |\n"
+        "| **Sintética (FMECA)** | valida assinaturas CA modeladas | ground truth sintético | injeção de falhas no Paderborn (**E2**) |\n\n"
         "**Rigor:**\n"
         "- O não supervisionado DETECTA anomalia, mas NÃO garante diagnóstico "
         "causal da falha.\n"
@@ -1676,7 +1675,7 @@ def classificar_amostra_pv(progresso=None, pergunta: str = "") -> dict:
 def comparar_experimentos_auc(progresso=None, pergunta: str = "") -> dict:
     """
     Compara o MÉTODO PROPOSTO (Autoencoder do pipeline) com a literatura
-    (Francisti, Ibrahim) pelo AUC, no MESMO banco de teste (injeção FMEA
+    (Ibrahim) pelo AUC, no MESMO banco de teste (injeção FMECA
     no espaço de features, split temporal com purga, seed 42). Nunca
     treina: usa o modelo salvo; sem modelo, degrada para a comparação
     só-experimentos com aviso.

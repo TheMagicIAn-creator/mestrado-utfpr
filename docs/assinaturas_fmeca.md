@@ -2,7 +2,7 @@
 
 Este documento traduz as assinaturas de falha implementadas no código
 (`src/ml/injecao_falhas.py` — domínio do SINAL; `src/ml/protocolos_artigos.py`
-`ASSINATURAS_FMEA` — domínio das FEATURES) em prosa técnica citável na
+`ASSINATURAS_FMECA` — domínio das FEATURES) em prosa técnica citável na
 dissertação.
 
 > **Fonte única dos componentes/modos/índices: `docs/fmeca.md`.** Este arquivo

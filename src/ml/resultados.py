@@ -60,10 +60,9 @@ def _normalizar(texto: str) -> str:
 
 
 _EXPERIMENTOS_ALIASES = {
-    "francisti": "francisti",
     "ibrahim": "ibrahim",
 }
-_EXPERIMENTOS_ANOMALIA = {"francisti", "ibrahim"}
+_EXPERIMENTOS_ANOMALIA = {"ibrahim"}
 
 
 def _slug_modelo(nome: str) -> str:
@@ -111,7 +110,7 @@ def _experimentos_pedidos(pergunta: str = "") -> list[str]:
     if pedidos:
         return pedidos
     if any(t in txt for t in ("anomalia", "anomalias", "anomaly", "anomalies", "anomalie")):
-        return ["francisti", "ibrahim"]
+        return ["ibrahim"]
     return []
 
 
@@ -597,8 +596,12 @@ def _resumo_weibull() -> str | None:
     if not d:
         return None
 
+    tempo = d.get("__meta__", {}).get("tempo", {})
+    unidade = tempo.get("ttf_unidade", "passos de degradação sintética")
     linhas = [
         "## RUL / Weibull\n\n",
+        f"Unidade dos tempos: `{unidade}`; tempo físico calibrado: "
+        f"{'sim' if tempo.get('tempo_fisico_calibrado') else 'não'}.\n\n",
         "| Falha | NPR | Eventos/Censura | beta (IC95%) | eta (IC95%) | MTTF (IC95%) | B10 (IC95%) | RUL restrita inicial | Status |\n",
         "|---|---:|---:|---:|---:|---:|---:|---:|---|\n",
     ]
@@ -806,10 +809,9 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
     if _pede_origem_dados(txt):
         linhas.append("\nSeparacao entre artigo e recalculo local:\n")
         linhas.append(
-            "- **Metodologia dos artigos**: define quais familias de modelos entram "
-            "no benchmark (por exemplo, Isolation Forest, AE-LSTM, SVM, "
-            "RNN/CNN ou hibrido). Isso e inspiracao metodologica, nao copia de "
-            "metricas publicadas.\n"
+            "- **Metodologia do artigo-base**: o comparativo vigente usa o "
+            "AE-LSTM temporal de Ibrahim como concorrente do AE denso proposto. "
+            "Isso e inspiracao metodologica, nao copia de metricas publicadas.\n"
         )
         linhas.append(
             "- **Recalculado no repositorio**: metricas, matrizes de confusao, "
@@ -817,10 +819,10 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
             "locais em `resultados/experimentos/<autor>/resultado.json`.\n"
         )
         linhas.append(
-            "- **Dados locais**: Francisti e Ibrahim usam features "
-            "locais do Paderborn extraidas de "
+            "- **Dados locais**: Ibrahim usa features locais do Paderborn extraidas de "
             "`dados/brutos/Inverter_Data_Set.csv`; como esse dataset e saudavel, "
-            "o ground truth de anomalia vem de falhas sinteticas do pipeline.\n"
+            "o ground truth de anomalia vem de falhas sinteticas orientadas pela "
+            "FMECA.\n"
         )
         linhas.append(
             "- **Nao e validacao industrial**: esses experimentos sao E1 "

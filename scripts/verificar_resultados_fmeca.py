@@ -556,7 +556,7 @@ def checar_imagens(aud: Auditoria) -> None:
 
 def checar_experimentos(aud: Auditoria) -> None:
     presentes = 0
-    for chave in ("francisti", "ibrahim"):
+    for chave in ("ibrahim",):
         caminho = PASTA_EXP / chave / "resultado.json"
         if not caminho.is_file():
             aud.aviso(f"experimento {chave}: resultado ausente")
@@ -572,11 +572,11 @@ def checar_experimentos(aud: Auditoria) -> None:
             )
         if chave == "ibrahim":
             aud.exigir(
-                not any("prophet" in nome.lower() for nome in modelos),
-                "experimento Ibrahim: Prophet ainda ativo",
+                set(modelos).issubset({"AE-LSTM"}),
+                "experimento Ibrahim: modelos auxiliares removidos ainda ativos",
             )
     if presentes:
-        print(f"• experimentos: {presentes}/2 artefatos comparativos presentes")
+        print(f"• experimentos: {presentes}/1 artefato comparativo presente")
 
     legado = PASTA_CMP / "comparacao_literatura.json"
     if legado.is_file():

@@ -1,6 +1,6 @@
 {
   "evidence_level": "E2",
-  "evidence_note": "Falhas sintéticas orientadas pelo FMEA (ground truth para validar o detector). Não é validação experimental externa (E3). A injeção de ruído do sensor é um PROXY e exige calibração física.",
+  "evidence_note": "Falhas sintéticas orientadas pela FMECA (ground truth para validar o detector). Não é validação experimental externa (E3). A injeção de ruído do sensor é um PROXY e exige calibração física.",
   "threshold_method": "p99",
   "score_method": "localizado",
   "score_threshold": 7.826175715408156,

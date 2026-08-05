@@ -6,11 +6,13 @@ Fundamentação metodológica:
   O dataset de Paderborn contém apenas dados saudáveis (sem falhas reais).
   A estratégia adotada — definida na metodologia da dissertação — é gerar
   dados de tempo até a falha (TTF) por meio de trajetórias de degradação
-  sintética progressiva, fundamentadas no FMEA do TCC (Torres, 2024).
+  sintética progressiva, fundamentadas na FMECA do TCC (Torres, 2024).
 
   Cada trajetória simula um inversor que inicia saudável e degrada
-  gradualmente (severidade 0→1,0 em N_STEPS janelas). O TTF é o passo
-  em que o Autoencoder detecta a anomalia (erro > limiar).
+  gradualmente (severidade 0→1,0 em N_STEPS passos sintéticos). O TTF é o
+  passo de degradação em que o Autoencoder detecta a anomalia (erro > limiar).
+  Sem dados run-to-failure ou taxa de degradação de campo, esse passo NÃO é
+  hora, dia nem ano; é uma coordenada do experimento computacional.
   Com N_TRAJ trajetórias por tipo de falha, ajusta-se a distribuição
   de Weibull de 2 parâmetros aos TTF obtidos.
 
@@ -118,13 +120,32 @@ PASTA_AE    = RAIZ / "resultados" / "autoencoder"
 # ── Parâmetros de simulação ───────────────────────────────────
 N_TRAJ  = 100    # teto; o n efetivo não excede janelas independentes do holdout
 N_STEPS = 120    # passos de degradação por trajetória (sev 0→1,0)
-# Cada passo representa um intervalo de monitoramento
-# Em deployment real: ajustar conforme a frequência de aquisição
+TTF_UNIDADE = "passo_sintetico_de_degradacao"
+TEMPO_FISICO_CALIBRADO = False
+TEMPO_FISICO_NOTA = (
+    "Os TTF/RUL são expressos em passos sintéticos de degradação. A janela de "
+    "aquisição tem duração física conhecida, mas o avanço de severidade não tem "
+    "taxa de campo calibrada; portanto não converter para horas, dias ou anos."
+)
 BATCH_INFERENCIA = 16
 N_BOOTSTRAP = 250
 MIN_EVENTOS_WEIBULL = 10
 MAX_CENSURA_RUL_PCT = 50.0
 PERSISTENCIA_CRUZAMENTO = 3
+
+
+def metadados_tempo_rul() -> dict:
+    """Metadados para impedir leitura dos passos sintéticos como tempo físico."""
+    return {
+        "ttf_unidade": TTF_UNIDADE,
+        "rul_unidade": TTF_UNIDADE,
+        "tempo_fisico_calibrado": TEMPO_FISICO_CALIBRADO,
+        "passo_tempo_fisico_horas": None,
+        "fs_hz": FS,
+        "janela_amostras": JANELA,
+        "janela_aquisicao_s": float(JANELA / FS),
+        "nota": TEMPO_FISICO_NOTA,
+    }
 
 
 def _json_seguro(valor):
@@ -462,6 +483,9 @@ def ajustar_weibull(
         "n_eventos": int(obs.sum()),
         "n_censurados": int((~obs).sum()),
         "censura_pct": censura_pct,
+        "ttf_unidade": TTF_UNIDADE,
+        "rul_unidade": TTF_UNIDADE,
+        "tempo_fisico_calibrado": TEMPO_FISICO_CALIBRADO,
         "min_eventos_exigidos": MIN_EVENTOS_WEIBULL,
         # Compatibilidade: indica disponibilidade da curva paramétrica. Alta
         # censura passa a ser ressalva explícita, não motivo para apagar a RUL.
@@ -916,12 +940,13 @@ def executar_rul_weibull() -> bool:
                 "trajetórias de degradação SIMULADAS cruzando o limiar do "
                 "Autoencoder, não de dados run-to-failure reais; (2) a própria "
                 "falha que define o cruzamento é injeção sintética orientada "
-                "pelo FMEA. Demonstra a METODOLOGIA (TTF→Weibull→MTTF/B10/RUL), "
+                "pela FMECA. Demonstra a METODOLOGIA (TTF→Weibull→MTTF/B10/RUL), "
                 "NÃO é estimativa de vida útil de campo (exigiria histórico real "
                 "de falhas). A censura à direita é preservada no MLE; os "
                 "intervalos vêm de bootstrap de trajetórias."
             ),
             "ttf_origem": "trajetorias_simuladas_cruzando_limiar_AE",
+            "tempo": metadados_tempo_rul(),
             "adequacy_note": (
                 "O RMSE entre Kaplan-Meier e Weibull é descritivo, não prova "
                 "adequação nem substitui validação com dados run-to-failure."
@@ -932,6 +957,10 @@ def executar_rul_weibull() -> bool:
             "n_trajetorias_max": N_TRAJ,
             "n_trajetorias_efetivas": n_traj_real,
             "n_steps"      : N_STEPS,
+            "ttf_unidade": TTF_UNIDADE,
+            "rul_unidade": TTF_UNIDADE,
+            "tempo_fisico_calibrado": TEMPO_FISICO_CALIBRADO,
+            "tempo_fisico_nota": TEMPO_FISICO_NOTA,
             "limiar"       : float(limiar),
             "min_eventos_weibull": MIN_EVENTOS_WEIBULL,
             "max_censura_rul_pct": MAX_CENSURA_RUL_PCT,
@@ -975,6 +1004,9 @@ def executar_rul_weibull() -> bool:
             "n_eventos": p["n_eventos"],
             "n_censurados": p["n_censurados"],
             "censura_pct": p["censura_pct"],
+            "ttf_unidade": p["ttf_unidade"],
+            "rul_unidade": p["rul_unidade"],
+            "tempo_fisico_calibrado": p["tempo_fisico_calibrado"],
             "beta": p["beta"],
             "beta_ci_low": p["beta_ci95"][0],
             "beta_ci_high": p["beta_ci95"][1],

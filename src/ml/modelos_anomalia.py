@@ -17,9 +17,8 @@ artigo do núcleo (Ibrahim). Modelagem de NORMALIDADE (sem rótulo de falha):
   passo da sequência. Assim o modelo é genuinamente temporal e o banco de
   teste permanece o MESMO dos outros modelos (comparável por AUC).
 
-O Isolation Forest do Ibrahim vive direto no protocolo (é um
-sklearn.ensemble.IsolationForest, não precisa de scorer). Removidos na
-curadoria: scorers supervisionados/RL (Sharma) e o Facebook Prophet.
+Os modelos auxiliares foram removidos da curadoria executável; o módulo mantém
+apenas o scorer necessário ao AE-LSTM temporal.
 
 Por que este módulo existe (arquitetura): ``experimentos_artigos.py`` e
 ``protocolos_artigos.py`` precisavam deste scorer sem importar um do outro —

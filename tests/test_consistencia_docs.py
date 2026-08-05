@@ -92,10 +92,10 @@ def test_experimentos_do_claude_md_existem_no_registry():
     bloco = re.search(r"REGISTRO[^=]*=\s*\{(.*?)\n\}", codigo, re.S)
     assert bloco, "dict REGISTRO não encontrado"
     chaves = set(re.findall(r'"(\w+)":\s*ExperimentoArtigo', bloco.group(1)))
-    assert chaves == {"francisti", "ibrahim"}, (
+    assert chaves == {"ibrahim"}, (
         f"registry divergente do documentado: {chaves}"
     )
-    for cortado in ("ghoneim", "sharma", "ahirwar", "stender"):
+    for cortado in ("francisti", "ghoneim", "sharma", "ahirwar", "stender"):
         assert cortado not in chaves, f"experimento cortado voltou: {cortado}"
 
 

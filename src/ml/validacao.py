@@ -21,9 +21,9 @@ Métricas geradas:
   - Matriz de Confusão no limiar operacional
   - Heatmap/tabela comparativa por falha e severidade
 
-Conexão com FMEA:
+Conexão com FMECA:
   As métricas são reportadas por falha, conectando com os índices
-  NPR do FMEA do TCC (Torres, 2024) para cada componente crítico.
+  NPR da FMECA do TCC (Torres, 2024) para cada componente crítico.
 
 Saída:
   resultados/autoencoder/validacao_roc.png
@@ -661,7 +661,7 @@ def executar_validacao() -> bool:
         "__meta__": {
             "evidence_level": "E2",
             "evidence_note": (
-                "Validação sintética orientada pelo FMEA: classe negativa = "
+                "Validação sintética orientada pela FMECA: classe negativa = "
                 "janelas saudáveis; classe positiva = falhas injetadas (ground "
                 "truth). Limiar CONGELADO, carregado de limiar.json — NÃO "
                 "otimizado no teste. Não é prova de desempenho industrial (E3)."

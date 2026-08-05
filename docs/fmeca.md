@@ -5,7 +5,7 @@
 > agente) devem usar EXATAMENTE estes componentes, modos, índices e NPR.
 > Em caso de conflito entre arquivos, vale esta tabela. Alterou aqui →
 > propague a `src/ml/injecao_falhas.py`, `src/ml/protocolos_artigos.py`,
-> `docs/assinaturas_fmea.md` e `CLAUDE.md`.
+> `docs/assinaturas_fmeca.md` e `CLAUDE.md`.
 
 ## Distinção FMEA × FMECA (Torres, 2024, Seção 2.2 e Eq. 4.19–4.21)
 

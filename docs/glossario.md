@@ -71,13 +71,13 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
   (grade do pipeline: 0.05–1.0 em 7 níveis).
 - **Injeção sintética orientada pela FMECA**: perturbação apenas das
   grandezas que a física de cada modo de falha afeta (ver
-  docs/assinaturas_fmea.md) — fornece ground truth para validar o detector.
+  docs/assinaturas_fmeca.md) — fornece ground truth para validar o detector.
 - **Split temporal com purga**: divisão treino/teste por blocos contíguos no
   tempo, descartando janelas na fronteira (janelas com 50% de sobreposição →
   purga de 2) para impedir vazamento temporal.
-- **Protocolo por artigo**: cada experimento usa a regra de decisão do
-  próprio paper (Francisti: Shewhart 3σ; Ibrahim: contaminação a priori +
-  p99 do treino congelado). F1 NÃO é comparável entre protocolos; AUC é.
+- **Protocolo por artigo**: o experimento executável vigente usa a regra de
+  decisão do Ibrahim/AE-LSTM (p99 do erro em calibração temporal, congelado
+  antes do teste). F1 depende do ponto de operação; AUC é a métrica comparável.
 - **Degradação honesta**: modelo cuja dependência não está instalada aparece
   como "requer <lib>" em vez de sumir silenciosamente do resultado.
 

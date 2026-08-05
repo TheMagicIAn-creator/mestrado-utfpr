@@ -19,7 +19,7 @@ python -m pytest -W ignore -q           # idem, sem warnings de limpeza de tmp
 ```powershell
 python src/ml/features_ca.py        # extrai features CA (Paderborn) + manifesto
 python src/ml/autoencoder.py        # treina o AE; grava limiar.json (score operacional + referências) + manifesto
-python src/ml/injecao_falhas.py     # injeta falhas FMEA (E2) + schema no report
+python src/ml/injecao_falhas.py     # injeta falhas FMECA (E2) + schema no report
 python src/ml/validacao.py          # validação interna E2: ROC + PR + matrizes, limiar congelado
 python src/ml/rul_weibull.py        # RUL / Weibull
 ```
@@ -28,14 +28,13 @@ python src/ml/rul_weibull.py        # RUL / Weibull
 Cada experimento tem o SEU protocolo de decisão (src/ml/protocolos_artigos.py);
 o runner abaixo é só o atalho de execução — não muda a metodologia nem os números.
 ```powershell
-python scripts/rodar_experimentos.py              # lista os experimentos
-python scripts/rodar_experimentos.py francisti    # roda um (tabela + protocolo + detecção por falha)
-python scripts/rodar_experimentos.py francisti ibrahim  # roda vários
-python scripts/rodar_experimentos.py --todos      # roda todos
+python scripts/rodar_experimentos.py              # lista o experimento Ibrahim
+python scripts/rodar_experimentos.py ibrahim      # roda AE-LSTM temporal (Ibrahim)
+python scripts/rodar_experimentos.py --todos      # hoje equivale a ibrahim
 python src/ml/classificador_pv.py       # benchmark supervisionado PV Farms (CC)
 python -c "from src.ml.classificador_pv_infer import treinar_e_salvar; treinar_e_salvar()"  # salva modelo/scaler/manifests/PNGs
 ```
-Também pelo chat: "rode o experimento do Ghoneim", "compare os experimentos de anomalia".
+Também pelo chat: "compare meu método com o AE-LSTM" ou "como estou frente ao Ibrahim?".
 
 ## Literatura local e snapshot da nuvem
 ```powershell
