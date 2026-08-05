@@ -145,11 +145,19 @@ def test_pipeline_captura_parametros_das_etapas():
     auto = get_stage("autoencoder").parameters()
     assert auto["epochs"] > 0
     assert auto["latente_dim"] > 0
+    assert auto["dropout"] == 0.2
+    assert auto["paciencia"] > 0
     assert auto["threshold_method"] == "p99"
 
     validacao = get_stage("validacao").parameters()
     assert validacao["n_janelas_saudavel"] > 0
+    assert validacao["prevalencia_rara"] == 0.05
     assert validacao["sevs_validacao"]
+
+    rul = get_stage("rul_weibull").parameters()
+    assert rul["ttf_unidade"] == "passo_sintetico_de_degradacao"
+    assert rul["tempo_fisico_calibrado"] is False
+    assert rul["persistencia_cruzamento"] > 0
 
 
 def test_pipeline_le_parametros_sem_importar_modulo_pesado(monkeypatch):

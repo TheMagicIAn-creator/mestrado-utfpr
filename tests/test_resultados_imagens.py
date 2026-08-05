@@ -9,19 +9,12 @@ def _png(path: Path) -> str:
 
 
 def test_imagens_experimento_distingue_graficos_e_matrizes(tmp_path, monkeypatch):
-    # Usa um experimento do NÚCLEO curado (Ibrahim) como veículo do teste de
-    # agrupamento de imagens — Sharma/Ghoneim foram removidos do registry.
     from src.ml import resultados
 
     pasta = tmp_path / "ibrahim"
     dados = {
         "referencia": "Ibrahim et al. (2022)",
         "modelos": {
-            "Isolation Forest": {
-                "disponivel": True,
-                "grafico_metricas": _png(pasta / "if_metricas.png"),
-                "grafico_matriz_confusao": _png(pasta / "if_matriz.png"),
-            },
             "AE-LSTM": {
                 "disponivel": True,
                 "grafico_metricas": _png(pasta / "ae_metricas.png"),
@@ -46,22 +39,20 @@ def test_imagens_experimento_distingue_graficos_e_matrizes(tmp_path, monkeypatch
         "Mostre os graficos e matrizes do Ibrahim."
     )
 
-    assert len(somente_matriz) == 2
+    assert len(somente_matriz) == 1
     assert all("matriz de confusao" in img["caption"] for img in somente_matriz)
     assert [img["caption"] for img in ambos] == [
         "Ibrahim et al. (2022) - comparacao de metricas",
         "Ibrahim et al. (2022) - anomalias detectadas",
-        "Ibrahim et al. (2022) - resultado individual (Isolation Forest)",
-        "Ibrahim et al. (2022) - matriz de confusao (Isolation Forest)",
         "Ibrahim et al. (2022) - resultado individual (AE-LSTM)",
         "Ibrahim et al. (2022) - matriz de confusao (AE-LSTM)",
     ]
 
     barras = resultados.imagens_relevantes(
-        "Mostre um gráfico de barras do Ibrahim."
+        "Mostre um grafico de barras do Ibrahim."
     )
     pontos = resultados.imagens_relevantes(
-        "Mostre a comparação por pontos do Ibrahim."
+        "Mostre a comparacao por pontos do Ibrahim."
     )
 
     assert Path(barras[0]["path"]).name == "comparacao_metricas_barras.png"
@@ -70,8 +61,8 @@ def test_imagens_experimento_distingue_graficos_e_matrizes(tmp_path, monkeypatch
     assert "por pontos" in pontos[0]["caption"]
 
     comparativo = resultados.imagens_relevantes(
-        "Compare Ibrahim por AUC, diga quantas anomalias cada modelo detectou "
-        "e mostre a comparação por pontos."
+        "Compare Ibrahim por AUC, diga quantas anomalias o modelo detectou "
+        "e mostre a comparacao por pontos."
     )
     assert [Path(img["path"]).name for img in comparativo] == [
         "comparacao_metricas_pontos.png",
@@ -88,7 +79,7 @@ def test_tabela_de_anomalias_e_compacta_e_especifica(tmp_path, monkeypatch):
         json.dumps({
             "referencia": "Ibrahim et al. (2022)",
             "modelos": {
-                "Isolation Forest": {
+                "AE-LSTM": {
                     "disponivel": True,
                     "accuracy": 0.5,
                     "auc": 0.5,
@@ -111,7 +102,7 @@ def test_tabela_de_anomalias_e_compacta_e_especifica(tmp_path, monkeypatch):
     assert "| Accuracy | Precision |" not in tabela
 
     tabela_composta = resultados._resumo_experimentos(
-        "Faça um ranking por AUC e diga quantas anomalias cada modelo detectou."
+        "Faca um ranking por AUC e diga quantas anomalias cada modelo detectou."
     )
     assert "| AUC | Detectadas | Reais | Taxa marcada | Recall |" in tabela_composta
-    assert "| 1 | Ibrahim et al. (2022) | Isolation Forest | 0.500 | 12 |" in tabela_composta
+    assert "| 1 | Ibrahim et al. (2022) | AE-LSTM | 0.500 | 12 |" in tabela_composta

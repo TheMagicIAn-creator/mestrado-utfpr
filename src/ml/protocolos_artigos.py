@@ -5,33 +5,20 @@ Por que este módulo existe
 --------------------------
 Antes, todos os experimentos de anomalia compartilhavam UM único harness:
 split aleatório de janelas temporais sobrepostas (vazamento temporal) e limiar
-escolhido maximizando F1 NO PRÓPRIO conjunto de teste (oráculo) para os
-modelos sem decisão nativa — exatamente os modelos que definem cada artigo
-(Z-score, AE-LSTM). Isso é o "erro de simulação": todos os métodos
+escolhido maximizando F1 NO PRÓPRIO conjunto de teste (oráculo) para modelos
+sem decisão nativa. Isso é o "erro de simulação": todos os métodos
 pareciam iguais porque eram avaliados pela mesma régua artificial.
 
-Aqui cada artigo tem o SEU protocolo de decisão, fiel ao método do paper e à
-prática da área — e nenhum limiar enxerga os rótulos do teste:
+Aqui o único protocolo comparativo ativo é Ibrahim et al. (2022), restrito ao
+AE-LSTM temporal. A comparação metodológica da dissertação é o Autoencoder denso
+proposto contra o AE-LSTM do artigo, ambos avaliados no mesmo problema CA.
 
-- Francisti et al. (2025)  → Z-score com regra de Shewhart (|z| > 3σ FIXO, a
-  priori, por variável).
-- Ibrahim et al. (2022)    → Isolation Forest com contaminação A PRIORI;
-  AE-LSTM com limiar = percentil 99 do erro de reconstrução NO TREINO
-  (congelado antes de ver o teste — a mesma disciplina do pipeline principal).
-  O Prophet do artigo foi removido da curadoria (pior detector + dependência
-  instável em runtime).
-
-Nota de curadoria: o núcleo comparativo foi enxugado para DOIS protocolos —
-Francisti (baseline ingênuo Shewhart) e Ibrahim (concorrentes diretos do
-Autoencoder). Removidos: Sharma (PPO+IForest, baselines supervisionados), o
-Random Forest do Francisti, o voto híbrido de Ahirwar (derivativo do Ibrahim)
-e Stender (cartão de dataset, não é experimento). A decisão e o racional estão
-no CLAUDE.md ("Experimentos por Artigo-Base"). Ahirwar e Stender seguem
-citáveis como literatura indexada — apenas não são experimentos executáveis.
+Os demais protocolos/modelos permanecem apenas como literatura citável; não
+fundamentam a comparação quantitativa vigente do AE denso.
 
 Infraestrutura comum (igual para todos, como num benchmark justo):
 - split TEMPORAL com purga (src/ml/split_temporal.py) — nunca aleatório;
-- injeção sintética ORIENTADA PELO FMEA no espaço de features: cada anomalia
+- injeção sintética ORIENTADA PELA FMECA no espaço de features: cada anomalia
   pertence a uma família de falha da FMECA de Torres (2024) — Contator AC
   (NPR=315), IGBT (NPR=90), Fusível AC (NPR=30) — perturbando
   apenas as features que a física daquela falha afeta. Continua E1 (proxy
@@ -51,10 +38,8 @@ from src.core.logs import get_logger
 
 log = get_logger("protocolos_artigos")
 
-# ── constantes dos protocolos (a priori, documentadas) ──────────────────────
+# ── constantes do protocolo Ibrahim/AE-LSTM (a priori, documentadas) ─────────
 SEVERIDADE_PADRAO = 1.0          # escala global da injeção (1.0 = moderada)
-LIMIAR_SIGMA = 3.0               # regra de Shewhart (Francisti)
-CONTAMINACAO_A_PRIORI = 0.05     # Isolation Forest (Ibrahim)
 PERCENTIL_TREINO = 99            # AE-LSTM: limiar congelado no treino
 PURGA_JANELAS = 2                # janelas com 50% de sobreposição → purga 2
 SEQ_LEN = int(os.getenv("AL_IADO_AELSTM_SEQ_LEN", "8"))  # passos temporais do AE-LSTM
@@ -68,7 +53,7 @@ PESOS_FALHAS = {"contator_ac": 0.40, "igbt": 0.35, "fusivel_ac": 0.25}
 # cada item: (padrão regex do nome da coluna, modo, intensidade min, max).
 # modo "soma_std"  → coluna += U(min,max) · severidade · σ_treino
 # modo "mult"      → coluna ·= (1 − U(min,max) · severidade)  [redução]
-ASSINATURAS_FMEA = {
+ASSINATURAS_FMECA = {
     # Contator AC (NPR=315): transiente/ruído de comutação → dispersão e
     # conteúdo de alta frequência sobem no canal medido.
     "contator_ac": [
@@ -108,7 +93,7 @@ ASSINATURAS_FMEA = {
 
 
 # ============================================================
-# INJEÇÃO ORIENTADA PELO FMEA (espaço de features)
+# INJEÇÃO ORIENTADA PELA FMECA (espaço de features)
 # ============================================================
 
 def _colunas_por_padrao(nomes: list[str], padrao: str) -> list[int]:
@@ -118,10 +103,10 @@ def _colunas_por_padrao(nomes: list[str], padrao: str) -> list[int]:
     return [j for j, n in enumerate(nomes) if rx.match(n)]
 
 
-def injetar_falhas_fmea(X, nomes: list[str], rng, severidade: float = SEVERIDADE_PADRAO):
+def injetar_falhas_fmeca(X, nomes: list[str], rng, severidade: float = SEVERIDADE_PADRAO):
     """
     Gera uma cópia anômala de cada janela de ``X``, sorteando UMA família de
-    falha do FMEA por janela e perturbando SOMENTE as features que a física
+    falha da FMECA por janela e perturbando SOMENTE as features que a física
     daquela falha afeta (em unidades do desvio-padrão do próprio conjunto).
 
     Retorna ``(X_anom, tipos)`` onde ``tipos[i]`` ∈ {"contator_ac",
@@ -144,7 +129,7 @@ def injetar_falhas_fmea(X, nomes: list[str], rng, severidade: float = SEVERIDADE
 
     # mapeia uma vez: família → [(cols, modo, lo, hi), ...]
     planos = {}
-    for fam, regras in ASSINATURAS_FMEA.items():
+    for fam, regras in ASSINATURAS_FMECA.items():
         plano = []
         for padrao, modo, lo, hi in regras:
             cols = _colunas_por_padrao(nomes, padrao)
@@ -167,7 +152,7 @@ def injetar_falhas_fmea(X, nomes: list[str], rng, severidade: float = SEVERIDADE
 
 
 def deteccao_por_falha(y_true, y_pred, tipos) -> dict:
-    """Recall por família de falha FMEA (apenas nas janelas anômalas)."""
+    """Recall por família de falha FMECA (apenas nas janelas anômalas)."""
     import numpy as np
 
     y_true = np.asarray(y_true).astype(int)
@@ -183,7 +168,7 @@ def deteccao_por_falha(y_true, y_pred, tipos) -> dict:
 
 
 # ============================================================
-# PREPARO DOS DADOS — split temporal + injeção FMEA
+# PREPARO DOS DADOS — split temporal + injeção FMECA
 # ============================================================
 
 def preparar_dados_anomalia(com_validacao: bool = False,
@@ -197,9 +182,9 @@ def preparar_dados_anomalia(com_validacao: bool = False,
       com purga (treino/teste; o split treino/val/teste é suportado mas
       nenhum protocolo ativo o utiliza);
     - StandardScaler ajustado SOMENTE no treino normal;
-    - anomalias FMEA injetadas em cópias das janelas de teste (e validação),
+    - anomalias FMECA injetadas em cópias das janelas de teste (e validação),
       com ground truth por família (tipos);
-    - pacote supervisionado de treino (normal + anomalias FMEA de treino).
+    - pacote supervisionado de treino (normal + anomalias FMECA de treino).
 
     No conjunto de teste, ``tipos_te`` alinha com a metade anômala
     (X_te = [normais | anômalas]).
@@ -227,10 +212,10 @@ def preparar_dados_anomalia(com_validacao: bool = False,
     Xn_tr = X[idx_tr]
     Xn_te = X[idx_te]
 
-    # Injeção FMEA — sementes derivadas para independência treino/val/teste.
-    Xa_tr, tipos_tr = injetar_falhas_fmea(
+    # Injeção FMECA — sementes derivadas para independência treino/val/teste.
+    Xa_tr, tipos_tr = injetar_falhas_fmeca(
         Xn_tr, nomes, np.random.default_rng(seed + 1), severidade)
-    Xa_te, tipos_te = injetar_falhas_fmea(
+    Xa_te, tipos_te = injetar_falhas_fmeca(
         Xn_te, nomes, np.random.default_rng(seed + 2), severidade)
 
     scaler = StandardScaler().fit(Xn_tr)
@@ -252,7 +237,7 @@ def preparar_dados_anomalia(com_validacao: bool = False,
             "teste": int(len(idx_te)),
         },
         "injecao": {
-            "tipo": "fmea_espaco_features",
+            "tipo": "fmeca_espaco_features",
             "falhas": list(PESOS_FALHAS),
             "pesos": dict(PESOS_FALHAS),
             "severidade": float(severidade),
@@ -266,7 +251,7 @@ def preparar_dados_anomalia(com_validacao: bool = False,
 
     if idx_val is not None:
         Xn_val = X[idx_val]
-        Xa_val, tipos_val = injetar_falhas_fmea(
+        Xa_val, tipos_val = injetar_falhas_fmeca(
             Xn_val, nomes, np.random.default_rng(seed + 3), severidade)
         dados["X_val"] = np.vstack(
             [scaler.transform(Xn_val), scaler.transform(Xa_val)])
@@ -306,8 +291,8 @@ def _indisponivel(motivo: str) -> dict:
 def _rodar_modelo(nome: str, fn, saida: dict, preds: dict | None = None):
     """
     Executa o scoring de UM modelo com isolamento de falha. Se ``fn`` estourar
-    em runtime (lib instalada mas quebrada — ex.: Prophet 'stan_backend', torch
-    sem backend), o modelo degrada para indisponível com o motivo do erro, sem
+    em runtime (lib instalada mas quebrada — ex.: torch sem backend), o modelo
+    degrada para indisponível com o motivo do erro, sem
     derrubar os demais modelos do experimento. ``fn`` deve devolver
     ``(metricas, y_pred | None)``.
     """
@@ -325,66 +310,14 @@ def _rodar_modelo(nome: str, fn, saida: dict, preds: dict | None = None):
 
 
 # ============================================================
-# PROTOCOLO — FRANCISTI et al. (2025)
-# ============================================================
-
-def protocolo_francisti(dados, progresso=None):
-    """
-    Z-score com regra de Shewhart: alarme se QUALQUER feature sai da banda de
-    ±3σ do comportamento saudável de treino (controle estatístico de processo
-    por variável — limiar FIXO a priori, nunca ajustado no teste).
-
-    Mantém apenas o detector NÃO-supervisionado do artigo (SPC/Z-score). O
-    Random Forest supervisionado foi removido na curadoria do mestrado: por
-    treinar nos rótulos da injeção sintética, superestima o desempenho que se
-    obteria em operação real, onde NÃO há rótulos de falha (a tese é detecção
-    por modelagem de normalidade).
-    """
-    import numpy as np
-
-    X_te, y_te = dados["X_te"], dados["y_te"]
-    tipos = dados["tipos_te"]
-    saida = {}
-
-    if progresso:
-        progresso("Francisti: Z-score (Shewhart 3σ)...")
-    # Xn_tr/X_te já são z-scores (scaler do treino) → |z| direto.
-    score_z = np.max(np.abs(X_te), axis=1)
-    y_pred_z = (score_z > LIMIAR_SIGMA).astype(int)
-    saida["Z-score (estatístico)"] = _metricas(
-        y_te, score_z, y_pred_z,
-        threshold_source="shewhart_3sigma_a_priori",
-        limiar=LIMIAR_SIGMA, tipos_te=tipos,
-    )
-
-    metodologia = {
-        "protocolo": "francisti2025_spc",
-        "fonte": "Francisti et al. (2025)",
-        "decisoes": {
-            "Z-score (estatístico)": f"|z| > {LIMIAR_SIGMA}σ por variável "
-                                     "(Shewhart, fixo a priori)",
-        },
-        "fidelidade": [
-            "Segue o artigo no detector estatístico (Z-score / SPC).",
-            "O Random Forest supervisionado do artigo foi removido: treina nos "
-            "rótulos da injeção sintética e superestima o desempenho real "
-            "(em operação não há rótulos de falha).",
-            "Adaptação: alarme por variável (máx |z|) — prática padrão de SPC "
-            "multivariável simples; o artigo não detalha a agregação.",
-        ],
-    }
-    return saida, metodologia
-
-
-# ============================================================
 # PROTOCOLO — IBRAHIM et al. (2022)
 # ============================================================
 
 def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
     """
-    IF com contaminação A PRIORI; AE-LSTM com limiar = percentil do erro de
-    reconstrução numa fatia de CALIBRAÇÃO temporal do treino (o AE não vê a
-    calibração no ajuste — evita o limiar otimista do erro de treino).
+    AE-LSTM com limiar = percentil do erro de reconstrução numa fatia de
+    CALIBRAÇÃO temporal do treino (o AE-LSTM não vê a calibração no ajuste —
+    evita o limiar otimista do erro de treino).
     Nenhuma decisão enxerga os rótulos do teste.
 
     Com ``retornar_predicoes=True`` devolve também ``{modelo: y_pred}`` (as
@@ -398,25 +331,6 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
     tipos = dados["tipos_te"]
     saida = {}
     preds: dict = {}
-
-    if progresso:
-        progresso("Ibrahim: Isolation Forest (contaminação a priori)...")
-
-    def _rodar_if():
-        from sklearn.ensemble import IsolationForest
-
-        iso = IsolationForest(n_estimators=200, random_state=42,
-                              contamination=CONTAMINACAO_A_PRIORI)
-        iso.fit(dados["Xn_tr"])
-        score_if = -iso.decision_function(X_te)
-        y_pred_if = (iso.predict(X_te) == -1).astype(int)
-        return _metricas(
-            y_te, score_if, y_pred_if,
-            threshold_source=f"contaminacao_a_priori_{CONTAMINACAO_A_PRIORI}",
-            tipos_te=tipos,
-        ), y_pred_if
-
-    _rodar_modelo("Isolation Forest", _rodar_if, saida, preds)
 
     if lib_disponivel("torch"):
         if progresso:
@@ -467,13 +381,13 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
         "protocolo": "ibrahim2022_series_temporais",
         "fonte": "Ibrahim et al. (2022)",
         "decisoes": {
-            "Isolation Forest": f"contaminação a priori = {CONTAMINACAO_A_PRIORI}",
             "AE-LSTM": f"sequências de {SEQ_LEN} janelas no TEMPO; limiar = "
                        f"p{PERCENTIL_TREINO} do erro numa fatia de CALIBRAÇÃO "
                        "temporal do treino (fora do ajuste; congelado antes do teste)",
         },
         "fidelidade": [
-            "Segue o artigo no par não-supervisionado IF + AE-LSTM.",
+            "Usa apenas o AE-LSTM do artigo, pois a comparação vigente da "
+            "dissertação é AE denso proposto versus AE-LSTM temporal.",
             f"AE-LSTM agora é TEMPORAL de verdade: a LSTM percorre uma sequência "
             f"de {SEQ_LEN} janelas no tempo (a 'correlação na série temporal' do "
             "Ibrahim), não mais o eixo das features. Cada item é a janela ATUAL "
@@ -481,13 +395,8 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
             "AE-LSTM usa a disciplina de limiar congelado do pipeline "
             "principal, com calibração em bloco temporal NÃO visto no ajuste "
             "(o erro de treino subestimaria o erro real).",
-            "Curadoria: o Facebook Prophet do artigo foi removido — era o pior "
-            "detector do trio e sua dependência quebra em runtime; a base "
-            "comparativa fica com IF + AE-LSTM, que bastam.",
-            "Leitura correta: a contaminação a priori de 5% reflete a "
-            "prevalência esperada em operação; no teste BALANCEADO (50% "
-            "anômalo) ela limita o recall por construção — compare métodos "
-            "pelo AUC e pela precisão, não pelo F1 entre protocolos.",
+            "Curadoria: os demais modelos do artigo não entram nesta campanha, "
+            "para não desviar a pergunta comparativa central.",
         ],
     }
     if retornar_predicoes:
@@ -501,7 +410,6 @@ def protocolo_ibrahim(dados, progresso=None, retornar_predicoes: bool = False):
 
 # key → (função de protocolo, exige validação temporal?)
 PROTOCOLOS = {
-    "francisti": (protocolo_francisti, False),
     "ibrahim": (protocolo_ibrahim, False),
 }
 

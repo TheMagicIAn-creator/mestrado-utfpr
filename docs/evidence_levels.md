@@ -6,7 +6,7 @@ Toda afirmação sobre resultados **deve** informar o nível de evidência. O ag
 | Nível | Significado | Onde aparece no projeto |
 |---|---|---|
 | **E0** | Hipótese | proposições ainda não testadas |
-| **E1** | Benchmark **exploratório** — perturbação genérica ou dataset rotulado | `experimentos_artigos.py` (anomalia com perturbação genérica; classificação PV Farms). Limiar escolhido no próprio conjunto avaliado = E1 |
+| **E1** | Benchmark **exploratório** — protocolo em features ou dataset rotulado auxiliar | `experimentos_artigos.py` (Ibrahim/AE-LSTM com injeção FMECA no espaço de features; classificação PV Farms quando usada como referência auxiliar). Limiar escolhido no próprio conjunto avaliado = E1 |
 | **E2** | Validação **sintética orientada pela FMECA** — ground truth de falhas injetadas | `injecao_falhas.py` (schema por falha) e `validacao.py` (limiar congelado, `__meta__.evidence_level = E2`) |
 | **E3** | Validação **experimental externa** (bancada / campo) | ainda não realizada |
 
@@ -20,6 +20,9 @@ Regras práticas:
 
 - **Weibull/RUL nunca perde a ressalva E2**: a censura é preservada por MLE e
   os intervalos são obtidos por bootstrap, mas os TTF continuam sintéticos.
+  A unidade publicada é `passo_sintetico_de_degradacao`; sem taxa de
+  degradação calibrada por campo ou bancada, não converter para horas, dias ou
+  anos.
   `status_ajuste=exploratorio_descritivo` não significa vida de campo; MTTF,
   B10 e RUL devem ser acompanhados dessa ressalva no chat, gráficos e texto.
 - **Detecção nula também é resultado**: se uma falha injetada não cruza o

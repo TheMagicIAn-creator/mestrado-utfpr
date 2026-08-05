@@ -64,8 +64,8 @@ def test_citar_fonte_sem_inventar_nao_desliga_literatura():
 
 def test_compare_autores_com_artefatos_consulta_macro_sem_treinar():
     pergunta = (
-        "Compare Sharma, Ibrahim e Ahirwar usando somente os artefatos "
-        "recalculados do repositório. Mostre gráficos e matrizes."
+        "Compare meu metodo com Ibrahim usando somente os artefatos "
+        "recalculados do repositorio. Mostre graficos e matrizes."
     )
     assert _ferramenta(pergunta) == "consultar_comparacao_macro"
 
@@ -101,13 +101,13 @@ def test_qual_melhor_modelo_anomalia_vai_para_macro():
 
 
 def test_rode_experimento_le_o_publicado_em_vez_de_treinar():
-    assert _ferramenta("rode o experimento do francisti") == "consultar_comparacao_macro"
+    assert _ferramenta("rode o experimento do Ibrahim") == "consultar_comparacao_macro"
 
 
 def test_compare_autores_sem_experimento_vai_para_macro_publicada():
     pergunta = (
-        "Compare Sharma, Ibrahim e Ahirwar usando somente os artefatos "
-        "recalculados do repositório. Mostre gráficos e matrizes."
+        "Compare meu metodo com Ibrahim usando somente os artefatos "
+        "recalculados do repositorio. Mostre graficos e matrizes."
     )
     assert _ferramenta(pergunta) == "consultar_comparacao_macro"
 

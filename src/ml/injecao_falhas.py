@@ -322,7 +322,7 @@ def falha_perda_fase_fusivel(janela_df: pd.DataFrame,
 
     Fator de redução CALIBRADO p/ curva severidade↔detecção realista
     (fator = 1 - severidade × 0.12):
-      severidade=0.3 → ~3,6% de redução (incipiente, ~limiar FMEA de 5%, DIFÍCIL)
+      severidade=0.3 → ~3,6% de redução (incipiente, limiar FMECA de 5%, DIFÍCIL)
       severidade=0.5 → 6% de redução (perceptível)
       severidade=1.0 → 12% de redução (perda severa, mas plausível)
 
@@ -663,7 +663,7 @@ def executar_injecao_falhas() -> bool:
     relatorio = {
         "evidence_level": "E2",
         "evidence_note": (
-            "Falhas sintéticas orientadas pelo FMEA (ground truth para validar o "
+            "Falhas sintéticas orientadas pela FMECA (ground truth para validar o "
             "detector). Não é validação experimental externa (E3). A injeção de "
             "ruído do sensor é um PROXY e exige calibração física."
         ),

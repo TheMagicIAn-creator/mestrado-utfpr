@@ -49,7 +49,7 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "rodar_injecao_falhas",
         "description": (
-            "Executa injecao de falhas sinteticas fundamentadas no FMEA. Use "
+            "Executa injecao de falhas sinteticas fundamentadas na FMECA. Use "
             "quando o usuario pedir simulacao ou injecao de falhas."
         ),
     },
@@ -164,7 +164,7 @@ ESPEC_FERRAMENTAS = [
         "description": (
             "Explica e compara as abordagens de ML do projeto: supervisionada "
             "(classifica falhas CC conhecidas), nao supervisionada (aprende "
-            "normalidade e detecta anomalia CA) e sintetica orientada pelo FMEA. "
+            "normalidade e detecta anomalia CA) e sintetica orientada pela FMECA. "
             "Use quando o usuario pedir a diferenca entre supervisionado e nao "
             "supervisionado, ou comparar as abordagens."
         ),
@@ -307,7 +307,6 @@ def _quer_catalogo(pergunta: str) -> bool:
 # --- Experimentos de ML por artigo-base ------------------------------------
 # Sobrenome citado -> chave do experimento no registry.
 _AUTORES_EXP = {
-    "francisti": "francisti",
     "ibrahim": "ibrahim",
 }
 
@@ -337,9 +336,9 @@ def _experimentos_alvo(pergunta: str) -> list[str]:
     if alvos:
         return alvos
     if any(t in txt for t in ("anomalia", "anomalias", "anomaly", "anomalies", "anomalie", "anomalies")):
-        return ["francisti", "ibrahim"]
+        return ["ibrahim"]
     if any(t in txt for t in ("todos", "tudo", "compare", "comparar", "todas", "all", "todos", "todas", "tous", "toutes")):
-        return ["francisti", "ibrahim"]
+        return ["ibrahim"]
     return []
 
 
@@ -1385,7 +1384,7 @@ def _md_experimento(res: dict) -> tuple[str, list[dict]]:
     )
 
     # Bloco de METODOLOGIA do protocolo por artigo (split temporal, injeção
-    # FMEA e a regra de decisão de cada modelo) — rastreabilidade na resposta.
+    # FMECA e a regra de decisão de cada modelo) — rastreabilidade na resposta.
     met = res.get("metodologia")
     if met:
         linhas.append(f"\n**Protocolo do artigo** (`{met.get('protocolo', '?')}`):")
@@ -1400,14 +1399,14 @@ def _md_experimento(res: dict) -> tuple[str, list[dict]]:
         inj = met.get("injecao", {})
         if inj:
             linhas.append(
-                f"- Injeção: {inj.get('tipo', '?')} — famílias FMEA "
+                f"- Injeção: {inj.get('tipo', '?')} — famílias FMECA "
                 f"{', '.join(inj.get('falhas', []))} (severidade {inj.get('severidade')}).")
         for modelo, regra in (met.get("decisoes") or {}).items():
             linhas.append(f"- Decisão {modelo}: {regra}.")
         for nota in met.get("fidelidade", []):
             linhas.append(f"- _{nota}_")
 
-    # Detecção por família de falha FMEA (quando o protocolo reporta)
+    # Detecção por família de falha FMECA (quando o protocolo reporta)
     com_falhas = {
         nome: m["deteccao_por_falha"]
         for nome, m in res["modelos"].items()
@@ -1565,14 +1564,14 @@ def consultar_datasets(progresso=None, pergunta: str = "") -> dict:
 
 
 def comparar_abordagens_ml(progresso=None, pergunta: str = "") -> dict:
-    """Compara supervisionado x não supervisionado x sintético (FMEA), com rigor."""
+    """Compara supervisionado x não supervisionado x sintético (FMECA), com rigor."""
     msg = (
         "## Abordagens de ML na dissertação\n\n"
         "| Abordagem | O que faz | Rótulos? | No projeto |\n"
         "|---|---|---|---|\n"
         "| **Supervisionada** | classifica falhas CONHECIDAS | sim | PV Farms (**CC**): RF, AdaBoost, LogReg, Naive Bayes, CN2 |\n"
-        "| **Não supervisionada** | aprende a NORMALIDADE e detecta desvios | não | Paderborn (**CA**): Autoencoder, Isolation Forest |\n"
-        "| **Sintética (FMEA)** | valida assinaturas CA modeladas | ground truth sintético | injeção de falhas no Paderborn (**E2**) |\n\n"
+        "| **Não supervisionada** | aprende a NORMALIDADE e detecta desvios | não | Paderborn (**CA**): Autoencoder denso e AE-LSTM do Ibrahim |\n"
+        "| **Sintética (FMECA)** | valida assinaturas CA modeladas | ground truth sintético | injeção de falhas no Paderborn (**E2**) |\n\n"
         "**Rigor:**\n"
         "- O não supervisionado DETECTA anomalia, mas NÃO garante diagnóstico "
         "causal da falha.\n"
@@ -1671,112 +1670,6 @@ def classificar_amostra_pv(progresso=None, pergunta: str = "") -> dict:
                f"{r['aviso']} (importância de feature ≠ causalidade.)")
     return {"ok": True, "etapa": "Classificação PV Farms", "mensagem": msg,
             "imagens": [], "resposta_pronta": True}
-
-
-def comparar_experimentos_auc(progresso=None, pergunta: str = "") -> dict:
-    """
-    Compara o MÉTODO PROPOSTO (Autoencoder do pipeline) com a literatura
-    (Francisti, Ibrahim) pelo AUC, no MESMO banco de teste (injeção FMEA
-    no espaço de features, split temporal com purga, seed 42). Nunca
-    treina: usa o modelo salvo; sem modelo, degrada para a comparação
-    só-experimentos com aviso.
-    """
-    if progresso:
-        progresso("Comparando o método proposto com a literatura (AUC)...")
-    try:
-        from src.ml.comparacao_literatura import comparar_com_literatura
-        cmp = comparar_com_literatura(progresso=progresso)
-    except Exception as exc:  # noqa: BLE001
-        return {
-            "ok": False, "etapa": "Comparação com a literatura",
-            "mensagem": f"Não consegui montar a comparação: {exc}",
-            "imagens": [], "resposta_pronta": True, "forcar_resposta_direta": True,
-        }
-
-    if not cmp.get("ok"):
-        # Degradação honesta: sem o modelo do pipeline, ainda dá para
-        # comparar os experimentos ENTRE SI — com o aviso do que falta.
-        try:
-            from src.ml.experimentos_artigos import comparar_anomalia_por_auc
-            so_exp = comparar_anomalia_por_auc()
-        except Exception:  # noqa: BLE001
-            so_exp = {"ok": False}
-        if so_exp.get("ok"):
-            msg = (
-                "## Comparação dos experimentos de anomalia por AUC\n\n"
-                f"> ⚠️ {cmp.get('mensagem', '')}\n\n"
-                + so_exp.get("tabela_md", "(sem dados)")
-            )
-            imagens = []
-            graf = so_exp.get("grafico")
-            if graf:
-                from pathlib import Path
-                p = Path(graf)
-                if p.exists():
-                    imagens.append({"path": str(p),
-                                    "caption": "Comparação AUC — experimentos"})
-            return {
-                "ok": True, "etapa": "Comparação AUC",
-                "mensagem": msg, "imagens": imagens,
-                "resposta_pronta": True, "forcar_resposta_direta": True,
-            }
-        return {
-            "ok": False, "etapa": "Comparação com a literatura",
-            "mensagem": cmp.get("mensagem", "Sem dados para comparar."),
-            "imagens": [], "resposta_pronta": True, "forcar_resposta_direta": True,
-        }
-
-    partes = [
-        "## Método proposto vs. literatura — AUC no banco comum\n\n",
-        f"> **Banco comum (E1):** {cmp.get('info_banco', '')}. AUC é a única "
-        "métrica comparável entre protocolos; F1 não é (cada método opera em "
-        "ponto de decisão próprio).\n\n",
-        cmp.get("tabela_md", "(sem dados)"),
-    ]
-
-    por_falha = cmp.get("auc_por_falha_metodo") or {}
-    if por_falha:
-        from src.core.formatacao import fmt_metrica, tabela_markdown
-        partes.append("\n**Método proposto por família de falha (banco comum):**\n\n")
-        partes.append(tabela_markdown(
-            ["Família", "AUC"],
-            [[fam, fmt_metrica(v)] for fam, v in por_falha.items()],
-        ))
-
-    if cmp.get("e2_nativo"):
-        from src.core.formatacao import fmt_metrica, tabela_markdown
-        partes.append(
-            "\n**Validação nativa do método (E2 — injeção no SINAL, teste "
-            "mais forte; não comparável com a tabela acima):**\n\n"
-        )
-        partes.append(tabela_markdown(
-            ["Falha × severidade", "AUC"],
-            [[caso, fmt_metrica(v)]
-             for caso, v in sorted(cmp["e2_nativo"].items())],
-        ))
-
-    for aviso in cmp.get("avisos", []):
-        partes.append(f"\n> ⚠️ {aviso}")
-
-    imagens = []
-    graf = cmp.get("grafico")
-    if graf:
-        from pathlib import Path
-
-        from src.core.utils import resolve_project_path
-        p = resolve_project_path(graf) if not Path(graf).is_absolute() else Path(graf)
-        if p.exists():
-            imagens.append({
-                "path": str(p),
-                "caption": "Comparação — método proposto vs. literatura (AUC, banco comum)",
-            })
-
-    return {
-        "ok": True, "etapa": "Comparação com a literatura",
-        "mensagem": "".join(partes), "imagens": imagens,
-        "resposta_pronta": True,
-        "forcar_resposta_direta": True,  # não passa pelo LLM; já é direto e completo
-    }
 
 
 _DESPACHO = {

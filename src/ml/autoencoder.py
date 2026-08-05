@@ -11,7 +11,8 @@ Fundamentação:
   teórica comparativa, não como limiar operacional.
 
   Esta abordagem é adequada porque dados de falha raramente estão
-  disponíveis em manutenção preditiva real (Ibrahim, 2022; Ahirwar, 2025).
+  disponíveis em manutenção preditiva real; Ibrahim (2022) usa o mesmo
+  princípio de modelagem de normalidade por erro de reconstrução.
 
 Arquitetura:
   Entrada : n_features normalizadas (RobustScaler)

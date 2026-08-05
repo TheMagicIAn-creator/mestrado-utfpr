@@ -13,8 +13,8 @@ MÉTODO (nosso):
   3. ESCORE LOCALIZADO (nossa contribuição): média dos top-k |resíduos|
      PADRONIZADOS por feature — sensível a falha concentrada em poucas features
      (harmônicos do IGBT, perda de fase do Fusível), que o MSE médio diluía.
-     Fundamentação: Francisti (2025) Z-score/Shewhart aplicado ao resíduo do AE;
-     agregação top-k como SPC multivariável (Narayanan, 2023).
+     Fundamentação: erro de reconstrução como sinal de anomalia em Ibrahim
+     (2022) e padronização por feature/top-k como régua operacional interna.
   4. Limiar AUTO-CALIBRADO para ~1% de falso positivo em bloco saudável não visto
   5. Avaliação E2: injeção FMECA no SINAL por severidade (src/ml/macro_comum.py)
 

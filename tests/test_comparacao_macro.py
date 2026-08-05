@@ -20,6 +20,7 @@ nunca vão na mesma tabela.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -46,6 +47,13 @@ def test_ferramentas_do_framework_e1_saem_do_despacho():
 def test_ferramentas_do_framework_e1_saem_do_catalogo_do_llm():
     nomes = {e["name"] for e in fr.ESPEC_FERRAMENTAS}
     assert not (_E1_APOSENTADAS & nomes)
+
+
+def test_comparacao_e1_concorrente_foi_removida():
+    raiz = Path(__file__).resolve().parents[1]
+    assert not (raiz / "src/ml/comparacao_literatura.py").exists()
+    fonte = (raiz / "src/conhecimento/ferramentas.py").read_text(encoding="utf-8")
+    assert "def comparar_experimentos_auc" not in fonte
 
 
 def test_a_comparacao_macro_esta_registrada():

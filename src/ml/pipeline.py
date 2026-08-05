@@ -123,9 +123,9 @@ STAGES: dict[str, PipelineStage] = {
         module="src.ml.autoencoder",
         function="executar_autoencoder",
         parameter_names=(
-            "LATENTE_DIM", "EPOCHS", "BATCH_SIZE", "LR", "SIGMA",
-            "THRESHOLD_METHOD", "SEED", "TRAIN_RATIO", "CALIB_RATIO",
-            "TEST_RATIO",
+            "LATENTE_DIM", "EPOCHS", "BATCH_SIZE", "LR", "DROPOUT",
+            "PACIENCIA", "SIGMA", "THRESHOLD_METHOD", "SEED",
+            "TRAIN_RATIO", "CALIB_RATIO", "TEST_RATIO",
         ),
         code_dependencies=(
             "src.ml.escore_anomalia",
@@ -173,7 +173,10 @@ STAGES: dict[str, PipelineStage] = {
         label="Validacao Interna E2",
         module="src.ml.validacao",
         function="executar_validacao",
-        parameter_names=("SEVS_VALIDACAO", "N_JANELAS_SAUDAVEL", "N_JANELAS_FALHA"),
+        parameter_names=(
+            "SEVS_VALIDACAO", "N_JANELAS_SAUDAVEL", "N_JANELAS_FALHA",
+            "PREVALENCIA_RARA",
+        ),
         code_dependencies=(
             "src.ml.features_ca",
             "src.ml.autoencoder",
@@ -203,6 +206,7 @@ STAGES: dict[str, PipelineStage] = {
         parameter_names=(
             "N_TRAJ", "N_STEPS", "BATCH_INFERENCIA", "N_BOOTSTRAP",
             "MIN_EVENTOS_WEIBULL", "MAX_CENSURA_RUL_PCT",
+            "PERSISTENCIA_CRUZAMENTO", "TTF_UNIDADE", "TEMPO_FISICO_CALIBRADO",
         ),
         code_dependencies=(
             "src.ml.features_ca",

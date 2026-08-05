@@ -199,15 +199,15 @@ escolhido **no próprio teste** (oráculo) para os modelos sem decisão nativa.
 Agora cada artigo segue o **seu** protocolo (`src/ml/protocolos_artigos.py`)
 e **nenhum limiar enxerga os rótulos do teste**:
 
-| Artigo | Decisão de cada modelo | `threshold_source` |
+| Artigo | Decisão do modelo ativo | `threshold_source` |
 |---|---|---|
-| **Francisti (2025)** | Shewhart: alarme se alguma feature sai de ±3σ do treino (fixo a priori) | `shewhart_3sigma_a_priori` |
-| **Ibrahim (2022)** | IF contaminação a priori (5%); AE-LSTM limiar = p99 do erro **no treino** (congelado) | `contaminacao_a_priori_0.05`, `p99_erro_em_calibracao_temporal` |
+| **Ibrahim (2022)** | AE-LSTM temporal com limiar p99 do erro em bloco de calibração temporal, congelado antes do teste | `p99_erro_seq_temporal_calibracao` |
 
-Cortados da curadoria (não são experimentos executáveis): Sharma (PPO+IF,
-baselines supervisionados, RNN/CNN), Ahirwar (voto híbrido — derivativo do
-Ibrahim), o Random Forest do Francisti e o Prophet do Ibrahim (pior detector
-+ dependência instável em runtime).
+Cortados da curadoria executável (não são experimentos quantitativos ativos):
+Francisti/Shewhart, Isolation Forest e Prophet do Ibrahim, Sharma, Ahirwar,
+Stender e modelos supervisionados de domínio CC. Esses trabalhos continuam
+citáveis como literatura quando forem úteis ao texto, mas não entram na tabela
+comparativa vigente do Autoencoder denso proposto.
 
 Infraestrutura comum (benchmark justo):
 - **Split temporal com purga** (`split_temporal.py`) — nunca aleatório;

@@ -1,17 +1,17 @@
 {
   "manifest_version": 2,
   "stage": "injecao_falhas",
-  "created_at": "2026-08-04T08:00:10.904656-03:00",
-  "git_commit": "c65b0789ecb15dd7a6f94109c40c3af51050f205",
+  "created_at": "2026-08-05T01:39:59.841503-03:00",
+  "git_commit": "06ca15b4ba90f0f62ecc76a5d529f12f0db09926",
   "code_hash_mode": "text_lf_utf8",
-  "code_sha256": "622cc1a1bb9b63f042d4f9a767dab0d80ba57dd7c3a119f801bb6b4c955da4e1",
+  "code_sha256": "15c89dd4199322cfb5a4cd90febc9dd9d86108429ad6ccf7da77b2882a302b32",
   "code_dependencies": {
     "src.ml.features_ca": "fdb785e3d6398250b90de7fbd17fb3093b092d60752436e51312d4af370f0ad1",
-    "src.ml.autoencoder": "af67e26d14675f985ab48239b8f9e2ca8759b8c058e946019342f292f32f3ce0",
+    "src.ml.autoencoder": "bc255cd556f54da90afb2f53c8551ac2aa310f113ddfc4fa64e7db528da08d9f",
     "src.ml.dados_avaliacao": "bff782018b640e3b8dd763e60b5885958e9fdf507fab7af4055fee1972b9a6db",
-    "src.ml.escore_anomalia": "92647a318125cb58ae304e4d572f527b09a5dbf84afc5b8b977e3d44e1f77e84",
+    "src.ml.escore_anomalia": "16d619a9d652fb49079e8c3737382aa2ca1e89de32061b43e607bcd9781b98ff",
     "src.ml.estatistica": "fde4d602db680706252a6e11c9bb9a2aa84e27b6911275beec7f4148538a4515",
-    "src.ml.estilo_graficos": "70fc7373198ee5e3058834f71d6101a7a2546e4bc3f655f867ba810ee8a03e68"
+    "src.ml.estilo_graficos": "2f69e30b4a00eee6d8b6fd809325840dff2937f95d00dd21960b1ef9c75a0494"
   },
   "parameters": {
     "severidades": [
@@ -27,9 +27,9 @@
     "n_janelas_smd": 100
   },
   "input_artifacts": {
-    "autoencoder:0:modelo_autoencoder.pt": "0a1fbd0d8c2c46ef31b5b8e7a0e08309de8d80462bbab14f89b2ecf85e2056f9",
+    "autoencoder:0:modelo_autoencoder.pt": "488ff80cc0e29326ff785b712d9e66b1b4195afcff6e9090f9650b67a1b71ad1",
     "autoencoder:1:scaler.pkl": "6410b906f4aea04bdb010da6465df9753f6d52d2def529e29e110c0fe521edad",
-    "autoencoder:2:limiar.json": "44be53d11db274102e98c1b04980b5d61915a23fcc67b12ba19ba888efff2a70",
+    "autoencoder:2:limiar.json": "5f16fe3d9f2c274a47ef5dd9fcb5c59a2af7a0b2a7246d1d91815020c8fd55e3",
     "autoencoder:3:diagnostico_autoencoder.npz": "80a459e9a45fe992927cd52a64a0061004d62533a171f6be8425c4efc26a9310",
     "autoencoder:4:calibracao_autoencoder.csv": "1df764cf543c9d4c026a2de1e25cdee3fcb234aaf3974d8bd7425b9463312928",
     "autoencoder:5:calibracao_autoencoder.md": "ba4114d2b10b566cc5ccd6bc08de25e01fdc8c6a5a279fdf6f4def075de60d13",
@@ -46,7 +46,7 @@
   "output_artifacts": {
     "resultados/autoencoder/injecao_falhas_resultados.png": "c9ffab0705ffbd0e24a74bbe6dc60d182a12a2d41ee32d5885d39eb224fa2c9e",
     "resultados/autoencoder/injecao_falhas_comparacao.png": "f27496779a93bbf7747e57098b4322e6e88729cdd9831acb0bc7ed0bccbb514a",
-    "resultados/autoencoder/injecao_falhas_report.json": "1176a91373fe113c1a5dfe44a6d7182855c60946652616d3feddc9d3022c10ae",
+    "resultados/autoencoder/injecao_falhas_report.json": "7d18379f41667263c0a882fe8a888f20e0182d8c6f5e08d158f77fff7882dd7d",
     "resultados/autoencoder/injecao_smd_tabela.csv": "27c41944e7124c286db89586cb777a46ae16a5dfaad1b62ec57287d7ade7a928"
   }
 }

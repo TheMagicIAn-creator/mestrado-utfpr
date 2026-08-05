@@ -79,3 +79,45 @@ def test_resumo_publico_nomeia_ponto_operacional_sem_confundir_com_mu3sigma():
     # se μ+3σ aparecer, tem de ser como referência — nunca como limiar em uso
     if "3σ" in msg or "3sigma" in low or "mu3" in low:
         assert "refer" in low
+
+
+def test_diagnostico_compara_mse_historico_com_localizado_operacional():
+    from src.ml.diagnostico_escore import _limiares_comparacao
+
+    scores = np.linspace(0.0, 10.0, 1001)
+    info = {
+        "limiar": 8.5,
+        "score_method": "localizado",
+        "score_threshold": 8.5,
+        "mse_p99": 2.5,
+        "limiar_p99": 2.5,
+        "threshold_effective_percentile": 99.9,
+        "top_k": 5,
+    }
+
+    mse, localizado, percentil, operacional = _limiares_comparacao(
+        info, scores, k=5
+    )
+
+    assert mse == 2.5
+    assert localizado == 8.5
+    assert percentil == 99.9
+    assert operacional is True
+
+
+def test_diagnostico_recalibra_localizado_quando_k_muda():
+    from src.ml.diagnostico_escore import _limiares_comparacao
+
+    scores = np.linspace(0.0, 10.0, 1001)
+    info = {
+        "score_method": "localizado",
+        "score_threshold": 8.5,
+        "mse_p99": 2.5,
+        "threshold_effective_percentile": 99.9,
+        "top_k": 5,
+    }
+
+    _, localizado, _, operacional = _limiares_comparacao(info, scores, k=3)
+
+    assert localizado == float(np.percentile(scores, 99.9))
+    assert operacional is False
