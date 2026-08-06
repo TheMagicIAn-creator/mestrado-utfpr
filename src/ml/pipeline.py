@@ -388,6 +388,21 @@ def registrar_manifesto(key: str, parameters: dict | None = None,
         get_logger("pipeline").exception("falha ao registrar manifesto de %s", key)
 
 
+def _data_do_manifesto(key: str) -> str:
+    """`created_at` do manifesto da etapa, para carimbar de quando é o artefato.
+
+    Existe para que a resposta de SKIP nunca apresente números sem dizer de que
+    execução eles vêm. Ver docs/auditoria_total_src.md secao 2.
+    """
+    from src.ml.proveniencia import carregar_manifesto
+
+    try:
+        salvo = carregar_manifesto(key) or {}
+    except Exception:  # noqa: BLE001 - diagnóstico nunca derruba a etapa
+        return "data desconhecida"
+    return str(salvo.get("created_at") or "data desconhecida")
+
+
 def estado_etapa_completo(key: str) -> dict:
     """{'estado': ready|stale|pending, 'motivos': [...]} via manifesto."""
     from src.ml.proveniencia import estado_etapa
@@ -527,13 +542,27 @@ def executar_etapa(etapa: str,
     if force:
         limpar_artefatos(etapa)
     else:
-        estado_atual = estado_etapa_completo(etapa).get("estado")
+        completo = estado_etapa_completo(etapa)
+        estado_atual = completo.get("estado")
         if estado_atual == "ready":
+            # A mensagem precisa DIZER que nada foi recalculado, e desde quando.
+            # Antes era so "ja esta pronto", e o chamador concatenava a tabela de
+            # resultados logo abaixo -- o que lia como execucao fresca. Como o
+            # treino e deterministico (semente fixa), o pesquisador nao tinha como
+            # distinguir SKIP de recalculo olhando os arquivos.
+            # Ver docs/auditoria_total_src.md secao 2.
+            desde = _data_do_manifesto(etapa)
             return {
                 "ok": True,
                 "etapa": stage.label,
                 "executou": False,
-                "mensagem": f"{stage.label} ja esta pronto.",
+                "recalculou": False,
+                "artefatos_de": desde,
+                "mensagem": (
+                    f"NAO recalculei. {stage.label} esta READY desde {desde}; "
+                    "os numeros abaixo vem desse artefato, nao de uma execucao "
+                    "agora. Para forcar, peca 'recalcule tudo do zero'."
+                ),
             }
         if estado_atual == "stale":
             # limpa a etapa (e o downstream, que também precisa regenerar).

@@ -16,13 +16,43 @@ python -m pytest -W ignore -q           # idem, sem warnings de limpeza de tmp
 ```
 
 ## Pipeline de ML (recalcular — exige `dados/brutos/` local)
+
+> ⚠️ **Rodar os módulos direto NÃO grava manifesto de proveniência.** Nenhum
+> bloco `__main__` das cinco etapas chama `registrar_manifesto`; a única chamada
+> real está dentro de `pipeline.executar_etapa`. Consequência: os artefatos são
+> regenerados, mas o manifesto continua apontando para os **anteriores**, e a
+> etapa aparece **stale logo depois de ser recalculada**. Foi esse ciclo que
+> levou, em 05/08, a manifestos reescritos à mão — as cinco etapas com
+> `created_at` dentro de 0,55 s, para uma execução que leva 8 minutos.
+> Ver `docs/auditoria_total_src.md` §2.
+
+**Caminho recomendado — pelo pipeline, que registra proveniência:**
+
 ```powershell
-python src/ml/features_ca.py        # extrai features CA (Paderborn) + manifesto
-python src/ml/autoencoder.py        # treina o AE; grava limiar.json (score operacional + referências) + manifesto
+python -m src.ml.exec_etapa_isolada features_ca
+python -m src.ml.exec_etapa_isolada autoencoder
+python -m src.ml.exec_etapa_isolada injecao_falhas
+python -m src.ml.exec_etapa_isolada validacao
+python -m src.ml.exec_etapa_isolada rul_weibull
+```
+
+**Execução direta dos módulos** — útil para depurar uma etapa, mas deixa o
+manifesto defasado; depois de usar, recalcule pelo caminho acima:
+
+```powershell
+python src/ml/features_ca.py        # extrai features CA (Paderborn)
+python src/ml/autoencoder.py        # treina o AE; grava limiar.json (score operacional + referências)
 python src/ml/injecao_falhas.py     # injeta falhas FMECA (E2) + schema no report
 python src/ml/validacao.py          # validação interna E2: ROC + PR + matrizes, limiar congelado
 python src/ml/rul_weibull.py        # RUL / Weibull
 ```
+
+**Forçar recálculo total** (ignora o estado `ready` de todas as etapas): pelo
+chat, peça *"recalcule tudo do zero"*. Frases como *"rode o pipeline de novo"* e
+*"retreine o autoencoder"* também forçam desde 06/08 — antes disso a etapa era
+**pulada em silêncio**, e a resposta imprimia a tabela de resultados logo abaixo
+de "já está pronto". Hoje, quando não recalcula, a resposta diz isso e carimba a
+data do artefato.
 
 ## Experimentos por artigo
 Cada experimento tem o SEU protocolo de decisão (src/ml/protocolos_artigos.py);

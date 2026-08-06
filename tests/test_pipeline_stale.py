@@ -38,10 +38,19 @@ def _prepara(monkeypatch, estado):
 
 
 def test_ready_pula_sem_rodar(monkeypatch):
+    """READY pula o runner — e a mensagem tem de DIZER que pulou.
+
+    A mensagem antiga era "já está pronto", e o chamador concatenava a tabela
+    de resultados logo abaixo: lia-se como execução fresca. Com o treino
+    determinístico (semente fixa), não havia como distinguir SKIP de recálculo
+    olhando os arquivos. Ver docs/auditoria_total_src.md §2.
+    """
     rodou, _ = _prepara(monkeypatch, "ready")
     res = pipe.executar_etapa("injecao_falhas", auto_deps=False)
     assert res["executou"] is False
-    assert "ja esta pronto" in res["mensagem"]
+    assert res["recalculou"] is False
+    assert "NAO recalculei" in res["mensagem"]
+    assert res["artefatos_de"]                # carimbo de origem, sempre
     assert rodou == []                       # NÃO rodou o runner
 
 
