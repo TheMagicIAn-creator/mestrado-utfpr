@@ -68,6 +68,9 @@ ALVO_PADRAO_PCT = 1.0
 # regime é considerado outro. 1,5 IQR é o critério clássico de outlier de
 # Tukey; aqui aplicado à MEDIANA de um bloco inteiro, não a um ponto.
 LIMITE_DRIFT_IQR = 1.5
+# Meia-largura da busca de F0 em features_ca.estimar_f0 (padrão do parâmetro
+# `faixa_hz`). Com F0 nominal de 60 Hz, a busca cobre [20, 100] Hz.
+FAIXA_BUSCA_F0_HZ = 40.0
 
 
 # ============================================================
@@ -144,6 +147,25 @@ def alvo_foi_atingido(fpr_observado_pct: float, alvo_pct: float) -> bool:
     return float(fpr_observado_pct) <= float(alvo_pct) + 1e-12
 
 
+def fracao_no_teto(valores, teto: float, tolerancia: float = 1.0) -> float:
+    """Fração de estimativas encostadas no teto da busca — sinal de saturação.
+
+    ``features_ca.estimar_f0`` procura a fundamental em
+    ``[F0 − faixa_hz, F0 + faixa_hz] = [20, 100] Hz`` (F0 nominal = 60 Hz, da
+    rede brasileira). O Paderborn, porém, é um acionamento de motor de
+    velocidade variável: a fundamental acompanha a rotação e passa de 100 Hz.
+
+    Quando a fundamental verdadeira está ACIMA do teto, o estimador não pode
+    devolvê-la — devolve o teto (a interpolação parabólica explica os poucos
+    décimos acima). Uma MEDIANA de bloco pousada no teto não é um regime
+    operacional: é estimador saturado. Esta função mede quanto disso há.
+    """
+    v = np.asarray(valores, dtype=float).reshape(-1)
+    if v.size == 0:
+        raise ValueError("valores não pode ser vazio")
+    return float(np.count_nonzero(v >= float(teto) - float(tolerancia)) / v.size)
+
+
 # ============================================================
 # Execução — precisa do modelo treinado e do dataset
 # ============================================================
@@ -175,17 +197,26 @@ def _regime_por_bloco(pasta: Path) -> dict | None:
     if coluna is None:
         return None
 
+    from src.ml.features_ca import F0 as F0_NOMINAL
+
+    teto = float(F0_NOMINAL) + FAIXA_BUSCA_F0_HZ
     split = split_temporal_com_purga(
         len(df), train_ratio=TRAIN_RATIO, val_ratio=CALIB_RATIO,
         purga=PURGA_PADRAO)
-    blocos = {nome: resumo_regime(df.iloc[np.asarray(split[chave], int)][coluna])
-              for nome, chave in (("treino", "treino"), ("calibracao", "val"),
-                                  ("teste", "teste"))}
+    blocos, saturacao = {}, {}
+    for nome, chave in (("treino", "treino"), ("calibracao", "val"),
+                        ("teste", "teste")):
+        valores = df.iloc[np.asarray(split[chave], int)][coluna]
+        blocos[nome] = resumo_regime(valores)
+        saturacao[nome] = fracao_no_teto(valores, teto)
     desloc = deslocamento_iqr(blocos["calibracao"], blocos["teste"])
     return {
         "coluna": coluna, "blocos": blocos,
         "deslocamento_calib_teste_iqr": float(desloc),
         "regimes_distintos": bool(desloc > LIMITE_DRIFT_IQR),
+        "teto_busca_f0_hz": teto,
+        "fracao_saturada": saturacao,
+        "estimador_saturado": bool(max(saturacao.values()) > 0.10),
     }
 
 
@@ -287,6 +318,19 @@ def _imprimir(r: dict) -> None:
             print("      cobertura de dados, não erro de calibração — e é por")
             print("      isso que apertar o limiar custa recall em vez de")
             print("      corrigir o problema.")
+        teto = reg["teto_busca_f0_hz"]
+        print(f"\n  Teto da busca de F0: {teto:.0f} Hz  "
+              "(features_ca.estimar_f0)")
+        for nome, frac in reg["fracao_saturada"].items():
+            print(f"    {nome:<12} {frac*100:5.1f}% das janelas no teto")
+        if reg["estimador_saturado"]:
+            print("  ⛔ ESTIMADOR SATURADO. F0 encostado no teto não é regime:")
+            print("     é a busca não alcançando a fundamental verdadeira. O")
+            print("     Paderborn é acionamento de VELOCIDADE VARIÁVEL e passa")
+            print("     de 100 Hz; a faixa foi dimensionada para rede de 60 Hz.")
+            print("     Com F0 errado, TODA feature harmônica e a THD saem")
+            print("     erradas — e o erro de reconstrução sobe sem falha")
+            print("     alguma. Ver docs/auditoria_parametros.md §1.")
 
 
 def main() -> int:

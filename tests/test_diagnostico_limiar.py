@@ -21,6 +21,7 @@ from scripts.diagnostico_limiar import (  # noqa: E402
     LIMITE_DRIFT_IQR,
     alvo_foi_atingido,
     deslocamento_iqr,
+    fracao_no_teto,
     limiar_fpr_maximo,
     resumo_regime,
 )
@@ -130,3 +131,34 @@ def test_alvo_declarado_mas_nao_atingido_e_reportado_como_nao_atingido():
 
 def test_igualdade_no_limite_nao_falha_por_ponto_flutuante():
     assert alvo_foi_atingido(0.1 + 0.2, 0.3) is True
+
+
+# ── saturação do estimador de F0 (docs/auditoria_parametros.md §1) ──────────
+
+
+def test_mediana_no_teto_e_detectada_como_saturacao():
+    """O caso REAL: teto da busca em 100 Hz, mediana medida em 100,19 Hz.
+
+    Uma mediana de bloco pousada no teto não é regime operacional — é a busca
+    não alcançando a fundamental verdadeira.
+    """
+    teste = np.full(88, 100.19)
+    assert fracao_no_teto(teste, teto=100.0) == 1.0
+
+
+def test_bloco_dentro_da_faixa_nao_acusa_saturacao():
+    calibracao = np.random.default_rng(0).normal(51.25, 2.0, 91)
+    assert fracao_no_teto(calibracao, teto=100.0) == 0.0
+
+
+def test_fracao_no_teto_conta_a_tolerancia():
+    """Interpolação parabólica ultrapassa o teto por décimos; conta como teto."""
+    v = np.array([98.5, 99.4, 100.0, 100.19, 60.0, 51.0])
+    # tolerância 1,0 → conta tudo ≥ 99,0: 99,4 / 100,0 / 100,19 (98,5 fica fora)
+    assert fracao_no_teto(v, teto=100.0, tolerancia=1.0) == pytest.approx(3 / 6)
+    assert fracao_no_teto(v, teto=100.0, tolerancia=0.0) == pytest.approx(2 / 6)
+
+
+def test_fracao_no_teto_recusa_bloco_vazio():
+    with pytest.raises(ValueError):
+        fracao_no_teto([], teto=100.0)
