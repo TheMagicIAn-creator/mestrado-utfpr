@@ -1,13 +1,13 @@
 {
   "manifest_version": 2,
   "stage": "injecao_falhas",
-  "created_at": "2026-08-05T01:39:59.841503-03:00",
-  "git_commit": "06ca15b4ba90f0f62ecc76a5d529f12f0db09926",
+  "created_at": "2026-08-05T22:53:02.464589-03:00",
+  "git_commit": "d9afe11d1b0bc96c921a5bdcb94058e55631d5ea",
   "code_hash_mode": "text_lf_utf8",
-  "code_sha256": "15c89dd4199322cfb5a4cd90febc9dd9d86108429ad6ccf7da77b2882a302b32",
+  "code_sha256": "19387d79bab701ec689aeabcc71020f3d143e0b04d1f33802f60258fa0fa357c",
   "code_dependencies": {
-    "src.ml.features_ca": "fdb785e3d6398250b90de7fbd17fb3093b092d60752436e51312d4af370f0ad1",
-    "src.ml.autoencoder": "bc255cd556f54da90afb2f53c8551ac2aa310f113ddfc4fa64e7db528da08d9f",
+    "src.ml.features_ca": "e853c497d923671c1d879c87fb841a0f75bd510418eae8aab5eed2419eb98eba",
+    "src.ml.autoencoder": "824c3fb7c22a6abf2dea7fe6e877e2a0d80468eb92098cb30ab2db3b023a318d",
     "src.ml.dados_avaliacao": "bff782018b640e3b8dd763e60b5885958e9fdf507fab7af4055fee1972b9a6db",
     "src.ml.escore_anomalia": "16d619a9d652fb49079e8c3737382aa2ca1e89de32061b43e607bcd9781b98ff",
     "src.ml.estatistica": "fde4d602db680706252a6e11c9bb9a2aa84e27b6911275beec7f4148538a4515",
@@ -27,9 +27,9 @@
     "n_janelas_smd": 100
   },
   "input_artifacts": {
-    "autoencoder:0:modelo_autoencoder.pt": "488ff80cc0e29326ff785b712d9e66b1b4195afcff6e9090f9650b67a1b71ad1",
+    "autoencoder:0:modelo_autoencoder.pt": "6768589b30cbca299b8d496f05c4391c1de714cf1d774e2bb173f8a2cbe8056a",
     "autoencoder:1:scaler.pkl": "6410b906f4aea04bdb010da6465df9753f6d52d2def529e29e110c0fe521edad",
-    "autoencoder:2:limiar.json": "5f16fe3d9f2c274a47ef5dd9fcb5c59a2af7a0b2a7246d1d91815020c8fd55e3",
+    "autoencoder:2:limiar.json": "6402bc16309afd43c8851de41bb77dbd42f9fc1e0522eea2b36de0b43312a2c8",
     "autoencoder:3:diagnostico_autoencoder.npz": "80a459e9a45fe992927cd52a64a0061004d62533a171f6be8425c4efc26a9310",
     "autoencoder:4:calibracao_autoencoder.csv": "1df764cf543c9d4c026a2de1e25cdee3fcb234aaf3974d8bd7425b9463312928",
     "autoencoder:5:calibracao_autoencoder.md": "ba4114d2b10b566cc5ccd6bc08de25e01fdc8c6a5a279fdf6f4def075de60d13",
