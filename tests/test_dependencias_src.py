@@ -52,7 +52,10 @@ def test_excecao_ampla_nao_pode_ser_descartada_com_pass():
 
 
 def test_interface_avisa_falhas_operacionais_criticas():
-    fonte = (RAIZ / "src/interface/streamlit_app.py").read_text(encoding="utf-8")
+    fonte = "\n".join(
+        caminho.read_text(encoding="utf-8")
+        for caminho in (RAIZ / "src/interface").glob("*.py")
+    )
     for operacao in (
         "Sessão salva, mas não foi indexada na memória",
         "Não foi possível atualizar a memória automática",
