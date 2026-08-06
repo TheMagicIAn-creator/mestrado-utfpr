@@ -143,8 +143,14 @@ def avaliar_deteccao(nome: str, cor: str, scorer, janelas_calib: list,
 
 
 # ============================================================
-# SAÍDA UNIFORME — tabela ENXUTA (6 colunas, não 33)
+# SAÍDA UNIFORME — tabela ENXUTA (5 colunas, não 33)
 # ============================================================
+
+def _dados_severidade(falha: dict, severidade: float) -> dict:
+    """Le uma severidade tanto do resultado em memoria quanto do JSON."""
+    por_sev = falha["por_sev"]
+    return por_sev.get(severidade, por_sev.get(str(severidade), {}))
+
 
 def tabela_enxuta(resultados: list[dict]) -> str:
     """Tabela Markdown compacta, com as métricas COMPARÁVEIS entre métodos.
@@ -154,7 +160,7 @@ def tabela_enxuta(resultados: list[dict]) -> str:
     poucas janelas de calibração ela é conservadora demais (p99 de ~17 amostras
     ≈ máximo) e NÃO deve ser usada para ranquear métodos.
     """
-    linhas = ["| Método | Falha (NPR) | AUC | SMD @FPR=10% | TPR @sev=1.0 |",
+    linhas = ["| Método | Falha (NPR) | AUC | SMD @FPR=10% | TPR @FPR=10%, sev=1.0 |",
               "|---|---|---|---|---|"]
     for r in resultados:
         for fid, f in r["falhas"].items():
@@ -179,13 +185,16 @@ def salvar_saidas(resultados: list[dict], pasta: Path, prefixo: str = "comparaca
     (pasta / f"{prefixo}_tabela.md").write_text(tabela_enxuta(resultados), encoding="utf-8")
     with (pasta / f"{prefixo}_tabela.csv").open("w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
-        w.writerow(["metodo", "falha", "npr", "auc", "smd_fpr10", "tpr_sev1", "deteccao_limiar", "fp_pct"])
+        w.writerow([
+            "metodo", "falha", "npr", "auc", "smd_fpr10",
+            "tpr_fpr10_sev1", "deteccao_limiar_sev1", "fp_pct",
+        ])
         for r in resultados:
             for fid, f in r["falhas"].items():
                 w.writerow([r["nome"], f["nome"], f["npr"], round(f["auc"], 4),
                             f.get("smd_fpr10"),
                             round(f.get("tpr_fpr10", float("nan")), 4),
-                            round(f["por_sev"].get(1.0, {}).get("taxa", float("nan")), 4),
+                            round(_dados_severidade(f, 1.0).get("taxa", float("nan")), 4),
                             round(r["fp_pct"], 2)])
     (pasta / f"{prefixo}_resultado.json").write_text(
         json.dumps(resultados, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -220,8 +229,10 @@ def plotar_deteccao_severidade(resultados: list[dict], pasta: Path,
             f = r["falhas"][fid]
             # curva no ponto de operação FPR=10% (comparável); cai para a taxa
             # no limiar se o resultado for de uma versão anterior do pipeline.
-            y = [f["por_sev"][s].get("tpr_fpr10", f["por_sev"][s]["taxa"]) * 100
-                 for s in sevs]
+            y = []
+            for severidade in sevs:
+                dados = _dados_severidade(f, severidade)
+                y.append(dados.get("tpr_fpr10", dados["taxa"]) * 100)
             ax.plot(sevs, y, marcadores[j % len(marcadores)],
                     label=f"{r['nome']} (AUC={f['auc']:.2f})")
         ax.axhline(95, color=COR_ALERTA, linestyle="--", linewidth=1.4, label="Alvo SMD 95%")

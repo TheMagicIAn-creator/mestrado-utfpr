@@ -1,4 +1,4 @@
-| Método | Falha (NPR) | AUC | SMD @FPR=10% | TPR @sev=1.0 |
+| Método | Falha (NPR) | AUC | SMD @FPR=10% | TPR @FPR=10%, sev=1.0 |
 |---|---|---|---|---|
 | Proposto (AE denso + escore localizado) | Contator AC (NPR=315) | 1.000 | 0.20 | 100% |
 | Proposto (AE denso + escore localizado) | IGBT (NPR=90) | 0.978 | 0.50 | 100% |

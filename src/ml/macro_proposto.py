@@ -156,7 +156,10 @@ def executar(n_janelas: int | None = None) -> dict:
          f"{resultado['fp_pct']:.1f}%")
     for fid, f in resultado["falhas"].items():
         det_1 = f["por_sev"][1.0]["taxa"] * 100
-        _log(f"    {f['nome']:<14} AUC={f['auc']:.3f} | detecção@sev1.0={det_1:.0f}%")
+        _log(
+            f"    {f['nome']:<14} AUC={f['auc']:.3f} | "
+            f"detecção@limiar,sev1.0={det_1:.0f}%"
+        )
 
     saidas = salvar_saidas([resultado], PASTA_SAIDA, prefixo="proposto")
     _log(f"\n  Saídas em {PASTA_SAIDA}")

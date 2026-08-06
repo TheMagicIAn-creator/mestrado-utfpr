@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+from pathlib import Path
 
 import numpy as np
 
@@ -39,6 +40,7 @@ def test_tabela_enxuta_tem_5_colunas_e_uma_linha_por_metodo_falha():
     assert linhas[0].count("|") == 6          # 5 colunas → 6 pipes
     assert len(linhas) == 2 + 4               # cabeçalho + separador + 2×2
     assert "Proposto" in tab and "Ibrahim" in tab
+    assert "TPR @FPR=10%, sev=1.0" in tab
 
 
 def test_salvar_saidas_gera_md_csv_json_e_png(tmp_path):
@@ -48,17 +50,34 @@ def test_salvar_saidas_gera_md_csv_json_e_png(tmp_path):
     for chave in ("tabela_md", "tabela_csv", "grafico"):
         assert saidas[chave].exists(), f"{chave} não foi gerado"
     assert (tmp_path / "cmp_resultado.json").exists()
-    # CSV enxuto: 6 colunas de dados, 4 linhas (2 métodos × 2 falhas)
+    # CSV enxuto: 8 colunas de dados, 4 linhas (2 métodos × 2 falhas)
     with (tmp_path / "cmp_tabela.csv").open(encoding="utf-8") as fh:
         linhas = list(csv.reader(fh))
-    assert linhas[0] == ["metodo", "falha", "npr", "auc", "smd_fpr10", "tpr_sev1", "deteccao_limiar", "fp_pct"]
+    assert linhas[0] == [
+        "metodo", "falha", "npr", "auc", "smd_fpr10",
+        "tpr_fpr10_sev1", "deteccao_limiar_sev1", "fp_pct",
+    ]
     assert len(linhas) == 5
     # JSON é recarregável (auditoria)
     dados = json.loads((tmp_path / "cmp_resultado.json").read_text(encoding="utf-8"))
     assert len(dados) == 2 and dados[0]["nome"] == "Proposto"
+
+    # Roundtrip real: no JSON, chaves float de `por_sev` tornam-se strings.
+    # O artefato recarregado precisa continuar apto a regerar tabela e figura.
+    saidas_roundtrip = salvar_saidas(dados, tmp_path / "roundtrip", prefixo="cmp")
+    assert all(caminho.exists() for caminho in saidas_roundtrip.values())
 
 
 def test_grafico_um_painel_por_falha(tmp_path):
     res = [_resultado("Proposto", 0.99, 1.0, 0.94, 0.86)]
     png = plotar_deteccao_severidade(res, tmp_path, prefixo="g")
     assert png.exists() and png.stat().st_size > 5000   # figura real, não vazia
+
+
+def test_tabela_macro_publicada_deriva_do_json_versionado():
+    pasta = Path(__file__).resolve().parents[1] / "resultados" / "macro"
+    dados = json.loads((pasta / "comparacao_resultado.json").read_text(encoding="utf-8"))
+    tabela = (pasta / "comparacao_tabela.md").read_text(encoding="utf-8")
+
+    assert tabela == tabela_enxuta(dados)
+    assert "TPR @FPR=10%, sev=1.0" in tabela
