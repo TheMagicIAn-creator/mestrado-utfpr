@@ -1,7 +1,7 @@
 # Arquitetura do `src/` — Al IAdo PV
 
 Mapa rápido para não se perder. O pacote tem **4 áreas**. `core/` é a base;
-`conhecimento/ferramentas.py` funciona como adaptador e pode acionar `ml/`;
+os módulos `conhecimento/ferramentas*` funcionam como adaptadores e podem acionar `ml/`;
 `interface/` e `orquestrador.py` compõem os fluxos no topo:
 
 ```
@@ -15,7 +15,7 @@ core/  ◄──────────────── ml/ (pipeline e exper
 
 Regra de ouro: **`core/` é a fundação** (todos importam dela; ela não importa
 ninguém). `ml/` não depende do agente. A integração RAG→ML fica concentrada em
-`conhecimento/ferramentas.py`; a interface não implementa regra científica.
+na família `conhecimento/ferramentas*`; a interface não implementa regra científica.
 
 ---
 
@@ -35,17 +35,24 @@ ninguém). `ml/` não depende do agente. A integração RAG→ML fica concentrad
 ## `conhecimento/` — o cérebro do agente / RAG
 | Arquivo | O que faz |
 |---|---|
-| `agente.py` | **Maior arquivo.** Expansão, recuperação híbrida, fusão RRF, reranking e montagem do prompt. |
+| `agente.py` | Fachada compatível e coordenação final das respostas do agente. |
+| `agente_interacao.py` | Interação leve, intenção, citações e utilitários de consulta. |
+| `agente_recuperacao.py` | Expansão, recuperação híbrida, fusão RRF, diversificação e reranking. |
+| `agente_contexto.py` | Busca coordenada, catálogo e preparação final do prompt. |
 | `atalhos.py` | Registro único de respostas determinísticas anteriores ao RAG. |
 | `embeddings.py` | Seleciona backend de embeddings local ou portátil. |
-| `ferramentas.py` | **Tool calling.** Specs, roteador determinístico (linguagem→ferramenta) e a implementação de cada ferramenta do chat. |
+| `ferramentas.py` | Fachada de tool calling, specs, despacho e execução do pipeline. |
+| `intencoes_ferramentas.py` | Detectores determinísticos de pedidos relacionados a ferramentas. |
+| `ferramentas_academicas.py` | Adaptadores de literatura, experimentos, datasets e classificação. |
+| `roteamento_ferramentas.py` | Decisão, guardas críticas e comentário dos resultados das ferramentas. |
 | `indexador.py` | Indexa PDFs e sessões no ChromaDB (chunking por página, dedupe SHA-256). |
 | `indice_lexical.py` | Índice lexical BM25 em SQLite FTS5, derivado da literatura. |
 | `indice_portatil.py` | Exporta e restaura um snapshot gzip versionável do índice literário. |
 | `multiagente.py` | Contratos da equipe: Gemini Pro conversa/sintetiza; Gemini Flash audita evidências e memória. |
 | `memoria_persistente.py` | Memória JSON validada, atômica, deduplicada e recuperada por relevância. |
 | `nota_cerebro.py` | Valida e grava notas curadas no vault. |
-| `obsidian.py` | Indexação do vault completo, busca híbrida histórica e espelho Markdown da memória validada. |
+| `obsidian.py` | Leitura, indexação e espelho Markdown da memória validada no vault. |
+| `consultas_obsidian.py` | Consultas cronológicas, inventário e busca híbrida no vault. |
 | `persistencia_nuvem.py` | Persiste arquivos permitidos no GitHub quando o app roda na nuvem. |
 | `processador_pdf.py` | Ingestão de PDF novo: metadados, nome padrão, tema, cópia, indexa, nota Obsidian. |
 | `consolidar_memoria.py` | Consolida sessões `.md` em memória via LLM, reindexa e arquiva. |
@@ -73,6 +80,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `injecao_falhas.py` | Etapa 3: falhas sintéticas orientadas pela FMECA + SMD. |
 | `validacao.py` | Etapa 4: métricas no limiar congelado (ROC/PR/F1/AUC). |
 | `rul_weibull.py` | Etapa 5: TTF, Weibull 2P, RUL condicional. |
+| `graficos_rul.py` | Figuras acadêmicas de TTF, confiabilidade e RUL. |
 | `pipeline.py` | Coordena estado/execução das etapas e grava manifestos. |
 | `proveniencia.py` | Manifestos de proveniência e estado ready/stale/pending. |
 | `split_temporal.py` | Split temporal com purga (anti-vazamento), compartilhado. |
@@ -88,7 +96,8 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `macro_ibrahim.py` | Avalia o AE-LSTM temporal inspirado em Ibrahim (2022). |
 | `macro_comparar.py` | Fonte única Proposto × Ibrahim para AUC e SMD. |
 | **Harness histórico por artigo** | |
-| `experimentos_artigos.py` | Registry do comparativo ativo Ibrahim/AE-LSTM, métricas, artefatos e runner de anomalia. |
+| `experimentos_artigos.py` | Registry do comparativo ativo Ibrahim/AE-LSTM, métricas e runner de anomalia. |
+| `graficos_experimentos.py` | Figuras e comparações visuais do harness por artigo. |
 | `protocolos_artigos.py` | Protocolo de decisão do Ibrahim/AE-LSTM + injeção FMECA no espaço de features. |
 | `modelos_anomalia.py` | **Módulo folha**: scorer de anomalia não-supervisionado (AE-LSTM). Existe para quebrar o ciclo `experimentos`↔`protocolos`. |
 | `exec_experimento_isolado.py` | Roda experimento em subprocesso isolado (crash de lib pesada não derruba o app). |
@@ -100,7 +109,11 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 ## `interface/` + raiz do pacote
 | Arquivo | O que faz |
 |---|---|
-| `interface/streamlit_app.py` | UI Streamlit completa: estado, sidebar, chat, streaming, render de imagens. |
+| `interface/streamlit_app.py` | Ponto de entrada da UI: estado, base, boas-vindas, streaming e chat. |
+| `interface/sidebar.py` | Status, diagnóstico e controles laterais. |
+| `interface/renderizacao_imagens.py` | Agrupamento, antevisão e download de figuras. |
+| `interface/ciclo_chat.py` | Persistência da sessão e caminhos de resposta por ferramenta/RAG. |
+| `interface/streamlit_proxy.py` | Referência tardia ao Streamlit atual para testes e hot-reload. |
 | `orquestrador.py` | Coordenação leve do backend na init (reprocessamento por sinal + indexação de PDFs novos). |
 
 ---
@@ -108,8 +121,9 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 ## Dois fluxos para entender o todo
 
 **1. Pergunta no chat** (`streamlit_app` → `agente`/`ferramentas`):
-`ferramentas.decidir_acao` decide se é caso de **ferramenta** (rodar/consultar ML)
-ou de **RAG**. Se RAG: `agente` expande a query → combina ChromaDB semântico e
+`roteamento_ferramentas.decidir_acao`, reexportado pela fachada, decide se é
+caso de **ferramenta** (rodar/consultar ML) ou de **RAG**. Se RAG: o agente
+expande a query → combina ChromaDB semântico e
 BM25 por RRF → reranking → Gemini Flash audita a cobertura → Gemini Pro responde com
 citações por página, memória classificada do Obsidian e memória validada pertinente.
 
