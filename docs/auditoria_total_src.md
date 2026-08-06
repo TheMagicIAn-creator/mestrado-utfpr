@@ -4,10 +4,9 @@
 correção. **Método:** 8 frentes paralelas de auditoria automatizada, cada
 achado exigindo evidência em `arquivo:linha` ou número medido de artefato.
 
-**Estado desta rodada:** 4 das 8 frentes concluíram antes do limite de sessão
-(49 achados, 33 graves). As 4 restantes — treino, parâmetros do agente, testes
-e revisão dos PRs #89–#103 — estão listadas em §9 como pendentes, **não** como
-concluídas.
+**Estado:** 6 das 8 frentes concluídas (56 achados, 34 graves). As 2 restantes
+— parâmetros do agente e revisão dos PRs #89–#103 — estão em §11 como
+**pendentes**, não como concluídas.
 
 | Frente | Estado | Achados | Graves |
 |---|---|---:|---:|
@@ -15,9 +14,9 @@ concluídas.
 | Recomputação / artefatos que não mudam | ✅ | 13 | 8 |
 | Weibull e unidade de tempo | ✅ | 12 | 7 |
 | Corrente contínua no escopo CA | ✅ | 10 | 8 |
-| Treino (épocas, LR, dropout, latente) | ⏸️ | — | — |
+| Treino (épocas, LR, dropout, latente) | ✅ | 4 | 1 |
+| Necessidade dos arquivos de teste | ✅ | 3 | 0 |
 | Parâmetros do agente (`core`, `conhecimento`) | ⏸️ | — | — |
-| Necessidade dos arquivos de teste | ⏸️ | — | — |
 | Revisão de código dos PRs #89–#103 | ⏸️ | — | — |
 
 ---
@@ -318,20 +317,126 @@ reabertas:
 
 ---
 
-## §9. Frentes pendentes desta auditoria
+## §9. Treino — as épocas NÃO são o problema
 
-Não concluíram por limite de sessão, e **não** devem ser tratadas como
-auditadas:
+O pesquisador suspeitou que 150 épocas com paciência 20 (parada real em 75)
+fosse curto demais. **Medido: não é.** O limite é outro, e aumentar épocas o
+agrava.
 
-1. **Treino** — épocas, LR, dropout, latente, razão amostras/parâmetros. O
-   pesquisador suspeita que 150 épocas com paciência 20 (parada real em 75)
-   seja curto demais.
-2. **Parâmetros do agente** — `src/core/`, `src/conhecimento/`,
+### Os números
+
+| Grandeza | Valor |
+|---|---:|
+| Parâmetros treináveis | **19.389** |
+| Janelas de treino | **274** |
+| Parâmetros por amostra | **70,8** |
+| Passos de gradiente por época | 9 (`⌈274/32⌉`) |
+| Passos até a época 75 | **675** |
+
+Arquitetura `109→64→32→16→32→64→109`: 7.040 + 2.080 + 528 + 544 + 2.112 + 7.085.
+
+### A curva já estagnou
+
+Lido de `diagnostico_autoencoder.npz`:
+
+| Épocas | Loss treino | Loss calibração |
+|---|---:|---:|
+| 0–5 | 5,840 | 0,751 |
+| 20–25 | 1,639 | 0,437 |
+| 50–55 | 1,000 | 0,368 |
+| 70–75 | 0,884 | 0,357 |
+
+Inclinação nas últimas 20 épocas: treino −0,0083/época, **calibração −0,00055/época**
+(−0,15% por época). O melhor ponto de calibração foi a **época 54**, e o fim da
+série está apenas **1,7% pior**. O early stopping disparou corretamente: a curva
+de calibração é plana, não interrompida em queda.
+
+**Veredito: aumentar `EPOCHS` não muda nada.** A parada não foi por teto de
+épocas (150 nunca foi alcançado) — foi por ausência de melhora.
+
+### O limite real
+
+**70,8 parâmetros por amostra de treino.** A rede tem capacidade de memorizar o
+bloco de treino inteiro várias vezes; o único regularizador é dropout 0,2. Mais
+épocas aumentam a memorização, não a generalização.
+
+O que de fato limita:
+
+1. **Só existem 457 janelas no dataset inteiro** (234.527 linhas ÷ passo de 512).
+   Destas, 274 são de treino. Aumentar a sobreposição geraria mais janelas, mas
+   **correlacionadas** — n efetivo não cresce na mesma proporção.
+2. **A rede é grande demais para o dado.** `109→32→16→8` teria ~4.700 parâmetros
+   (4× menos), com razão de 17 por amostra. É o caminho de maior retorno se o
+   objetivo for reduzir sobreajuste.
+3. **ReLU no gargalo** (já registrado em `auditoria_pipeline_ml.md` §23) impede
+   representação negativa e permite unidades latentes mortas — parte das 16
+   dimensões pode estar em zero permanente.
+
+### Nota de leitura: loss de treino MAIOR que a de calibração
+
+No fim, treino 0,884 contra calibração 0,357 — razão de **2,63×**. Isso **não**
+é sinal de subajuste: dropout fica ativo no treino e desligado na avaliação, e
+a loss de treino é medida com ele ligado. A comparação direta entre as duas
+curvas não é maçã-com-maçã, e não deve ser apresentada como se fosse.
+
+**Recomendação:** não mexer em `EPOCHS`. Se for para mexer em arquitetura, fazer
+junto da varredura de latente e da ReLU, na rodada única já planejada (§6).
+
+---
+
+## §10. Testes — a suspeita não se confirma
+
+O pesquisador achou que havia arquivos demais. **Medido: 69 arquivos, 550
+testes — densidade de ~8 testes por arquivo, que é saudável.**
+
+Varredura mecânica por AST em todos os arquivos:
+
+| Verificação | Resultado |
+|---|---|
+| Testes com `assert` de constante literal (tautologia) | **0** |
+| Testes sem asserção alguma | **0** |
+| Aparentes sem asserção, conferidos um a um | 2 — ambos legítimos |
+
+Os dois aparentes usam formas que a varredura não reconhece como `assert`:
+`np.testing.assert_allclose` (`test_embeddings.py`) e `raise AssertionError`
+após `try/except` (`test_provedores_leves.py`). São asserções reais.
+
+### Pares que parecem redundantes e não são
+
+| Par | Veredito |
+|---|---|
+| `test_limiar` × `test_validacao_limiar` | Distintos: o primeiro é o limiar do AE, o segundo é "as métricas respeitam o limiar recebido" |
+| `test_exec_isolado` × `test_exec_etapa_isolada` | **Módulos diferentes**: subprocesso de experimentos × processo-filho do pipeline |
+| `test_resultados_imagens` × `test_resultados_ml` | Distintos: imagens × adaptador para a memória |
+
+### Única consolidação com mérito
+
+Três arquivos guardam invariantes **estruturais do repositório** e somam 6
+testes: `test_cobertura_auditoria_src.py` (1), `test_limites_arquitetura.py` (1)
+e `test_dependencias_src.py` (4). Poderiam ser um `test_arquitetura_src.py`.
+
+**Não executado nesta rodada**: o ganho é organizacional e o custo é churn de
+histórico. Fica registrado como opcional, não como dívida.
+
+### Conclusão honesta
+
+O volume de arquivos reflete a **superfície real** do projeto — pipeline de ML,
+agente RAG, memória, interface, proveniência, segurança. Não encontrei gordura
+que justifique apagar. Se algum arquivo incomoda, o critério deve ser cobertura
+duplicada medida, não contagem de arquivos.
+
+---
+
+## §11. Frentes ainda pendentes
+
+Duas não concluíram, por falha repetida da ferramenta de auditoria paralela
+(agentes esgotaram tentativas de saída estruturada). **Não** devem ser tratadas
+como auditadas:
+
+1. **Parâmetros do agente** — `src/core/`, `src/conhecimento/`,
    `src/interface/`: chunks, top-K, RRF, limites de contexto, timeouts,
    limiares de confiança da memória.
-3. **Necessidade dos arquivos de teste** — inventário, redundância, obsoletos,
-   cobertura ausente.
-4. **Revisão de código dos PRs #89–#103.**
+2. **Revisão de código dos PRs #89–#103** (feitos pelo outro agente).
 
 ## Referências internas
 
