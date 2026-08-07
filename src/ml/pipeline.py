@@ -151,7 +151,7 @@ STAGES: dict[str, PipelineStage] = {
         label="Injecao de Falhas",
         module="src.ml.injecao_falhas",
         function="executar_injecao_falhas",
-        parameter_names=("SEVERIDADES", "ALVO_SMD", "N_JANELAS_SMD"),
+        parameter_names=("A_INJ", "ALVO_SMD", "N_JANELAS_SMD"),
         code_dependencies=(
             "src.ml.features_ca",
             "src.ml.autoencoder",

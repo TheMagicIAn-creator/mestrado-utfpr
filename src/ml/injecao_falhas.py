@@ -102,7 +102,29 @@ PASTA_AE      = RAIZ / "resultados" / "autoencoder"
 
 # ── Parâmetros de injeção ────────────────────────────────────
 # Severidades: de muito leve a severa
-SEVERIDADES = [0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0]
+# ── Magnitude da assinatura injetada (a_inj) ───────────────────────────────
+# NÃO é o S da FMECA. Este é o erro de nomenclatura que o pesquisador levantou,
+# e é o mesmo do `D`: duas grandezas distintas com o mesmo nome, distinguidas
+# só pela caixa da letra (S = 5 contra s = 1,0). Em fala e em tabela, a mesma
+# palavra. Ver docs/auditoria_total_src.md §1.
+#
+#   S     — índice de Severidade da FMECA, ordinal 1–5, JULGADO
+#           (docs/fmeca.md, Torres 2024 Tab. 4.6). Entra em NPR = S×O×D.
+#   a_inj — magnitude da assinatura elétrica injetada, contínua em [0,05; 1,0],
+#           adimensional, MEDIDA. Escala a amplitude da perturbação sobre o
+#           sinal saudável. Não mede consequência: são três normalizações
+#           heterogêneas (ruído do contator, harmônicos do IGBT, perda de fase
+#           do fusível).
+#
+# O nome vem do tamanho de defeito `a` da curva POD(a) do MIL-HDBK-1823A, que o
+# projeto já adotou em docs/nomenclatura_deteccao.md. Com ele, a SMD passa a ser
+# a_inj,95 — o análogo exato do a₉₀ dos ensaios não destrutivos, e a
+# nomenclatura fecha em si mesma.
+A_INJ = [0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0]
+
+# Alias de compatibilidade retroativa. Mantido para não quebrar leitura de
+# artefatos e scripts antigos; NÃO usar em código novo.
+SEVERIDADES = A_INJ
 ALVO_SMD = 0.95
 N_JANELAS_SMD = 100  # limitado pelo numero de janelas nao sobrepostas do holdout
 

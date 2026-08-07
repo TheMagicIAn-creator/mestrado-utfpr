@@ -15,8 +15,8 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
   (nunca da FMEA; D isolado NUNCA é o NPR). FMECA aplicada do TCC (Apêndice E):
   inversor 210, subsistema CA 150. FMECA consolidada da dissertação
   (docs/fmeca.md, fonte única): Contator AC 315, IGBT 90, Fusível AC 30.
-- **S / O / D_campo**: Severidade, Ocorrência e dificuldade de **detecção em
-  campo** (1–10; maior = pior). Apesar do nome "Detecção", a Tab. 4.8 do TCC
+- **S / O / D_campo**: Severidade (**1–5**), Ocorrência (1–10) e dificuldade de
+  **detecção em campo** (1–10; maior = pior). Apesar do nome "Detecção", a Tab. 4.8 do TCC
   define o índice em **percentual de NÃO detectar** (D=1 → 0–5%; D=10 →
   86–100%) — ele cresce com o fracasso em detectar. O subscrito `campo` separa
   esse índice **julgado** da detectabilidade **medida** do detector proposto.
@@ -67,8 +67,13 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
   severidade testada (achado de limitação, não erro de execução). É o análogo
   do **a₉₀** do MIL-HDBK-1823A — o menor defeito detectado com 90% de
   probabilidade em ensaios não destrutivos.
-- **Severidade**: fator 0–1 que escala a intensidade da falha injetada
-  (grade do pipeline: 0.05–1.0 em 7 níveis).
+- **a_inj — magnitude da assinatura injetada**: fator adimensional em
+  [0,05; 1,0] que escala a amplitude da perturbação injetada no sinal saudável
+  (grade do pipeline: 7 níveis). **NÃO é o S da FMECA** — são grandezas
+  distintas que até 07/08/2026 dividiam o nome "severidade", distinguidas só
+  pela caixa da letra. O nome vem do tamanho de defeito `a` da curva POD(a) do
+  MIL-HDBK-1823A; com ele a SMD é `a_inj,95`, análogo do a₉₀. Fonte única:
+  `docs/auditoria_total_src.md` §1.
 - **Injeção sintética orientada pela FMECA**: perturbação apenas das
   grandezas que a física de cada modo de falha afeta (ver
   docs/assinaturas_fmeca.md) — fornece ground truth para validar o detector.
