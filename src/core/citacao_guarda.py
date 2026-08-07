@@ -26,9 +26,14 @@ import re
 
 # Normas técnicas: quase nunca indexadas (PDFs pagos). Citar com página/cláusula
 # sem a fonte no rodapé é fabricação.
+# `EN` fica FORA do grupo insensivel a caixa, de proposito: com `re.I`, a
+# preposicao francesa e espanhola "en" seguida de ano ("en 2022", "en 2021")
+# disparava o aviso de norma fabricada. O CLAUDE.md manda o agente responder em
+# FR/ES quando a pergunta vier nesses idiomas, entao o gatilho era rotineiro. E
+# aviso que grita em texto legitimo ensina a ignorar o aviso verdadeiro.
 _PADRAO_NORMA = re.compile(
-    r"\b(?:IEC|ISO|IEEE|ABNT|NBR|ASTM|DIN|EN|MIL-STD|MIL-HDBK|SAE|API)\s*[-:]?\s*\d{2,6}",
-    re.I,
+    r"\b(?:(?i:IEC|ISO|IEEE|ABNT|NBR|ASTM|DIN|MIL-STD|MIL-HDBK|SAE|API)|EN)"
+    r"\s*[-:]?\s*\d{2,6}"
 )
 # Página de citação: exige separador real ("p. 27", "pág 27", "pagina 27",
 # "page 27"). NÃO casa "p99"/"p95" (percentil) nem "p1"/"p2" (pontos) — que são
@@ -92,6 +97,25 @@ def _texto_das_citacoes(citacoes) -> str:
     return " ".join(str(v) for v in (valores or []))
 
 
+def _identificadores_das_fontes(citacoes) -> str:
+    """Apenas a IDENTIDADE das fontes (autor/ano/título), sem o trecho citado.
+
+    Esta separação é o coração da guarda. Conferir a norma contra o texto do
+    TRECHO recuperado torna a guarda inútil justamente no caso que ela existe
+    para pegar: basta um artigo indexado MENCIONAR "IEC 60812" para que uma
+    citação inventada — com cláusula e página que ninguém pode verificar —
+    passe sem alerta. E artigos de FMEA/RCM mencionam IEC 60812 e ISO 14224 o
+    tempo todo.
+
+    Uma norma só está lastreada se o DOCUMENTO NORMATIVO estiver na base.
+    Mencionada dentro de outro artigo não é lastro — é hearsay.
+    """
+    if not citacoes:
+        return ""
+    valores = citacoes.values() if isinstance(citacoes, dict) else citacoes
+    return " ".join(_rotulo_curto(v) for v in (valores or []))
+
+
 def alerta_citacao_infundada(resposta: str, citacoes) -> str:
     """Retorna um aviso Markdown (ou '' quando não há nada a sinalizar).
 
@@ -102,7 +126,8 @@ def alerta_citacao_infundada(resposta: str, citacoes) -> str:
     if not resposta.strip():
         return ""
     fontes_txt = _texto_das_citacoes(citacoes)
-    fontes_norm = _norm(fontes_txt)
+    # Normas conferem contra a IDENTIDADE da fonte; o resto, contra o texto todo.
+    fontes_norm = _norm(_identificadores_das_fontes(citacoes))
     alertas = []
 
     # 1) Normas citadas que NÃO aparecem nas fontes recuperadas.
@@ -110,8 +135,14 @@ def alerta_citacao_infundada(resposta: str, citacoes) -> str:
     infundadas = sorted({re.sub(r"\s+", " ", n).strip()
                          for n in normas if _norm(n) not in fontes_norm})
     if infundadas:
+        # Truncar em 3 SEM dizer que há mais escondia parte da evidência de
+        # fabricação — exatamente o que a guarda deveria expor.
+        mostradas = ", ".join(infundadas[:3])
+        resto = len(infundadas) - 3
+        if resto > 0:
+            mostradas += f" e mais {resto}"
         alertas.append(
-            "Normas técnicas citadas acima (" + ", ".join(infundadas[:3])
+            "Normas técnicas citadas acima (" + mostradas
             + ") NÃO constam nas fontes recuperadas desta busca — trate suas "
             "páginas/cláusulas como NÃO verificadas (podem ter sido inventadas)."
         )

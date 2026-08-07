@@ -2,17 +2,51 @@
 
 from __future__ import annotations
 
-from src.conhecimento.ferramentas import (
-    _normalizar,
+import re
+
+# Importa da FOLHA (src.core.texto), nao de src.conhecimento.ferramentas.
+# `ferramentas` importa deste modulo, entao pegar `_normalizar` de la fechava um
+# ciclo: importar `intencoes_ferramentas` primeiro quebrava com ImportError de
+# modulo parcialmente inicializado. `_normalizar` sempre foi um mero alias de
+# `normalizar_sem_acentos` (ferramentas.py:19), entao o ciclo nao comprava nada.
+from src.core.texto import normalizar_sem_acentos as _normalizar
+
+# Verbo de recomputação + marcador de repetição. A lista fechada anterior exigia
+# o INFINITIVO ("rodar de novo") e não reconhecia o imperativo, que é como se
+# fala: "rode o pipeline de novo", "retreine o autoencoder", "execute
+# novamente" — nenhum dos três ativava force. Sem force a etapa READY é PULADA,
+# e a resposta imprimia a tabela de resultados logo abaixo de "já está pronto",
+# o que lê como execução fresca. Combinado com o determinismo do treino (mesma
+# semente ⇒ mesmos números), não havia como distinguir SKIP de recálculo real
+# olhando os arquivos. Ver docs/auditoria_total_src.md §2.
+_VERBO_RECOMPUTAR = re.compile(
+    r"\b(?:re)?(?:rod|exec|calcul|faz|fac|faç|trein|ger|process|avali|atualiz)\w*",
+    re.IGNORECASE,
+)
+_MARCA_REPETICAO = re.compile(
+    r"\b(?:de novo|novamente|outra vez|mais uma vez|do zero|de novo tudo|tudo de novo)\b",
+    re.IGNORECASE,
+)
+# Termos que já significam recomputação por si sós, sem precisar de marcador.
+_TERMOS_FORCA_DIRETA = (
+    "refazer", "refaca", "refaça", "regerar", "regere", "regenerar",
+    "recalcular", "recalculo", "recalcule", "recalcula", "recomputar",
+    "recompute", "retreinar", "retreine", "retreina", "reexecutar",
+    "reexecute", "reprocessar", "reprocesse", "do zero", "apagar", "forcar",
+    "forçar", "force",
 )
 
+
 def _deve_forcar(pergunta: str) -> bool:
+    """A pergunta pede recálculo REAL, e não leitura do artefato pronto?
+
+    Falso-negativo aqui é grave: o pesquisador acredita ter retreinado sem ter.
+    Por isso a detecção cobre flexão verbal em vez de casar substrings fixas.
+    """
     txt = _normalizar(pergunta)
-    return any(t in txt for t in (
-        "refazer", "refaca", "refaça", "regerar", "regere", "regenerar",
-        "rodar de novo", "executar de novo", "do zero", "apagar",
-        "recalcular", "recalculo", "recalcule", "recalcula",
-    ))
+    if any(t in txt for t in _TERMOS_FORCA_DIRETA):
+        return True
+    return bool(_VERBO_RECOMPUTAR.search(txt) and _MARCA_REPETICAO.search(txt))
 
 
 def _quer_status(pergunta: str) -> bool:
