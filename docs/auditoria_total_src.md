@@ -4,9 +4,10 @@
 correção. **Método:** 8 frentes paralelas de auditoria automatizada, cada
 achado exigindo evidência em `arquivo:linha` ou número medido de artefato.
 
-**Estado:** 6 das 8 frentes concluídas (56 achados, 34 graves). As 2 restantes
-— parâmetros do agente e revisão dos PRs #89–#103 — estão em §11 como
-**pendentes**, não como concluídas.
+**Estado:** 8 frentes concluídas (77 achados, 48 graves); **1 pendente** — a
+revisão específica das refatorações #99 e #102, em §11.
+
+Relatórios integrais das frentes do agente e dos PRs: `docs/auditoria_agente_e_prs.md`.
 
 | Frente | Estado | Achados | Graves |
 |---|---|---:|---:|
@@ -16,8 +17,9 @@ achado exigindo evidência em `arquivo:linha` ou número medido de artefato.
 | Corrente contínua no escopo CA | ✅ | 10 | 8 |
 | Treino (épocas, LR, dropout, latente) | ✅ | 4 | 1 |
 | Necessidade dos arquivos de teste | ✅ | 3 | 0 |
-| Parâmetros do agente (`core`, `conhecimento`) | ⏸️ | — | — |
-| Revisão de código dos PRs #89–#103 | ⏸️ | — | — |
+| Parâmetros do agente (`core`, `conhecimento`) | ✅ | 16 | 10 |
+| Premissas metodológicas nos PRs #89–#103 | ✅ | 5 | 4 |
+| Refatorações #99 e #102 (semântica silenciosa) | ⏸️ | — | — |
 
 ---
 
@@ -427,16 +429,65 @@ duplicada medida, não contagem de arquivos.
 
 ---
 
-## §11. Frentes ainda pendentes
+## §11. Frentes do agente e dos PRs — o que apareceu
 
-Duas não concluíram, por falha repetida da ferramenta de auditoria paralela
-(agentes esgotaram tentativas de saída estruturada). **Não** devem ser tratadas
-como auditadas:
+Relatórios integrais em `docs/auditoria_agente_e_prs.md`. Os quatro achados que
+representam **risco acadêmico direto**:
 
-1. **Parâmetros do agente** — `src/core/`, `src/conhecimento/`,
-   `src/interface/`: chunks, top-K, RRF, limites de contexto, timeouts,
-   limiares de confiança da memória.
-2. **Revisão de código dos PRs #89–#103** (feitos pelo outro agente).
+### ⛔ A guarda de citação silencia na fabricação que ela existe para pegar
+
+`src/core/citacao_guarda.py` compara a norma citada contra o **texto dos trechos
+recuperados**, não contra o identificador da fonte. Basta um artigo indexado
+*mencionar* "IEC 60812" para que uma citação inventada com cláusula e página
+("IEC 60812:2018, Cláusula 7.3.3, p. 27") passe **sem alerta**.
+
+O docstring do próprio módulo dá esse caso como exemplo do que ele deveria pegar.
+Artigos de FMEA/RCM citam IEC 60812 e ISO 14224 o tempo todo — o gatilho é
+rotineiro, não exótico.
+
+### ⛔ O auditor só enxerga 8 fontes; da 9ª em diante nada pode ser citado
+
+`src/conhecimento/multiagente.py` trunca o pacote enviado ao auditor. Fontes além
+da oitava não são auditadas e, portanto, não podem ser citadas — mesmo tendo sido
+recuperadas e mesmo sendo as mais pertinentes.
+
+### ⛔ Chunk de 1800 caracteres contra um encoder de 128 tokens
+
+`src/conhecimento/embeddings.py` trunca em 128 tokens. Com chunks de ~1800
+caracteres, **cerca de 70% de cada chunk nunca é embutido** — está indexado no
+papel e invisível na busca semântica. O BM25 ainda o alcança; a busca vetorial
+não.
+
+### ⚠️ `stale` apaga artefato E2 versionado antes de checar se dá para recalcular
+
+`src/ml/pipeline.py` limpa os artefatos e **só depois** verifica dependências. Numa
+máquina sem `dados/brutos/`, isso destrói resultado publicado sem ter como
+regenerá-lo.
+
+### O que NÃO quebrou
+
+A revisão das premissas é a boa notícia: **nenhuma das seis foi quebrada em
+substância** pelos PRs #89–#103. O protocolo E2 segue com injeção FMECA no sinal,
+o limiar continua congelado em bloco disjunto com purga de 2 janelas, o NPR
+oficial (315/90/30) é idêntico ao de `docs/fmeca.md`, e as ressalvas E2≠E3 foram
+até reforçadas.
+
+O que quebrou foi a **cadeia de rastreabilidade** — o mesmo problema de §2(c).
+
+### Falsos alarmes que corroem a confiança no alerta
+
+O padrão de normas aceita `EN` sem exigir caixa alta, então *"en 2022"* e
+*"en 2021"* (francês e espanhol, idiomas que o `CLAUDE.md` manda o agente usar)
+disparam **"Normas técnicas citadas acima"**. Alerta que grita em texto legítimo
+ensina a ignorar o alerta verdadeiro.
+
+---
+
+## §12. Frente ainda pendente
+
+A revisão específica das refatorações **#99 e #102** não concluiu — o agente
+esgotou o limite de sessão duas vezes. É onde semântica muda em silêncio, e
+**não** deve ser tratada como auditada.
 
 ## Referências internas
 
