@@ -74,7 +74,35 @@ aplicar_estilo()
 
 # ── Configuração ──────────────────────────────────────────────
 FS           = 10_000      # Hz — taxa de amostragem
-F0           = 60          # Hz — frequência fundamental nominal (Brasil)
+
+# ── Frequência fundamental: derivada do DATASET, não da rede ────────────────
+# O Paderborn NÃO é rede elétrica: é bancada de acionamento de motor de indução
+# com velocidade variável. Stender, Wallscheid & Böcker (2020) — o artigo do
+# próprio dataset, indexado em literatura/inversores-pv/ — registram:
+#
+#     p  = 2 pares de polos
+#     n  ∈ [404 ; 3232] 1/min   (nominal 3000 1/min)
+#
+# A fundamental ELÉTRICA é f = (n/60)·p, portanto:
+#
+#     n =  404 1/min  →  f =  13,5 Hz
+#     n = 3000 1/min  →  f = 100,0 Hz   (nominal)
+#     n = 3232 1/min  →  f = 107,7 Hz
+#
+# O valor anterior era F0 = 60 Hz "nominal (Brasil)", com busca em ±40 Hz, ou
+# seja [20, 100] Hz. Isso corta AS DUAS PONTAS da faixa real: rotações abaixo
+# de 600 1/min ficavam fora por baixo, e o teto de 100 Hz saturava justamente o
+# regime nominal. A mediana de F0 medida no bloco de teste foi 100,19 Hz —
+# encostada no teto, que é a assinatura de estimador saturado, não de regime.
+# Ver docs/auditoria_parametros.md §1.
+F0           = 60          # Hz — centro da busca (mediana aproximada da faixa)
+F0_MIN       = 12.0        # Hz — 13,5 Hz reais, com ~10% de margem
+F0_MAX       = 115.0       # Hz — 107,7 Hz reais, com ~7% de margem
+#
+# NÃO alargar mais. Uma faixa larga demais deixa o estimador travar no 2º ou 3º
+# harmônico em vez da fundamental — e como as features harmônicas são ancoradas
+# em F0, um F0 dobrado corrompe o vetor inteiro. O briefing de 06/08 sugeria
+# [20, 384] Hz; 384 Hz é 3,6× a fundamental máxima que a máquina alcança.
 JANELA       = 1024        # amostras por janela (~6 ciclos a 60 Hz)
 SOBREPOSICAO = 512         # amostras de overlap (50%)
 PASSO        = JANELA - SOBREPOSICAO
@@ -145,7 +173,9 @@ def calcular_espectro(sinal: np.ndarray, fs: int) -> tuple:
 
 def estimar_f0(freqs: np.ndarray, amps: np.ndarray,
                f0_nominal: float = F0,
-               faixa_hz: float = 40.0) -> float:
+               faixa_hz: float | None = None,
+               f_min: float = F0_MIN,
+               f_max: float = F0_MAX) -> float:
     """
     Estima a fundamental por evidência harmônica e interpolação parabólica.
 
@@ -157,8 +187,14 @@ def estimar_f0(freqs: np.ndarray, amps: np.ndarray,
     Necessário para datasets de acionamento de motor (Paderborn)
     onde F0 varia com a velocidade do motor.
     """
-    f_min   = max(5.0, f0_nominal - faixa_hz)
-    f_max   = f0_nominal + faixa_hz
+    # A faixa vem de F0_MIN/F0_MAX (derivadas do artigo do dataset). O parâmetro
+    # `faixa_hz` sobrevive apenas para reproduzir rodadas antigas simétricas em
+    # torno de f0_nominal; sem ele, a faixa é a física.
+    if faixa_hz is not None:
+        f_min = max(5.0, f0_nominal - faixa_hz)
+        f_max = f0_nominal + faixa_hz
+    else:
+        f_min, f_max = float(f_min), float(f_max)
     candidatos = np.flatnonzero((freqs >= f_min) & (freqs <= f_max))
     if not len(candidatos):
         return f0_nominal
