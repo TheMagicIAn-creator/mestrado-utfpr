@@ -103,8 +103,24 @@ F0_MAX       = 115.0       # Hz — 107,7 Hz reais, com ~7% de margem
 # harmônico em vez da fundamental — e como as features harmônicas são ancoradas
 # em F0, um F0 dobrado corrompe o vetor inteiro. O briefing de 06/08 sugeria
 # [20, 384] Hz; 384 Hz é 3,6× a fundamental máxima que a máquina alcança.
-JANELA       = 1024        # amostras por janela (~6 ciclos a 60 Hz)
-SOBREPOSICAO = 512         # amostras de overlap (50%)
+# ── Janelamento ────────────────────────────────────────────────────────────
+# 2048 amostras = 204,8 ms. Resolução espectral Δf = FS/JANELA = 4,88 Hz.
+#
+# Era 1024 ("~6 ciclos a 60 Hz"), justificativa que não se sustenta: o dataset
+# não opera a 60 Hz, e a 1024 o número de ciclos por janela varia de 2,8 (em
+# 13,5 Hz) a 11,0 (em 107,7 Hz) — fator 4.
+#
+# O que motiva 2048 é a resolução na PONTA BAIXA da faixa. Com Δf = 9,77 Hz, a
+# fundamental de 13,5 Hz cai no bin 1,4 e o erro de estimativa medido é
+# +1,15 Hz (8,5%); com Δf = 4,88 Hz o erro cai para −0,14 Hz — fator 8. Como
+# as features harmônicas são ancoradas em F0, esse erro se multiplica pela
+# ordem do harmônico.
+#
+# CUSTO, declarado: as janelas caem de 457 para 228, e as de treino de 274 para
+# 136. Isso DOBRA a razão parâmetros/amostra, e é por isso que a arquitetura
+# encolhe no mesmo commit-set (ver src/ml/autoencoder.py).
+JANELA       = 2048        # amostras por janela = 204,8 ms (Δf = 4,88 Hz)
+SOBREPOSICAO = 1024        # amostras de overlap (50%)
 PASSO        = JANELA - SOBREPOSICAO
 
 # Harmônicos a extrair

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 import pandas as pd
 
 
@@ -126,4 +127,8 @@ def test_rul_declara_passos_sinteticos_sem_calibracao_fisica():
     assert ajuste["tempo_fisico_calibrado"] is False
     assert tempo["tempo_fisico_calibrado"] is False
     assert tempo["passo_tempo_fisico_horas"] is None
-    assert tempo["janela_aquisicao_s"] == 0.1024
+    # Derivado de JANELA/FS, não fixado: a duração da janela é parâmetro do
+    # pipeline (passou de 1024 para 2048 amostras) e o teste não pode congelá-la.
+    from src.ml.features_ca import FS, JANELA
+
+    assert tempo["janela_aquisicao_s"] == pytest.approx(JANELA / FS)
