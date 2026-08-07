@@ -28,7 +28,9 @@ Distribuição de Weibull de 2 parâmetros:
                  β = 1: falhas aleatórias (exponencial)
                  β > 1: desgaste (esperado para degradação gradual)
     η (scale)  — vida característica: t em que R(t) = e^−1 ≈ 36,8%
-    MTTF = η × Γ(1 + 1/β)
+    app.py
+streamlit_app.py
+main.py
 
 RUL estimado:
   Para um inversor com degradação observada em t_atual, a RUL esperada é:
