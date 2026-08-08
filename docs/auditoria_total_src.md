@@ -254,8 +254,28 @@ grandeza que está fora do escopo declarado.**
 
 O problema do CV com média ≈ 0 se resolve **normalizando** o offset pelo RMS da
 própria fase (`offset_relativo = |média| / rms`, adimensional e comparável ao
-limite de 0,5% de I_n da IEC 61727) — não deletando a feature. Se adotada, ela
-substitui `tensao_dc_media` e o vetor **permanece com 109 dimensões**.
+limite de 0,5% de I_n da IEC 61727) — não deletando a feature.
+
+### O que foi feito, e onde a auditoria errou
+
+`tensao_dc_media` **saiu** (08/08/2026). O vetor vai de **109 para 108**
+dimensões — não "permanece com 109", como esta seção afirmava. A conta anterior
+supunha que a feature de offset entraria na mesma passada; ela não entrou, e o
+motivo é substantivo:
+
+**nenhuma das três assinaturas de `docs/fmeca.md` desloca a média.** Os
+harmônicos ímpares do IGBT têm média nula; a perda parcial de fase do Fusível AC
+escala amplitude, e `|média|/rms` é invariante a escala; o ruído de comutação do
+Contator AC é aproximadamente simétrico. Reintroduzir a feature agora criaria
+**seis dimensões inertes sob injeção** — exatamente o defeito nº 2 pelo qual
+`tensao_dc_media` foi removida. Trocar um canal inerte por seis não é progresso.
+
+**❓ DECISÃO — para o pesquisador.** Adotar o offset CC exige, ANTES, estender a
+assinatura do IGBT em `docs/fmeca.md` para incluir injeção de CC (chaveamento
+assimétrico → offset na corrente de fase). Isso altera a FMECA, que é fonte
+única e cujos modos são estipulados pelo pesquisador. A decisão está registrada
+em `src/ml/features_ca.py`, no bloco sobre `FEATURES_EXCLUIR`, e travada por
+`tests/test_escopo_ca.py` — que falha se a exclusão mudar sem a justificativa.
 
 ---
 
@@ -282,7 +302,8 @@ soltas:
 
 1. Renomear `SEVERIDADES` → `A_INJ` no código (§1);
 2. Corrigir a faixa de busca de F0 (`docs/auditoria_parametros.md` §1);
-3. Remover `tensao_dc_media` e reintroduzir o offset CC relativo (§4);
+3. Remover `tensao_dc_media` (§4) — o offset CC relativo fica pendente de
+   decisão sobre a FMECA, ver §4;
 4. Renomear o eixo do Weibull de TTF para severidade de detecção (§3);
 5. Separar indetectabilidade estrutural de censura genuína (§3).
 

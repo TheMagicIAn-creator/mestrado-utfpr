@@ -10,7 +10,33 @@ Dataset: Inverter_Data_Set.csv (Stender, Wallscheid & Böcker, 2020)
 Sinais utilizados:
   - i_a_k, i_b_k, i_c_k  → correntes CA trifásicas (instante atual)
   - u_a_k-1, u_b_k-1, u_c_k-1 → tensões CA (instante anterior)
-  - u_dc_k → tensão do barramento CC
+
+ESCOPO CA — por que o barramento CC não entra
+=============================================
+O objeto da dissertação é o LADO CA do inversor (docs/fmeca.md: Contator AC,
+IGBT, Fusível AC). `u_dc_k` é o barramento CC, do outro lado do estágio de
+conversão. Até 08/08/2026 ele entrava no vetor como `tensao_dc_media`, e isso
+era ruim por três motivos independentes:
+
+1. **Fora do escopo declarado.** Nenhum dos três modos de falha da FMECA se
+   manifesta no barramento CC.
+2. **Inerte.** Nenhuma injeção — E1 ou E2 — jamais perturba `u_dc_k`. O próprio
+   teste do projeto codificava a inércia, listando `tensao_dc_media` entre as
+   colunas intocáveis. Numa modelagem de normalidade, dimensão inerte não é
+   neutra: consome capacidade do gargalo e acrescenta variância ao escore sem
+   acrescentar poder de discriminação.
+3. **Alavanca desproporcional.** Medido em `estatistica_residuo.npz`, o canal
+   tinha σ = 0,0883 contra mediana de 0,1998 nas 109 features — 15ª menor σ.
+   Como o escore operacional é a média dos 5 maiores z = (|r| − μ)/σ, a
+   alavanca desse canal era 1/σ = 11,33 contra 5,01 do canal mediano: 2,26×.
+   Ou seja, parte do limiar que define SMD, POD_mon, D_mon, NPR projetado e o
+   eixo do Weibull era fixada por uma grandeza CC de bancada de motor.
+
+O vetor cai de 109 para 108 features. Ver docs/auditoria_total_src.md §4.
+
+O CC **do lado CA** — a injeção de corrente contínua na rede, limitada pela
+IEC 61727 e pela IEEE 1547 — continua fora, e isso é uma DECISÃO EM ABERTO, não
+um esquecimento: ver a nota em FEATURES_EXCLUIR.
 
 Estratégia de janelamento:
   - Janela: 1024 amostras = 102,4 ms ≈ 6 ciclos a 60 Hz
@@ -26,7 +52,7 @@ Features extraídas (por janela):
     largura de banda, energia bandas baixa/média/chaveamento
 
   INTER-FASE:
-    Desbalanceamento de corrente/tensão, potência por fase, DC média
+    Desbalanceamento de corrente/tensão, potência por fase
 
   F0 estimado (1 feature): frequência fundamental real da janela
 
@@ -134,6 +160,38 @@ BANDAS = {
 }
 
 # Features a excluir do vetor final (média de sinais AC ≈ 0, CV enganoso)
+#
+# ❓ DECISÃO EM ABERTO — o offset CC do lado CA
+# ---------------------------------------------
+# Estas seis features são exatamente o COMPONENTE CC DOS SINAIS CA, isto é, a
+# injeção de corrente contínua na rede: fenômeno indiscutivelmente do lado CA,
+# com limite normativo (IEC 61727: < 1% da corrente nominal; IEEE 1547: < 0,5%)
+# e causa física reconhecida no estágio de saída — chaveamento assimétrico dos
+# IGBTs, que é o componente nº 2 da FMECA.
+#
+# A auditoria (docs/auditoria_total_src.md §4) registrou a inversão de escopo:
+# o pipeline descartou a janela de observação de um fenômeno CC do lado CA, com
+# justificativa apenas estatística, e preservou o barramento CC, que é do outro
+# lado do estágio de conversão. O barramento saiu neste commit; estas seis, não.
+#
+# NÃO foram reintroduzidas, e o motivo é substantivo, não esquecimento:
+#
+#   - a objeção estatística tem solução conhecida — normalizar pelo RMS da
+#     própria fase, `offset_relativo = |média| / rms`, adimensional e
+#     diretamente comparável ao limite de 0,5% de I_n;
+#   - MAS nenhuma das três assinaturas de docs/fmeca.md desloca a média: os
+#     harmônicos ímpares do IGBT têm média nula, a perda parcial de fase do
+#     Fusível AC escala amplitude (e `|média|/rms` é invariante a escala) e o
+#     ruído de comutação do Contator AC é aproximadamente simétrico.
+#
+# Reintroduzir a feature agora criaria dimensões INERTES sob injeção — que é
+# exatamente o defeito nº 2 pelo qual `tensao_dc_media` foi removida. Trocar um
+# canal inerte por seis não é progresso.
+#
+# Para adotá-la seria preciso ANTES estender a assinatura do IGBT em
+# docs/fmeca.md para incluir injeção CC (chaveamento assimétrico → offset na
+# corrente de fase). Isso altera a FMECA, que é fonte única e cujos modos e
+# índices são estipulados pelo pesquisador — decisão dele, não do código.
 FEATURES_EXCLUIR = [
     "i_a_media", "i_b_media", "i_c_media",
     "u_a_media", "u_b_media", "u_c_media",
@@ -147,6 +205,9 @@ PASTA_SAIDA = RAIZ / "dados" / "processados"
 # Colunas por tipo
 COLUNAS_CORRENTE = ["i_a_k", "i_b_k", "i_c_k"]
 COLUNAS_TENSAO   = ["u_a_k-1", "u_b_k-1", "u_c_k-1"]
+# Barramento CC. Mantido como constante nomeada porque a EDA (src/ml/eda.py)
+# legitimamente descreve o dataset inteiro — mas NÃO é lido por nenhuma etapa do
+# pipeline CA desde 08/08/2026. Ver "ESCOPO CA" no topo do módulo.
 COLUNA_DC        = "u_dc_k"
 FASES            = ["a", "b", "c"]
 
@@ -362,11 +423,12 @@ def features_frequencia(sinal: np.ndarray, prefixo: str,
 # FEATURES INTER-FASE
 # ============================================================
 
-def features_interfase(rms_correntes: dict, rms_tensoes: dict,
-                        dc: float) -> dict:
+def features_interfase(rms_correntes: dict, rms_tensoes: dict) -> dict:
     """
-    Features que envolvem mais de uma fase:
-    desbalanceamento, potência estimada e tensão CC.
+    Features que envolvem mais de uma fase: desbalanceamento e potência.
+
+    NÃO inclui o barramento CC. `tensao_dc_media` foi removida em 08/08/2026 —
+    ver o bloco "ESCOPO CA" no topo do módulo.
     """
     rms_i = np.array([rms_correntes[f"i_{f}_rms"] for f in FASES])
     rms_u = np.array([rms_tensoes[f"u_{f}_rms"]   for f in FASES])
@@ -382,7 +444,6 @@ def features_interfase(rms_correntes: dict, rms_tensoes: dict,
         "potencia_a"               : rms_i[0] * rms_u[0],
         "potencia_b"               : rms_i[1] * rms_u[1],
         "potencia_c"               : rms_i[2] * rms_u[2],
-        "tensao_dc_media"          : dc,
     }
 
 
@@ -425,11 +486,8 @@ def extrair_janela(df_janela: pd.DataFrame) -> dict:
         features.update(ff)
         rms_tensoes[f"u_{fase}_rms"] = ft[f"{prefixo}_rms"]
 
-    # ── DC ───────────────────────────────────────────────────
-    dc_media = float(df_janela[COLUNA_DC].mean())
-
     # ── Inter-fase ───────────────────────────────────────────
-    features.update(features_interfase(rms_correntes, rms_tensoes, dc_media))
+    features.update(features_interfase(rms_correntes, rms_tensoes))
 
     return features
 
@@ -457,7 +515,7 @@ def executar_features_ca(
         _log(f"   ❌ Não encontrado: {arquivo_csv}")
         return False
 
-    colunas_necessarias = COLUNAS_CORRENTE + COLUNAS_TENSAO + [COLUNA_DC]
+    colunas_necessarias = COLUNAS_CORRENTE + COLUNAS_TENSAO
     df = pd.read_csv(
         arquivo_csv,
         nrows=limite_linhas,
@@ -467,8 +525,7 @@ def executar_features_ca(
     )
     _log(f"   ✅ {len(df):,} amostras | {df.shape[1]} colunas")
 
-    faltando = [c for c in COLUNAS_CORRENTE + COLUNAS_TENSAO + [COLUNA_DC]
-                if c not in df.columns]
+    faltando = [c for c in colunas_necessarias if c not in df.columns]
     if faltando:
         _log(f"   ❌ Colunas ausentes: {faltando}")
         return False

@@ -83,10 +83,7 @@ matplotlib.use("Agg")
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from src.ml.features_ca import (
-    extrair_janela, JANELA, FS, F0,
-    COLUNAS_CORRENTE, COLUNAS_TENSAO, COLUNA_DC, FASES
-)
+from src.ml.features_ca import extrair_janela, JANELA, FS, F0, COLUNAS_CORRENTE
 from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas_holdout
 from src.ml.estatistica import intervalo_wilson
 
