@@ -1,0 +1,245 @@
+"""
+O eixo do Weibull é magnitude de assinatura, não tempo.
+
+POR QUE ESTE TESTE EXISTE
+=========================
+`rul_weibull.py` chamava o eixo de **TTF** (time to failure) e a unidade de
+"passo sintético de degradação". Os dois nomes prometiam tempo e entregavam
+outra coisa: o que a trajetória varre é a MAGNITUDE da assinatura injetada, de
+0 a 1,0, e o que se registra é a magnitude em que a detecção se confirma. Não
+há taxa de degradação de campo que converta magnitude em hora.
+
+Renomear resolveu mais do que vocabulário: `a_det` e a SMD da injeção passaram
+a compartilhar a unidade, e podem ser lidas na mesma régua.
+
+Estes testes travam três coisas que a renomeação poderia ter quebrado em
+silêncio:
+
+1. a **escala** — η, MTTF e B10 agora vivem em [0; 1], e o chute inicial do MLE
+   estava dimensionado para o eixo antigo (1..120);
+2. os **aliases** — quem lê `ttf_unidade` deve receber a unidade NOVA, não a
+   antiga, senão o JSON continua mentindo com a chave velha;
+3. a separação entre **indetectabilidade no teto** e **censura genuína**.
+
+Rodam sem torch e sem dataset.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+from src.ml.rul_weibull import (
+    A_DET_MAX,
+    A_DET_MIN,
+    A_DET_UNIDADE,
+    N_STEPS,
+    TTF_UNIDADE,
+    a_det_da_grade,
+    ajustar_weibull,
+    classificar_desfechos,
+    metadados_tempo_rul,
+)
+
+
+# ── a conversão passo → magnitude ──────────────────────────────────────────
+
+def test_a_grade_vai_de_zero_a_um():
+    assert a_det_da_grade(0) == pytest.approx(A_DET_MIN)
+    assert a_det_da_grade(N_STEPS - 1) == pytest.approx(A_DET_MAX)
+
+
+def test_conversao_bate_com_a_grade_usada_na_trajetoria():
+    """A trajetória usa `np.linspace(0, 1, N_STEPS)`; a conversão tem de ser a
+    MESMA função, senão a magnitude registrada não é a magnitude aplicada."""
+    grade = np.linspace(0.0, 1.0, N_STEPS)
+    for passo in (0, 1, 2, 37, N_STEPS - 2, N_STEPS - 1):
+        assert a_det_da_grade(passo) == pytest.approx(grade[passo])
+
+
+def test_passo_fora_da_grade_e_grampeado_no_teto():
+    """A versão anterior devolvia `n_steps` (120) para não detecção — um índice
+    fora da grade, que vai de 0 a 119. O desfecho ia parar num ponto do eixo
+    onde nada foi medido."""
+    assert a_det_da_grade(N_STEPS) == pytest.approx(A_DET_MAX)
+    assert a_det_da_grade(10 * N_STEPS) == pytest.approx(A_DET_MAX)
+
+
+# ── escala: o ajuste tem de funcionar em [0; 1] ────────────────────────────
+
+def test_weibull_recupera_parametros_na_escala_da_magnitude():
+    """Com o chute antigo (`max(mediana, 1.0)`), η_ini caía no TETO do eixo.
+
+    Amostra gerada de uma Weibull conhecida com η = 0,30 — bem abaixo do antigo
+    limite inferior de busca (0,1 não prendia, mas 1,0 como chute prendia).
+    """
+    rng = np.random.default_rng(3)
+    beta_v, eta_v = 2.4, 0.30
+    a = eta_v * rng.weibull(beta_v, 400)
+    r = ajustar_weibull(a, np.ones(len(a), dtype=bool), n_boot=0)
+
+    assert r["fit_converged"]
+    assert r["beta"] == pytest.approx(beta_v, rel=0.20)
+    assert r["eta"] == pytest.approx(eta_v, rel=0.20)
+
+
+def test_marcos_ficam_dentro_da_faixa_de_magnitude():
+    rng = np.random.default_rng(4)
+    a = np.clip(0.35 * rng.weibull(3.0, 200), 1e-4, 1.0)
+    r = ajustar_weibull(a, np.ones(len(a), dtype=bool), n_boot=0)
+    assert 0.0 < r["b10"] < r["mttf"] < 1.0, (
+        "B10/MTTF fora de [0; 1] indicam que a escala do eixo se perdeu"
+    )
+
+
+# ── aliases: a chave velha, o valor novo ───────────────────────────────────
+
+def test_alias_aponta_para_a_unidade_nova():
+    assert TTF_UNIDADE == A_DET_UNIDADE
+    assert "fracao_da_assinatura" in A_DET_UNIDADE
+    assert "passo" not in A_DET_UNIDADE
+
+
+def test_metadados_declaram_que_o_eixo_nao_e_tempo():
+    m = metadados_tempo_rul()
+    assert m["eixo_nao_e_tempo"] is True
+    assert m["ttf_unidade"] == m["a_det_unidade"] == A_DET_UNIDADE
+    assert m["tempo_fisico_calibrado"] is False
+    assert m["passo_tempo_fisico_horas"] is None
+    assert m["a_det_por_passo"] == pytest.approx(1.0 / (N_STEPS - 1))
+    assert "não converter" in m["nota"]
+
+
+def test_resultado_mantem_as_chaves_antigas_como_alias():
+    a = np.linspace(0.05, 0.9, 40)
+    r = ajustar_weibull(a, np.ones(40, dtype=bool), n_boot=0)
+    assert r["ttf_min"] == r["a_det_min"]
+    assert r["ttf_max"] == r["a_det_max"]
+    assert r["ttf_mean_observado"] == r["a_det_mean_detectadas"]
+
+
+# ── indetectabilidade no teto ≠ censura genuína ────────────────────────────
+
+def test_nao_deteccao_no_teto_nao_e_chamada_de_censura_generica():
+    a = np.array([0.2, 0.3, 0.4, 1.0, 1.0])
+    ev = np.array([True, True, True, False, False])
+    d = classificar_desfechos(a, ev)
+    assert d["n_indetectaveis_no_teto"] == 2
+    assert d["n_censura_genuina"] == 0
+    assert d["pod_mon_no_teto"] == pytest.approx(3 / 5)
+
+
+def test_interrupcao_antes_do_teto_conta_como_censura_genuina():
+    """Não ocorre no desenho atual, mas o campo distingue os dois casos."""
+    a = np.array([0.2, 0.55, 1.0])
+    ev = np.array([True, False, False])
+    d = classificar_desfechos(a, ev)
+    assert d["n_censura_genuina"] == 1
+    assert d["n_indetectaveis_no_teto"] == 1
+
+
+def test_a_hipotese_do_tratamento_como_censura_fica_escrita():
+    """Tratar indetectabilidade como censura pressupõe assinatura acima da
+    nominal. Hipótese defensável — mas hipótese, e tem de estar declarada."""
+    d = classificar_desfechos(np.array([1.0]), np.array([False]))
+    assert d["tratamento_no_ajuste"] == "right_censored"
+    assert "PRESSUPÕE" in d["hipotese_declarada"]
+
+
+def test_deteccao_total_zera_a_indetectabilidade():
+    a = np.linspace(0.1, 0.8, 12)
+    d = classificar_desfechos(a, np.ones(12, dtype=bool))
+    assert d["n_indetectaveis_no_teto"] == 0
+    assert d["pod_mon_no_teto"] == pytest.approx(1.0)
+
+
+def test_desfechos_entram_no_resultado_do_ajuste():
+    a = np.concatenate([np.linspace(0.1, 0.6, 30), np.full(5, 1.0)])
+    ev = np.concatenate([np.ones(30, dtype=bool), np.zeros(5, dtype=bool)])
+    r = ajustar_weibull(a, ev, n_boot=0)
+    assert r["desfechos"]["n_indetectaveis_no_teto"] == 5
+    assert r["desfechos"]["pod_mon_no_teto"] == pytest.approx(30 / 35)
+    assert r["eixo_nao_e_tempo"] is True
+
+
+def test_comprimentos_incompativeis_sao_recusados():
+    with pytest.raises(ValueError):
+        classificar_desfechos(np.array([0.1, 0.2]), np.array([True]))
+
+
+# ── a montagem do artefato ─────────────────────────────────────────────────
+
+def test_relatorio_monta_sem_rodar_o_pipeline():
+    """`relatorio_weibull.py` nasceu de uma extração de `rul_weibull.py`.
+
+    Extração mecânica é onde erro de nome passa despercebido: o módulo só seria
+    exercitado numa execução de 8 minutos com o dataset bruto. Aqui ele roda com
+    dados de mentira, em milissegundos.
+    """
+    import numpy as np
+
+    from src.ml.relatorio_weibull import montar_relatorio
+    from src.ml.rul_weibull import (
+        A_DET_UNIDADE, N_STEPS, TEMPO_FISICO_NOTA, TTF_UNIDADE,
+        _json_seguro, metadados_tempo_rul,
+    )
+
+    falhas = [{"id": "igbt", "nome": "IGBT", "npr": 90, "cor": "#333"}]
+    a = np.concatenate([np.linspace(0.1, 0.7, 25), np.full(5, 1.0)])
+    ev = np.concatenate([np.ones(25, dtype=bool), np.zeros(5, dtype=bool)])
+    p = ajustar_weibull(a, ev, n_boot=0)
+
+    rel, linhas = montar_relatorio(
+        params={"igbt": p}, a_dets_dict={"igbt": a}, eventos_dict={"igbt": ev},
+        falhas=falhas, meta_holdout={"protocolo": "teste"},
+        metadados_tempo=metadados_tempo_rul(), limiar=7.83,
+        n_traj_max=100, n_traj_real=30, n_steps=N_STEPS,
+        a_det_unidade=A_DET_UNIDADE, ttf_unidade=TTF_UNIDADE,
+        tempo_fisico_calibrado=False, tempo_fisico_nota=TEMPO_FISICO_NOTA,
+        min_eventos_weibull=10, max_censura_rul_pct=50.0,
+        persistencia_cruzamento=3, json_seguro=_json_seguro,
+    )
+
+    assert rel["__meta__"]["evidence_level"] == "E2"
+    assert "não tempo" in rel["__meta__"]["evidence_note"]
+    assert rel["parametros_simulacao"]["a_det_unidade"] == A_DET_UNIDADE
+    bloco = rel["falhas"]["igbt"]
+    assert bloco["a_dets"] == bloco["ttfs"]            # alias, mesma lista
+    assert bloco["desfechos"]["n_indetectaveis_no_teto"] == 5
+    assert len(linhas) == 1
+    assert linhas[0]["pod_mon_no_teto"] == pytest.approx(25 / 30)
+    assert linhas[0]["n_censura_genuina"] == 0
+
+
+def test_relatorio_e_serializavel_em_json():
+    """O artefato vai para disco com `json.dump`; NaN quebraria JSON estrito."""
+    import json
+
+    import numpy as np
+
+    from src.ml.relatorio_weibull import montar_relatorio
+    from src.ml.rul_weibull import (
+        A_DET_UNIDADE, N_STEPS, TEMPO_FISICO_NOTA, TTF_UNIDADE,
+        _json_seguro, metadados_tempo_rul,
+    )
+
+    falhas = [{"id": "fusivel_ac", "nome": "Fusível AC", "npr": 30, "cor": "#333"}]
+    a = np.full(8, 1.0)                       # nada detectado: ajuste não converge
+    ev = np.zeros(8, dtype=bool)
+    p = ajustar_weibull(a, ev, n_boot=0)
+    assert not p["fit_converged"]
+
+    rel, _ = montar_relatorio(
+        params={"fusivel_ac": p}, a_dets_dict={"fusivel_ac": a},
+        eventos_dict={"fusivel_ac": ev}, falhas=falhas, meta_holdout={},
+        metadados_tempo=metadados_tempo_rul(), limiar=7.83,
+        n_traj_max=100, n_traj_real=8, n_steps=N_STEPS,
+        a_det_unidade=A_DET_UNIDADE, ttf_unidade=TTF_UNIDADE,
+        tempo_fisico_calibrado=False, tempo_fisico_nota=TEMPO_FISICO_NOTA,
+        min_eventos_weibull=10, max_censura_rul_pct=50.0,
+        persistencia_cruzamento=3, json_seguro=_json_seguro,
+    )
+    texto = json.dumps(rel, ensure_ascii=False, allow_nan=False)
+    assert "NaN" not in texto
+    assert rel["falhas"]["fusivel_ac"]["status_ajuste"] == (
+        "nao_estimavel_parametrico_rul_restrita")

@@ -155,7 +155,8 @@ def test_pipeline_captura_parametros_das_etapas():
     assert validacao["sevs_validacao"]
 
     rul = get_stage("rul_weibull").parameters()
-    assert rul["ttf_unidade"] == "passo_sintetico_de_degradacao"
+    assert rul["a_det_unidade"] == "a_det_fracao_da_assinatura_nominal"
+    assert rul["ttf_unidade"] == rul["a_det_unidade"]  # alias
     assert rul["tempo_fisico_calibrado"] is False
     assert rul["persistencia_cruzamento"] > 0
 

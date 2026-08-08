@@ -99,7 +99,7 @@ Detecção de anomalias por modelagem de normalidade:
 5. Estimativa de RUL (Weibull) e decisão de manutenção
 6. Critério de seleção das falhas: prioridade pelo NPR da
    FMECA (Contator AC NPR=315 → primeira falha a injetar)
-7. TTF para Weibull: derivado das falhas sintéticas injetadas no Paderborn — tempo até o Autoencoder cruzar o limiar operacional de anomalia (percentil 99 do erro de reconstrução saudável; μ+3σ é apenas referência comparativa)
+7. Eixo do Weibull: `a_det`, a MAGNITUDE da assinatura injetada em que o Autoencoder cruza o limiar operacional de anomalia (percentil 99 do erro de reconstrução saudável; μ+3σ é apenas referência comparativa). NÃO é tempo — chamava-se TTF até 08/08/2026, nome que prometia hora onde há fração de assinatura. Mesma unidade da SMD. Fonte única: docs/glossario.md
 
 Justificativa: na manutenção preditiva real raramente
 há dados de falha; modela-se o comportamento saudável

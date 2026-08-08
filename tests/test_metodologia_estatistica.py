@@ -112,7 +112,7 @@ def test_alta_censura_sinaliza_incerteza_sem_ocultar_rul_parametrica():
     assert ajuste["rul_restrita_disponivel"]
 
 
-def test_rul_declara_passos_sinteticos_sem_calibracao_fisica():
+def test_rul_declara_magnitude_de_injecao_sem_calibracao_fisica():
     from src.ml.rul_weibull import ajustar_weibull, metadados_tempo_rul
 
     ajuste = ajustar_weibull(
@@ -122,8 +122,14 @@ def test_rul_declara_passos_sinteticos_sem_calibracao_fisica():
     )
     tempo = metadados_tempo_rul()
 
-    assert ajuste["ttf_unidade"] == "passo_sintetico_de_degradacao"
-    assert ajuste["rul_unidade"] == "passo_sintetico_de_degradacao"
+    # O eixo deixou de prometer tempo: a unidade e a fracao da assinatura
+    # nominal. As chaves antigas sobrevivem como alias, apontando para a
+    # unidade NOVA -- e o que impede um leitor antigo de seguir lendo
+    # "passo de degradacao" onde agora ha magnitude.
+    assert ajuste["a_det_unidade"] == "a_det_fracao_da_assinatura_nominal"
+    assert ajuste["ttf_unidade"] == ajuste["a_det_unidade"]
+    assert ajuste["rul_unidade"] == ajuste["a_det_unidade"]
+    assert ajuste["eixo_nao_e_tempo"] is True
     assert ajuste["tempo_fisico_calibrado"] is False
     assert tempo["tempo_fisico_calibrado"] is False
     assert tempo["passo_tempo_fisico_horas"] is None

@@ -79,10 +79,11 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `diagnostico_escore.py` | Comparação auditável entre MSE histórico e escore localizado. |
 | `injecao_falhas.py` | Etapa 3: falhas sintéticas orientadas pela FMECA + SMD. |
 | `validacao.py` | Etapa 4: métricas no limiar congelado (ROC/PR/F1/AUC). |
-| `rul_weibull.py` | Etapa 5: TTF, Weibull 2P, RUL condicional. |
+| `rul_weibull.py` | Etapa 5: varredura de magnitude, `a_det`, Weibull 2P censurada, margem condicional. O eixo é fração da assinatura nominal, **não tempo**. |
 | `confiabilidade.py` | Funções fechadas da Weibull como DADO: R(t), F(t), f(t), h(t), H(t), B1/B10/mediana, leitura de β com ressalva de IC. |
 | `pod_curva.py` | Arcabouço POD (MIL-HDBK-1823A / LS-POD NASA): limites de tolerância, critério de viabilidade do ensaio, gatilhos de deriva de campo e checagem das hipóteses. |
-| `graficos_rul.py` | Figuras acadêmicas de TTF, confiabilidade e RUL. |
+| `relatorio_weibull.py` | Montagem de `weibull_results.json` e `weibull_tabela.csv`. Recebe tudo por parâmetro — não importa `rul_weibull`, para não fechar ciclo. |
+| `graficos_rul.py` | Figuras acadêmicas de `a_det`, confiabilidade e margem de magnitude. |
 | `pipeline.py` | Coordena estado/execução das etapas e grava manifestos. |
 | `proveniencia.py` | Manifestos de proveniência e estado ready/stale/pending. |
 | `split_temporal.py` | Split temporal com purga (anti-vazamento), compartilhado. |

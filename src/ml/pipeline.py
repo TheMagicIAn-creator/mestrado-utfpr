@@ -206,7 +206,8 @@ STAGES: dict[str, PipelineStage] = {
         parameter_names=(
             "N_TRAJ", "N_STEPS", "BATCH_INFERENCIA", "N_BOOTSTRAP",
             "MIN_EVENTOS_WEIBULL", "MAX_CENSURA_RUL_PCT",
-            "PERSISTENCIA_CRUZAMENTO", "TTF_UNIDADE", "TEMPO_FISICO_CALIBRADO",
+            "PERSISTENCIA_CRUZAMENTO", "A_DET_UNIDADE", "TTF_UNIDADE",
+            "TEMPO_FISICO_CALIBRADO",
         ),
         code_dependencies=(
             "src.ml.features_ca",

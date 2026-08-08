@@ -32,7 +32,8 @@ src/
 │   ├── autoencoder.py    modelo de normalidade (limiar p99)
 │   ├── injecao_falhas.py falhas sintéticas FMECA (schema E2) + SMD_95
 │   ├── validacao.py      validação interna E2 (holdout, ROC+PR, ICs)
-│   ├── rul_weibull.py    RUL / Weibull
+│   ├── rul_weibull.py    RUL / Weibull (eixo a_det, nao tempo)
+│   ├── relatorio_weibull.py  montagem do artefato de Weibull
 │   ├── classificador_pv.py classificação supervisionada PV Farms (CC)
 │   ├── experimentos_artigos.py experimentos de ML por artigo-base
 │   ├── exec_experimento_isolado.py roda experimento pesado em subprocesso

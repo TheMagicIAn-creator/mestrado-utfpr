@@ -4,17 +4,26 @@ Estimativa de Vida Útil Remanescente (RUL) com Análise de Weibull.
 
 Fundamentação metodológica:
   O dataset de Paderborn contém apenas dados saudáveis (sem falhas reais).
-  A estratégia adotada — definida na metodologia da dissertação — é gerar
-  dados de tempo até a falha (TTF) por meio de trajetórias de degradação
-  sintética progressiva, fundamentadas na FMECA do TCC (Torres, 2024).
+  A estratégia adotada — definida na metodologia da dissertação — é varrer a
+  MAGNITUDE da assinatura de falha, com trajetórias sintéticas fundamentadas na
+  FMECA do TCC (Torres, 2024).
 
-  Cada trajetória simula um inversor que inicia saudável e degrada
-  gradualmente (severidade 0→1,0 em N_STEPS passos sintéticos). O TTF é o
-  passo de degradação em que o Autoencoder detecta a anomalia (erro > limiar).
-  Sem dados run-to-failure ou taxa de degradação de campo, esse passo NÃO é
-  hora, dia nem ano; é uma coordenada do experimento computacional.
-  Com N_TRAJ trajetórias por tipo de falha, ajusta-se a distribuição
-  de Weibull de 2 parâmetros aos TTF obtidos.
+  Cada trajetória simula um inversor cuja falha se agrava: a magnitude injetada
+  `a_inj` cresce de 0 a 1,0 em N_STEPS pontos sobre a MESMA janela saudável.
+  Registra-se `a_det`, a magnitude em que o Autoencoder confirma a anomalia
+  (escore > limiar por PERSISTENCIA_CRUZAMENTO avaliações seguidas).
+
+  ⚠️  O EIXO NÃO É TEMPO. Sem dados run-to-failure nem taxa de degradação de
+  campo, não existe conversão de magnitude para hora, dia ou ano — e inventá-la
+  seria inventar o número mais importante do capítulo. β é adimensional; η,
+  MTTF e B10 saem em FRAÇÃO DA ASSINATURA NOMINAL. Os nomes MTTF/B10 são
+  mantidos porque são os da distribuição, não porque haja tempo envolvido.
+
+  Ganho de ter renomeado: `a_det` e a SMD da injeção (`a_inj,95`) passam a
+  compartilhar a unidade, e podem ser lidos na mesma régua.
+
+  Com N_TRAJ trajetórias por tipo de falha, ajusta-se a Weibull de 2 parâmetros
+  aos `a_det` obtidos.
 
 Distribuição de Weibull de 2 parâmetros:
   PDF : f(t) = (β/η) × (t/η)^(β−1) × exp(−(t/η)^β)
@@ -27,15 +36,14 @@ Distribuição de Weibull de 2 parâmetros:
                  β < 1: mortalidade infantil
                  β = 1: falhas aleatórias (exponencial)
                  β > 1: desgaste (esperado para degradação gradual)
-    η (scale)  — vida característica: t em que R(t) = e^−1 ≈ 36,8%
-    app.py
-streamlit_app.py
-main.py
+    η (scale)  — vida característica: a em que R(a) = e^−1 ≈ 36,8%
 
-RUL estimado:
-  Para um inversor com degradação observada em t_atual, a RUL esperada é:
-    RUL = MTTF_condicional − t_atual
-  onde MTTF_condicional usa a distribuição Weibull truncada em t_atual.
+"RUL" neste eixo:
+  Para uma falha já agravada até a magnitude `a_atual` sem ter sido detectada,
+  a "RUL" é a margem de magnitude ainda esperada até a detecção:
+    RUL = E[a_det − a_atual | a_det > a_atual]
+  calculada com a Weibull truncada em `a_atual`. É margem de assinatura, não
+  vida remanescente em tempo.
 
 Entrada:
   resultados/autoencoder/modelo_autoencoder.pt
@@ -44,10 +52,12 @@ Entrada:
   dados/brutos/Inverter_Data_Set.csv
 
 Saída:
-  resultados/autoencoder/weibull_ttf.png
-  resultados/autoencoder/weibull_confiabilidade.png
+  resultados/autoencoder/weibull_ttf.png            (histogramas de a_det)
+  resultados/autoencoder/weibull_confiabilidade.png (R(a) e h(a))
+  resultados/autoencoder/weibull_distribuicao.png   (f, F e papel de Weibull)
   resultados/autoencoder/weibull_rul.png
   resultados/autoencoder/weibull_results.json
+  resultados/autoencoder/weibull_tabela.csv
 
 Uso:
   python src/ml/rul_weibull.py
@@ -109,13 +119,41 @@ PASTA_AE    = RAIZ / "resultados" / "autoencoder"
 
 # ── Parâmetros de simulação ───────────────────────────────────
 N_TRAJ  = 100    # teto; o n efetivo não excede janelas independentes do holdout
-N_STEPS = 120    # passos de degradação por trajetória (sev 0→1,0)
-TTF_UNIDADE = "passo_sintetico_de_degradacao"
+N_STEPS = 120    # pontos da grade de magnitude por trajetória (a_inj 0→1,0)
+
+# ── O EIXO NÃO É TEMPO ──────────────────────────────────────────────────────
+# Até 08/08/2026 este módulo chamava o eixo de TTF (time to failure) e a unidade
+# de "passo sintético de degradação". Os dois nomes prometiam tempo e entregavam
+# outra coisa: o que a trajetória varre é a MAGNITUDE DA ASSINATURA INJETADA,
+# de 0 a 1,0, e o que se registra é a magnitude em que a detecção se confirma.
+# Não há taxa de degradação de campo que converta magnitude em hora — converter
+# seria inventar o número mais importante da seção.
+#
+# O eixo passa a se chamar `a_det`, na mesma família de `a_inj` (a magnitude
+# injetada, src/ml/injecao_falhas.py) e do tamanho de defeito `a` da curva
+# POD(a) do MIL-HDBK-1823A. Ganho concreto: `a_det` e a SMD passam a estar na
+# MESMA unidade, então β/η/B10 do Weibull e a SMD da injeção podem ser lidos na
+# mesma régua. Em passos isso era impossível.
+#
+# Leitura de B10 = 0,12: em 10% das trajetórias a falha já é detectada com 12%
+# da assinatura nominal. Antes se lia "B10 = 14 passos", que não significa nada
+# fora do experimento.
+A_DET_UNIDADE = "a_det_fracao_da_assinatura_nominal"
+A_DET_MIN = 0.0
+A_DET_MAX = 1.0
+# Alias de compatibilidade para as chaves antigas do JSON. Repetido como
+# LITERAL de propósito: o manifesto de proveniência lê estas constantes por AST,
+# sem importar o módulo (pipeline._parametros_do_fonte), e `literal_eval` não
+# resolve referência a outro nome — escrever `= A_DET_UNIDADE` forçaria o
+# import pesado no caminho de leitura. Um teste garante que os dois batem.
+TTF_UNIDADE = "a_det_fracao_da_assinatura_nominal"
 TEMPO_FISICO_CALIBRADO = False
 TEMPO_FISICO_NOTA = (
-    "Os TTF/RUL são expressos em passos sintéticos de degradação. A janela de "
-    "aquisição tem duração física conhecida, mas o avanço de severidade não tem "
-    "taxa de campo calibrada; portanto não converter para horas, dias ou anos."
+    "O eixo do Weibull é a_det: a fração da assinatura nominal (a_inj) em que a "
+    "detecção se confirma, em [0; 1]. NÃO é tempo. A janela de aquisição tem "
+    "duração física conhecida, mas o avanço de magnitude não tem taxa de campo "
+    "calibrada; portanto não converter para horas, dias ou anos. β é "
+    "adimensional; η, MTTF e B10 estão em fração de assinatura."
 )
 BATCH_INFERENCIA = 16
 N_BOOTSTRAP = 250
@@ -124,11 +162,30 @@ MAX_CENSURA_RUL_PCT = 50.0
 PERSISTENCIA_CRUZAMENTO = 3
 
 
+def a_det_da_grade(passo: int, n_steps: int = N_STEPS) -> float:
+    """Converte índice da grade de magnitude em ``a_det`` ∈ [0; 1].
+
+    A grade é ``np.linspace(0, 1, n_steps)``, logo o passo ``i`` corresponde a
+    ``i/(n_steps−1)``. A conversão fica aqui, e não espalhada, para que o fator
+    seja auditável num lugar só.
+    """
+    n = max(int(n_steps), 2)
+    return float(np.clip(int(passo) / (n - 1), A_DET_MIN, A_DET_MAX))
+
+
 def metadados_tempo_rul() -> dict:
-    """Metadados para impedir leitura dos passos sintéticos como tempo físico."""
+    """Metadados que impedem ler a magnitude de injeção como tempo físico."""
     return {
-        "ttf_unidade": TTF_UNIDADE,
-        "rul_unidade": TTF_UNIDADE,
+        "a_det_unidade": A_DET_UNIDADE,
+        "a_det_intervalo": [A_DET_MIN, A_DET_MAX],
+        "a_det_passos_da_grade": N_STEPS,
+        "a_det_por_passo": 1.0 / (N_STEPS - 1),
+        # Aliases mantidos para não quebrar leitores antigos do JSON. Apontam
+        # para a MESMA unidade — que agora é magnitude, não passo de tempo.
+        "ttf_unidade": A_DET_UNIDADE,
+        "rul_unidade": A_DET_UNIDADE,
+        "eixo": "magnitude_da_assinatura_injetada",
+        "eixo_nao_e_tempo": True,
         "tempo_fisico_calibrado": TEMPO_FISICO_CALIBRADO,
         "passo_tempo_fisico_horas": None,
         "fs_hz": FS,
@@ -202,44 +259,54 @@ def selecionar_janelas_baseline_normais(
 # TRAJETÓRIA DE DEGRADAÇÃO PROGRESSIVA
 # ============================================================
 
-def gerar_ttf(df_estavel: pd.DataFrame,
-              modelo: Autoencoder,
-              scaler,
-              device: torch.device,
-              colunas_feat: list,
-              limiar: float,
-              tipo_falha: str,
-              n_steps: int,
-              seed: int,
-              batch_size: int = BATCH_INFERENCIA,
-              persistencia: int = PERSISTENCIA_CRUZAMENTO,
-              estat_residuo: dict | None = None,
-              metodo: str = "mse") -> tuple[int, bool]:
+def gerar_a_det(janela_saudavel: pd.DataFrame,
+                modelo: Autoencoder,
+                scaler,
+                device: torch.device,
+                colunas_feat: list,
+                limiar: float,
+                tipo_falha: str,
+                n_steps: int,
+                seed: int,
+                batch_size: int = BATCH_INFERENCIA,
+                persistencia: int = PERSISTENCIA_CRUZAMENTO,
+                estat_residuo: dict | None = None,
+                metodo: str = "mse") -> tuple[float, bool]:
     """
-    Simula uma trajetória de degradação progressiva e retorna o TTF.
+    Varre a magnitude da assinatura injetada e devolve ``(a_det, detectou)``.
 
-    A severidade aumenta linearmente de 0 a 1,0 em n_steps passos.
-    O TTF é o passo em que o erro de reconstrução permanece acima do limiar
-    por ``persistencia`` avaliações consecutivas. Isso evita declarar falha por
-    um pico isolado do detector.
-    Se não cruzar, retorna (n_steps, False), preservando a censura à direita.
+    A magnitude ``a_inj`` cresce linearmente de 0 a 1,0 em ``n_steps`` pontos
+    sobre a MESMA janela saudável — a trajetória representa um único ativo cuja
+    falha se agrava, não um ativo diferente a cada ponto.
+
+    ``a_det`` é a magnitude em que o escore permanece acima do limiar por
+    ``persistencia`` avaliações consecutivas; a persistência evita declarar
+    detecção por um pico isolado.
+
+    Se nem em ``a_inj = 1,0`` o escore confirma, devolve ``(1.0, False)``. Isso
+    NÃO é censura à direita no sentido usual — ver `classificar_desfechos`: a
+    grade foi varrida INTEIRA, e o desfecho é indetectabilidade no teto, não
+    interrupção do acompanhamento.
 
     Parâmetros:
-        seed : garante variabilidade entre trajetórias (diferentes
-               janelas-base e ruído sintético são reproduzíveis
+        seed : reproduz o ruído sintético da família Contator AC. NÃO sorteia
+               janela-base — a janela vem pronta do holdout (ver abaixo).
     """
     fn          = FUNCOES_FALHA[tipo_falha]
-    rng         = np.random.default_rng(seed)
-    severidades = np.linspace(0.0, 1.0, n_steps)
-    n_disp = len(df_estavel) - JANELA
-    if n_disp < 0:
-        raise ValueError("Periodo estavel menor que a janela de extracao.")
+    magnitudes  = np.linspace(0.0, 1.0, n_steps)
 
-    # Uma trajetória representa um único ativo: escolhe a janela-base uma vez
-    # e aplica severidade crescente sobre ela. A versão anterior sorteava uma
-    # nova janela em cada passo e confundia degradação com variação operacional.
-    inicio_base = int(rng.integers(0, n_disp + 1)) if n_disp else 0
-    janela_base = df_estavel.iloc[inicio_base:inicio_base + JANELA].copy()
+    # A janela chega pronta do holdout temporal, com exatamente JANELA amostras.
+    # Até 08/08/2026 este bloco sorteava um início com `rng.integers(0, n_disp)`
+    # a partir de um DataFrame maior — mas o chamador sempre passou uma janela
+    # já recortada, então `n_disp` valia 0 e o sorteio nunca ocorria. Código
+    # morto que prometia uma aleatorização inexistente no nome do parâmetro
+    # (`df_estavel`) e na docstring.
+    if len(janela_saudavel) != JANELA:
+        raise ValueError(
+            f"Esperada uma janela de {JANELA} amostras, recebidas "
+            f"{len(janela_saudavel)}. A janela vem de preparar_janelas_holdout."
+        )
+    janela_base = janela_saudavel.copy()
 
     modelo.eval()
 
@@ -249,7 +316,7 @@ def gerar_ttf(df_estavel: pd.DataFrame,
         vetores = []
 
         for step in range(inicio_batch, fim_batch):
-            sev = severidades[step]
+            sev = magnitudes[step]
 
             janela = janela_base.copy()
 
@@ -286,9 +353,19 @@ def gerar_ttf(df_estavel: pd.DataFrame,
         cruzamentos = np.asarray([], dtype=int)
 
     if len(cruzamentos) > 0:
-        return int(cruzamentos[0]), True
+        return a_det_da_grade(int(cruzamentos[0]), n_steps), True
 
-    return n_steps, False
+    # Não confirmou nem no topo da grade. O desfecho é registrado em a_inj = 1,0
+    # — a última magnitude REALMENTE aplicada. A versão anterior devolvia
+    # `n_steps` (120), um índice fora da grade (que vai de 0 a 119): o desfecho
+    # era carimbado num ponto do eixo onde nada foi medido.
+    return A_DET_MAX, False
+
+
+# Nome anterior. Mantido porque o eixo mudou de significado, não a mecânica —
+# quem chamava `gerar_ttf` continua obtendo o mesmo experimento, agora com a
+# saída em magnitude. Ver o bloco "O EIXO NÃO É TEMPO" no topo do módulo.
+gerar_ttf = gerar_a_det
 
 
 # ============================================================
@@ -370,6 +447,56 @@ def rul_restrita_km(
     return float(max(area / sobrevivencia_t0, 0.0))
 
 
+def classificar_desfechos(a_dets: np.ndarray, eventos: np.ndarray) -> dict:
+    """Separa INDETECTABILIDADE NO TETO de censura à direita genuína.
+
+    O módulo chamava toda não detecção de "censura à direita" e reportava
+    `censura_pct`. O nome é enganoso, e a diferença é metodológica, não de
+    vocabulário:
+
+    - **Censura à direita genuína** é acompanhamento interrompido: o evento
+      ocorreria depois, mas paramos de observar. É o que o MLE censurado
+      pressupõe, e sob essa hipótese extrapolar a Weibull além do último dado é
+      legítimo.
+    - **Indetectabilidade no teto** é outra coisa: a grade de magnitude foi
+      varrida INTEIRA, até `a_inj = 1,0`, e o detector não confirmou. Não há
+      "depois" a observar dentro do experimento. Tratar isso como censura só é
+      admissível se admitirmos que a falha real pode ter assinatura MAIOR que a
+      nominal — hipótese defensável, mas hipótese, e que precisa estar escrita.
+
+    No desenho atual toda não detecção é do segundo tipo. A função devolve as
+    duas contagens separadas para que o artefato não continue chamando as duas
+    coisas pelo mesmo nome, e para expor `pod_mon_no_teto` — a probabilidade de
+    detecção na magnitude máxima, que é o elo direto com a curva POD e com o
+    `D_mon` da retroalimentação da FMECA.
+    """
+    a = np.asarray(a_dets, dtype=float)
+    obs = np.asarray(eventos, dtype=bool)
+    if len(a) != len(obs):
+        raise ValueError("a_dets e eventos devem ter o mesmo comprimento.")
+
+    n = len(a)
+    no_teto = (~obs) & np.isclose(a, A_DET_MAX)
+    censura_genuina = (~obs) & ~no_teto
+
+    return {
+        "n_traj": int(n),
+        "n_detectadas": int(obs.sum()),
+        "n_indetectaveis_no_teto": int(no_teto.sum()),
+        "n_censura_genuina": int(censura_genuina.sum()),
+        "pod_mon_no_teto": float(obs.mean()) if n else float("nan"),
+        "indetectabilidade_pct": float(no_teto.mean() * 100.0) if n else float("nan"),
+        "tratamento_no_ajuste": "right_censored",
+        "hipotese_declarada": (
+            "As trajetórias não detectadas são tratadas como censura à direita "
+            "em a_inj = 1,0. Isso PRESSUPÕE que a assinatura real possa exceder "
+            "a nominal; dentro da grade varrida elas são simplesmente NÃO "
+            "DETECTADAS. Sem essa hipótese, o Weibull descreve apenas a "
+            "subpopulação detectável, e η/MTTF/B10 valem só para ela."
+        ),
+    }
+
+
 def _ajuste_weibull_censurado(
     ttfs: np.ndarray, eventos: np.ndarray
 ) -> tuple[float, float, bool]:
@@ -391,14 +518,19 @@ def _ajuste_weibull_censurado(
         ll = np.where(obs, log_f_evento, log_s_censura).sum()
         return float(-ll) if np.isfinite(ll) else 1e30
 
+    # O eixo passou de passos (1..120) para a_det ∈ (0; 1]. O chute e os limites
+    # de η eram dimensionados para a escala antiga: `max(mediana, 1.0)` forçava
+    # η_ini = 1,0 (o TETO do novo eixo) e o limite inferior de 0,1 podia PRENDER
+    # o ótimo, já que η de uma falha bem detectada fica abaixo disso. Ambos
+    # passam a acompanhar a escala dos dados.
     observados = tempos[obs]
     beta_ini = 2.0
-    eta_ini = max(float(np.median(observados)), 1.0)
+    eta_ini = max(float(np.median(observados)), 1e-4)
     ajuste = minimize(
         neg_log_likelihood,
         x0=np.log([beta_ini, eta_ini]),
         method="L-BFGS-B",
-        bounds=[(np.log(0.05), np.log(50.0)), (np.log(0.1), np.log(1e5))],
+        bounds=[(np.log(0.05), np.log(50.0)), (np.log(1e-6), np.log(1e5))],
     )
     beta, eta = np.exp(ajuste.x)
     convergiu = bool(ajuste.success and np.isfinite(beta) and np.isfinite(eta))
@@ -460,6 +592,7 @@ def ajustar_weibull(
     horizonte = float(np.max(tempos)) if len(tempos) else 0.0
     rul_restrita_inicial = rul_restrita_km(0.0, tempos, obs, horizonte)
     alta_censura = censura_pct > MAX_CENSURA_RUL_PCT
+    desfechos = classificar_desfechos(tempos, obs)
 
     return {
         "beta": float(beta),
@@ -473,6 +606,11 @@ def ajustar_weibull(
         "n_eventos": int(obs.sum()),
         "n_censurados": int((~obs).sum()),
         "censura_pct": censura_pct,
+        # Onde a não detecção deixa de ser um número só: ver classificar_desfechos.
+        "desfechos": desfechos,
+        "a_det_unidade": A_DET_UNIDADE,
+        "eixo_nao_e_tempo": True,
+        # Aliases: a chave é a antiga, o valor já é a unidade nova.
         "ttf_unidade": TTF_UNIDADE,
         "rul_unidade": TTF_UNIDADE,
         "tempo_fisico_calibrado": TEMPO_FISICO_CALIBRADO,
@@ -485,6 +623,12 @@ def ajustar_weibull(
         "rul_restrita_disponivel": bool(len(tempos) > 0),
         "rul_restrita_horizonte": horizonte,
         "rul_restrita_inicial": rul_restrita_inicial,
+        "a_det_mean_detectadas": (
+            float(np.mean(tempos[obs])) if obs.any() else None
+        ),
+        "a_det_min": float(np.min(tempos)),
+        "a_det_max": float(np.max(tempos)),
+        # Aliases das mesmas grandezas, com os nomes antigos.
         "ttf_mean_observado": (
             float(np.mean(tempos[obs])) if obs.any() else None
         ),
@@ -591,7 +735,8 @@ def executar_rul_weibull() -> bool:
     _log("  AL IADO PV — RUL COM WEIBULL")
     _log("=" * 60)
     _log(f"\n  Teto de trajetórias por falha: {N_TRAJ}")
-    _log(f"  Passos de degradação : {N_STEPS} (sev 0→1,0)")
+    _log(f"  Grade de magnitude   : {N_STEPS} pontos (a_inj 0→1,0)")
+    _log(f"  Eixo do Weibull      : a_det — fração da assinatura nominal, NÃO tempo")
 
     # ── 1. Carrega artefatos ─────────────────────────────────
     _log(f"\n📂 Carregando artefatos...")
@@ -674,26 +819,26 @@ def executar_rul_weibull() -> bool:
         eventos = []
         for i in range(n_traj_real):
             janela_base = janelas_holdout[i]
-            ttf, evento = gerar_ttf(
+            a_det, detectou = gerar_a_det(
                 janela_base, modelo, scaler, device,
                 colunas_feat, limiar, fid, N_STEPS, seed=i,
                 estat_residuo=estat_residuo, metodo=metodo_escore
             )
-            ttfs.append(ttf)
-            eventos.append(evento)
+            ttfs.append(a_det)
+            eventos.append(detectou)
             if (i + 1) % 20 == 0:
-                _log(f"      [{i+1:>3}/{n_traj_real}] TTF médio até agora: "
-                      f"{np.mean(ttfs):.1f} passos", end="\r")
+                _log(f"      [{i+1:>3}/{n_traj_real}] a_det médio até agora: "
+                      f"{np.mean(ttfs):.3f}", end="\r")
 
         ttfs = np.array(ttfs, dtype=float)
         eventos = np.asarray(eventos, dtype=bool)
-        censurados = ~eventos
         ttfs_dict[fid] = ttfs
         eventos_dict[fid] = eventos
-        pct_cens = censurados.mean() * 100
-        _log(f"\n      TTF: μ={ttfs.mean():.1f} ± {ttfs.std():.1f} | "
-              f"min={ttfs.min():.0f} | max={ttfs.max():.0f} | "
-              f"censurados={pct_cens:.0f}%")
+        d = classificar_desfechos(ttfs, eventos)
+        _log(f"\n      a_det: μ={ttfs.mean():.3f} ± {ttfs.std():.3f} | "
+              f"min={ttfs.min():.3f} | max={ttfs.max():.3f}")
+        _log(f"      POD_mon no teto (a_inj=1,0): {d['pod_mon_no_teto']:.1%} | "
+             f"indetectáveis no teto: {d['n_indetectaveis_no_teto']}/{d['n_traj']}")
 
     # ── 4. Ajuste de Weibull ─────────────────────────────────
     _log(f"\n📐 Ajustando distribuição de Weibull...")
@@ -727,105 +872,29 @@ def executar_rul_weibull() -> bool:
     plotar_rul(ttfs_dict, eventos_dict, params, PASTA_AE)
 
     # ── 6. Salva resultados ──────────────────────────────────
+    # A montagem do artefato vive em src/ml/relatorio_weibull.py: este módulo
+    # ficou com a matemática, aquele com a serialização. Ver o docstring de lá.
+    from src.ml.relatorio_weibull import montar_relatorio
+
+    relatorio, linhas_weibull = montar_relatorio(
+        params=params, a_dets_dict=ttfs_dict, eventos_dict=eventos_dict,
+        falhas=FALHAS, meta_holdout=meta_holdout,
+        metadados_tempo=metadados_tempo_rul(), limiar=float(limiar),
+        n_traj_max=N_TRAJ, n_traj_real=n_traj_real, n_steps=N_STEPS,
+        a_det_unidade=A_DET_UNIDADE, ttf_unidade=TTF_UNIDADE,
+        tempo_fisico_calibrado=TEMPO_FISICO_CALIBRADO,
+        tempo_fisico_nota=TEMPO_FISICO_NOTA,
+        min_eventos_weibull=MIN_EVENTOS_WEIBULL,
+        max_censura_rul_pct=MAX_CENSURA_RUL_PCT,
+        persistencia_cruzamento=PERSISTENCIA_CRUZAMENTO,
+        json_seguro=_json_seguro,
+    )
+
     arq_json = PASTA_AE / "weibull_results.json"
-    relatorio = {
-        "__meta__": {
-            "evidence_level": "E2",
-            "evidence_note": (
-                "RUL ILUSTRATIVO — duplamente sintético: (1) os TTF vêm de "
-                "trajetórias de degradação SIMULADAS cruzando o limiar do "
-                "Autoencoder, não de dados run-to-failure reais; (2) a própria "
-                "falha que define o cruzamento é injeção sintética orientada "
-                "pela FMECA. Demonstra a METODOLOGIA (TTF→Weibull→MTTF/B10/RUL), "
-                "NÃO é estimativa de vida útil de campo (exigiria histórico real "
-                "de falhas). A censura à direita é preservada no MLE; os "
-                "intervalos vêm de bootstrap de trajetórias."
-            ),
-            "ttf_origem": "trajetorias_simuladas_cruzando_limiar_AE",
-            "tempo": metadados_tempo_rul(),
-            "adequacy_note": (
-                "O RMSE entre Kaplan-Meier e Weibull é descritivo, não prova "
-                "adequação nem substitui validação com dados run-to-failure."
-            ),
-            "protocolo_avaliacao": meta_holdout,
-        },
-        "parametros_simulacao": {
-            "n_trajetorias_max": N_TRAJ,
-            "n_trajetorias_efetivas": n_traj_real,
-            "n_steps"      : N_STEPS,
-            "ttf_unidade": TTF_UNIDADE,
-            "rul_unidade": TTF_UNIDADE,
-            "tempo_fisico_calibrado": TEMPO_FISICO_CALIBRADO,
-            "tempo_fisico_nota": TEMPO_FISICO_NOTA,
-            "limiar"       : float(limiar),
-            "min_eventos_weibull": MIN_EVENTOS_WEIBULL,
-            "max_censura_rul_pct": MAX_CENSURA_RUL_PCT,
-            "persistencia_cruzamento": PERSISTENCIA_CRUZAMENTO,
-        },
-        "falhas": {}
-    }
-    for falha in FALHAS:
-        fid = falha["id"]
-        relatorio["falhas"][fid] = {
-            "nome"  : falha["nome"],
-            "npr"   : falha["npr"],
-            "weibull": _json_seguro(params[fid]),
-            "ajuste_weibull_adequado": None,
-            "status_ajuste": (
-                "nao_estimavel_parametrico_rul_restrita"
-                if not params[fid]["fit_converged"]
-                else "exploratorio_alta_censura"
-                if params[fid]["rul_parametrica_alta_incerteza"]
-                else "exploratorio_descritivo"
-            ),
-            "ressalva_ajuste": (
-                "Ajuste censurado do experimento sintético; adequação externa "
-                "não demonstrada. MTTF/B10 não equivalem a vida física."
-            ),
-            "ttfs"  : ttfs_dict[fid].tolist(),
-            "eventos_observados": eventos_dict[fid].tolist(),
-        }
     with open(arq_json, "w", encoding="utf-8") as f:
         json.dump(relatorio, f, indent=2, ensure_ascii=False)
     _log(f"   ✅ {arq_json.name}")
 
-    linhas_weibull = []
-    for falha in FALHAS:
-        fid = falha["id"]
-        p = params[fid]
-        linhas_weibull.append({
-            "falha": falha["nome"],
-            "npr": falha["npr"],
-            "n_traj": p["n_traj"],
-            "n_eventos": p["n_eventos"],
-            "n_censurados": p["n_censurados"],
-            "censura_pct": p["censura_pct"],
-            "ttf_unidade": p["ttf_unidade"],
-            "rul_unidade": p["rul_unidade"],
-            "tempo_fisico_calibrado": p["tempo_fisico_calibrado"],
-            "beta": p["beta"],
-            "beta_ci_low": p["beta_ci95"][0],
-            "beta_ci_high": p["beta_ci95"][1],
-            "eta": p["eta"],
-            "eta_ci_low": p["eta_ci95"][0],
-            "eta_ci_high": p["eta_ci95"][1],
-            "mttf": p["mttf"],
-            "mttf_ci_low": p["mttf_ci95"][0],
-            "mttf_ci_high": p["mttf_ci95"][1],
-            "b10": p["b10"],
-            "b10_ci_low": p["b10_ci95"][0],
-            "b10_ci_high": p["b10_ci95"][1],
-            "km_rmse": p["km_rmse"],
-            "fit_converged": p["fit_converged"],
-            "rul_reportavel": p["rul_reportavel"],
-            "rul_parametrica_disponivel": p["rul_parametrica_disponivel"],
-            "rul_parametrica_alta_incerteza": p["rul_parametrica_alta_incerteza"],
-            "rul_restrita_disponivel": p["rul_restrita_disponivel"],
-            "rul_restrita_horizonte": p["rul_restrita_horizonte"],
-            "rul_restrita_inicial": p["rul_restrita_inicial"],
-            "status_ajuste": relatorio["falhas"][fid]["status_ajuste"],
-            "evidence_level": "E2",
-        })
     arq_tabela = PASTA_AE / "weibull_tabela.csv"
     pd.DataFrame(linhas_weibull).to_csv(arq_tabela, index=False)
     _log(f"   📋 {arq_tabela.name}")
@@ -833,19 +902,26 @@ def executar_rul_weibull() -> bool:
     # ── 7. Resumo final ──────────────────────────────────────
     _log(f"\n{'='*60}")
     _log(f"  ANÁLISE DE WEIBULL E RUL CONCLUÍDA!")
-    _log(f"\n  {'Falha':<28} {'β':>6} {'η':>7} {'MTTF':>8} {'B10':>8}")
-    _log(f"  {'-'*58}")
+    _log(f"\n  Valores em FRAÇÃO DA ASSINATURA NOMINAL (a_det), não em tempo.")
+    _log(f"\n  {'Falha':<28} {'β':>6} {'η':>7} {'MTTF':>8} {'B10':>8} {'POD@1,0':>8}")
+    _log(f"  {'-'*68}")
     for falha in FALHAS:
         fid = falha["id"]
         p   = params[fid]
         _log(f"  {falha['nome']:<28} "
-              f"{p['beta']:>6.3f} {p['eta']:>7.1f} "
-              f"{p['mttf']:>8.1f} {p['b10']:>8.1f}")
+              f"{p['beta']:>6.3f} {p['eta']:>7.3f} "
+              f"{p['mttf']:>8.3f} {p['b10']:>8.3f} "
+              f"{p['desfechos']['pod_mon_no_teto']:>7.1%}")
 
-    _log(f"\n  Interpretação do β:")
-    _log(f"  β > 1 → taxa de falha crescente (desgaste) — esperado")
-    _log(f"  β < 1 → mortalidade infantil")
-    _log(f"  β = 1 → falhas aleatórias (exponencial)")
+    # A leitura do β só vale se o IC95 não cruzar 1 — quem decide isso é
+    # confiabilidade.classificar_forma, e a conclusão dela já vem no artefato.
+    _log(f"\n  Interpretação do β (válida só quando o IC95 não cruza 1):")
+    for falha in FALHAS:
+        p = params[falha["id"]]
+        interp = p.get("interpretacao") or {}
+        if interp.get("leitura"):
+            marca = "" if interp.get("conclusivo") else "⚠️  "
+            _log(f"  {marca}{falha['nome']}: {interp['leitura']}")
     _log(f"\n  Fase 5 do pipeline de ML concluída!")
     _log(f"  Próximo passo: integração no orquestrador")
     _log(f"{'='*60}")

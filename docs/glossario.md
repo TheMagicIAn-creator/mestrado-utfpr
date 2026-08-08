@@ -36,17 +36,34 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
 - **Weibull (2 parâmetros)**: distribuição de vida com forma **beta** (β>1 →
   desgaste progressivo; β≈1 → falhas aleatórias; β<1 → mortalidade infantil)
   e escala **eta** (vida característica, 63,2% de falhas acumuladas).
-- **MTTF / B10**: tempo médio até a falha; tempo em que 10% da população
-  falhou. No projeto, medidos em PASSOS de simulação, não em horas de campo.
-- **TTF**: tempo até a falha de uma trajetória de degradação simulada —
-  passo em que se confirma uma sequência persistente de erros acima do limiar
-  operacional. Trajetórias sem confirmação são censuradas à direita.
-- **Teste KS (Kolmogorov–Smirnov)**: teste de aderência entre os TTF
+- **a_det — magnitude de detecção**: o eixo do Weibull do projeto. Numa
+  trajetória, `a_inj` cresce de 0 a 1 sobre a MESMA janela saudável, e `a_det`
+  é a magnitude em que o escore fica acima do limiar por `PERSISTENCIA_
+  CRUZAMENTO` avaliações seguidas. Mesma unidade de `a_inj` e da SMD, o que
+  permite ler Weibull e injeção na mesma régua. Fonte única:
+  `src/ml/rul_weibull.py`, bloco "O EIXO NÃO É TEMPO".
+  **Substituiu o nome TTF em 08/08/2026**: o eixo nunca foi tempo, e "TTF"/
+  "passo de degradação" prometiam hora onde há fração de assinatura. As chaves
+  `ttf_*` sobrevivem nos artefatos como alias, já apontando para a unidade nova.
+- **MTTF / B10**: média e décimo percentil da distribuição ajustada. Os nomes
+  são os da Weibull, mas **no projeto saem em fração da assinatura nominal**,
+  não em horas. `B10 = 0,12` lê-se: em 10% das trajetórias a falha já é
+  detectada com 12% da assinatura nominal.
+- **Indetectabilidade no teto × censura genuína**: censura à direita é
+  acompanhamento interrompido — o evento viria depois. **Indetectabilidade no
+  teto** é a grade de magnitude varrida INTEIRA, até `a_inj = 1,0`, sem o
+  detector confirmar: não há "depois" dentro do experimento. No desenho atual
+  toda não detecção é do segundo tipo; tratá-la como censura no MLE pressupõe
+  que a falha real possa ter assinatura maior que a nominal — hipótese
+  declarada no campo `desfechos` do artefato, não suposição tácita.
+- **Teste KS (Kolmogorov–Smirnov)**: teste de aderência entre os `a_det`
   simulados e a Weibull ajustada. p ≤ 0,05 → ajuste REJEITADO → MTTF/B10
   indicativos, não conclusivos (campo `ajuste_weibull_adequado`).
-- **RUL** (Remaining Useful Life): vida útil remanescente estimada a partir
-  da curva de confiabilidade. O projeto distingue **RUL restrita KM** (não
-  paramétrica, limitada ao horizonte observado) de **RUL Weibull**
+- **RUL** (Remaining Useful Life): vida útil remanescente. No eixo `a_det` a
+  grandeza calculada é a **margem de magnitude até detectar** —
+  `E[a_det − a | a_det > a]` —, não vida em tempo; o nome RUL é mantido porque
+  é o da literatura de prognóstico. O projeto distingue **RUL restrita KM**
+  (não paramétrica, limitada ao horizonte observado) de **RUL Weibull**
   (paramétrica e extrapolativa, com ressalva explícita sob alta censura).
 
 ## Detecção de anomalias
