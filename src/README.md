@@ -80,6 +80,8 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `injecao_falhas.py` | Etapa 3: falhas sintéticas orientadas pela FMECA + SMD. |
 | `validacao.py` | Etapa 4: métricas no limiar congelado (ROC/PR/F1/AUC). |
 | `rul_weibull.py` | Etapa 5: TTF, Weibull 2P, RUL condicional. |
+| `confiabilidade.py` | Funções fechadas da Weibull como DADO: R(t), F(t), f(t), h(t), H(t), B1/B10/mediana, leitura de β com ressalva de IC. |
+| `pod_curva.py` | Arcabouço POD (MIL-HDBK-1823A / LS-POD NASA): limites de tolerância, critério de viabilidade do ensaio, gatilhos de deriva de campo e checagem das hipóteses. |
 | `graficos_rul.py` | Figuras acadêmicas de TTF, confiabilidade e RUL. |
 | `pipeline.py` | Coordena estado/execução das etapas e grava manifestos. |
 | `proveniencia.py` | Manifestos de proveniência e estado ready/stale/pending. |

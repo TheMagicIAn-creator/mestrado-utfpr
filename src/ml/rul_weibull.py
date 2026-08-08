@@ -492,6 +492,50 @@ def ajustar_weibull(
         "ttf_max": float(np.max(tempos)),
         "bootstrap_validos": len(amostras_boot),
         **cis,
+        # ── Curvas e interpretação ──────────────────────────────────────────
+        # Até 07/08/2026, R(t) e h(t) só existiam DENTRO do código de plotagem
+        # e iam apenas para o PNG. O agente não conseguia responder "qual a
+        # confiabilidade em t = 40?" com número, a dissertação não tinha valor
+        # para tabelar e a banca não tinha o que conferir. Agora saem como dado.
+        **_curvas_e_interpretacao(convergiu, beta, eta, horizonte, cis),
+    }
+
+
+def _curvas_e_interpretacao(convergiu: bool, beta: float, eta: float,
+                            horizonte: float, cis: dict) -> dict:
+    """Bloco de curvas amostradas + leitura de engenharia, para o JSON.
+
+    Separado de `ajustar_weibull` para caber no limite de linhas do módulo e
+    para ser testável isoladamente. Ver src/ml/confiabilidade.py.
+    """
+    from src.ml import confiabilidade as cf
+
+    if not convergiu or not (beta > 0 and eta > 0):
+        return {
+            "curvas": None,
+            "marcos": None,
+            "interpretacao": {
+                "conclusivo": False,
+                "leitura": ("ajuste não convergiu — sem curva de confiabilidade "
+                            "nem leitura de regime de falha"),
+            },
+        }
+
+    # Estende o eixo além do horizonte observado para a curva mostrar a cauda,
+    # mas o artefato registra até onde há OBSERVAÇÃO — o resto é extrapolação.
+    t_max = max(float(horizonte) * 1.2, cf.quantil(0.99, beta, eta))
+    ic_beta = cis.get("beta_ci95") or [None, None]
+    tem_ic = ic_beta[0] is not None and ic_beta[1] is not None
+
+    return {
+        "curvas": cf.curvas(beta, eta, t_max=t_max, n=200),
+        "marcos": cf.marcos(beta, eta),
+        "horizonte_observado": float(horizonte),
+        "nota_extrapolacao": (
+            f"as curvas vão até {t_max:.1f}, mas só há observação até "
+            f"{horizonte:.1f}; além disso é extrapolação do modelo"),
+        "interpretacao": cf.classificar_forma(
+            beta, ic_beta=tuple(ic_beta) if tem_ic else None),
     }
 
 
@@ -533,6 +577,7 @@ def rul_condicional(t_atual: float, beta: float, eta: float) -> float:
 from src.ml.graficos_rul import (
     plotar_ttf_histogramas,
     plotar_confiabilidade,
+    plotar_distribuicao_weibull,
     plotar_rul,
 )
 
@@ -678,6 +723,7 @@ def executar_rul_weibull() -> bool:
     _log(f"\n📊 Gerando gráficos...")
     plotar_ttf_histogramas(ttfs_dict, eventos_dict, params, PASTA_AE)
     plotar_confiabilidade(ttfs_dict, eventos_dict, params, PASTA_AE)
+    plotar_distribuicao_weibull(ttfs_dict, eventos_dict, params, PASTA_AE)
     plotar_rul(ttfs_dict, eventos_dict, params, PASTA_AE)
 
     # ── 6. Salva resultados ──────────────────────────────────

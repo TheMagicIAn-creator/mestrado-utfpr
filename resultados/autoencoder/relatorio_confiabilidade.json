@@ -1,0 +1,147 @@
+{
+  "evidence_level": "E2",
+  "confiabilidade": {
+    "contator_ac": {
+      "beta": 4.3862316052074055,
+      "eta": 39.30607428058623,
+      "marcos": {
+        "b1": 13.771604351383058,
+        "b10": 23.531183873007414,
+        "vida_mediana": 36.15514289204782,
+        "mttf": 35.81643515283472,
+        "eta": 39.30607428058623,
+        "R_em_eta": 0.36787944117144233,
+        "nota_eta": "η é a vida característica: R(η) = e⁻¹ ≈ 0,368 para qualquer β, ou seja 63,2% já falharam"
+      },
+      "interpretacao": {
+        "beta": 4.3862316052074055,
+        "regime": "desgaste",
+        "leitura": "taxa de falha crescente: o risco aumenta com a idade, e existe intervalo de substituição preventiva que compensa",
+        "conclusivo": true
+      },
+      "R_em_marcos": {
+        "13.8": 0.99,
+        "23.5": 0.9,
+        "36.2": 0.49999999999999994,
+        "39.3": 0.36787944117144233
+      },
+      "horizonte_observado": 55.0
+    },
+    "igbt": {
+      "beta": 2.2989398405555574,
+      "eta": 85.42927889087136,
+      "marcos": {
+        "b1": 11.550187518014889,
+        "b10": 32.09875065683075,
+        "vida_mediana": 72.83975973983057,
+        "mttf": 75.68265668238367,
+        "eta": 85.42927889087136,
+        "R_em_eta": 0.36787944117144233,
+        "nota_eta": "η é a vida característica: R(η) = e⁻¹ ≈ 0,368 para qualquer β, ou seja 63,2% já falharam"
+      },
+      "interpretacao": {
+        "beta": 2.2989398405555574,
+        "regime": "desgaste",
+        "leitura": "taxa de falha crescente: o risco aumenta com a idade, e existe intervalo de substituição preventiva que compensa",
+        "conclusivo": true
+      },
+      "R_em_marcos": {
+        "11.6": 0.99,
+        "32.1": 0.9,
+        "72.8": 0.49999999999999994,
+        "85.4": 0.36787944117144233
+      },
+      "horizonte_observado": 120.0
+    },
+    "fusivel_ac": {
+      "beta": 5.415833060705924,
+      "eta": 97.13847896842833,
+      "marcos": {
+        "b1": 41.54381036610566,
+        "b10": 64.11133635417566,
+        "vida_mediana": 90.78220080491646,
+        "mttf": 89.59973608355243,
+        "eta": 97.13847896842833,
+        "R_em_eta": 0.36787944117144233,
+        "nota_eta": "η é a vida característica: R(η) = e⁻¹ ≈ 0,368 para qualquer β, ou seja 63,2% já falharam"
+      },
+      "interpretacao": {
+        "beta": 5.415833060705924,
+        "regime": "desgaste",
+        "leitura": "taxa de falha crescente: o risco aumenta com a idade, e existe intervalo de substituição preventiva que compensa",
+        "conclusivo": true
+      },
+      "R_em_marcos": {
+        "41.5": 0.99,
+        "64.1": 0.9,
+        "90.8": 0.5000000000000001,
+        "97.1": 0.36787944117144233
+      },
+      "horizonte_observado": 120.0
+    }
+  },
+  "ponto_de_operacao": {
+    "y_dec": 7.826175715408156,
+    "normalidade": {
+      "nome": "escore saudável (teste)",
+      "n": 88,
+      "assimetria": 2.2880203711590044,
+      "curtose_excesso": 9.175724262430425,
+      "shapiro_bruto": {
+        "W": 0.8174263416324655,
+        "p": 4.673237963268406e-09,
+        "normal": false
+      },
+      "shapiro_log": {
+        "W": 0.9417400209032017,
+        "p": 0.0006275050651831369,
+        "normal": false
+      },
+      "vale": false,
+      "melhor_escala": "nenhuma",
+      "nota": "se nenhuma escala é normal, os limites de tolerância são aproximações; confira se a conclusão se sustenta também pelo quantil empírico antes de reportá-la"
+    },
+    "limite_pof": {
+      "limite": 12.221413163882563,
+      "media": 4.665198166262019,
+      "desvio": 2.7872578108209263,
+      "n": 88,
+      "k1": 2.7109853162076254,
+      "p": 0.99,
+      "confianca": 0.95,
+      "pof_alvo_pct": 1.0000000000000009
+    },
+    "limite_empirico": 14.583822765350314,
+    "limite_log": 19.241722891781595,
+    "todos_acima_do_limiar": true,
+    "deriva": {
+      "derivou": true,
+      "invalidou": true,
+      "leitura": "INVALIDAÇÃO: o piso de falso positivo em campo (12.2214) ultrapassa o próprio limiar adotado (7.8262). O requisito de POF não está sendo cumprido no bloco de teste. Pela fonte, a resposta correta é investigar a causa — não reapertar o limiar, que trataria o sintoma.",
+      "gatilho": 8.226754255052393,
+      "margem": 0.1,
+      "calibracao": {
+        "limite": 7.672699248546554,
+        "media": 2.132149183488154,
+        "desvio": 2.0492621540648552,
+        "n": 91,
+        "k1": 2.703680470587099,
+        "p": 0.99,
+        "confianca": 0.95,
+        "pof_alvo_pct": 1.0000000000000009
+      },
+      "campo": {
+        "limite": 12.221413163882563,
+        "media": 4.665198166262019,
+        "desvio": 2.7872578108209263,
+        "n": 88,
+        "k1": 2.7109853162076254,
+        "p": 0.99,
+        "confianca": 0.95,
+        "pof_alvo_pct": 1.0000000000000009
+      },
+      "y_dec": 7.826175715408156,
+      "fonte": "NASA/TM-20210018515 (LS-POD); MIL-HDBK-1823A"
+    }
+  }
+}

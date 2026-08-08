@@ -28,7 +28,11 @@ matplotlib.use("Agg", force=False)
 import matplotlib.pyplot as plt  # noqa: E402
 from cycler import cycler  # noqa: E402
 
-DPI = 150
+# 300 DPI é o mínimo usual para figura rasterizada em dissertação impressa; a
+# 150 o texto de eixo e a legenda saem visivelmente amaciados no papel.
+# Achado registrado em docs/auditoria_parametros.md §5. Gráfico é renderização:
+# elevar o DPI não muda número nenhum.
+DPI = 300
 
 # ── Paleta categórica (ordem FIXA — nunca ciclar/reordenar) ─────────────
 # Validada em fundo branco: pior ΔE adjacente 24.2 (protan), banda de
