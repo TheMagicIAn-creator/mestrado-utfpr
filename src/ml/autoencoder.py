@@ -16,8 +16,8 @@ Fundamentação:
 
 Arquitetura:
   Entrada : n_features normalizadas (RobustScaler)
-  Encoder : n_features → 64 → 32 → 16  (ReLU + Dropout 0.2)
-  Latente : 16 dimensões
+  Encoder : n_features → 16 → 8   (ReLU + Dropout 0.2; gargalo SEM ativação)
+  Latente : 8 dimensões
   Decoder : 8 → 16 → n_features  (ReLU + saída Linear)
   Loss    : MSE — erro de reconstrução por janela
   Limiar  : percentil 99 do erro saudável no bloco de calibração (operacional);
@@ -151,8 +151,8 @@ class Autoencoder(nn.Module):
     Janelas de falha terão alto erro de reconstrução.
     """
 
-    def __init__(self, n_features: int, latente_dim: int = 16,
-                 dropout: float = 0.2):
+    def __init__(self, n_features: int, latente_dim: int = LATENTE_DIM,
+                 dropout: float = DROPOUT):
         _exigir_torch()
         super().__init__()
 
@@ -442,10 +442,13 @@ def executar_autoencoder(
 
     _log(f"\n🧠 Arquitetura:")
     _log(f"   Entrada  : {n_features}")
-    _log(f"   Encoder  : {n_features} → 64 → 32 → {latente_dim}")
-    _log(f"   Latente  : {latente_dim} dimensões")
-    _log(f"   Decoder  : {latente_dim} → 32 → 64 → {n_features}")
-    _log(f"   Parâmetros: {n_params:,}")
+    _log(f"   Encoder  : {n_features} → 16 → {latente_dim}")
+    _log(f"   Latente  : {latente_dim} dimensões (gargalo sem ativação)")
+    _log(f"   Decoder  : {latente_dim} → 16 → {n_features}")
+    # A razão parâmetros/amostra é o número que motivou encolher a rede — vale
+    # mais impresso a cada execução do que enterrado num comentário.
+    _log(f"   Parâmetros: {n_params:,} "
+         f"({n_params / max(len(X_treino), 1):.1f} por janela de treino)")
 
     # ── 5. Treinamento ───────────────────────────────────────
     _log(f"\n🏋️  Treinando ({epochs} épocas, early stopping={paciencia})...")
