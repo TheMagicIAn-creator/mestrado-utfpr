@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+from src.ml.confiabilidade import (
+    acumulada,
+    confiabilidade,
+    densidade,
+    eixos_papel_weibull,
+    mediana_de_posto,
+    taxa_falha,
+)
 from src.ml.rul_weibull import (
     COR_ALERTA,
     COR_TEXTO_SEC,
     FALHAS,
-    Path,
     TAM,
+    Path,
     _log,
     curva_kaplan_meier,
     np,
@@ -15,8 +23,8 @@ from src.ml.rul_weibull import (
     rul_condicional,
     rul_restrita_km,
     salvar_figura,
-    weibull_min,
 )
+
 
 def plotar_ttf_histogramas(
     ttfs_dict: dict, eventos_dict: dict, params: dict, pasta: Path
@@ -72,13 +80,13 @@ def plotar_ttf_histogramas(
         # baixa perto do histograma é o próprio sinal de que o ajuste extrapola.
         if p["fit_converged"] and len(observados):
             largura_bin = float(bins[1] - bins[0])
-            t_grid = np.linspace(0.0, horizonte, 400)
-            densidade = weibull_min.pdf(
-                t_grid, p["beta"], loc=0, scale=p["eta"]
-            )
+            # `t_grid` começa acima de zero: f(0) diverge quando β < 1, e
+            # plotar o infinito não informa nada.
+            t_grid = np.linspace(max(horizonte / 400.0, 1e-6), horizonte, 400)
+            f_ajustada = densidade(t_grid, p["beta"], p["eta"])
             escala = len(ttfs) * largura_bin
             ax.plot(
-                t_grid, densidade * escala, color="black", linewidth=2.2,
+                t_grid, f_ajustada * escala, color="black", linewidth=2.2,
                 label=f"Weibull ajustada (β={p['beta']:.2f}, η={p['eta']:.1f})",
             )
 
@@ -145,7 +153,9 @@ def plotar_confiabilidade(
         ax_r.step(km_t, km_s, where="post", color="black", linewidth=1.5,
                   label="Kaplan-Meier")
         if p["fit_converged"]:
-            R = weibull_min.sf(t, p["beta"], loc=0, scale=p["eta"])
+            # Fonte única: src/ml/confiabilidade.py. Antes era weibull_min
+            # inline aqui, e por isso o valor nunca saía do PNG.
+            R = confiabilidade(t, p["beta"], p["eta"])
             ax_r.plot(t, R, color=falha["cor"], linewidth=2, label="Weibull")
             ax_r.fill_between(t, R, alpha=0.12, color=falha["cor"])
         ax_r.set_ylim([0, 1.05])
@@ -164,9 +174,7 @@ def plotar_confiabilidade(
         # Taxa de falha h(t)
         ax_h = axes[1][col]
         if p["fit_converged"]:
-            H = weibull_min.pdf(t, p["beta"], loc=0, scale=p["eta"]) / np.maximum(
-                weibull_min.sf(t, p["beta"], loc=0, scale=p["eta"]), 1e-10
-            )
+            H = taxa_falha(t, p["beta"], p["eta"])
             ax_h.plot(t, H, color=falha["cor"], linewidth=2)
             beta_desc = ("crescente ↑" if p["beta"] > 1.1
                          else "constante →" if p["beta"] > 0.9
@@ -261,5 +269,94 @@ def plotar_rul(
     salvar_figura(
         fig, arq,
         "E2 ilustrativo. KM é restrita ao horizonte observado; Weibull extrapola e exige cautela, especialmente sob alta censura.",
+    )
+    _log(f"   📊 {arq.name}")
+
+
+def plotar_distribuicao_weibull(
+    ttfs_dict: dict, eventos_dict: dict, params: dict, pasta: Path
+):
+    """f(t), F(t) e o papel de Weibull — as figuras que faltavam.
+
+    O pesquisador apontou não ter visto "distribuição de Weibull". As curvas
+    R(t) e h(t) existiam (`plotar_confiabilidade`), mas a **densidade** e a
+    **acumulada** não eram desenhadas em lugar nenhum, e o **papel de Weibull**
+    — o gráfico canônico da área — também não.
+
+    O papel de Weibull é o que mais informa sobre a qualidade do ajuste: na
+    escala `ln t × ln(−ln(1−F))` a distribuição vira RETA de inclinação β.
+    Desvio sistemático da reta é evidência de que a família não serve — algo
+    que o RMSE contra Kaplan-Meier, sozinho, não revela.
+    """
+    fig, axes = plt.subplots(3, len(FALHAS), figsize=TAM["painel_9"],
+                             layout="constrained")
+    fig.suptitle("Distribuição de Weibull ajustada — densidade, acumulada e "
+                 "papel de Weibull")
+
+    for col, falha in enumerate(FALHAS):
+        fid = falha["id"]
+        p = params[fid]
+        ttfs = np.asarray(ttfs_dict[fid], dtype=float)
+        eventos = np.asarray(eventos_dict[fid], dtype=bool)
+        cor = falha["cor"]
+
+        ax_f, ax_F, ax_pw = axes[0][col], axes[1][col], axes[2][col]
+        ax_f.set_title(f"{falha['nome']} (NPR={falha['npr']})", fontsize=10)
+
+        if not p["fit_converged"]:
+            for ax in (ax_f, ax_F, ax_pw):
+                ax.text(0.5, 0.5, "ajuste não estimável", ha="center",
+                        va="center", transform=ax.transAxes, color=COR_TEXTO_SEC)
+            continue
+
+        beta, eta = p["beta"], p["eta"]
+        t = np.linspace(max(float(ttfs.max()) / 400.0, 1e-6),
+                        float(ttfs.max()) * 1.2, 400)
+
+        # ── f(t): a densidade, com os eventos observados ao fundo ──
+        ax_f.plot(t, densidade(t, beta, eta), color=cor, linewidth=2)
+        ax_f.fill_between(t, densidade(t, beta, eta), alpha=0.12, color=cor)
+        if eventos.any():
+            ax_f.plot(ttfs[eventos], np.zeros(int(eventos.sum())), "|",
+                      color=COR_TEXTO_SEC, markersize=10, alpha=0.7)
+        ax_f.set_ylabel("f(t)")
+        ax_f.set_xlabel("magnitude de injeção (passos)")
+
+        # ── F(t): acumulada paramétrica contra mediana de posto ──
+        ax_F.plot(t, acumulada(t, beta, eta), color=cor, linewidth=2,
+                  label="Weibull")
+        if eventos.any():
+            obs = np.sort(ttfs[eventos])
+            ax_F.plot(obs, mediana_de_posto(len(obs)), "o", color="black",
+                      markersize=4, label="mediana de posto")
+        ax_F.set_ylim([0, 1.05])
+        ax_F.set_ylabel("F(t) = P(T ≤ t)")
+        ax_F.set_xlabel("magnitude de injeção (passos)")
+        ax_F.legend(fontsize=8)
+
+        # ── papel de Weibull: a reta é o teste visual do ajuste ──
+        if eventos.sum() >= 3:
+            obs = np.sort(ttfs[eventos])
+            x_p, y_p = eixos_papel_weibull(obs, mediana_de_posto(len(obs)))
+            ax_pw.plot(x_p, y_p, "o", color="black", markersize=4,
+                       label="observado")
+            x_r = np.linspace(x_p.min(), x_p.max(), 50)
+            # reta do ajuste: y = β·(ln t − ln η)
+            ax_pw.plot(x_r, beta * (x_r - np.log(eta)), color=cor, linewidth=2,
+                       label=f"ajuste (β={beta:.2f})")
+            ax_pw.legend(fontsize=8)
+        else:
+            ax_pw.text(0.5, 0.5, "eventos insuficientes", ha="center",
+                       va="center", transform=ax_pw.transAxes,
+                       color=COR_TEXTO_SEC)
+        ax_pw.set_xlabel("ln t")
+        ax_pw.set_ylabel("ln(−ln(1−F))")
+
+    arq = pasta / "weibull_distribuicao.png"
+    salvar_figura(
+        fig, arq,
+        "E2 ilustrativo. No papel de Weibull (linha 3) a distribuição é RETA de "
+        "inclinação β; desvio sistemático indica que a família não descreve os "
+        "dados — o que o RMSE contra Kaplan-Meier sozinho não mostra.",
     )
     _log(f"   📊 {arq.name}")
