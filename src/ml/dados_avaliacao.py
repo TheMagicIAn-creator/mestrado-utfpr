@@ -14,9 +14,7 @@ import numpy as np
 import pandas as pd
 
 from src.core.config import RAIZ_PROJETO
-from src.ml.features_ca import (
-    COLUNA_DC, COLUNAS_CORRENTE, COLUNAS_TENSAO, JANELA,
-)
+from src.ml.features_ca import COLUNAS_CORRENTE, COLUNAS_TENSAO, JANELA
 from src.ml.split_temporal import split_padrao_paderborn
 
 ARQUIVO_FEATURES = (
@@ -25,8 +23,12 @@ ARQUIVO_FEATURES = (
 
 
 def carregar_paderborn_compacto(arquivo_csv: Path) -> pd.DataFrame:
-    """Lê apenas os sete sinais usados no pipeline, em precisão float32."""
-    colunas = COLUNAS_CORRENTE + COLUNAS_TENSAO + [COLUNA_DC]
+    """Le apenas os seis sinais CA usados no pipeline, em precisao float32.
+
+    Eram sete ate 08/08/2026: `u_dc_k` saiu junto com a feature `tensao_dc_media`
+    (ver "ESCOPO CA" em src/ml/features_ca.py). Nenhuma etapa CA le o barramento.
+    """
+    colunas = COLUNAS_CORRENTE + COLUNAS_TENSAO
     return pd.read_csv(
         arquivo_csv,
         usecols=colunas,

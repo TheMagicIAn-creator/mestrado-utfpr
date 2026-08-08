@@ -151,7 +151,7 @@ STAGES: dict[str, PipelineStage] = {
         label="Injecao de Falhas",
         module="src.ml.injecao_falhas",
         function="executar_injecao_falhas",
-        parameter_names=("SEVERIDADES", "ALVO_SMD", "N_JANELAS_SMD"),
+        parameter_names=("A_INJ", "ALVO_SMD", "N_JANELAS_SMD"),
         code_dependencies=(
             "src.ml.features_ca",
             "src.ml.autoencoder",
@@ -206,7 +206,8 @@ STAGES: dict[str, PipelineStage] = {
         parameter_names=(
             "N_TRAJ", "N_STEPS", "BATCH_INFERENCIA", "N_BOOTSTRAP",
             "MIN_EVENTOS_WEIBULL", "MAX_CENSURA_RUL_PCT",
-            "PERSISTENCIA_CRUZAMENTO", "TTF_UNIDADE", "TEMPO_FISICO_CALIBRADO",
+            "PERSISTENCIA_CRUZAMENTO", "A_DET_UNIDADE", "TTF_UNIDADE",
+            "TEMPO_FISICO_CALIBRADO",
         ),
         code_dependencies=(
             "src.ml.features_ca",

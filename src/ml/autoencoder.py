@@ -16,9 +16,9 @@ Fundamentação:
 
 Arquitetura:
   Entrada : n_features normalizadas (RobustScaler)
-  Encoder : n_features → 64 → 32 → 16  (ReLU + Dropout 0.2)
-  Latente : 16 dimensões
-  Decoder : 16 → 32 → 64 → n_features  (ReLU + saída Linear)
+  Encoder : n_features → 16 → 8   (ReLU + Dropout 0.2; gargalo SEM ativação)
+  Latente : 8 dimensões
+  Decoder : 8 → 16 → n_features  (ReLU + saída Linear)
   Loss    : MSE — erro de reconstrução por janela
   Limiar  : percentil 99 do erro saudável no bloco de calibração (operacional);
             μ + 3σ é referência comparativa, não o limiar em uso
@@ -106,7 +106,7 @@ ARQUIVO_FEAT   = RAIZ / "dados" / "processados" / "features_paderborn.parquet"
 PASTA_SAIDA    = RAIZ / "resultados" / "autoencoder"
 
 # ── Hiperparâmetros padrão ────────────────────────────────────
-LATENTE_DIM    = 16     # dimensão do espaço latente
+LATENTE_DIM    = 8      # dimensão do espaço latente (varredura: 4/8/16)
 EPOCHS         = 150    # épocas de treinamento
 BATCH_SIZE     = 32     # amostras por batch
 LR             = 1e-3   # taxa de aprendizado (Adam)
@@ -151,28 +151,35 @@ class Autoencoder(nn.Module):
     Janelas de falha terão alto erro de reconstrução.
     """
 
-    def __init__(self, n_features: int, latente_dim: int = 16,
-                 dropout: float = 0.2):
+    def __init__(self, n_features: int, latente_dim: int = LATENTE_DIM,
+                 dropout: float = DROPOUT):
         _exigir_torch()
         super().__init__()
 
+        # Arquitetura n→16→latente→16→n. Era n→64→32→latente→32→64→n, com
+        # 19.389 parâmetros para 274 janelas de treino — 70,8 parâmetros POR
+        # AMOSTRA. Com a janela de 2048 as janelas de treino caem para 136, o
+        # que levaria a razão a 141,5. A rede atual tem 3.893 parâmetros
+        # (razão 28,4), e o corte veio de onde o peso estava: as camadas de
+        # borda (n×64 e 64×n somavam 14.125 dos 19.389).
+        #
+        # A saída do gargalo NÃO tem ReLU. Com ReLU o latente é não negativo por
+        # construção, e unidades podem morrer em zero permanente — o problema
+        # registrado em docs/auditoria_pipeline_ml.md §23, que ficou adiado
+        # justamente até uma rodada de re-treino. Esta é a rodada.
         self.encoder = nn.Sequential(
-            nn.Linear(n_features, 64),
+            nn.Linear(n_features, 16),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(64, 32),
-            nn.ReLU(),
-            nn.Linear(32, latente_dim),
-            nn.ReLU(),
+            nn.Linear(16, latente_dim),
+            # sem ativação: o latente pode assumir valores negativos
         )
 
         self.decoder = nn.Sequential(
-            nn.Linear(latente_dim, 32),
-            nn.ReLU(),
-            nn.Linear(32, 64),
+            nn.Linear(latente_dim, 16),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(64, n_features),
+            nn.Linear(16, n_features),
             # Saída linear — sem ativação, features normalizadas
         )
 
@@ -435,10 +442,13 @@ def executar_autoencoder(
 
     _log(f"\n🧠 Arquitetura:")
     _log(f"   Entrada  : {n_features}")
-    _log(f"   Encoder  : {n_features} → 64 → 32 → {latente_dim}")
-    _log(f"   Latente  : {latente_dim} dimensões")
-    _log(f"   Decoder  : {latente_dim} → 32 → 64 → {n_features}")
-    _log(f"   Parâmetros: {n_params:,}")
+    _log(f"   Encoder  : {n_features} → 16 → {latente_dim}")
+    _log(f"   Latente  : {latente_dim} dimensões (gargalo sem ativação)")
+    _log(f"   Decoder  : {latente_dim} → 16 → {n_features}")
+    # A razão parâmetros/amostra é o número que motivou encolher a rede — vale
+    # mais impresso a cada execução do que enterrado num comentário.
+    _log(f"   Parâmetros: {n_params:,} "
+         f"({n_params / max(len(X_treino), 1):.1f} por janela de treino)")
 
     # ── 5. Treinamento ───────────────────────────────────────
     _log(f"\n🏋️  Treinando ({epochs} épocas, early stopping={paciencia})...")

@@ -1,4 +1,8 @@
-"""Graficos academicos de TTF, confiabilidade e RUL."""
+"""Graficos academicos de a_det, confiabilidade e RUL.
+
+O eixo NAO e tempo: e a magnitude da assinatura injetada em que a deteccao se
+confirma, em [0; 1]. Ver o bloco "O EIXO NAO E TEMPO" em src/ml/rul_weibull.py.
+"""
 
 from __future__ import annotations
 
@@ -29,12 +33,12 @@ from src.ml.rul_weibull import (
 def plotar_ttf_histogramas(
     ttfs_dict: dict, eventos_dict: dict, params: dict, pasta: Path
 ):
-    """TTFs observados e censurados com ajuste Weibull, quando estimável."""
+    """a_det detectados e indetectáveis no teto, com ajuste Weibull."""
     n_falhas = len(FALHAS)
     fig, axes = plt.subplots(
         1, n_falhas, figsize=TAM["painel_3"], layout="constrained"
     )
-    fig.suptitle("TTF sintético — falhas observadas e censura à direita")
+    fig.suptitle("a_det — magnitude de detecção, e indetectabilidade no teto")
 
     for ax, falha in zip(axes, FALHAS):
         fid  = falha["id"]
@@ -87,13 +91,13 @@ def plotar_ttf_histogramas(
             escala = len(ttfs) * largura_bin
             ax.plot(
                 t_grid, f_ajustada * escala, color="black", linewidth=2.2,
-                label=f"Weibull ajustada (β={p['beta']:.2f}, η={p['eta']:.1f})",
+                label=f"Weibull ajustada (β={p['beta']:.2f}, η={p['eta']:.3f})",
             )
 
         if len(censurados):
             ax.axvline(
                 horizonte, color=COR_ALERTA, linestyle="--", linewidth=2,
-                label=f"Censura em {horizonte:.0f} (n={len(censurados)})",
+                label=f"Não detectadas em $a$={horizonte:.2f} (n={len(censurados)})",
             )
 
         if p["fit_converged"] and p["b10"] <= horizonte:
@@ -110,15 +114,15 @@ def plotar_ttf_histogramas(
             # explicitamente para não ser lido como um β confiável.
             beta_txt = f"β={p['beta']:.2f}" + (" (não confiável*)" if incerto else "")
             ajuste = (
-                f"{beta_txt} · η={p['eta']:.1f} · censura={p['censura_pct']:.0f}%"
-                + ("\n*censura alta → β é artefato, não vida útil"
+                f"{beta_txt} · η={p['eta']:.3f} · indetect.={p['censura_pct']:.0f}%"
+                + ("\n*indetectabilidade alta → β é artefato da borda"
                    if incerto else "")
             )
         else:
-            ajuste = (f"Weibull não estimável · censura={p['censura_pct']:.0f}%\n"
+            ajuste = (f"Weibull não estimável · indetect.={p['censura_pct']:.0f}%\n"
                       "RUL restrita por Kaplan-Meier disponível")
         ax.set_title(f"{nome} ({npm_str})\n{ajuste}", fontsize=9)
-        ax.set_xlabel("TTF (passos de degradação)")
+        ax.set_xlabel("$a_{det}$ (fração da assinatura nominal)")
         ax.set_ylabel("Número de trajetórias")
         ax.set_xlim(0, horizonte * 1.05)
         ax.legend(fontsize=8)
@@ -126,7 +130,7 @@ def plotar_ttf_histogramas(
     arq = pasta / "weibull_ttf.png"
     salvar_figura(
         fig, arq,
-        "E2 ilustrativo: trajetórias sintéticas, sem equivalência com tempo físico ou vida útil de campo.",
+        "E2 ilustrativo: eixo em magnitude de assinatura, sem equivalência com tempo físico ou vida útil de campo.",
     )
     _log(f"   📊 {arq.name}")
 
@@ -138,14 +142,16 @@ def plotar_confiabilidade(
     fig, axes = plt.subplots(
         2, 3, figsize=TAM["painel_6"], layout="constrained"
     )
-    fig.suptitle("Confiabilidade sintética — Kaplan-Meier e Weibull censurada")
+    fig.suptitle("$R(a)$ — probabilidade de a falha AINDA não ter sido detectada")
 
     for col, falha in enumerate(FALHAS):
         fid  = falha["id"]
         p    = params[fid]
         ttfs = ttfs_dict[fid]
         eventos = eventos_dict[fid]
-        t    = np.linspace(0.1, max(ttfs) * 1.2, 300)
+        # O piso acompanha a escala: era 0,1 fixo, o que num eixo que agora vai de
+        # 0 a 1 apagaria os primeiros 10% da curva.
+        t    = np.linspace(max(ttfs) / 300.0, max(ttfs) * 1.2, 300)
 
         # Confiabilidade R(t)
         ax_r = axes[0][col]
@@ -159,11 +165,11 @@ def plotar_confiabilidade(
             ax_r.plot(t, R, color=falha["cor"], linewidth=2, label="Weibull")
             ax_r.fill_between(t, R, alpha=0.12, color=falha["cor"])
         ax_r.set_ylim([0, 1.05])
-        ax_r.set_xlabel("t (passos)")
-        ax_r.set_ylabel("R(t) = P(T > t)")
+        ax_r.set_xlabel("$a$ (fração da assinatura nominal)")
+        ax_r.set_ylabel("$R(a) = P(a_{det} > a)$ — ainda não detectada")
         npm_str = f"NPR={falha['npr']}"
         titulo_ajuste = (
-            f"β={p['beta']:.2f}, η={p['eta']:.1f}, RMSE-KM={p['km_rmse']:.3f}"
+            f"β={p['beta']:.2f}, η={p['eta']:.3f}, RMSE-KM={p['km_rmse']:.3f}"
             + ("\nALTA CENSURA — extrapolação incerta"
                if p["rul_parametrica_alta_incerteza"] else "")
             if p["fit_converged"] else "ajuste não estimável"
@@ -179,19 +185,19 @@ def plotar_confiabilidade(
             beta_desc = ("crescente ↑" if p["beta"] > 1.1
                          else "constante →" if p["beta"] > 0.9
                          else "decrescente ↓")
-            ax_h.set_title(f"Taxa de falha sintética h(t)\nβ={p['beta']:.2f} — {beta_desc}", fontsize=9)
+            ax_h.set_title(f"Taxa de detecção h(a)\nβ={p['beta']:.2f} — {beta_desc}", fontsize=9)
         else:
-            ax_h.text(0.5, 0.5, "Sem eventos suficientes\npara estimar h(t)",
+            ax_h.text(0.5, 0.5, "Sem detecções suficientes\npara estimar h(a)",
                       transform=ax_h.transAxes, ha="center", va="center",
                       color=COR_TEXTO_SEC)
             ax_h.set_title("Taxa de falha não estimável")
-        ax_h.set_xlabel("t (passos)")
-        ax_h.set_ylabel("h(t)")
+        ax_h.set_xlabel("$a$ (fração da assinatura nominal)")
+        ax_h.set_ylabel("$h(a)$")
 
     arq = pasta / "weibull_confiabilidade.png"
     salvar_figura(
         fig, arq,
-        "Curvas em passos sintéticos; o ajuste descreve o experimento computacional, não confiabilidade de campo.",
+        "Eixo em fração da assinatura nominal (a_det), NAO em tempo; descreve o experimento computacional, não confiabilidade de campo.",
     )
     _log(f"   📊 {arq.name}")
 
@@ -199,7 +205,7 @@ def plotar_confiabilidade(
 def plotar_rul(
     ttfs_dict: dict, eventos_dict: dict, params: dict, pasta: Path
 ):
-    """RUL restrita e paramétrica, sem ocultar componentes censurados."""
+    """Margem de magnitude até detectar, restrita (KM) e paramétrica."""
     fig, axes = plt.subplots(
         1, len(FALHAS), figsize=TAM["painel_3"], layout="constrained"
     )
@@ -223,8 +229,8 @@ def plotar_rul(
             label="RUL restrita KM",
         )
         ax.fill_between(t_pontos, ruls_km, color=falha["cor"], alpha=0.12)
-        ax.set_xlabel("Tempo atual (passos sintéticos)")
-        ax.set_ylabel("RUL restrita ao horizonte")
+        ax.set_xlabel("$a$ já atingida sem detecção")
+        ax.set_ylabel("margem de magnitude até detectar")
         ax.set_xlim(0, horizonte * 0.8)
         ax.set_ylim(0, max(horizonte, max(ruls_km, default=0.0)) * 1.05)
 
@@ -255,7 +261,7 @@ def plotar_rul(
         )
         ax.set_title(
             f"{falha['nome']} (NPR={falha['npr']})\n"
-            f"eventos={p['n_eventos']} · censura={p['censura_pct']:.0f}% · {status}",
+            f"detectadas={p['n_eventos']} · indetect. no teto={p['censura_pct']:.0f}% · {status}",
             fontsize=9,
         )
         handles, labels = [], []
@@ -320,7 +326,7 @@ def plotar_distribuicao_weibull(
             ax_f.plot(ttfs[eventos], np.zeros(int(eventos.sum())), "|",
                       color=COR_TEXTO_SEC, markersize=10, alpha=0.7)
         ax_f.set_ylabel("f(t)")
-        ax_f.set_xlabel("magnitude de injeção (passos)")
+        ax_f.set_xlabel("$a_{det}$ (fração da assinatura nominal)")
 
         # ── F(t): acumulada paramétrica contra mediana de posto ──
         ax_F.plot(t, acumulada(t, beta, eta), color=cor, linewidth=2,
@@ -331,7 +337,7 @@ def plotar_distribuicao_weibull(
                       markersize=4, label="mediana de posto")
         ax_F.set_ylim([0, 1.05])
         ax_F.set_ylabel("F(t) = P(T ≤ t)")
-        ax_F.set_xlabel("magnitude de injeção (passos)")
+        ax_F.set_xlabel("$a_{det}$ (fração da assinatura nominal)")
         ax_F.legend(fontsize=8)
 
         # ── papel de Weibull: a reta é o teste visual do ajuste ──

@@ -50,13 +50,23 @@ Profundidade fixada a priori; largura varrida. O precedente é o do próprio
 artigo-base: Ibrahim (2022), §5.2, fixa a profundidade por simplificação
 (*"the number of hidden layers was chosen to be four layers"*) e **otimiza
 apenas o número de neurônios por camada** (Tabela 2). O mesmo protocolo aqui:
-topologia 109→64→32→16 com profundidade fixa, e o espaço latente varrido em
-{8, 16, 32} pela loss de calibração.
+profundidade fixa e largura varrida.
 
-> **Estado:** a varredura ainda **não foi executada** — exige rerun local com o
-> dataset bruto. Até que seja, os valores vigentes (latente=16, épocas=150,
-> lr=1e-3, dropout=0,2) devem ser apresentados como **defaults**, não como
-> resultado de busca. Escrever o contrário seria afirmar evidência inexistente.
+A topologia vigente é `n→16→8→16→n` (3.893 parâmetros). A anterior era
+`n→64→32→16→32→64→n`, com 19.389 parâmetros para 274 janelas de treino — 70,8
+parâmetros por amostra. O janelamento de 2048 amostras reduz o treino a 136
+janelas, o que levaria a razão a 141,5; por isso a rede encolheu **no mesmo
+conjunto de commits** que alargou a janela. O corte veio de onde estava o peso:
+as camadas de borda (`n×64` e `64×n`) somavam 14.125 dos 19.389 parâmetros.
+
+O gargalo passou a **não** ter ReLU: com ela o latente é não negativo por
+construção e unidades podem morrer em zero permanente.
+
+> **Estado:** a varredura de largura ainda **não foi executada** — exige rerun
+> local com o dataset bruto. Até que seja, os valores vigentes (latente=8,
+> épocas=150, lr=1e-3, dropout=0,2) devem ser apresentados como **defaults
+> dimensionados pela razão parâmetros/amostra**, não como resultado de busca.
+> Escrever o contrário seria afirmar evidência inexistente.
 
 ### Lacuna declarada
 

@@ -22,8 +22,13 @@ NOMES = [
     "i_a_centroide", "i_a_energia_media", "i_a_energia_chaveamento",
     "i_b_rms", "i_b_thd", "i_b_harm_5", "i_b_harm_11", "i_b_energia_media",
     "i_c_thd", "i_c_harm_5", "potencia_a", "desbalanceamento_corrente",
-    "u_a_rms", "tensao_dc_media",
+    "u_a_rms", "desbalanceamento_tensao",
 ]
+# `desbalanceamento_tensao` ocupa aqui o lugar que era de `tensao_dc_media`: uma
+# coluna que existe no vetor e que NENHUMA assinatura da FMECA toca. A troca
+# acompanha a remocao do barramento CC do escopo (features_ca.py, "ESCOPO CA").
+# O papel no teste e o mesmo -- provar que a injecao nao vaza para fora da
+# assinatura --, mas agora com uma coluna que de fato existe.
 
 
 def _X_sintetico(n=320, seed=0):
@@ -55,7 +60,7 @@ def test_injecao_fmeca_perturba_somente_assinatura():
     intocaveis = [
         NOMES.index("i_a_kurtosis"),
         NOMES.index("u_a_rms"),
-        NOMES.index("tensao_dc_media"),
+        NOMES.index("desbalanceamento_tensao"),
     ]
     assert np.allclose(X_anom[:, intocaveis], X[:, intocaveis])
 

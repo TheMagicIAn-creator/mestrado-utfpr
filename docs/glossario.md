@@ -15,8 +15,8 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
   (nunca da FMEA; D isolado NUNCA é o NPR). FMECA aplicada do TCC (Apêndice E):
   inversor 210, subsistema CA 150. FMECA consolidada da dissertação
   (docs/fmeca.md, fonte única): Contator AC 315, IGBT 90, Fusível AC 30.
-- **S / O / D_campo**: Severidade, Ocorrência e dificuldade de **detecção em
-  campo** (1–10; maior = pior). Apesar do nome "Detecção", a Tab. 4.8 do TCC
+- **S / O / D_campo**: Severidade (**1–5**), Ocorrência (1–10) e dificuldade de
+  **detecção em campo** (1–10; maior = pior). Apesar do nome "Detecção", a Tab. 4.8 do TCC
   define o índice em **percentual de NÃO detectar** (D=1 → 0–5%; D=10 →
   86–100%) — ele cresce com o fracasso em detectar. O subscrito `campo` separa
   esse índice **julgado** da detectabilidade **medida** do detector proposto.
@@ -36,17 +36,34 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
 - **Weibull (2 parâmetros)**: distribuição de vida com forma **beta** (β>1 →
   desgaste progressivo; β≈1 → falhas aleatórias; β<1 → mortalidade infantil)
   e escala **eta** (vida característica, 63,2% de falhas acumuladas).
-- **MTTF / B10**: tempo médio até a falha; tempo em que 10% da população
-  falhou. No projeto, medidos em PASSOS de simulação, não em horas de campo.
-- **TTF**: tempo até a falha de uma trajetória de degradação simulada —
-  passo em que se confirma uma sequência persistente de erros acima do limiar
-  operacional. Trajetórias sem confirmação são censuradas à direita.
-- **Teste KS (Kolmogorov–Smirnov)**: teste de aderência entre os TTF
+- **a_det — magnitude de detecção**: o eixo do Weibull do projeto. Numa
+  trajetória, `a_inj` cresce de 0 a 1 sobre a MESMA janela saudável, e `a_det`
+  é a magnitude em que o escore fica acima do limiar por `PERSISTENCIA_
+  CRUZAMENTO` avaliações seguidas. Mesma unidade de `a_inj` e da SMD, o que
+  permite ler Weibull e injeção na mesma régua. Fonte única:
+  `src/ml/rul_weibull.py`, bloco "O EIXO NÃO É TEMPO".
+  **Substituiu o nome TTF em 08/08/2026**: o eixo nunca foi tempo, e "TTF"/
+  "passo de degradação" prometiam hora onde há fração de assinatura. As chaves
+  `ttf_*` sobrevivem nos artefatos como alias, já apontando para a unidade nova.
+- **MTTF / B10**: média e décimo percentil da distribuição ajustada. Os nomes
+  são os da Weibull, mas **no projeto saem em fração da assinatura nominal**,
+  não em horas. `B10 = 0,12` lê-se: em 10% das trajetórias a falha já é
+  detectada com 12% da assinatura nominal.
+- **Indetectabilidade no teto × censura genuína**: censura à direita é
+  acompanhamento interrompido — o evento viria depois. **Indetectabilidade no
+  teto** é a grade de magnitude varrida INTEIRA, até `a_inj = 1,0`, sem o
+  detector confirmar: não há "depois" dentro do experimento. No desenho atual
+  toda não detecção é do segundo tipo; tratá-la como censura no MLE pressupõe
+  que a falha real possa ter assinatura maior que a nominal — hipótese
+  declarada no campo `desfechos` do artefato, não suposição tácita.
+- **Teste KS (Kolmogorov–Smirnov)**: teste de aderência entre os `a_det`
   simulados e a Weibull ajustada. p ≤ 0,05 → ajuste REJEITADO → MTTF/B10
   indicativos, não conclusivos (campo `ajuste_weibull_adequado`).
-- **RUL** (Remaining Useful Life): vida útil remanescente estimada a partir
-  da curva de confiabilidade. O projeto distingue **RUL restrita KM** (não
-  paramétrica, limitada ao horizonte observado) de **RUL Weibull**
+- **RUL** (Remaining Useful Life): vida útil remanescente. No eixo `a_det` a
+  grandeza calculada é a **margem de magnitude até detectar** —
+  `E[a_det − a | a_det > a]` —, não vida em tempo; o nome RUL é mantido porque
+  é o da literatura de prognóstico. O projeto distingue **RUL restrita KM**
+  (não paramétrica, limitada ao horizonte observado) de **RUL Weibull**
   (paramétrica e extrapolativa, com ressalva explícita sob alta censura).
 
 ## Detecção de anomalias
@@ -67,8 +84,13 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
   severidade testada (achado de limitação, não erro de execução). É o análogo
   do **a₉₀** do MIL-HDBK-1823A — o menor defeito detectado com 90% de
   probabilidade em ensaios não destrutivos.
-- **Severidade**: fator 0–1 que escala a intensidade da falha injetada
-  (grade do pipeline: 0.05–1.0 em 7 níveis).
+- **a_inj — magnitude da assinatura injetada**: fator adimensional em
+  [0,05; 1,0] que escala a amplitude da perturbação injetada no sinal saudável
+  (grade do pipeline: 7 níveis). **NÃO é o S da FMECA** — são grandezas
+  distintas que até 07/08/2026 dividiam o nome "severidade", distinguidas só
+  pela caixa da letra. O nome vem do tamanho de defeito `a` da curva POD(a) do
+  MIL-HDBK-1823A; com ele a SMD é `a_inj,95`, análogo do a₉₀. Fonte única:
+  `docs/auditoria_total_src.md` §1.
 - **Injeção sintética orientada pela FMECA**: perturbação apenas das
   grandezas que a física de cada modo de falha afeta (ver
   docs/assinaturas_fmeca.md) — fornece ground truth para validar o detector.
