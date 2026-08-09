@@ -1,18 +1,18 @@
 {
   "manifest_version": 2,
   "stage": "features_ca",
-  "created_at": "2026-08-05T22:52:12.456092-03:00",
-  "git_commit": "d9afe11d1b0bc96c921a5bdcb94058e55631d5ea",
+  "created_at": "2026-08-09T03:13:16.069738-03:00",
+  "git_commit": "5188276a5204f08d3fde45be138b740af8961e28",
   "code_hash_mode": "text_lf_utf8",
-  "code_sha256": "e853c497d923671c1d879c87fb841a0f75bd510418eae8aab5eed2419eb98eba",
+  "code_sha256": "23330f891620f442197eae9ea142d3a704449110bf3e0b1c9da8afd5ba9f558e",
   "code_dependencies": {
-    "src.ml.estilo_graficos": "2f69e30b4a00eee6d8b6fd809325840dff2937f95d00dd21960b1ef9c75a0494"
+    "src.ml.estilo_graficos": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49"
   },
   "parameters": {
     "fs": 10000,
     "f0": 60,
-    "janela": 1024,
-    "sobreposicao": 512,
+    "janela": 2048,
+    "sobreposicao": 1024,
     "harmonicos": [
       3,
       5,
@@ -29,9 +29,9 @@
     "dados/processados/features_paderborn_qualidade.png"
   ],
   "output_artifacts": {
-    "dados/processados/features_paderborn.parquet": "f9811859094731d5267d8c95173eac3267a8c1f8fe091ab3fe46db7b5a497cca",
-    "dados/processados/features_paderborn_stats.csv": "3b5e00091be20c67c738462ce147087c984e69ff563596107ca42b61b72bb9dd",
-    "dados/processados/features_paderborn_qualidade.json": "d1c137fe231531170ffd550b9c3aecc112d4cbe08d68b3ec9d6c005b5006d4b8",
-    "dados/processados/features_paderborn_qualidade.png": "e57ab1c19d8a21594290a8b23e6853fcc05f13c93dc6e87ef9624195d1056650"
+    "dados/processados/features_paderborn.parquet": "ba2976a0288ab2fc99d3fb530de385af68c5d8dc226c2cd6a75d08d829af9167",
+    "dados/processados/features_paderborn_stats.csv": "46be3a5d3f7e10b1e04ca822839a114ebf78617d3f64c7ca58e7d808c87944a8",
+    "dados/processados/features_paderborn_qualidade.json": "def7864b9dfc82a59cf22784d89006e92275c37afb55cfe1c1964efd8745c34b",
+    "dados/processados/features_paderborn_qualidade.png": "ea01c365f80cbea35fb23a281711749e363b22e9f6223b043afb11ae317bfad9"
   }
 }

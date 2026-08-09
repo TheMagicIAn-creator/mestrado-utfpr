@@ -1,18 +1,18 @@
 {
   "manifest_version": 2,
   "stage": "autoencoder",
-  "created_at": "2026-08-05T22:52:31.444404-03:00",
-  "git_commit": "d9afe11d1b0bc96c921a5bdcb94058e55631d5ea",
+  "created_at": "2026-08-09T03:13:16.137834-03:00",
+  "git_commit": "5188276a5204f08d3fde45be138b740af8961e28",
   "code_hash_mode": "text_lf_utf8",
-  "code_sha256": "824c3fb7c22a6abf2dea7fe6e877e2a0d80468eb92098cb30ab2db3b023a318d",
+  "code_sha256": "f57240fbd095f3154f49850d0fc69fce2a454cedc30ab50767809c727ff5c8a8",
   "code_dependencies": {
-    "src.ml.escore_anomalia": "16d619a9d652fb49079e8c3737382aa2ca1e89de32061b43e607bcd9781b98ff",
-    "src.ml.split_temporal": "9ea3aeae3478c77d6309bc14939c8f73931dd70e91b914f1ed6f18ee8866908d",
-    "src.ml.graficos_autoencoder": "29eef6c5f9bc2a52f6d5b2f5c5bc1dd58b78c4362290c89ab32db269da200e24",
-    "src.ml.estilo_graficos": "2f69e30b4a00eee6d8b6fd809325840dff2937f95d00dd21960b1ef9c75a0494"
+    "src.ml.escore_anomalia": "71106cad6b7971edcf27533462181cc38f8be4cf7db95a117dbbb43d96de75e1",
+    "src.ml.split_temporal": "f6ef704157c63648d3146389f63c56b2bec723771668dd81fc6935a9dfcee30c",
+    "src.ml.graficos_autoencoder": "25967260e561d85787a6258bbedaacab0ad84fc7edfaaf41dd81b0b1e0091429",
+    "src.ml.estilo_graficos": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49"
   },
   "parameters": {
-    "latente_dim": 16,
+    "latente_dim": 8,
     "epochs": 150,
     "batch_size": 32,
     "lr": 0.001,
@@ -21,15 +21,15 @@
     "sigma": 3.0,
     "threshold_method": "p99",
     "seed": 42,
-    "train_ratio": 0.6,
+    "train_ratio": 0.5,
     "calib_ratio": 0.2,
-    "test_ratio": 0.2
+    "test_ratio": 0.3
   },
   "input_artifacts": {
-    "features_ca:0:features_paderborn.parquet": "f9811859094731d5267d8c95173eac3267a8c1f8fe091ab3fe46db7b5a497cca",
-    "features_ca:1:features_paderborn_stats.csv": "3b5e00091be20c67c738462ce147087c984e69ff563596107ca42b61b72bb9dd",
-    "features_ca:2:features_paderborn_qualidade.json": "d1c137fe231531170ffd550b9c3aecc112d4cbe08d68b3ec9d6c005b5006d4b8",
-    "features_ca:3:features_paderborn_qualidade.png": "e57ab1c19d8a21594290a8b23e6853fcc05f13c93dc6e87ef9624195d1056650"
+    "features_ca:0:features_paderborn.parquet": "ba2976a0288ab2fc99d3fb530de385af68c5d8dc226c2cd6a75d08d829af9167",
+    "features_ca:1:features_paderborn_stats.csv": "46be3a5d3f7e10b1e04ca822839a114ebf78617d3f64c7ca58e7d808c87944a8",
+    "features_ca:2:features_paderborn_qualidade.json": "def7864b9dfc82a59cf22784d89006e92275c37afb55cfe1c1964efd8745c34b",
+    "features_ca:3:features_paderborn_qualidade.png": "ea01c365f80cbea35fb23a281711749e363b22e9f6223b043afb11ae317bfad9"
   },
   "outputs": [
     "resultados/autoencoder/modelo_autoencoder.pt",
@@ -43,14 +43,15 @@
     "resultados/autoencoder/erro_temporal.png"
   ],
   "output_artifacts": {
-    "resultados/autoencoder/modelo_autoencoder.pt": "6768589b30cbca299b8d496f05c4391c1de714cf1d774e2bb173f8a2cbe8056a",
-    "resultados/autoencoder/scaler.pkl": "6410b906f4aea04bdb010da6465df9753f6d52d2def529e29e110c0fe521edad",
-    "resultados/autoencoder/limiar.json": "6402bc16309afd43c8851de41bb77dbd42f9fc1e0522eea2b36de0b43312a2c8",
-    "resultados/autoencoder/diagnostico_autoencoder.npz": "80a459e9a45fe992927cd52a64a0061004d62533a171f6be8425c4efc26a9310",
-    "resultados/autoencoder/calibracao_autoencoder.csv": "1df764cf543c9d4c026a2de1e25cdee3fcb234aaf3974d8bd7425b9463312928",
-    "resultados/autoencoder/calibracao_autoencoder.md": "ba4114d2b10b566cc5ccd6bc08de25e01fdc8c6a5a279fdf6f4def075de60d13",
-    "resultados/autoencoder/curva_treino.png": "bf7c486f1af55f030ebf6b6f38797452345a477460652144ab6e8eb772fce955",
-    "resultados/autoencoder/distribuicao_erro.png": "0286df2c3f684f5814a6348329d06b3322da6c853e09b2dd215dd96173fa0dde",
-    "resultados/autoencoder/erro_temporal.png": "8b8feee101e8a4cf615f0a092f1612456e9399ea86717b08dc9ba65385bb9f94"
-  }
+    "resultados/autoencoder/modelo_autoencoder.pt": "f69d52983ebb5a5e55b46dc19fbb5f230e7ab2b609142b0c840668c51a31d738",
+    "resultados/autoencoder/scaler.pkl": "b72dc06088a56c955410dff81bad38ed617704e9bc379475ce87b30a97d4d3ae",
+    "resultados/autoencoder/limiar.json": "d1886332ce23c699f142350fde82efe25e575aa7c33d527f4973b460a8dfac8a",
+    "resultados/autoencoder/diagnostico_autoencoder.npz": "bd67fec204bd1043229c18f809de77c6685b111acd4127f06345bbde2f38b526",
+    "resultados/autoencoder/calibracao_autoencoder.csv": "bb96d0c31d6096464f7a9ad1505b601fc3b0366a443b2b33a25ca5b3004b3ddb",
+    "resultados/autoencoder/calibracao_autoencoder.md": "86671e171434a45df50ea333714747bc4846fc39eadf382e38f0ed45151b2631",
+    "resultados/autoencoder/curva_treino.png": "b322a3730b4a68c19898dc35a87e134284f2661ae74ec3136b99a66d57bb5ce8",
+    "resultados/autoencoder/distribuicao_erro.png": "7527cff6e2e4d871b0bfc5d22f28f052bd722925489f598d1fd191add3fb144b",
+    "resultados/autoencoder/erro_temporal.png": "1971c177b05dfe9e804150de7daf8fc969c1118304c9b9e12a977bfae173ad7b"
+  },
+  "evidence_level": "E2"
 }

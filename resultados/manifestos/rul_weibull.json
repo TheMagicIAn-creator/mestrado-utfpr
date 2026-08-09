@@ -1,18 +1,18 @@
 {
   "manifest_version": 2,
   "stage": "rul_weibull",
-  "created_at": "2026-08-05T22:59:06.727692-03:00",
-  "git_commit": "d9afe11d1b0bc96c921a5bdcb94058e55631d5ea",
+  "created_at": "2026-08-09T03:13:16.371568-03:00",
+  "git_commit": "5188276a5204f08d3fde45be138b740af8961e28",
   "code_hash_mode": "text_lf_utf8",
-  "code_sha256": "24a5bd51e5a1b2e89c67af3977fcf991b6af21075d175880cc2ca2c5b0bb3523",
+  "code_sha256": "6dc992966046aa64b0c1418ad582686e2071868099565cd880dc776cc63eb0cb",
   "code_dependencies": {
-    "src.ml.features_ca": "e853c497d923671c1d879c87fb841a0f75bd510418eae8aab5eed2419eb98eba",
-    "src.ml.autoencoder": "824c3fb7c22a6abf2dea7fe6e877e2a0d80468eb92098cb30ab2db3b023a318d",
-    "src.ml.dados_avaliacao": "bff782018b640e3b8dd763e60b5885958e9fdf507fab7af4055fee1972b9a6db",
-    "src.ml.escore_anomalia": "16d619a9d652fb49079e8c3737382aa2ca1e89de32061b43e607bcd9781b98ff",
+    "src.ml.features_ca": "23330f891620f442197eae9ea142d3a704449110bf3e0b1c9da8afd5ba9f558e",
+    "src.ml.autoencoder": "f57240fbd095f3154f49850d0fc69fce2a454cedc30ab50767809c727ff5c8a8",
+    "src.ml.dados_avaliacao": "400182b3289f95bdaa7eff3bb42a4271abcd94e0f2f9fbf507f7455478890e5a",
+    "src.ml.escore_anomalia": "71106cad6b7971edcf27533462181cc38f8be4cf7db95a117dbbb43d96de75e1",
     "src.ml.estatistica": "fde4d602db680706252a6e11c9bb9a2aa84e27b6911275beec7f4148538a4515",
-    "src.ml.injecao_falhas": "19387d79bab701ec689aeabcc71020f3d143e0b04d1f33802f60258fa0fa357c",
-    "src.ml.estilo_graficos": "2f69e30b4a00eee6d8b6fd809325840dff2937f95d00dd21960b1ef9c75a0494"
+    "src.ml.injecao_falhas": "065456562d2b17e7aa13fac7f4d36c57f396936d0158fe7e70ee2c2e48a597f3",
+    "src.ml.estilo_graficos": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49"
   },
   "parameters": {
     "n_traj": 100,
@@ -22,31 +22,35 @@
     "min_eventos_weibull": 10,
     "max_censura_rul_pct": 50.0,
     "persistencia_cruzamento": 3,
-    "ttf_unidade": "passo_sintetico_de_degradacao",
+    "a_det_unidade": "a_det_fracao_da_assinatura_nominal",
+    "ttf_unidade": "a_det_fracao_da_assinatura_nominal",
     "tempo_fisico_calibrado": false
   },
   "input_artifacts": {
-    "validacao:0:validacao_roc.png": "640c87f1a79e1c0326641f26ee6951fcddd09ef54ab3b03ce95f88e9f052aa5e",
-    "validacao:1:validacao_pr.png": "5c9e93f0321b24b1a22b0b0bed63973cdf81aededf601a57b90064e76706caf2",
-    "validacao:2:validacao_matriz.png": "78083b2e2f309cc8ca5eef906ffb19a3db193f274c60888a33c2d6a381b97e63",
-    "validacao:3:validacao_matrizes_severidades.png": "bfe60c4f2ff25c951a6ad0a556dcb570caef044298a3c645c301d4917bd03ea8",
-    "validacao:4:validacao_metricas.png": "fd36f6ea1f62cdc9df4b6779c0d5f6f6d6604438b35feaf90370eec9565a997c",
-    "validacao:5:validacao_tabela.csv": "6b6d99e6d68fbde5b3b16087cf4d71eb729be2833c297b8d7d59f3a8d093519b",
-    "validacao:6:validacao_tabela.md": "2c2f36deb366b86b8d2653f931be05e73017422724ed760e41a8fc3576c7fcc4",
-    "validacao:7:validacao_report.json": "4cf4fd601df277ba490e80672ef4ff9abc144aeecba6ef16491f05d8052f80db"
+    "validacao:0:validacao_roc.png": "70e36caf7389aac1f06f823de484e7ef8a876c272b71efbe0b7adb7b737e14a1",
+    "validacao:1:validacao_pr.png": "a27459d14660c33c900f196c2a69869509a619504ad7cac81e8882b73325ec42",
+    "validacao:2:validacao_matriz.png": "c240e83897641cdbc5ef2aba51f17809c0cd54adcd83ffa09a593d6c760e99a6",
+    "validacao:3:validacao_matrizes_severidades.png": "bff789b46773c2b5f7a1e1bcd2b944b8e89b325cbb658a1e99ab94bf11670699",
+    "validacao:4:validacao_metricas.png": "3c98498edb498c083615ed7f18f4d8bd952d038a5db9f2aa76f00396f5f9a5f7",
+    "validacao:5:validacao_tabela.csv": "ffb73f6400d170db27308596c3ebe0b93a22cf302a3ac878f534061bd8e65205",
+    "validacao:6:validacao_tabela.md": "28993e48f3e3488029edb7cdffe1c78a355b918ed46a4adc346dc1ef30e470b6",
+    "validacao:7:validacao_report.json": "b0430bde76e63b892572eeed24361940e486432655c668a0f038879c96ce1e15"
   },
   "outputs": [
     "resultados/autoencoder/weibull_ttf.png",
     "resultados/autoencoder/weibull_confiabilidade.png",
+    "resultados/autoencoder/weibull_distribuicao.png",
     "resultados/autoencoder/weibull_rul.png",
     "resultados/autoencoder/weibull_results.json",
     "resultados/autoencoder/weibull_tabela.csv"
   ],
   "output_artifacts": {
-    "resultados/autoencoder/weibull_ttf.png": "1c2f76de91e68e07ebe4cbbe9d3abffc513d2a5402ec01d1badd0911f8933a52",
-    "resultados/autoencoder/weibull_confiabilidade.png": "b61121ef5cfcf9906aa1396b15f0c7fc746229f42139ef9c3e2d3b33d9571e04",
-    "resultados/autoencoder/weibull_rul.png": "24141367b25deb0987b0766636b4bb1e0cffdd679833696484c34e7f5b05f310",
-    "resultados/autoencoder/weibull_results.json": "aa7b42815b252ca17896522dc6751ddabba8fbb6267bb478e43fb3495c43fc69",
-    "resultados/autoencoder/weibull_tabela.csv": "efa29bebc0dbcdde4e0e6ba4afc630e005d5393ce75eee8d14df89feaf7efe56"
-  }
+    "resultados/autoencoder/weibull_ttf.png": "0a9af14be8863b1585b9713a2f658c14633c5514f9611410386fff24d4af67bf",
+    "resultados/autoencoder/weibull_confiabilidade.png": "cca2425b783d82cc6007f97b5851ab22bd5b73b560d66806500e49b26208086c",
+    "resultados/autoencoder/weibull_distribuicao.png": "0620acaaa473c25a967be06913087882dc94764510b77edc5521a100b94572de",
+    "resultados/autoencoder/weibull_rul.png": "9d17482f0c7a35dd1bd04a0cb709cb6a519f4d028ffa1a8433302bab8df41868",
+    "resultados/autoencoder/weibull_results.json": "80ef9145285a7365b2025dd0aa36292775a91be0a4c2a23ae557682bc45aaa3a",
+    "resultados/autoencoder/weibull_tabela.csv": "5055b65d87362c7fea57ec45e514e6988f608af49753e348f1aee0d62c958639"
+  },
+  "evidence_level": "E2"
 }

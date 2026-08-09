@@ -1,0 +1,70 @@
+{
+  "manifest_version": 2,
+  "stage": "macro_comparacao",
+  "created_at": "2026-08-09T03:13:18.099015-03:00",
+  "git_commit": "5188276a5204f08d3fde45be138b740af8961e28",
+  "code_hash_mode": "text_lf_utf8",
+  "code_sha256": "381dbf77bef9db077d01dd8a233b85eef5a79b5bc5d7818f7bb35b0a12e54c6a",
+  "code_dependencies": {
+    "macro_proposto": "dd0da039b755b0bf3ab9d7f60628ce36fb918749f0e4bd655b92233edde56e29",
+    "macro_ibrahim": "b3787db7b791a1e7123e47ead9d9f3e045d0153cb207102a52458416a8103ee7",
+    "macro_comum": "dee25ee3577651037423f889635379d9bfe857f0b1d30c4436bc63d4d40d6a57",
+    "modelos_anomalia": "358e14795ca0d35c0eff54f5d76310aa372e2bd6a1cab7224aa06bc4b380cf20",
+    "dados_avaliacao": "400182b3289f95bdaa7eff3bb42a4271abcd94e0f2f9fbf507f7455478890e5a",
+    "injecao_falhas": "065456562d2b17e7aa13fac7f4d36c57f396936d0158fe7e70ee2c2e48a597f3",
+    "escore_anomalia": "71106cad6b7971edcf27533462181cc38f8be4cf7db95a117dbbb43d96de75e1",
+    "features_ca": "23330f891620f442197eae9ea142d3a704449110bf3e0b1c9da8afd5ba9f558e"
+  },
+  "parameters": {
+    "n_janelas": 100,
+    "severidades": [
+      0.05,
+      0.1,
+      0.2,
+      0.3,
+      0.5,
+      0.7,
+      1.0
+    ],
+    "purga": 2,
+    "fracao_ajuste_limiar": 0.8,
+    "aelstm_seq_len": 8,
+    "aelstm_epochs": 60
+  },
+  "input_artifacts": {
+    "dataset_stender": "95dd7e27751659228d22e04614fd5e91ac44e92df15cbe3f3bd60592e3e3953b",
+    "features": "ba2976a0288ab2fc99d3fb530de385af68c5d8dc226c2cd6a75d08d829af9167",
+    "modelo_autoencoder": "f69d52983ebb5a5e55b46dc19fbb5f230e7ab2b609142b0c840668c51a31d738",
+    "limiar_autoencoder": "d1886332ce23c699f142350fde82efe25e575aa7c33d527f4973b460a8dfac8a",
+    "scaler_autoencoder": "b72dc06088a56c955410dff81bad38ed617704e9bc379475ce87b30a97d4d3ae"
+  },
+  "outputs": [
+    "resultados/macro/proposto_tabela.md",
+    "resultados/macro/proposto_tabela.csv",
+    "resultados/macro/proposto_resultado.json",
+    "resultados/macro/proposto_deteccao_severidade.png",
+    "resultados/macro/ibrahim_tabela.md",
+    "resultados/macro/ibrahim_tabela.csv",
+    "resultados/macro/ibrahim_resultado.json",
+    "resultados/macro/ibrahim_deteccao_severidade.png",
+    "resultados/macro/comparacao_tabela.md",
+    "resultados/macro/comparacao_tabela.csv",
+    "resultados/macro/comparacao_resultado.json",
+    "resultados/macro/comparacao_deteccao_severidade.png"
+  ],
+  "output_artifacts": {
+    "resultados/macro/proposto_tabela.md": "cc143fe4e07de56842024ae4fab48aae9dfec1f948bfe82b46b3a1b8d3bf0f29",
+    "resultados/macro/proposto_tabela.csv": "ec8689b3b70c8eb1ae2be79fc854701484c9ca2ef68a8bebf9f9a135dbcd9406",
+    "resultados/macro/proposto_resultado.json": "1765c22f6a6fe50820ecc95bcf24c182cf8ed6cfd016443dc23a77bacf144150",
+    "resultados/macro/proposto_deteccao_severidade.png": "cab948f36b7e3b9dff2e6d863472f8a03aaec9967bc953da6a16b93ed321b03c",
+    "resultados/macro/ibrahim_tabela.md": "b223ad3f4c495cb9af4cbb35d1e5aa2aa1b2438796d02ee09d88748132a014bd",
+    "resultados/macro/ibrahim_tabela.csv": "99b9ea5116fcf71def2b4e82f9d03b7aab0936a7c0c1a2c2bb9b78ff9f8d048d",
+    "resultados/macro/ibrahim_resultado.json": "30fd7a22dfaf396b3894756cb17604d72ca790516c5457469ae085ee86988784",
+    "resultados/macro/ibrahim_deteccao_severidade.png": "ec4a5ada56183569016d27ab0e2ce4aa5f30be7a8e778d51e53d365985ed4cd2",
+    "resultados/macro/comparacao_tabela.md": "53b4864dcd1098afd41b622b6bccf1d167daebd6c002d40fd936d39bbb291bf8",
+    "resultados/macro/comparacao_tabela.csv": "62dbf3ae31d9fe0271498410b1cb33e89abb64d483d056ea8a23c06deea3e8a8",
+    "resultados/macro/comparacao_resultado.json": "12cf2eafd8af3a5ea43a4ccceeb7d66141131c3c8d7cc1653cf394f8a4f4ce75",
+    "resultados/macro/comparacao_deteccao_severidade.png": "615586dd2df65218a3659d000421b34e2103d1bec233ef6fb90b31a7a282fbd6"
+  },
+  "evidence_level": "E2"
+}
