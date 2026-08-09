@@ -1,6 +1,6 @@
 # Resultados da Fase 5 - Pipeline de ML
 
-> Gerado em 09/08/2026 14:45 -03
+> Gerado em 09/08/2026 16:56 -03
 
 Aqui está o que já existe nos artefatos do pipeline.
 
@@ -53,19 +53,19 @@ Leitura rápida: SMD95 é a menor severidade cuja taxa pontual de detecção ati
 
 **Leitura honesta:** a AUC mede a separação por *ranking* (independe do limiar). No PONTO DE OPERAÇÃO (limiar operacional congelado), o recall pode ser bem menor que a AUC sugere. Atenção ao baixo recall em **IGBT (sev. 0.3), IGBT (sev. 0.5), Fusível AC (sev. 0.3), Fusível AC (sev. 0.5)**: o limiar conservador perde a maior parte dessas falhas. As linhas mostram todas as severidades, sem escolher apenas a melhor AUC. O holdout usa blocos intercalados por regime, com purga; a avaliação retém janelas sem compartilhamento direto de amostras, sem presumir independência temporal. A falha continua sintética: não é desempenho industrial.
 
-## RUL / Weibull
+## Detectabilidade E2 / Weibull
 
-Unidade dos tempos: `a_det_fracao_da_assinatura_nominal`; tempo físico calibrado: não.
+Unidade do eixo: `a_det_fracao_da_assinatura_nominal`; tempo físico calibrado: não.
 
-| Falha | NPR | Eventos/Censura | beta (IC95%) | eta (IC95%) | MTTF (IC95%) | B10 (IC95%) | RUL restrita inicial | Status |
-|---|---:|---:|---:|---:|---:|---:|---:|---|
-| Contator AC | 315 | 31/0 | 3.15 [2.65; 3.87] | 0.5 [0.4; 0.5] | 0.4 [0.4; 0.5] | 0.2 [0.2; 0.3] | 0.424 | exploratório |
-| IGBT | 90 | 12/19 | 6.58 [4.68; 11.19] | 1.1 [1.0; 1.2] | 1.0 [1.0; 1.1] | 0.8 [0.7; 0.9] | 0.941 | Weibull incerta; KM restrita disponível |
-| Fusível AC | 30 | 30/1 | 8.60 [4.85; 15.89] | 0.9 [0.9; 0.9] | 0.8 [0.8; 0.9] | 0.7 [0.5; 0.8] | 0.847 | exploratório |
+| Falha | NPR | Detectadas/total | beta (IC95%) | eta (IC95%) | média a_det (IC95%) | a10 (IC95%) | margem restrita | R2 papel | Status |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| Contator AC | 315 | 31/31 | 3.15 [2.66; 3.96] | 0.5 [0.4; 0.5] | 0.4 [0.4; 0.5] | 0.2 [0.2; 0.3] | 0.424 | 0.95 | exploratório E2 |
+| IGBT | 90 | 12/31 | 6.58 [4.40; 10.97] | 1.1 [1.0; 1.2] | não reportada | não reportado | 0.941 | 0.95 | não recomendado; alta indetectabilidade |
+| Fusível AC | 30 | 30/31 | 8.60 [4.79; 15.77] | 0.9 [0.9; 0.9] | não reportada | não reportado | 0.847 | -0.84 | não recomendado; desvio no papel Weibull |
 
-**Separação obrigatória das estimativas:** a coluna **RUL restrita inicial** é exclusivamente a média residual **não paramétrica de Kaplan-Meier**, truncada no horizonte observado. Ela nunca deve ser descrita como RUL Weibull. A curva Weibull do gráfico é a estimativa paramétrica/extrapolativa e só existe quando o ajuste convergiu.
+**Leitura obrigatória:** esta etapa modela a distribuição da **magnitude do primeiro cruzamento confirmado do detector**. A curva S_D(a) é probabilidade de ainda não detectar; h_D(a) é intensidade de detecção por unidade de magnitude. Nenhuma delas é confiabilidade ou taxa de falha do componente. A margem restrita de Kaplan-Meier não é RUL, pois não existe eixo temporal. MTTF, B10 e RUL permanecem apenas como aliases legados no JSON.
 
-**Leitura obrigatória:** a censura agora é preservada e os intervalos vêm de bootstrap, mas os tempos continuam sendo passos de degradação sintética E2. A RUL por Kaplan-Meier é restrita ao horizonte observado; a RUL Weibull é extrapolativa e recebe ressalva quando há alta censura. MTTF, B10 e RUL descrevem o experimento computacional e não podem ser apresentados como vida útil física ou de campo. O NPR prioriza risco na FMECA; ele **não determina** quantos eventos o experimento sintético produzirá e não explica causalmente a censura.
+Os pontos empíricos usam Kaplan-Meier modificado com o tamanho total da amostra. Os ICs vêm de bootstrap de janelas sem amostras compartilhadas, mas independência temporal não foi demonstrada. O NPR prioriza risco na FMECA; ele **não determina** quantos eventos o experimento sintético produzirá e não explica causalmente a indetectabilidade.
 
 ## Validação externa GPVS-Faults - E3 de bancada
 

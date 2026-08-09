@@ -1,29 +1,35 @@
 {
   "manifest_version": 2,
   "stage": "rul_weibull",
-  "created_at": "2026-08-09T14:59:04.928403-03:00",
-  "git_commit": "7f91ff06b4ba1850a6547254392ee39226c33d1a",
+  "created_at": "2026-08-09T16:56:29.988537-03:00",
+  "git_commit": "5b7a0774d1f54ceae94a828c65a02f152707f3ec",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
-  "code_sha256": "7c352df78c2c905829eb260014e80aa050617c6a7eb1caf25c015e9bbd8c8b8c",
+  "code_sha256": "19cba3021c38c4a19fef4b0d605a3d090ef84875f1ede5fba57be79b6fe3fa51",
   "code_dependencies": {
     "src.ml.features_ca": "23330f891620f442197eae9ea142d3a704449110bf3e0b1c9da8afd5ba9f558e",
     "src.ml.autoencoder": "519bda0ede76a556bfd7d88a42080ede72ae411a8f3623991e325d642465b029",
     "src.ml.dados_avaliacao": "400182b3289f95bdaa7eff3bb42a4271abcd94e0f2f9fbf507f7455478890e5a",
     "src.ml.escore_anomalia": "71106cad6b7971edcf27533462181cc38f8be4cf7db95a117dbbb43d96de75e1",
     "src.ml.estatistica": "fde4d602db680706252a6e11c9bb9a2aa84e27b6911275beec7f4148538a4515",
-    "src.ml.graficos_rul": "417de898caf3077b4dc57bc61e7abd501719cbb2c6495886ba80118b121d6e29",
+    "src.ml.confiabilidade": "c9c31d77f8815bdec7bc5ffdf01cc17c676da175b47479eb3f9f63068f31eb0d",
+    "src.ml.graficos_rul": "a0b1e4910d6063585aea0ee48eb592a011479563a749b3a629027c799a1eb5fd",
     "src.ml.injecao_falhas": "065456562d2b17e7aa13fac7f4d36c57f396936d0158fe7e70ee2c2e48a597f3",
-    "src.ml.estilo_graficos": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49"
+    "src.ml.relatorio_weibull": "53b6a48fc1a5405be951487ebb687386bff24b5a2c6e5a1c3ad8f4afb2097a13",
+    "src.ml.split_temporal": "f6ef704157c63648d3146389f63c56b2bec723771668dd81fc6935a9dfcee30c",
+    "src.ml.estilo_graficos": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49",
+    "src.ml.pod_curva": "af407a1d3b6dd7ce968b20063889b7303b52cc63b8764e498c53cdb96b1b0edc",
+    "scripts.relatorio_confiabilidade": "724740db9e0f173325d1ecf09f756ee5dc3df337bccc4f202cea336b4bc47756"
   },
   "parameters": {
     "n_traj": 100,
     "n_steps": 120,
     "batch_inferencia": 16,
-    "n_bootstrap": 250,
+    "n_bootstrap": 1000,
     "min_eventos_weibull": 10,
     "max_censura_rul_pct": 50.0,
+    "min_r2_papel_weibull": 0.9,
     "persistencia_cruzamento": 3,
     "a_det_unidade": "a_det_fracao_da_assinatura_nominal",
     "ttf_unidade": "a_det_fracao_da_assinatura_nominal",
@@ -31,11 +37,13 @@
   },
   "input_artifacts": {
     "input:0:Inverter_Data_Set.csv": "70c01c0e2ada1898886e981d6b62b21e75add921f233b7b53ac9b3d736477602",
-    "input:1:modelo_autoencoder.pt": "f69d52983ebb5a5e55b46dc19fbb5f230e7ab2b609142b0c840668c51a31d738",
-    "input:2:scaler.pkl": "b72dc06088a56c955410dff81bad38ed617704e9bc379475ce87b30a97d4d3ae",
-    "input:3:scaler.pkl.sha256": "29ef3220383b344cbfcaa78a41a4f643d89f9ee7e954c312b8f6daa7f2dbe22b",
-    "input:4:estatistica_residuo.npz": "b117a32de2667ac09a6edaf304b3a58bd831f159a05c4ecf9a4c561313c27a7c",
-    "input:5:limiar.json": "c832cdf02113a64d1d46f86e58f139c153c3bf8db0e81b77bf05a0c59f2bad08"
+    "input:1:features_paderborn.parquet": "ba2976a0288ab2fc99d3fb530de385af68c5d8dc226c2cd6a75d08d829af9167",
+    "input:2:modelo_autoencoder.pt": "f69d52983ebb5a5e55b46dc19fbb5f230e7ab2b609142b0c840668c51a31d738",
+    "input:3:scaler.pkl": "b72dc06088a56c955410dff81bad38ed617704e9bc379475ce87b30a97d4d3ae",
+    "input:4:scaler.pkl.sha256": "29ef3220383b344cbfcaa78a41a4f643d89f9ee7e954c312b8f6daa7f2dbe22b",
+    "input:5:estatistica_residuo.npz": "b117a32de2667ac09a6edaf304b3a58bd831f159a05c4ecf9a4c561313c27a7c",
+    "input:6:diagnostico_autoencoder.npz": "bd67fec204bd1043229c18f809de77c6685b111acd4127f06345bbde2f38b526",
+    "input:7:limiar.json": "c832cdf02113a64d1d46f86e58f139c153c3bf8db0e81b77bf05a0c59f2bad08"
   },
   "outputs": [
     "resultados/autoencoder/weibull_ttf.png",
@@ -43,15 +51,19 @@
     "resultados/autoencoder/weibull_distribuicao.png",
     "resultados/autoencoder/weibull_rul.png",
     "resultados/autoencoder/weibull_results.json",
-    "resultados/autoencoder/weibull_tabela.csv"
+    "resultados/autoencoder/weibull_tabela.csv",
+    "resultados/autoencoder/relatorio_confiabilidade.md",
+    "resultados/autoencoder/relatorio_confiabilidade.json"
   ],
   "output_artifacts": {
-    "resultados/autoencoder/weibull_ttf.png": "0a9af14be8863b1585b9713a2f658c14633c5514f9611410386fff24d4af67bf",
-    "resultados/autoencoder/weibull_confiabilidade.png": "cca2425b783d82cc6007f97b5851ab22bd5b73b560d66806500e49b26208086c",
-    "resultados/autoencoder/weibull_distribuicao.png": "0620acaaa473c25a967be06913087882dc94764510b77edc5521a100b94572de",
-    "resultados/autoencoder/weibull_rul.png": "9d17482f0c7a35dd1bd04a0cb709cb6a519f4d028ffa1a8433302bab8df41868",
-    "resultados/autoencoder/weibull_results.json": "a44c7d325d2441bae8d5a10dc8c28e3e76d70523473cc21713811f4943d40cde",
-    "resultados/autoencoder/weibull_tabela.csv": "3f9a79127e107c73c0320d1e306a8ec008bdaa51b5a1fd099e3b57e1f0ad85c2"
+    "resultados/autoencoder/weibull_ttf.png": "edcdd2ebde21654676408f23a92cc5d781fd45fca412bf8c2dc36d5b6d9a90f1",
+    "resultados/autoencoder/weibull_confiabilidade.png": "fd580816801219e6c3f96fe19161c5b544cfc858d308d973c28f90feb798d3eb",
+    "resultados/autoencoder/weibull_distribuicao.png": "f0b933c30bbcdfe0e1bcbcd164c544219b3ed98b67d5502a2c309c6703e021d2",
+    "resultados/autoencoder/weibull_rul.png": "7ed6e494d7ccc89083c2fb3ba5523d9f67e4acce47712b9b7d7af8556640f045",
+    "resultados/autoencoder/weibull_results.json": "9a28a1422b6dad4269aff52f73005868325fa16c7b3ba54fffb586b4f44c87a5",
+    "resultados/autoencoder/weibull_tabela.csv": "b0fccf1f93ecd732e67a5883fd19885010f74ed18ddd63d84d7c7fd8d63cd46a",
+    "resultados/autoencoder/relatorio_confiabilidade.md": "f90766c880fefd6b2909073e550173d1c2a4ec1a8e0dd67a7b1cfc731ed79864",
+    "resultados/autoencoder/relatorio_confiabilidade.json": "b11bb8ec187661a00588405f7c3108b194f174019f55f95826f1a2203c333ed9"
   },
   "evidence_level": "E2"
 }

@@ -39,6 +39,7 @@ def montar_relatorio(
     tempo_fisico_nota: str,
     min_eventos_weibull: int,
     max_censura_rul_pct: float,
+    min_r2_papel_weibull: float,
     persistencia_cruzamento: int,
     json_seguro,
 ) -> tuple[dict, list[dict]]:
@@ -47,16 +48,16 @@ def montar_relatorio(
         "__meta__": {
             "evidence_level": "E2",
             "evidence_note": (
-                "RUL ILUSTRATIVO — duplamente sintético: (1) os a_det vêm de "
+                "DETECTABILIDADE E2 — duplamente sintética: (1) os a_det vêm de "
                 "trajetórias de magnitude crescente SIMULADAS cruzando o limiar "
                 "do Autoencoder, não de dados run-to-failure reais; (2) a "
                 "própria falha que define o cruzamento é injeção sintética "
                 "orientada pela FMECA. Demonstra a METODOLOGIA "
-                "(a_det→Weibull→MTTF/B10/RUL), NÃO é estimativa de vida útil de "
-                "campo (exigiria histórico real de falhas). ATENÇÃO AO EIXO: é "
-                "magnitude de assinatura em [0; 1], não tempo — 'MTTF' e 'B10' "
-                "aqui são fração de assinatura, e os nomes são mantidos só "
-                "porque são os da distribuição. As não detecções entram no MLE "
+                "(a_det→Weibull), NÃO é confiabilidade nem vida útil de campo. "
+                "ATENÇÃO AO EIXO: é magnitude de assinatura em [0; 1], não "
+                "tempo. Os nomes canônicos são média de a_det, a10 e margem "
+                "residual; MTTF/B10/RUL permanecem apenas como aliases legados. "
+                "As não detecções entram no MLE "
                 "como censura à direita sob hipótese declarada (ver 'desfechos'); "
                 "os intervalos vêm de bootstrap de trajetórias."
             ),
@@ -64,9 +65,15 @@ def montar_relatorio(
             "ttf_origem": "trajetorias_de_magnitude_crescente_cruzando_limiar_AE",
             "tempo": metadados_tempo,
             "adequacy_note": (
-                "O RMSE entre Kaplan-Meier e Weibull é descritivo, não prova "
-                "adequação nem substitui validação com dados run-to-failure."
+                "RMSE-KM e R2 no papel censura-aware são descritivos. A triagem "
+                "R2 não é teste formal e não substitui validação externa."
             ),
+            "physical_claims": {
+                "rul": False,
+                "reliability": False,
+                "failure_rate": False,
+                "wear_regime_from_beta": False,
+            },
             "protocolo_avaliacao": meta_holdout,
         },
         "parametros_simulacao": {
@@ -82,6 +89,7 @@ def montar_relatorio(
             "limiar"       : float(limiar),
             "min_eventos_weibull": min_eventos_weibull,
             "max_censura_rul_pct": max_censura_rul_pct,
+            "min_r2_papel_weibull": min_r2_papel_weibull,
             "persistencia_cruzamento": persistencia_cruzamento,
         },
         "falhas": {}
@@ -93,16 +101,21 @@ def montar_relatorio(
             "npr"   : falha["npr"],
             "weibull": json_seguro(params[fid]),
             "ajuste_weibull_adequado": None,
+            "sintese_parametrica_recomendada": params[fid].get(
+                "resumo_parametrico_recomendado", False
+            ),
             "status_ajuste": (
                 "nao_estimavel_parametrico_rul_restrita"
                 if not params[fid]["fit_converged"]
-                else "exploratorio_alta_censura"
+                else "nao_recomendado_alta_indetectabilidade"
                 if params[fid]["rul_parametrica_alta_incerteza"]
-                else "exploratorio_descritivo"
+                else "nao_recomendado_desvio_papel_weibull"
+                if not params[fid].get("triagem_papel_compativel", False)
+                else "exploratorio_detectabilidade"
             ),
             "ressalva_ajuste": (
-                "Ajuste censurado do experimento sintético; adequação externa "
-                "não demonstrada. MTTF/B10 não equivalem a vida física."
+                "Ajuste do primeiro cruzamento do detector sob hipótese de "
+                "censura analítica; não equivale a falha, vida ou desgaste."
             ),
             "a_dets": a_dets_dict[fid].tolist(),
             # Alias: mesma lista, nome antigo, para leitores já escritos.
@@ -141,6 +154,18 @@ def montar_relatorio(
             "b10_ci_low": p["b10_ci95"][0],
             "b10_ci_high": p["b10_ci95"][1],
             "km_rmse": p["km_rmse"],
+            "media_a_det_parametrica": p["media_a_det_parametrica"],
+            "media_a_det_parametrica_ci_low": p["media_a_det_parametrica_ci95"][0],
+            "media_a_det_parametrica_ci_high": p["media_a_det_parametrica_ci95"][1],
+            "a10_parametrico": p["a10_parametrico"],
+            "a10_parametrico_ci_low": p["a10_parametrico_ci95"][0],
+            "a10_parametrico_ci_high": p["a10_parametrico_ci95"][1],
+            "papel_weibull_r2": p["diagnostico_papel_weibull"]["r2"],
+            "papel_weibull_rmse": p["diagnostico_papel_weibull"]["rmse"],
+            "sintese_parametrica_recomendada": p["resumo_parametrico_recomendado"],
+            "bootstrap_solicitados": p["bootstrap_solicitados"],
+            "bootstrap_validos": p["bootstrap_validos"],
+            "bootstrap_taxa_validos": p["bootstrap_taxa_validos"],
             "fit_converged": p["fit_converged"],
             "rul_reportavel": p["rul_reportavel"],
             "rul_parametrica_disponivel": p["rul_parametrica_disponivel"],
@@ -148,6 +173,9 @@ def montar_relatorio(
             "rul_restrita_disponivel": p["rul_restrita_disponivel"],
             "rul_restrita_horizonte": p["rul_restrita_horizonte"],
             "rul_restrita_inicial": p["rul_restrita_inicial"],
+            "margem_restrita_disponivel": p["margem_restrita_disponivel"],
+            "margem_restrita_horizonte": p["margem_restrita_horizonte"],
+            "margem_restrita_inicial": p["margem_restrita_inicial"],
             "status_ajuste": relatorio["falhas"][fid]["status_ajuste"],
             "evidence_level": "E2",
         })

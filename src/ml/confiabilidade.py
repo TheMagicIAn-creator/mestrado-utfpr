@@ -58,6 +58,9 @@ import numpy as np
 # - Genschel, U.; Meeker, W. Q. (2009). A comparison of maximum likelihood and
 #   median rank regression for Weibull estimation. Iowa State University.
 FONTE_FORMULAS = "Weibull 2P; ver Nketiah et al. (2021), IJAERS 8(9)"
+FONTE_POSICOES_CENSURADAS = (
+    "NIST/SEMATECH e-Handbook, secao 8.2.1.5: Kaplan-Meier modificado"
+)
 
 
 def _validar(beta: float, eta: float) -> tuple[float, float]:
@@ -154,7 +157,12 @@ def vida_media(beta: float, eta: float) -> float:
     return float(e * math.gamma(1.0 + 1.0 / b))
 
 
-def classificar_forma(beta: float, ic_beta: tuple[float, float] | None = None) -> dict:
+def classificar_forma(
+    beta: float,
+    ic_beta: tuple[float, float] | None = None,
+    *,
+    eixo_tempo: bool = True,
+) -> dict:
     """Leitura de engenharia de ``β``, **com a ressalva do intervalo**.
 
     O log do pipeline dizia "β > 1 → taxa de falha crescente (desgaste)". Isso
@@ -167,6 +175,40 @@ def classificar_forma(beta: float, ic_beta: tuple[float, float] | None = None) -
     afirmação forte por engano.
     """
     b = float(beta)
+    if not eixo_tempo:
+        if b > 1.0:
+            regime, leitura = "intensidade_deteccao_crescente", (
+                "a intensidade parametrica do primeiro cruzamento aumenta com "
+                "a magnitude injetada. Como o eixo nao e idade, isso NAO "
+                "significa desgaste nem autoriza intervalo de manutencao")
+        elif b < 1.0:
+            regime, leitura = "intensidade_deteccao_decrescente", (
+                "a intensidade parametrica do primeiro cruzamento diminui com "
+                "a magnitude injetada. Como o eixo nao e idade, isso NAO "
+                "significa mortalidade infantil")
+        else:
+            regime, leitura = "intensidade_deteccao_constante", (
+                "a intensidade parametrica do primeiro cruzamento e constante "
+                "na escala de magnitude; nao ha interpretacao de falha aleatoria")
+
+        conclusivo = True
+        if ic_beta is not None:
+            lo, hi = float(ic_beta[0]), float(ic_beta[1])
+            if lo <= 1.0 <= hi:
+                conclusivo = False
+                leitura = (
+                    f"beta = {b:.2f}, mas o IC95 [{lo:.2f}; {hi:.2f}] cruza 1; "
+                    "a forma da intensidade de deteccao nao e distinguivel de "
+                    "constante. Nenhuma leitura fisica de desgaste e autorizada")
+        return {
+            "beta": b,
+            "regime": regime,
+            "leitura": leitura,
+            "conclusivo": bool(conclusivo),
+            "eixo_tempo": False,
+            "inferencia_manutencao_autorizada": False,
+        }
+
     if b > 1.0:
         regime, leitura = "desgaste", (
             "taxa de falha crescente: o risco aumenta com a idade, e existe "
@@ -188,8 +230,14 @@ def classificar_forma(beta: float, ic_beta: tuple[float, float] | None = None) -
             leitura = (
                 f"β = {b:.2f}, mas o IC95 [{lo:.2f}; {hi:.2f}] CRUZA 1 — o dado "
                 "não distingue desgaste de falha aleatória. Não afirmar regime.")
-    return {"beta": b, "regime": regime, "leitura": leitura,
-            "conclusivo": bool(conclusivo)}
+    return {
+        "beta": b,
+        "regime": regime,
+        "leitura": leitura,
+        "conclusivo": bool(conclusivo),
+        "eixo_tempo": True,
+        "inferencia_manutencao_autorizada": bool(conclusivo),
+    }
 
 
 def grade_tempo(t_max: float, n: int = 200, t_min: float | None = None) -> np.ndarray:
@@ -226,15 +274,26 @@ def curvas(beta: float, eta: float, t_max: float, n: int = 200) -> dict:
 
 def marcos(beta: float, eta: float) -> dict:
     """Os pontos que decidem manutenção, num só lugar."""
+    q01 = quantil(0.01, beta, eta)
+    q10 = quantil(0.10, beta, eta)
+    q50 = quantil(0.50, beta, eta)
+    media = vida_media(beta, eta)
     return {
-        "b1": quantil(0.01, beta, eta),
-        "b10": quantil(0.10, beta, eta),
-        "vida_mediana": quantil(0.50, beta, eta),
-        "mttf": vida_media(beta, eta),
+        "q01": q01,
+        "q10": q10,
+        "q50": q50,
+        "media": media,
+        # Aliases tradicionais. O chamador decide se o eixo permite nomes de
+        # vida; no experimento a_det eles sao apenas quantis de detectabilidade.
+        "b1": q01,
+        "b10": q10,
+        "vida_mediana": q50,
+        "mttf": media,
         "eta": float(eta),
         "R_em_eta": float(math.exp(-1.0)),
-        "nota_eta": ("η é a vida característica: R(η) = e⁻¹ ≈ 0,368 para "
-                     "qualquer β, ou seja 63,2% já falharam"),
+        "nota_eta": ("eta e a escala caracteristica: R(eta) = exp(-1) "
+                     "aprox. 0,368 para qualquer beta; 63,2% dos eventos "
+                     "modelados ja ocorreram"),
     }
 
 
@@ -250,6 +309,141 @@ def mediana_de_posto(n: int) -> np.ndarray:
         raise ValueError("n deve ser positivo")
     i = np.arange(1, n + 1, dtype=float)
     return (i - 0.3) / (n + 0.4)
+
+
+def posicoes_probabilidade_censuradas(
+    tempos, eventos
+) -> tuple[np.ndarray, np.ndarray, str]:
+    """Posicoes de probabilidade pelo Kaplan-Meier modificado do NIST.
+
+    Usa o tamanho total da amostra e devolve pontos apenas nos eventos. Isso e
+    essencial quando ha censura: normalizar os postos por ``n_eventos`` faria,
+    por exemplo, 12 deteccoes em 31 cenarios parecerem quase 100% da populacao.
+    Eventos sao ordenados antes de censuras empatadas, a convencao usual para o
+    conjunto em risco.
+    """
+    t = np.asarray(tempos, dtype=float)
+    obs = np.asarray(eventos, dtype=bool)
+    if len(t) != len(obs):
+        raise ValueError("tempos e eventos devem ter o mesmo comprimento")
+    if not len(t):
+        return np.asarray([]), np.asarray([]), FONTE_POSICOES_CENSURADAS
+
+    ordem = np.lexsort((~obs, t))
+    t_ord, obs_ord = t[ordem], obs[ordem]
+    n = len(t_ord)
+    sobrevivencia = (n + 0.7) / (n + 0.4)
+    pontos_t: list[float] = []
+    pontos_f: list[float] = []
+    for posto, (tempo, evento) in enumerate(zip(t_ord, obs_ord), start=1):
+        if not evento:
+            continue
+        sobrevivencia *= (n - posto + 0.7) / (n - posto + 1.7)
+        pontos_t.append(float(tempo))
+        pontos_f.append(float(1.0 - sobrevivencia))
+    return (
+        np.asarray(pontos_t),
+        np.asarray(pontos_f),
+        FONTE_POSICOES_CENSURADAS,
+    )
+
+
+def diagnostico_papel_weibull(
+    tempos, eventos, beta: float, eta: float
+) -> dict:
+    """Diagnostico descritivo do ajuste no papel de Weibull censurado.
+
+    ``R2`` e RMSE sao triagem visual, nao testes formais de aderencia. O valor
+    compara os pontos censura-aware com a reta imposta pelo MLE de dois
+    parametros; pode ser negativo quando o modelo e pior que a media dos pontos.
+    """
+    t, f_emp, metodo = posicoes_probabilidade_censuradas(tempos, eventos)
+    x, y = eixos_papel_weibull(t, f_emp)
+    if len(x) < 3:
+        return {
+            "n_pontos": int(len(x)),
+            "r2": None,
+            "rmse": None,
+            "metodo_posicoes": metodo,
+        }
+    y_ajuste = float(beta) * (x - np.log(float(eta)))
+    residuos = y - y_ajuste
+    ss_total = float(np.sum((y - np.mean(y)) ** 2))
+    r2 = 1.0 - float(np.sum(residuos**2)) / ss_total if ss_total > 0 else None
+    return {
+        "n_pontos": int(len(x)),
+        "r2": float(r2) if r2 is not None else None,
+        "rmse": float(np.sqrt(np.mean(residuos**2))),
+        "metodo_posicoes": metodo,
+    }
+
+
+def curva_kaplan_meier(
+    tempos, eventos
+) -> tuple[np.ndarray, np.ndarray]:
+    """Curva produto-limite, preservando censura à direita."""
+    t = np.asarray(tempos, dtype=float)
+    obs = np.asarray(eventos, dtype=bool)
+    if len(t) != len(obs):
+        raise ValueError("tempos e eventos devem ter o mesmo comprimento")
+    pontos_t = [0.0]
+    pontos_s = [1.0]
+    sobrevivencia = 1.0
+    for tempo in np.unique(t):
+        em_risco = int(np.sum(t >= tempo))
+        n_eventos = int(np.sum((t == tempo) & obs))
+        if em_risco and n_eventos:
+            sobrevivencia *= 1.0 - n_eventos / em_risco
+        pontos_t.append(float(tempo))
+        pontos_s.append(float(sobrevivencia))
+    return np.asarray(pontos_t), np.asarray(pontos_s)
+
+
+def margem_restrita_km(
+    atual: float,
+    tempos,
+    eventos,
+    horizonte: float | None = None,
+) -> float:
+    """Margem residual média de Kaplan-Meier até o horizonte observado."""
+    t = np.asarray(tempos, dtype=float)
+    obs = np.asarray(eventos, dtype=bool)
+    if len(t) == 0 or len(t) != len(obs):
+        return float("nan")
+
+    tau = float(np.max(t) if horizonte is None else horizonte)
+    t0 = float(max(atual, 0.0))
+    if not np.isfinite(tau) or t0 >= tau:
+        return 0.0
+
+    sobrevivencia = 1.0
+    inicio = 0.0
+    area = 0.0
+    sobrevivencia_t0: float | None = None
+    for tempo in np.unique(t):
+        fim = min(float(tempo), tau)
+        if fim > inicio:
+            if inicio <= t0 < fim:
+                sobrevivencia_t0 = sobrevivencia
+            area += sobrevivencia * max(fim - max(inicio, t0), 0.0)
+        if tempo >= tau:
+            inicio = tau
+            break
+        em_risco = int(np.sum(t >= tempo))
+        n_eventos = int(np.sum((t == tempo) & obs))
+        if em_risco > 0:
+            sobrevivencia *= 1.0 - n_eventos / em_risco
+        inicio = float(tempo)
+
+    if inicio < tau:
+        if inicio <= t0 < tau:
+            sobrevivencia_t0 = sobrevivencia
+        area += sobrevivencia * max(tau - max(inicio, t0), 0.0)
+    if sobrevivencia_t0 is None:
+        sobrevivencia_t0 = sobrevivencia
+    if sobrevivencia_t0 <= 0:
+        return 0.0
+    return float(max(area / sobrevivencia_t0, 0.0))
 
 
 def eixos_papel_weibull(t, f_emp) -> tuple[np.ndarray, np.ndarray]:

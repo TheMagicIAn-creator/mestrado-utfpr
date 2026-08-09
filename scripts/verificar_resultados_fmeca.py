@@ -507,9 +507,17 @@ def checar_weibull(aud: Auditoria) -> dict | None:
     familias = dados.get("falhas") or {}
     aud.exigir(meta.get("evidence_level") == "E2", "Weibull: evidence_level deve ser E2")
     aud.exigir("sint" in str(meta.get("evidence_note", "")).lower(), "Weibull: ressalva sintética ausente")
+    tempo = meta.get("tempo") or {}
+    alegacoes = meta.get("physical_claims") or {}
+    aud.exigir(tempo.get("eixo_nao_e_tempo") is True, "Weibull: eixo deve ser declarado como não temporal")
+    aud.exigir(
+        all(alegacoes.get(chave) is False for chave in ("rul", "reliability", "failure_rate", "wear_regime_from_beta")),
+        "Weibull: alegações físicas indevidas no manifesto",
+    )
     aud.exigir(set(familias) == set(ESPERADO), f"Weibull: ids {sorted(familias)}")
     min_eventos = int(parametros.get("min_eventos_weibull", 10))
     max_censura = _numero(parametros.get("max_censura_rul_pct"), 50.0)
+    min_r2 = _numero(parametros.get("min_r2_papel_weibull"), 0.90)
 
     for fid, esperado in ESPERADO.items():
         falha = familias.get(fid) or {}
@@ -526,40 +534,53 @@ def checar_weibull(aud: Auditoria) -> dict | None:
         aud.exigir(n_traj - n_eventos == n_cens, f"Weibull[{fid}]: censura incorreta")
         aud.exigir(_proximo(censura, 100 * n_cens / n_traj), f"Weibull[{fid}]: percentual de censura incorreto")
         aud.exigir(bool(str(falha.get("ressalva_ajuste", "")).strip()), f"Weibull[{fid}]: ressalva ausente")
-        horizonte = _numero(ajuste.get("rul_restrita_horizonte"))
-        rul_restrita = _numero(ajuste.get("rul_restrita_inicial"))
+        horizonte = _numero(ajuste.get("margem_restrita_horizonte"))
+        margem_restrita = _numero(ajuste.get("margem_restrita_inicial"))
         aud.exigir(
-            ajuste.get("rul_restrita_disponivel") is True,
-            f"Weibull[{fid}]: RUL restrita KM deve estar disponível",
+            ajuste.get("margem_restrita_disponivel") is True,
+            f"Weibull[{fid}]: margem restrita KM deve estar disponível",
         )
         aud.exigir(
-            horizonte > 0 and 0 <= rul_restrita <= horizonte,
-            f"Weibull[{fid}]: RUL restrita fora do horizonte observado",
+            horizonte > 0 and 0 <= margem_restrita <= horizonte,
+            f"Weibull[{fid}]: margem restrita fora do horizonte observado",
         )
 
         if n_eventos < min_eventos:
             aud.exigir(
                 falha.get("status_ajuste") == "nao_estimavel_parametrico_rul_restrita",
-                f"Weibull[{fid}]: poucos eventos devem manter apenas RUL restrita",
+                f"Weibull[{fid}]: poucos eventos devem manter apenas margem restrita",
             )
             aud.exigir(ajuste.get("beta") is None and ajuste.get("eta") is None, f"Weibull[{fid}]: parâmetros não devem existir com poucos eventos")
-            aud.exigir(ajuste.get("rul_parametrica_disponivel") is False, f"Weibull[{fid}]: RUL paramétrica não pode ser reportada")
+            aud.exigir(ajuste.get("resumo_parametrico_recomendado") is False, f"Weibull[{fid}]: síntese paramétrica não pode ser recomendada")
         else:
-            for nome in ("beta", "eta", "mttf", "b10"):
+            for nome in ("beta", "eta", "media_a_det_parametrica", "a10_parametrico"):
                 valor = _numero(ajuste.get(nome))
                 aud.exigir(valor > 0, f"Weibull[{fid}].{nome} deve ser positivo")
                 aud.exigir(_ci_valido(valor, ajuste.get(f"{nome}_ci95")), f"Weibull[{fid}]: IC95 de {nome} inválido")
             aud.exigir(ajuste.get("fit_converged") is True, f"Weibull[{fid}]: ajuste não convergiu")
-            aud.exigir(ajuste.get("rul_parametrica_disponivel") is True, f"Weibull[{fid}]: RUL paramétrica deveria estar disponível")
+            r2 = _numero((ajuste.get("diagnostico_papel_weibull") or {}).get("r2"))
             if censura > max_censura:
                 aud.exigir(
                     ajuste.get("rul_parametrica_alta_incerteza") is True,
                     f"Weibull[{fid}]: alta censura deve sinalizar incerteza paramétrica",
                 )
                 aud.exigir(
-                    falha.get("status_ajuste") == "exploratorio_alta_censura",
-                    f"Weibull[{fid}]: status de alta censura ausente",
+                    falha.get("status_ajuste") == "nao_recomendado_alta_indetectabilidade",
+                    f"Weibull[{fid}]: status de alta indetectabilidade ausente",
                 )
+                aud.exigir(ajuste.get("resumo_parametrico_recomendado") is False, f"Weibull[{fid}]: síntese indevida sob alta indetectabilidade")
+            elif r2 < min_r2:
+                aud.exigir(
+                    falha.get("status_ajuste") == "nao_recomendado_desvio_papel_weibull",
+                    f"Weibull[{fid}]: desvio no papel Weibull deve bloquear síntese",
+                )
+                aud.exigir(ajuste.get("resumo_parametrico_recomendado") is False, f"Weibull[{fid}]: síntese indevida com R² insuficiente")
+            else:
+                aud.exigir(
+                    falha.get("status_ajuste") == "exploratorio_detectabilidade",
+                    f"Weibull[{fid}]: status exploratório de detectabilidade ausente",
+                )
+                aud.exigir(ajuste.get("resumo_parametrico_recomendado") is True, f"Weibull[{fid}]: síntese exploratória deveria estar disponível")
 
     linhas = aud.csv(PASTA_AE / "weibull_tabela.csv")
     aud.exigir(len(linhas) == len(ESPERADO), f"weibull_tabela.csv: {len(linhas)}/{len(ESPERADO)} linhas")
