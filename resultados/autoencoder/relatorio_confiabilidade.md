@@ -25,9 +25,18 @@
 
 > Observação vai até 0.2; além disso as curvas são extrapolação do modelo, não dado.
 
-### IGBT
+### IGBT (NPR 90)
 
-Ajuste não convergiu — sem curva de confiabilidade.
+**Weibull não estimável: 9 detecções em 21 trajetórias, contra o mínimo de 10. Faltou 1 evento — o critério NÃO foi afrouxado para produzir uma curva. POD_mon no teto = 42.9%: 12 trajetórias não são detectadas nem com a assinatura inteira (a_inj = 1,0). A curva Kaplan-Meier continua válida e está no gráfico: é não paramétrica e não exige mínimo de eventos. O que falta é a EXTRAPOLAÇÃO paramétrica, não a descrição do observado.**
+
+| Grandeza | Valor |
+|---|--:|
+| trajetórias | 21 |
+| detectadas | 9 |
+| não detectadas em a_inj = 1,0 | 12 |
+| POD_mon no teto | 42.9% |
+
+> **Kaplan-Meier (não paramétrica) permanece válida.** Margem média de magnitude até detectar, restrita ao horizonte observado de 1.00: **0.84**. Não extrapola além do observado — e é exatamente por isso que sobrevive à falta de eventos.
 
 ### Fusível AC (NPR 30)
 
@@ -60,7 +69,7 @@ Limiar operacional adotado: **5.5726**
 
 O método assume normalidade do lado saudável. Shapiro-Wilk no escore bruto: p = 2.07e-01; em log: p = 1.30e-03. Assimetria +0.69, curtose +0.35.
 
-Hipótese satisfeita na escala **bruto**.
+**Hipótese satisfeita** na escala **bruto**. Os três estimadores abaixo continuam sendo reportados: quando eles concordam sob hipótese válida, a concordância confirma o método; quando divergem, é sinal de cauda que o teste de normalidade não pegou.
 
 | Estimador do percentil 99 do escore saudável | Valor |
 |---|--:|
@@ -69,7 +78,9 @@ Hipótese satisfeita na escala **bruto**.
 | percentil 99 empírico | 5.7265 |
 | **limiar adotado** | **5.5726** |
 
-> **Os 3 estimadores ficam acima do limiar adotado.** Pelo critério LS-POD, o requisito de falso positivo de 1% **não é cumprido no bloco de teste** — e a conclusão é robusta à violação da hipótese de normalidade, porque o quantil empírico, que não assume distribuição, leva ao mesmo lugar.
+> **Os 3 estimadores ficam acima do limiar adotado.** Pelo critério LS-POD, o requisito de falso positivo de 1% **não é cumprido no bloco de teste**. A conclusão não depende da hipótese de normalidade: o quantil empírico, que não assume distribuição, leva ao mesmo lugar.
+
+> ⚠️ Com n = 39, a resolução amostral é 2.56%: **o alvo de 1% está abaixo do que esta amostra consegue certificar**. Zero excedências observadas não provariam 1%. O requisito não falha por calibração — falha por tamanho de amostra.
 
 ### Deriva entre calibração e teste
 

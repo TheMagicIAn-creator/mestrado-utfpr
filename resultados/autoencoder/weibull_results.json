@@ -1636,7 +1636,8 @@
         "marcos": null,
         "interpretacao": {
           "conclusivo": false,
-          "leitura": "ajuste não convergiu — sem curva de confiabilidade nem leitura de regime de falha"
+          "leitura": "Weibull não estimável: 9 detecções em 21 trajetórias, contra o mínimo de 10. Faltou 1 evento — o critério NÃO foi afrouxado para produzir uma curva. POD_mon no teto = 42.9%: 12 trajetórias não são detectadas nem com a assinatura inteira (a_inj = 1,0). A curva Kaplan-Meier continua válida e está no gráfico: é não paramétrica e não exige mínimo de eventos. O que falta é a EXTRAPOLAÇÃO paramétrica, não a descrição do observado.",
+          "km_continua_valida": true
         }
       },
       "ajuste_weibull_adequado": null,
