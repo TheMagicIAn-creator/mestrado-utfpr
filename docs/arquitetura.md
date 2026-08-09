@@ -24,7 +24,7 @@ src/
 ├── ml/                   pipeline e experimentos de ML
 │   ├── pipeline.py       registry das etapas + estado ready/stale/pending
 │   ├── proveniencia.py   manifesto + hash + detecção de stale
-│   ├── split_temporal.py divisão temporal com purga (anti-vazamento)
+│   ├── split_temporal.py blocos intercalados com purga (anti-vazamento)
 │   ├── dados_avaliacao.py banco E1 comum para comparações locais
 │   ├── estatistica.py    ICs, bootstrap e métricas metodológicas
 │   ├── exec_etapa_isolada.py executa etapa pesada em subprocesso

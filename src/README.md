@@ -86,7 +86,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `graficos_rul.py` | Figuras acadêmicas de `a_det`, confiabilidade e margem de magnitude. |
 | `pipeline.py` | Coordena estado/execução das etapas e grava manifestos. |
 | `proveniencia.py` | Manifestos de proveniência e estado ready/stale/pending. |
-| `split_temporal.py` | Split temporal com purga (anti-vazamento), compartilhado. |
+| `split_temporal.py` | Split em blocos intercalados com purga: anti-vazamento **e** cobertura de regime. Fonte única do split do pipeline. |
 | `dados_avaliacao.py` | Constrói o banco E1 comum usado nas comparações entre detectores. |
 | `estatistica.py` | ICs, bootstrap e métricas estatísticas compartilhadas. |
 | `estilo_graficos.py` | Estilo acadêmico compartilhado por todas as figuras quantitativas. |

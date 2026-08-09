@@ -52,7 +52,21 @@ def test_holdout_temporal_retorna_janelas_sem_sobreposicao(tmp_path):
     starts = meta["amostras_inicio"]
     assert all(b - a >= JANELA for a, b in zip(starts, starts[1:]))
     assert len(janelas) == meta["n_janelas_usadas"]
-    assert min(meta["indices_features"]) >= 80
+
+    # A asserção anterior era `min(indices) >= 80`: com o split contíguo, o
+    # bloco de teste era o último quinto da série, então o índice mínimo
+    # denunciava vazamento. Com blocos INTERCALADOS o teste não é mais um
+    # sufixo, e essa régua deixou de significar qualquer coisa.
+    #
+    # A invariante que importava o tempo todo — e que agora é verificada
+    # diretamente — é que TODA janela do holdout venha do conjunto de teste.
+    # É mais forte que a anterior: pega vazamento em qualquer posição, não só
+    # no começo da série.
+    from src.ml.split_temporal import split_padrao_paderborn
+
+    teste = set(split_padrao_paderborn(n_features)["teste"].tolist())
+    fora = sorted(set(meta["indices_features"]) - teste)
+    assert not fora, f"janelas do holdout fora do bloco de teste: {fora[:10]}"
 
 
 def test_estimador_f0_reduz_confusao_com_segundo_harmonico():

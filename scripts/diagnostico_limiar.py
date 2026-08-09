@@ -188,8 +188,7 @@ def _regime_por_bloco(pasta: Path) -> dict | None:
     import pandas as pd
 
     from src.core.config import RAIZ_PROJETO
-    from src.ml.autoencoder import CALIB_RATIO, TRAIN_RATIO
-    from src.ml.split_temporal import PURGA_PADRAO, split_temporal_com_purga
+    from src.ml.split_temporal import split_padrao_paderborn
 
     arq = Path(RAIZ_PROJETO) / "dados" / "processados" / "features_paderborn.parquet"
     if not arq.exists():
@@ -203,9 +202,9 @@ def _regime_por_bloco(pasta: Path) -> dict | None:
     from src.ml.features_ca import F0_MAX
 
     teto = float(F0_MAX)
-    split = split_temporal_com_purga(
-        len(df), train_ratio=TRAIN_RATIO, val_ratio=CALIB_RATIO,
-        purge_janelas=PURGA_PADRAO)
+    # O MESMO split do pipeline. Reconstruí-lo aqui com outra função foi o que
+    # permitiu os dois bugs anteriores; agora vem da fonte única.
+    split = split_padrao_paderborn(len(df))
     blocos, saturacao = {}, {}
     for nome, chave in (("treino", "treino"), ("calibracao", "val"),
                         ("teste", "teste")):
