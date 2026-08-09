@@ -1,15 +1,15 @@
 {
   "manifest_version": 2,
   "stage": "injecao_falhas",
-  "created_at": "2026-08-09T03:24:41.187095-03:00",
-  "git_commit": "3c8e6e0ecba882f977299061d61f9fe89050aed2",
+  "created_at": "2026-08-09T14:59:04.173238-03:00",
+  "git_commit": "7f91ff06b4ba1850a6547254392ee39226c33d1a",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "code_sha256": "065456562d2b17e7aa13fac7f4d36c57f396936d0158fe7e70ee2c2e48a597f3",
   "code_dependencies": {
     "src.ml.features_ca": "23330f891620f442197eae9ea142d3a704449110bf3e0b1c9da8afd5ba9f558e",
-    "src.ml.autoencoder": "f57240fbd095f3154f49850d0fc69fce2a454cedc30ab50767809c727ff5c8a8",
+    "src.ml.autoencoder": "519bda0ede76a556bfd7d88a42080ede72ae411a8f3623991e325d642465b029",
     "src.ml.dados_avaliacao": "400182b3289f95bdaa7eff3bb42a4271abcd94e0f2f9fbf507f7455478890e5a",
     "src.ml.escore_anomalia": "71106cad6b7971edcf27533462181cc38f8be4cf7db95a117dbbb43d96de75e1",
     "src.ml.estatistica": "fde4d602db680706252a6e11c9bb9a2aa84e27b6911275beec7f4148538a4515",
@@ -29,15 +29,12 @@
     "n_janelas_smd": 100
   },
   "input_artifacts": {
-    "autoencoder:0:modelo_autoencoder.pt": "f69d52983ebb5a5e55b46dc19fbb5f230e7ab2b609142b0c840668c51a31d738",
-    "autoencoder:1:scaler.pkl": "b72dc06088a56c955410dff81bad38ed617704e9bc379475ce87b30a97d4d3ae",
-    "autoencoder:2:limiar.json": "e69daf4639b9524e3ddddce8f6fc32ab80e2a58e45b94ea18cedf5a9ec730910",
-    "autoencoder:3:diagnostico_autoencoder.npz": "bd67fec204bd1043229c18f809de77c6685b111acd4127f06345bbde2f38b526",
-    "autoencoder:4:calibracao_autoencoder.csv": "b0b9643f03ab1cd0097b81f1f30a7ee903e661f9d765d11a838b4f3e889679e1",
-    "autoencoder:5:calibracao_autoencoder.md": "922ed0067452c27717be1ebda2d9037be22c22328f3c2213ea5b2efb0cf0f451",
-    "autoencoder:6:curva_treino.png": "b322a3730b4a68c19898dc35a87e134284f2661ae74ec3136b99a66d57bb5ce8",
-    "autoencoder:7:distribuicao_erro.png": "7527cff6e2e4d871b0bfc5d22f28f052bd722925489f598d1fd191add3fb144b",
-    "autoencoder:8:erro_temporal.png": "1971c177b05dfe9e804150de7daf8fc969c1118304c9b9e12a977bfae173ad7b"
+    "input:0:Inverter_Data_Set.csv": "70c01c0e2ada1898886e981d6b62b21e75add921f233b7b53ac9b3d736477602",
+    "input:1:modelo_autoencoder.pt": "f69d52983ebb5a5e55b46dc19fbb5f230e7ab2b609142b0c840668c51a31d738",
+    "input:2:scaler.pkl": "b72dc06088a56c955410dff81bad38ed617704e9bc379475ce87b30a97d4d3ae",
+    "input:3:scaler.pkl.sha256": "29ef3220383b344cbfcaa78a41a4f643d89f9ee7e954c312b8f6daa7f2dbe22b",
+    "input:4:estatistica_residuo.npz": "b117a32de2667ac09a6edaf304b3a58bd831f159a05c4ecf9a4c561313c27a7c",
+    "input:5:limiar.json": "c832cdf02113a64d1d46f86e58f139c153c3bf8db0e81b77bf05a0c59f2bad08"
   },
   "outputs": [
     "resultados/autoencoder/injecao_falhas_resultados.png",
