@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from src.conhecimento.ferramentas import (
-    RAIZ_PROJETO,
-    _experimentos_alvo,
-    _normalizar,
-    capacidade_recalculo_pipeline,
-    re,
-    resumir_resultados,
-    shutil,
-)
+import re
+import shutil
+
+from src.conhecimento.intencoes_ferramentas import _experimentos_alvo
+from src.core.config import RAIZ_PROJETO
+from src.core.texto import normalizar_sem_acentos as _normalizar
+from src.ml.pipeline import capacidade_recalculo_pipeline
+from src.ml.resultados import resumir_resultados
 
 def buscar_na_web(progresso=None, pergunta: str = "") -> dict:
     """Adapta src.conhecimento.web_search.buscar_web para o formato de ferramenta."""

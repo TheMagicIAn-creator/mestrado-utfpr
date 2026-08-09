@@ -50,6 +50,17 @@ def _simbolos_de_topo(caminho: Path) -> set[str] | None:
                 nomes.add(no.name)
             elif isinstance(no, ast.Assign):
                 nomes |= {a.id for a in no.targets if isinstance(a, ast.Name)}
+                if any(
+                    isinstance(alvo, ast.Name)
+                    and alvo.id == "_EXPORTACOES_TARDIAS"
+                    for alvo in no.targets
+                ):
+                    try:
+                        grupos = ast.literal_eval(no.value)
+                    except (ValueError, TypeError):
+                        grupos = ()
+                    for _modulo, exportacoes in grupos:
+                        nomes.update(exportacoes)
             elif isinstance(no, ast.AnnAssign) and isinstance(no.target, ast.Name):
                 nomes.add(no.target.id)
             elif isinstance(no, (ast.Import, ast.ImportFrom)):

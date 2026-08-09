@@ -24,25 +24,9 @@ from __future__ import annotations
 
 import pytest
 
-# ⚠️ ESTE IMPORT NÃO É DECORATIVO — sem ele o módulo abaixo não carrega.
-#
-# `agente.py` define constantes no topo e importa os submódulos NO FIM (linhas
-# 417/449/465); os submódulos importam de volta de `agente` no topo deles. O
-# ciclo só fecha porque, quando `agente.py` chega na linha 417, suas constantes
-# já existem — `agente_interacao` então importa de um módulo parcialmente
-# inicializado, e dá certo por acidente de ordem.
-#
-# Consequência: `import src.conhecimento.agente_recuperacao` sozinho levanta
-# ImportError. A ÚNICA porta de entrada válida da família é `agente`.
-#
-# Não é o que este teste veio consertar, e a família já tem duas frentes de
-# refatoração abertas (#99 e #102). A correção de raiz é extrair as constantes
-# compartilhadas para um módulo folha — o mesmo padrão que já resolveu o ciclo
-# `ferramentas` ↔ `intencoes_ferramentas` via `src.core.texto`.
-#
-# Confirmado: carregar a fachada NÃO puxa chromadb, torch nem streamlit, então
-# o teste continua leve.
-import src.conhecimento.agente  # noqa: F401  (quebra o ciclo; ver acima)
+# O módulo de recuperação deve ser uma unidade importável por si só. O PR #102
+# dependia de importar `agente` antes; essa ordem acidental agora tem regressão
+# dedicada também em `test_imports_modulos_extraidos.py`.
 from src.conhecimento.agente_recuperacao import (
     _busca_hibrida,
     _diversificar_por_fonte,

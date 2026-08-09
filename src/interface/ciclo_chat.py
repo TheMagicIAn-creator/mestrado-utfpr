@@ -7,9 +7,9 @@ from src.interface.streamlit_app import (
     _falha_recuperavel,
     _html_pensando,
     agora_local,
-    renderizar_imagens,
     stream_resposta_limpa,
 )
+from src.interface.renderizacao_imagens import renderizar_imagens
 
 from src.interface.streamlit_proxy import st
 

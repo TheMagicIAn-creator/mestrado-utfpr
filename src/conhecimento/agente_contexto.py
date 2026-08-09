@@ -5,21 +5,25 @@ from __future__ import annotations
 from src.conhecimento.agente import (
     N_RESULTADOS,
     PERFIL_COMPACTO,
-    _busca_hibrida,
+    _logger,
+    eh_multimodal,
+    montar_bloco_texto_anexos,
+)
+from src.conhecimento.agente_interacao import (
     _chave_citacao,
     _entrada_citacao,
-    _expandir_query,
     _formatar_historico,
     _limitar_texto,
-    _logger,
-    _montar_prompt,
     _orcamento_rag,
-    _rerankar,
     _rotulo_paginas_meta,
     _trecho_relevante,
     deve_consultar_literatura,
-    eh_multimodal,
-    montar_bloco_texto_anexos,
+)
+from src.conhecimento.agente_recuperacao import (
+    _busca_hibrida,
+    _expandir_query,
+    _montar_prompt,
+    _rerankar,
 )
 
 def buscar_contexto(

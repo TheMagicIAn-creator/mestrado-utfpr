@@ -32,6 +32,7 @@ class PipelineStage:
     depends_on: tuple[str, ...] = ()
     parameter_names: tuple[str, ...] = ()
     code_dependencies: tuple[str, ...] = ()
+    evidence_level: str | None = None
 
     def paths(self) -> list[Path]:
         return [RAIZ_PROJETO / rel for rel in self.artifacts]
@@ -145,6 +146,7 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/erro_temporal.png",
         ),
         depends_on=("features_ca",),
+        evidence_level="E2",
     ),
     "injecao_falhas": PipelineStage(
         key="injecao_falhas",
@@ -167,6 +169,7 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/injecao_smd_tabela.csv",
         ),
         depends_on=("autoencoder",),
+        evidence_level="E2",
     ),
     "validacao": PipelineStage(
         key="validacao",
@@ -197,6 +200,7 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/validacao_report.json",
         ),
         depends_on=("injecao_falhas",),
+        evidence_level="E2",
     ),
     "rul_weibull": PipelineStage(
         key="rul_weibull",
@@ -215,6 +219,7 @@ STAGES: dict[str, PipelineStage] = {
             "src.ml.dados_avaliacao",
             "src.ml.escore_anomalia",
             "src.ml.estatistica",
+            "src.ml.graficos_rul",
             "src.ml.injecao_falhas",
             "src.ml.estilo_graficos",
         ),
@@ -227,6 +232,7 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/weibull_tabela.csv",
         ),
         depends_on=("validacao",),
+        evidence_level="E2",
     ),
 }
 
@@ -379,7 +385,7 @@ def registrar_manifesto(key: str, parameters: dict | None = None,
             key, _code_path(stage), parametros,
             _inputs_da_etapa(stage), [str(p) for p in stage.paths()],
             code_dependencies=_code_dependencies(stage),
-            evidence_level=evidence_level,
+            evidence_level=evidence_level or stage.evidence_level,
         )
         salvar_manifesto(manifesto)
     except Exception:
@@ -541,9 +547,8 @@ def executar_etapa(etapa: str,
     # estiver STALE (ex.: código da injeção/validação mudou após um git pull),
     # RE-EXECUTA — senão os artefatos/gráficos ficariam defasados. `pending`
     # também roda. Ver src/ml/proveniencia.estado_etapa.
-    if force:
-        limpar_artefatos(etapa)
-    else:
+    estado_atual = None
+    if not force:
         completo = estado_etapa_completo(etapa)
         estado_atual = completo.get("estado")
         if estado_atual == "ready":
@@ -566,10 +571,6 @@ def executar_etapa(etapa: str,
                     "agora. Para forcar, peca 'recalcule tudo do zero'."
                 ),
             }
-        if estado_atual == "stale":
-            # limpa a etapa (e o downstream, que também precisa regenerar).
-            limpar_artefatos(etapa)
-
     pendentes = dependencias_pendentes(etapa)
     if pendentes:
         if not auto_deps:
@@ -614,6 +615,12 @@ def executar_etapa(etapa: str,
                     }
                 registrar_manifesto(dep_key)
                 executadas_extra.append(dep_stage.label)
+
+    # Só remove resultados antigos depois que todas as dependências necessárias
+    # estão disponíveis. Assim uma falha de preparação não destrói a cópia
+    # publicada que ainda pode ser consultada.
+    if force or estado_atual == "stale":
+        limpar_artefatos(etapa)
 
     if progresso:
         progresso(f"Executando: {stage.label}...")

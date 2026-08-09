@@ -594,13 +594,33 @@ def conectar_equipe(*, forcar: bool = False) -> bool:
         return False
 
 
-from src.interface.sidebar import (
-    renderizar_pipeline_status,
-    renderizar_diagnostico,
-    _carregar_metadados_pendentes,
-    _estado_persistencia,
-    renderizar_sidebar,
+_EXPORTACOES_TARDIAS = (
+    ("src.interface.sidebar", (
+        "renderizar_pipeline_status", "renderizar_diagnostico",
+        "_carregar_metadados_pendentes", "_estado_persistencia",
+        "renderizar_sidebar",
+    )),
+    ("src.interface.renderizacao_imagens", (
+        "_grupo_imagem", "_DPI_GERACAO", "_PX_POR_POLEGADA",
+        "_TETO_EXIBICAO", "_LARGURA_PAREAVEL", "_dimensoes_imagem",
+        "_polegadas_imagem", "_largura_exibicao_imagem", "_imagem_larga",
+        "_ordem_imagem", "_DL_KEY", "_botao_download",
+        "_botao_download_texto", "_controles_antevisao",
+        "_renderizar_imagem_unica", "_renderizar_lote_regular",
+        "_renderizar_grupo_imagens", "renderizar_imagens",
+    )),
+    ("src.interface.ciclo_chat", (
+        "salvar_sessao", "_cadencia_atingida", "aprender_da_sessao_web",
+        "persistir_sessao_web", "_fechar_turno_simples", "_contexto_recente",
+        "responder_com_ferramenta", "responder_com_rag",
+    )),
 )
+
+
+def __getattr__(nome: str):
+    from src.core.importacao import resolver_exportacao_tardia
+
+    return resolver_exportacao_tardia(nome, _EXPORTACOES_TARDIAS, globals())
 
 
 # Atalhos da tela inicial: rótulo curto no botão, pergunta completa enviada
@@ -717,29 +737,12 @@ def stream_resposta_limpa(conteudo, llm, placeholder, refs_md: str) -> str:
     return final
 
 
-from src.interface.renderizacao_imagens import (
-    _grupo_imagem,
-    _DPI_GERACAO,
-    _PX_POR_POLEGADA,
-    _TETO_EXIBICAO,
-    _LARGURA_PAREAVEL,
-    _dimensoes_imagem,
-    _polegadas_imagem,
-    _largura_exibicao_imagem,
-    _imagem_larga,
-    _ordem_imagem,
-    _DL_KEY,
-    _botao_download,
-    _botao_download_texto,
-    _controles_antevisao,
-    _renderizar_imagem_unica,
-    _renderizar_lote_regular,
-    _renderizar_grupo_imagens,
-    renderizar_imagens,
-)
-
-
 def renderizar_mensagem(msg: dict) -> None:
+    from src.interface.renderizacao_imagens import (
+        _botao_download_texto,
+        renderizar_imagens,
+    )
+
     avatar = "🔬" if msg["role"] == "user" else "⚡"
     with st.chat_message(msg["role"], avatar=avatar):
         st.markdown(msg["content"])
@@ -751,18 +754,6 @@ def renderizar_mensagem(msg: dict) -> None:
         renderizar_imagens(msg.get("imagens", []))
 
 
-from src.interface.ciclo_chat import (
-    salvar_sessao,
-    _cadencia_atingida,
-    aprender_da_sessao_web,
-    persistir_sessao_web,
-    _fechar_turno_simples,
-    _contexto_recente,
-    responder_com_ferramenta,
-    responder_com_rag,
-)
-
-
 def renderizar_chat(
     perfil,
     modelo,
@@ -771,6 +762,16 @@ def renderizar_chat(
     colecao_obsidian,
     indice_lexical=None,
 ) -> None:
+    from src.interface.ciclo_chat import (
+        _fechar_turno_simples,
+        aprender_da_sessao_web,
+        persistir_sessao_web,
+        responder_com_ferramenta,
+        responder_com_rag,
+        salvar_sessao,
+    )
+    from src.interface.renderizacao_imagens import _botao_download_texto
+
     for msg in st.session_state.mensagens:
         renderizar_mensagem(msg)
 
@@ -888,6 +889,8 @@ def renderizar_chat(
 
 
 def main() -> None:
+    from src.interface.sidebar import renderizar_sidebar
+
     inicializar_estado()
     st.markdown(_CSS_MINIMO, unsafe_allow_html=True)
     conectar_equipe()

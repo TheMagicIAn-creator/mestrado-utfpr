@@ -19,13 +19,14 @@ na família `conhecimento/ferramentas*`; a interface não implementa regra cient
 
 ---
 
-## `core/` — fundação (9 módulos)
+## `core/` — fundação (10 módulos)
 | Arquivo | O que faz |
 |---|---|
 | `citacao_guarda.py` | Detecta citações sem lastro e monta restrições de fontes recuperadas. |
 | `config.py` | Ponto único de verdade: caminhos, constantes RAG/ML, env. |
 | `conversa_export.py` | Serializa o histórico do chat para exportação e consolidação. |
 | `formatacao.py` | Formatação compartilhada de números, métricas e tabelas Markdown. |
+| `importacao.py` | Reexportações tardias que preservam fachadas sem ciclos entre módulos extraídos. |
 | `logs.py` | Logging rotativo sem emoji e adaptador `print` para os scripts de ML. |
 | `seguranca.py` | Cibersegurança stdlib-only: máscara de segredos, anti path-traversal, pickle verificado por SHA-256, guarda anti-injeção. |
 | `tempo.py` | Relógio com fuso configurável e padrão `America/Sao_Paulo`. |
