@@ -68,9 +68,12 @@ ALVO_PADRAO_PCT = 1.0
 # regime é considerado outro. 1,5 IQR é o critério clássico de outlier de
 # Tukey; aqui aplicado à MEDIANA de um bloco inteiro, não a um ponto.
 LIMITE_DRIFT_IQR = 1.5
-# Meia-largura da busca de F0 em features_ca.estimar_f0 (padrão do parâmetro
-# `faixa_hz`). Com F0 nominal de 60 Hz, a busca cobre [20, 100] Hz.
-FAIXA_BUSCA_F0_HZ = 40.0
+# O teto da busca de F0 NÃO é derivado aqui. Até 09/08/2026 este script
+# calculava `F0 + 40 Hz`, replicando a meia-largura que `estimar_f0` usava
+# quando a busca era [20, 100] Hz. Depois da PR #107 a faixa é declarada
+# explicitamente em `features_ca.F0_MIN/F0_MAX`, e recalcular o teto aqui
+# apontaria para 100 Hz enquanto o estimador já vai até 115 — o diagnóstico de
+# saturação mediria contra uma régua que não existe mais. Fonte única: o módulo.
 
 
 # ============================================================
@@ -197,12 +200,12 @@ def _regime_por_bloco(pasta: Path) -> dict | None:
     if coluna is None:
         return None
 
-    from src.ml.features_ca import F0 as F0_NOMINAL
+    from src.ml.features_ca import F0_MAX
 
-    teto = float(F0_NOMINAL) + FAIXA_BUSCA_F0_HZ
+    teto = float(F0_MAX)
     split = split_temporal_com_purga(
         len(df), train_ratio=TRAIN_RATIO, val_ratio=CALIB_RATIO,
-        purga=PURGA_PADRAO)
+        purge_janelas=PURGA_PADRAO)
     blocos, saturacao = {}, {}
     for nome, chave in (("treino", "treino"), ("calibracao", "val"),
                         ("teste", "teste")):

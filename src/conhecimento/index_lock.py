@@ -15,6 +15,25 @@ _LOCK_THREAD = threading.RLock()
 _ESTADO_THREAD = threading.local()
 _INTERVALO_TENTATIVA_S = 0.05
 
+# Espera máxima por uma escrita concorrente, em segundos.
+#
+# 180 s cobre a indexação de um PDF típico com folga. O que NÃO cobre é
+# reprocessamento da literatura inteira (sinal REPROCESSAR) rodando enquanto
+# alguém solta um PDF em novos_pdfs/: aí o segundo processo espera 3 minutos e
+# levanta TimeoutError — a escrita não corrompe, mas a mensagem chega como
+# falha, quando o certo seria esperar.
+#
+# Configurável por env porque o valor adequado depende do tamanho do acervo, e
+# essa é a única variável em jogo: NÃO existe fila. A serialização é por lock de
+# arquivo, e o segundo a chegar espera ou desiste.
+#
+# Este é o limite honesto da arquitetura de arquivo local (SQLite FTS5 +
+# ChromaDB persistente). Ele é adequado ao uso real — pesquisador único, no PC
+# ou no Streamlit Cloud — e a alternativa (serviço dedicado em processo próprio)
+# só se justifica sob uso multiusuário concorrente, que não é o caso. Ver
+# docs/arquitetura.md.
+TIMEOUT_PADRAO_S = float(os.getenv("AL_IADO_INDEX_LOCK_TIMEOUT_S", "180"))
+
 
 def _caminho_padrao() -> Path:
     configurado = os.getenv("AL_IADO_INDEX_LOCK_PATH")
@@ -99,18 +118,28 @@ def indexacao_ocupada(caminho_lock: Path | str | None = None) -> bool:
 
 @contextmanager
 def lock_indexacao(
-    timeout: float = 180.0,
+    timeout: float | None = None,
     *,
     caminho_lock: Path | str | None = None,
 ):
-    """Serializa uma escrita; suporta chamadas aninhadas na mesma thread."""
-    timeout = float(timeout)
+    """Serializa uma escrita; suporta chamadas aninhadas na mesma thread.
+
+    `timeout` em segundos; `None` usa `TIMEOUT_PADRAO_S`, ajustável por
+    `AL_IADO_INDEX_LOCK_TIMEOUT_S`. Estourar o prazo levanta `TimeoutError` com
+    o valor efetivo na mensagem — sem ele, "indexação ocupada" não diz ao
+    pesquisador o que aumentar.
+    """
+    timeout = TIMEOUT_PADRAO_S if timeout is None else float(timeout)
     if timeout < 0:
         raise ValueError("timeout deve ser maior ou igual a zero")
 
     inicio = time.monotonic()
     if not _LOCK_THREAD.acquire(timeout=timeout):
-        raise TimeoutError("Indexação ocupada: lock de thread não obtido no prazo.")
+        raise TimeoutError(
+            f"Indexação ocupada nesta sessão: lock de thread não obtido em "
+            f"{timeout:.0f}s. Aumente AL_IADO_INDEX_LOCK_TIMEOUT_S se o acervo "
+            f"for grande."
+        )
 
     profundidade = getattr(_ESTADO_THREAD, "profundidade", 0)
     lock_arquivo = None
@@ -121,7 +150,10 @@ def lock_indexacao(
             lock_arquivo = _LockArquivo(caminho)
             if not lock_arquivo.adquirir(restante):
                 raise TimeoutError(
-                    "Indexação ocupada por outro processo: file lock não obtido no prazo."
+                    f"Indexação ocupada por OUTRO PROCESSO: file lock não obtido "
+                    f"em {timeout:.0f}s ({caminho}). Provável causa: "
+                    f"reprocessamento da literatura em andamento. Aguarde ou "
+                    f"aumente AL_IADO_INDEX_LOCK_TIMEOUT_S."
                 )
             _ESTADO_THREAD.lock_arquivo = lock_arquivo
         _ESTADO_THREAD.profundidade = profundidade + 1

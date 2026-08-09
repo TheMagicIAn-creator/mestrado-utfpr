@@ -52,7 +52,9 @@ jobs:
             tests/test_smd.py \
             tests/test_ae_lstm_temporal.py \
             tests/test_comparacao_macro.py \
-            tests/test_proveniencia.py
+            tests/test_proveniencia.py \
+            tests/test_recuperacao_hibrida.py \
+            tests/test_chamadas_dos_scripts.py
           do
             grep -q "$alvo" /tmp/ci-tests.txt || {
               echo "::error::$alvo ficou fora da selecao do CI"; exit 1;
@@ -77,3 +79,41 @@ jobs:
       - name: Lint geral (ruff, nao bloqueante)
         continue-on-error: true
         run: ruff check src tests scripts || true
+
+  # ==========================================================================
+  # Job separado porque instala torch (~200 MB) e nao deve atrasar o feedback
+  # rapido do job leve. NAO treina modelo nem le dataset bruto: constroi uma
+  # rede de 12 features e 6 janelas e roda 12 epocas -- segundos de CPU.
+  #
+  # Existe porque o CI leve nunca instalou torch, e por isso NENHUM teste jamais
+  # instanciou o Autoencoder. Quebrar a construcao da rede, o forward, o loop de
+  # treino ou o ciclo salvar/carregar passava verde e so aparecia numa execucao
+  # local de 8 minutos -- onde o custo de descobrir e maximo.
+  #
+  # Deliberadamente NAO usa mock de torch: mockar torch testaria o mock.
+  # ==========================================================================
+  contrato-torch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Cache do wheel de torch
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-torch-cpu-${{ runner.os }}-${{ hashFiles('requirements-dev.txt') }}
+
+      - name: Instalar dev + torch CPU
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Contrato do Autoencoder e do escore (torch real, dados de brinquedo)
+        run: |
+          python -m pytest -p no:cacheprovider -q -W ignore \
+            tests/test_torch_smoke.py -m "not pesado"

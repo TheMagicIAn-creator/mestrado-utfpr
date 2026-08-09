@@ -102,6 +102,16 @@ def _montar_prompt(pergunta: str,
         "tiver visao; se nao tiver, avise conforme a nota do anexo.\n"
         if bloco_anexos else ""
     )
+    # Fora da f-string de propósito. Escrita inline, a expressão contém "\n",
+    # e barra invertida dentro de expressão de f-string só é legal a partir do
+    # Python 3.12 (PEP 701). O projeto roda 3.13, mas o módulo deixava de
+    # IMPORTAR em 3.11 — e com ele iam junto três arquivos de teste, por
+    # SyntaxError na coleta. Custava a cobertura inteira do agente em qualquer
+    # ambiente um pouco mais velho, sem ganho nenhum de legibilidade.
+    prioridade_anexos = (
+        "- Priorize os ARQUIVOS ANEXADOS desta mensagem; responda a partir deles.\n"
+        if bloco_anexos else ""
+    )
 
     prompt = f"""
 {perfil}
@@ -173,7 +183,7 @@ INSTRUCOES DE RESPOSTA:
 - Português brasileiro, voz natural, precisão técnica.
 - Use emojis com moderação (🔬 📊 ✅).
 - Respeite o ESTADO DA CONVERSA; não cumprimente novamente quando houver histórico.
-{("- Priorize os ARQUIVOS ANEXADOS desta mensagem; responda a partir deles.\n" if bloco_anexos else "")}- Se a pergunta NAO pediu literatura/fontes, nao mencione literatura nem referencias.
+{prioridade_anexos}- Se a pergunta NAO pediu literatura/fontes, nao mencione literatura nem referencias.
 - Cite autor/ano so quando a pergunta pediu literatura/fontes e a evidencia for relevante.
 - Registros do VAULT OBSIDIAN são contexto interno, nunca citação científica
   ou substituto de artefatos atuais. Sessões antigas são registro, não verdade.
