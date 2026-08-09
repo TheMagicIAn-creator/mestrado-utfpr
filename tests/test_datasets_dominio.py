@@ -37,6 +37,8 @@ def test_consultar_datasets_separa_dominio():
     assert "pv farms" in msg and "paderborn" in msg
     assert "stender" in msg and "bearing dataset" in msg
     assert "simulado" in msg and "gpvs-faults" in msg
+    assert "e3" in msg and "bancada" in msg
+    assert "ainda não e3" not in msg and "ainda nao e3" not in msg
     assert "cc" in msg and "ca" in msg
     assert "separação de domínio" in msg or "separacao de dominio" in msg
     assert "weibull físico" in msg and "a_det" in msg

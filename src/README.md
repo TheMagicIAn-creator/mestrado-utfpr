@@ -93,6 +93,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `exec_etapa_isolada.py` | Executa uma etapa pesada do pipeline em subprocesso. |
 | `eda.py` | Análise exploratória do conjunto Stender (Paderborn University; Plotly). |
 | `retroalimentacao_fmeca.py` | Consolida detectabilidade e ponto operacional para a FMECA. |
+| `gpvs.py` | Validação externa E3 de bancada no GPVS-Faults: transferência estrita, adaptação local, PCA e bootstrap por ensaio. |
 | **Comparação acadêmica vigente** | |
 | `macro_comum.py` | Contratos, métricas e saídas compartilhadas do comparativo. |
 | `macro_proposto.py` | Avalia o método proposto no protocolo comparável. |

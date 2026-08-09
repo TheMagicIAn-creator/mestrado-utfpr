@@ -4,14 +4,20 @@ Data: 2026-08-09
 
 Base Git auditada: `main` em `fadf2a1`.
 
+> **Atualizacao posterior no mesmo dia:** o GPVS-Faults foi baixado, auditado e
+> executado em protocolo separado. O resultado E3 de bancada e seus limites
+> estao em `resultados/gpvs/` e `docs/datasets.md`; as recomendacoes abaixo
+> permanecem como registro do estado anterior a essa execucao.
+
 ## Veredito executivo
 
 1. O parecer recebido confunde dois datasets diferentes da Universidade de
    Paderborn. O projeto usa o dataset de inversor IGBT de Stender, nao o
    Bearing DataCenter. A critica de dominio continua parcialmente valida
    porque o inversor aciona um motor, mas nao se trata de falha de rolamento.
-2. O GPVS-Faults e o melhor candidato recebido para validacao externa direta
-   em sistema fotovoltaico conectado a rede. Ele nao substitui dados de vida.
+2. O GPVS-Faults foi o melhor candidato recebido para validacao externa direta
+   em sistema fotovoltaico conectado a rede e foi executado posteriormente no
+   mesmo dia. Ele nao substitui dados de vida.
 3. O PV residencial possui muito mais linhas, mas somente dez blocos de estado
    `Fault` em uma unica serie. Ele pode sustentar deteccao operacional depois
    de saneamento; nao sustenta diagnostico causal, Weibull fisico ou RUL.
@@ -201,6 +207,7 @@ purga e nao sobreposicao.
 3. Nao integrar PMSM derivado nem PV residencial ao resultado principal neste
    estado.
 4. Preparar GPVS-Faults como proxima validacao externa em protocolo separado.
+   **Concluido:** ver `resultados/gpvs/`.
 5. Nao alterar a interpretacao de Weibull para vida fisica.
 6. Regenerar os artefatos atuais e seus manifestos depois das correcoes de
    codigo, preservando a marcacao E2.

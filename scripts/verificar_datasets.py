@@ -69,6 +69,14 @@ DATASETS = [
     },
 ]
 
+_ARQUIVOS_GPVS = [f"F{i}{modo}.csv" for i in range(8) for modo in "LM"]
+_COLUNAS_GPVS = [
+    "Time", "Ipv", "Vpv", "Vdc", "ia", "ib", "ic", "va", "vb", "vc",
+    "Iabc", "If", "Vabc", "Vf",
+]
+_MIN_LINHAS_GPVS = 50_000
+_SHA256_ZIP_GPVS = "88cd20c848fee86752870cf9b198eab45568c31355685328dd75aba982bf1a63"
+
 
 def _contar_linhas(caminho: Path) -> int:
     total = 0
@@ -76,6 +84,90 @@ def _contar_linhas(caminho: Path) -> int:
         for bloco in iter(lambda: f.read(1024 * 1024), b""):
             total += bloco.count(b"\n")
     return total
+
+
+def _verificar_gpvs(base: Path) -> dict:
+    """Valida os 16 ensaios GPVS sem carregar os CSVs completos na memoria."""
+    raiz = base / "gpvs"
+    candidatos = [raiz / "csv" / "CSV_Files", raiz / "csv", raiz]
+    pasta = next((p for p in candidatos if (p / "F0L.csv").exists()), candidatos[0])
+    ausentes = [nome for nome in _ARQUIVOS_GPVS if not (pasta / nome).exists()]
+    info = {
+        "arquivo": "gpvs/csv/CSV_Files/F0L.csv ... F7M.csv",
+        "dominio": "PV conectado a rede",
+        "uso": "validacao experimental externa E3 por ensaio",
+        "presente": len(ausentes) < len(_ARQUIVOS_GPVS),
+        "arquivos_esperados": len(_ARQUIVOS_GPVS),
+        "arquivos_presentes": len(_ARQUIVOS_GPVS) - len(ausentes),
+    }
+    if not info["presente"]:
+        return info
+
+    avisos = []
+    if ausentes:
+        avisos.append(f"ensaios ausentes: {ausentes}")
+    hashes = {}
+    linhas = {}
+    periodos_us = []
+    try:
+        import numpy as np
+        import pandas as pd
+
+        for nome in _ARQUIVOS_GPVS:
+            caminho = pasta / nome
+            if not caminho.exists():
+                continue
+            n_linhas = max(0, _contar_linhas(caminho) - 1)
+            linhas[nome] = n_linhas
+            hashes[nome] = sha256_arquivo(caminho)
+            if n_linhas < _MIN_LINHAS_GPVS:
+                avisos.append(
+                    f"{nome} tem {n_linhas} linhas; minimo {_MIN_LINHAS_GPVS}"
+                )
+            amostra = pd.read_csv(caminho, nrows=2_000)
+            faltantes = [c for c in _COLUNAS_GPVS if c not in amostra.columns]
+            if faltantes:
+                avisos.append(f"{nome}: colunas ausentes {faltantes}")
+                continue
+            valores = amostra[_COLUNAS_GPVS].to_numpy(dtype=float)
+            if not np.isfinite(valores).all():
+                avisos.append(f"{nome}: NaN ou infinito na amostra inicial")
+            dt = np.diff(amostra["Time"].to_numpy(dtype=float))
+            if np.any(dt <= 0):
+                avisos.append(f"{nome}: Time nao estritamente crescente")
+            else:
+                periodo_us = float(np.median(dt) * 1e6)
+                periodos_us.append(periodo_us)
+                if not 90.0 <= periodo_us <= 110.0:
+                    avisos.append(
+                        f"{nome}: periodo observado {periodo_us:.4f} us fora de ~100 us"
+                    )
+    except Exception as exc:  # noqa: BLE001
+        avisos.append(f"falha ao validar GPVS: {exc}")
+
+    zip_path = raiz / "CSV_Files.zip"
+    zip_hash = sha256_arquivo(zip_path) if zip_path.exists() else None
+    if zip_hash and zip_hash != _SHA256_ZIP_GPVS:
+        avisos.append("CSV_Files.zip nao coincide com o SHA-256 oficial")
+
+    info.update({
+        "linhas_por_ensaio": linhas,
+        "linhas_total": int(sum(linhas.values())),
+        "sha256_por_ensaio": hashes,
+        "zip_sha256": zip_hash,
+        "zip_sha256_oficial": _SHA256_ZIP_GPVS,
+        "sampling_period_us_min": min(periodos_us) if periodos_us else None,
+        "sampling_period_us_max": max(periodos_us) if periodos_us else None,
+        "readme_sampling_period_us": 9.9989,
+        "sampling_note": (
+            "CSV observado ~100 us (~10 kHz), dez vezes o valor declarado no ReadMe"
+        ),
+        "utilizavel": not avisos,
+    })
+    if avisos:
+        info["avisos"] = avisos
+        info["aviso"] = "; ".join(avisos)
+    return info
 
 
 def verificar(silencioso: bool = False) -> dict:
@@ -183,6 +275,22 @@ def verificar(silencioso: bool = False) -> dict:
                          f"sha={str(info.get('sha256'))[:12]}…")
             print(f"  {marca} {ds['nome']:20s} [{ds['dominio']}] {extra}")
             for aviso in info.get("avisos", []):
+                print(f"     → {aviso}")
+
+    gpvs = _verificar_gpvs(BASE)
+    registros["GPVS-Faults experimental"] = gpvs
+    if not silencioso:
+        if not gpvs["presente"]:
+            print("  ❌ GPVS-Faults experimental [PV/rede] AUSENTE (baixe localmente)")
+        elif gpvs.get("utilizavel"):
+            print(
+                "  ✅ GPVS-Faults experimental [PV/rede] "
+                f"{gpvs['arquivos_presentes']}/16 ensaios | "
+                f"{gpvs['linhas_total']} linhas"
+            )
+        else:
+            print("  ❌ GPVS-Faults experimental [PV/rede] NAO UTILIZAVEL")
+            for aviso in gpvs.get("avisos", []):
                 print(f"     → {aviso}")
 
     if any(r["presente"] for r in registros.values()):

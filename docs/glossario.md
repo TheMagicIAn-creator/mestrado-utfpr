@@ -119,8 +119,8 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
 
 - **E0** hipótese · **E1** benchmark exploratório · **E2** validação
   sintética orientada pela FMECA · **E3** validação experimental externa
-  (ainda não realizada). Nenhum resultado E1/E2 é prova de desempenho
-  industrial.
+  (realizada no GPVS-Faults em bancada; campo ainda não realizado). Nenhum
+  resultado E1/E2 nem E3 de bancada é prova de desempenho industrial de campo.
 
 ## Sistema/agente (RAG)
 

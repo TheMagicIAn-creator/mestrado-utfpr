@@ -15,6 +15,12 @@ o commit. Nunca editar linhas antigas — este arquivo é só-acréscimo.
 | 2026-06-17 | 2.0785 | 150 | Reexecução após curadoria/refino do treino | 0ce1e77 | SUBSTITUÍDA — artefatos removidos no reset de 2026-07-07 (histórico recuperável no git). Achados da execução: SMD do desbalanceamento = null (não detectada em nenhuma severidade — limitação, ver evidence_levels.md); KS rejeitava Weibull nas 3 famílias. |
 | 2026-07-07 | — | — | RESET: artefatos zerados para reexecução com semente determinística do Weibull, estilo gráfico único e comparação com a literatura | — | Próxima execução completa do pipeline + experimentos gera os artefatos vigentes. Registrar aqui ao rodar. |
 
+## Validações externas
+
+| Data | Dataset | Protocolo | Evidência | Base Git | Observações |
+|---|---|---|---|---|---|
+| 2026-08-09 | GPVS-Faults v1 | AE estrito F0 + AE adaptativo local (5 sementes) + PCA | E3 de bancada | `b0dbe7c` + hashes no manifesto | 14 ensaios de falha; transferência F0 invalidada por deslocamento; métricas vigentes em `resultados/gpvs/validacao_gpvs_e3.json`. |
+
 ## Divergências conhecidas e resolvidas
 
 - **Weibull irreprodutível entre execuções (até 2026-07-06).** O jitter dos
