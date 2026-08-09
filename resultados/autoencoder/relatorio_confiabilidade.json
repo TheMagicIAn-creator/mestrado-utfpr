@@ -2,116 +2,135 @@
   "evidence_level": "E2",
   "confiabilidade": {
     "contator_ac": {
-      "beta": 4.887112450140524,
-      "eta": 0.16297518000382144,
+      "beta": 3.147690793393853,
+      "eta": 0.47482186651960406,
       "marcos": {
-        "b1": 0.06358110139465796,
-        "b10": 0.10283525009699998,
-        "vida_mediana": 0.1511997963268665,
-        "mttf": 0.14944105310569242,
-        "eta": 0.16297518000382144,
+        "q01": 0.11011260567888724,
+        "q10": 0.23229620207186644,
+        "q50": 0.42263167231535276,
+        "media": 0.42493993020167947,
+        "b1": 0.11011260567888724,
+        "b10": 0.23229620207186644,
+        "vida_mediana": 0.42263167231535276,
+        "mttf": 0.42493993020167947,
+        "eta": 0.47482186651960406,
         "R_em_eta": 0.36787944117144233,
-        "nota_eta": "η é a vida característica: R(η) = e⁻¹ ≈ 0,368 para qualquer β, ou seja 63,2% já falharam"
+        "nota_eta": "eta e a escala caracteristica: R(eta) = exp(-1) aprox. 0,368 para qualquer beta; 63,2% dos eventos modelados ja ocorreram"
       },
       "interpretacao": {
-        "beta": 4.887112450140524,
-        "regime": "desgaste",
-        "leitura": "taxa de falha crescente: o risco aumenta com a idade, e existe intervalo de substituição preventiva que compensa",
-        "conclusivo": true
+        "beta": 3.147690793393853,
+        "regime": "intensidade_deteccao_crescente",
+        "leitura": "a intensidade parametrica do primeiro cruzamento aumenta com a magnitude injetada. Como o eixo nao e idade, isso NAO significa desgaste nem autoriza intervalo de manutencao",
+        "conclusivo": true,
+        "eixo_tempo": false,
+        "inferencia_manutencao_autorizada": false
       },
       "R_em_marcos": {
-        "0.1": 0.9,
-        "0.2": 0.36787944117144233
+        "0.1": 0.99,
+        "0.2": 0.9,
+        "0.4": 0.49999999999999994,
+        "0.5": 0.36787944117144233
       },
-      "horizonte_observado": 0.226890756302521
+      "horizonte_observado": 0.6722689075630253
+    },
+    "igbt": {
+      "beta": 6.578333238986836,
+      "eta": 1.1122903384354064,
+      "diagnostico": {
+        "n_pontos": 12,
+        "r2": 0.9472827170648965,
+        "rmse": 0.19957360259454288,
+        "metodo_posicoes": "NIST/SEMATECH e-Handbook, secao 8.2.1.5: Kaplan-Meier modificado"
+      },
+      "sintese_parametrica_recomendada": false,
+      "margem_restrita_inicial": 0.9414475467606397,
+      "horizonte_observado": 1.0
     },
     "fusivel_ac": {
-      "beta": 6.089055181478205,
-      "eta": 0.647928255313188,
-      "marcos": {
-        "b1": 0.304387525718829,
-        "b10": 0.44773618742515986,
-        "vida_mediana": 0.6100786535957831,
-        "mttf": 0.601584763541067,
-        "eta": 0.647928255313188,
-        "R_em_eta": 0.36787944117144233,
-        "nota_eta": "η é a vida característica: R(η) = e⁻¹ ≈ 0,368 para qualquer β, ou seja 63,2% já falharam"
+      "beta": 8.599254210113846,
+      "eta": 0.8963343594794578,
+      "diagnostico": {
+        "n_pontos": 30,
+        "r2": -0.8426206487216805,
+        "rmse": 1.5558271839888902,
+        "metodo_posicoes": "NIST/SEMATECH e-Handbook, secao 8.2.1.5: Kaplan-Meier modificado"
       },
-      "interpretacao": {
-        "beta": 6.089055181478205,
-        "regime": "desgaste",
-        "leitura": "taxa de falha crescente: o risco aumenta com a idade, e existe intervalo de substituição preventiva que compensa",
-        "conclusivo": true
-      },
-      "R_em_marcos": {
-        "0.3": 0.99,
-        "0.4": 0.8999999999999999,
-        "0.6": 0.36787944117144233
-      },
-      "horizonte_observado": 0.7815126050420168
+      "sintese_parametrica_recomendada": false,
+      "margem_restrita_inicial": 0.8465708864190838,
+      "horizonte_observado": 1.0
     }
   },
   "ponto_de_operacao": {
-    "y_dec": 5.572588622195299,
+    "y_dec": 2.5828206539154053,
     "normalidade": {
       "nome": "escore saudável (teste)",
-      "n": 39,
-      "assimetria": 0.6944004580892135,
-      "curtose_excesso": 0.34820795003550886,
+      "n": 60,
+      "assimetria": 4.710303026565026,
+      "curtose_excesso": 25.875521493380397,
       "shapiro_bruto": {
-        "W": 0.9619388057982536,
-        "p": 0.20687035065034065,
-        "normal": true
-      },
-      "shapiro_log": {
-        "W": 0.8918746959017412,
-        "p": 0.0013010732415634602,
+        "W": 0.48482394918103344,
+        "p": 3.4166664217840215e-13,
         "normal": false
       },
+      "shapiro_log": {
+        "W": 0.9617734815596127,
+        "p": 0.05746592244170662,
+        "normal": true
+      },
       "vale": true,
-      "melhor_escala": "bruto",
+      "melhor_escala": "log",
       "nota": "se nenhuma escala é normal, os limites de tolerância são aproximações; confira se a conclusão se sustenta também pelo quantil empírico antes de reportá-la"
     },
     "limite_pof": {
-      "limite": 6.224892920122885,
-      "media": 2.37042185320304,
-      "desvio": 1.306291196041705,
-      "n": 39,
-      "k1": 2.950698189346739,
+      "limite": 2.5915554971756745,
+      "media": 0.4780825495099028,
+      "desvio": 0.7529147665057975,
+      "n": 60,
+      "k1": 2.807054718124588,
       "p": 0.99,
       "confianca": 0.95,
       "pof_alvo_pct": 1.0000000000000009
     },
-    "limite_empirico": 5.726492929458616,
-    "limite_log": 16.70344456078444,
+    "limite_empirico": 3.571058788299551,
+    "limite_log": 3.7611966112908304,
     "todos_acima_do_limiar": true,
+    "excedencia_observada": {
+      "count": 1,
+      "n": 60,
+      "rate": 0.016666666666666666,
+      "ci95_wilson": [
+        0.0029481597947862495,
+        0.08855129727590061
+      ],
+      "conclusao": "inconclusiva_para_meta_1pct"
+    },
     "deriva": {
       "derivou": true,
       "invalidou": true,
-      "leitura": "INVALIDAÇÃO: o piso de falso positivo em campo (6.2249) ultrapassa o próprio limiar adotado (5.5726). O requisito de POF não está sendo cumprido no bloco de teste. Pela fonte, a resposta correta é investigar a causa — não reapertar o limiar, que trataria o sintoma.",
-      "gatilho": 5.636842477940295,
+      "leitura": "INVALIDAÇÃO: o piso de falso positivo em campo (2.5916) ultrapassa o próprio limiar adotado (2.5828). O requisito de POF não está sendo cumprido no bloco de teste. Pela fonte, a resposta correta é investigar a causa — não reapertar o limiar, que trataria o sintoma.",
+      "gatilho": 2.344612091236942,
       "margem": 0.1,
       "calibracao": {
-        "limite": 5.324552806391865,
-        "media": 2.2016560909075613,
-        "desvio": 1.0583585697646996,
-        "n": 39,
-        "k1": 2.950698189346739,
+        "limite": 2.175527600747351,
+        "media": 0.4846826958514395,
+        "desvio": 0.5785299449981032,
+        "n": 42,
+        "k1": 2.922657538325791,
         "p": 0.99,
         "confianca": 0.95,
         "pof_alvo_pct": 1.0000000000000009
       },
       "campo": {
-        "limite": 6.224892920122885,
-        "media": 2.37042185320304,
-        "desvio": 1.306291196041705,
-        "n": 39,
-        "k1": 2.950698189346739,
+        "limite": 2.5915554971756745,
+        "media": 0.4780825495099028,
+        "desvio": 0.7529147665057975,
+        "n": 60,
+        "k1": 2.807054718124588,
         "p": 0.99,
         "confianca": 0.95,
         "pof_alvo_pct": 1.0000000000000009
       },
-      "y_dec": 5.572588622195299,
+      "y_dec": 2.5828206539154053,
       "fonte": "NASA/TM-20210018515 (LS-POD); MIL-HDBK-1823A"
     }
   }
