@@ -197,6 +197,7 @@ def test_relatorio_monta_sem_rodar_o_pipeline():
         a_det_unidade=A_DET_UNIDADE, ttf_unidade=TTF_UNIDADE,
         tempo_fisico_calibrado=False, tempo_fisico_nota=TEMPO_FISICO_NOTA,
         min_eventos_weibull=10, max_censura_rul_pct=50.0,
+        min_r2_papel_weibull=0.90,
         persistencia_cruzamento=3, json_seguro=_json_seguro,
     )
 
@@ -209,6 +210,9 @@ def test_relatorio_monta_sem_rodar_o_pipeline():
     assert len(linhas) == 1
     assert linhas[0]["pod_mon_no_teto"] == pytest.approx(25 / 30)
     assert linhas[0]["n_censura_genuina"] == 0
+    assert linhas[0]["margem_restrita_disponivel"] is True
+    assert linhas[0]["margem_restrita_horizonte"] == linhas[0]["rul_restrita_horizonte"]
+    assert linhas[0]["margem_restrita_inicial"] == linhas[0]["rul_restrita_inicial"]
 
 
 def test_relatorio_e_serializavel_em_json():
@@ -237,6 +241,7 @@ def test_relatorio_e_serializavel_em_json():
         a_det_unidade=A_DET_UNIDADE, ttf_unidade=TTF_UNIDADE,
         tempo_fisico_calibrado=False, tempo_fisico_nota=TEMPO_FISICO_NOTA,
         min_eventos_weibull=10, max_censura_rul_pct=50.0,
+        min_r2_papel_weibull=0.90,
         persistencia_cruzamento=3, json_seguro=_json_seguro,
     )
     texto = json.dumps(rel, ensure_ascii=False, allow_nan=False)

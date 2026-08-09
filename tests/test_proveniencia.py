@@ -205,6 +205,8 @@ def test_pipeline_captura_parametros_das_etapas():
     assert rul["ttf_unidade"] == rul["a_det_unidade"]  # alias
     assert rul["tempo_fisico_calibrado"] is False
     assert rul["persistencia_cruzamento"] > 0
+    assert rul["n_bootstrap"] >= 1000
+    assert rul["min_r2_papel_weibull"] == 0.90
     assert get_stage("rul_weibull").evidence_level == "E2"
 
 
@@ -234,6 +236,7 @@ def test_pipeline_registra_apenas_entradas_cientificas_reais():
     assert not any(key.endswith(".png") for key in inputs)
 
     validacao = _inputs_da_etapa(get_stage("validacao"))
+    assert any("features_paderborn.parquet" in key for key in validacao)
     assert any("modelo_autoencoder.pt" in key for key in validacao)
     assert any("estatistica_residuo.npz" in key for key in validacao)
     assert not any("injecao_falhas_resultados.png" in key for key in validacao)
@@ -256,6 +259,10 @@ def test_pipeline_registra_dependencias_cientificas():
 
     deps_rul = _code_dependencies(get_stage("rul_weibull"))
     assert "src.ml.graficos_rul" in deps_rul
+    assert "src.ml.confiabilidade" in deps_rul
+    assert "src.ml.relatorio_weibull" in deps_rul
+    assert "src.ml.split_temporal" in deps_rul
+    assert "scripts.relatorio_confiabilidade" in deps_rul
 
 
 def test_status_markdown_usa_estado_trivalorado():

@@ -121,9 +121,10 @@ def test_alta_censura_sinaliza_incerteza_sem_ocultar_rul_parametrica():
 
     ajuste = ajustar_weibull(tempos, eventos, n_boot=0)
     assert ajuste["fit_converged"]
-    assert ajuste["rul_reportavel"]
+    assert not ajuste["rul_reportavel"]
     assert ajuste["rul_parametrica_alta_incerteza"]
     assert ajuste["rul_restrita_disponivel"]
+    assert not ajuste["margem_parametrica_reportavel"]
 
 
 def test_rul_declara_magnitude_de_injecao_sem_calibracao_fisica():

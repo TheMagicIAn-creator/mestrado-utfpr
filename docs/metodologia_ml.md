@@ -239,24 +239,34 @@ e split para 1,67% antes da regeneração completa. `limiar.json` registra
 `score_standardization_source = bloco_treino_modelo`. Mesmo corrigida, a
 ablação perdeu sensibilidade no ponto operacional e não substitui o MSE p99.
 
-## 8. Weibull e RUL sintéticos
+## 8. Weibull da detectabilidade E2 (não é RUL nem confiabilidade física)
 
-- Uma trajetória mantém a **mesma janela-base** enquanto a severidade cresce;
-  não mistura ativos/regimes operacionais a cada passo. Realizações estocásticas
-  de uma mesma trajetória também ficam congeladas ao longo da severidade.
-- Janelas do holdout que já excedem o limiar saudável em `t=0` são excluídas e
-  contabilizadas. Um evento exige três passos consecutivos acima do limiar,
-  reduzindo cruzamentos isolados por ruído.
-- Cruzamentos persistentes do limiar são eventos; trajetórias sem cruzamento permanecem
-  **censuradas à direita**. Censura nunca recebe jitter nem vira falha.
-- O ajuste de dois parâmetros usa máxima verossimilhança censurada e intervalos
-  bootstrap por trajetória. Kaplan-Meier é exibido junto da curva paramétrica.
-- A **RUL restrita por Kaplan-Meier** é calculada para todas as famílias até o
-  horizonte observado. A RUL paramétrica só aparece quando há eventos suficientes;
-  censura acima de 50% não apaga a curva, mas a marca como extrapolação de alta
-  incerteza. Sem eventos suficientes, beta, eta, MTTF e B10 permanecem nulos.
-- MTTF, B10 e ambas as formas de RUL estão em **passos sintéticos E2**. Mesmo com ajuste
-  convergente, não equivalem a horas, ciclos ou vida física de campo.
+- Cada trajetória mantém a **mesma janela-base** enquanto a magnitude da
+  assinatura sintética cresce. A saída `a_det` é a primeira magnitude em que o
+  detector confirma três excedências consecutivas. Cada trajetória representa
+  uma janela do holdout, **não um ativo acompanhado até falha**.
+- Janelas que já excedem o limiar em `a=0` são excluídas e contabilizadas. As
+  restantes não compartilham amostras brutas, mas independência temporal não é
+  presumida.
+- Não detecção em `a=1` é **indetectabilidade no teto**, não censura física. O
+  MLE a trata como censura à direita apenas sob a hipótese analítica de que a
+  assinatura poderia exceder a nominal.
+- A CDF empírica e o papel de Weibull usam Kaplan-Meier modificado com o
+  tamanho total da amostra. Normalizar postos somente por `n_eventos` é proibido:
+  faria 12 detecções em 31 janelas parecerem quase 100% da população.
+- O ajuste Weibull 2P é uma descrição exploratória da variabilidade do primeiro
+  cruzamento. A síntese paramétrica exige, além de convergência, indetectabilidade
+  de no máximo 50% e triagem visual `R²pp >= 0,90`. O corte de R² é uma política
+  descritiva, não teste formal de aderência.
+- `S_D(a)=P(a_det>a)` é curva de **não detecção**; `F_D(a)` é probabilidade de
+  detectar até a magnitude `a`; `h_D(a)` é intensidade de primeiro cruzamento
+  por unidade de magnitude. Nenhuma é sobrevivência ou taxa de falha do componente.
+- Os nomes canônicos são média paramétrica de `a_det`, `a10/a50` e margem
+  residual de magnitude. `MTTF`, `B10` e `RUL` permanecem apenas como aliases
+  legados de compatibilidade e não podem aparecer como conclusões acadêmicas.
+- O bootstrap usa 1.000 reamostragens de janelas. Seus ICs são condicionais ao
+  experimento E2, pois a ausência de amostras compartilhadas não prova
+  independência serial.
 
 ## 9. Métricas
 
@@ -269,7 +279,8 @@ precision, recall, f1, **MCC**, AUC, **specificity** (= TN/(TN+FP) no binário) 
 
 - **Manifesto v2 por etapa** (`proveniencia.py`): `code_sha256` normalizado para
   LF, `code_dependencies`, `parameters`, hash das entradas científicas
-  efetivamente lidas pela etapa (incluindo o CSV bruto em `features_ca`),
+  efetivamente lidas pela etapa (incluindo o CSV bruto e o parquet de features
+  que define os índices do holdout nas etapas E2),
   `output_artifacts` e `git_commit`. Estados **ready / stale / pending**
   (`estado_pipeline()`), exibidos no chat e na sidebar. Um artefato **sem
   manifesto = não verificado (pending)**; manifesto v1 = **stale** até
@@ -278,7 +289,7 @@ precision, recall, f1, **MCC**, AUC, **specificity** (= TN/(TN+FP) no binário) 
 - Ordem de execução (`depends_on`) e dependência científica (`input_artifacts`)
   são contratos distintos. Alterar uma figura ou tabela de apresentação não
   invalida validação/Weibull que consomem apenas modelo, scaler, sua verificação,
-  estatística de resíduos, limiar e dados brutos.
+  estatística de resíduos, limiar, dados brutos e o parquet de features.
 - **Caminhos relativos** nos artefatos (`to_project_relative_path`), resolvidos
   para absoluto só na interface.
 - **Datasets** validados por `scripts/verificar_datasets.py` (SHA-256, linhas);

@@ -1,6 +1,6 @@
 """
 rul_weibull.py — Al IAdo PV / Fase 5
-Estimativa de Vida Útil Remanescente (RUL) com Análise de Weibull.
+Modelagem exploratória da magnitude de primeiro cruzamento com Weibull 2P.
 
 Fundamentação metodológica:
   O dataset de Paderborn contém apenas dados saudáveis (sem falhas reais).
@@ -8,16 +8,16 @@ Fundamentação metodológica:
   MAGNITUDE da assinatura de falha, com trajetórias sintéticas fundamentadas na
   FMECA do TCC (Torres, 2024).
 
-  Cada trajetória simula um inversor cuja falha se agrava: a magnitude injetada
+  Cada trajetória usa uma janela do holdout cuja assinatura se agrava: a magnitude injetada
   `a_inj` cresce de 0 a 1,0 em N_STEPS pontos sobre a MESMA janela saudável.
   Registra-se `a_det`, a magnitude em que o Autoencoder confirma a anomalia
   (escore > limiar por PERSISTENCIA_CRUZAMENTO avaliações seguidas).
 
-  ⚠️  O EIXO NÃO É TEMPO. Sem dados run-to-failure nem taxa de degradação de
+  O EIXO NÃO É TEMPO. Sem dados run-to-failure nem taxa de degradação de
   campo, não existe conversão de magnitude para hora, dia ou ano — e inventá-la
-  seria inventar o número mais importante do capítulo. β é adimensional; η,
-  MTTF e B10 saem em FRAÇÃO DA ASSINATURA NOMINAL. Os nomes MTTF/B10 são
-  mantidos porque são os da distribuição, não porque haja tempo envolvido.
+  seria inventar o número mais importante do capítulo. beta é adimensional;
+  eta, média de a_det e a10 saem em FRAÇÃO DA ASSINATURA NOMINAL. MTTF/B10/RUL
+  permanecem somente como aliases de compatibilidade.
 
   Ganho de ter renomeado: `a_det` e a SMD da injeção (`a_inj,95`) passam a
   compartilhar a unidade, e podem ser lidos na mesma régua.
@@ -28,20 +28,17 @@ Fundamentação metodológica:
 Distribuição de Weibull de 2 parâmetros:
   PDF : f(t) = (β/η) × (t/η)^(β−1) × exp(−(t/η)^β)
   CDF : F(t) = 1 − exp(−(t/η)^β)
-  R(t): R(t) = exp(−(t/η)^β)         ← Função de Confiabilidade
-  h(t): h(t) = (β/η) × (t/η)^(β−1)  ← Taxa de Falha
+  S_D(a): exp(−(a/η)^β)              probabilidade de ainda não detectar
+  h_D(a): (β/η) × (a/η)^(β−1)       intensidade de primeiro cruzamento
 
   Parâmetros:
-    β (shape)  — inclinação de Weibull
-                 β < 1: mortalidade infantil
-                 β = 1: falhas aleatórias (exponencial)
-                 β > 1: desgaste (esperado para degradação gradual)
-    η (scale)  — vida característica: a em que R(a) = e^−1 ≈ 36,8%
+    β (shape)  — forma da intensidade de detecção; não indica desgaste
+    η (scale)  — magnitude característica: S_D(η) = e^−1 ≈ 36,8%
 
-"RUL" neste eixo:
+Margem residual neste eixo:
   Para uma falha já agravada até a magnitude `a_atual` sem ter sido detectada,
-  a "RUL" é a margem de magnitude ainda esperada até a detecção:
-    RUL = E[a_det − a_atual | a_det > a_atual]
+  a margem é a magnitude ainda esperada até a detecção:
+    margem = E[a_det − a_atual | a_det > a_atual]
   calculada com a Weibull truncada em `a_atual`. É margem de assinatura, não
   vida remanescente em tempo.
 
@@ -50,10 +47,11 @@ Entrada:
   resultados/autoencoder/scaler.pkl
   resultados/autoencoder/limiar.json
   dados/brutos/Inverter_Data_Set.csv
+  dados/processados/features_paderborn.parquet
 
 Saída:
   resultados/autoencoder/weibull_ttf.png            (histogramas de a_det)
-  resultados/autoencoder/weibull_confiabilidade.png (R(a) e h(a))
+  resultados/autoencoder/weibull_confiabilidade.png (S_D(a) e h_D(a))
   resultados/autoencoder/weibull_distribuicao.png   (f, F e papel de Weibull)
   resultados/autoencoder/weibull_rul.png
   resultados/autoencoder/weibull_results.json
@@ -106,6 +104,10 @@ from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas
 from src.ml.injecao_falhas import (
     FUNCOES_FALHA, FALHAS,
 )
+from src.ml.confiabilidade import curva_kaplan_meier, margem_restrita_km
+
+# Alias histórico: a grandeza é margem residual em magnitude, não RUL.
+rul_restrita_km = margem_restrita_km
 
 if TYPE_CHECKING:
     import torch
@@ -118,7 +120,7 @@ ARQUIVO_CSV = RAIZ / "dados" / "brutos" / "Inverter_Data_Set.csv"
 PASTA_AE    = RAIZ / "resultados" / "autoencoder"
 
 # ── Parâmetros de simulação ───────────────────────────────────
-N_TRAJ  = 100    # teto; o n efetivo não excede janelas independentes do holdout
+N_TRAJ  = 100    # teto; o n efetivo não excede janelas do holdout
 N_STEPS = 120    # pontos da grade de magnitude por trajetória (a_inj 0→1,0)
 
 # ── O EIXO NÃO É TEMPO ──────────────────────────────────────────────────────
@@ -132,10 +134,10 @@ N_STEPS = 120    # pontos da grade de magnitude por trajetória (a_inj 0→1,0)
 # O eixo passa a se chamar `a_det`, na mesma família de `a_inj` (a magnitude
 # injetada, src/ml/injecao_falhas.py) e do tamanho de defeito `a` da curva
 # POD(a) do MIL-HDBK-1823A. Ganho concreto: `a_det` e a SMD passam a estar na
-# MESMA unidade, então β/η/B10 do Weibull e a SMD da injeção podem ser lidos na
+# MESMA unidade, então beta/eta/a10 do Weibull e a SMD podem ser lidos na
 # mesma régua. Em passos isso era impossível.
 #
-# Leitura de B10 = 0,12: em 10% das trajetórias a falha já é detectada com 12%
+# Leitura de a10 = 0,12: em 10% das trajetórias a falha já é detectada com 12%
 # da assinatura nominal. Antes se lia "B10 = 14 passos", que não significa nada
 # fora do experimento.
 A_DET_UNIDADE = "a_det_fracao_da_assinatura_nominal"
@@ -153,12 +155,14 @@ TEMPO_FISICO_NOTA = (
     "detecção se confirma, em [0; 1]. NÃO é tempo. A janela de aquisição tem "
     "duração física conhecida, mas o avanço de magnitude não tem taxa de campo "
     "calibrada; portanto não converter para horas, dias ou anos. β é "
-    "adimensional; η, MTTF e B10 estão em fração de assinatura."
+    "adimensional; eta, media(a_det) e a10 estão em fração de assinatura; "
+    "MTTF/B10/RUL são apenas aliases legados."
 )
 BATCH_INFERENCIA = 16
-N_BOOTSTRAP = 250
+N_BOOTSTRAP = 1000
 MIN_EVENTOS_WEIBULL = 10
 MAX_CENSURA_RUL_PCT = 50.0
+MIN_R2_PAPEL_WEIBULL = 0.90
 PERSISTENCIA_CRUZAMENTO = 3
 
 
@@ -186,6 +190,9 @@ def metadados_tempo_rul() -> dict:
         "rul_unidade": A_DET_UNIDADE,
         "eixo": "magnitude_da_assinatura_injetada",
         "eixo_nao_e_tempo": True,
+        "grandeza_primaria": "magnitude_primeiro_cruzamento_detector",
+        "rul_fisica_disponivel": False,
+        "confiabilidade_fisica_disponivel": False,
         "tempo_fisico_calibrado": TEMPO_FISICO_CALIBRADO,
         "passo_tempo_fisico_horas": None,
         "fs_hz": FS,
@@ -372,80 +379,6 @@ gerar_ttf = gerar_a_det
 # AJUSTE DE WEIBULL
 # ============================================================
 
-def curva_kaplan_meier(
-    ttfs: np.ndarray, eventos: np.ndarray
-) -> tuple[np.ndarray, np.ndarray]:
-    """Curva de Kaplan-Meier simples, preservando censura à direita."""
-    tempos = np.asarray(ttfs, dtype=float)
-    obs = np.asarray(eventos, dtype=bool)
-    pontos_t = [0.0]
-    pontos_s = [1.0]
-    sobrevivencia = 1.0
-    for t in np.unique(tempos):
-        em_risco = int(np.sum(tempos >= t))
-        falhas = int(np.sum((tempos == t) & obs))
-        if em_risco and falhas:
-            sobrevivencia *= 1.0 - falhas / em_risco
-        pontos_t.append(float(t))
-        pontos_s.append(float(sobrevivencia))
-    return np.asarray(pontos_t), np.asarray(pontos_s)
-
-
-def rul_restrita_km(
-    t_atual: float,
-    ttfs: np.ndarray,
-    eventos: np.ndarray,
-    horizonte: float | None = None,
-) -> float:
-    """RUL média restrita até o horizonte observado, estimada por Kaplan-Meier.
-
-    Diferentemente da extrapolação Weibull, esta medida não pressupõe uma forma
-    paramétrica além do último acompanhamento. Por isso continua informativa
-    com alta censura, desde que seja apresentada explicitamente como RUL
-    restrita ao horizonte sintético do experimento.
-    """
-    tempos = np.asarray(ttfs, dtype=float)
-    obs = np.asarray(eventos, dtype=bool)
-    if len(tempos) == 0 or len(tempos) != len(obs):
-        return float("nan")
-
-    tau = float(np.max(tempos) if horizonte is None else horizonte)
-    t0 = float(max(t_atual, 0.0))
-    if not np.isfinite(tau) or t0 >= tau:
-        return 0.0
-
-    sobrevivencia = 1.0
-    inicio = 0.0
-    area = 0.0
-    sobrevivencia_t0: float | None = None
-
-    for tempo in np.unique(tempos):
-        fim = min(float(tempo), tau)
-        if fim > inicio:
-            if inicio <= t0 < fim:
-                sobrevivencia_t0 = sobrevivencia
-            area += sobrevivencia * max(fim - max(inicio, t0), 0.0)
-        if tempo >= tau:
-            inicio = tau
-            break
-
-        em_risco = int(np.sum(tempos >= tempo))
-        eventos_t = int(np.sum((tempos == tempo) & obs))
-        if em_risco > 0:
-            sobrevivencia *= 1.0 - eventos_t / em_risco
-        inicio = float(tempo)
-
-    if inicio < tau:
-        if inicio <= t0 < tau:
-            sobrevivencia_t0 = sobrevivencia
-        area += sobrevivencia * max(tau - max(inicio, t0), 0.0)
-
-    if sobrevivencia_t0 is None:
-        sobrevivencia_t0 = sobrevivencia
-    if sobrevivencia_t0 <= 0:
-        return 0.0
-    return float(max(area / sobrevivencia_t0, 0.0))
-
 
 def classificar_desfechos(a_dets: np.ndarray, eventos: np.ndarray) -> dict:
     """Separa INDETECTABILIDADE NO TETO de censura à direita genuína.
@@ -492,7 +425,7 @@ def classificar_desfechos(a_dets: np.ndarray, eventos: np.ndarray) -> dict:
             "em a_inj = 1,0. Isso PRESSUPÕE que a assinatura real possa exceder "
             "a nominal; dentro da grade varrida elas são simplesmente NÃO "
             "DETECTADAS. Sem essa hipótese, o Weibull descreve apenas a "
-            "subpopulação detectável, e η/MTTF/B10 valem só para ela."
+            "subpopulação detectável; qualquer resumo paramétrico é condicional."
         ),
     }
 
@@ -559,8 +492,17 @@ def ajustar_weibull(
         km_t, km_s = curva_kaplan_meier(tempos, obs)
         weibull_s = weibull_min.sf(km_t, beta, loc=0, scale=eta)
         km_rmse = float(np.sqrt(np.mean((km_s - weibull_s) ** 2)))
+        from src.ml import confiabilidade as cf
+
+        diagnostico_papel = cf.diagnostico_papel_weibull(
+            tempos, obs, beta, eta
+        )
     else:
         mttf = b10 = km_rmse = float("nan")
+        diagnostico_papel = {
+            "n_pontos": int(obs.sum()), "r2": None, "rmse": None,
+            "metodo_posicoes": None,
+        }
 
     amostras_boot: list[tuple[float, float, float, float]] = []
     if convergiu and n_boot > 0:
@@ -593,6 +535,17 @@ def ajustar_weibull(
     rul_restrita_inicial = rul_restrita_km(0.0, tempos, obs, horizonte)
     alta_censura = censura_pct > MAX_CENSURA_RUL_PCT
     desfechos = classificar_desfechos(tempos, obs)
+    r2_papel = diagnostico_papel.get("r2")
+    triagem_compativel = bool(
+        convergiu and r2_papel is not None
+        and r2_papel >= MIN_R2_PAPEL_WEIBULL
+    )
+    resumo_parametrico_recomendado = bool(
+        convergiu and not alta_censura and triagem_compativel
+    )
+    taxa_bootstrap = (
+        len(amostras_boot) / n_boot if n_boot > 0 else None
+    )
 
     return {
         "beta": float(beta),
@@ -602,6 +555,14 @@ def ajustar_weibull(
         "fit_converged": convergiu,
         "adequacy_method": "RMSE descritivo entre Kaplan-Meier e Weibull",
         "km_rmse": km_rmse,
+        "diagnostico_papel_weibull": diagnostico_papel,
+        "triagem_papel_r2_min": MIN_R2_PAPEL_WEIBULL,
+        "triagem_papel_compativel": triagem_compativel,
+        "triagem_papel_nota": (
+            "R2 no papel de Weibull e triagem visual descritiva, nao teste "
+            "formal de aderencia nem validacao externa."
+        ),
+        "resumo_parametrico_recomendado": resumo_parametrico_recomendado,
         "n_traj": int(len(tempos)),
         "n_eventos": int(obs.sum()),
         "n_censurados": int((~obs).sum()),
@@ -617,12 +578,19 @@ def ajustar_weibull(
         "min_eventos_exigidos": MIN_EVENTOS_WEIBULL,
         # Compatibilidade: indica disponibilidade da curva paramétrica. Alta
         # censura passa a ser ressalva explícita, não motivo para apagar a RUL.
-        "rul_reportavel": bool(convergiu),
+        "rul_reportavel": resumo_parametrico_recomendado,
         "rul_parametrica_disponivel": bool(convergiu),
         "rul_parametrica_alta_incerteza": bool(convergiu and alta_censura),
+        "margem_parametrica_disponivel": bool(convergiu),
+        "margem_parametrica_reportavel": resumo_parametrico_recomendado,
         "rul_restrita_disponivel": bool(len(tempos) > 0),
         "rul_restrita_horizonte": horizonte,
         "rul_restrita_inicial": rul_restrita_inicial,
+        "margem_restrita_disponivel": bool(len(tempos) > 0),
+        "margem_restrita_horizonte": horizonte,
+        "margem_restrita_inicial": rul_restrita_inicial,
+        "media_a_det_parametrica": float(mttf),
+        "a10_parametrico": float(b10),
         "a_det_mean_detectadas": (
             float(np.mean(tempos[obs])) if obs.any() else None
         ),
@@ -634,7 +602,18 @@ def ajustar_weibull(
         ),
         "ttf_min": float(np.min(tempos)),
         "ttf_max": float(np.max(tempos)),
+        "bootstrap_solicitados": int(n_boot),
         "bootstrap_validos": len(amostras_boot),
+        "bootstrap_taxa_validos": taxa_bootstrap,
+        "bootstrap_unidade": "janela_holdout_sem_sobreposicao_de_amostras",
+        "bootstrap_independencia_demonstrada": False,
+        "bootstrap_nota": (
+            "Janelas nao compartilham amostras, mas independencia temporal "
+            "entre trajetorias nao foi demonstrada; ICs sao condicionais ao "
+            "experimento E2."
+        ),
+        "media_a_det_parametrica_ci95": cis["mttf_ci95"],
+        "a10_parametrico_ci95": cis["b10_ci95"],
         **cis,
         # ── Curvas e interpretação ──────────────────────────────────────────
         # Até 07/08/2026, R(t) e h(t) só existiam DENTRO do código de plotagem
@@ -710,19 +689,34 @@ def _curvas_e_interpretacao(convergiu: bool, beta: float, eta: float,
 
     # Estende o eixo além do horizonte observado para a curva mostrar a cauda,
     # mas o artefato registra até onde há OBSERVAÇÃO — o resto é extrapolação.
-    t_max = max(float(horizonte) * 1.2, cf.quantil(0.99, beta, eta))
+    t_max = float(horizonte)
     ic_beta = cis.get("beta_ci95") or [None, None]
     tem_ic = ic_beta[0] is not None and ic_beta[1] is not None
 
+    marcos = cf.marcos(beta, eta)
+    marcos.update({
+        "a01": marcos["q01"],
+        "a10": marcos["q10"],
+        "a50": marcos["q50"],
+        "media_a_det": marcos["media"],
+        "semantica": "quantis da magnitude de primeiro cruzamento, nao vida",
+    })
     return {
         "curvas": cf.curvas(beta, eta, t_max=t_max, n=200),
-        "marcos": cf.marcos(beta, eta),
+        "semantica_curvas": {
+            "R": "P(a_det > a): ainda nao detectada",
+            "F": "P(a_det <= a): detectada ate a magnitude a",
+            "f": "densidade parametrica da magnitude de deteccao",
+            "h": "intensidade parametrica de primeiro cruzamento por unidade de a",
+        },
+        "marcos": marcos,
         "horizonte_observado": float(horizonte),
         "nota_extrapolacao": (
-            f"as curvas vão até {t_max:.1f}, mas só há observação até "
-            f"{horizonte:.1f}; além disso é extrapolação do modelo"),
+            f"curvas publicadas limitadas ao dominio observado a <= {t_max:.1f}; "
+            "quantis parametricos fora desse dominio sao extrapolativos"),
         "interpretacao": cf.classificar_forma(
-            beta, ic_beta=tuple(ic_beta) if tem_ic else None),
+            beta, ic_beta=tuple(ic_beta) if tem_ic else None,
+            eixo_tempo=False),
     }
 
 
@@ -732,9 +726,10 @@ def _curvas_e_interpretacao(convergiu: bool, beta: float, eta: float,
 
 def rul_condicional(t_atual: float, beta: float, eta: float) -> float:
     """
-    RUL esperado dado que o componente sobreviveu até t_atual.
+    Margem residual esperada dado que a deteccao nao ocorreu ate ``t_atual``.
 
-    Pela propriedade de memória da Weibull:
+    Pela identidade da media residual (nao pela propriedade sem memoria, que a
+    Weibull so possui quando beta=1):
       E[T - t | T > t] = integral_t^∞ R(s)/R(t) ds
                        = eta * exp(z) * Γ(1 + 1/beta, z) - t
       onde z = (t/eta)^beta e Γ(.,.) é a gama incompleta superior.
@@ -743,7 +738,7 @@ def rul_condicional(t_atual: float, beta: float, eta: float) -> float:
         return float("nan")
 
     if t_atual <= 0:
-        return eta * gamma_func(1 + 1 / beta)  # MTTF completo
+        return eta * gamma_func(1 + 1 / beta)  # margem média desde a=0
 
     z = (t_atual / eta) ** beta
     s = 1 + 1 / beta
@@ -755,6 +750,10 @@ def rul_condicional(t_atual: float, beta: float, eta: float) -> float:
     gama_sup = gamma_func(s) * gammaincc(s, z)
     media_condicional = eta * np.exp(z) * gama_sup
     return float(max(media_condicional - t_atual, 0.0))
+
+
+# Nome canonico; o alias antigo permanece para compatibilidade.
+margem_condicional_weibull = rul_condicional
 
 
 # ============================================================
@@ -786,7 +785,7 @@ def executar_rul_weibull() -> bool:
     )
 
     _log("=" * 60)
-    _log("  AL IADO PV — RUL COM WEIBULL")
+    _log("  AL IADO PV — DETECTABILIDADE E2 COM WEIBULL")
     _log("=" * 60)
     _log(f"\n  Teto de trajetórias por falha: {N_TRAJ}")
     _log(f"  Grade de magnitude   : {N_STEPS} pontos (a_inj 0→1,0)")
@@ -857,7 +856,8 @@ def executar_rul_weibull() -> bool:
     n_traj_real = min(N_TRAJ, len(janelas_holdout))
     _log(f"   ✅ {n_janelas_originais} janelas não sobrepostas do teste")
     _log(f"   ✅ {len(janelas_holdout)} elegíveis; {n_excluidas} excluídas por anomalia em t=0")
-    _log(f"   ✅ {n_traj_real} trajetórias independentes serão usadas")
+    _log(f"   ✅ {n_traj_real} trajetórias por janela serão usadas; "
+         "independência temporal não é presumida")
 
     # ── 3. Gera TTFs por tipo de falha ───────────────────────
     _log(f"\n⚙️  Gerando trajetórias de degradação...")
@@ -907,15 +907,16 @@ def executar_rul_weibull() -> bool:
         npm_str = f"NPR={falha['npr']}"
         _log(f"\n   {falha['nome']} ({npm_str})")
         if p["fit_converged"]:
-            _log(f"      β={p['beta']:.3f}  η={p['eta']:.1f}  "
-                  f"MTTF={p['mttf']:.1f}  B10={p['b10']:.1f}")
+            _log(f"      β={p['beta']:.3f}  η={p['eta']:.3f}  "
+                  f"média(a_det)={p['mttf']:.3f}  a10={p['b10']:.3f}")
             _log(f"      Censura={p['censura_pct']:.0f}% | "
-                 f"RMSE(KM)={p['km_rmse']:.4f} | bootstrap={p['bootstrap_validos']}")
+                 f"R²(papel)={p['diagnostico_papel_weibull']['r2']:.3f} | "
+                 f"bootstrap={p['bootstrap_validos']}/{p['bootstrap_solicitados']}")
         else:
             _log(
                 f"      ⚠️ Weibull não estimável: {p['n_eventos']} eventos; "
                 f"mínimo configurado={MIN_EVENTOS_WEIBULL}. "
-                "RUL restrita por Kaplan-Meier será mantida."
+                "Margem restrita por Kaplan-Meier será mantida."
             )
 
     # ── 5. Visualizações ─────────────────────────────────────
@@ -940,6 +941,7 @@ def executar_rul_weibull() -> bool:
         tempo_fisico_nota=TEMPO_FISICO_NOTA,
         min_eventos_weibull=MIN_EVENTOS_WEIBULL,
         max_censura_rul_pct=MAX_CENSURA_RUL_PCT,
+        min_r2_papel_weibull=MIN_R2_PAPEL_WEIBULL,
         persistencia_cruzamento=PERSISTENCIA_CRUZAMENTO,
         json_seguro=_json_seguro,
     )
@@ -952,19 +954,23 @@ def executar_rul_weibull() -> bool:
     arq_tabela = PASTA_AE / "weibull_tabela.csv"
     pd.DataFrame(linhas_weibull).to_csv(arq_tabela, index=False)
     _log(f"   📋 {arq_tabela.name}")
+    from scripts.relatorio_confiabilidade import main as gerar_relatorio
+    gerar_relatorio()
 
     # ── 7. Resumo final ──────────────────────────────────────
     _log(f"\n{'='*60}")
-    _log(f"  ANÁLISE DE WEIBULL E RUL CONCLUÍDA!")
+    _log(f"  ANÁLISE DE DETECTABILIDADE WEIBULL E2 CONCLUÍDA!")
     _log(f"\n  Valores em FRAÇÃO DA ASSINATURA NOMINAL (a_det), não em tempo.")
-    _log(f"\n  {'Falha':<28} {'β':>6} {'η':>7} {'MTTF':>8} {'B10':>8} {'POD@1,0':>8}")
+    _log(f"\n  {'Falha':<28} {'β':>6} {'η':>7} {'média a':>8} {'a10':>8} {'POD@1,0':>8}")
     _log(f"  {'-'*68}")
     for falha in FALHAS:
         fid = falha["id"]
         p   = params[fid]
+        media = f"{p['media_a_det_parametrica']:>8.3f}" if p["resumo_parametrico_recomendado"] else f"{'--':>8}"
+        a10 = f"{p['a10_parametrico']:>8.3f}" if p["resumo_parametrico_recomendado"] else f"{'--':>8}"
         _log(f"  {falha['nome']:<28} "
               f"{p['beta']:>6.3f} {p['eta']:>7.3f} "
-              f"{p['mttf']:>8.3f} {p['b10']:>8.3f} "
+              f"{media} {a10} "
               f"{p['desfechos']['pod_mon_no_teto']:>7.1%}")
 
     # A leitura do β só vale se o IC95 não cruzar 1 — quem decide isso é
@@ -977,7 +983,7 @@ def executar_rul_weibull() -> bool:
             marca = "" if interp.get("conclusivo") else "⚠️  "
             _log(f"  {marca}{falha['nome']}: {interp['leitura']}")
     _log(f"\n  Fase 5 do pipeline de ML concluída!")
-    _log(f"  Próximo passo: integração no orquestrador")
+    _log(f"  Relatório acadêmico e artefatos integrados atualizados.")
     _log(f"{'='*60}")
     return True
 

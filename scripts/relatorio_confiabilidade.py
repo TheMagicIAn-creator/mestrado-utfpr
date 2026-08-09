@@ -55,9 +55,24 @@ def _ler(pasta: Path, nome: str):
     return np.load(arq, allow_pickle=True)
 
 
+def _limiar_operacional(limiar_json: dict) -> tuple[str, float]:
+    """Seleciona a régua canônica, sem preferir um escore legado inativo."""
+    metodo = str(
+        limiar_json.get("score_method")
+        or limiar_json.get("metodo_escore")
+        or "mse"
+    )
+    valor = limiar_json.get("score_threshold")
+    if valor is None:
+        valor = limiar_json.get("limiar_operacional", limiar_json.get("limiar"))
+    if valor is None:
+        raise ValueError("limiar operacional ausente em limiar.json")
+    return metodo, float(valor)
+
+
 def secao_confiabilidade(weibull: dict) -> tuple[list[str], dict]:
-    """Curvas, marcos e a leitura de β — com a ressalva do intervalo."""
-    linhas = ["## Confiabilidade por modo de falha", ""]
+    """Detectabilidade E2, marcos e leitura de beta sem inferencia fisica."""
+    linhas = ["## Detectabilidade sintética por modo de falha", ""]
     dados = {}
     for fid, bloco in weibull.get("falhas", {}).items():
         w = bloco.get("weibull") or {}
@@ -82,20 +97,23 @@ def secao_confiabilidade(weibull: dict) -> tuple[list[str], dict]:
             horizonte_km = w.get("rul_restrita_horizonte")
             if rul_km is not None and np.isfinite(float(rul_km)):
                 linhas += [
-                    f"> **Kaplan-Meier (não paramétrica) permanece válida.** "
+                    f"> **Kaplan-Meier (não paramétrica) permanece disponível.** "
                     f"Margem média de magnitude até detectar, restrita ao "
                     f"horizonte observado de {float(horizonte_km):.2f}: "
-                    f"**{float(rul_km):.2f}**. Não extrapola além do observado — "
-                    f"e é exatamente por isso que sobrevive à falta de eventos.",
+                    f"**{float(rul_km):.2f}**. É margem de assinatura, não RUL.",
                     "",
                 ]
             continue
         beta, eta = float(w["beta"]), float(w["eta"])
         ic = w.get("beta_ci95") or [None, None]
         tem_ic = ic[0] is not None
-        leitura = cf.classificar_forma(beta, tuple(ic) if tem_ic else None)
+        leitura = cf.classificar_forma(
+            beta, tuple(ic) if tem_ic else None, eixo_tempo=False
+        )
         marcos = cf.marcos(beta, eta)
         horizonte = float(w.get("rul_restrita_horizonte") or 0.0)
+        recomendada = bool(w.get("resumo_parametrico_recomendado", False))
+        diagnostico = w.get("diagnostico_papel_weibull") or {}
 
         # R(t) em pontos de decisão: os próprios marcos são os pontos naturais.
         pontos = [marcos["b1"], marcos["b10"], marcos["vida_mediana"], eta]
@@ -111,30 +129,51 @@ def secao_confiabilidade(weibull: dict) -> tuple[list[str], dict]:
             + (lambda c: f"[{c[0]:.2f}; {c[1]:.2f}]" if c and c[0] is not None else "—")(
                 w.get("eta_ci95")) + " |",
             "",
+            f"Triagem no papel de Weibull: **R²pp = "
+            f"{float(diagnostico.get('r2', float('nan'))):.3f}**. "
+            + ("Síntese paramétrica recomendada somente no escopo E2."
+               if recomendada else
+               "Síntese paramétrica não recomendada; os marcos abaixo são omitidos."),
+            "",
+        ]
+        if not recomendada:
+            rul_km = w.get("margem_restrita_inicial", w.get("rul_restrita_inicial"))
+            linhas += [
+                f"> Margem restrita KM no início: **{float(rul_km):.2f}**. "
+                "É descritiva no domínio observado e não é RUL.",
+                "",
+            ]
+            dados[fid] = {
+                "beta": beta, "eta": eta, "diagnostico": diagnostico,
+                "sintese_parametrica_recomendada": False,
+                "margem_restrita_inicial": rul_km,
+                "horizonte_observado": horizonte,
+            }
+            continue
+
+        linhas += [
             "| Marco | Magnitude de injeção | R nesse ponto |",
             "|---|--:|--:|",
-            f"| B1 (1% detectado) | {marcos['b1']:.2f} | "
+            f"| a01 (1% detectado) | {marcos['q01']:.2f} | "
             f"{cf.confiabilidade(marcos['b1'], beta, eta):.3f} |",
-            f"| B10 (10% detectado) | {marcos['b10']:.2f} | {cf.confiabilidade(marcos['b10'], beta, eta):.3f} |",
-            f"| mediana | {marcos['vida_mediana']:.2f} | {cf.confiabilidade(marcos['vida_mediana'], beta, eta):.3f} |",
-            f"| η (vida característica) | {eta:.2f} | 0.368 |",
-            f"| MTTF | {marcos['mttf']:.2f} | {cf.confiabilidade(marcos['mttf'], beta, eta):.3f} |",
+            f"| a10 (10% detectado) | {marcos['q10']:.2f} | {cf.confiabilidade(marcos['q10'], beta, eta):.3f} |",
+            f"| a50 (mediana) | {marcos['q50']:.2f} | {cf.confiabilidade(marcos['q50'], beta, eta):.3f} |",
+            f"| η (escala característica) | {eta:.2f} | 0.368 |",
+            f"| média paramétrica de a_det | {marcos['media']:.2f} | {cf.confiabilidade(marcos['media'], beta, eta):.3f} |",
             "",
             f"**Leitura de β.** {leitura['leitura']}",
             "",
         ]
         if not leitura["conclusivo"]:
             linhas += ["> ⚠️ A afirmação de regime NÃO se sustenta neste caso.", ""]
-        if marcos["b10"] < marcos["mttf"]:
-            linhas += [
-                f"> **B10 ({marcos['b10']:.1f}) < MTTF ({marcos['mttf']:.1f}).** "
-                "A distribuição é assimétrica: a média fica acima de boa parte "
-                "da população, e por isso B10/B1 são melhores indicadores de "
-                "decisão de manutenção que o MTTF.", ""]
+        linhas += [
+            "> β descreve somente a forma da intensidade de detecção em função "
+            "da magnitude. Não implica desgaste, mortalidade infantil ou "
+            "política de substituição.", ""]
         if horizonte:
             linhas += [
-                f"> Observação vai até {horizonte:.1f}; além disso as curvas "
-                "são extrapolação do modelo, não dado.", ""]
+                f"> Observação vai até {horizonte:.1f}; qualquer marco além "
+                "disso é extrapolação do modelo, não dado.", ""]
 
         dados[fid] = {"beta": beta, "eta": eta, "marcos": marcos,
                       "interpretacao": leitura, "R_em_marcos": r_em,
@@ -148,7 +187,7 @@ def secao_pod(npz, limiar_json: dict) -> tuple[list[str], dict]:
     if npz is None or not limiar_json:
         return linhas + ["Artefatos ausentes.", ""], {}
 
-    y_dec = float(limiar_json.get("limiar_localizado") or limiar_json["limiar"])
+    metodo_escore, y_dec = _limiar_operacional(limiar_json)
     calib = np.asarray(npz["scores_operacionais_calibracao"], dtype=float)
     teste = np.asarray(npz["scores_operacionais_teste"], dtype=float)
 
@@ -161,9 +200,16 @@ def secao_pod(npz, limiar_json: dict) -> tuple[list[str], dict]:
                             * np.std(np.log(positivos), ddof=1)))
                if positivos.size >= 2 else float("nan"))
     deriva = pod.deriva_de_campo(calib, teste, limiar=y_dec)
+    from src.ml.estatistica import intervalo_wilson
+
+    n_teste = int(len(teste))
+    n_excedencias = int(np.sum(teste > y_dec))
+    taxa_excedencia = n_excedencias / n_teste if n_teste else float("nan")
+    ci_excedencia = intervalo_wilson(n_excedencias, n_teste)
 
     linhas += [
-        f"Limiar operacional adotado: **{y_dec:.4f}**", "",
+        f"Escore operacional: **{metodo_escore}**; limiar adotado: "
+        f"**{y_dec:.4f}**", "",
         "### A hipótese, antes do número", "",
         f"O método assume normalidade do lado saudável. Shapiro-Wilk no escore "
         f"bruto: p = {norm['shapiro_bruto']['p']:.2e}; em log: "
@@ -173,11 +219,10 @@ def secao_pod(npz, limiar_json: dict) -> tuple[list[str], dict]:
          "caminhos independentes abaixo — se os três concordarem, a conclusão "
          "não depende dela."
          if not norm["vale"] else
-         f"**Hipótese satisfeita** na escala **{norm['melhor_escala']}**. Os "
-         "três estimadores abaixo continuam sendo reportados: quando eles "
-         "concordam sob hipótese válida, a concordância confirma o método; "
-         "quando divergem, é sinal de cauda que o teste de normalidade não "
-         "pegou."), "",
+         f"A normalidade **não foi rejeitada** na escala "
+         f"**{norm['melhor_escala']}** ao nível de 5%. Isso não prova a "
+         "hipótese, especialmente com p próximo do corte; os três estimadores "
+         "continuam sendo reportados como análise de sensibilidade."), "",
         "| Estimador do percentil 99 do escore saudável | Valor |",
         "|---|--:|",
         f"| normal no escore bruto (LS-POD) | {pof['limite']:.4f} |",
@@ -190,14 +235,9 @@ def secao_pod(npz, limiar_json: dict) -> tuple[list[str], dict]:
     acima = [v for v in (pof["limite"], log_lim, empirico) if np.isfinite(v)]
     todos_acima = all(v > y_dec for v in acima)
     linhas += [
-        (f"> **Os {len(acima)} estimadores ficam acima do limiar adotado.** Pelo "
-         "critério LS-POD, o requisito de falso positivo de 1% **não é cumprido "
-         "no bloco de teste**. A conclusão não depende da hipótese de "
-         "normalidade: o quantil empírico, que não assume distribuição, leva ao "
-         "mesmo lugar."
-         + ("" if norm["vale"] else
-            " Isso importa aqui, porque a normalidade está VIOLADA — sem o "
-            "estimador empírico o veredito seria discutível.")
+        (f"> **Os {len(acima)} estimadores pontuais ficam acima do limiar.** "
+         "Isso sinaliza tensão com a meta nominal de 1%, mas não demonstra "
+         "violação estatística com esta amostra."
          if todos_acima else
          "> Os estimadores divergem quanto ao cumprimento do requisito; "
          "reportar a faixa, não um veredito."), "",]
@@ -206,17 +246,34 @@ def secao_pod(npz, limiar_json: dict) -> tuple[list[str], dict]:
     # acima sugere que existe um limiar melhor a encontrar.
     resolucao_pct = 100.0 / max(int(norm.get("n", 0) or 0), 1)
     linhas += [
-        (f"> ⚠️ Com n = {norm.get('n')}, a resolução amostral é "
+        f"> No teste foram observadas **{n_excedencias}/{n_teste} = "
+         f"{taxa_excedencia:.2%}** excedências; IC95 de Wilson "
+         f"**[{ci_excedencia[0]:.2%}; {ci_excedencia[1]:.2%}]**. A meta de 1% "
+         "está dentro do intervalo: os dados não certificam conformidade nem "
+         "violação.", "",
+        f"> Com n = {norm.get('n')}, a resolução amostral é "
          f"{resolucao_pct:.2f}%: **o alvo de 1% está abaixo do que esta amostra "
          f"consegue certificar**. Zero excedências observadas não provariam 1%. "
-         f"O requisito não falha por calibração — falha por tamanho de amostra."
-         if resolucao_pct > 1.0 else ""), "",
+        f"A limitação é de tamanho amostral, não uma prova de falha do limiar."
+         if resolucao_pct > 1.0 else "", "",
         "### Deriva entre calibração e teste", "",
-        deriva["leitura"], "",
+        f"O limite pontual LS-POD no teste foi "
+        f"**{deriva['campo']['limite']:.4f}**, frente ao limiar "
+        f"**{y_dec:.4f}** e ao gatilho de deriva "
+        f"**{deriva['gatilho']:.4f}**.", "",
+        "> O resultado aciona investigação como triagem. O bloco de teste não "
+        "é campo e não fornece resolução para confirmar 1%; portanto não "
+        "constitui invalidação industrial nem evidência de deriva física.", "",
     ]
     return linhas, {"y_dec": y_dec, "normalidade": norm, "limite_pof": pof,
                     "limite_empirico": empirico, "limite_log": log_lim,
                     "todos_acima_do_limiar": bool(todos_acima),
+                    "excedencia_observada": {
+                        "count": n_excedencias, "n": n_teste,
+                        "rate": taxa_excedencia,
+                        "ci95_wilson": list(ci_excedencia),
+                        "conclusao": "inconclusiva_para_meta_1pct",
+                    },
                     "deriva": deriva}
 
 
@@ -235,10 +292,11 @@ def main() -> int:
         return 1
 
     cabecalho = [
-        "# Relatório de confiabilidade e ponto de operação", "",
+        "# Relatório de detectabilidade E2 e ponto de operação", "",
         "> **Evidência E2** — validação sintética orientada pela FMECA. Não é "
         "desempenho de campo (E3). O eixo NÃO é tempo físico: é a magnitude de "
-        "injeção em que a detecção se confirma.", "",
+        "injeção em que a detecção se confirma. Portanto não há RUL, MTTF, "
+        "taxa de falha ou confiabilidade física nesta seção.", "",
     ]
     l_conf, d_conf = secao_confiabilidade(weibull)
     l_pod, d_pod = secao_pod(npz, limiar or {})

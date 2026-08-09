@@ -364,9 +364,9 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
         _add_img(imagens, "validacao_matrizes_severidades.png", "Validacao - matrizes por falha e severidade", grupo="Validacao", ordem=25, tipo="comparacao", ordem_grupo=30)
         _add_img(imagens, "validacao_metricas.png", "Validacao - heatmap de metricas", grupo="Validacao", ordem=30, tipo="comparacao", ordem_grupo=30)
     if "weibull" in focos:
-        _add_img(imagens, "weibull_ttf.png", "Weibull - distribuicao TTF", grupo="Weibull / RUL", ordem=10, ordem_grupo=40)
-        _add_img(imagens, "weibull_confiabilidade.png", "Weibull - funcoes de confiabilidade", grupo="Weibull / RUL", ordem=20, ordem_grupo=40)
-        _add_img(imagens, "weibull_rul.png", "Weibull - RUL condicional", grupo="Weibull / RUL", ordem=30, ordem_grupo=40)
+        _add_img(imagens, "weibull_ttf.png", "Weibull - primeiro cruzamento do detector", grupo="Weibull / detectabilidade E2", ordem=10, ordem_grupo=40)
+        _add_img(imagens, "weibull_confiabilidade.png", "Weibull - curva de nao deteccao", grupo="Weibull / detectabilidade E2", ordem=20, ordem_grupo=40)
+        _add_img(imagens, "weibull_rul.png", "Weibull - margem residual de magnitude", grupo="Weibull / detectabilidade E2", ordem=30, ordem_grupo=40)
     if "gpvs" in focos:
         _add_img(
             imagens, "gpvs_macro_comparacao.png",
@@ -656,11 +656,11 @@ def _resumo_weibull() -> str | None:
     tempo = d.get("__meta__", {}).get("tempo", {})
     unidade = tempo.get("ttf_unidade", "passos de degradação sintética")
     linhas = [
-        "## RUL / Weibull\n\n",
-        f"Unidade dos tempos: `{unidade}`; tempo físico calibrado: "
+        "## Detectabilidade E2 / Weibull\n\n",
+        f"Unidade do eixo: `{unidade}`; tempo físico calibrado: "
         f"{'sim' if tempo.get('tempo_fisico_calibrado') else 'não'}.\n\n",
-        "| Falha | NPR | Eventos/Censura | beta (IC95%) | eta (IC95%) | MTTF (IC95%) | B10 (IC95%) | RUL restrita inicial | Status |\n",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---|\n",
+        "| Falha | NPR | Detectadas/total | beta (IC95%) | eta (IC95%) | média a_det (IC95%) | a10 (IC95%) | margem restrita | R2 papel | Status |\n",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|\n",
     ]
     for fid, falha in d.get("falhas", {}).items():
         p = falha.get("weibull", {})
@@ -670,8 +670,11 @@ def _resumo_weibull() -> str | None:
             return f"{_fmt(valor, casas)} [{_fmt(ci[0], casas)}; {_fmt(ci[1], casas)}]"
 
         status_mapa = {
-            "exploratorio_descritivo": "exploratório",
-            "exploratorio_alta_censura": "Weibull incerta; KM restrita disponível",
+            "exploratorio_descritivo": "exploratório legado",
+            "exploratorio_alta_censura": "legado; alta indetectabilidade",
+            "exploratorio_detectabilidade": "exploratório E2",
+            "nao_recomendado_alta_indetectabilidade": "não recomendado; alta indetectabilidade",
+            "nao_recomendado_desvio_papel_weibull": "não recomendado; desvio no papel Weibull",
             "nao_estimavel": "não estimável",
             "nao_estimavel_parametrico_rul_restrita": (
                 "Weibull não estimável; KM restrita disponível"
@@ -681,26 +684,35 @@ def _resumo_weibull() -> str | None:
             falha.get("status_ajuste"),
             "exploratório" if p.get("fit_converged") else "não estimável",
         )
+        recomendada = p.get("resumo_parametrico_recomendado", False)
+        media_txt = (
+            valor_ci("media_a_det_parametrica") if recomendada
+            else "não reportada"
+        )
+        a10_txt = valor_ci("a10_parametrico") if recomendada else "não reportado"
         linhas.append(
             f"| {falha.get('nome', fid)} | {falha.get('npr')} | "
-            f"{p.get('n_eventos', '-')}/{p.get('n_censurados', '-')} | "
-            f"{valor_ci('beta', 2)} | {valor_ci('eta')} | {valor_ci('mttf')} | "
-            f"{valor_ci('b10')} | {_fmt(p.get('rul_restrita_inicial'))} | {status} |\n"
+            f"{p.get('n_eventos', '-')}/{p.get('n_traj', '-')} | "
+            f"{valor_ci('beta', 2)} | {valor_ci('eta')} | "
+            f"{media_txt} | {a10_txt} | "
+            f"{_fmt(p.get('margem_restrita_inicial', p.get('rul_restrita_inicial')))} | "
+            f"{_fmt((p.get('diagnostico_papel_weibull') or {}).get('r2'), 2)} | {status} |\n"
         )
     linhas.append(
-        "\n**Separação obrigatória das estimativas:** a coluna **RUL restrita "
-        "inicial** é exclusivamente a média residual **não paramétrica de "
-        "Kaplan-Meier**, truncada no horizonte observado. Ela nunca deve ser "
-        "descrita como RUL Weibull. A curva Weibull do gráfico é a estimativa "
-        "paramétrica/extrapolativa e só existe quando o ajuste convergiu.\n\n"
-        "**Leitura obrigatória:** a censura agora é preservada e os intervalos "
-        "vêm de bootstrap, mas os tempos continuam sendo passos de degradação "
-        "sintética E2. A RUL por Kaplan-Meier é restrita ao horizonte observado; "
-        "a RUL Weibull é extrapolativa e recebe ressalva quando há alta censura. "
-        "MTTF, B10 e RUL descrevem o experimento computacional e "
-        "não podem ser apresentados como vida útil física ou de campo. O NPR "
+        "\n**Leitura obrigatória:** esta etapa modela a distribuição da "
+        "**magnitude do primeiro cruzamento confirmado do detector**. A curva "
+        "S_D(a) é probabilidade de ainda não detectar; h_D(a) é intensidade de "
+        "detecção por unidade de magnitude. Nenhuma delas é confiabilidade ou "
+        "taxa de falha do componente. A margem restrita de Kaplan-Meier não é "
+        "RUL, pois não existe eixo temporal. MTTF, B10 e RUL permanecem apenas "
+        "como aliases legados no JSON.\n\n"
+        "Os pontos empíricos usam Kaplan-Meier modificado com o tamanho total "
+        "da amostra. Os ICs vêm de bootstrap de janelas sem amostras "
+        "compartilhadas, mas independência temporal não foi demonstrada. "
+        "O NPR "
         "prioriza risco na FMECA; ele **não determina** quantos eventos o "
-        "experimento sintético produzirá e não explica causalmente a censura."
+        "experimento sintético produzirá e não explica causalmente a "
+        "indetectabilidade."
     )
     return "".join(linhas)
 

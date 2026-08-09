@@ -21,9 +21,11 @@ from src.ml.confiabilidade import (
     confiabilidade,
     curvas,
     densidade,
+    diagnostico_papel_weibull,
     eixos_papel_weibull,
     marcos,
     mediana_de_posto,
+    posicoes_probabilidade_censuradas,
     quantil,
     taxa_acumulada,
     taxa_falha,
@@ -173,6 +175,14 @@ def test_sem_ic_a_leitura_sai_mas_como_pontual():
     assert r["regime"] == "desgaste"
 
 
+def test_eixo_de_magnitude_nao_autoriza_desgaste_nem_manutencao():
+    r = classificar_forma(4.39, ic_beta=(3.1, 5.8), eixo_tempo=False)
+    assert r["conclusivo"] is True
+    assert r["regime"] == "intensidade_deteccao_crescente"
+    assert r["inferencia_manutencao_autorizada"] is False
+    assert "nao significa desgaste" in r["leitura"].lower()
+
+
 # ── papel de Weibull ───────────────────────────────────────────────────────
 
 def test_papel_de_weibull_lineariza_a_distribuicao():
@@ -189,6 +199,39 @@ def test_mediana_de_posto_e_crescente_e_interna():
     assert p.shape == (38,)
     assert np.all(np.diff(p) > 0)
     assert 0.0 < p[0] and p[-1] < 1.0
+
+
+def test_posicoes_censuradas_usam_o_tamanho_total_da_amostra():
+    tempos = np.concatenate([np.linspace(0.5, 0.9, 12), np.ones(19)])
+    eventos = np.concatenate([np.ones(12, dtype=bool), np.zeros(19, dtype=bool)])
+    t, f, metodo = posicoes_probabilidade_censuradas(tempos, eventos)
+
+    assert len(t) == len(f) == 12
+    assert f[-1] == pytest.approx((12 - 0.3) / (31 + 0.4))
+    assert f[-1] < 0.40
+    assert "Kaplan-Meier" in metodo
+
+
+def test_diagnostico_papel_detecta_ajuste_incompativel():
+    tempos = np.array([0.20, *np.linspace(0.70, 0.95, 29), 1.0])
+    eventos = np.array([True] * 30 + [False])
+    d = diagnostico_papel_weibull(tempos, eventos, beta=8.6, eta=0.90)
+
+    assert d["n_pontos"] == 30
+    assert d["r2"] < 0.90
+
+
+def test_relatorio_respeita_metodo_e_limiar_operacionais_canonicos():
+    from scripts.relatorio_confiabilidade import _limiar_operacional
+
+    metodo, valor = _limiar_operacional({
+        "score_method": "mse",
+        "score_threshold": 2.58,
+        "limiar_localizado": 16.53,
+        "limiar": 2.58,
+    })
+    assert metodo == "mse"
+    assert valor == pytest.approx(2.58)
 
 
 # ── blocos de saída ────────────────────────────────────────────────────────
