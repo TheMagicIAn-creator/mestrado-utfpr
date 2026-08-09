@@ -1,9 +1,10 @@
 {
   "manifest_version": 2,
   "stage": "rul_weibull",
-  "created_at": "2026-08-09T03:13:16.371568-03:00",
-  "git_commit": "5188276a5204f08d3fde45be138b740af8961e28",
+  "created_at": "2026-08-09T03:19:41.442949-03:00",
+  "git_commit": "2b325c3d74b8bb9ce1ff3242cf7656d02235e2e8",
   "code_hash_mode": "text_lf_utf8",
+  "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "code_sha256": "6dc992966046aa64b0c1418ad582686e2071868099565cd880dc776cc63eb0cb",
   "code_dependencies": {
     "src.ml.features_ca": "23330f891620f442197eae9ea142d3a704449110bf3e0b1c9da8afd5ba9f558e",
@@ -49,8 +50,8 @@
     "resultados/autoencoder/weibull_confiabilidade.png": "cca2425b783d82cc6007f97b5851ab22bd5b73b560d66806500e49b26208086c",
     "resultados/autoencoder/weibull_distribuicao.png": "0620acaaa473c25a967be06913087882dc94764510b77edc5521a100b94572de",
     "resultados/autoencoder/weibull_rul.png": "9d17482f0c7a35dd1bd04a0cb709cb6a519f4d028ffa1a8433302bab8df41868",
-    "resultados/autoencoder/weibull_results.json": "80ef9145285a7365b2025dd0aa36292775a91be0a4c2a23ae557682bc45aaa3a",
-    "resultados/autoencoder/weibull_tabela.csv": "5055b65d87362c7fea57ec45e514e6988f608af49753e348f1aee0d62c958639"
+    "resultados/autoencoder/weibull_results.json": "a44c7d325d2441bae8d5a10dc8c28e3e76d70523473cc21713811f4943d40cde",
+    "resultados/autoencoder/weibull_tabela.csv": "3f9a79127e107c73c0320d1e306a8ec008bdaa51b5a1fd099e3b57e1f0ad85c2"
   },
   "evidence_level": "E2"
 }

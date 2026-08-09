@@ -1,9 +1,10 @@
 {
   "manifest_version": 2,
   "stage": "autoencoder",
-  "created_at": "2026-08-09T03:13:16.137834-03:00",
-  "git_commit": "5188276a5204f08d3fde45be138b740af8961e28",
+  "created_at": "2026-08-09T03:19:41.289816-03:00",
+  "git_commit": "2b325c3d74b8bb9ce1ff3242cf7656d02235e2e8",
   "code_hash_mode": "text_lf_utf8",
+  "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "code_sha256": "f57240fbd095f3154f49850d0fc69fce2a454cedc30ab50767809c727ff5c8a8",
   "code_dependencies": {
     "src.ml.escore_anomalia": "71106cad6b7971edcf27533462181cc38f8be4cf7db95a117dbbb43d96de75e1",
@@ -45,10 +46,10 @@
   "output_artifacts": {
     "resultados/autoencoder/modelo_autoencoder.pt": "f69d52983ebb5a5e55b46dc19fbb5f230e7ab2b609142b0c840668c51a31d738",
     "resultados/autoencoder/scaler.pkl": "b72dc06088a56c955410dff81bad38ed617704e9bc379475ce87b30a97d4d3ae",
-    "resultados/autoencoder/limiar.json": "d1886332ce23c699f142350fde82efe25e575aa7c33d527f4973b460a8dfac8a",
+    "resultados/autoencoder/limiar.json": "e69daf4639b9524e3ddddce8f6fc32ab80e2a58e45b94ea18cedf5a9ec730910",
     "resultados/autoencoder/diagnostico_autoencoder.npz": "bd67fec204bd1043229c18f809de77c6685b111acd4127f06345bbde2f38b526",
-    "resultados/autoencoder/calibracao_autoencoder.csv": "bb96d0c31d6096464f7a9ad1505b601fc3b0366a443b2b33a25ca5b3004b3ddb",
-    "resultados/autoencoder/calibracao_autoencoder.md": "86671e171434a45df50ea333714747bc4846fc39eadf382e38f0ed45151b2631",
+    "resultados/autoencoder/calibracao_autoencoder.csv": "b0b9643f03ab1cd0097b81f1f30a7ee903e661f9d765d11a838b4f3e889679e1",
+    "resultados/autoencoder/calibracao_autoencoder.md": "922ed0067452c27717be1ebda2d9037be22c22328f3c2213ea5b2efb0cf0f451",
     "resultados/autoencoder/curva_treino.png": "b322a3730b4a68c19898dc35a87e134284f2661ae74ec3136b99a66d57bb5ce8",
     "resultados/autoencoder/distribuicao_erro.png": "7527cff6e2e4d871b0bfc5d22f28f052bd722925489f598d1fd191add3fb144b",
     "resultados/autoencoder/erro_temporal.png": "1971c177b05dfe9e804150de7daf8fc969c1118304c9b9e12a977bfae173ad7b"

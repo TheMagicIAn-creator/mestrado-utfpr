@@ -1,9 +1,10 @@
 {
   "manifest_version": 2,
   "stage": "features_ca",
-  "created_at": "2026-08-09T03:13:16.069738-03:00",
-  "git_commit": "5188276a5204f08d3fde45be138b740af8961e28",
+  "created_at": "2026-08-09T03:19:41.241185-03:00",
+  "git_commit": "2b325c3d74b8bb9ce1ff3242cf7656d02235e2e8",
   "code_hash_mode": "text_lf_utf8",
+  "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "code_sha256": "23330f891620f442197eae9ea142d3a704449110bf3e0b1c9da8afd5ba9f558e",
   "code_dependencies": {
     "src.ml.estilo_graficos": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49"
@@ -30,8 +31,8 @@
   ],
   "output_artifacts": {
     "dados/processados/features_paderborn.parquet": "ba2976a0288ab2fc99d3fb530de385af68c5d8dc226c2cd6a75d08d829af9167",
-    "dados/processados/features_paderborn_stats.csv": "46be3a5d3f7e10b1e04ca822839a114ebf78617d3f64c7ca58e7d808c87944a8",
-    "dados/processados/features_paderborn_qualidade.json": "def7864b9dfc82a59cf22784d89006e92275c37afb55cfe1c1964efd8745c34b",
+    "dados/processados/features_paderborn_stats.csv": "1a01979d787cb75a48f72ae55a8985992ec13b6f21b92c0297cb4767113776c0",
+    "dados/processados/features_paderborn_qualidade.json": "25be51b2f07c590caf0dd34dc1d948a362eb877fb7223bf36fd8436afd47e699",
     "dados/processados/features_paderborn_qualidade.png": "ea01c365f80cbea35fb23a281711749e363b22e9f6223b043afb11ae317bfad9"
   }
 }

@@ -1,10 +1,11 @@
 {
   "manifest_version": 2,
   "stage": "macro_comparacao",
-  "created_at": "2026-08-09T03:13:18.099015-03:00",
-  "git_commit": "5188276a5204f08d3fde45be138b740af8961e28",
+  "created_at": "2026-08-09T03:19:43.309341-03:00",
+  "git_commit": "2b325c3d74b8bb9ce1ff3242cf7656d02235e2e8",
   "code_hash_mode": "text_lf_utf8",
-  "code_sha256": "381dbf77bef9db077d01dd8a233b85eef5a79b5bc5d7818f7bb35b0a12e54c6a",
+  "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
+  "code_sha256": "f342a4a66be59bf2b18823f90ab14be39754e1b470f48dda07d6b2e3731a2629",
   "code_dependencies": {
     "macro_proposto": "dd0da039b755b0bf3ab9d7f60628ce36fb918749f0e4bd655b92233edde56e29",
     "macro_ibrahim": "b3787db7b791a1e7123e47ead9d9f3e045d0153cb207102a52458416a8103ee7",
@@ -53,17 +54,17 @@
     "resultados/macro/comparacao_deteccao_severidade.png"
   ],
   "output_artifacts": {
-    "resultados/macro/proposto_tabela.md": "cc143fe4e07de56842024ae4fab48aae9dfec1f948bfe82b46b3a1b8d3bf0f29",
-    "resultados/macro/proposto_tabela.csv": "ec8689b3b70c8eb1ae2be79fc854701484c9ca2ef68a8bebf9f9a135dbcd9406",
-    "resultados/macro/proposto_resultado.json": "1765c22f6a6fe50820ecc95bcf24c182cf8ed6cfd016443dc23a77bacf144150",
+    "resultados/macro/proposto_tabela.md": "5d6b6a149af103c93677a242e3da5e83f6959814441130bacd28c773f9cb89c0",
+    "resultados/macro/proposto_tabela.csv": "fca838c7193df844ddff0105deca5da84bfc2de14161cdd2a8d45b44ed6db649",
+    "resultados/macro/proposto_resultado.json": "ff78b7b3827c8ff7d294acde1cd61fcaab3d6ab183ce2b664b6425bb56193c53",
     "resultados/macro/proposto_deteccao_severidade.png": "cab948f36b7e3b9dff2e6d863472f8a03aaec9967bc953da6a16b93ed321b03c",
-    "resultados/macro/ibrahim_tabela.md": "b223ad3f4c495cb9af4cbb35d1e5aa2aa1b2438796d02ee09d88748132a014bd",
-    "resultados/macro/ibrahim_tabela.csv": "99b9ea5116fcf71def2b4e82f9d03b7aab0936a7c0c1a2c2bb9b78ff9f8d048d",
-    "resultados/macro/ibrahim_resultado.json": "30fd7a22dfaf396b3894756cb17604d72ca790516c5457469ae085ee86988784",
+    "resultados/macro/ibrahim_tabela.md": "a355ffd0fe969000d4d9c6233053f97547403fbd1e6bd5c4a68a705e2ae821a7",
+    "resultados/macro/ibrahim_tabela.csv": "f242d2981a2fe9391305861d86fe97d759e43b572543b3cfce981e833e7e9603",
+    "resultados/macro/ibrahim_resultado.json": "275627d0cb3edd5de9522a23de4189fff43ca5f40fa3ad6d371abeea2921f7ee",
     "resultados/macro/ibrahim_deteccao_severidade.png": "ec4a5ada56183569016d27ab0e2ce4aa5f30be7a8e778d51e53d365985ed4cd2",
-    "resultados/macro/comparacao_tabela.md": "53b4864dcd1098afd41b622b6bccf1d167daebd6c002d40fd936d39bbb291bf8",
-    "resultados/macro/comparacao_tabela.csv": "62dbf3ae31d9fe0271498410b1cb33e89abb64d483d056ea8a23c06deea3e8a8",
-    "resultados/macro/comparacao_resultado.json": "12cf2eafd8af3a5ea43a4ccceeb7d66141131c3c8d7cc1653cf394f8a4f4ce75",
+    "resultados/macro/comparacao_tabela.md": "6b803871c7e95af59b70729ac8e3eb9c4cafe76961038de46cac6744177bb7b5",
+    "resultados/macro/comparacao_tabela.csv": "31f09f45405de6e760658e9cc442b9cbb24083e8aaa74ea351bac09d1613dbe4",
+    "resultados/macro/comparacao_resultado.json": "3604aaf17d1be43deb3be2989c5b575c002101f0925d73ba1bfa9b314e0ea6c3",
     "resultados/macro/comparacao_deteccao_severidade.png": "615586dd2df65218a3659d000421b34e2103d1bec233ef6fb90b31a7a282fbd6"
   },
   "evidence_level": "E2"

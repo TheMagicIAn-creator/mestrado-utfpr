@@ -1,9 +1,10 @@
 {
   "manifest_version": 2,
   "stage": "injecao_falhas",
-  "created_at": "2026-08-09T03:13:16.205281-03:00",
-  "git_commit": "5188276a5204f08d3fde45be138b740af8961e28",
+  "created_at": "2026-08-09T03:19:41.339366-03:00",
+  "git_commit": "2b325c3d74b8bb9ce1ff3242cf7656d02235e2e8",
   "code_hash_mode": "text_lf_utf8",
+  "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "code_sha256": "065456562d2b17e7aa13fac7f4d36c57f396936d0158fe7e70ee2c2e48a597f3",
   "code_dependencies": {
     "src.ml.features_ca": "23330f891620f442197eae9ea142d3a704449110bf3e0b1c9da8afd5ba9f558e",
@@ -46,8 +47,8 @@
   "output_artifacts": {
     "resultados/autoencoder/injecao_falhas_resultados.png": "35608aa113613174c499833ac87eb7433beb81a0d3bb157993421f4e1e8cbde8",
     "resultados/autoencoder/injecao_falhas_comparacao.png": "bc13d5986f38d2ea5f1ed3170ea2cb63ffb97af7f80e43b17136392301dd14f2",
-    "resultados/autoencoder/injecao_falhas_report.json": "502017229c2a74c4b3dff256fa52557f36afc57a0c8aaa320c4327946902bbb7",
-    "resultados/autoencoder/injecao_smd_tabela.csv": "512173201caa89c90cc509484ad77691bfb0b70fc982f559ea79f3378dc48d2c"
+    "resultados/autoencoder/injecao_falhas_report.json": "76300d5096e35cf65120340e1f9be755ad43d9f258210e6c0986772b9b469178",
+    "resultados/autoencoder/injecao_smd_tabela.csv": "e53e39e2fa40ce8e29c4eda3b82d299a214aa110580488ff13793e22799f3589"
   },
   "evidence_level": "E2"
 }
