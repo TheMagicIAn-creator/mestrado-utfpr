@@ -96,6 +96,9 @@ código latente negativo.
 
 - **Limiar operacional = MSE p99 da calibração**, registrado em
   `score_threshold`, `mse_p99` e `limiar_p99` com `score_method = mse`.
+- O p99 é **nominal e interpolado linearmente**. Com 42 janelas de calibração,
+  a resolução empírica da cauda é `1/42 = 2,38%`; portanto o rótulo p99 não é
+  evidência de FPR observado igual a 1%.
 - **Escore localizado = ablação diagnóstica**, mantida para comparação, sem
   controlar a decisão operacional.
 - **μ + 3σ = referência comparativa** (assume normalidade) — **nunca** o limiar
@@ -108,7 +111,10 @@ código latente negativo.
 - A auditoria tabular de calibração fica em
   `resultados/autoencoder/calibracao_autoencoder.{csv,md}`: ela reporta, por
   bloco temporal, mediana/IQR/p99 do MSE e excedências acima da referência MSE
-  p99 e do limiar operacional, sempre com IC95% de Wilson.
+  p99 e do limiar operacional, com a leitura por janela e a sensibilidade em
+  subamostra sem compartilhamento de amostras. O IC95% de Wilson por janela é
+  descritivo: sobreposição e dependência serial impedem tratá-lo como intervalo
+  inferencial de observações independentes.
 
 ## 4. Validação sintética interna E2 (limiar congelado)
 
@@ -118,8 +124,10 @@ Gera ROC, **Precision-Recall**, matriz de confusão e `validacao_report.json`
 com `evidence_level = E2` e `threshold_source = bloco_calibracao_temporal`.
 O protocolo canônico é `treino 50% → calibração 20% → teste 30%`, com purga
 nas fronteiras. Injeção e validação usam apenas janelas **não sobrepostas** do
-conjunto de teste. A configuração produz 32 trajetórias independentes, sem
-pseudorrepetição, e mantém o piso estatístico de 30. Isso remove vazamento de treino, mas não transforma E2 em
+conjunto de teste. A configuração produz 32 janelas sem compartilhamento de
+amostras brutas e mantém o piso estatístico de 30. Isso reduz pseudorrepetição
+direta, mas não prova independência temporal, não remove todo efeito de regime
+e não transforma E2 em
 validação externa: as falhas continuam sintéticas.
 
 Benchmarks exploratórios (ex.: `experimentos_artigos.py`) que escolhem o limiar
@@ -211,8 +219,9 @@ severidade em janelas não sobrepostas do holdout, o intervalo de Wilson de 95%
 e a **SMD₉₅** (menor severidade cuja taxa pontual é ≥ 95%). O campo
 `smd_95_conservadora` exige também limite inferior do IC ≥ 95%; quando n é
 insuficiente, permanece nulo em vez de transmitir certeza artificial.
-Na rodada canônica há 32 repetições independentes por severidade; os intervalos
-continuam obrigatórios porque essa amostra ainda produz incerteza relevante.
+Na rodada canônica há 32 janelas sem compartilhamento por severidade; os
+intervalos continuam obrigatórios, mas a correlação serial residual deve ser
+mantida como limitação.
 
 **Resolução da calibração de cauda:** as 42 janelas de calibração não autorizam
 subdividi-la em 80/20 para selecionar automaticamente uma meta de FP de 1%:
@@ -259,12 +268,17 @@ precision, recall, f1, **MCC**, AUC, **specificity** (= TN/(TN+FP) no binário) 
 ## 10. Proveniência e reprodutibilidade
 
 - **Manifesto v2 por etapa** (`proveniencia.py`): `code_sha256` normalizado para
-  LF, `code_dependencies`, `parameters`, hash dos artefatos upstream,
+  LF, `code_dependencies`, `parameters`, hash das entradas científicas
+  efetivamente lidas pela etapa (incluindo o CSV bruto em `features_ca`),
   `output_artifacts` e `git_commit`. Estados **ready / stale / pending**
   (`estado_pipeline()`), exibidos no chat e na sidebar. Um artefato **sem
   manifesto = não verificado (pending)**; manifesto v1 = **stale** até
   regenerar. Nada é apagado automaticamente; recalcular é sob comando (com
   confirmação).
+- Ordem de execução (`depends_on`) e dependência científica (`input_artifacts`)
+  são contratos distintos. Alterar uma figura ou tabela de apresentação não
+  invalida validação/Weibull que consomem apenas modelo, scaler, sua verificação,
+  estatística de resíduos, limiar e dados brutos.
 - **Caminhos relativos** nos artefatos (`to_project_relative_path`), resolvidos
   para absoluto só na interface.
 - **Datasets** validados por `scripts/verificar_datasets.py` (SHA-256, linhas);

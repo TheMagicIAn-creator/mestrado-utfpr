@@ -223,12 +223,28 @@ def test_pipeline_le_parametros_sem_importar_modulo_pesado(monkeypatch):
     assert auto["threshold_method"] == "p99"
 
 
-def test_pipeline_registra_todos_artefatos_upstream():
+def test_pipeline_registra_apenas_entradas_cientificas_reais():
     from src.ml.pipeline import _inputs_da_etapa, get_stage
+
+    features = _inputs_da_etapa(get_stage("features_ca"))
+    assert any("Inverter_Data_Set.csv" in key for key in features)
 
     inputs = _inputs_da_etapa(get_stage("autoencoder"))
     assert any("features_paderborn.parquet" in key for key in inputs)
-    assert any("features_paderborn_stats.csv" in key for key in inputs)
+    assert not any(key.endswith(".png") for key in inputs)
+
+    validacao = _inputs_da_etapa(get_stage("validacao"))
+    assert any("modelo_autoencoder.pt" in key for key in validacao)
+    assert any("estatistica_residuo.npz" in key for key in validacao)
+    assert not any("injecao_falhas_resultados.png" in key for key in validacao)
+
+
+def test_autoencoder_declara_artefatos_consumidos_pelas_etapas_seguinte():
+    from src.ml.pipeline import get_stage
+
+    artefatos = set(get_stage("autoencoder").artifacts)
+    assert "resultados/autoencoder/estatistica_residuo.npz" in artefatos
+    assert "resultados/autoencoder/scaler.pkl.sha256" in artefatos
 
 
 def test_pipeline_registra_dependencias_cientificas():

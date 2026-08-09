@@ -106,3 +106,54 @@ def test_tabela_de_anomalias_e_compacta_e_especifica(tmp_path, monkeypatch):
     )
     assert "| AUC | Detectadas | Reais | Taxa marcada | Recall |" in tabela_composta
     assert "| 1 | Ibrahim et al. (2022) | AE-LSTM | 0.500 | 12 |" in tabela_composta
+
+
+def test_gpvs_entra_no_resumo_e_nas_figuras_do_agente(tmp_path, monkeypatch):
+    from src.ml import resultados
+
+    metrica = {
+        "mean": 0.8,
+        "ci95_low": 0.7,
+        "ci95_high": 0.9,
+        "n_experiments": 14,
+    }
+    bloco = {
+        "auc": dict(metrica),
+        "post_tpr": dict(metrica, mean=0.45),
+        "specificity": dict(metrica, mean=0.97),
+        "balanced_accuracy": dict(metrica, mean=0.71),
+    }
+    estrito = {
+        **bloco,
+        "specificity": dict(metrica, mean=0.007),
+    }
+    (tmp_path / "validacao_gpvs_e3.json").write_text(
+        json.dumps({
+            "macro_summary": {
+                "strict_ae": {"all": estrito},
+                "adaptive_ae": {"all": bloco},
+                "adaptive_pca": {"all": bloco},
+            }
+        }),
+        encoding="utf-8",
+    )
+    for nome in (
+        "gpvs_macro_comparacao.png",
+        "gpvs_transferencia_estrita.png",
+        "gpvs_metricas_por_cenario.png",
+    ):
+        _png(tmp_path / nome)
+    monkeypatch.setattr(resultados, "PASTA_GPVS", tmp_path)
+
+    resumo = resultados.resumir_resultados(
+        "Mostre a validação externa GPVS.", incluir_imagens=True
+    )
+
+    assert "E3 de bancada" in resumo["mensagem"]
+    assert "transferência direta" in resumo["mensagem"]
+    assert "não é campo" in resumo["mensagem"]
+    assert [Path(img["path"]).name for img in resumo["imagens"]] == [
+        "gpvs_macro_comparacao.png",
+        "gpvs_transferencia_estrita.png",
+        "gpvs_metricas_por_cenario.png",
+    ]

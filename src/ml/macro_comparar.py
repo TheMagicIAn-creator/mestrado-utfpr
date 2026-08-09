@@ -79,6 +79,7 @@ def manifesto_atual(n_janelas: int | None = None) -> dict:
             "modelo_autoencoder": RAIZ / "resultados/autoencoder/modelo_autoencoder.pt",
             "limiar_autoencoder": RAIZ / "resultados/autoencoder/limiar.json",
             "scaler_autoencoder": RAIZ / "resultados/autoencoder/scaler.pkl",
+            "hash_scaler_autoencoder": RAIZ / "resultados/autoencoder/scaler.pkl.sha256",
         },
         _saidas_macro(),
         code_dependencies={

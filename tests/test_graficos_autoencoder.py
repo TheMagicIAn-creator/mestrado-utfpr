@@ -23,10 +23,12 @@ import numpy as np
 
 from src.ml.graficos_autoencoder import (
     _info_em_escala_mse,
+    _posicoes_sem_compartilhamento,
+    _sombrear_split_temporal,
+    plotar_distribuicao,
     regenerar_graficos_autoencoder,
     salvar_resumo_calibracao,
 )
-
 
 # Reproduz o formato real de resultados/autoencoder/limiar.json.
 _LIMIAR_JSON = {
@@ -36,6 +38,16 @@ _LIMIAR_JSON = {
     "k": 3.0,
     "percentil_limiar": 99.9,
     "fp_test_pct": 10.227272727272728,    # medido contra o operacional
+}
+
+
+_SPLIT_INTERCALADO = {
+    "limites": {
+        "treino": [[0, 16], [51, 65], [65, 81], [100, 114],
+                   [149, 163], [163, 179], [214, 228]],
+        "val": [[35, 49], [116, 130], [181, 195]],
+        "teste": [[18, 33], [83, 98], [132, 147], [197, 212]],
+    }
 }
 
 
@@ -68,6 +80,60 @@ def test_nao_mexe_no_dicionario_recebido():
 def test_erros_vazios_preservam_o_fp_salvo():
     info = _info_em_escala_mse(dict(_LIMIAR_JSON), np.array([]))
     assert info["fp_test_pct"] == _LIMIAR_JSON["fp_test_pct"]
+
+
+def test_subamostra_sem_compartilhamento_reflete_split_real():
+    calib = _posicoes_sem_compartilhamento(_SPLIT_INTERCALADO, "val", 42)
+    teste = _posicoes_sem_compartilhamento(_SPLIT_INTERCALADO, "teste", 60)
+
+    assert len(calib) == 21
+    assert len(teste) == 32
+
+
+def test_split_intercalado_sombreia_todos_os_14_blocos():
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots()
+    _sombrear_split_temporal(ax, np.arange(228, dtype=float), _SPLIT_INTERCALADO)
+
+    assert len(ax.patches) == 14
+    assert [p.get_label() for p in ax.patches if p.get_label() != "_nolegend_"] == [
+        "Treino", "Calibração", "Teste isolado",
+    ]
+    plt.close(fig)
+
+
+def test_distribuicao_mostra_ecdf_completa_e_cauda_log(tmp_path, monkeypatch):
+    from src.ml import graficos_autoencoder as graficos
+
+    capturado = {}
+
+    def _capturar(fig, caminho, nota=None):
+        capturado["fig"] = fig
+        capturado["nota"] = nota
+
+    monkeypatch.setattr(graficos, "salvar_figura", _capturar)
+    treino = np.geomspace(0.05, 2.0, 104)
+    calib = np.geomspace(0.05, 2.7, 42)
+    teste = np.geomspace(0.05, 5.0, 60)
+    info = {
+        "limiar": 2.58,
+        "limiar_mu3sigma": 2.20,
+        "k": 3.0,
+        "split_temporal": _SPLIT_INTERCALADO,
+    }
+
+    plotar_distribuicao(treino, calib, teste, info, tmp_path)
+
+    fig = capturado["fig"]
+    ax_ecdf, ax_cauda = fig.axes
+    assert ax_ecdf.get_ylim()[0] == 0.0
+    assert ax_cauda.get_yscale() == "log"
+    assert "acumulada empírica" in ax_ecdf.get_title()
+    assert "Cauda superior" in ax_cauda.get_title()
+    assert "dependência serial" in capturado["nota"]
+    import matplotlib.pyplot as plt
+    plt.close(fig)
 
 
 # ── regeneração ponta a ponta, sem torch e sem dataset ───────────────────────
@@ -152,6 +218,13 @@ def test_resumo_calibracao_documenta_ic95_e_duas_escalas(tmp_path):
         score_threshold=7.826175715408156,
         threshold_effective_percentile=99.9,
         mse_p99=_LIMIAR_JSON["limiar_mse"],
+        split_temporal={
+            "limites": {
+                "treino": [0, 4],
+                "val": [4, 8],
+                "teste": [8, 12],
+            }
+        },
     )
 
     csv_path, md_path = salvar_resumo_calibracao(
@@ -168,4 +241,6 @@ def test_resumo_calibracao_documenta_ic95_e_duas_escalas(tmp_path):
     assert "limiar operacional" in md
     assert "localizado / percentil efetivo 99.9" in md
     assert "score_operacional_rate_pct" in csv
+    assert "mse_sem_compartilhamento_rate_pct" in csv
+    assert "sem compartilhamento" in md
     assert "teste_isolado" in csv
