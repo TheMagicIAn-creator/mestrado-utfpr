@@ -22,12 +22,44 @@ from src.ml.rul_weibull import (
     Path,
     _log,
     curva_kaplan_meier,
+    motivo_nao_estimavel,
     np,
     plt,
     rul_condicional,
     rul_restrita_km,
     salvar_figura,
 )
+
+
+def _aviso_nao_estimavel(p: dict, largura: int = 34) -> str:
+    """A frase completa, quebrada para caber num título de painel.
+
+    Painel sem beta/eta e legenda dizendo so "nao estimavel" e um buraco mudo:
+    nao distingue "faltou 1 evento" de "quebrou". Ver
+    rul_weibull.motivo_nao_estimavel.
+    """
+    import textwrap
+
+    desfechos = p.get("desfechos") or {}
+    if not desfechos:
+        return "ajuste não estimável"
+    n_det = desfechos.get("n_detectadas", "?")
+    n_traj = desfechos.get("n_traj", "?")
+    pod = desfechos.get("pod_mon_no_teto")
+    cabeca = f"NÃO ESTIMÁVEL — {n_det}/{n_traj} detecções"
+    if pod is not None:
+        cabeca += f" (POD_mon={pod:.0%})"
+    return "\n".join(textwrap.wrap(cabeca, largura))
+
+
+def _texto_do_painel_vazio(p: dict) -> str:
+    """Bloco explicativo para o painel que perderia a curva paramétrica."""
+    import textwrap
+
+    desfechos = p.get("desfechos") or {}
+    if not desfechos:
+        return "Sem detecções suficientes\npara estimar h(a)"
+    return "\n".join(textwrap.wrap(motivo_nao_estimavel(desfechos), 38))
 
 
 def plotar_ttf_histogramas(
@@ -50,7 +82,10 @@ def plotar_ttf_histogramas(
         censurados = ttfs[~eventos]
 
         horizonte = float(max(ttfs))
-        bins = np.linspace(0.0, horizonte, 13)
+        # Menos eventos, menos bins: com 9 eventos em 12 bins o histograma vira
+        # código de barras e sugere ausência de estrutura onde só falta amostra.
+        n_bins = int(min(13, max(5, len(observados) // 2 + 1)))
+        bins = np.linspace(0.0, horizonte, n_bins)
         MIN_EVENTOS_HIST = 5
         if len(observados) >= MIN_EVENTOS_HIST:
             ax.hist(
@@ -72,7 +107,8 @@ def plotar_ttf_histogramas(
         if len(observados):
             ax.axvline(
                 float(np.median(observados)), color="0.35", linestyle="--",
-                linewidth=1.3, label=f"Mediana observada={np.median(observados):.0f}",
+                linewidth=1.3,
+                label=f"Mediana observada={np.median(observados):.2f}",
             )
 
         # Curva de Weibull ajustada SOBRE o histograma (quando estimável). A
@@ -103,7 +139,7 @@ def plotar_ttf_histogramas(
         if p["fit_converged"] and p["b10"] <= horizonte:
             ax.axvline(
                 p["b10"], color="#2a78d6", linestyle=":", linewidth=1.7,
-                label=f"B10 paramétrico={p['b10']:.1f}",
+                label=f"B10 paramétrico={p['b10']:.2f}",
             )
 
         npm_str = f"NPR={falha['npr']}"
@@ -119,8 +155,8 @@ def plotar_ttf_histogramas(
                    if incerto else "")
             )
         else:
-            ajuste = (f"Weibull não estimável · indetect.={p['censura_pct']:.0f}%\n"
-                      "RUL restrita por Kaplan-Meier disponível")
+            ajuste = (_aviso_nao_estimavel(p)
+                      + "\nKaplan-Meier permanece válida")
         ax.set_title(f"{nome} ({npm_str})\n{ajuste}", fontsize=9)
         ax.set_xlabel("$a_{det}$ (fração da assinatura nominal)")
         ax.set_ylabel("Número de trajetórias")
@@ -172,7 +208,7 @@ def plotar_confiabilidade(
             f"β={p['beta']:.2f}, η={p['eta']:.3f}, RMSE-KM={p['km_rmse']:.3f}"
             + ("\nALTA CENSURA — extrapolação incerta"
                if p["rul_parametrica_alta_incerteza"] else "")
-            if p["fit_converged"] else "ajuste não estimável"
+            if p["fit_converged"] else _aviso_nao_estimavel(p)
         )
         ax_r.set_title(f"{falha['nome']} ({npm_str})\n{titulo_ajuste}", fontsize=9)
         ax_r.legend(fontsize=8)
@@ -187,12 +223,17 @@ def plotar_confiabilidade(
                          else "decrescente ↓")
             ax_h.set_title(f"Taxa de detecção h(a)\nβ={p['beta']:.2f} — {beta_desc}", fontsize=9)
         else:
-            ax_h.text(0.5, 0.5, "Sem detecções suficientes\npara estimar h(a)",
+            ax_h.text(0.5, 0.5, _texto_do_painel_vazio(p),
                       transform=ax_h.transAxes, ha="center", va="center",
-                      color=COR_TEXTO_SEC)
-            ax_h.set_title("Taxa de falha não estimável")
-        ax_h.set_xlabel("$a$ (fração da assinatura nominal)")
-        ax_h.set_ylabel("$h(a)$")
+                      color=COR_TEXTO_SEC, fontsize=7.5, wrap=True)
+            ax_h.set_title("Taxa de detecção não estimável", fontsize=9)
+        # Eixo numérico num painel sem curva sugere dado que não existe.
+        if p["fit_converged"]:
+            ax_h.set_xlabel("$a$ (fração da assinatura nominal)")
+            ax_h.set_ylabel("$h(a)$")
+        else:
+            ax_h.set_xticks([])
+            ax_h.set_yticks([])
 
     arq = pasta / "weibull_confiabilidade.png"
     salvar_figura(
@@ -310,9 +351,48 @@ def plotar_distribuicao_weibull(
         ax_f.set_title(f"{falha['nome']} (NPR={falha['npr']})", fontsize=10)
 
         if not p["fit_converged"]:
-            for ax in (ax_f, ax_F, ax_pw):
-                ax.text(0.5, 0.5, "ajuste não estimável", ha="center",
-                        va="center", transform=ax.transAxes, color=COR_TEXTO_SEC)
+            # Três painéis em branco era o que fazia o IGBT "sumir" do capítulo.
+            # Só a DENSIDADE precisa de β e η; a acumulada empírica e o papel de
+            # Weibull são construídos a partir dos eventos observados e seguem
+            # informativos — o papel, em especial, é o que MOSTRA por que o
+            # ajuste não fecha: poucos pontos, ou pontos fora de uma reta.
+            # Título curto e no mesmo formato dos outros dois painéis: o
+            # detalhe já está no corpo, e repeti-lo no título estourava a
+            # linha e brigava com o suptitle.
+            ax_f.set_title(f"{falha['nome']} (NPR={falha['npr']})\n"
+                           f"f(t) exige β e η — não estimados", fontsize=10)
+            ax_f.text(0.5, 0.5, _texto_do_painel_vazio(p), ha="center",
+                      va="center", transform=ax_f.transAxes,
+                      color=COR_TEXTO_SEC, fontsize=7.5)
+            # Sem densidade, os eixos numéricos só sugerem dado que não existe.
+            ax_f.set_xticks([])
+            ax_f.set_yticks([])
+
+            if eventos.any():
+                obs = np.sort(ttfs[eventos])
+                ax_F.plot(obs, mediana_de_posto(len(obs)), "o", color="black",
+                          markersize=4, label="mediana de posto (observado)")
+                ax_F.legend(fontsize=8)
+            else:
+                ax_F.text(0.5, 0.5, "nenhuma detecção", ha="center",
+                          va="center", transform=ax_F.transAxes,
+                          color=COR_TEXTO_SEC)
+            ax_F.set_ylim([0, 1.05])
+            ax_F.set_ylabel("F(t) = P(T ≤ t)")
+            ax_F.set_xlabel("$a_{det}$ (fração da assinatura nominal)")
+
+            if eventos.sum() >= 3:
+                obs = np.sort(ttfs[eventos])
+                x_p, y_p = eixos_papel_weibull(obs, mediana_de_posto(len(obs)))
+                ax_pw.plot(x_p, y_p, "o", color="black", markersize=4,
+                           label="observado (sem ajuste)")
+                ax_pw.legend(fontsize=8)
+            else:
+                ax_pw.text(0.5, 0.5, "eventos insuficientes", ha="center",
+                           va="center", transform=ax_pw.transAxes,
+                           color=COR_TEXTO_SEC)
+            ax_pw.set_xlabel("ln t")
+            ax_pw.set_ylabel("ln(−ln(1−F))")
             continue
 
         beta, eta = p["beta"], p["eta"]

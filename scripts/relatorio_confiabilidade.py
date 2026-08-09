@@ -62,8 +62,33 @@ def secao_confiabilidade(weibull: dict) -> tuple[list[str], dict]:
     for fid, bloco in weibull.get("falhas", {}).items():
         w = bloco.get("weibull") or {}
         if not w.get("fit_converged"):
-            linhas += [f"### {bloco.get('nome', fid)}", "",
-                       "Ajuste não convergiu — sem curva de confiabilidade.", ""]
+            # Uma linha seca ("não convergiu") deixava o modo mais difícil da
+            # FMECA como um buraco no capítulo — sem dizer se faltou um evento
+            # ou cinquenta, e escondendo que a leitura NÃO PARAMÉTRICA existe.
+            d = w.get("desfechos") or {}
+            leitura = (w.get("interpretacao") or {}).get("leitura")
+            linhas += [f"### {bloco.get('nome', fid)} (NPR {bloco.get('npr', '?')})",
+                       "", f"**{leitura or 'Ajuste não convergiu.'}**", ""]
+            if d:
+                linhas += [
+                    "| Grandeza | Valor |", "|---|--:|",
+                    f"| trajetórias | {d.get('n_traj')} |",
+                    f"| detectadas | {d.get('n_detectadas')} |",
+                    f"| não detectadas em a_inj = 1,0 | {d.get('n_indetectaveis_no_teto')} |",
+                    f"| POD_mon no teto | {float(d.get('pod_mon_no_teto', float('nan'))):.1%} |",
+                    "",
+                ]
+            rul_km = w.get("rul_restrita_inicial")
+            horizonte_km = w.get("rul_restrita_horizonte")
+            if rul_km is not None and np.isfinite(float(rul_km)):
+                linhas += [
+                    f"> **Kaplan-Meier (não paramétrica) permanece válida.** "
+                    f"Margem média de magnitude até detectar, restrita ao "
+                    f"horizonte observado de {float(horizonte_km):.2f}: "
+                    f"**{float(rul_km):.2f}**. Não extrapola além do observado — "
+                    f"e é exatamente por isso que sobrevive à falta de eventos.",
+                    "",
+                ]
             continue
         beta, eta = float(w["beta"]), float(w["eta"])
         ic = w.get("beta_ci95") or [None, None]
@@ -148,7 +173,11 @@ def secao_pod(npz, limiar_json: dict) -> tuple[list[str], dict]:
          "caminhos independentes abaixo — se os três concordarem, a conclusão "
          "não depende dela."
          if not norm["vale"] else
-         f"Hipótese satisfeita na escala **{norm['melhor_escala']}**."), "",
+         f"**Hipótese satisfeita** na escala **{norm['melhor_escala']}**. Os "
+         "três estimadores abaixo continuam sendo reportados: quando eles "
+         "concordam sob hipótese válida, a concordância confirma o método; "
+         "quando divergem, é sinal de cauda que o teste de normalidade não "
+         "pegou."), "",
         "| Estimador do percentil 99 do escore saudável | Valor |",
         "|---|--:|",
         f"| normal no escore bruto (LS-POD) | {pof['limite']:.4f} |",
@@ -163,12 +192,25 @@ def secao_pod(npz, limiar_json: dict) -> tuple[list[str], dict]:
     linhas += [
         (f"> **Os {len(acima)} estimadores ficam acima do limiar adotado.** Pelo "
          "critério LS-POD, o requisito de falso positivo de 1% **não é cumprido "
-         "no bloco de teste** — e a conclusão é robusta à violação da hipótese "
-         "de normalidade, porque o quantil empírico, que não assume "
-         "distribuição, leva ao mesmo lugar."
+         "no bloco de teste**. A conclusão não depende da hipótese de "
+         "normalidade: o quantil empírico, que não assume distribuição, leva ao "
+         "mesmo lugar."
+         + ("" if norm["vale"] else
+            " Isso importa aqui, porque a normalidade está VIOLADA — sem o "
+            "estimador empírico o veredito seria discutível.")
          if todos_acima else
          "> Os estimadores divergem quanto ao cumprimento do requisito; "
-         "reportar a faixa, não um veredito."), "",
+         "reportar a faixa, não um veredito."), "",]
+    # Um requisito abaixo da resolução amostral não é falha de calibração: é
+    # falta de amostra, e nenhum limiar conserta. Sem esta ressalva o parágrafo
+    # acima sugere que existe um limiar melhor a encontrar.
+    resolucao_pct = 100.0 / max(int(norm.get("n", 0) or 0), 1)
+    linhas += [
+        (f"> ⚠️ Com n = {norm.get('n')}, a resolução amostral é "
+         f"{resolucao_pct:.2f}%: **o alvo de 1% está abaixo do que esta amostra "
+         f"consegue certificar**. Zero excedências observadas não provariam 1%. "
+         f"O requisito não falha por calibração — falha por tamanho de amostra."
+         if resolucao_pct > 1.0 else ""), "",
         "### Deriva entre calibração e teste", "",
         deriva["leitura"], "",
     ]

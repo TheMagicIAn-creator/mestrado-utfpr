@@ -641,12 +641,53 @@ def ajustar_weibull(
         # e iam apenas para o PNG. O agente não conseguia responder "qual a
         # confiabilidade em t = 40?" com número, a dissertação não tinha valor
         # para tabelar e a banca não tinha o que conferir. Agora saem como dado.
-        **_curvas_e_interpretacao(convergiu, beta, eta, horizonte, cis),
+        **_curvas_e_interpretacao(convergiu, beta, eta, horizonte, cis,
+                                  desfechos),
     }
 
 
+def motivo_nao_estimavel(desfechos: dict) -> str:
+    """Por que a Weibull não saiu, COM os números — não só "não convergiu".
+
+    O pesquisador reportou que o IGBT "sumia" dos gráficos. Sumia mesmo: os
+    painéis ficavam sem β/η e a legenda dizia apenas "ajuste não estimável",
+    sem dizer se faltou 1 evento ou 50, nem que a curva não paramétrica
+    continuava válida. Um buraco silencioso num capítulo é pior que um número
+    ruim — a banca não tem como distinguir "não deu" de "quebrou".
+
+    Fonte única da frase: gráficos, relatório em Markdown e JSON usam esta.
+    """
+    n_det = int(desfechos.get("n_detectadas", 0))
+    n_traj = int(desfechos.get("n_traj", 0))
+    faltam = max(MIN_EVENTOS_WEIBULL - n_det, 0)
+    pod = desfechos.get("pod_mon_no_teto")
+    nao_det = int(desfechos.get("n_indetectaveis_no_teto", 0))
+
+    partes = [
+        f"Weibull não estimável: {n_det} detecções em {n_traj} trajetórias, "
+        f"contra o mínimo de {MIN_EVENTOS_WEIBULL}."
+    ]
+    if faltam:
+        partes.append(
+            f"Faltou {faltam} evento{'s' if faltam > 1 else ''} — o critério "
+            "NÃO foi afrouxado para produzir uma curva."
+        )
+    if pod is not None and np.isfinite(pod):
+        partes.append(
+            f"POD_mon no teto = {pod:.1%}: {nao_det} trajetórias não são "
+            "detectadas nem com a assinatura inteira (a_inj = 1,0)."
+        )
+    partes.append(
+        "A curva Kaplan-Meier continua válida e está no gráfico: é não "
+        "paramétrica e não exige mínimo de eventos. O que falta é a "
+        "EXTRAPOLAÇÃO paramétrica, não a descrição do observado."
+    )
+    return " ".join(partes)
+
+
 def _curvas_e_interpretacao(convergiu: bool, beta: float, eta: float,
-                            horizonte: float, cis: dict) -> dict:
+                            horizonte: float, cis: dict,
+                            desfechos: dict | None = None) -> dict:
     """Bloco de curvas amostradas + leitura de engenharia, para o JSON.
 
     Separado de `ajustar_weibull` para caber no limite de linhas do módulo e
@@ -660,8 +701,10 @@ def _curvas_e_interpretacao(convergiu: bool, beta: float, eta: float,
             "marcos": None,
             "interpretacao": {
                 "conclusivo": False,
-                "leitura": ("ajuste não convergiu — sem curva de confiabilidade "
+                "leitura": (motivo_nao_estimavel(desfechos) if desfechos else
+                            "ajuste não convergiu — sem curva de confiabilidade "
                             "nem leitura de regime de falha"),
+                "km_continua_valida": True,
             },
         }
 
