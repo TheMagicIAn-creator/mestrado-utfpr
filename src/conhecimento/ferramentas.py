@@ -37,8 +37,9 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "rodar_features_ca",
         "description": (
-            "Extrai features eletricas CA do dataset de Paderborn. Use quando "
-            "o usuario pedir para extrair features ou preparar dados."
+            "Extrai features eletricas CA do conjunto experimental Stender "
+            "(Paderborn University). Use quando o usuario pedir para extrair "
+            "features ou preparar dados."
         ),
     },
     {
@@ -154,11 +155,10 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "consultar_datasets",
         "description": (
-            "Explica os datasets do projeto (Paderborn e PV Farms): finalidade, "
-            "rotulos, arquivos, nº de linhas, features, dominio CA ou CC e "
-            "limitacoes — lendo as contagens dinamicamente. Use quando o usuario "
-            "perguntar sobre os datasets, os dados, ou a diferenca entre "
-            "Paderborn e PV Farms."
+            "Explica os datasets do projeto e os candidatos auditados: Stender, "
+            "PV Farms, GPVS-Faults, PV residencial e PMSM. Distingue origem "
+            "experimental, simulada e operacional, dominio CA/CC e aptidao para "
+            "Weibull — lendo as contagens locais dinamicamente."
         ),
     },
     {
@@ -243,7 +243,7 @@ def consultar_status_pipeline(progresso=None, pergunta: str = "") -> dict:
         publicados = estado_resultados_publicados()
         linhas = [
             "## Pipeline de ML — modo de consulta\n",
-            "O site não contém o dataset bruto de Paderborn, portanto não "
+            "O site não contém o dataset bruto Stender, portanto não "
             "executa treinamento na nuvem. Ele consulta a última execução "
             "local publicada no repositório.\n",
         ]
@@ -408,7 +408,7 @@ def _rodar_stage(stage_key: str, progresso=None, pergunta: str = "") -> dict:
             "etapa": NOMES_ETAPAS[stage_key],
             "mensagem": (
                 "## Cálculo indisponível neste ambiente\n\n"
-                "O dataset bruto de Paderborn não é publicado no Streamlit "
+                "O dataset bruto Stender não é publicado no Streamlit "
                 "Cloud. Por isso, o site não pode retreinar esta etapa. Abaixo "
                 "está a última execução local publicada.\n\n"
                 + resumo["mensagem"]

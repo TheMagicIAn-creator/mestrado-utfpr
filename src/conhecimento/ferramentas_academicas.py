@@ -461,7 +461,7 @@ def _contar_linhas(caminho) -> int:
 
 
 def consultar_datasets(progresso=None, pergunta: str = "") -> dict:
-    """Explica os datasets do projeto lendo contagens DINAMICAMENTE (sem hardcode)."""
+    """Explica os datasets usados e candidatos com origem e limites explícitos."""
     if progresso:
         progresso("Lendo metadados dos datasets...")
     from pathlib import Path
@@ -471,7 +471,7 @@ def consultar_datasets(progresso=None, pergunta: str = "") -> dict:
     base = Path(RAIZ_PROJETO) / "dados" / "brutos"
     linhas = ["## Datasets do projeto\n"]
 
-    # PV Farms (supervisionado, falhas CC)
+    # PV Farms (supervisionado, falhas CC simuladas)
     try:
         import pandas as pd
 
@@ -479,18 +479,24 @@ def consultar_datasets(progresso=None, pergunta: str = "") -> dict:
         te = pd.read_csv(base / "test_data.csv", sep=";")
         n_feat = tr.shape[1] - (1 if "class" in tr.columns else 0)
         classes = sorted(tr["class"].unique().tolist()) if "class" in tr.columns else []
+        duplicadas = int(tr.duplicated().sum())
         linhas.append(
-            f"### PV Farms — classificação supervisionada (domínio **CC**)\n"
+            f"### PV Farms — benchmark **simulado** (domínio **CC**)\n"
             f"- Arquivos: `dados/brutos/train_data.csv`, `test_data.csv`\n"
             f"- Treino: {len(tr)} linhas | Teste: {len(te)} linhas | {n_feat} features\n"
             f"- Classes: {classes} (Normal, F1 string, F2 string-terra, F3 string-string)\n"
-            f"- Uso: **classificação supervisionada de falhas CC conhecidas**.\n"
-            f"- Limitação: NÃO diagnostica falhas CA do inversor."
+            f"- Duplicatas exatas no treino: {duplicadas}; a CV mantém cópias no mesmo grupo.\n"
+            f"- Uso: classificação supervisionada exploratória de falhas CC simuladas.\n"
+            f"- Limitação: não é dado de campo e NÃO diagnostica falhas CA do inversor."
         )
     except Exception as exc:  # noqa: BLE001
-        linhas.append(f"### PV Farms — não foi possível ler ({exc})")
+        linhas.append(
+            "### PV Farms — benchmark **simulado** (domínio **CC**)\n"
+            f"- Arquivos locais não disponíveis para contagem ({exc}).\n"
+            "- Limitação: não é dado de campo e não diagnostica falhas CA."
+        )
 
-    # Paderborn (saudável, anomalia CA)
+    # Stender (saudável, anomalia CA)
     pad = base / "Inverter_Data_Set.csv"
     if pad.exists():
         try:
@@ -498,20 +504,38 @@ def consultar_datasets(progresso=None, pergunta: str = "") -> dict:
         except Exception:  # noqa: BLE001
             n_rows = "?"
         linhas.append(
-            f"\n### Paderborn — detecção de anomalia (domínio **CA**)\n"
+            f"\n### Stender (Paderborn University) — normalidade **CA**\n"
             f"- Arquivo: `dados/brutos/Inverter_Data_Set.csv`\n"
-            f"- Amostras: {n_rows} (inversor IGBT trifásico **SAUDÁVEL**, 10 kHz)\n"
-            f"- Uso: **treinar o modelo de normalidade** (Autoencoder); como é "
-            f"saudável, a validação de anomalia usa falhas sintéticas (E2).\n"
-            f"- Limitação: sem rótulos reais de falha."
+            f"- Amostras: {n_rows} (inversor IGBT trifásico, 10 kHz, sem rótulos de falha)\n"
+            f"- Origem: bancada experimental de acionamento de motor; NÃO é o "
+            f"Paderborn Bearing Dataset e NÃO é fotovoltaico.\n"
+            f"- Uso: treinar o Autoencoder de normalidade; a validação atual usa "
+            f"falhas sintéticas orientadas pela FMECA (E2).\n"
+            f"- Limitação: existe lacuna de domínio perante inversor PV conectado à rede."
         )
     else:
-        linhas.append("\n### Paderborn — arquivo não encontrado localmente.")
+        linhas.append(
+            "\n### Stender (Paderborn University) — normalidade **CA**\n"
+            "- Arquivo local não encontrado. É uma bancada experimental de "
+            "inversor/motor, não o Paderborn Bearing Dataset e não um sistema PV."
+        )
 
     linhas.append(
-        "\n**Separação de domínio:** os dois NÃO se fundem. PV Farms = falhas "
-        "**CC** conhecidas (supervisionado); Paderborn = anomalia **CA** por "
-        "modelagem de normalidade. O uso combinado é conceitual/arquitetural."
+        "\n### Candidatos auditados\n"
+        "- **GPVS-Faults:** prioridade para validação externa específica de "
+        "microrede PV conectada à rede; cenários experimentais de inversor, "
+        "rede, sensores e controle. Só será E3 após protocolo executado.\n"
+        "- **PV residencial:** 862.438 registros operacionais e 10 blocos de "
+        "estado `Fault`; útil para anomalia operacional após limpeza, mas sem "
+        "causa, unidade, reparo ou vidas independentes.\n"
+        "- **PMSM inverter:** 10.892 amostras e nove condições em blocos únicos; "
+        "é acionamento de motor, e as features derivadas publicadas contêm "
+        "divisões por zero. Não deve ser usado sem reconstrução a partir dos sinais brutos.\n"
+        "\n**Separação de domínio:** PV Farms = falhas **CC simuladas**; Stender = "
+        "normalidade **CA** em bancada de acionamento. Os dados não se fundem.\n"
+        "\n**Weibull físico:** nenhum desses conjuntos fornece, tal como está, "
+        "tempos de vida/falha de unidades independentes com censura. A Weibull "
+        "atual usa `a_det` sintético (E2), não tempo físico nem RUL de campo."
     )
     return {
         "ok": True, "etapa": "Datasets do projeto",
@@ -525,17 +549,22 @@ def comparar_abordagens_ml(progresso=None, pergunta: str = "") -> dict:
         "## Abordagens de ML na dissertação\n\n"
         "| Abordagem | O que faz | Rótulos? | No projeto |\n"
         "|---|---|---|---|\n"
-        "| **Supervisionada** | classifica falhas CONHECIDAS | sim | PV Farms (**CC**): RF, AdaBoost, LogReg, Naive Bayes, CN2 |\n"
-        "| **Não supervisionada** | aprende a NORMALIDADE e detecta desvios | não | Paderborn (**CA**): Autoencoder denso e AE-LSTM do Ibrahim |\n"
-        "| **Sintética (FMECA)** | valida assinaturas CA modeladas | ground truth sintético | injeção de falhas no Paderborn (**E2**) |\n\n"
+        "| **Supervisionada** | classifica falhas CONHECIDAS | sim | PV Farms simulado (**CC**): RF, AdaBoost, LogReg, Naive Bayes, CN2 |\n"
+        "| **Não supervisionada** | aprende a NORMALIDADE e detecta desvios | não | Stender experimental (**CA**, inversor/motor): Autoencoder denso e AE-LSTM do Ibrahim |\n"
+        "| **Sintética (FMECA)** | valida assinaturas CA modeladas | ground truth sintético | injeção no holdout Stender (**E2**) |\n"
+        "| **Externa candidata** | testa transferência ao domínio PV/rede | rótulos de cenário | GPVS-Faults; ainda não executado, portanto ainda não E3 |\n\n"
         "**Rigor:**\n"
         "- O não supervisionado DETECTA anomalia, mas NÃO garante diagnóstico "
         "causal da falha.\n"
         "- A validação sintética (E2) depende de calibração física (ex.: o ruído "
         "de sensor é um proxy).\n"
-        "- PV Farms (CC) e Paderborn (CA) NÃO se fundem: o classificador PV Farms "
+        "- PV Farms (CC simulado) e Stender (CA experimental) NÃO se fundem: o classificador PV Farms "
         "não diagnostica falhas CA do inversor, nem transfere suas métricas ao "
         "pipeline CA.\n"
+        "- Stender é da Paderborn University, mas NÃO é o Paderborn Bearing Dataset "
+        "e NÃO representa diretamente um inversor fotovoltaico conectado à rede.\n"
+        "- Nenhum dataset atual autoriza Weibull em tempo físico; `a_det` permanece "
+        "uma intensidade sintética E2.\n"
         "- Cada experimento por artigo segue o PROTOCOLO do próprio artigo "
         "(Shewhart 3σ, contaminação a priori, p99 do treino congelado, "
         "PPO em validação temporal, voto majoritário) — por isso o F1 não é "

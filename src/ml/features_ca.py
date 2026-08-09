@@ -1,11 +1,13 @@
 """
 features_ca.py — Al IAdo PV / Fase 5
-Extração de features do lado CA a partir do dataset de Paderborn.
+Extração de features do lado CA a partir do conjunto experimental Stender
+(Paderborn University). Não confundir com o Paderborn Bearing Dataset.
 
 Dataset: Inverter_Data_Set.csv (Stender, Wallscheid & Böcker, 2020)
   - ~235 mil amostras, taxa de amostragem: 10 kHz
   - Inversor IGBT trifásico em operação SAUDÁVEL
-  - Frequência fundamental nominal: 60 Hz (F0 estimado adaptativamente)
+  - Frequência elétrica observável: ~13,5 a 107,7 Hz (F0 adaptativo)
+  - Bancada de acionamento de motor; não é um sistema fotovoltaico conectado à rede
 
 Sinais utilizados:
   - i_a_k, i_b_k, i_c_k  → correntes CA trifásicas (instante atual)
@@ -39,9 +41,9 @@ IEC 61727 e pela IEEE 1547 — continua fora, e isso é uma DECISÃO EM ABERTO, 
 um esquecimento: ver a nota em FEATURES_EXCLUIR.
 
 Estratégia de janelamento:
-  - Janela: 1024 amostras = 102,4 ms ≈ 6 ciclos a 60 Hz
-  - Sobreposição: 512 amostras (50%)
-  - Resolução espectral: ~9,77 Hz por bin
+  - Janela: 2048 amostras = 204,8 ms
+  - Sobreposição: 1024 amostras (50%)
+  - Resolução espectral: ~4,88 Hz por bin
 
 Features extraídas (por janela):
   DOMÍNIO DO TEMPO (por fase — exceto média AC):
@@ -102,7 +104,7 @@ aplicar_estilo()
 FS           = 10_000      # Hz — taxa de amostragem
 
 # ── Frequência fundamental: derivada do DATASET, não da rede ────────────────
-# O Paderborn NÃO é rede elétrica: é bancada de acionamento de motor de indução
+# O conjunto Stender NÃO é rede elétrica: é bancada de acionamento de motor de indução
 # com velocidade variável. Stender, Wallscheid & Böcker (2020) — o artigo do
 # próprio dataset, indexado em literatura/inversores-pv/ — registram:
 #
@@ -506,7 +508,7 @@ def executar_features_ca(
     Retorna True se concluiu com sucesso.
     """
     _log("=" * 60)
-    _log("  AL IADO PV — FEATURES CA (Paderborn)")
+    _log("  AL IADO PV — FEATURES CA (Stender/Paderborn University)")
     _log("=" * 60)
 
     # 1. Carrega dados
@@ -624,7 +626,7 @@ def executar_features_ca(
     ax_h.set_ylabel("Número de janelas")
     ax_h.set_title("Distribuição da frequência estimada")
     ax_h.legend()
-    fig.suptitle("Diagnóstico espectral das features de Paderborn")
+    fig.suptitle("Diagnóstico espectral das features do conjunto Stender")
     salvar_figura(
         fig,
         pasta_saida / "features_paderborn_qualidade.png",

@@ -39,8 +39,11 @@ def test_treina_salva_e_classifica(tmp_path):
 
     manifest = json.loads((tmp_path / "dataset_manifest.json").read_text(encoding="utf-8"))
     assert manifest["dominio"] == "CC"
+    assert manifest["natureza"] == "simulado"
     assert manifest["evidence_level"] == "E1"
     assert manifest["n_features"] == 3
+    assert manifest["quality"]["duplicate_rows_train"] == 0
+    assert manifest["quality"]["test_rows_exactly_present_in_train"] == 120
 
     r = classificar({"f1": 5.0, "f2": 5.0, "f3": 5.0}, pasta=tmp_path)
     assert r["ok"] and r["dominio"] == "CC"

@@ -91,7 +91,7 @@ FMEA-guided synthetic validation; field validation E3 not yet performed).
 ## Documentação técnica
 
 - [`docs/metodologia_ml.md`](docs/metodologia_ml.md) — decisões metodológicas e de integridade.
-- [`docs/datasets.md`](docs/datasets.md) — Paderborn (CA) vs PV Farms (CC) e separação de domínio.
+- [`docs/datasets.md`](docs/datasets.md) — Stender (CA experimental), PV Farms (CC simulado), candidatos e separação de domínio.
 - [`docs/evidence_levels.md`](docs/evidence_levels.md) — níveis de evidência E0–E3.
 - [`docs/reproducibilidade.md`](docs/reproducibilidade.md) — manifestos, estados, memória, recálculo.
 - [`docs/memoria_agentes.md`](docs/memoria_agentes.md) — aprendizado validado entre sessões e limites de persistência.

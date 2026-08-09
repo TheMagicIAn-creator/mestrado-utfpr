@@ -2,11 +2,11 @@
 split_temporal.py — Al IAdo PV / Sprint 1 (integridade metodológica)
 
 Divisão TEMPORAL em blocos contíguos (treino → validação → teste) com ZONA DE
-PURGA entre os blocos, para o dataset de Paderborn.
+PURGA entre os blocos, para o conjunto Stender (Paderborn University).
 
 Por que isto importa
 --------------------
-As features do Paderborn são extraídas em janelas com 50% de sobreposição. Uma
+As features do conjunto Stender são extraídas em janelas com 50% de sobreposição. Uma
 divisão ALEATÓRIA das janelas faria janelas quase idênticas (vizinhas, que
 compartilham metade das amostras) caírem ao mesmo tempo em treino e validação —
 vazamento temporal, que infla as métricas.
@@ -41,7 +41,7 @@ TEST_RATIO_PADRAO = 0.20
 # ── Estratégia de split: por que deixou de ser 3 blocos contíguos ───────────
 #
 # Três blocos contíguos pressupõem que o sinal seja aproximadamente
-# ESTACIONÁRIO ao longo do tempo. O Paderborn não é: é uma bancada de
+# ESTACIONÁRIO ao longo do tempo. O conjunto Stender não é: é uma bancada de
 # acionamento que varre rotação em RAMPA. Fatiar a rampa em três dá três faixas
 # de velocidade, não três amostras do mesmo processo.
 #

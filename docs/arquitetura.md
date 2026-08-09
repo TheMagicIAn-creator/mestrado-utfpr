@@ -28,7 +28,7 @@ src/
 │   ├── dados_avaliacao.py banco E1 comum para comparações locais
 │   ├── estatistica.py    ICs, bootstrap e métricas metodológicas
 │   ├── exec_etapa_isolada.py executa etapa pesada em subprocesso
-│   ├── features_ca.py    features CA do Paderborn
+│   ├── features_ca.py    features CA do conjunto Stender
 │   ├── autoencoder.py    modelo de normalidade (limiar p99)
 │   ├── injecao_falhas.py falhas sintéticas FMECA (schema E2) + SMD_95
 │   ├── validacao.py      validação interna E2 (holdout, ROC+PR, ICs)
@@ -108,8 +108,8 @@ para execução in-process. Variáveis: `AL_IADO_SEM_ISOLAMENTO=1` força
 in-process (debug/CI); `AL_IADO_EXP_CHILD=1` é o marcador interno do filho.
 
 ## Eixos de ML
-- **Paderborn (CA):** detecção de anomalia por modelagem de normalidade.
-- **PV Farms (CC):** classificação supervisionada de falhas conhecidas.
+- **Stender (CA experimental, inversor/motor):** detecção de anomalia por modelagem de normalidade.
+- **PV Farms (CC simulado):** classificação supervisionada de falhas conhecidas.
 
 Os dois **não se fundem** — ver `docs/datasets.md` e `docs/metodologia_ml.md`.
 

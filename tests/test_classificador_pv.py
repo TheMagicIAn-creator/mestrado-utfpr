@@ -18,3 +18,13 @@ def test_preprocessar_ajusta_apenas_no_treino():
 def test_criar_modelos_mantem_baselines_obrigatorios():
     modelos = classificador_pv.criar_modelos()
     assert {"Random Forest", "Gradient Boosting", "SVM"} <= set(modelos)
+
+
+def test_linhas_identicas_recebem_o_mesmo_grupo_na_cv():
+    X = np.array([[1.0, 2.0], [3.0, 4.0], [1.0, 2.0], [5.0, 6.0]])
+
+    grupos = classificador_pv._grupos_linhas_identicas(X)
+
+    assert grupos[0] == grupos[2]
+    assert grupos[0] != grupos[1]
+    assert len(np.unique(grupos)) == 3
