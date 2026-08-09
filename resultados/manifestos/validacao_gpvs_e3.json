@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "stage": "validacao_gpvs_e3",
-  "created_at": "2026-08-09T12:11:07.907460-03:00",
-  "git_commit": "b0dbe7cd3e55457565d7ed6e1cfa227a38e50e38",
+  "created_at": "2026-08-09T12:13:06.582176-03:00",
+  "git_commit": "75536754101a93d8f583614f9776e95032445b8b",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
