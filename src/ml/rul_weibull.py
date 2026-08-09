@@ -761,12 +761,16 @@ def rul_condicional(t_atual: float, beta: float, eta: float) -> float:
 # VISUALIZAÇÕES
 # ============================================================
 
-from src.ml.graficos_rul import (
-    plotar_ttf_histogramas,
-    plotar_confiabilidade,
-    plotar_distribuicao_weibull,
-    plotar_rul,
-)
+_EXPORTACOES_TARDIAS = (("src.ml.graficos_rul", (
+    "plotar_ttf_histogramas", "plotar_confiabilidade",
+    "plotar_distribuicao_weibull", "plotar_rul",
+)),)
+
+
+def __getattr__(nome: str):
+    from src.core.importacao import resolver_exportacao_tardia
+
+    return resolver_exportacao_tardia(nome, _EXPORTACOES_TARDIAS, globals())
 
 
 # ============================================================
@@ -774,6 +778,13 @@ from src.ml.graficos_rul import (
 # ============================================================
 
 def executar_rul_weibull() -> bool:
+    from src.ml.graficos_rul import (
+        plotar_confiabilidade,
+        plotar_distribuicao_weibull,
+        plotar_rul,
+        plotar_ttf_histogramas,
+    )
+
     _log("=" * 60)
     _log("  AL IADO PV — RUL COM WEIBULL")
     _log("=" * 60)

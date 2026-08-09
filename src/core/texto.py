@@ -8,7 +8,9 @@ import unicodedata
 
 def normalizar_sem_acentos(texto: object) -> str:
     """Converte para minusculas e remove marcas diacriticas."""
-    base = unicodedata.normalize("NFKD", str(texto or "").lower())
+    base = unicodedata.normalize(
+        "NFKD", str("" if texto is None else texto).lower()
+    )
     return "".join(caractere for caractere in base if not unicodedata.combining(caractere))
 
 

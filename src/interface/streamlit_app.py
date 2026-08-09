@@ -30,18 +30,16 @@ from src.core.logs import get_logger
 from src.core.seguranca import mascarar_segredos
 from src.core.tempo import agora_local
 from src.core.utils import configurar_saida_utf8
+from src.interface.apoio_streamlit import (
+    _CORES_ESTADO,
+    _estado,
+    _falha_recuperavel,
+    _html_pensando,
+)
 
 sys.path.insert(0, str(RAIZ_PROJETO))
 configurar_saida_utf8()
 _logger = get_logger("interface.streamlit")
-
-
-def _falha_recuperavel(operacao: str, exc: Exception, *, notificar: bool = False) -> None:
-    """Registra fallback operacional e, quando necessário, avisa no app."""
-    detalhe = mascarar_segredos(str(exc))
-    _logger.warning("%s: %s", operacao, detalhe)
-    if notificar and hasattr(st, "toast"):
-        st.toast(f"{operacao}. Detalhes registrados no log.", icon="⚠️")
 
 
 st.set_page_config(
@@ -50,39 +48,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-
-# Paleta: a MESMA dos graficos (src/ml/estilo_graficos) — a interface e a
-# figura falam a mesma lingua visual.
-_CORES_ESTADO = {
-    "ok": "#1baf7a",
-    "alerta": "#eda100",
-    "erro": "#e34948",
-    "neutro": "#898781",
-}
-
-
-def _html_pensando(rotulo: str = "Pensando") -> str:
-    """Texto com brilho pulsante, exibido enquanto a resposta não começa.
-
-    Sempre montado AQUI, a partir de uma string nossa — nunca a partir da
-    saída do LLM. É o que permite renderizá-lo com HTML habilitado sem abrir
-    o texto do modelo para injeção (o streaming segue em Markdown puro).
-    """
-    return f'<span class="alp-pensando">{rotulo}…</span>'
-
-
-def _estado(rotulo: str, nivel: str = "ok") -> str:
-    """Indicador de estado: um ponto colorido e uma linha de texto.
-
-    Substitui os blocos st.success/st.warning empilhados na barra lateral —
-    saude do sistema nao precisa de caixa colorida de altura cheia.
-    """
-    cor = _CORES_ESTADO.get(nivel, _CORES_ESTADO["neutro"])
-    return (
-        f'<div class="alp-estado">'
-        f'<span class="alp-ponto" style="background:{cor}"></span>{rotulo}</div>'
-    )
 
 
 # CSS: mantem o menu principal visivel, pois nele fica Settings -> Theme
@@ -594,13 +559,33 @@ def conectar_equipe(*, forcar: bool = False) -> bool:
         return False
 
 
-from src.interface.sidebar import (
-    renderizar_pipeline_status,
-    renderizar_diagnostico,
-    _carregar_metadados_pendentes,
-    _estado_persistencia,
-    renderizar_sidebar,
+_EXPORTACOES_TARDIAS = (
+    ("src.interface.sidebar", (
+        "renderizar_pipeline_status", "renderizar_diagnostico",
+        "_carregar_metadados_pendentes", "_estado_persistencia",
+        "renderizar_sidebar",
+    )),
+    ("src.interface.renderizacao_imagens", (
+        "_grupo_imagem", "_DPI_GERACAO", "_PX_POR_POLEGADA",
+        "_TETO_EXIBICAO", "_LARGURA_PAREAVEL", "_dimensoes_imagem",
+        "_polegadas_imagem", "_largura_exibicao_imagem", "_imagem_larga",
+        "_ordem_imagem", "_DL_KEY", "_botao_download",
+        "_botao_download_texto", "_controles_antevisao",
+        "_renderizar_imagem_unica", "_renderizar_lote_regular",
+        "_renderizar_grupo_imagens", "renderizar_imagens",
+    )),
+    ("src.interface.ciclo_chat", (
+        "salvar_sessao", "_cadencia_atingida", "aprender_da_sessao_web",
+        "persistir_sessao_web", "_fechar_turno_simples", "_contexto_recente",
+        "responder_com_ferramenta", "responder_com_rag",
+    )),
 )
+
+
+def __getattr__(nome: str):
+    from src.core.importacao import resolver_exportacao_tardia
+
+    return resolver_exportacao_tardia(nome, _EXPORTACOES_TARDIAS, globals())
 
 
 # Atalhos da tela inicial: rótulo curto no botão, pergunta completa enviada
@@ -717,29 +702,12 @@ def stream_resposta_limpa(conteudo, llm, placeholder, refs_md: str) -> str:
     return final
 
 
-from src.interface.renderizacao_imagens import (
-    _grupo_imagem,
-    _DPI_GERACAO,
-    _PX_POR_POLEGADA,
-    _TETO_EXIBICAO,
-    _LARGURA_PAREAVEL,
-    _dimensoes_imagem,
-    _polegadas_imagem,
-    _largura_exibicao_imagem,
-    _imagem_larga,
-    _ordem_imagem,
-    _DL_KEY,
-    _botao_download,
-    _botao_download_texto,
-    _controles_antevisao,
-    _renderizar_imagem_unica,
-    _renderizar_lote_regular,
-    _renderizar_grupo_imagens,
-    renderizar_imagens,
-)
-
-
 def renderizar_mensagem(msg: dict) -> None:
+    from src.interface.renderizacao_imagens import (
+        _botao_download_texto,
+        renderizar_imagens,
+    )
+
     avatar = "🔬" if msg["role"] == "user" else "⚡"
     with st.chat_message(msg["role"], avatar=avatar):
         st.markdown(msg["content"])
@@ -751,18 +719,6 @@ def renderizar_mensagem(msg: dict) -> None:
         renderizar_imagens(msg.get("imagens", []))
 
 
-from src.interface.ciclo_chat import (
-    salvar_sessao,
-    _cadencia_atingida,
-    aprender_da_sessao_web,
-    persistir_sessao_web,
-    _fechar_turno_simples,
-    _contexto_recente,
-    responder_com_ferramenta,
-    responder_com_rag,
-)
-
-
 def renderizar_chat(
     perfil,
     modelo,
@@ -771,6 +727,16 @@ def renderizar_chat(
     colecao_obsidian,
     indice_lexical=None,
 ) -> None:
+    from src.interface.ciclo_chat import (
+        _fechar_turno_simples,
+        aprender_da_sessao_web,
+        persistir_sessao_web,
+        responder_com_ferramenta,
+        responder_com_rag,
+        salvar_sessao,
+    )
+    from src.interface.renderizacao_imagens import _botao_download_texto
+
     for msg in st.session_state.mensagens:
         renderizar_mensagem(msg)
 
@@ -888,6 +854,8 @@ def renderizar_chat(
 
 
 def main() -> None:
+    from src.interface.sidebar import renderizar_sidebar
+
     inicializar_estado()
     st.markdown(_CSS_MINIMO, unsafe_allow_html=True)
     conectar_equipe()

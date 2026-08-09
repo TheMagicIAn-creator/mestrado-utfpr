@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from src.interface.streamlit_app import (
-    RAIZ_PROJETO,
-    _estado,
-    _falha_recuperavel,
-    conectar_equipe,
-    json,
-)
+import json
+
+from src.core.config import RAIZ_PROJETO
+from src.interface.apoio_streamlit import _estado, _falha_recuperavel
 
 from src.interface.streamlit_proxy import st
 
@@ -172,6 +169,8 @@ def renderizar_sidebar(modelo, colecao, colecao_sessoes, colecao_obsidian,
             if erro:
                 st.caption(erro)
             if st.button("Ativar equipe", type="primary", width="stretch"):
+                from src.interface.streamlit_app import conectar_equipe
+
                 conectar_equipe(forcar=True)
                 st.rerun()
         else:

@@ -425,61 +425,35 @@ def inicializar_agente(llm_externo=None):
     return perfil, modelo_embeddings, colecao, colecao_sessoes, colecao_obsidian, llm
 
 
-from src.conhecimento.agente_interacao import (
-    _normalizar_texto,
-    pedido_sem_literatura,
-    _saudacao_pelo_horario,
-    resposta_interacao_simples,
-    _orcamento_rag,
-    _limitar_texto,
-    _tokens_busca,
-    AUTORES_INDEXADOS_FALLBACK,
-    _AUTORES_CACHE,
-    _AUTOR_CANONICO_CACHE,
-    _AUTOR_ARQUIVOS_CACHE,
-    autores_indexados,
-    arquivos_do_autor,
-    autores_canonicos_para,
-    deve_consultar_literatura,
-    _espera_retry_429,
-    formatar_referencias_markdown,
-    _formatar_intervalo_paginas,
-    _paginas_do_intervalo,
-    _rotulo_paginas_meta,
-    _limpar_trecho_citacao,
-    _trecho_relevante,
-    _chave_citacao,
-    _entrada_citacao,
-    remover_bloco_fontes_llm,
-    _formatar_historico,
-    _contexto_temporal,
-    _bloco_anexos,
+_EXPORTACOES_TARDIAS = (
+    ("src.conhecimento.agente_interacao", (
+        "_normalizar_texto", "pedido_sem_literatura", "_saudacao_pelo_horario",
+        "resposta_interacao_simples", "_orcamento_rag", "_limitar_texto",
+        "_tokens_busca", "AUTORES_INDEXADOS_FALLBACK", "_AUTORES_CACHE",
+        "_AUTOR_CANONICO_CACHE", "_AUTOR_ARQUIVOS_CACHE", "autores_indexados",
+        "arquivos_do_autor", "autores_canonicos_para", "deve_consultar_literatura",
+        "_espera_retry_429", "formatar_referencias_markdown",
+        "_formatar_intervalo_paginas", "_paginas_do_intervalo",
+        "_rotulo_paginas_meta", "_limpar_trecho_citacao", "_trecho_relevante",
+        "_chave_citacao", "_entrada_citacao", "remover_bloco_fontes_llm",
+        "_formatar_historico", "_contexto_temporal", "_bloco_anexos",
+    )),
+    ("src.conhecimento.agente_recuperacao", (
+        "_montar_prompt", "montar_conteudo_humano", "eh_query_de_revisao",
+        "_expandir_query", "_busca_hibrida", "_ajuste_textbook",
+        "_diversificar_por_fonte", "_rerankar",
+    )),
+    ("src.conhecimento.agente_contexto", (
+        "buscar_contexto", "listar_documentos", "_NOMES_TEMAS",
+        "catalogo_literatura", "preparar_prompt",
+    )),
 )
 
 
-from src.conhecimento.agente_recuperacao import (
-    _montar_prompt,
-    montar_conteudo_humano,
-    eh_query_de_revisao,
-    _expandir_query,
-    _busca_hibrida,
-    _ajuste_textbook,
-    _diversificar_por_fonte,
-    _rerankar,
-)
+def __getattr__(nome: str):
+    from src.core.importacao import resolver_exportacao_tardia
 
-
-# ============================================================
-# BUSCA DE CONTEXTO — RECUPERACAO LOCAL EM 4 CAMADAS
-# ============================================================
-
-from src.conhecimento.agente_contexto import (
-    buscar_contexto,
-    listar_documentos,
-    _NOMES_TEMAS,
-    catalogo_literatura,
-    preparar_prompt,
-)
+    return resolver_exportacao_tardia(nome, _EXPORTACOES_TARDIAS, globals())
 
 def perguntar(
     pergunta: str,
@@ -501,6 +475,15 @@ def perguntar(
     texto extraido entra no prompt; imagens vao pela via multimodal quando o
     provedor ativo for multimodal (Gemini). Caso contrario, viram nota textual.
     """
+
+    from src.conhecimento.agente_contexto import catalogo_literatura, preparar_prompt
+    from src.conhecimento.agente_interacao import (
+        _espera_retry_429,
+        formatar_referencias_markdown,
+        remover_bloco_fontes_llm,
+        resposta_interacao_simples,
+    )
+    from src.conhecimento.agente_recuperacao import montar_conteudo_humano
 
     if historico is None:
         historico = []

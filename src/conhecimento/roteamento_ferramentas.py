@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from src.conhecimento.ferramentas import (
-    ESPEC_FERRAMENTAS,
+import json
+import re
+
+from src.conhecimento.intencoes_ferramentas import (
     _TERMOS_PIPELINE_IMPLICITO,
-    _logger,
-    _normalizar,
     _parece_pedido_de_ferramenta,
     _quer_catalogo,
     _quer_catalogo_experimentos,
@@ -21,12 +21,19 @@ from src.conhecimento.ferramentas import (
     _quer_resposta_autoral,
     _quer_rodar_experimento,
     _quer_status,
-    executar_ferramenta,
-    json,
-    mascarar_segredos,
-    re,
-    texto_da_resposta,
 )
+from src.conhecimento.provedores import texto_da_resposta
+from src.core.logs import get_logger
+from src.core.seguranca import mascarar_segredos
+from src.core.texto import normalizar_sem_acentos as _normalizar
+
+_logger = get_logger("conhecimento.roteamento_ferramentas")
+
+
+def _especificacoes_ferramentas() -> list[dict]:
+    from src.conhecimento.ferramentas import ESPEC_FERRAMENTAS
+
+    return ESPEC_FERRAMENTAS
 
 # Mapeamento "ordem cronológica" do pipeline → nome da ferramenta.
 # Quando o usuário menciona várias etapas, pegamos a MAIS AVANÇADA — assim
@@ -449,7 +456,10 @@ def _rotear_por_llm(pergunta: str, llm) -> dict | None:
     """
     if llm is None:
         return None
-    catalogo = "\n".join(f"- {f['name']}: {f['description']}" for f in ESPEC_FERRAMENTAS)
+    catalogo = "\n".join(
+        f"- {f['name']}: {f['description']}"
+        for f in _especificacoes_ferramentas()
+    )
     prompt = f"""Voce roteia pedidos do pesquisador para ferramentas de ML.
 
 Ferramentas disponiveis:
@@ -480,7 +490,7 @@ Responda apenas JSON valido:
         resposta = texto_da_resposta(llm.invoke(entrada))
         limpo = re.sub(r"```json?\n?", "", str(resposta).strip()).replace("```", "").strip()
         dados = json.loads(limpo)
-        nomes = {f["name"] for f in ESPEC_FERRAMENTAS}
+        nomes = {f["name"] for f in _especificacoes_ferramentas()}
         ferramenta = dados.get("ferramenta")
         if dados.get("usar_ferramenta") and ferramenta in nomes:
             return {"usar_ferramenta": True, "ferramenta": ferramenta}
@@ -730,6 +740,8 @@ def processar_com_ferramentas(pergunta: str,
     # gente ("Treinando o classificador PV Farms (CC)..."), e é isso que o
     # pesquisador deve ler enquanto espera.
     _logger.info("ferramenta acionada: %s", ferramenta)
+
+    from src.conhecimento.ferramentas import executar_ferramenta
 
     resultado = executar_ferramenta(
         ferramenta,

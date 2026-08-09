@@ -67,3 +67,19 @@ def test_pending_roda(monkeypatch):
     res = pipe.executar_etapa("injecao_falhas", auto_deps=False)
     assert res["executou"] is True
     assert rodou == [True]
+
+
+def test_stale_nao_apaga_artefatos_se_dependencia_esta_pendente(monkeypatch):
+    rodou, limpezas = _prepara(monkeypatch, "stale")
+    monkeypatch.setattr(pipe, "dependencias_pendentes", lambda k: ["validacao"])
+    monkeypatch.setattr(
+        pipe,
+        "NOMES_ETAPAS",
+        {"validacao": "Validacao Interna E2"},
+    )
+
+    res = pipe.executar_etapa("rul_weibull", auto_deps=False)
+
+    assert res["ok"] is False
+    assert rodou == []
+    assert limpezas == []

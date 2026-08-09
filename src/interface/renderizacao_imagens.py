@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from src.interface.streamlit_app import (
-    Path,
-)
+from pathlib import Path
 
 from src.interface.streamlit_proxy import st
 

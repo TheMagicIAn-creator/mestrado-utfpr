@@ -6,6 +6,8 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 
 ALVOS = {
+    "src/core/importacao.py": "tests/test_imports_modulos_extraidos.py",
+    "src/interface/apoio_streamlit.py": "tests/test_imports_modulos_extraidos.py",
     "src/interface/ciclo_chat.py": "tests/test_interface_minimalista.py",
     "src/interface/renderizacao_imagens.py": "tests/test_interface_minimalista.py",
     "src/interface/sidebar.py": "tests/test_interface_minimalista.py",

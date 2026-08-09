@@ -564,20 +564,19 @@ _STOPWORDS_BUSCA = {
 }
 
 
-from src.conhecimento.consultas_obsidian import (
-    _termos_busca,
-    _variacoes_lexicais,
-    _adicionar_candidato,
-    _registros_historicos,
-    identificar_registro_cronologico,
-    responder_consulta_cronologica,
-    _PASTAS_INVENTARIO,
-    _no_disco,
-    inventario_por_classe,
-    _data_legivel,
-    responder_inventario_vault,
-    buscar_notas_obsidian,
-)
+_EXPORTACOES_TARDIAS = (("src.conhecimento.consultas_obsidian", (
+    "_termos_busca", "_variacoes_lexicais", "_adicionar_candidato",
+    "_registros_historicos", "identificar_registro_cronologico",
+    "responder_consulta_cronologica", "_PASTAS_INVENTARIO", "_no_disco",
+    "inventario_por_classe", "_data_legivel", "responder_inventario_vault",
+    "buscar_notas_obsidian",
+)),)
+
+
+def __getattr__(nome: str):
+    from src.core.importacao import resolver_exportacao_tardia
+
+    return resolver_exportacao_tardia(nome, _EXPORTACOES_TARDIAS, globals())
 
 
 def _yaml_string(valor: Any) -> str:

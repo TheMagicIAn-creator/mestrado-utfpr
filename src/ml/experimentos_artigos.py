@@ -532,13 +532,16 @@ def _salvar_resultado(exp: ExperimentoArtigo, resultado: dict) -> Path:
     return pasta
 
 
-from src.ml.graficos_experimentos import (
-    _slug_modelo,
-    _registrar_grafico_modelo,
-    _grafico_metricas_modelo,
-    _grafico_matriz_modelo,
-    _grafico_comparacao,
-)
+_EXPORTACOES_TARDIAS = (("src.ml.graficos_experimentos", (
+    "_slug_modelo", "_registrar_grafico_modelo", "_grafico_metricas_modelo",
+    "_grafico_matriz_modelo", "_grafico_comparacao",
+)),)
+
+
+def __getattr__(nome: str):
+    from src.core.importacao import resolver_exportacao_tardia
+
+    return resolver_exportacao_tardia(nome, _EXPORTACOES_TARDIAS, globals())
 
 
 # ============================================================
@@ -547,6 +550,8 @@ from src.ml.graficos_experimentos import (
 
 def _consolidar(exp: ExperimentoArtigo, modelos_out: dict, metrica_principal: str,
                 metodologia: dict | None = None) -> dict:
+    from src.ml.graficos_experimentos import _grafico_comparacao
+
     validos = {
         n: m for n, m in modelos_out.items()
         if m.get("disponivel", True) and isinstance(m.get(metrica_principal), (int, float))

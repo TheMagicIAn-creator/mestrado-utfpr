@@ -1,18 +1,19 @@
 {
   "manifest_version": 2,
   "stage": "rul_weibull",
-  "created_at": "2026-08-09T03:24:41.350167-03:00",
-  "git_commit": "3c8e6e0ecba882f977299061d61f9fe89050aed2",
+  "created_at": "2026-08-09T13:39:07.593533-03:00",
+  "git_commit": "cc17c27eadb22f9af0c08151e17fef3342460bf7",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
-  "code_sha256": "6dc992966046aa64b0c1418ad582686e2071868099565cd880dc776cc63eb0cb",
+  "code_sha256": "7c352df78c2c905829eb260014e80aa050617c6a7eb1caf25c015e9bbd8c8b8c",
   "code_dependencies": {
     "src.ml.features_ca": "23330f891620f442197eae9ea142d3a704449110bf3e0b1c9da8afd5ba9f558e",
     "src.ml.autoencoder": "f57240fbd095f3154f49850d0fc69fce2a454cedc30ab50767809c727ff5c8a8",
     "src.ml.dados_avaliacao": "400182b3289f95bdaa7eff3bb42a4271abcd94e0f2f9fbf507f7455478890e5a",
     "src.ml.escore_anomalia": "71106cad6b7971edcf27533462181cc38f8be4cf7db95a117dbbb43d96de75e1",
     "src.ml.estatistica": "fde4d602db680706252a6e11c9bb9a2aa84e27b6911275beec7f4148538a4515",
+    "src.ml.graficos_rul": "417de898caf3077b4dc57bc61e7abd501719cbb2c6495886ba80118b121d6e29",
     "src.ml.injecao_falhas": "065456562d2b17e7aa13fac7f4d36c57f396936d0158fe7e70ee2c2e48a597f3",
     "src.ml.estilo_graficos": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49"
   },

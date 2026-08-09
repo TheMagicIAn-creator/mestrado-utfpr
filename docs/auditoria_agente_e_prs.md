@@ -3,9 +3,10 @@
 Apêndice de `docs/auditoria_total_src.md`, frentes 7 e 8. Relatórios integrais
 dos agentes de auditoria, com a evidência de cada achado.
 
-> **Frente incompleta:** a revisão específica dos PRs #99 e #102 (refatorações)
-> não concluiu — o agente esgotou o limite de sessão duas vezes. Fica pendente,
-> e **não** deve ser tratada como auditada.
+> **Frente concluída em 2026-08-09:** a revisão específica dos PRs #99 e #102
+> confirmou a equivalência das funções movidas e encontrou ciclos de importação
+> ocultos pela ordem de carga. A correção e as evidências estão em
+> `docs/auditoria_prs_99_102_2026-08-09.md`.
 
 ---
 

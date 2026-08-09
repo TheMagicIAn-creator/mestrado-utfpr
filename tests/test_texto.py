@@ -12,6 +12,8 @@ from src.core.texto import normalizar_busca, normalizar_espacos, normalizar_sem_
     [
         ("Tensão MÉDIA", "tensao media"),
         (None, ""),
+        (0, "0"),
+        (False, "false"),
         (123, "123"),
     ],
 )

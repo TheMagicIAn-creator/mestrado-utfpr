@@ -8,6 +8,8 @@ from src.conhecimento.agente import (
     PESOS_PASTA,
     TEXTBOOKS_PENALIZADOS,
     TOPICOS_DISSERTACAO,
+)
+from src.conhecimento.agente_interacao import (
     _bloco_anexos,
     _contexto_temporal,
     _limitar_texto,
@@ -16,8 +18,8 @@ from src.conhecimento.agente import (
     arquivos_do_autor,
     autores_canonicos_para,
     autores_indexados,
-    tem_imagem,
 )
+from src.conhecimento.leitor_anexos import tem_imagem
 
 def _montar_prompt(pergunta: str,
                    contexto: str,

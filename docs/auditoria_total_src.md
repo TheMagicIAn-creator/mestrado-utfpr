@@ -4,8 +4,8 @@
 correção. **Método:** 8 frentes paralelas de auditoria automatizada, cada
 achado exigindo evidência em `arquivo:linha` ou número medido de artefato.
 
-**Estado:** 8 frentes concluídas (77 achados, 48 graves); **1 pendente** — a
-revisão específica das refatorações #99 e #102, em §11.
+**Estado:** 9 frentes concluídas (81 achados, 51 graves); a revisão específica
+das refatorações #99 e #102 foi encerrada em 2026-08-09, conforme §12.
 
 Relatórios integrais das frentes do agente e dos PRs: `docs/auditoria_agente_e_prs.md`.
 
@@ -19,7 +19,7 @@ Relatórios integrais das frentes do agente e dos PRs: `docs/auditoria_agente_e_
 | Necessidade dos arquivos de teste | ✅ | 3 | 0 |
 | Parâmetros do agente (`core`, `conhecimento`) | ✅ | 16 | 10 |
 | Premissas metodológicas nos PRs #89–#103 | ✅ | 5 | 4 |
-| Refatorações #99 e #102 (semântica silenciosa) | ⏸️ | — | — |
+| Refatorações #99 e #102 (semântica silenciosa) | ✅ | 4 | 3 |
 
 ---
 
@@ -504,11 +504,17 @@ ensina a ignorar o alerta verdadeiro.
 
 ---
 
-## §12. Frente ainda pendente
+## §12. Frente encerrada em 2026-08-09
 
-A revisão específica das refatorações **#99 e #102** não concluiu — o agente
-esgotou o limite de sessão duas vezes. É onde semântica muda em silêncio, e
-**não** deve ser tratada como auditada.
+A revisão específica das refatorações **#99 e #102** foi concluída. A
+comparação estrutural confirmou preservação das funções e fachadas, mas a
+execução em processos limpos revelou ciclos de importação ocultos em onze
+módulos extraídos. As fachadas agora usam reexportação tardia, e há regressões
+que importam cada módulo sem depender da ordem. Também foi corrigida a
+normalização de `0` e `False`, que era convertida em vazio, a exclusão prematura
+de artefatos `stale` e a proveniência dos gráficos Weibull.
+
+Relatório técnico e evidências: `docs/auditoria_prs_99_102_2026-08-09.md`.
 
 ## Referências internas
 
