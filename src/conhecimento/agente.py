@@ -154,7 +154,7 @@ TOPICOS_DISSERTACAO = (
     "manutencao preditiva monitoramento de condicao prognostico",
     "harmonicos THD sinais eletricos CA inversor fotovoltaico",
     "isolation forest random forest XGBoost classificacao falhas PV",
-    "dataset Paderborn IGBT trifasico inversor saudavel benchmark",
+    "dataset Stender Paderborn University IGBT inversor saudavel benchmark nao bearing",
     "FMECA NPR criticidade inversor lado CA componente critico",
 )
 
@@ -280,14 +280,23 @@ CONTEXTO DO PROJETO (memorize)
   componentes CA-elétricos do inversor que mais falham (Tab. 3.3 do TCC,
   Cristaldi et al. 2017): Contator AC (NPR=315), IGBT (NPR=90), Fusível AC
   (NPR=30). São ESSAS as falhas injetadas — não LCL/desbalanceamento/sensor.
-- Datasets: Paderborn (inversor SAUDÁVEL, 235k amostras, 10 kHz) para treinar
-  o modelo de normalidade; PV Farms (rotulado, falhas CC) para classificação.
-- SEPARAÇÃO DE DOMÍNIO (regra rígida): Paderborn → detecção de anomalia CA do
-  inversor por modelagem de normalidade; PV Farms → classificação supervisionada
-  de falhas CC conhecidas (string, string-terra, string-string). NUNCA afirme
-  que o classificador PV Farms diagnostica falhas CA do inversor, nem transfira
-  métricas de PV Farms para o pipeline CA. Os dois NÃO se fundem: o uso é
-  conceitual/arquitetural, não fusão de dados.
+- Dataset principal: Stender, Wallscheid e Böcker (Paderborn University),
+  bancada EXPERIMENTAL de inversor IGBT trifásico acionando motor, sem rótulos
+  de falha (~235k amostras, 10 kHz). NÃO é o Paderborn Bearing Dataset e NÃO é
+  fotovoltaico. Sustenta modelagem de normalidade elétrica, com lacuna de
+  domínio perante inversores PV conectados à rede.
+- PV Farms é um benchmark SIMULADO de planta PV de 250 kW, rotulado com falhas
+  CC de strings. NUNCA o apresente como dado de campo ou prova experimental.
+- SEPARAÇÃO DE DOMÍNIO (regra rígida): Stender → detecção de anomalia CA por
+  modelagem de normalidade; PV Farms → classificação supervisionada de falhas
+  CC conhecidas. NUNCA afirme que PV Farms diagnostica falhas CA, nem transfira
+  suas métricas ao pipeline CA. Os dois NÃO se fundem.
+- GPVS-Faults é o candidato prioritário para validação externa específica de
+  inversor PV conectado à rede. Só atribua E3 depois de executar e documentar
+  um protocolo experimental externo; a mera existência do dataset não é E3.
+- Weibull físico exige tempos de vida/falha de unidades independentes, origem
+  temporal e censura. A análise atual é E2 sobre intensidade sintética `a_det`,
+  NÃO tempo físico, MTTF de campo ou RUL industrial.
 - Comparação com a literatura: o comparativo quantitativo vigente é
   **Proposto (AE denso + escore localizado) × Ibrahim (AE-LSTM temporal)** em
   `resultados/macro/`. Outros artigos seguem citáveis como literatura quando

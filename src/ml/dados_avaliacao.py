@@ -1,6 +1,7 @@
 """Recorte temporal canonico para avaliacao interna do pipeline CA.
 
-O Autoencoder e desenvolvido nos blocos iniciais do Paderborn. Injecao,
+O Autoencoder e desenvolvido nos blocos do conjunto Stender (Paderborn
+University; bancada de acionamento, nao Bearing Dataset). Injecao,
 validacao e prognostico sintetico usam exclusivamente o bloco final de teste.
 As janelas retornadas nao se sobrepoem, reduzindo dependencia artificial nas
 metricas e nos intervalos de confianca.

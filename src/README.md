@@ -72,7 +72,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 
 | Arquivo | O que faz |
 |---|---|
-| `features_ca.py` | Etapa 1: extrai features de tempo/frequência/inter-fase do Paderborn. |
+| `features_ca.py` | Etapa 1: extrai features de tempo/frequência/inter-fase do conjunto Stender. |
 | `autoencoder.py` | Etapa 2: Autoencoder de normalidade + limiar operacional (p99). |
 | `escore_anomalia.py` | Fonte única do MSE e do escore localizado operacional. |
 | `graficos_autoencoder.py` | Figuras e resumo de calibração sem importar PyTorch. |
@@ -91,7 +91,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `estatistica.py` | ICs, bootstrap e métricas estatísticas compartilhadas. |
 | `estilo_graficos.py` | Estilo acadêmico compartilhado por todas as figuras quantitativas. |
 | `exec_etapa_isolada.py` | Executa uma etapa pesada do pipeline em subprocesso. |
-| `eda.py` | Análise exploratória do Paderborn (Plotly). |
+| `eda.py` | Análise exploratória do conjunto Stender (Paderborn University; Plotly). |
 | `retroalimentacao_fmeca.py` | Consolida detectabilidade e ponto operacional para a FMECA. |
 | **Comparação acadêmica vigente** | |
 | `macro_comum.py` | Contratos, métricas e saídas compartilhadas do comparativo. |

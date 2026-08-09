@@ -45,7 +45,7 @@ import numpy as np
 from sklearn.preprocessing      import StandardScaler
 from sklearn.ensemble           import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.svm                import SVC
-from sklearn.model_selection    import cross_val_score, StratifiedKFold
+from sklearn.model_selection    import cross_val_score, StratifiedGroupKFold
 from sklearn.metrics            import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report
@@ -189,6 +189,13 @@ def criar_modelos() -> dict:
 # TREINAMENTO E AVALIAÇÃO
 # ============================================================
 
+
+def _grupos_linhas_identicas(X) -> np.ndarray:
+    """Atribui o mesmo grupo a linhas idênticas para impedir vazamento na CV."""
+    _, grupos = np.unique(np.asarray(X), axis=0, return_inverse=True)
+    return grupos
+
+
 def treinar_e_avaliar(modelos, X_treino, y_treino, X_teste, y_teste) -> dict:
     """
     Treina cada modelo e avalia com:
@@ -203,7 +210,17 @@ def treinar_e_avaliar(modelos, X_treino, y_treino, X_teste, y_teste) -> dict:
     y_teste_ajust  = y_teste  - y_teste.min()
 
     resultados = {}
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+    # O arquivo de treino publicado possui linhas exatamente duplicadas. Uma
+    # divisão estratificada comum pode colocar cópias da mesma observação em
+    # treino e validação, inflando a CV. O hash estrutural abaixo mantém todas
+    # as cópias no mesmo fold sem removê-las do treino final de referência.
+    grupos = _grupos_linhas_identicas(X_treino)
+    cv = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+    _log(
+        f"   Validação cruzada agrupada: {len(np.unique(grupos))} "
+        f"observações únicas em {len(grupos)} linhas"
+    )
 
     for nome, modelo in modelos.items():
         _log(f"\n  ▶ {nome}")
@@ -211,7 +228,7 @@ def treinar_e_avaliar(modelos, X_treino, y_treino, X_teste, y_teste) -> dict:
         # Validação cruzada no treino
         scores_cv = cross_val_score(
             modelo, X_treino, y_treino_ajust,
-            cv=cv, scoring="accuracy"
+            cv=cv, groups=grupos, scoring="accuracy"
         )
 
         # Treina no conjunto completo de treino
@@ -234,6 +251,7 @@ def treinar_e_avaliar(modelos, X_treino, y_treino, X_teste, y_teste) -> dict:
             "modelo"                : modelo,
             "cv_media"              : scores_cv.mean(),
             "cv_desvio"             : scores_cv.std(),
+            "cv_estrategia"          : "StratifiedGroupKFold por linha idêntica",
             "acuracia"              : acc,
             "precisao"              : precisao,
             "recall"                : recall,

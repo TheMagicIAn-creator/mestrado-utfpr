@@ -28,8 +28,9 @@ NOMES_CLASSES = {
     0: "Normal", 1: "F1 - String", 2: "F2 - String-Terra", 3: "F3 - String-String",
 }
 AVISO_DOMINIO = (
-    "Classificação de falhas CC (PV Farms). NÃO diagnostica falhas CA do "
-    "inversor nem substitui o pipeline de anomalia (Paderborn)."
+    "Classificação de falhas CC simuladas (PV Farms). NÃO diagnostica "
+    "falhas CA do inversor nem substitui o pipeline de anomalia treinado no "
+    "conjunto Stender (Paderborn University)."
 )
 
 
@@ -114,6 +115,19 @@ def treinar_e_salvar_de(
     colunas = list(X_tr.columns)
     classes = sorted(int(c) for c in set(y_tr))
 
+    treino_com_rotulo = X_tr.copy()
+    treino_com_rotulo["__classe__"] = list(y_tr)
+    teste_com_rotulo = X_te.copy()
+    teste_com_rotulo["__classe__"] = list(y_te)
+    duplicadas_treino = int(treino_com_rotulo.duplicated().sum())
+    hashes_treino = set(
+        pd.util.hash_pandas_object(treino_com_rotulo, index=False).astype("uint64")
+    )
+    hashes_teste = pd.util.hash_pandas_object(
+        teste_com_rotulo, index=False
+    ).astype("uint64")
+    sobreposicao_teste_treino = int(hashes_teste.isin(hashes_treino).sum())
+
     scaler = StandardScaler().fit(X_tr)
     Xtr_s, Xte_s = scaler.transform(X_tr), scaler.transform(X_te)
     clf = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
@@ -130,6 +144,7 @@ def treinar_e_salvar_de(
     source_paths = source_paths or {}
     dataset_manifest = {
         "dataset": "PV Farms",
+        "natureza": "simulado",
         "dominio": "CC",
         "train_rows": int(len(X_tr)),
         "test_rows": int(len(X_te)),
@@ -139,15 +154,23 @@ def treinar_e_salvar_de(
         "train_sha256": sha256_arquivo(source_paths.get("train", "")) or "",
         "test_sha256": sha256_arquivo(source_paths.get("test", "")) or "",
         "feature_columns": colunas,
+        "quality": {
+            "duplicate_rows_train": duplicadas_treino,
+            "test_rows_exactly_present_in_train": sobreposicao_teste_treino,
+        },
         "evidence_level": "E1",
         "limitations": [
+            "planta fotovoltaica de 250 kW simulada; não é evidência de campo",
+            "rótulos representam falhas de strings introduzidas na simulação",
             "dominio CC; nao diagnostica falhas CA do inversor",
             "benchmark supervisionado com rotulos conhecidos",
+            "linhas duplicadas do treino exigem agrupamento na validacao cruzada",
         ],
     }
     training_manifest = {
         "created_at": agora_local().isoformat(),
         "dataset": "PV Farms",
+        "natureza": "simulado",
         "dominio": "CC",
         "modelo": "Random Forest",
         "parameters": {"n_estimators": 200, "random_state": 42, "n_jobs": -1},

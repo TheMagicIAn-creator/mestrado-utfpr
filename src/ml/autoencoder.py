@@ -5,7 +5,8 @@ no lado CA do inversor fotovoltaico.
 
 Fundamentação:
   O Autoencoder aprende a reconstruir o comportamento SAUDÁVEL do inversor
-  a partir do dataset de Paderborn. Em operação real, sinais anômalos
+  a partir do conjunto experimental Stender (Paderborn University), obtido em
+  bancada de acionamento de motor e sem rótulos de falha. Em operação real, sinais anômalos
   (falhas) produzem erro de reconstrução alto — acima do limiar operacional
   (percentil 99 do erro saudável). μ + 3σ é mantido apenas como referência
   teórica comparativa, não como limiar operacional.
@@ -121,7 +122,7 @@ DROPOUT        = 0.2    # regularização
 # Para varrer o split num experimento, edite aqui e registre a rodada; não há
 # atalho por variável de ambiente, e isso é deliberado.
 #
-# RESSALVA: o total de janelas é FIXO (457 no dataset atual). Aumentar a
+# RESSALVA: o total é de cerca de 228 janelas com o janelamento atual. Aumentar a
 # calibração não cria dados — rouba do treino (piora o modelo) ou do teste
 # (piora a confiança na medida de FP).
 # Os ratios vivem em src/ml/split_temporal.py (fonte única do split); aqui
@@ -379,7 +380,7 @@ def executar_autoencoder(
     _exigir_torch()
 
     _log("=" * 60)
-    _log("  AL IADO PV — AUTOENCODER (Paderborn)")
+    _log("  AL IADO PV — AUTOENCODER (Stender/Paderborn University)")
     _log("=" * 60)
 
     torch.manual_seed(seed)
