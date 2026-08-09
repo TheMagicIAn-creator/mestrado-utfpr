@@ -1,67 +1,117 @@
 {
   "evidence_level": "E2",
-  "confiabilidade": {},
+  "confiabilidade": {
+    "contator_ac": {
+      "beta": 4.887112450140524,
+      "eta": 0.16297518000382144,
+      "marcos": {
+        "b1": 0.06358110139465796,
+        "b10": 0.10283525009699998,
+        "vida_mediana": 0.1511997963268665,
+        "mttf": 0.14944105310569242,
+        "eta": 0.16297518000382144,
+        "R_em_eta": 0.36787944117144233,
+        "nota_eta": "η é a vida característica: R(η) = e⁻¹ ≈ 0,368 para qualquer β, ou seja 63,2% já falharam"
+      },
+      "interpretacao": {
+        "beta": 4.887112450140524,
+        "regime": "desgaste",
+        "leitura": "taxa de falha crescente: o risco aumenta com a idade, e existe intervalo de substituição preventiva que compensa",
+        "conclusivo": true
+      },
+      "R_em_marcos": {
+        "0.1": 0.9,
+        "0.2": 0.36787944117144233
+      },
+      "horizonte_observado": 0.226890756302521
+    },
+    "fusivel_ac": {
+      "beta": 6.089055181478205,
+      "eta": 0.647928255313188,
+      "marcos": {
+        "b1": 0.304387525718829,
+        "b10": 0.44773618742515986,
+        "vida_mediana": 0.6100786535957831,
+        "mttf": 0.601584763541067,
+        "eta": 0.647928255313188,
+        "R_em_eta": 0.36787944117144233,
+        "nota_eta": "η é a vida característica: R(η) = e⁻¹ ≈ 0,368 para qualquer β, ou seja 63,2% já falharam"
+      },
+      "interpretacao": {
+        "beta": 6.089055181478205,
+        "regime": "desgaste",
+        "leitura": "taxa de falha crescente: o risco aumenta com a idade, e existe intervalo de substituição preventiva que compensa",
+        "conclusivo": true
+      },
+      "R_em_marcos": {
+        "0.3": 0.99,
+        "0.4": 0.8999999999999999,
+        "0.6": 0.36787944117144233
+      },
+      "horizonte_observado": 0.7815126050420168
+    }
+  },
   "ponto_de_operacao": {
-    "y_dec": 5.298013458538698,
+    "y_dec": 5.572588622195299,
     "normalidade": {
       "nome": "escore saudável (teste)",
-      "n": 43,
-      "assimetria": 1.224750776848629,
-      "curtose_excesso": 4.544061564063455,
+      "n": 39,
+      "assimetria": 0.6944004580892135,
+      "curtose_excesso": 0.34820795003550886,
       "shapiro_bruto": {
-        "W": 0.8713036115378759,
-        "p": 0.0001880367344899107,
-        "normal": false
+        "W": 0.9619388057982536,
+        "p": 0.20687035065034065,
+        "normal": true
       },
       "shapiro_log": {
-        "W": 0.8229306618701406,
-        "p": 1.164575765675351e-05,
+        "W": 0.8918746959017412,
+        "p": 0.0013010732415634602,
         "normal": false
       },
-      "vale": false,
-      "melhor_escala": "nenhuma",
+      "vale": true,
+      "melhor_escala": "bruto",
       "nota": "se nenhuma escala é normal, os limites de tolerância são aproximações; confira se a conclusão se sustenta também pelo quantil empírico antes de reportá-la"
     },
     "limite_pof": {
-      "limite": 17.014581989077094,
-      "media": 6.365558902884638,
-      "desvio": 3.6543411970243778,
-      "n": 43,
-      "k1": 2.9140746613544573,
+      "limite": 6.224892920122885,
+      "media": 2.37042185320304,
+      "desvio": 1.306291196041705,
+      "n": 39,
+      "k1": 2.950698189346739,
       "p": 0.99,
       "confianca": 0.95,
       "pof_alvo_pct": 1.0000000000000009
     },
-    "limite_empirico": 16.843384952545147,
-    "limite_log": 46.955338674915694,
+    "limite_empirico": 5.726492929458616,
+    "limite_log": 16.70344456078444,
     "todos_acima_do_limiar": true,
     "deriva": {
       "derivou": true,
       "invalidou": true,
-      "leitura": "INVALIDAÇÃO: o piso de falso positivo em campo (17.0146) ultrapassa o próprio limiar adotado (5.2980). O requisito de POF não está sendo cumprido no bloco de teste. Pela fonte, a resposta correta é investigar a causa — não reapertar o limiar, que trataria o sintoma.",
-      "gatilho": 7.259972154613594,
+      "leitura": "INVALIDAÇÃO: o piso de falso positivo em campo (6.2249) ultrapassa o próprio limiar adotado (5.5726). O requisito de POF não está sendo cumprido no bloco de teste. Pela fonte, a resposta correta é investigar a causa — não reapertar o limiar, que trataria o sintoma.",
+      "gatilho": 5.636842477940295,
       "margem": 0.1,
       "calibracao": {
-        "limite": 6.812844468171181,
-        "media": 2.34156760374705,
-        "desvio": 1.542931762036899,
-        "n": 45,
-        "k1": 2.897909664210543,
+        "limite": 5.324552806391865,
+        "media": 2.2016560909075613,
+        "desvio": 1.0583585697646996,
+        "n": 39,
+        "k1": 2.950698189346739,
         "p": 0.99,
         "confianca": 0.95,
         "pof_alvo_pct": 1.0000000000000009
       },
       "campo": {
-        "limite": 17.014581989077094,
-        "media": 6.365558902884638,
-        "desvio": 3.6543411970243778,
-        "n": 43,
-        "k1": 2.9140746613544573,
+        "limite": 6.224892920122885,
+        "media": 2.37042185320304,
+        "desvio": 1.306291196041705,
+        "n": 39,
+        "k1": 2.950698189346739,
         "p": 0.99,
         "confianca": 0.95,
         "pof_alvo_pct": 1.0000000000000009
       },
-      "y_dec": 5.298013458538698,
+      "y_dec": 5.572588622195299,
       "fonte": "NASA/TM-20210018515 (LS-POD); MIL-HDBK-1823A"
     }
   }

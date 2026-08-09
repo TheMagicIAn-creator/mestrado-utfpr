@@ -1,134 +1,204 @@
 {
   "threshold_method": "p99",
-  "limiar": 5.298013458538698,
-  "limiar_operacional": 5.298013458538698,
+  "limiar": 5.572588622195299,
+  "limiar_operacional": 5.572588622195299,
   "score_method": "localizado",
-  "score_threshold": 5.298013458538698,
-  "mu": 0.36370858550071716,
-  "sigma": 0.34367796778678894,
+  "score_threshold": 5.572588622195299,
+  "mu": 2.3221685886383057,
+  "sigma": 10.800342559814453,
   "k": 3.0,
   "sigma_multiplier": 3.0,
-  "limiar_p99": 1.702434778213501,
-  "mse_p99": 1.702434778213501,
-  "limiar_p95": 0.8060625195503235,
-  "limiar_mu3sigma": 1.394742488861084,
-  "limiar_mu3s": 1.394742488861084,
+  "limiar_p99": 44.808807373046875,
+  "mse_p99": 44.808807373046875,
+  "limiar_p95": 2.804035186767578,
+  "limiar_mu3sigma": 34.723196268081665,
+  "limiar_mu3s": 34.723196268081665,
   "threshold_source": "bloco_calibracao_temporal",
   "top_k": 5,
   "threshold_fallback_percentile": 99.0,
-  "threshold_effective_percentile": 99.9,
+  "threshold_effective_percentile": 99.0,
   "metodo_escore": "localizado",
-  "limiar_mse": 1.702434778213501,
-  "limiar_localizado": 5.298013458538698,
+  "limiar_mse": 44.808807373046875,
+  "limiar_localizado": 5.572588622195299,
   "k_localizado": 5,
-  "percentil_limiar": 99.9,
-  "percentil_auto": true,
-  "n_janelas_treino": 136,
-  "n_janelas_calibracao": 45,
-  "n_janelas_teste": 43,
+  "percentil_limiar": 99.0,
+  "percentil_auto": false,
+  "n_janelas_treino": 126,
+  "n_janelas_calibracao": 39,
+  "n_janelas_teste": 39,
   "n_features": 108,
   "latente_dim": 8,
   "epochs_treinadas": 150,
-  "epoca_melhor": 144,
-  "loss_val_melhor": 0.3637085537115733,
-  "fp_val_pct": 4.444444444444445,
-  "fp_calib_pct": 4.444444444444445,
-  "fp_test_pct": 62.7906976744186,
+  "epoca_melhor": 131,
+  "loss_val_melhor": 2.3221687586643758,
+  "fp_val_pct": 2.564102564102564,
+  "fp_calib_pct": 2.564102564102564,
+  "fp_test_pct": 2.564102564102564,
   "fp_mse_p99": {
     "calibracao": {
       "count": 1,
-      "n": 45,
-      "rate_pct": 2.2222222222222223,
-      "ci95_low_pct": 0.3933598882833428,
-      "ci95_high_pct": 11.56668176841488
+      "n": 39,
+      "rate_pct": 2.5641025641025643,
+      "ci95_low_pct": 0.45407031009900983,
+      "ci95_high_pct": 13.180990169850077
     },
     "teste": {
-      "count": 2,
-      "n": 43,
-      "rate_pct": 4.651162790697675,
-      "ci95_low_pct": 1.2849260094380228,
-      "ci95_high_pct": 15.455498004063967
+      "count": 0,
+      "n": 39,
+      "rate_pct": 0.0,
+      "ci95_low_pct": 0.0,
+      "ci95_high_pct": 8.966685370757142
     }
   },
   "fp_score_operacional": {
     "calibracao": {
-      "count": 2,
-      "n": 45,
-      "rate_pct": 4.444444444444445,
-      "ci95_low_pct": 1.2274126706719846,
-      "ci95_high_pct": 14.827510769435623
+      "count": 1,
+      "n": 39,
+      "rate_pct": 2.5641025641025643,
+      "ci95_low_pct": 0.45407031009900983,
+      "ci95_high_pct": 13.180990169850077
     },
     "teste": {
-      "count": 27,
-      "n": 43,
-      "rate_pct": 62.7906976744186,
-      "ci95_low_pct": 47.859809159688474,
-      "ci95_high_pct": 75.62366099034944
+      "count": 1,
+      "n": 39,
+      "rate_pct": 2.5641025641025643,
+      "ci95_low_pct": 0.45407031009900983,
+      "ci95_high_pct": 13.180990169850077
     }
   },
   "split_temporal": {
-    "protocolo": "treino_60_calibracao_20_teste_20_com_purga",
+    "protocolo": "blocos_intercalados_60_20_20_com_purga_15_blocos",
+    "estrategia": "blocos_intercalados",
+    "n_blocos": 15,
+    "destinos_dos_blocos": [
+      "treino",
+      "teste",
+      "treino",
+      "val",
+      "treino",
+      "treino",
+      "teste",
+      "treino",
+      "val",
+      "treino",
+      "treino",
+      "teste",
+      "treino",
+      "val",
+      "treino"
+    ],
     "limites": {
       "treino": [
-        0,
-        136
+        [
+          0,
+          15
+        ],
+        [
+          32,
+          46
+        ],
+        [
+          63,
+          76
+        ],
+        [
+          76,
+          91
+        ],
+        [
+          108,
+          122
+        ],
+        [
+          139,
+          152
+        ],
+        [
+          152,
+          167
+        ],
+        [
+          184,
+          198
+        ],
+        [
+          215,
+          228
+        ]
       ],
       "val": [
-        138,
-        183
+        [
+          48,
+          61
+        ],
+        [
+          124,
+          137
+        ],
+        [
+          200,
+          213
+        ]
       ],
       "teste": [
-        185,
-        228
+        [
+          17,
+          30
+        ],
+        [
+          93,
+          106
+        ],
+        [
+          169,
+          182
+        ]
       ]
     },
     "purge_janelas": 2,
     "indices_teste": [
-      185,
-      186,
-      187,
-      188,
-      189,
-      190,
-      191,
-      192,
-      193,
-      194,
-      195,
-      196,
-      197,
-      198,
-      199,
-      200,
-      201,
-      202,
-      203,
-      204,
-      205,
-      206,
-      207,
-      208,
-      209,
-      210,
-      211,
-      212,
-      213,
-      214,
-      215,
-      216,
-      217,
-      218,
-      219,
-      220,
-      221,
-      222,
-      223,
-      224,
-      225,
-      226,
-      227
-    ]
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      169,
+      170,
+      171,
+      172,
+      173,
+      174,
+      175,
+      176,
+      177,
+      178,
+      179,
+      180,
+      181
+    ],
+    "nota": "Blocos intercalados desde 09/08/2026: os três conjuntos atravessam a faixa de rotação inteira. O teste NÃO é 'o futuro' — é generalização entre regimes. Ver src/ml/split_temporal.py."
   },
-  "data_treino": "2026-08-08T23:53:36.670357-03:00",
+  "data_treino": "2026-08-09T00:40:06.943521-03:00",
   "device": "cpu"
 }
