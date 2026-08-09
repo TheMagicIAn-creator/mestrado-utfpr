@@ -30,18 +30,16 @@ from src.core.logs import get_logger
 from src.core.seguranca import mascarar_segredos
 from src.core.tempo import agora_local
 from src.core.utils import configurar_saida_utf8
+from src.interface.apoio_streamlit import (
+    _CORES_ESTADO,
+    _estado,
+    _falha_recuperavel,
+    _html_pensando,
+)
 
 sys.path.insert(0, str(RAIZ_PROJETO))
 configurar_saida_utf8()
 _logger = get_logger("interface.streamlit")
-
-
-def _falha_recuperavel(operacao: str, exc: Exception, *, notificar: bool = False) -> None:
-    """Registra fallback operacional e, quando necessário, avisa no app."""
-    detalhe = mascarar_segredos(str(exc))
-    _logger.warning("%s: %s", operacao, detalhe)
-    if notificar and hasattr(st, "toast"):
-        st.toast(f"{operacao}. Detalhes registrados no log.", icon="⚠️")
 
 
 st.set_page_config(
@@ -50,39 +48,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-
-# Paleta: a MESMA dos graficos (src/ml/estilo_graficos) — a interface e a
-# figura falam a mesma lingua visual.
-_CORES_ESTADO = {
-    "ok": "#1baf7a",
-    "alerta": "#eda100",
-    "erro": "#e34948",
-    "neutro": "#898781",
-}
-
-
-def _html_pensando(rotulo: str = "Pensando") -> str:
-    """Texto com brilho pulsante, exibido enquanto a resposta não começa.
-
-    Sempre montado AQUI, a partir de uma string nossa — nunca a partir da
-    saída do LLM. É o que permite renderizá-lo com HTML habilitado sem abrir
-    o texto do modelo para injeção (o streaming segue em Markdown puro).
-    """
-    return f'<span class="alp-pensando">{rotulo}…</span>'
-
-
-def _estado(rotulo: str, nivel: str = "ok") -> str:
-    """Indicador de estado: um ponto colorido e uma linha de texto.
-
-    Substitui os blocos st.success/st.warning empilhados na barra lateral —
-    saude do sistema nao precisa de caixa colorida de altura cheia.
-    """
-    cor = _CORES_ESTADO.get(nivel, _CORES_ESTADO["neutro"])
-    return (
-        f'<div class="alp-estado">'
-        f'<span class="alp-ponto" style="background:{cor}"></span>{rotulo}</div>'
-    )
 
 
 # CSS: mantem o menu principal visivel, pois nele fica Settings -> Theme

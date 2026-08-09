@@ -29,8 +29,21 @@ MODULOS_EXTRAIDOS = (
 
 @pytest.mark.parametrize("modulo", MODULOS_EXTRAIDOS)
 def test_modulo_extraido_importa_em_processo_limpo(modulo):
+    codigo = f"""
+import builtins
+
+_importar = builtins.__import__
+
+def _sem_streamlit(nome, globals=None, locals=None, fromlist=(), level=0):
+    if nome == "streamlit" or nome.startswith("streamlit."):
+        raise ModuleNotFoundError("streamlit bloqueado pelo contrato de importacao leve")
+    return _importar(nome, globals, locals, fromlist, level)
+
+builtins.__import__ = _sem_streamlit
+import {modulo}
+"""
     processo = subprocess.run(
-        [sys.executable, "-c", f"import {modulo}"],
+        [sys.executable, "-c", codigo],
         cwd=RAIZ,
         capture_output=True,
         text=True,
@@ -47,7 +60,6 @@ def test_modulo_extraido_importa_em_processo_limpo(modulo):
     (
         ("src.conhecimento.agente", "preparar_prompt", "src.conhecimento.agente_contexto"),
         ("src.conhecimento.obsidian", "buscar_notas_obsidian", "src.conhecimento.consultas_obsidian"),
-        ("src.interface.streamlit_app", "renderizar_sidebar", "src.interface.sidebar"),
         ("src.ml.experimentos_artigos", "_grafico_comparacao", "src.ml.graficos_experimentos"),
         ("src.ml.rul_weibull", "plotar_rul", "src.ml.graficos_rul"),
     ),
@@ -56,3 +68,37 @@ def test_fachada_preserva_reexportacao(fachada, simbolo, origem):
     valor = getattr(importlib.import_module(fachada), simbolo)
 
     assert valor.__module__ == origem
+
+
+def test_fachada_streamlit_preserva_reexportacao_sem_pacote_instalado():
+    codigo = """
+import importlib
+import sys
+import types
+
+st = types.ModuleType("streamlit")
+st.cache_resource = lambda func: func
+st.set_page_config = lambda **kwargs: None
+sys.modules["streamlit"] = st
+
+langchain = types.ModuleType("langchain_core")
+messages = types.ModuleType("langchain_core.messages")
+messages.HumanMessage = lambda **kwargs: kwargs
+langchain.messages = messages
+sys.modules["langchain_core"] = langchain
+sys.modules["langchain_core.messages"] = messages
+
+valor = getattr(importlib.import_module("src.interface.streamlit_app"), "renderizar_sidebar")
+assert valor.__module__ == "src.interface.sidebar"
+"""
+    processo = subprocess.run(
+        [sys.executable, "-c", codigo],
+        cwd=RAIZ,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+
+    assert processo.returncode == 0, processo.stdout + processo.stderr

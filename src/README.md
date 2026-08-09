@@ -115,6 +115,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | Arquivo | O que faz |
 |---|---|
 | `interface/streamlit_app.py` | Ponto de entrada da UI: estado, base, boas-vindas, streaming e chat. |
+| `interface/apoio_streamlit.py` | Helpers leves de estado, espera e falhas, importáveis sem instalar a UI. |
 | `interface/sidebar.py` | Status, diagnóstico e controles laterais. |
 | `interface/renderizacao_imagens.py` | Agrupamento, antevisão e download de figuras. |
 | `interface/ciclo_chat.py` | Persistência da sessão e caminhos de resposta por ferramenta/RAG. |

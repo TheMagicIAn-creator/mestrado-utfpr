@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-from src.interface.streamlit_app import (
-    RAIZ_PROJETO,
-    _falha_recuperavel,
-    _html_pensando,
-    agora_local,
-    stream_resposta_limpa,
-)
+from src.core.config import RAIZ_PROJETO
+from src.core.tempo import agora_local
+from src.interface.apoio_streamlit import _falha_recuperavel, _html_pensando
 from src.interface.renderizacao_imagens import renderizar_imagens
 
 from src.interface.streamlit_proxy import st
@@ -346,6 +342,8 @@ def responder_com_rag(pergunta: str,
     with st.chat_message("assistant", avatar="⚡"):
         placeholder = st.empty()
         try:
+            from src.interface.streamlit_app import stream_resposta_limpa
+
             refs_md = formatar_referencias_markdown(citacoes)
             resposta = stream_resposta_limpa(
                 conteudo_humano,
