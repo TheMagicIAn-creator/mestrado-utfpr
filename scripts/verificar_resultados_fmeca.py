@@ -676,13 +676,23 @@ def checar_experimentos(aud: Auditoria) -> None:
                 taxa = _numero((metricas or {}).get("taxa"))
                 aud.exigir(0 <= taxa <= 1, f"macrocomparação[{nome}/{fid}/sev={sev}]: taxa inválida")
     try:
-        from src.ml.macro_comparar import estado_proveniencia
+        from src.ml.macro_comparar import (
+            entradas_proveniencia_indisponiveis,
+            estado_proveniencia,
+        )
 
         motivos = estado_proveniencia()
         aud.exigir(
             not motivos,
             "macrocomparação: manifesto stale (" + "; ".join(motivos) + ")",
         )
+        entradas_ausentes = entradas_proveniencia_indisponiveis()
+        if entradas_ausentes:
+            aud.aviso(
+                "macrocomparação: entradas locais não disponíveis para "
+                "revalidação (" + ", ".join(entradas_ausentes) + "); "
+                "integridade dos outputs verificada"
+            )
     except Exception as exc:
         aud.erro(f"macrocomparação: falha ao verificar proveniência ({exc})")
     print(f"• macrocomparação: {len(dados_macro)} métodos, famílias FMECA e tabela publicados")

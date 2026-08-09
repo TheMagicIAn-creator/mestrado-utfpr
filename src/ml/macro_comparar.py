@@ -107,7 +107,21 @@ def registrar_manifesto(n_janelas: int | None = None) -> Path:
 def estado_proveniencia(n_janelas: int | None = None) -> list[str]:
     from src.ml.proveniencia import carregar_manifesto, comparar
 
-    return comparar(carregar_manifesto("macro_comparacao"), manifesto_atual(n_janelas))
+    return comparar(
+        carregar_manifesto("macro_comparacao"),
+        manifesto_atual(n_janelas),
+        permitir_inputs_ausentes=True,
+    )
+
+
+def entradas_proveniencia_indisponiveis(n_janelas: int | None = None) -> list[str]:
+    """Entradas locais que o ambiente atual não consegue revalidar por hash."""
+    atual = manifesto_atual(n_janelas)
+    return [
+        nome
+        for nome, arquivo_hash in atual.get("input_artifacts", {}).items()
+        if arquivo_hash is None
+    ]
 
 
 def executar(n_janelas: int | None = None) -> list[dict]:
