@@ -81,17 +81,18 @@ git config merge.ours.driver true
 | 2     | RAG agent             | Done          |
 | 3     | Streamlit interface   | Done          |
 | 4     | Automation            | Done          |
-| 5     | ML pipeline           | Implemented (E2) |
+| 5     | ML pipeline           | Implemented (E2 + E3 bench) |
 
 Phase 5 status: all five stages (features, autoencoder, fault injection,
 validation, Weibull/RUL) are implemented with provenance manifests.
 Current stage state and metrics live in `resultados/` artifacts (E2 =
-FMEA-guided synthetic validation; field validation E3 not yet performed).
+FMEA-guided synthetic validation). A separate GPVS-Faults protocol now provides
+E3 experimental bench validation; field validation is still not performed.
 
 ## Documentação técnica
 
 - [`docs/metodologia_ml.md`](docs/metodologia_ml.md) — decisões metodológicas e de integridade.
-- [`docs/datasets.md`](docs/datasets.md) — Stender (CA experimental), PV Farms (CC simulado), candidatos e separação de domínio.
+- [`docs/datasets.md`](docs/datasets.md) — Stender, PV Farms, GPVS-Faults E3 e separação de domínio.
 - [`docs/evidence_levels.md`](docs/evidence_levels.md) — níveis de evidência E0–E3.
 - [`docs/reproducibilidade.md`](docs/reproducibilidade.md) — manifestos, estados, memória, recálculo.
 - [`docs/memoria_agentes.md`](docs/memoria_agentes.md) — aprendizado validado entre sessões e limites de persistência.

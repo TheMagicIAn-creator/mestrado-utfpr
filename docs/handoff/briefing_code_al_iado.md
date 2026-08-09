@@ -369,7 +369,7 @@ Candidatos verificados:
 **Dataset e domínio**
 - Stender, M., Wallscheid, O. & Böcker, J. (2020). Data Set Description: Three-Phase IGBT Two-Level Inverter for Electrical Drives. DOI 10.13140/RG.2.2.23335.37280 ✔ *(texto completo não acessado — abrir antes de citar a faixa de operação)*
 - Harrou, F. et al. (2024). Automatic fault detection in grid-connected photovoltaic systems via variational autoencoder-based monitoring. *Energy Conversion and Management*, 314, 118665 ✔ — **sem código público**
-- Bakdi, A., Guichi, A., Mekhilef, S. & Bounoua, W. (2020). GPVS-Faults. Mendeley Data, DOI 10.17632/n76t439f65.1 ✔ — candidato a E3
+- Bakdi, A., Guichi, A., Mekhilef, S. & Bounoua, W. (2020). GPVS-Faults. Mendeley Data, DOI 10.17632/n76t439f65.1 ✔ — protocolo E3 de bancada executado em `resultados/gpvs/`
 
 **Bibliotecas**
 - Zhao, Y., Nasrullah, Z. & Li, Z. (2019). PyOD. *JMLR*, 20(96), 1-7 ✔

@@ -32,6 +32,7 @@ src/
 │   ├── autoencoder.py    modelo de normalidade (limiar p99)
 │   ├── injecao_falhas.py falhas sintéticas FMECA (schema E2) + SMD_95
 │   ├── validacao.py      validação interna E2 (holdout, ROC+PR, ICs)
+│   ├── gpvs.py           validação externa E3 de bancada por ensaio
 │   ├── rul_weibull.py    RUL / Weibull (eixo a_det, nao tempo)
 │   ├── relatorio_weibull.py  montagem do artefato de Weibull
 │   ├── classificador_pv.py classificação supervisionada PV Farms (CC)
@@ -66,6 +67,8 @@ src/
   catálogo de literatura, `consultar_datasets`, `comparar_abordagens_ml`, etc.
 - **Pipeline ML:** `features_ca → autoencoder → injecao_falhas → validacao →
   rul_weibull`, cada etapa com manifesto de proveniência.
+- **Validação GPVS:** protocolo independente em `gpvs.py`; não alimenta nem
+  mistura o pipeline Stender/FMECA.
 
 ## Execução local e nuvem
 - **PC:** possui `dados/brutos/`, treina os modelos, regenera os experimentos e
@@ -110,8 +113,10 @@ in-process (debug/CI); `AL_IADO_EXP_CHILD=1` é o marcador interno do filho.
 ## Eixos de ML
 - **Stender (CA experimental, inversor/motor):** detecção de anomalia por modelagem de normalidade.
 - **PV Farms (CC simulado):** classificação supervisionada de falhas conhecidas.
+- **GPVS-Faults (PV/rede experimental):** validação externa E3 de bancada com
+  transferência estrita auditada e adaptação local temporal.
 
-Os dois **não se fundem** — ver `docs/datasets.md` e `docs/metodologia_ml.md`.
+Os três eixos **não se fundem** — ver `docs/datasets.md` e `docs/metodologia_ml.md`.
 
 ## Instalação modular
 ```powershell

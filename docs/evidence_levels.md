@@ -8,11 +8,15 @@ Toda afirmação sobre resultados **deve** informar o nível de evidência. O ag
 | **E0** | Hipótese | proposições ainda não testadas |
 | **E1** | Benchmark **exploratório** — protocolo em features ou dataset rotulado auxiliar | `experimentos_artigos.py` (Ibrahim/AE-LSTM com injeção FMECA no espaço de features; classificação PV Farms quando usada como referência auxiliar). Limiar escolhido no próprio conjunto avaliado = E1 |
 | **E2** | Validação **sintética orientada pela FMECA** — ground truth de falhas injetadas | `injecao_falhas.py` (schema por falha) e `validacao.py` (limiar congelado, `__meta__.evidence_level = E2`) |
-| **E3** | Validação **experimental externa** (bancada / campo) | ainda não realizada |
+| **E3** | Validação **experimental externa** (o escopo deve dizer bancada ou campo) | `gpvs.py`: realizada em 14 ensaios GPVS-Faults, em bancada; campo ainda não realizado |
 
 Regras práticas:
 - O campo `evidence_level` é gravado nos artefatos (resultado de experimento,
   report de injeção/validação).
+- **E3 não é sinônimo de campo**: o resultado GPVS é E3 de bancada. Não prova
+  prevalência industrial, generalização entre plantas nem vida útil.
+- No GPVS, intervalos de confiança reamostram os 14 ensaios; janelas do mesmo
+  ensaio não são tratadas como replicações independentes.
 - AUC é independente de limiar (válido); F1/recall/specificity dependem do
   limiar — se ele foi escolhido no conjunto avaliado, são **exploratórios (E1)**.
 - O **Contator AC** usa ruído gaussiano como **proxy** de transiente/chattering

@@ -10,7 +10,7 @@ tags: [cerebro, datasets, paderborn, pv-farms, metodologia, inversor-pv, evidenc
 
 # Separação dos domínios de dados
 
-Paderborn e PV Farms exercem papéis diferentes e não são fundidos em um único problema de aprendizado.
+Stender, PV Farms e GPVS-Faults exercem papéis diferentes e não são fundidos em um único problema de aprendizado.
 
 ## Paderborn — domínio CA
 
@@ -19,6 +19,10 @@ Representa o inversor trifásico em operação saudável. É usado para modelage
 ## PV Farms — domínio CC
 
 É um dataset rotulado para classificação supervisionada de falhas conhecidas no lado CC. Seus resultados não diagnosticam falhas CA do inversor.
+
+## GPVS-Faults — domínio PV conectado à rede
+
+Fornece 14 ensaios experimentais de falha em IPPT/MPPT. Sustenta validação E3 de bancada em protocolo próprio, com treino e calibração temporais locais. Não substitui dados de campo nem tempos de vida.
 
 ## Regra metodológica
 

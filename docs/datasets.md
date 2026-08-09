@@ -42,23 +42,47 @@ deve manter copias da mesma observacao no mesmo fold; o classificador usa
 as do treino. Estes dados nao demonstram desempenho de campo nem diagnosticam
 as falhas CA da FMECA do inversor.
 
-## 3. Candidatos auditados em 9 de agosto de 2026
+## 3. GPVS-Faults - validacao experimental E3 de bancada
+
+- Arquivos locais: `dados/brutos/gpvs/csv/CSV_Files/F0L.csv` a `F7M.csv`.
+- Fonte: Bakdi et al. (2020), DOI `10.17632/n76t439f65.1`.
+- Natureza: 16 ensaios experimentais de microrede PV conectada a rede; `F0`
+  saudavel e sete falhas introduzidas na metade dos ensaios, em IPPT/MPPT.
+- Volume observado: 2.163.480 registros, sem NaN, infinito ou tempo nao
+  monotono nos arquivos auditados.
+- Uso: validacao externa por ensaio, separada do treino Stender.
+
+O protocolo em `src/ml/gpvs.py` usa janelas nao sobrepostas de um ciclo de
+50 Hz, 24 features dos sensores primarios, split temporal com purga, cinco
+sementes e limiar p99. O PCA de quatro componentes e o baseline linear sob o
+mesmo split. Os resultados versionados ficam em `resultados/gpvs/`.
+
+**Resultado vigente:** o limiar transferido diretamente dos ensaios `F0` teve
+especificidade macro 0,007 e foi rejeitado como ponto operacional. Com
+adaptacao local usando somente o inicio saudavel de cada ensaio, o AE obteve
+AUC macro 0,815 (IC95% 0,745-0,881), sensibilidade 0,445 e especificidade
+0,974. F1, F2 e F5 foram os cenarios mais detectaveis; F4, F6 e parte de F3/F7
+permanecem limitacoes. O PCA obteve AUC macro 0,794.
+
+**Discrepancia de amostragem:** o ReadMe declara `9,9989 us`, mas a mediana
+observada nos vetores `Time` dos 16 CSVs e aproximadamente `99,9969 us`
+(~10 kHz). O adaptador infere a taxa do vetor de tempo e nao usa o valor
+declarado no manual.
+
+Este E3 e **experimental de bancada**, nao de campo. Ele nao demonstra
+prevalencia industrial, nao transforma deteccao em diagnostico causal e nao
+fornece tempos de vida para Weibull/RUL fisico.
+
+## 4. Outros candidatos auditados em 9 de agosto de 2026
 
 | Dataset | Natureza | Aderencia ao tema | Uso defensavel | Nao usar para |
 |---|---|---|---|---|
-| GPVS-Faults | experimental, microrede PV conectada a rede | direta | validacao externa de deteccao e classificacao por cenario | Weibull fisico sem tempos de vida independentes |
 | PV residencial | telemetria de um inversor, 862.438 linhas | direta para operacao PV | anomalia operacional e estudo temporal apos saneamento | diagnostico causal, vida de componentes ou generalizacao entre unidades |
 | PMSM inverter faults | experimental, acionamento de motor, 10.892 linhas | direta para hardware de inversor; indireta para PV | benchmark complementar de classificacao/transferencia | split aleatorio por linha, Weibull ou RUL de campo |
 | PV Farms | simulacao de planta PV, 700 linhas recebidas | direta para falhas de strings CC | benchmark supervisionado E1 | evidencia experimental ou falha CA do inversor |
 | Bearing DataCenter | experimental, rolamentos | indireta | benchmark de processamento de corrente/vibracao | validacao de falha de eletronica de potencia |
 
-O candidato prioritario para a proxima validacao externa e o **GPVS-Faults**:
-ele possui 16 ensaios experimentais, modos MPPT/IPPT e falhas de arranjo,
-inversor, rede, sensor e controlador introduzidas no meio de cada ensaio. Deve
-ser mantido como protocolo separado, sem misturar seus registros ao treino de
-normalidade do conjunto Stender.
-
-## 4. O que um dataset precisa ter para Weibull fisico
+## 5. O que um dataset precisa ter para Weibull fisico
 
 Mais linhas de telemetria nao equivalem a mais eventos independentes. Para
 estimar vida util ou confiabilidade de campo sao necessarios, no minimo:
@@ -74,7 +98,7 @@ Nenhum dos datasets atualmente disponiveis cumpre esse contrato. O Weibull
 publicado no projeto permanece E2 ilustrativo sobre `a_det`, a magnitude da
 assinatura necessaria para deteccao. Ele nao estima horas, dias ou anos de vida.
 
-## 5. Regra de separacao
+## 6. Regra de separacao
 
 - Stender: normalidade CA experimental em acionamento de motor.
 - GPVS-Faults: validacao externa experimental em sistema PV conectado a rede.
@@ -83,5 +107,5 @@ assinatura necessaria para deteccao. Ele nao estima horas, dias ou anos de vida.
 - PV Farms: classificacao supervisionada de falhas CC simuladas.
 - Weibull fisico: somente com dados independentes de falha/censura e exposicao.
 
-Metricas nao sao transferidas entre esses protocolos. Resultados E1 ou E2 nao
-devem ser apresentados como desempenho industrial E3.
+Metricas nao sao transferidas entre esses protocolos. E3 de bancada nao deve
+ser apresentado como desempenho de campo ou prova industrial.

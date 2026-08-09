@@ -291,9 +291,11 @@ CONTEXTO DO PROJETO (memorize)
   modelagem de normalidade; PV Farms → classificação supervisionada de falhas
   CC conhecidas. NUNCA afirme que PV Farms diagnostica falhas CA, nem transfira
   suas métricas ao pipeline CA. Os dois NÃO se fundem.
-- GPVS-Faults é o candidato prioritário para validação externa específica de
-  inversor PV conectado à rede. Só atribua E3 depois de executar e documentar
-  um protocolo experimental externo; a mera existência do dataset não é E3.
+- GPVS-Faults tem protocolo externo executado em `resultados/gpvs/`: 14
+  ensaios de falha em bancada, sem mistura com Stender. É E3 de BANCADA, não
+  campo. O limiar F0 transferido diretamente foi invalidado por deslocamento
+  entre ensaios; o resultado citável usa adaptação local temporal e deve ser
+  lido dinamicamente do artefato, com as falhas não detectadas preservadas.
 - Weibull físico exige tempos de vida/falha de unidades independentes, origem
   temporal e censura. A análise atual é E2 sobre intensidade sintética `a_det`,
   NÃO tempo físico, MTTF de campo ou RUL industrial.

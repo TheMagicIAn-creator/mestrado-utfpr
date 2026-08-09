@@ -28,9 +28,11 @@ Resultado do pipeline principal com injeção de falhas fundamentada na FMECA. S
 
 Validação em bancada ou campo com falhas reais e protocolo externo. É o nível necessário para afirmações fortes de generalização operacional.
 
+O GPVS-Faults realizou E3 de bancada em protocolo temporal separado. Isso não equivale a campo: o alcance continua limitado aos ensaios experimentais e deve ser lido no artefato `resultados/gpvs/validacao_gpvs_e3.json`.
+
 ## Uso no agente
 
-O nível acompanha a interpretação de resultados. Uma nota Obsidian pode registrar uma decisão sobre E1 ou E2, mas não eleva a evidência original nem substitui o artefato que contém os números.
+O nível acompanha a interpretação de resultados. Uma nota Obsidian pode registrar uma decisão sobre E1, E2 ou E3, mas não eleva a evidência original nem substitui o artefato que contém os números.
 
 ## Conexões
 

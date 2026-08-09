@@ -520,11 +520,41 @@ def consultar_datasets(progresso=None, pergunta: str = "") -> dict:
             "inversor/motor, não o Paderborn Bearing Dataset e não um sistema PV."
         )
 
+    gpvs_resultado = Path(RAIZ_PROJETO) / "resultados" / "gpvs" / "validacao_gpvs_e3.json"
+    if gpvs_resultado.exists():
+        try:
+            import json
+
+            gpvs = json.loads(gpvs_resultado.read_text(encoding="utf-8"))
+            resumo = gpvs["macro_summary"]
+            estrito = resumo["strict_ae"]["all"]
+            adaptativo = resumo["adaptive_ae"]["all"]
+            linhas.append(
+                "\n### GPVS-Faults — validação experimental **E3 de bancada**\n"
+                "- 16 ensaios de microrede PV conectada à rede; 14 contêm falhas "
+                "introduzidas em IPPT/MPPT.\n"
+                f"- AE adaptativo: AUC macro {adaptativo['auc']['mean']:.3f}, "
+                f"sensibilidade {adaptativo['post_tpr']['mean']:.3f}, "
+                f"especificidade {adaptativo['specificity']['mean']:.3f}.\n"
+                f"- Transferência direta do limiar F0 rejeitada: especificidade "
+                f"macro {estrito['specificity']['mean']:.3f}.\n"
+                "- Escopo: bancada, não campo; detecta desvios, não prova causa e "
+                "não fornece tempos de vida para Weibull/RUL físico."
+            )
+        except Exception as exc:  # noqa: BLE001
+            linhas.append(
+                "\n### GPVS-Faults — validação E3 de bancada\n"
+                f"- Artefato presente, mas não foi possível ler as métricas ({exc})."
+            )
+    else:
+        linhas.append(
+            "\n### GPVS-Faults\n"
+            "- Protocolo externo ainda sem artefato local; não atribuir E3 somente "
+            "pela existência do dataset."
+        )
+
     linhas.append(
-        "\n### Candidatos auditados\n"
-        "- **GPVS-Faults:** prioridade para validação externa específica de "
-        "microrede PV conectada à rede; cenários experimentais de inversor, "
-        "rede, sensores e controle. Só será E3 após protocolo executado.\n"
+        "\n### Outros candidatos auditados\n"
         "- **PV residencial:** 862.438 registros operacionais e 10 blocos de "
         "estado `Fault`; útil para anomalia operacional após limpeza, mas sem "
         "causa, unidade, reparo ou vidas independentes.\n"
@@ -552,7 +582,7 @@ def comparar_abordagens_ml(progresso=None, pergunta: str = "") -> dict:
         "| **Supervisionada** | classifica falhas CONHECIDAS | sim | PV Farms simulado (**CC**): RF, AdaBoost, LogReg, Naive Bayes, CN2 |\n"
         "| **Não supervisionada** | aprende a NORMALIDADE e detecta desvios | não | Stender experimental (**CA**, inversor/motor): Autoencoder denso e AE-LSTM do Ibrahim |\n"
         "| **Sintética (FMECA)** | valida assinaturas CA modeladas | ground truth sintético | injeção no holdout Stender (**E2**) |\n"
-        "| **Externa candidata** | testa transferência ao domínio PV/rede | rótulos de cenário | GPVS-Faults; ainda não executado, portanto ainda não E3 |\n\n"
+        "| **Externa E3 de bancada** | testa transferência e adaptação no domínio PV/rede | rótulos temporais por ensaio | GPVS-Faults; protocolo separado, não campo |\n\n"
         "**Rigor:**\n"
         "- O não supervisionado DETECTA anomalia, mas NÃO garante diagnóstico "
         "causal da falha.\n"
