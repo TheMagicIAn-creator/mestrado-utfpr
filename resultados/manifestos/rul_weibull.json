@@ -1,9 +1,10 @@
 {
   "manifest_version": 2,
   "stage": "rul_weibull",
-  "created_at": "2026-08-09T03:19:41.442949-03:00",
-  "git_commit": "2b325c3d74b8bb9ce1ff3242cf7656d02235e2e8",
+  "created_at": "2026-08-09T03:24:41.350167-03:00",
+  "git_commit": "3c8e6e0ecba882f977299061d61f9fe89050aed2",
   "code_hash_mode": "text_lf_utf8",
+  "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "code_sha256": "6dc992966046aa64b0c1418ad582686e2071868099565cd880dc776cc63eb0cb",
   "code_dependencies": {
@@ -33,9 +34,9 @@
     "validacao:2:validacao_matriz.png": "c240e83897641cdbc5ef2aba51f17809c0cd54adcd83ffa09a593d6c760e99a6",
     "validacao:3:validacao_matrizes_severidades.png": "bff789b46773c2b5f7a1e1bcd2b944b8e89b325cbb658a1e99ab94bf11670699",
     "validacao:4:validacao_metricas.png": "3c98498edb498c083615ed7f18f4d8bd952d038a5db9f2aa76f00396f5f9a5f7",
-    "validacao:5:validacao_tabela.csv": "ffb73f6400d170db27308596c3ebe0b93a22cf302a3ac878f534061bd8e65205",
-    "validacao:6:validacao_tabela.md": "28993e48f3e3488029edb7cdffe1c78a355b918ed46a4adc346dc1ef30e470b6",
-    "validacao:7:validacao_report.json": "b0430bde76e63b892572eeed24361940e486432655c668a0f038879c96ce1e15"
+    "validacao:5:validacao_tabela.csv": "3ec081ce614699e607befeeb94dd8b35f6bd4bb597b486afc0675f0f77d46644",
+    "validacao:6:validacao_tabela.md": "01ffcfcbda26615169e48d74c9e0c2dfc09c8f2340473f1c1440a760587ea6e2",
+    "validacao:7:validacao_report.json": "3a651599242bc7afef25d301acc3c8185ea5c70121a39865409b1c46a51cccc8"
   },
   "outputs": [
     "resultados/autoencoder/weibull_ttf.png",

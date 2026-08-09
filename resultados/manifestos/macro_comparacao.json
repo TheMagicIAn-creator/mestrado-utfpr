@@ -1,9 +1,10 @@
 {
   "manifest_version": 2,
   "stage": "macro_comparacao",
-  "created_at": "2026-08-09T03:19:43.309341-03:00",
-  "git_commit": "2b325c3d74b8bb9ce1ff3242cf7656d02235e2e8",
+  "created_at": "2026-08-09T03:24:43.169077-03:00",
+  "git_commit": "3c8e6e0ecba882f977299061d61f9fe89050aed2",
   "code_hash_mode": "text_lf_utf8",
+  "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "code_sha256": "f342a4a66be59bf2b18823f90ab14be39754e1b470f48dda07d6b2e3731a2629",
   "code_dependencies": {
@@ -33,10 +34,10 @@
     "aelstm_epochs": 60
   },
   "input_artifacts": {
-    "dataset_stender": "95dd7e27751659228d22e04614fd5e91ac44e92df15cbe3f3bd60592e3e3953b",
+    "dataset_stender": "70c01c0e2ada1898886e981d6b62b21e75add921f233b7b53ac9b3d736477602",
     "features": "ba2976a0288ab2fc99d3fb530de385af68c5d8dc226c2cd6a75d08d829af9167",
     "modelo_autoencoder": "f69d52983ebb5a5e55b46dc19fbb5f230e7ab2b609142b0c840668c51a31d738",
-    "limiar_autoencoder": "d1886332ce23c699f142350fde82efe25e575aa7c33d527f4973b460a8dfac8a",
+    "limiar_autoencoder": "e69daf4639b9524e3ddddce8f6fc32ab80e2a58e45b94ea18cedf5a9ec730910",
     "scaler_autoencoder": "b72dc06088a56c955410dff81bad38ed617704e9bc379475ce87b30a97d4d3ae"
   },
   "outputs": [
