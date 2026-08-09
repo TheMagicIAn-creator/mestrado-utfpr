@@ -30,6 +30,7 @@ class PipelineStage:
     function: str
     artifacts: tuple[str, ...]
     depends_on: tuple[str, ...] = ()
+    input_artifacts: tuple[str, ...] = ()
     parameter_names: tuple[str, ...] = ()
     code_dependencies: tuple[str, ...] = ()
     evidence_level: str | None = None
@@ -111,6 +112,7 @@ STAGES: dict[str, PipelineStage] = {
         function="executar_features_ca",
         parameter_names=("FS", "F0", "JANELA", "SOBREPOSICAO", "HARMONICOS"),
         code_dependencies=("src.ml.estilo_graficos",),
+        input_artifacts=("dados/brutos/Inverter_Data_Set.csv",),
         artifacts=(
             "dados/processados/features_paderborn.parquet",
             "dados/processados/features_paderborn_stats.csv",
@@ -137,6 +139,8 @@ STAGES: dict[str, PipelineStage] = {
         artifacts=(
             "resultados/autoencoder/modelo_autoencoder.pt",
             "resultados/autoencoder/scaler.pkl",
+            "resultados/autoencoder/scaler.pkl.sha256",
+            "resultados/autoencoder/estatistica_residuo.npz",
             "resultados/autoencoder/limiar.json",
             "resultados/autoencoder/diagnostico_autoencoder.npz",
             "resultados/autoencoder/calibracao_autoencoder.csv",
@@ -146,6 +150,7 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/erro_temporal.png",
         ),
         depends_on=("features_ca",),
+        input_artifacts=("dados/processados/features_paderborn.parquet",),
         evidence_level="E2",
     ),
     "injecao_falhas": PipelineStage(
@@ -169,6 +174,14 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/injecao_smd_tabela.csv",
         ),
         depends_on=("autoencoder",),
+        input_artifacts=(
+            "dados/brutos/Inverter_Data_Set.csv",
+            "resultados/autoencoder/modelo_autoencoder.pt",
+            "resultados/autoencoder/scaler.pkl",
+            "resultados/autoencoder/scaler.pkl.sha256",
+            "resultados/autoencoder/estatistica_residuo.npz",
+            "resultados/autoencoder/limiar.json",
+        ),
         evidence_level="E2",
     ),
     "validacao": PipelineStage(
@@ -200,6 +213,14 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/validacao_report.json",
         ),
         depends_on=("injecao_falhas",),
+        input_artifacts=(
+            "dados/brutos/Inverter_Data_Set.csv",
+            "resultados/autoencoder/modelo_autoencoder.pt",
+            "resultados/autoencoder/scaler.pkl",
+            "resultados/autoencoder/scaler.pkl.sha256",
+            "resultados/autoencoder/estatistica_residuo.npz",
+            "resultados/autoencoder/limiar.json",
+        ),
         evidence_level="E2",
     ),
     "rul_weibull": PipelineStage(
@@ -232,6 +253,14 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/weibull_tabela.csv",
         ),
         depends_on=("validacao",),
+        input_artifacts=(
+            "dados/brutos/Inverter_Data_Set.csv",
+            "resultados/autoencoder/modelo_autoencoder.pt",
+            "resultados/autoencoder/scaler.pkl",
+            "resultados/autoencoder/scaler.pkl.sha256",
+            "resultados/autoencoder/estatistica_residuo.npz",
+            "resultados/autoencoder/limiar.json",
+        ),
         evidence_level="E2",
     ),
 }
@@ -365,12 +394,16 @@ def _code_dependencies(stage: PipelineStage) -> dict[str, str]:
 
 
 def _inputs_da_etapa(stage: PipelineStage) -> dict:
-    """Todos os artefatos upstream, para detectar qualquer regeneração relevante."""
-    inputs: dict[str, str] = {}
-    for dep in stage.depends_on:
-        for idx, path in enumerate(STAGES[dep].paths()):
-            inputs[f"{dep}:{idx}:{path.name}"] = str(path)
-    return inputs
+    """Entradas científicas realmente lidas pela etapa.
+
+    `depends_on` define ordem de execução. `input_artifacts` define proveniência;
+    separar os dois impede que uma alteração em PNG/Markdown invalide cálculos
+    que não consomem esses arquivos.
+    """
+    return {
+        f"input:{idx}:{Path(relativo).name}": str(RAIZ_PROJETO / relativo)
+        for idx, relativo in enumerate(stage.input_artifacts)
+    }
 
 
 def registrar_manifesto(key: str, parameters: dict | None = None,

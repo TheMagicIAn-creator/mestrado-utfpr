@@ -110,6 +110,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `classificador_pv.py` | Pipeline CLI de classificação PV Farms (Ghoneim) + carregamento de dados. |
 | `classificador_pv_infer.py` | Persistência/inferência do classificador (pickle verificado SHA-256). |
 | `resultados.py` | Lê e resume artefatos JSON/CSV/PNG sem depender do agente. |
+| `resultados_gpvs.py` | Formata o resumo E3 do GPVS-Faults sem ampliar a fachada geral de resultados. |
 
 ## `interface/` + raiz do pacote
 | Arquivo | O que faz |

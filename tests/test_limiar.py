@@ -35,6 +35,8 @@ def test_calcular_limiar_operacional_e_p99():
     assert info["mse_p99"] == info["limiar_p99"]
     assert info["sigma_multiplier"] == info["k"]
     assert info["threshold_effective_percentile"] == 99.0
+    assert info["threshold_quantile_method"] == "linear"
+    assert info["threshold_nominal_tail_probability_pct"] == 1.0
     assert "limiar_mu3sigma" in info
     assert "limiar_p95" in info
     # o p99 é, de fato, o percentil 99
@@ -60,6 +62,8 @@ def test_limiar_json_declara_threshold_method():
     else:
         assert d.get("score_threshold") == d.get("limiar_p99")
     assert "limiar_mu3sigma" in d
+    assert d.get("threshold_quantile_method") == "linear"
+    assert d.get("threshold_calibration_resolution_pct") == 100 / d["n_janelas_calibracao"]
 
 
 def test_resumo_publico_nomeia_ponto_operacional_sem_confundir_com_mu3sigma():

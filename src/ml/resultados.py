@@ -8,18 +8,20 @@ centraliza os JSONs, tabelas e graficos para evitar dashboards paralelos.
 
 from __future__ import annotations
 
+import csv
 import json
 import re
 from pathlib import Path
 
-from src.core.texto import normalizar_sem_acentos as _normalizar
-
 from src.core.config import RAIZ_PROJETO
 from src.core.formatacao import fmt_num
 from src.core.tempo import agora_local
+from src.core.texto import normalizar_sem_acentos as _normalizar
+from src.ml.resultados_gpvs import resumir_gpvs
 
 PASTA_AE = RAIZ_PROJETO / "resultados" / "autoencoder"
 PASTA_EXPERIMENTOS = RAIZ_PROJETO / "resultados" / "experimentos"
+PASTA_GPVS = RAIZ_PROJETO / "resultados" / "gpvs"
 
 
 def _json(path: Path) -> dict | None:
@@ -49,6 +51,29 @@ def _fmt_excedencia(info: dict | None, fallback_pct=None) -> str:
         f"{count}/{n} = {_fmt(taxa, 2)}% "
         f"[{_fmt(low, 2)}; {_fmt(high, 2)}]"
     )
+
+
+def _excedencia_calibracao_publicada(bloco: str, prefixo: str) -> dict | None:
+    caminho = PASTA_AE / "calibracao_autoencoder.csv"
+    if not caminho.exists():
+        return None
+    try:
+        with caminho.open("r", encoding="utf-8", newline="") as arquivo:
+            linha = next(
+                (r for r in csv.DictReader(arquivo) if r.get("bloco") == bloco),
+                None,
+            )
+        if not linha or not linha.get(f"{prefixo}_n"):
+            return None
+        return {
+            "count": int(float(linha[f"{prefixo}_count"])),
+            "n": int(float(linha[f"{prefixo}_n"])),
+            "rate_pct": float(linha[f"{prefixo}_rate_pct"]),
+            "ci95_low_pct": float(linha[f"{prefixo}_ci95_low_pct"]),
+            "ci95_high_pct": float(linha[f"{prefixo}_ci95_high_pct"]),
+        }
+    except (OSError, StopIteration, TypeError, ValueError, KeyError):
+        return None
 
 
 _EXPERIMENTOS_ALIASES = {
@@ -206,6 +231,10 @@ def _focos(pergunta: str) -> set[str]:
     txt = _normalizar(pergunta)
     focos = set()
     quer_experimentos = _quer_resultado_experimentos(txt)
+    quer_gpvs = any(t in txt for t in (
+        "gpvs", "validacao externa", "bancada externa", "microrede",
+        "microgrid", "e3",
+    ))
 
     if any(t in txt for t in ("autoencoder", "limiar", "baseline", "reconstrucao")):
         focos.add("autoencoder")
@@ -216,7 +245,7 @@ def _focos(pergunta: str) -> set[str]:
         "injection", "defaillance", "defaillances", "severite", "sévérité",
     )):
         focos.add("injecao")
-    if any(t in txt for t in ("validacao", "auc", "f1", "recall", "precision", "roc", "matriz")) and (
+    if not quer_gpvs and any(t in txt for t in ("validacao", "auc", "f1", "recall", "precision", "roc", "matriz")) and (
         not quer_experimentos or "validacao" in txt or "autoencoder" in txt
     ):
         focos.add("validacao")
@@ -225,6 +254,8 @@ def _focos(pergunta: str) -> set[str]:
         "reliability", "remaining useful life", "confiabilidad", "fiabilite",
     )):
         focos.add("weibull")
+    if quer_gpvs:
+        focos.add("gpvs")
     if quer_experimentos:
         focos.add("experimentos")
     return focos
@@ -311,7 +342,10 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
     txt = _normalizar(pergunta)
     focos = _focos(pergunta)
     if not focos:
-        focos = {"autoencoder", "injecao", "validacao", "weibull", "experimentos"}
+        focos = {
+            "autoencoder", "injecao", "validacao", "weibull", "gpvs",
+            "experimentos",
+        }
 
     imagens = []
     if "autoencoder" in focos:
@@ -333,6 +367,25 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
         _add_img(imagens, "weibull_ttf.png", "Weibull - distribuicao TTF", grupo="Weibull / RUL", ordem=10, ordem_grupo=40)
         _add_img(imagens, "weibull_confiabilidade.png", "Weibull - funcoes de confiabilidade", grupo="Weibull / RUL", ordem=20, ordem_grupo=40)
         _add_img(imagens, "weibull_rul.png", "Weibull - RUL condicional", grupo="Weibull / RUL", ordem=30, ordem_grupo=40)
+    if "gpvs" in focos:
+        _add_img(
+            imagens, "gpvs_macro_comparacao.png",
+            "GPVS E3 - comparação macro entre protocolos e baseline",
+            pasta=PASTA_GPVS, grupo="GPVS-Faults (E3 de bancada)",
+            ordem=10, tipo="comparacao", ordem_grupo=50,
+        )
+        _add_img(
+            imagens, "gpvs_transferencia_estrita.png",
+            "GPVS E3 - diagnóstico da transferência direta do limiar",
+            pasta=PASTA_GPVS, grupo="GPVS-Faults (E3 de bancada)",
+            ordem=20, tipo="comparacao", ordem_grupo=50,
+        )
+        _add_img(
+            imagens, "gpvs_metricas_por_cenario.png",
+            "GPVS E3 - métricas por cenário experimental",
+            pasta=PASTA_GPVS, grupo="GPVS-Faults (E3 de bancada)",
+            ordem=30, tipo="comparacao", ordem_grupo=50,
+        )
     if "experimentos" in focos:
         pede_matriz = _pede_matriz(txt)
         pede_graficos = _pede_graficos_modelo(txt)
@@ -437,6 +490,15 @@ def _resumo_autoencoder() -> str | None:
         ponto_operacao = str(metodo)
     fp_score = (d.get("fp_score_operacional") or {}).get("teste")
     fp_mse = (d.get("fp_mse_p99") or {}).get("teste")
+    fp_mse_sem_comp = _excedencia_calibracao_publicada(
+        "teste_isolado", "mse_sem_compartilhamento"
+    )
+    n_calibracao = d.get("n_janelas_calibracao")
+    resolucao = (
+        100.0 / float(n_calibracao)
+        if isinstance(n_calibracao, (int, float)) and n_calibracao
+        else None
+    )
     return (
         "## Autoencoder - modelo de normalidade\n\n"
         "| Métrica | Valor |\n"
@@ -451,10 +513,14 @@ def _resumo_autoencoder() -> str | None:
         f"| Janelas de teste | {d.get('n_janelas_teste', '-')} |\n"
         f"| FP teste - escore operacional | {_fmt_excedencia(fp_score, d.get('fp_test_pct', d.get('fp_val_pct')))} |\n"
         f"| FP teste - referência MSE p99 | {_fmt_excedencia(fp_mse)} |\n"
+        f"| FP teste - MSE sem compartilhamento de amostras | {_fmt_excedencia(fp_mse_sem_comp)} |\n"
+        f"| Resolução empírica da cauda na calibração | 1/{n_calibracao} = {_fmt(resolucao, 2)}% |\n"
         f"| Épocas treinadas | {d.get('epochs_treinadas', '-')} |\n\n"
         "Leitura rápida: o detector usa o escore operacional registrado em "
         "`limiar.json`; os gráficos principais de reconstrução permanecem na "
-        "escala MSE e são acompanhados por `calibracao_autoencoder.md`."
+        "escala MSE e são acompanhados por `calibracao_autoencoder.md`. O p99 "
+        "é nominal e interpolado; a subamostra sem compartilhamento evita "
+        "pseudorrepetição direta, mas não prova independência temporal."
     )
 
 
@@ -573,8 +639,10 @@ def _resumo_validacao() -> str | None:
         )
     leitura.append(
         " As linhas mostram todas as severidades, sem escolher apenas a melhor "
-        "AUC. O bloco de teste é temporalmente isolado e sem sobreposição, mas a "
-        "falha continua sintética: não é desempenho industrial."
+        "AUC. O holdout usa blocos intercalados por regime, com purga; a avaliação "
+        "retém janelas sem compartilhamento direto de amostras, sem presumir "
+        "independência temporal. A falha continua sintética: não é desempenho "
+        "industrial."
     )
     linhas.append("".join(leitura))
     return "".join(linhas)
@@ -839,7 +907,10 @@ def _resumo_experimentos(pergunta: str = "") -> str | None:
 def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> dict:
     focos = _focos(pergunta)
     if not focos:
-        focos = {"autoencoder", "injecao", "validacao", "weibull", "experimentos"}
+        focos = {
+            "autoencoder", "injecao", "validacao", "weibull", "gpvs",
+            "experimentos",
+        }
 
     secoes = []
     if "autoencoder" in focos:
@@ -850,6 +921,8 @@ def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> d
         secoes.append(_resumo_validacao())
     if "weibull" in focos:
         secoes.append(_resumo_weibull())
+    if "gpvs" in focos:
+        secoes.append(resumir_gpvs(PASTA_GPVS))
     if "experimentos" in focos:
         secoes.append(_resumo_experimentos(pergunta))
 

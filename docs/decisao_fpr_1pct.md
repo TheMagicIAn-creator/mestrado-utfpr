@@ -5,6 +5,21 @@
 > escore localizado não manteve vantagem no teste isolado. O método operacional
 > voltou a ser MSE p99; o alvo de 1% continua sem ser imposto artificialmente.
 
+### Estado canônico após a auditoria de 09/08/2026
+
+- Calibração: 42 janelas com 50% de sobreposição; resolução mínima não nula
+  `1/42 = 2,38%`.
+- O MSE p99 (`2,582821`) é um quantil nominal com interpolação linear. A ECDF
+  empírica nesse ponto é `41/42 = 97,62%`, não 99% exatos.
+- Teste isolado por janela: `1/60 = 1,67%`, IC95% de Wilson descritivo
+  `[0,29%; 8,86%]`.
+- Sensibilidade sem compartilhamento de amostras: `1/32 = 3,12%`. A mesma única
+  excedência permanece; muda o denominador. Isso não prova independência
+  temporal, mas explicita o efeito da sobreposição.
+
+Esses números não mudam a decisão operacional. Corrigem a comunicação: p99 é
+o nome do estimador de corte, não uma garantia de falso positivo igual a 1%.
+
 **Decidido por:** Rodolfo Torres · **Origem:** PR #94 (rascunho, não mesclada)
 **Status:** **o corte estrito de 1% NÃO é adotado**; o achado que o motivou é
 mantido e instrumentado.

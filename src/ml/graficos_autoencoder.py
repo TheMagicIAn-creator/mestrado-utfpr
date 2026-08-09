@@ -30,14 +30,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
 
 matplotlib.use("Agg")   # sem display — salva direto em arquivo
 import matplotlib.pyplot as plt  # noqa: E402
 
 from src.core.logs import adaptar_logger_como_print, get_logger  # noqa: E402
+from src.ml.estatistica import intervalo_wilson  # noqa: E402
 from src.ml.estilo_graficos import (  # noqa: E402
     COR_ALERTA,
     COR_NAO_DETECTADO,
@@ -49,7 +50,6 @@ from src.ml.estilo_graficos import (  # noqa: E402
     aplicar_estilo,
     salvar_figura,
 )
-from src.ml.estatistica import intervalo_wilson  # noqa: E402
 
 aplicar_estilo()
 
@@ -61,8 +61,10 @@ _log = adaptar_logger_como_print(_logger)
 
 
 def resumo_excedencia(valores: np.ndarray, limiar: float) -> dict:
-    """Conta excedências e adiciona IC95% de Wilson para a proporção."""
-    arr = np.asarray(valores, dtype=float)
+    """Conta excedências finitas e adiciona IC95% de Wilson descritivo."""
+    bruto = np.asarray(valores, dtype=float).ravel()
+    validos = np.isfinite(bruto)
+    arr = bruto[validos]
     n = int(len(arr))
     k = int((arr > float(limiar)).sum()) if n else 0
     taxa = float(100.0 * k / n) if n else float("nan")
@@ -73,6 +75,7 @@ def resumo_excedencia(valores: np.ndarray, limiar: float) -> dict:
         "rate_pct": taxa,
         "ci95_low_pct": float(ci_low * 100.0),
         "ci95_high_pct": float(ci_high * 100.0),
+        "n_invalid": int((~validos).sum()),
     }
 
 
@@ -95,6 +98,71 @@ def _fmt_excedencia(resumo: dict) -> str:
         f"{resumo['count']}/{resumo['n']} = {resumo['rate_pct']:.2f}% "
         f"[{resumo['ci95_low_pct']:.2f}; {resumo['ci95_high_pct']:.2f}]"
     )
+
+
+def _normalizar_intervalos(split: dict | None, chave: str) -> list[tuple[int, int]]:
+    """Aceita tanto o split histórico único quanto a lista intercalada atual."""
+    if not split:
+        return []
+    bruto = (split.get("limites") or {}).get(chave) or []
+    if (
+        len(bruto) == 2
+        and all(isinstance(v, (int, np.integer)) for v in bruto)
+    ):
+        bruto = [bruto]
+
+    intervalos = []
+    for item in bruto:
+        if not isinstance(item, (list, tuple)) or len(item) != 2:
+            continue
+        ini, fim = int(item[0]), int(item[1])
+        if 0 <= ini < fim:
+            intervalos.append((ini, fim))
+    return intervalos
+
+
+def _posicoes_sem_compartilhamento(
+    split: dict | None,
+    chave: str,
+    n_valores: int,
+    *,
+    distancia_minima: int = 2,
+) -> np.ndarray:
+    """Seleciona janelas que não compartilham amostras no protocolo de 50%.
+
+    Distância dois corresponde a reter uma janela a cada duas no conjunto de
+    features vigente. Isso remove o compartilhamento direto de amostras, mas
+    não autoriza chamar as observações de estatisticamente independentes.
+    """
+    if distancia_minima < 1:
+        raise ValueError("distancia_minima deve ser positiva")
+    globais = [
+        indice
+        for ini, fim in _normalizar_intervalos(split, chave)
+        for indice in range(ini, fim)
+    ]
+    if len(globais) != int(n_valores):
+        return np.asarray([], dtype=int)
+
+    selecionadas = []
+    ultimo_global = None
+    for posicao, indice_global in enumerate(globais):
+        if ultimo_global is None or indice_global - ultimo_global >= distancia_minima:
+            selecionadas.append(posicao)
+            ultimo_global = indice_global
+    return np.asarray(selecionadas, dtype=int)
+
+
+def _resumo_sem_compartilhamento(
+    valores: np.ndarray,
+    limiar: float,
+    split: dict | None,
+    chave: str,
+) -> dict:
+    posicoes = _posicoes_sem_compartilhamento(split, chave, len(valores))
+    if not len(posicoes):
+        return {}
+    return resumo_excedencia(np.asarray(valores)[posicoes], limiar)
 
 
 def _resumo_vetor(valores: np.ndarray) -> dict:
@@ -120,13 +188,27 @@ def _resumo_vetor(valores: np.ndarray) -> dict:
     }
 
 
-def _linha_calibracao(nome: str, mse: np.ndarray, score: np.ndarray | None,
-                      limiar_mse: float, limiar_score: float) -> dict:
+def _linha_calibracao(
+    nome: str,
+    chave_split: str,
+    mse: np.ndarray,
+    score: np.ndarray | None,
+    limiar_mse: float,
+    limiar_score: float,
+    split: dict | None,
+) -> dict:
     resumo_mse = _resumo_vetor(mse)
     exc_mse = resumo_excedencia(mse, limiar_mse)
     resumo_score = _resumo_vetor(score) if score is not None else {}
     exc_score = (
         resumo_excedencia(score, limiar_score) if score is not None else {}
+    )
+    exc_mse_sem_comp = _resumo_sem_compartilhamento(
+        mse, limiar_mse, split, chave_split
+    )
+    exc_score_sem_comp = (
+        _resumo_sem_compartilhamento(score, limiar_score, split, chave_split)
+        if score is not None else {}
     )
     return {
         "bloco": nome,
@@ -135,11 +217,21 @@ def _linha_calibracao(nome: str, mse: np.ndarray, score: np.ndarray | None,
         "mse_ref_p99_rate_pct": exc_mse.get("rate_pct"),
         "mse_ref_p99_ci95_low_pct": exc_mse.get("ci95_low_pct"),
         "mse_ref_p99_ci95_high_pct": exc_mse.get("ci95_high_pct"),
+        "mse_sem_compartilhamento_count": exc_mse_sem_comp.get("count"),
+        "mse_sem_compartilhamento_n": exc_mse_sem_comp.get("n"),
+        "mse_sem_compartilhamento_rate_pct": exc_mse_sem_comp.get("rate_pct"),
+        "mse_sem_compartilhamento_ci95_low_pct": exc_mse_sem_comp.get("ci95_low_pct"),
+        "mse_sem_compartilhamento_ci95_high_pct": exc_mse_sem_comp.get("ci95_high_pct"),
         **{f"score_operacional_{k}": v for k, v in resumo_score.items()},
         "score_operacional_count": exc_score.get("count"),
         "score_operacional_rate_pct": exc_score.get("rate_pct"),
         "score_operacional_ci95_low_pct": exc_score.get("ci95_low_pct"),
         "score_operacional_ci95_high_pct": exc_score.get("ci95_high_pct"),
+        "score_sem_compartilhamento_count": exc_score_sem_comp.get("count"),
+        "score_sem_compartilhamento_n": exc_score_sem_comp.get("n"),
+        "score_sem_compartilhamento_rate_pct": exc_score_sem_comp.get("rate_pct"),
+        "score_sem_compartilhamento_ci95_low_pct": exc_score_sem_comp.get("ci95_low_pct"),
+        "score_sem_compartilhamento_ci95_high_pct": exc_score_sem_comp.get("ci95_high_pct"),
     }
 
 
@@ -165,15 +257,19 @@ def salvar_resumo_calibracao(
     percentil = info_limiar.get(
         "threshold_effective_percentile", info_limiar.get("percentil_limiar")
     )
+    split = info_limiar.get("split_temporal")
     linhas = [
-        _linha_calibracao("treino", erros_treino, scores_treino, limiar_mse, limiar_score),
         _linha_calibracao(
-            "calibracao", erros_calibracao, scores_calibracao,
-            limiar_mse, limiar_score,
+            "treino", "treino", erros_treino, scores_treino,
+            limiar_mse, limiar_score, split,
         ),
         _linha_calibracao(
-            "teste_isolado", erros_teste, scores_teste,
-            limiar_mse, limiar_score,
+            "calibracao", "val", erros_calibracao, scores_calibracao,
+            limiar_mse, limiar_score, split,
+        ),
+        _linha_calibracao(
+            "teste_isolado", "teste", erros_teste, scores_teste,
+            limiar_mse, limiar_score, split,
         ),
     ]
     df = pd.DataFrame(linhas)
@@ -184,6 +280,8 @@ def salvar_resumo_calibracao(
     ponto = str(metodo)
     if percentil is not None:
         ponto += f" / percentil efetivo {_fmt(percentil, 1)}"
+    n_calibracao = int(np.isfinite(np.asarray(erros_calibracao)).sum())
+    resolucao_calibracao = 100.0 / n_calibracao if n_calibracao else float("nan")
     texto = [
         "# Calibração acadêmica do Autoencoder",
         "",
@@ -195,10 +293,15 @@ def salvar_resumo_calibracao(
         f"- Escore operacional: `{ponto}`.",
         f"- Limiar operacional (`score_threshold`): `{_fmt(limiar_score, 6)}`.",
         f"- Referência MSE p99 para gráficos de reconstrução: `{_fmt(limiar_mse, 6)}`.",
-        "- Intervalos entre colchetes são IC95% de Wilson para a proporção de excedências.",
+        f"- O p99 é um quantil nominal interpolado (`method=linear`); com "
+        f"{n_calibracao} janelas, a resolução empírica da cauda é "
+        f"1/{n_calibracao} = {_fmt(resolucao_calibracao, 2)}%, não 1%.",
+        "- Intervalos entre colchetes são IC95% de Wilson, usados como referências "
+        "binomiais por janela. "
+        "A sobreposição e a dependência serial limitam a interpretação inferencial.",
         "",
-        "| Bloco | n | MSE mediana | MSE IQR | MSE p99 | > ref. MSE p99 | "
-        "Escore mediana | > limiar operacional |",
+        "| Bloco | n janelas | n sem compartilhamento | MSE mediana | MSE IQR | "
+        "MSE p99 | > ref. MSE p99 por janela | > ref. sem compartilhamento |",
         "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in linhas:
@@ -209,26 +312,46 @@ def salvar_resumo_calibracao(
             "ci95_low_pct": row.get("mse_ref_p99_ci95_low_pct"),
             "ci95_high_pct": row.get("mse_ref_p99_ci95_high_pct"),
         }
-        exc_score = {
-            "count": row.get("score_operacional_count"),
-            "n": row.get("score_operacional_n_janelas"),
-            "rate_pct": row.get("score_operacional_rate_pct"),
-            "ci95_low_pct": row.get("score_operacional_ci95_low_pct"),
-            "ci95_high_pct": row.get("score_operacional_ci95_high_pct"),
+        exc_mse_sem_comp = {
+            "count": row.get("mse_sem_compartilhamento_count"),
+            "n": row.get("mse_sem_compartilhamento_n"),
+            "rate_pct": row.get("mse_sem_compartilhamento_rate_pct"),
+            "ci95_low_pct": row.get("mse_sem_compartilhamento_ci95_low_pct"),
+            "ci95_high_pct": row.get("mse_sem_compartilhamento_ci95_high_pct"),
         }
         texto.append(
             f"| {row['bloco']} | {int(row['mse_n_janelas'])} | "
+            f"{row.get('mse_sem_compartilhamento_n') or '-'} | "
             f"{_fmt(row['mse_mediana'])} | {_fmt(row['mse_iqr'])} | "
             f"{_fmt(row['mse_p99'])} | {_fmt_excedencia(exc_mse)} | "
-            f"{_fmt(row.get('score_operacional_mediana'))} | "
-            f"{_fmt_excedencia(exc_score)} |"
+            f"{_fmt_excedencia(exc_mse_sem_comp)} |"
         )
+    if str(metodo) != "mse":
+        texto.extend([
+            "",
+            "| Bloco | Escore mediana | > limiar operacional por janela |",
+            "|---|---:|---:|",
+        ])
+        for row in linhas:
+            exc_score = {
+                "count": row.get("score_operacional_count"),
+                "n": row.get("score_operacional_n_janelas"),
+                "rate_pct": row.get("score_operacional_rate_pct"),
+                "ci95_low_pct": row.get("score_operacional_ci95_low_pct"),
+                "ci95_high_pct": row.get("score_operacional_ci95_high_pct"),
+            }
+            texto.append(
+                f"| {row['bloco']} | {_fmt(row.get('score_operacional_mediana'))} | "
+                f"{_fmt_excedencia(exc_score)} |"
+            )
     texto.extend([
         "",
         (
-            "Observação metodológica: os gráficos `distribuicao_erro.png` e "
-            "`erro_temporal.png` estão na escala MSE; a decisão operacional do "
-            "pipeline usa o escore canônico registrado em `limiar.json`."
+            "Observação metodológica: 'sem compartilhamento' retém uma janela "
+            "a cada duas dentro de cada bloco, coerente com 50% de sobreposição. "
+            "Isso remove amostras brutas compartilhadas, mas não garante "
+            "independência estatística ou temporal. Os gráficos estão na escala "
+            "MSE; a decisão operacional usa o escore registrado em `limiar.json`."
         ),
         "",
     ])
@@ -287,89 +410,108 @@ def plotar_distribuicao(erros_treino: np.ndarray,
                         erros_teste: np.ndarray,
                         info_limiar: dict, pasta: Path):
     """
-    CALIBRAÇÃO DO DETECTOR (não é análise de falha): histograma do erro de
-    reconstrução (MSE) do Autoencoder em dados SAUDÁVEIS (treino + validação),
-    usado para fixar o limiar operacional p99. Uma anomalia real cairia à
-    DIREITA do limiar; a fração da validação saudável acima do limiar é a taxa
-    de falsos positivos. Não representa nenhum componente/modo da FMECA.
+    Calibração do detector em dados saudáveis: ECDF completa e cauda empírica.
+
+    A figura separa o quantil nominal p99 da frequência realmente observada.
+    Não representa nenhum componente ou modo de falha da FMECA.
     """
-    fig, (ax_hist, ax_ecdf) = plt.subplots(
+    fig, (ax_ecdf, ax_cauda) = plt.subplots(
         1, 2, figsize=TAM["painel_2"], layout="constrained"
     )
     conjuntos = [
-        ("Treino", np.asarray(erros_treino), PALETA[0]),
-        ("Calibração", np.asarray(erros_calibracao), PALETA[1]),
-        ("Teste isolado", np.asarray(erros_teste), PALETA[2]),
+        ("Treino", np.asarray(erros_treino), PALETA[0], "-"),
+        ("Calibração", np.asarray(erros_calibracao), PALETA[1], "--"),
+        ("Teste isolado", np.asarray(erros_teste), PALETA[2], "-."),
     ]
-    positivos = np.concatenate([v[v > 0] for _, v, _ in conjuntos])
-    minimo = max(float(positivos.min()), 1e-8)
-    maximo = float(max(v.max() for _, v, _ in conjuntos))
-    # 14 bins (não 28): com poucas amostras, bins log demais criavam degraus
-    # finos e vazados ("quadradão"). stepfilled com alpha suaviza a leitura.
-    bins = np.geomspace(minimo, max(maximo, minimo * 10), 14)
-    for nome, valores, cor in conjuntos:
-        ax_hist.hist(
-            np.clip(valores, minimo, None), bins=bins, density=True,
-            histtype="stepfilled", alpha=0.35, linewidth=1.6,
-            edgecolor=cor, color=cor, label=f"{nome} (n={len(valores)})",
-        )
-        ordenados = np.sort(valores)
+    limiar = float(info_limiar["limiar"])
+    for nome, valores, cor, estilo in conjuntos:
+        ordenados = np.sort(valores[np.isfinite(valores) & (valores > 0)])
+        if not len(ordenados):
+            continue
         ecdf = np.arange(1, len(ordenados) + 1) / len(ordenados)
-        ax_ecdf.step(ordenados, ecdf, where="post", color=cor, label=nome)
+        sobrevivencia = (
+            len(ordenados) - np.arange(1, len(ordenados) + 1)
+        ) / len(ordenados)
+        rotulo = f"{nome} (n={len(ordenados)})"
+        ax_ecdf.step(
+            ordenados, ecdf, where="post", color=cor,
+            linestyle=estilo, label=rotulo,
+        )
+        ax_cauda.step(
+            ordenados[sobrevivencia > 0], sobrevivencia[sobrevivencia > 0],
+            where="post", color=cor,
+            linestyle=estilo, label=rotulo,
+        )
+        exc = resumo_excedencia(ordenados, limiar)
+        if exc["count"]:
+            ax_cauda.scatter(
+                [limiar], [exc["rate_pct"] / 100.0], color=cor,
+                edgecolor="white", linewidth=0.7, s=42, zorder=4,
+            )
 
-    limiar = info_limiar["limiar"]
-    for ax in (ax_hist, ax_ecdf):
+    for ax in (ax_ecdf, ax_cauda):
         ax.axvline(limiar, color=COR_ALERTA, linewidth=2, linestyle="--",
                    label=f"Referência MSE p99 = {limiar:.4f}")
 
-    # μ+kσ entra apenas como REFERÊNCIA comparativa (não é o limiar em uso).
+    # μ+kσ entra apenas como referência comparativa, nunca como corte em uso.
     mu3s = info_limiar.get("limiar_mu3sigma", info_limiar.get("limiar_mu3s"))
     if mu3s is not None:
-        ax_hist.axvline(mu3s, color="#898781", linewidth=1.5, linestyle=":",
-                        label=f"μ+{info_limiar['k']:.0f}σ = {mu3s:.4f}")
+        ax_ecdf.axvline(
+            mu3s, color="#898781", linewidth=1.4, linestyle=":",
+            label=f"Referência μ+{info_limiar['k']:.0f}σ = {mu3s:.4f}",
+        )
 
     fp_teste = resumo_excedencia(erros_teste, limiar)
     fp_calib = resumo_excedencia(erros_calibracao, limiar)
     ax_ecdf.axhline(
         0.99, color=COR_REFERENCIA, linewidth=1.1, linestyle=":",
-        label="Probabilidade 0,99",
+        label="Quantil nominal 0,99",
     )
-    ax_ecdf.text(
+    ax_cauda.axhline(
+        0.01, color=COR_REFERENCIA, linewidth=1.1, linestyle=":",
+        label="Cauda nominal do p99 (1%)",
+    )
+    fp_teste_sem_comp = _resumo_sem_compartilhamento(
+        erros_teste, limiar, info_limiar.get("split_temporal"), "teste"
+    )
+    resolucao = 100.0 / fp_calib["n"] if fp_calib["n"] else float("nan")
+    ax_cauda.text(
         0.03,
-        0.08,
+        0.05,
         (
-            "Excedência acima da referência MSE p99\n"
-            f"calibração: {_fmt_excedencia(fp_calib)}\n"
-            f"teste isolado: {_fmt_excedencia(fp_teste)}"
+            f"Calibração: p99 interpolado; resolução 1/{fp_calib['n']} "
+            f"= {resolucao:.2f}%\n"
+            f"Teste por janela: {_fmt_excedencia(fp_teste)}\n"
+            "Teste sem compartilhamento: "
+            f"{_fmt_excedencia(fp_teste_sem_comp)}"
         ),
-        transform=ax_ecdf.transAxes,
+        transform=ax_cauda.transAxes,
         fontsize=8.5,
         color=COR_TEXTO_SEC,
         bbox={"boxstyle": "round,pad=0.35", "fc": "white", "ec": "#e1e0d9"},
     )
-    fp = fp_teste.get("rate_pct")
-    ax_hist.set_xscale("log")
-    ax_hist.set_xlabel("Erro de reconstrução (MSE, escala log)")
-    ax_hist.set_ylabel("Densidade")
-    ax_hist.set_title("Distribuição do erro saudável")
-    ax_hist.legend(fontsize=8)
     ax_ecdf.set_xscale("log")
-    ax_ecdf.set_ylim(0.80, 1.005)
+    ax_ecdf.set_ylim(0.0, 1.02)
     ax_ecdf.set_xlabel("Erro de reconstrução (MSE, escala log)")
     ax_ecdf.set_ylabel("Probabilidade acumulada")
-    ax_ecdf.set_title("Cauda superior — ECDF")
+    ax_ecdf.set_title("Distribuição acumulada empírica (ECDF)")
     ax_ecdf.legend(fontsize=8)
-    fig.suptitle(
-        "Referência MSE do autoencoder em dados saudáveis"
-        + (f" — excedência MSE no teste: {fp:.2f}%" if isinstance(fp, (int, float)) else "")
-    )
+    ax_cauda.set_xscale("log")
+    ax_cauda.set_yscale("log")
+    ax_cauda.set_ylim(0.005, 1.05)
+    ax_cauda.set_xlabel("Erro de reconstrução (MSE, escala log)")
+    ax_cauda.set_ylabel("Probabilidade empírica P(MSE > x)")
+    ax_cauda.set_title("Cauda superior (escala log)")
+    ax_cauda.legend(fontsize=8, loc="upper right")
+    fig.suptitle("Erro de reconstrução do autoencoder em dados saudáveis")
     caminho = pasta / "distribuicao_erro.png"
     salvar_figura(
         fig,
         caminho,
         (
-            "A linha tracejada vermelha é o limiar operacional MSE p99; "
-            "as excedências saudáveis estimam falsos positivos."
+            "p99 nominal interpolado na calibração; teste separado. IC95% de "
+            "Wilson é descritivo por janela; sobreposição e dependência serial "
+            "limitam a interpretação inferencial."
         ),
     )
     _log(f"   📊 {caminho.name}")
@@ -378,7 +520,6 @@ def plotar_distribuicao(erros_treino: np.ndarray,
 def _sombrear_split_temporal(ax, tempos: np.ndarray, split: dict | None) -> None:
     if not split:
         return
-    limites = split.get("limites") or {}
     blocos = [
         ("treino", "Treino", PALETA[0]),
         ("val", "Calibração", PALETA[1]),
@@ -386,20 +527,17 @@ def _sombrear_split_temporal(ax, tempos: np.ndarray, split: dict | None) -> None
     ]
     n = len(tempos)
     for chave, rotulo, cor in blocos:
-        intervalo = limites.get(chave) or []
-        if len(intervalo) != 2:
-            continue
-        ini, fim = int(intervalo[0]), int(intervalo[1])
-        if not (0 <= ini < fim <= n):
-            continue
-        ax.axvspan(
-            float(tempos[ini]),
-            float(tempos[fim - 1]),
-            color=cor,
-            alpha=0.055,
-            label=rotulo,
-            zorder=0,
-        )
+        for numero, (ini, fim) in enumerate(_normalizar_intervalos(split, chave)):
+            if not (0 <= ini < fim <= n):
+                continue
+            ax.axvspan(
+                float(tempos[ini]),
+                float(tempos[fim - 1]),
+                color=cor,
+                alpha=0.075,
+                label=rotulo if numero == 0 else "_nolegend_",
+                zorder=0,
+            )
 
 
 def plotar_erro_temporal(erros: np.ndarray,
@@ -427,7 +565,7 @@ def plotar_erro_temporal(erros: np.ndarray,
     ax.set_ylabel("Erro de Reconstrução (MSE)")
     ax.set_yscale("log")
     ax.set_title("Erro temporal de reconstrução em dados saudáveis\n"
-                 "Limiar operacional MSE p99")
+                 "Referência MSE p99 e split intercalado com purga")
     ax.legend()
     caminho = pasta / "erro_temporal.png"
     salvar_figura(

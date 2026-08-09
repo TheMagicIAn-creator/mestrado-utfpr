@@ -305,10 +305,10 @@ def calcular_limiar(erros_calibracao: np.ndarray,
     Define o limiar de anomalia do Autoencoder.
 
     DEFINIÇÃO OFICIAL (não confundir):
-    - Limiar OPERACIONAL = percentil 99 do erro de reconstrução saudável no
-      bloco temporal de calibração.
-      Controla diretamente a taxa de falso positivo (~1%) e é robusto a
-      distribuições assimétricas com poucas janelas.
+    - Limiar OPERACIONAL = percentil 99 nominal do erro de reconstrução
+      saudável no bloco temporal de calibração, com interpolação linear do
+      NumPy. Ele define o ponto de operação, mas não garante FPR empírico de
+      1%, sobretudo quando a calibração tem poucas janelas.
     - Referência COMPARATIVA = μ + 3σ (assume normalidade; só para comparação
       teórica, NUNCA usado como limiar operacional).
     - Referência ADICIONAL = percentil 95.
@@ -340,6 +340,8 @@ def calcular_limiar(erros_calibracao: np.ndarray,
         "top_k"             : None,
         "threshold_fallback_percentile": 99.0,
         "threshold_effective_percentile": 99.0,
+        "threshold_quantile_method": "linear",
+        "threshold_nominal_tail_probability_pct": 1.0,
     }
 
 
@@ -609,6 +611,9 @@ def executar_autoencoder(
             "calibracao": fp_score_calib,
             "teste": fp_score_teste,
         },
+        "threshold_calibration_resolution_pct": float(100.0 / len(X_calib)),
+        "window_overlap_fraction": 0.5,
+        "window_step_for_no_shared_samples": 2,
         "split_temporal"    : {
             "protocolo": nome_protocolo_split(split),
             "estrategia": split["estrategia"],

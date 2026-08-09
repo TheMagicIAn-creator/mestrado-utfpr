@@ -17,6 +17,8 @@
   "top_k": null,
   "threshold_fallback_percentile": 99.0,
   "threshold_effective_percentile": 99.0,
+  "threshold_quantile_method": "linear",
+  "threshold_nominal_tail_probability_pct": 1.0,
   "metodo_escore": "mse",
   "limiar_mse": 2.5828206539154053,
   "limiar_localizado": 16.53610623991461,
@@ -70,6 +72,9 @@
       "ci95_high_pct": 8.855129727590061
     }
   },
+  "threshold_calibration_resolution_pct": 2.380952380952381,
+  "window_overlap_fraction": 0.5,
+  "window_step_for_no_shared_samples": 2,
   "split_temporal": {
     "protocolo": "blocos_intercalados_50_20_30_com_purga_14_blocos",
     "estrategia": "blocos_intercalados",
