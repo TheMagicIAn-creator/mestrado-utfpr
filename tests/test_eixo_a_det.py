@@ -243,3 +243,57 @@ def test_relatorio_e_serializavel_em_json():
     assert "NaN" not in texto
     assert rel["falhas"]["fusivel_ac"]["status_ajuste"] == (
         "nao_estimavel_parametrico_rul_restrita")
+
+
+# ── o painel que ficava mudo ───────────────────────────────────────────────
+
+def test_motivo_nao_estimavel_diz_quantos_eventos_faltaram():
+    """O pesquisador reportou que o IGBT "sumia" dos gráficos.
+
+    Sumia: os painéis ficavam sem β/η e a legenda dizia só "ajuste não
+    estimável", sem distinguir "faltou 1 evento" de "quebrou". Um buraco
+    silencioso num capítulo é pior que um número ruim.
+    """
+    from src.ml.rul_weibull import MIN_EVENTOS_WEIBULL, motivo_nao_estimavel
+
+    a = np.concatenate([np.linspace(0.15, 0.9, 9), np.full(12, 1.0)])
+    ev = np.concatenate([np.ones(9, dtype=bool), np.zeros(12, dtype=bool)])
+    texto = motivo_nao_estimavel(classificar_desfechos(a, ev))
+
+    assert "9 detecções em 21 trajetórias" in texto
+    assert f"mínimo de {MIN_EVENTOS_WEIBULL}" in texto
+    assert "Faltou 1 evento" in texto
+    assert "42.9%" in texto or "42,9%" in texto
+    assert "NÃO foi afrouxado" in texto, (
+        "precisa dizer que o critério não foi relaxado para gerar curva"
+    )
+    assert "Kaplan-Meier" in texto, (
+        "a leitura NÃO paramétrica sobrevive à falta de eventos e tem de ser "
+        "oferecida — senão o modo mais difícil da FMECA vira um vazio"
+    )
+
+
+def test_o_motivo_entra_na_interpretacao_do_artefato():
+    a = np.concatenate([np.linspace(0.15, 0.9, 9), np.full(12, 1.0)])
+    ev = np.concatenate([np.ones(9, dtype=bool), np.zeros(12, dtype=bool)])
+    r = ajustar_weibull(a, ev, n_boot=0)
+
+    assert r["fit_converged"] is False
+    assert "9 detecções" in r["interpretacao"]["leitura"]
+    assert r["interpretacao"]["km_continua_valida"] is True
+    # A RUL restrita por Kaplan-Meier continua disponível: é o que impede o
+    # capítulo de ficar sem NENHUM número para esta falha.
+    assert r["rul_restrita_disponivel"] is True
+    assert np.isfinite(r["rul_restrita_inicial"])
+
+
+def test_criterio_de_minimo_de_eventos_nao_foi_afrouxado():
+    """Guarda contra a tentação de baixar o mínimo para 9 e "ganhar" a curva.
+
+    Ajustar Weibull com 9 eventos e 57% de indetectabilidade produz exatamente
+    o tipo de número que não deve entrar numa dissertação. Mexer no critério
+    DEPOIS de ver o resultado é o pior momento possível para mexer nele.
+    """
+    from src.ml.rul_weibull import MIN_EVENTOS_WEIBULL
+
+    assert MIN_EVENTOS_WEIBULL >= 10

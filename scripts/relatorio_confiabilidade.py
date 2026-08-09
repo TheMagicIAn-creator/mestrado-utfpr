@@ -62,8 +62,33 @@ def secao_confiabilidade(weibull: dict) -> tuple[list[str], dict]:
     for fid, bloco in weibull.get("falhas", {}).items():
         w = bloco.get("weibull") or {}
         if not w.get("fit_converged"):
-            linhas += [f"### {bloco.get('nome', fid)}", "",
-                       "Ajuste não convergiu — sem curva de confiabilidade.", ""]
+            # Uma linha seca ("não convergiu") deixava o modo mais difícil da
+            # FMECA como um buraco no capítulo — sem dizer se faltou um evento
+            # ou cinquenta, e escondendo que a leitura NÃO PARAMÉTRICA existe.
+            d = w.get("desfechos") or {}
+            leitura = (w.get("interpretacao") or {}).get("leitura")
+            linhas += [f"### {bloco.get('nome', fid)} (NPR {bloco.get('npr', '?')})",
+                       "", f"**{leitura or 'Ajuste não convergiu.'}**", ""]
+            if d:
+                linhas += [
+                    "| Grandeza | Valor |", "|---|--:|",
+                    f"| trajetórias | {d.get('n_traj')} |",
+                    f"| detectadas | {d.get('n_detectadas')} |",
+                    f"| não detectadas em a_inj = 1,0 | {d.get('n_indetectaveis_no_teto')} |",
+                    f"| POD_mon no teto | {float(d.get('pod_mon_no_teto', float('nan'))):.1%} |",
+                    "",
+                ]
+            rul_km = w.get("rul_restrita_inicial")
+            horizonte_km = w.get("rul_restrita_horizonte")
+            if rul_km is not None and np.isfinite(float(rul_km)):
+                linhas += [
+                    f"> **Kaplan-Meier (não paramétrica) permanece válida.** "
+                    f"Margem média de magnitude até detectar, restrita ao "
+                    f"horizonte observado de {float(horizonte_km):.2f}: "
+                    f"**{float(rul_km):.2f}**. Não extrapola além do observado — "
+                    f"e é exatamente por isso que sobrevive à falta de eventos.",
+                    "",
+                ]
             continue
         beta, eta = float(w["beta"]), float(w["eta"])
         ic = w.get("beta_ci95") or [None, None]
