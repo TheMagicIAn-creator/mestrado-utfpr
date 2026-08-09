@@ -21,6 +21,9 @@ import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
+if str(RAIZ) not in sys.path:
+    sys.path.insert(0, str(RAIZ))
+
 PASTA_AE = RAIZ / "resultados" / "autoencoder"
 PASTA_EXP = RAIZ / "resultados" / "experimentos"
 PASTA_CMP = RAIZ / "resultados" / "comparacao"
@@ -122,6 +125,64 @@ def _smd_calculada(valores: dict, alvo: float, *, conservadora: bool) -> float |
     return None
 
 
+def _validar_split_temporal(split: dict) -> tuple[bool, str]:
+    """Valida os contratos contíguo e intercalado, ambos com intervalos [a, b)."""
+    limites = split.get("limites") or {}
+    purga = int(split.get("purge_janelas", 0))
+    n_janelas = int(split.get("n_janelas", 0) or 0)
+    estrategia = split.get("estrategia")
+
+    if purga < 1:
+        return False, "purga ausente"
+
+    if estrategia == "blocos_intercalados":
+        intervalos: list[tuple[int, int, str]] = []
+        for nome in ("treino", "val", "teste"):
+            partes = limites.get(nome)
+            if not isinstance(partes, list) or not partes:
+                return False, f"intervalos de {nome} ausentes"
+            for parte in partes:
+                if not isinstance(parte, (list, tuple)) or len(parte) != 2:
+                    return False, f"intervalo inválido em {nome}"
+                inicio, fim = parte
+                if not isinstance(inicio, int) or not isinstance(fim, int):
+                    return False, f"limites não inteiros em {nome}"
+                if inicio < 0 or inicio >= fim:
+                    return False, f"intervalo vazio ou invertido em {nome}"
+                if n_janelas and fim > n_janelas:
+                    return False, f"intervalo de {nome} excede n_janelas"
+                intervalos.append((inicio, fim, nome))
+
+        intervalos.sort()
+        for anterior, atual in zip(intervalos, intervalos[1:]):
+            ini_atual, _, nome_atual = atual
+            _, fim_anterior, nome_anterior = anterior
+            if ini_atual < fim_anterior:
+                return False, "intervalos se sobrepõem"
+            if nome_atual != nome_anterior and ini_atual - fim_anterior < purga:
+                return False, "fronteira entre conjuntos viola a purga"
+        return True, "ok"
+
+    partes = []
+    for nome in ("treino", "val", "teste"):
+        parte = limites.get(nome)
+        if not isinstance(parte, (list, tuple)) or len(parte) != 2:
+            return False, f"limite contíguo de {nome} inválido"
+        inicio, fim = parte
+        if not isinstance(inicio, int) or not isinstance(fim, int):
+            return False, f"limites não inteiros em {nome}"
+        if inicio < 0 or inicio >= fim:
+            return False, f"intervalo vazio ou invertido em {nome}"
+        if n_janelas and fim > n_janelas:
+            return False, f"intervalo de {nome} excede n_janelas"
+        partes.append((inicio, fim, nome))
+
+    for anterior, atual in zip(partes, partes[1:]):
+        if atual[0] - anterior[1] < purga:
+            return False, "blocos contíguos se sobrepõem ou violam a purga"
+    return True, "ok"
+
+
 def checar_limiar(aud: Auditoria) -> dict | None:
     dados = aud.json(PASTA_AE / "limiar.json")
     if not dados:
@@ -137,6 +198,11 @@ def checar_limiar(aud: Auditoria) -> dict | None:
     )
     score_method = dados.get("score_method") or dados.get("metodo_escore")
     aud.exigir(score_method in {"mse", "localizado"}, "limiar: score_method inválido")
+    if score_method == "localizado":
+        aud.exigir(
+            dados.get("score_standardization_source") == "bloco_treino_modelo",
+            "limiar: régua localizada deve ser ajustada no bloco de treino",
+        )
     aud.exigir(
         _proximo(_numero(dados.get("mse_p99")), _numero(dados.get("limiar_p99"))),
         "limiar: mse_p99 difere do limiar_p99 legado",
@@ -189,20 +255,8 @@ def checar_limiar(aud: Auditoria) -> dict | None:
         aud.exigir(int(dados.get(campo, 0)) > 0, f"limiar: {campo} deve ser positivo")
 
     split = dados.get("split_temporal") or {}
-    limites = split.get("limites") or {}
-    treino = limites.get("treino") or []
-    calibracao = limites.get("val") or []
-    teste = limites.get("teste") or []
-    aud.exigir(
-        all(len(parte) == 2 for parte in (treino, calibracao, teste)),
-        "limiar: limites do split temporal incompletos",
-    )
-    if all(len(parte) == 2 for parte in (treino, calibracao, teste)):
-        aud.exigir(
-            treino[1] < calibracao[0] < calibracao[1] < teste[0] < teste[1],
-            "limiar: blocos temporais se sobrepõem ou estão fora de ordem",
-        )
-        aud.exigir(int(split.get("purge_janelas", 0)) >= 1, "limiar: purga ausente")
+    split_valido, motivo_split = _validar_split_temporal(split)
+    aud.exigir(split_valido, f"limiar: split temporal inválido ({motivo_split})")
 
     fp_score = dados.get("fp_score_operacional") or {}
     fp_mse = dados.get("fp_mse_p99") or {}
@@ -621,6 +675,16 @@ def checar_experimentos(aud: Auditoria) -> None:
             for sev, metricas in por_sev.items():
                 taxa = _numero((metricas or {}).get("taxa"))
                 aud.exigir(0 <= taxa <= 1, f"macrocomparação[{nome}/{fid}/sev={sev}]: taxa inválida")
+    try:
+        from src.ml.macro_comparar import estado_proveniencia
+
+        motivos = estado_proveniencia()
+        aud.exigir(
+            not motivos,
+            "macrocomparação: manifesto stale (" + "; ".join(motivos) + ")",
+        )
+    except Exception as exc:
+        aud.erro(f"macrocomparação: falha ao verificar proveniência ({exc})")
     print(f"• macrocomparação: {len(dados_macro)} métodos, famílias FMECA e tabela publicados")
 
 

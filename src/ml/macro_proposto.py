@@ -10,12 +10,10 @@ MÉTODO (nosso):
   2. Autoencoder DENSO treinado só em operação SAUDÁVEL (Paderborn) —
      modelagem de normalidade (Ibrahim, 2022: AE não-supervisionado + erro de
      reconstrução como sinal de anomalia)
-  3. ESCORE LOCALIZADO (nossa contribuição): média dos top-k |resíduos|
-     PADRONIZADOS por feature — sensível a falha concentrada em poucas features
-     (harmônicos do IGBT, perda de fase do Fusível), que o MSE médio diluía.
-     Fundamentação: erro de reconstrução como sinal de anomalia em Ibrahim
-     (2022) e padronização por feature/top-k como régua operacional interna.
-  4. Limiar AUTO-CALIBRADO para ~1% de falso positivo em bloco saudável não visto
+  3. MSE médio de reconstrução, conforme o princípio de Ibrahim (2022).
+     O escore localizado permanece como ablação porque não generalizou o ganho
+     anterior no split auditado de 09/08/2026.
+  4. Limiar calibrado em bloco saudável não visto
   5. Avaliação E2: injeção FMECA no SINAL por severidade (src/ml/macro_comum.py)
 
 Este script IMPORTA as funções já validadas e apenas ORQUESTRA o fluxo — não
@@ -55,7 +53,7 @@ import numpy as np
 RAIZ = Path(__file__).parent.parent.parent
 PASTA_AE = RAIZ / "resultados" / "autoencoder"
 PASTA_SAIDA = RAIZ / "resultados" / "macro"
-NOME = "Proposto (AE denso + escore localizado)"
+NOME = "Proposto (AE denso + MSE p99)"
 
 
 # ============================================================
@@ -63,7 +61,7 @@ NOME = "Proposto (AE denso + escore localizado)"
 # ============================================================
 
 def carregar_detector():
-    """Autoencoder treinado + scaler + régua do escore localizado."""
+    """Autoencoder treinado + scaler + metadados do escore operacional."""
     import torch
 
     from src.core.seguranca import carregar_pickle_com_sidecar
@@ -149,7 +147,14 @@ def executar(n_janelas: int | None = None) -> dict:
     _log(f"  calibração={len(j_cal)} | avaliação={len(j_aval)} (disjuntos)")
 
     _log("\n  Avaliando detecção por severidade (injeção FMECA no sinal)...")
-    resultado = avaliar_deteccao(NOME, "#2a78d6", construir_scorer(det), j_cal, j_aval)
+    nome_metodo = (
+        NOME
+        if det["metodo"] == "mse"
+        else "Proposto (AE denso + escore localizado experimental)"
+    )
+    resultado = avaliar_deteccao(
+        nome_metodo, "#2a78d6", construir_scorer(det), j_cal, j_aval
+    )
 
     _log(f"\n  Limiar auto-calibrado = {resultado['limiar']:.4f} "
          f"(percentil {resultado['percentil']:.1f}) | FP saudável "

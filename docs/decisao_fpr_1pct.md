@@ -1,5 +1,10 @@
 # Registro de decisão — o alvo de FPR de 1%
 
+> **Atualização de 09/08/2026:** este registro permanece histórico. Após o
+> split 50/20/30 e a separação correta entre ajuste da régua e calibração, o
+> escore localizado não manteve vantagem no teste isolado. O método operacional
+> voltou a ser MSE p99; o alvo de 1% continua sem ser imposto artificialmente.
+
 **Decidido por:** Rodolfo Torres · **Origem:** PR #94 (rascunho, não mesclada)
 **Status:** **o corte estrito de 1% NÃO é adotado**; o achado que o motivou é
 mantido e instrumentado.

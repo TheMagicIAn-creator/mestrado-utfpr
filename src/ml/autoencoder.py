@@ -128,9 +128,9 @@ DROPOUT        = 0.2    # regularização
 # Os ratios vivem em src/ml/split_temporal.py (fonte única do split); aqui
 # ficam como ESPELHO, porque o manifesto de proveniência os lê deste módulo por
 # AST. Um teste garante que os dois lados não divirjam.
-TRAIN_RATIO    = 0.60   # treino do modelo
+TRAIN_RATIO    = 0.50   # treino do modelo
 CALIB_RATIO    = 0.20   # early stopping + calibracao do limiar
-TEST_RATIO     = 0.20   # avaliacao saudavel final, nunca usada no ajuste
+TEST_RATIO     = 0.30   # avaliacao saudavel final, nunca usada no ajuste
 PACIENCIA      = 20     # early stopping: épocas sem melhora
 SIGMA          = 3.0    # fator k da REFERÊNCIA μ+kσ (comparativa); o limiar
                         # operacional é o percentil 99, não μ+kσ
@@ -162,9 +162,9 @@ class Autoencoder(nn.Module):
 
         # Arquitetura n→16→latente→16→n. Era n→64→32→latente→32→64→n, com
         # 19.389 parâmetros para 274 janelas de treino — 70,8 parâmetros POR
-        # AMOSTRA. Com a janela de 2048 as janelas de treino caem para 136, o
-        # que levaria a razão a 141,5. A rede atual tem 3.893 parâmetros
-        # (razão 28,4), e o corte veio de onde o peso estava: as camadas de
+        # AMOSTRA. Com a janela de 2048 e o split atual, o treino tem 104
+        # janelas. A rede atual tem 3.860 parâmetros para 108 features
+        # (razão 37,1 por janela), e o corte veio de onde o peso estava: as camadas de
         # borda (n×64 e 64×n somavam 14.125 dos 19.389).
         #
         # A saída do gargalo NÃO tem ReLU. Com ReLU o latente é não negativo por
@@ -418,7 +418,7 @@ def executar_autoencoder(
     # split_padrao_paderborn: os dois só concordavam porque os números
     # coincidiam. Divergir aqui faria o bloco de teste do treino ser outro que o
     # da validação — vazamento silencioso, do pior tipo.
-    from src.ml.split_temporal import split_padrao_paderborn
+    from src.ml.split_temporal import nome_protocolo_split, split_padrao_paderborn
 
     split = split_padrao_paderborn(len(X))
     idx_tr = split["treino"]
@@ -471,28 +471,28 @@ def executar_autoencoder(
     erros_all    = calcular_erros(modelo, torch.from_numpy(X_all),    device)
 
     # Resíduo por feature → régua saudável (μ/σ) do escore LOCALIZADO. A régua
-    # vem do bloco de CALIBRAÇÃO (saudável, fora do ajuste de pesos do AE).
-    # Régua por-feature + limiar do escore localizado. Por PADRÃO (sem env de
-    # percentil) o limiar é AUTO-CALIBRADO: régua e candidatos vêm de um
-    # sub-bloco de calibração e o percentil é o menor cujo FP num sub-bloco NÃO
-    # VISTO fica ≤ FP_ALVO. Assim o falso positivo se auto-regula, sem ajuste
-    # manual (docs/auditoria §25). Com poucas janelas, cai para o percentil fixo.
+    # é uma transformação aprendida no TREINO; o bloco de calibração fica
+    # reservado para escolher o limiar. Usar a calibração para ajustar a régua
+    # e o limiar sobreajustava duas vezes o mesmo bloco: na rodada 50/20/30 isso
+    # produziu FP=2,38% na calibração e 15% no teste. Com a régua no treino, o
+    # mesmo modelo e split deram 1,67% no teste antes da nova execução completa.
+    R_treino = ea.residuo_por_feature(modelo, X_treino, device)
     R_calib = ea.residuo_por_feature(modelo, X_calib, device)
-    if ea.AUTO_PERCENTIL and len(R_calib) >= 40:
-        corte_cal = int(len(R_calib) * 0.8)
-        R_fit, R_val = R_calib[:corte_cal], R_calib[corte_cal:]
-        estat_residuo = ea.ajustar_estatistica_residuo(R_fit)
-        sc_fit = ea.escore_localizado(R_fit, estat_residuo)
-        sc_val = ea.escore_localizado(R_val, estat_residuo)
+    estat_residuo = ea.ajustar_estatistica_residuo(R_treino)
+    sc_loc_treino = ea.escore_localizado(R_treino, estat_residuo)
+    sc_loc_calib = ea.escore_localizado(R_calib, estat_residuo)
+    auto_percentil_elegivel = bool(
+        ea.AUTO_PERCENTIL and ea.pode_autocalibrar_percentil(len(R_calib))
+    )
+    corte_cal = int(len(R_calib) * 0.8)
+    n_auto_validacao = len(R_calib) - corte_cal
+    if auto_percentil_elegivel:
+        sc_fit = sc_loc_calib[:corte_cal]
+        sc_val = sc_loc_calib[corte_cal:]
         limiar_loc, percentil_usado = ea.limiar_por_fp_alvo(sc_fit, sc_val, ea.FP_ALVO)
     else:
-        estat_residuo = ea.ajustar_estatistica_residuo(R_calib)
         percentil_usado = ea.PERCENTIL_LIMIAR
-        limiar_loc = float(np.percentile(
-            ea.escore_localizado(R_calib, estat_residuo), percentil_usado))
-    sc_loc_calib = ea.escore_localizado(R_calib, estat_residuo)
-    sc_loc_treino = ea.escore_localizado(
-        ea.residuo_por_feature(modelo, X_treino, device), estat_residuo)
+        limiar_loc = float(np.percentile(sc_loc_calib, percentil_usado))
     sc_loc_teste = ea.escore_localizado(
         ea.residuo_por_feature(modelo, X_teste, device), estat_residuo)
     sc_loc_all = ea.escore_localizado(
@@ -502,7 +502,7 @@ def executar_autoencoder(
     info_mse = calcular_limiar(erros_calib, sigma)      # p99/p95/μ+3σ do MSE
     limiar_mse = float(info_mse["limiar"])
 
-    metodo = ea.METODO_ESCORE            # 'localizado' (padrão) ou 'mse'
+    metodo = ea.METODO_ESCORE            # 'mse' (padrão) ou 'localizado'
     k_loc  = ea.K_LOCALIZADO
     if metodo == "localizado":
         limiar_op = limiar_loc
@@ -546,7 +546,15 @@ def executar_autoencoder(
     info_limiar["percentil_limiar"] = percentil_usado
     info_limiar["threshold_fallback_percentile"] = ea.PERCENTIL_LIMIAR
     info_limiar["threshold_effective_percentile"] = percentil_usado
-    info_limiar["percentil_auto"] = bool(ea.AUTO_PERCENTIL and len(R_calib) >= 40)
+    info_limiar["score_standardization_source"] = "bloco_treino_modelo"
+    info_limiar["percentil_auto"] = auto_percentil_elegivel
+    info_limiar["threshold_auto_validation_n"] = n_auto_validacao
+    info_limiar["threshold_auto_min_validation_n"] = ea.minimo_validacao_fp()
+    info_limiar["threshold_auto_reason"] = (
+        "meta de FP avaliada em subbloco com resolução empírica suficiente"
+        if auto_percentil_elegivel
+        else "fallback p99: subbloco não resolve empiricamente a meta de FP"
+    )
     limiar = limiar_op
 
     # ── 8. Salva artefatos ───────────────────────────────────
@@ -602,10 +610,7 @@ def executar_autoencoder(
             "teste": fp_score_teste,
         },
         "split_temporal"    : {
-            "protocolo": (
-                f"{split['estrategia']}_60_20_20_com_purga"
-                f"_{split['n_blocos']}_blocos"
-            ),
+            "protocolo": nome_protocolo_split(split),
             "estrategia": split["estrategia"],
             "n_blocos": split["n_blocos"],
             "destinos_dos_blocos": split["destinos"],

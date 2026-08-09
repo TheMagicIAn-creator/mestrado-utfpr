@@ -18,9 +18,10 @@ O que é NOSSO neste script (declarado, não escondido): a AVALIAÇÃO. O artigo
 usa séries de potência de usinas (15 min × 34 dias) com 13 anomalias reais;
 aqui o método dele é aplicado ao NOSSO problema — sinal CA do Paderborn com
 injeção FMECA por severidade — para que os dois macros sejam comparáveis
-maçã-com-maçã. As features de entrada também são as nossas (espectrais FMECA);
-o que muda em relação ao macro_proposto é a ARQUITETURA (LSTM temporal vs.
-densa) e o ESCORE (MSE do artigo vs. localizado top-k nosso).
+maçã-com-maçã. As features de entrada também são as nossas (espectrais FMECA).
+O que muda em relação ao macro_proposto é a ARQUITETURA e a organização
+temporal (LSTM sobre sequências vs. autoencoder denso por janela); ambos são
+comparados pelo erro de reconstrução MSE sob o mesmo protocolo de avaliação.
 
 Este script IMPORTA e ORQUESTRA — a mesma interface de scorer do macro_proposto,
 mesma avaliação, mesmos gráficos (src/ml/macro_comum.py).

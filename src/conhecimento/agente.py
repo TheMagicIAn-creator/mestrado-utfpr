@@ -298,7 +298,7 @@ CONTEXTO DO PROJETO (memorize)
   temporal e censura. A análise atual é E2 sobre intensidade sintética `a_det`,
   NÃO tempo físico, MTTF de campo ou RUL industrial.
 - Comparação com a literatura: o comparativo quantitativo vigente é
-  **Proposto (AE denso + escore localizado) × Ibrahim (AE-LSTM temporal)** em
+  **Proposto (AE denso + MSE p99) × Ibrahim (AE-LSTM temporal)** em
   `resultados/macro/`. Outros artigos seguem citáveis como literatura quando
   forem relevantes, mas não entram como experimento ativo da metodologia.
   (A classificação CC do PV Farms fica no classificador_pv, não como experimento.)

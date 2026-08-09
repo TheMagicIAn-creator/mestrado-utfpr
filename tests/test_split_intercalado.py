@@ -4,7 +4,7 @@ O split intercalado cobre a faixa de operação SEM abrir mão do anti-vazamento
 POR QUE ESTE TESTE EXISTE
 =========================
 O split de três blocos contíguos pressupõe sinal aproximadamente estacionário.
-O Paderborn é uma bancada que varre rotação em rampa, então fatiar em três deu
+O conjunto Stender é uma bancada que varre rotação em rampa, então fatiar em três deu
 três FAIXAS DE VELOCIDADE — medido em 09/08/2026:
 
     treino       mediana  20,45 Hz   IQR 83,13
@@ -42,7 +42,7 @@ from src.ml.split_temporal import (
 )
 
 CONJUNTOS = ("treino", "val", "teste")
-N_REAL = 224          # janelas da rodada de 09/08/2026, com JANELA = 2048
+N_REAL = 228          # janelas da rodada de 09/08/2026, com JANELA = 2048
 
 
 def _destino_por_indice(split: dict) -> dict:
@@ -102,11 +102,11 @@ def test_indices_ficam_dentro_da_serie(n):
 
 
 def test_a_perda_por_purga_e_pequena_e_declarada():
-    """24 de 224 janelas na configuração real — 11%. Vale saber se piorar."""
+    """22 de 228 janelas na configuração real — 9,6%. Vale saber se piorar."""
     split = split_blocos_intercalados(N_REAL)
     usadas = sum(len(split[c]) for c in CONJUNTOS)
-    assert usadas == 200
-    assert N_REAL - usadas == 24
+    assert usadas == 206
+    assert N_REAL - usadas == 22
 
 
 @pytest.mark.parametrize("n", [60, N_REAL, 457])
@@ -123,10 +123,9 @@ def test_indices_de_cada_conjunto_saem_ordenados(n):
 def test_cada_conjunto_atravessa_a_maior_parte_da_serie():
     """O defeito que originou a mudança: a calibração ocupava uma fatia só.
 
-    Amplitudes medidas com n = 224: treino 100%, calibração 72%, teste 72%. A
-    calibração e o teste não chegam a 100% porque o primeiro e o último bloco
-    da sequência são de treino — e isso é desejável: as pontas da rampa entram
-    no que o modelo aprende, não no que o julga.
+    Amplitudes com n = 228: treino 99,6%, calibração 69,7%, teste 84,6%. O
+    primeiro e o último bloco são de treino, mantendo as pontas da rampa no
+    conjunto que ajusta o modelo.
     """
     split = split_blocos_intercalados(N_REAL)
     for c in CONJUNTOS:
@@ -144,7 +143,9 @@ def test_o_split_contiguo_NAO_cobria_a_serie_e_esse_era_o_problema():
     """
     from src.ml.split_temporal import split_temporal_com_purga
 
-    antigo = split_temporal_com_purga(N_REAL)
+    antigo = split_temporal_com_purga(
+        N_REAL, train_ratio=0.60, val_ratio=0.20, test_ratio=0.20
+    )
     for c in ("val", "teste"):
         amplitude = antigo[c].max() - antigo[c].min()
         assert amplitude < 0.25 * N_REAL, (
@@ -159,24 +160,41 @@ def test_o_split_contiguo_NAO_cobria_a_serie_e_esse_era_o_problema():
 
 def test_cada_conjunto_recebe_varios_blocos_separados():
     split = split_blocos_intercalados(N_REAL)
-    assert len(split["limites"]["treino"]) == 9
+    assert len(split["limites"]["treino"]) == 7
     assert len(split["limites"]["val"]) == 3
-    assert len(split["limites"]["teste"]) == 3
+    assert len(split["limites"]["teste"]) == 4
+
+
+def test_split_padrao_entrega_amostra_independente_minima():
+    from src.ml.dados_avaliacao import _indices_sem_sobreposicao
+
+    inicios = np.arange(N_REAL) * 1024
+    import pandas as pd
+
+    df = pd.DataFrame({"amostra_inicio": inicios})
+    split = split_padrao_paderborn(N_REAL)
+    independentes = _indices_sem_sobreposicao(df, split["teste"], janela=2048)
+
+    assert len(split["treino"]) == 104
+    assert len(split["val"]) == 42
+    assert len(split["teste"]) == 60
+    assert len(independentes) == 32
 
 
 # ── a sequência de destinos ────────────────────────────────────────────────
 
 def test_sequencia_padrao_alterna_como_documentado():
-    seq = sequencia_de_destinos(15, {"treino": 0.6, "val": 0.2, "teste": 0.2})
+    seq = sequencia_de_destinos(14, {"treino": 0.5, "val": 0.2, "teste": 0.3})
     assert "".join({"treino": "T", "val": "V", "teste": "E"}[x] for x in seq) == (
-        "TETVTTETVTTETVT"
+        "TEVTTETVETTVET"
     )
 
 
 def test_sequencia_respeita_as_proporcoes():
-    seq = sequencia_de_destinos(15, {"treino": 0.6, "val": 0.2, "teste": 0.2})
-    assert seq.count("treino") == 9
-    assert seq.count("val") == seq.count("teste") == 3
+    seq = sequencia_de_destinos(14, {"treino": 0.5, "val": 0.2, "teste": 0.3})
+    assert seq.count("treino") == 7
+    assert seq.count("val") == 3
+    assert seq.count("teste") == 4
 
 
 def test_sequencia_e_deterministica():
@@ -185,8 +203,8 @@ def test_sequencia_e_deterministica():
     É a propriedade que o split contíguo tinha e que não podia ser perdida —
     reprodutibilidade por construção, não por semente.
     """
-    ratios = {"treino": 0.6, "val": 0.2, "teste": 0.2}
-    assert sequencia_de_destinos(15, ratios) == sequencia_de_destinos(15, ratios)
+    ratios = {"treino": 0.5, "val": 0.2, "teste": 0.3}
+    assert sequencia_de_destinos(14, ratios) == sequencia_de_destinos(14, ratios)
 
 
 @pytest.mark.parametrize("n_blocos", [3, 6, 9, 12, 15, 21, 30])

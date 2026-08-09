@@ -144,9 +144,9 @@ F0_MAX       = 115.0       # Hz — 107,7 Hz reais, com ~7% de margem
 # as features harmônicas são ancoradas em F0, esse erro se multiplica pela
 # ordem do harmônico.
 #
-# CUSTO, declarado: as janelas caem de 457 para 228, e as de treino de 274 para
-# 136. Isso DOBRA a razão parâmetros/amostra, e é por isso que a arquitetura
-# encolhe no mesmo commit-set (ver src/ml/autoencoder.py).
+# CUSTO, declarado: as janelas caem de 457 para 228. No split 50/20/30 com
+# purga, 104 entram no treino; por isso a arquitetura encolhe no mesmo
+# conjunto de mudanças (ver src/ml/autoencoder.py).
 JANELA       = 2048        # amostras por janela = 204,8 ms (Δf = 4,88 Hz)
 SOBREPOSICAO = 1024        # amostras de overlap (50%)
 PASSO        = JANELA - SOBREPOSICAO

@@ -17,8 +17,8 @@ com a janela do bloco seguinte.
 
 Uso típico
 ----------
-    sp = split_temporal_com_purga(n_janelas=457, train_ratio=0.60,
-                                  val_ratio=0.20, test_ratio=0.20,
+    sp = split_temporal_com_purga(n_janelas=228, train_ratio=0.50,
+                                  val_ratio=0.20, test_ratio=0.30,
                                   purge_janelas=2)
     X_tr = X[sp["treino"]]
     X_val = X[sp["val"]]
@@ -34,9 +34,9 @@ import numpy as np
 # Sobreposição padrão das janelas (50% em features_ca → 1 vizinho compartilha
 # metade das amostras). purge >= overlap_janelas garante fronteira limpa.
 PURGA_PADRAO = 2
-TRAIN_RATIO_PADRAO = 0.60
+TRAIN_RATIO_PADRAO = 0.50
 CALIB_RATIO_PADRAO = 0.20
-TEST_RATIO_PADRAO = 0.20
+TEST_RATIO_PADRAO = 0.30
 
 # ── Estratégia de split: por que deixou de ser 3 blocos contíguos ───────────
 #
@@ -71,10 +71,11 @@ TEST_RATIO_PADRAO = 0.20
 # temporal — o inversor em campo não opera em rampa monotônica —, mas é uma
 # afirmação diferente e não pode ser apresentada como a anterior.
 ESTRATEGIA_SPLIT = "blocos_intercalados"
-# 15 blocos sobre ~224 janelas dão ~15 janelas por bloco, e 15 divide 60/20/20
-# em 9/3/3 exatos. Mais blocos cobrem melhor o regime mas gastam mais purga
-# (uma fronteira a cada troca de destino); menos blocos voltam ao problema.
-N_BLOCOS_PADRAO = 15
+# Com 228 janelas, 14 blocos e 50/20/30 produzem 104/42/60 janelas depois da
+# purga. O teste contém 32 trajetórias sem sobreposição, superando o piso de 30
+# sem pseudorrepetição; treino, calibração e teste continuam distribuídos pela
+# rampa. O custo declarado é reduzir o treino anterior de 126 para 104 janelas.
+N_BLOCOS_PADRAO = 14
 
 
 def split_temporal_com_purga(
@@ -154,9 +155,10 @@ def sequencia_de_destinos(n_blocos: int, ratios: dict) -> list:
     sequência sai da ordenação dessas posições. Determinístico e reprodutível
     por construção — a mesma propriedade que o split contíguo tinha.
 
-    Com 15 blocos e 60/20/20 devolve
-    ``T E T V T T E T V T T E T V T``: teste nas posições 1, 6, 11 e calibração
-    em 3, 8, 13. Cada conjunto atravessa a rampa de rotação inteira.
+    Com 14 blocos e 50/20/30 devolve
+    ``T E V T T E T V E T T V E T``. Cada conjunto atravessa a rampa de
+    rotação, e o teste recebe quatro blocos para viabilizar ao menos 30
+    trajetórias não sobrepostas.
     """
     if n_blocos < 3:
         raise ValueError(f"n_blocos deve ser >= 3; recebido {n_blocos}")
@@ -279,6 +281,23 @@ def split_padrao_paderborn(n_janelas: int) -> dict:
         purge_janelas=PURGA_PADRAO,
         n_blocos=N_BLOCOS_PADRAO,
     )
+
+
+def nome_protocolo_split(split: dict, prefixo: str = "") -> str:
+    """Gera o identificador do protocolo a partir dos parâmetros executados."""
+    ratios = split["ratios"]
+    partes = [
+        round(float(ratios["train"]) * 100),
+        round(float(ratios["val"]) * 100),
+        round(float(ratios["test"]) * 100),
+    ]
+    base = (
+        f"{split.get('estrategia', 'temporal_contiguo')}_"
+        f"{partes[0]}_{partes[1]}_{partes[2]}_com_purga"
+    )
+    if split.get("n_blocos") is not None:
+        base += f"_{int(split['n_blocos'])}_blocos"
+    return f"{prefixo}{base}"
 
 
 def split_treino_val(n_janelas: int, val_frac: float = 0.2,

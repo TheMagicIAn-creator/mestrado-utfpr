@@ -81,7 +81,7 @@ def test_resumo_publico_nomeia_ponto_operacional_sem_confundir_com_mu3sigma():
         assert "refer" in low
 
 
-def test_diagnostico_compara_mse_historico_com_localizado_operacional():
+def test_diagnostico_le_artefato_historico_com_localizado_operacional():
     from src.ml.diagnostico_escore import _limiares_comparacao
 
     scores = np.linspace(0.0, 10.0, 1001)

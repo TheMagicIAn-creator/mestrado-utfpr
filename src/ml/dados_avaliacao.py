@@ -16,7 +16,7 @@ import pandas as pd
 
 from src.core.config import RAIZ_PROJETO
 from src.ml.features_ca import COLUNAS_CORRENTE, COLUNAS_TENSAO, JANELA
-from src.ml.split_temporal import split_padrao_paderborn
+from src.ml.split_temporal import nome_protocolo_split, split_padrao_paderborn
 
 ARQUIVO_FEATURES = (
     RAIZ_PROJETO / "dados" / "processados" / "features_paderborn.parquet"
@@ -104,10 +104,7 @@ def preparar_janelas_holdout(
         raise ValueError("O bloco de teste nao produziu janelas brutas validas.")
 
     meta = {
-        "protocolo": (
-            f"holdout_{split.get('estrategia', 'temporal_contiguo')}"
-            f"_60_20_20_com_purga"
-        ),
+        "protocolo": nome_protocolo_split(split, prefixo="holdout_"),
         "estrategia_split": split.get("estrategia"),
         "n_blocos_split": split.get("n_blocos"),
         "split_limites": split["limites"],

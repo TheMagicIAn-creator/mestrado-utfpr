@@ -218,15 +218,15 @@ varredura, e devem ser decididos **na mesma rodada** — como já registrado.
 | Parâmetro | Valor | Veredito |
 |---|---|---|
 | `SEED = 42` / `SEED_BOOTSTRAP = 42` | fixo | ✅ Determinismo verificado: retreino em 02/08 reproduziu a rodada anterior **bit a bit**, só o carimbo de data mudou |
-| `TRAIN/CALIB/TEST = 0,60/0,20/0,20` | fixo | ✅ Split temporal com purga de 2 janelas, coerente com sobreposição de 50% |
-| `SOBREPOSICAO = 512` (50%) | fixo | ✅ Purga dimensionada para a sobreposição; sem vazamento |
+| `TRAIN/CALIB/TEST = 0,50/0,20/0,30` | fixo | ✅ Split intercalado com purga de 2 janelas; entrega 32 trajetórias E2 não sobrepostas |
+| `SOBREPOSICAO = 1024` (50%) | fixo | ✅ Purga dimensionada para a sobreposição; sem vazamento |
 | `K_LOCALIZADO = 5` | env | ✅ Varredura executada (PR #85): `k=5` e `k=10` empatam por teto, `k=15` degrada o fusível |
 | `SIGMA = 3.0` | fixo | ✅ Só referência comparativa; nunca é o limiar operacional, e isso está escrito |
 | `PERSISTENCIA_CRUZAMENTO = 3` | fixo | ✅ Exigir 3 passos consecutivos evita TTF disparado por ruído de um passo |
 | `MIN_EVENTOS_WEIBULL = 10` | fixo | ✅ Piso razoável para MLE de 2 parâmetros |
 | `MAX_CENSURA_RUL_PCT = 50` | fixo | ✅ Guarda explícita; acima disso a RUL paramétrica é sinalizada |
 | `PREVALENCIA_RARA = 0.05` | fixo | ✅ Reprojeção declarada e explicada no artefato; AUC/recall não dependem dela |
-| `LATENTE_DIM = 16` | fixo | ⏸️ Sem varredura — **já registrado** como adiado (§23 da auditoria), amarrado ao ReLU |
+| `LATENTE_DIM = 8` | fixo | ⏸️ Sem varredura conclusiva; gargalo linear e dimensão vigente devem ser tratados como default dimensionado |
 | `HARMONICOS = [3,5,7,11,13]` | fixo | ✅ Cobre a assinatura do IGBT (5/7/11/13) e mais a 3ª; superconjunto é correto |
 | `PALETA` / `COR_METODO` | fixo | ✅ Contraste validado, ordem fixa, cor codifica entidade e não rank |
 | `TAM` (tamanhos de figura) | fixo | ✅ Conjunto fechado; proíbe `figsize` avulso |

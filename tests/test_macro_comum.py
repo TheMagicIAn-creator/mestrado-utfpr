@@ -47,7 +47,7 @@ def test_salvar_saidas_gera_md_csv_json_e_png(tmp_path):
     res = [_resultado("Proposto", 0.99, 1.0, 0.94, 0.86),
            _resultado("Ibrahim", 0.91, 0.8, 0.72, 0.44)]
     saidas = salvar_saidas(res, tmp_path, prefixo="cmp")
-    for chave in ("tabela_md", "tabela_csv", "grafico"):
+    for chave in ("tabela_md", "tabela_csv", "resultado_json", "grafico"):
         assert saidas[chave].exists(), f"{chave} não foi gerado"
     assert (tmp_path / "cmp_resultado.json").exists()
     # CSV enxuto: 8 colunas de dados, 4 linhas (2 métodos × 2 falhas)

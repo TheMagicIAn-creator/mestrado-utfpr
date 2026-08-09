@@ -1,8 +1,8 @@
 """As figuras do Autoencoder plotam MSE — o limiar desenhado tem de ser o de MSE.
 
-`limiar.json` guarda em `limiar` o limiar OPERACIONAL do escore localizado
-(~7,8), porque `executar_autoencoder` o sobrescreve antes de salvar. Os três
-gráficos deste módulo plotam **MSE**, cujo p99 é ~2,5.
+O contrato canônico atual também opera com MSE p99. Artefatos históricos e
+execuções experimentais, contudo, podem guardar em `limiar` o limiar do escore
+localizado. Os três gráficos deste módulo devem continuar na escala MSE.
 
 `regenerar_graficos_autoencoder` passava o dicionário cru para os plots. A
 figura resultante teria a linha de limiar bem acima da nuvem de pontos e
@@ -30,7 +30,7 @@ from src.ml.graficos_autoencoder import (
 
 # Reproduz o formato real de resultados/autoencoder/limiar.json.
 _LIMIAR_JSON = {
-    "limiar": 7.826175715408156,          # operacional (escore localizado)
+    "limiar": 7.826175715408156,          # artefato localizado histórico
     "limiar_mse": 2.5454330444335938,     # o que os gráficos precisam
     "limiar_mu3sigma": 2.2560129165649414,
     "k": 3.0,
@@ -39,7 +39,7 @@ _LIMIAR_JSON = {
 }
 
 
-def test_usa_o_limiar_de_mse_e_nao_o_operacional():
+def test_usa_o_limiar_de_mse_em_artefato_localizado_historico():
     info = _info_em_escala_mse(dict(_LIMIAR_JSON))
     assert info["limiar"] == _LIMIAR_JSON["limiar_mse"]
     assert info["limiar"] != _LIMIAR_JSON["limiar"]

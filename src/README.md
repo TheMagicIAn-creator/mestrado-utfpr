@@ -74,9 +74,9 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 |---|---|
 | `features_ca.py` | Etapa 1: extrai features de tempo/frequência/inter-fase do conjunto Stender. |
 | `autoencoder.py` | Etapa 2: Autoencoder de normalidade + limiar operacional (p99). |
-| `escore_anomalia.py` | Fonte única do MSE e do escore localizado operacional. |
+| `escore_anomalia.py` | Fonte única do MSE operacional e da ablação localizada. |
 | `graficos_autoencoder.py` | Figuras e resumo de calibração sem importar PyTorch. |
-| `diagnostico_escore.py` | Comparação auditável entre MSE histórico e escore localizado. |
+| `diagnostico_escore.py` | Comparação auditável entre MSE e escore localizado. |
 | `injecao_falhas.py` | Etapa 3: falhas sintéticas orientadas pela FMECA + SMD. |
 | `validacao.py` | Etapa 4: métricas no limiar congelado (ROC/PR/F1/AUC). |
 | `rul_weibull.py` | Etapa 5: varredura de magnitude, `a_det`, Weibull 2P censurada, margem condicional. O eixo é fração da assinatura nominal, **não tempo**. |

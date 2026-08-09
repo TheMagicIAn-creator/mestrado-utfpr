@@ -87,7 +87,7 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "consultar_comparacao_macro",
         "description": (
-            "Compara o METODO PROPOSTO (Autoencoder denso + escore localizado) "
+            "Compara o METODO PROPOSTO (Autoencoder denso + MSE p99) "
             "com a LITERATURA (AE-LSTM temporal do Ibrahim 2022) por AUC e por "
             "SMD, lendo a comparacao ja publicada. Nunca treina. Use sempre "
             "que o usuario pedir para comparar o metodo dele com a literatura, "
