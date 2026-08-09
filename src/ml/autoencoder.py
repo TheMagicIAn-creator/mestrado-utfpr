@@ -124,6 +124,9 @@ DROPOUT        = 0.2    # regularização
 # RESSALVA: o total de janelas é FIXO (457 no dataset atual). Aumentar a
 # calibração não cria dados — rouba do treino (piora o modelo) ou do teste
 # (piora a confiança na medida de FP).
+# Os ratios vivem em src/ml/split_temporal.py (fonte única do split); aqui
+# ficam como ESPELHO, porque o manifesto de proveniência os lê deste módulo por
+# AST. Um teste garante que os dois lados não divirjam.
 TRAIN_RATIO    = 0.60   # treino do modelo
 CALIB_RATIO    = 0.20   # early stopping + calibracao do limiar
 TEST_RATIO     = 0.20   # avaliacao saudavel final, nunca usada no ajuste
@@ -409,12 +412,14 @@ def executar_autoencoder(
     _log(f"\n⚖️  Normalizando com RobustScaler...")
     # Divisão temporal canônica: treino -> calibração -> teste, com purga.
     # O teste final nunca participa do scaler, early stopping ou limiar.
-    from src.ml.split_temporal import PURGA_PADRAO, split_temporal_com_purga
+    # Fonte ÚNICA do split. Antes este módulo chamava split_temporal_com_purga
+    # com os próprios ratios, enquanto dados_avaliacao chamava
+    # split_padrao_paderborn: os dois só concordavam porque os números
+    # coincidiam. Divergir aqui faria o bloco de teste do treino ser outro que o
+    # da validação — vazamento silencioso, do pior tipo.
+    from src.ml.split_temporal import split_padrao_paderborn
 
-    split = split_temporal_com_purga(
-        len(X), train_ratio=TRAIN_RATIO, val_ratio=CALIB_RATIO,
-        test_ratio=TEST_RATIO, purge_janelas=PURGA_PADRAO,
-    )
+    split = split_padrao_paderborn(len(X))
     idx_tr = split["treino"]
     idx_calib = split["val"]
     idx_teste = split["teste"]
@@ -596,10 +601,22 @@ def executar_autoencoder(
             "teste": fp_score_teste,
         },
         "split_temporal"    : {
-            "protocolo": "treino_60_calibracao_20_teste_20_com_purga",
+            "protocolo": (
+                f"{split['estrategia']}_60_20_20_com_purga"
+                f"_{split['n_blocos']}_blocos"
+            ),
+            "estrategia": split["estrategia"],
+            "n_blocos": split["n_blocos"],
+            "destinos_dos_blocos": split["destinos"],
             "limites": split["limites"],
             "purge_janelas": split["purge_janelas"],
             "indices_teste": idx_teste.tolist(),
+            "nota": (
+                "Blocos intercalados desde 09/08/2026: os três conjuntos "
+                "atravessam a faixa de rotação inteira. O teste NÃO é 'o "
+                "futuro' — é generalização entre regimes. Ver "
+                "src/ml/split_temporal.py."
+            ),
         },
         "data_treino"       : agora_local().isoformat(),
         "device"            : str(device),

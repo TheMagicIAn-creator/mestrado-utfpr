@@ -94,9 +94,18 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
 - **Injeção sintética orientada pela FMECA**: perturbação apenas das
   grandezas que a física de cada modo de falha afeta (ver
   docs/assinaturas_fmeca.md) — fornece ground truth para validar o detector.
-- **Split temporal com purga**: divisão treino/teste por blocos contíguos no
-  tempo, descartando janelas na fronteira (janelas com 50% de sobreposição →
-  purga de 2) para impedir vazamento temporal.
+- **Split em blocos intercalados com purga**: a série é dividida em 15 blocos
+  contíguos, distribuídos alternadamente entre treino/calibração/teste
+  (`T E T V T T E T V T T E T V T`), com **purga** de 2 janelas em toda
+  fronteira onde o destino muda — janelas com 50% de sobreposição nunca cruzam
+  conjuntos. Substituiu, em 09/08/2026, os **três blocos contíguos**, que
+  fatiavam a rampa de rotação do Paderborn em três faixas de velocidade e
+  deixavam a calibração num regime só (IQR de F0 de 1,46 Hz contra 83 Hz do
+  treino), tornando o limiar congelado inaplicável ao teste. Consequência para
+  a redação: o teste **não é "o futuro"**, é generalização entre regimes. Fonte
+  única: `src/ml/split_temporal.py`; detalhamento em `docs/metodologia_ml.md` §5.
+  O split contíguo (`split_temporal_com_purga`) segue disponível e é o que o
+  protocolo E1 por artigo usa.
 - **Protocolo por artigo**: o experimento executável vigente usa a regra de
   decisão do Ibrahim/AE-LSTM (p99 do erro em calibração temporal, congelado
   antes do teste). F1 depende do ponto de operação; AUC é a métrica comparável.

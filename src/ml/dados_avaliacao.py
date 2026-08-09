@@ -103,9 +103,19 @@ def preparar_janelas_holdout(
         raise ValueError("O bloco de teste nao produziu janelas brutas validas.")
 
     meta = {
-        "protocolo": "holdout_temporal_60_20_20_com_purga",
+        "protocolo": (
+            f"holdout_{split.get('estrategia', 'temporal_contiguo')}"
+            f"_60_20_20_com_purga"
+        ),
+        "estrategia_split": split.get("estrategia"),
+        "n_blocos_split": split.get("n_blocos"),
         "split_limites": split["limites"],
         "purga_janelas": split["purge_janelas"],
+        "nota_split": (
+            "O bloco de teste NÃO é o sufixo temporal da série: são blocos "
+            "intercalados, para que treino, calibração e teste cubram a mesma "
+            "faixa de rotação. Ver src/ml/split_temporal.py."
+        ),
         "sem_sobreposicao": True,
         "n_janelas_disponiveis": len(indices_teste),
         "n_janelas_usadas": len(janelas),

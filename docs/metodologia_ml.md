@@ -81,19 +81,18 @@ sobre features de vibração/corrente em máquinas rotativas) está registrado e
 `notas/Cerebro/Literatura a revisar.md` como melhoria futura de redação — não
 como bloqueio.
 
-### Pendência conhecida: ReLU no gargalo
+### ReLU no gargalo — resolvido em 08/08/2026
 
-O encoder termina em `ReLU` no espaço latente (`src/ml/autoencoder.py:140-141`),
-o que zera componentes negativas e reduz a capacidade efetiva de representação.
-Há uma inconsistência interna que reforça o ponto: a **saída do decoder é
-linear**, com comentário justificando a escolha (`autoencoder.py:150-151`); o
-gargalo não recebeu o mesmo tratamento.
+O encoder terminava em `ReLU` no espaço latente, o que zerava componentes
+negativas e podia matar unidades em zero permanente. Havia inconsistência
+interna: a saída do decoder já era linear, com comentário justificando; o
+gargalo não recebia o mesmo tratamento.
 
-**Decisão: não alterar isoladamente.** Trocar a ativação invalida os mesmos
-números que a varredura de hiperparâmetros invalidaria, e o checkpoint não
-versiona essa escolha (risco de `state_dict` incompatível ao recarregar o modelo
-nas etapas seguintes). As duas mudanças **rodam juntas**, numa única rodada de
-revalidação. Ver `docs/auditoria_pipeline_ml.md`, §23.
+A decisão registrada era não alterar isoladamente, porque trocar a ativação
+invalida os mesmos números que a varredura invalidaria. Foi feito junto com o
+encolhimento da rede, na rodada única (PR #107): **a última camada do encoder é
+linear**, e `tests/test_torch_smoke.py` impede a regressão exigindo que exista
+código latente negativo.
 
 ## 3. Limiar do Autoencoder
 
@@ -122,19 +121,70 @@ Gera ROC, **Precision-Recall**, matriz de confusão e `validacao_report.json`
 com `evidence_level = E2` e `threshold_source = bloco_calibracao_temporal`.
 O protocolo canônico é `treino 60% → calibração 20% → teste 20%`, com purga
 nas fronteiras. Injeção e validação usam apenas janelas **não sobrepostas** do
-bloco final. Isso remove vazamento de treino, mas não transforma E2 em
+conjunto de teste. Isso remove vazamento de treino, mas não transforma E2 em
 validação externa: as falhas continuam sintéticas.
 
 Benchmarks exploratórios (ex.: `experimentos_artigos.py`) que escolhem o limiar
 no próprio conjunto avaliado são rotulados `threshold_source =
 exploratorio_no_conjunto_avaliado` → **E1**, não estimativa de generalização.
 
-## 5. Divisão temporal com purga (anti-vazamento)
+## 5. Divisão em blocos intercalados com purga (anti-vazamento + cobertura)
 
-Janelas com 50% de sobreposição **não** podem ser divididas aleatoriamente
-(janelas vizinhas quase idênticas vazariam entre treino/val/teste).
-`src/ml/split_temporal.py::split_temporal_com_purga` faz blocos contíguos no
-tempo com zona de **purga** na fronteira.
+Janelas com 50% de sobreposição **não** podem ser divididas aleatoriamente:
+janelas vizinhas são quase idênticas e vazariam entre treino/calibração/teste.
+A defesa é dividir por **blocos contíguos** com zona de **purga** na fronteira.
+
+### Por que três blocos contíguos não bastavam
+
+Três blocos contíguos pressupõem sinal aproximadamente **estacionário**. O
+Paderborn não é: é bancada de acionamento que varre rotação em rampa. Fatiar a
+rampa em três produz três **faixas de velocidade**, não três amostras do mesmo
+processo. Medido em 09/08/2026 com 224 janelas:
+
+| bloco | mediana de F0 | IQR | n |
+|---|--:|--:|--:|
+| treino | 20,45 Hz | 83,13 | 136 |
+| calibração | **51,11 Hz** | **1,46** | 45 |
+| teste | **100,08 Hz** | 17,84 | 43 |
+
+O IQR da calibração é de 1,46 Hz — o bloco inteiro parado num regime só. O
+limiar operacional era congelado ali e aplicado a um bloco operando ao **dobro**
+da fundamental: FPR de 4,4% na calibração contra **62,8%** no teste. O treino,
+com IQR de 83 Hz, viu a faixa inteira; quem extrapolava era apenas o limiar.
+
+### A correção
+
+`split_temporal.py::split_blocos_intercalados` divide a série em
+`N_BLOCOS_PADRAO = 15` blocos contíguos e os distribui alternadamente
+(`T E T V T T E T V T T E T V T`), com purga em toda fronteira **onde o destino
+muda**. A ordem é determinística — cada conjunto recebe posições ideais
+`(k+0,5)/c` e a sequência sai da ordenação delas —, sem sorteio nem semente.
+
+Cobertura da série, antes e depois:
+
+| conjunto | contíguo | intercalado |
+|---|--:|--:|
+| treino | 59% | 100% |
+| calibração | 19% | 72% |
+| teste | 18% | 72% |
+
+Custo: 24 de 224 janelas descartadas por purga (11%).
+
+### O que muda na afirmação da dissertação
+
+O teste **deixa de ser "o futuro"** e passa a ser **generalização entre
+regimes**. Para detecção de anomalia em bancada de velocidade variável isso é
+mais adequado que previsão temporal — o inversor em campo não opera em rampa
+monotônica —, mas é uma afirmação **diferente** e não pode ser apresentada como
+a anterior.
+
+A garantia anti-vazamento não mudou de natureza e é verificada diretamente por
+`tests/test_split_intercalado.py`: nenhuma janela vizinha cai em conjuntos
+diferentes, para nenhum tamanho de série testado.
+
+O split contíguo continua disponível em `split_temporal_com_purga`, e é o que o
+protocolo E1 por artigo (`protocolos_artigos.py`) segue usando — trocá-lo lá
+mudaria resultados históricos publicados.
 
 ## 6. Níveis de evidência (E0–E3)
 
