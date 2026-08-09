@@ -368,8 +368,8 @@ def plotar_distribuicao(erros_treino: np.ndarray,
         fig,
         caminho,
         (
-            "A linha pontilhada vermelha é referência de MSE; a decisão "
-            "operacional localizada está registrada em limiar.json."
+            "A linha tracejada vermelha é o limiar operacional MSE p99; "
+            "as excedências saudáveis estimam falsos positivos."
         ),
     )
     _log(f"   📊 {caminho.name}")
@@ -427,7 +427,7 @@ def plotar_erro_temporal(erros: np.ndarray,
     ax.set_ylabel("Erro de Reconstrução (MSE)")
     ax.set_yscale("log")
     ax.set_title("Erro temporal de reconstrução em dados saudáveis\n"
-                 "Referência MSE p99; decisão operacional localizada em limiar.json")
+                 "Limiar operacional MSE p99")
     ax.legend()
     caminho = pasta / "erro_temporal.png"
     salvar_figura(
@@ -441,17 +441,18 @@ def plotar_erro_temporal(erros: np.ndarray,
 def _info_em_escala_mse(info: dict, erros_teste=None) -> dict:
     """Vista de `limiar.json` na escala do MSE, para os gráficos de MSE.
 
-    O campo `limiar` salvo em limiar.json é o limiar OPERACIONAL do escore
-    localizado (~7,8; ver a sobrescrita em `executar_autoencoder`). Já os três
-    gráficos deste módulo plotam **MSE**, cujo p99 é ~2,5.
+    O contrato canônico atual usa MSE p99 também como escore operacional. Em
+    artefatos históricos ou execuções experimentais, porém, `limiar` pode ser
+    o limiar de outro escore. Os três gráficos deste módulo sempre plotam MSE,
+    portanto usam explicitamente `limiar_mse` quando esse campo está presente.
 
     Passar o dicionário cru para eles desenha a linha de limiar muito acima do
     eixo e reporta "zero alarmes" no erro temporal — figura ERRADA, não figura
     desatualizada. O caminho do pipeline escapava disso porque monta seu
     próprio `info_mse`; a regeneração a partir do disco não escapava.
 
-    `fp_test_pct` é recalculado contra o limiar de MSE pelo mesmo motivo: o
-    valor salvo se refere ao limiar operacional.
+    `fp_test_pct` é recalculado contra o limiar de MSE pelo mesmo motivo: em um
+    artefato não canônico, o valor salvo pode se referir a outro escore.
     """
     escala = dict(info)
     limiar_mse = info.get("limiar_mse")

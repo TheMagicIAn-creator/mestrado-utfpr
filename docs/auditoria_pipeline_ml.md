@@ -922,3 +922,24 @@ eram linhas de p99 da varredura ANTIGA, num ponto de operação mais estrito,
 rotuladas por engano como o resultado novo. A afirmação derivada de que
 `k = 15` derrubava o Fusível para ~9% é falsa; a queda real é 100% → 70,5%.
 Os números válidos são os da tabela acima.
+
+## 30. Reavaliação do escore no split auditado (2026-08-09)
+
+O split 50/20/30 com 14 blocos elevou o holdout a 32 trajetórias sem
+sobreposição. A primeira regeneração reutilizou a calibração para ajustar a
+régua por feature e o limiar localizado: FP de 2,38% na calibração contra 15%
+no teste. Separar corretamente a régua (treino) do limiar (calibração) reduziu
+o FP do teste para 1,67%, mas tornou o ponto localizado conservador demais.
+
+No diagnóstico lado a lado, com o mesmo modelo e as mesmas 32 trajetórias, a
+detecção em `a_inj=1,0` foi:
+
+| Escore | Contator AC | IGBT | Fusível AC |
+|---|---:|---:|---:|
+| MSE p99 | 100,0% | 40,6% | 100,0% |
+| Localizado top-k | 100,0% | 31,2% | 0,0% |
+
+O ganho histórico do localizado não se reproduziu sob o novo contrato. A
+decisão canônica passa a ser **MSE p99**; o localizado permanece como ablação
+e não é apagado. Esta reversão evita selecionar o método pela narrativa:
+mantém-se o que generaliza melhor no holdout auditado, com FP e IC reportados.

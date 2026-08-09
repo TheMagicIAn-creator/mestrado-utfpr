@@ -6,7 +6,7 @@ as MESMAS falhas sintéticas injetadas:
 
   1. MSE médio  — referência HISTÓRICA (média do erro de reconstrução sobre
      todas as ~109 features). Dilui falhas localizadas.
-  2. Localizado — escore OPERACIONAL atual: média dos top-k maiores resíduos
+  2. Localizado — ablação: média dos top-k maiores resíduos
      PADRONIZADOS por feature
      (z do |resíduo| contra a distribuição saudável). Sensível a falha que
      mexe em POUCAS features (harmônicos do IGBT, perda de fase do Fusível).
@@ -16,9 +16,8 @@ Contator (banda larga) porque o MSE médio dilui as falhas localizadas. Este
 script MEDE se um escore localizado recupera a detecção do IGBT/Fusível —
 sem forçar amplitude de injeção (isso seria detecção artificial).
 
-Cada escore usa seu limiar publicado. O MSE mantém a referência p99; o
-localizado usa o percentil efetivo registrado em `limiar.json` (99,9 no
-artefato vigente), escolhido no bloco saudável de calibração.
+Cada escore usa o limiar estimado na calibração e a mesma separação de dados.
+O MSE é operacional; o localizado permanece publicado para comparação.
 
 É um DIAGNÓSTICO reversível: lê os artefatos do Autoencoder já treinado,
 injeta com as MESMAS funções de src/ml/injecao_falhas.py e escreve apenas
@@ -84,18 +83,23 @@ def _limiares_comparacao(
             info_limiar.get("percentil_limiar", 99.0),
         )
     )
-    k_publicado = info_limiar.get("top_k", info_limiar.get("k_localizado"))
+    k_publicado = info_limiar.get("top_k") or info_limiar.get("k_localizado")
     localizado_operacional = (
         info_limiar.get("score_method", info_limiar.get("metodo_escore"))
         == "localizado"
         and k_publicado is not None
         and int(k_publicado) == int(k)
     )
+    mesmo_k = k_publicado is not None and int(k_publicado) == int(k)
     if localizado_operacional:
         limiar_loc = float(
             info_limiar.get(
                 "score_threshold", info_limiar.get("limiar_localizado")
             )
+        )
+    elif mesmo_k and info_limiar.get("limiar_localizado") is not None:
+        limiar_loc = float(
+            info_limiar.get("limiar_localizado")
         )
     else:
         limiar_loc = float(np.percentile(score_loc_sau, percentil))
@@ -167,12 +171,16 @@ def executar_diagnostico(k: int = 5) -> bool:
     del df
     _log(f"   ✅ {len(janelas_holdout)} janelas saudáveis do holdout")
 
-    # ── Resíduos saudáveis → régua por-feature + limiar do localizado ──
+    # ── Resíduos saudáveis → comparação com a régua ajustada no treino ──
     R_sau = np.vstack([
         _residuo_por_feature(j, modelo, scaler, device, colunas_feat)
         for j in janelas_holdout
     ])
-    stats = ajustar_estatistica_residuo(R_sau)
+    from src.ml import escore_anomalia as ea
+
+    stats = ea.carregar_estatistica(PASTA_AE)
+    if stats is None:
+        stats = ajustar_estatistica_residuo(R_sau)
     score_loc_sau = escore_localizado(R_sau, stats, k=k)
     score_mse_sau = escore_mse_medio(R_sau)
     limiar_mse, limiar_loc, percentil_loc, loc_operacional = _limiares_comparacao(
@@ -266,7 +274,7 @@ def _plotar(saida: dict, FALHAS, pasta) -> None:
         ax.plot(sevs, y_mse, "o-", color=COR_NEUTRA, label="MSE médio (histórico)")
         rotulo_loc = "Localizado (operacional)" if saida.get(
             "limiar_localizado_operacional"
-        ) else "Localizado (top-k)"
+        ) else "Localizado (ablação)"
         ax.plot(sevs, y_loc, "s-", color=COR_METODO, label=rotulo_loc)
         ax.axhline(saida["alvo_smd"] * 100, color=COR_ALERTA, linestyle="--",
                    linewidth=1.5, label=f"Alvo SMD {saida['alvo_smd']*100:.0f}%")
@@ -277,7 +285,7 @@ def _plotar(saida: dict, FALHAS, pasta) -> None:
     axes[0].legend(fontsize=8)
     salvar_figura(
         fig, pasta / "diagnostico_escore.png",
-        "Diagnóstico E2: MSE histórico p99 versus escore localizado no percentil "
+        "Diagnóstico E2: MSE p99 versus ablação de escore localizado no percentil "
         f"efetivo p{saida['threshold_effective_percentile']:g}; não altera o pipeline.",
     )
     _log(f"   📊 diagnostico_escore.png")

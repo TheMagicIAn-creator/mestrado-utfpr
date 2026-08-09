@@ -84,5 +84,22 @@ def test_macro_comparar_executa_metodos_e_publica_uma_saida(monkeypatch, tmp_pat
         "salvar_saidas",
         lambda itens, pasta, prefixo: {"json": pasta / f"{prefixo}.json"},
     )
+    monkeypatch.setattr(
+        macro_comparar,
+        "registrar_manifesto",
+        lambda n: tmp_path / "macro_comparacao.json",
+    )
 
     assert macro_comparar.executar(12) == [proposto, ibrahim]
+
+
+def test_macro_comparar_declara_todas_as_saidas_versionaveis(monkeypatch, tmp_path):
+    monkeypatch.setattr(macro_comparar, "PASTA_SAIDA", tmp_path)
+
+    saidas = macro_comparar._saidas_macro()
+
+    assert len(saidas) == 12
+    assert len(set(saidas)) == 12
+    assert tmp_path / "comparacao_resultado.json" in saidas
+    assert tmp_path / "proposto_deteccao_severidade.png" in saidas
+    assert tmp_path / "ibrahim_tabela.md" in saidas

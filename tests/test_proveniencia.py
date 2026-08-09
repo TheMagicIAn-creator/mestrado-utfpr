@@ -61,8 +61,54 @@ def test_manifesto_v2_registra_dependencias_e_outputs(tmp_path):
     m = P.gerar_manifesto("s", code, {}, {}, [out], code_dependencies={"dep": dep})
     assert m["manifest_version"] == 2
     assert m["code_hash_mode"] == "text_lf_utf8"
+    assert m["input_hash_mode"] == "text_lf_utf8_by_suffix_else_binary"
+    assert m["output_hash_mode"] == "text_lf_utf8_by_suffix_else_binary"
     assert m["code_dependencies"]["dep"] == P.sha256_arquivo_texto_normalizado(dep)
-    assert list(m["output_artifacts"].values()) == [P.sha256_arquivo(out)]
+    assert list(m["output_artifacts"].values()) == [
+        P.sha256_arquivo_texto_normalizado(out)
+    ]
+
+
+def test_hash_de_saida_textual_e_portavel_entre_lf_e_crlf(tmp_path):
+    code = _escreve(tmp_path / "code.py")
+    out = tmp_path / "out.json"
+    out.write_bytes(b'{"ok": true}\r\n')
+    crlf = P.gerar_manifesto("s", code, {}, {}, [out])
+    out.write_bytes(b'{"ok": true}\n')
+    lf = P.gerar_manifesto("s", code, {}, {}, [out])
+
+    assert crlf["output_artifacts"] == lf["output_artifacts"]
+
+
+def test_hash_de_entrada_textual_e_portavel_entre_lf_e_crlf(tmp_path):
+    code = _escreve(tmp_path / "code.py")
+    entrada = tmp_path / "config.json"
+    out = _escreve(tmp_path / "out.bin")
+    entrada.write_bytes(b'{"ok": true}\r\n')
+    crlf = P.gerar_manifesto("s", code, {}, {"config": entrada}, [out])
+    entrada.write_bytes(b'{"ok": true}\n')
+    lf = P.gerar_manifesto("s", code, {}, {"config": entrada}, [out])
+
+    assert crlf["input_artifacts"] == lf["input_artifacts"]
+
+
+def test_comparar_pode_declarar_input_ausente_sem_ocultar_mudanca(tmp_path):
+    code = _escreve(tmp_path / "code.py")
+    up = _escreve(tmp_path / "up.bin", "original")
+    out = _escreve(tmp_path / "out.json", "{}")
+    salvo = P.gerar_manifesto("s", code, {}, {"up": up}, [out])
+
+    up.unlink()
+    ausente = P.gerar_manifesto("s", code, {}, {"up": up}, [out])
+    assert any("upstream" in x for x in P.comparar(salvo, ausente))
+    assert not P.comparar(salvo, ausente, permitir_inputs_ausentes=True)
+
+    _escreve(up, "alterado")
+    alterado = P.gerar_manifesto("s", code, {}, {"up": up}, [out])
+    assert any(
+        "upstream" in x
+        for x in P.comparar(salvo, alterado, permitir_inputs_ausentes=True)
+    )
 
 
 def test_estado_stale_quando_dependencia_cientifica_muda(tmp_path, monkeypatch):

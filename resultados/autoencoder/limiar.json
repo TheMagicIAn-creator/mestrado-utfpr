@@ -1,163 +1,161 @@
 {
   "threshold_method": "p99",
-  "limiar": 5.572588622195299,
-  "limiar_operacional": 5.572588622195299,
-  "score_method": "localizado",
-  "score_threshold": 5.572588622195299,
-  "mu": 2.3221685886383057,
-  "sigma": 10.800342559814453,
+  "limiar": 2.5828206539154053,
+  "limiar_operacional": 2.5828206539154053,
+  "score_method": "mse",
+  "score_threshold": 2.5828206539154053,
+  "mu": 0.48468267917633057,
+  "sigma": 0.5716012120246887,
   "k": 3.0,
   "sigma_multiplier": 3.0,
-  "limiar_p99": 44.808807373046875,
-  "mse_p99": 44.808807373046875,
-  "limiar_p95": 2.804035186767578,
-  "limiar_mu3sigma": 34.723196268081665,
-  "limiar_mu3s": 34.723196268081665,
+  "limiar_p99": 2.5828206539154053,
+  "mse_p99": 2.5828206539154053,
+  "limiar_p95": 1.9015179872512817,
+  "limiar_mu3sigma": 2.1994863152503967,
+  "limiar_mu3s": 2.1994863152503967,
   "threshold_source": "bloco_calibracao_temporal",
-  "top_k": 5,
+  "top_k": null,
   "threshold_fallback_percentile": 99.0,
   "threshold_effective_percentile": 99.0,
-  "metodo_escore": "localizado",
-  "limiar_mse": 44.808807373046875,
-  "limiar_localizado": 5.572588622195299,
+  "metodo_escore": "mse",
+  "limiar_mse": 2.5828206539154053,
+  "limiar_localizado": 16.53610623991461,
   "k_localizado": 5,
   "percentil_limiar": 99.0,
+  "score_standardization_source": "bloco_treino_modelo",
   "percentil_auto": false,
-  "n_janelas_treino": 126,
-  "n_janelas_calibracao": 39,
-  "n_janelas_teste": 39,
+  "threshold_auto_validation_n": 9,
+  "threshold_auto_min_validation_n": 100,
+  "threshold_auto_reason": "fallback p99: subbloco não resolve empiricamente a meta de FP",
+  "n_janelas_treino": 104,
+  "n_janelas_calibracao": 42,
+  "n_janelas_teste": 60,
   "n_features": 108,
   "latente_dim": 8,
-  "epochs_treinadas": 150,
-  "epoca_melhor": 131,
-  "loss_val_melhor": 2.3221687586643758,
-  "fp_val_pct": 2.564102564102564,
-  "fp_calib_pct": 2.564102564102564,
-  "fp_test_pct": 2.564102564102564,
+  "epochs_treinadas": 148,
+  "epoca_melhor": 128,
+  "loss_val_melhor": 0.4846827103978112,
+  "fp_val_pct": 2.380952380952381,
+  "fp_calib_pct": 2.380952380952381,
+  "fp_test_pct": 1.6666666666666667,
   "fp_mse_p99": {
     "calibracao": {
       "count": 1,
-      "n": 39,
-      "rate_pct": 2.5641025641025643,
-      "ci95_low_pct": 0.45407031009900983,
-      "ci95_high_pct": 13.180990169850077
+      "n": 42,
+      "rate_pct": 2.380952380952381,
+      "ci95_low_pct": 0.4215404134432499,
+      "ci95_high_pct": 12.321201573766647
     },
     "teste": {
-      "count": 0,
-      "n": 39,
-      "rate_pct": 0.0,
-      "ci95_low_pct": 0.0,
-      "ci95_high_pct": 8.966685370757142
+      "count": 1,
+      "n": 60,
+      "rate_pct": 1.6666666666666667,
+      "ci95_low_pct": 0.2948159794786249,
+      "ci95_high_pct": 8.855129727590061
     }
   },
   "fp_score_operacional": {
     "calibracao": {
       "count": 1,
-      "n": 39,
-      "rate_pct": 2.5641025641025643,
-      "ci95_low_pct": 0.45407031009900983,
-      "ci95_high_pct": 13.180990169850077
+      "n": 42,
+      "rate_pct": 2.380952380952381,
+      "ci95_low_pct": 0.4215404134432499,
+      "ci95_high_pct": 12.321201573766647
     },
     "teste": {
       "count": 1,
-      "n": 39,
-      "rate_pct": 2.5641025641025643,
-      "ci95_low_pct": 0.45407031009900983,
-      "ci95_high_pct": 13.180990169850077
+      "n": 60,
+      "rate_pct": 1.6666666666666667,
+      "ci95_low_pct": 0.2948159794786249,
+      "ci95_high_pct": 8.855129727590061
     }
   },
   "split_temporal": {
-    "protocolo": "blocos_intercalados_60_20_20_com_purga_15_blocos",
+    "protocolo": "blocos_intercalados_50_20_30_com_purga_14_blocos",
     "estrategia": "blocos_intercalados",
-    "n_blocos": 15,
+    "n_blocos": 14,
     "destinos_dos_blocos": [
       "treino",
       "teste",
-      "treino",
       "val",
       "treino",
       "treino",
       "teste",
       "treino",
       "val",
-      "treino",
-      "treino",
       "teste",
       "treino",
+      "treino",
       "val",
+      "teste",
       "treino"
     ],
     "limites": {
       "treino": [
         [
           0,
-          15
+          16
         ],
         [
-          32,
-          46
+          51,
+          65
         ],
         [
-          63,
-          76
+          65,
+          81
         ],
         [
-          76,
-          91
+          100,
+          114
         ],
         [
-          108,
-          122
+          149,
+          163
         ],
         [
-          139,
-          152
+          163,
+          179
         ],
         [
-          152,
-          167
-        ],
-        [
-          184,
-          198
-        ],
-        [
-          215,
+          214,
           228
         ]
       ],
       "val": [
         [
-          48,
-          61
+          35,
+          49
         ],
         [
-          124,
-          137
+          116,
+          130
         ],
         [
-          200,
-          213
+          181,
+          195
         ]
       ],
       "teste": [
         [
-          17,
-          30
+          18,
+          33
         ],
         [
-          93,
-          106
+          83,
+          98
         ],
         [
-          169,
-          182
+          132,
+          147
+        ],
+        [
+          197,
+          212
         ]
       ]
     },
     "purge_janelas": 2,
     "indices_teste": [
-      17,
       18,
       19,
       20,
@@ -170,35 +168,57 @@
       27,
       28,
       29,
+      30,
+      31,
+      32,
+      83,
+      84,
+      85,
+      86,
+      87,
+      88,
+      89,
+      90,
+      91,
+      92,
       93,
       94,
       95,
       96,
       97,
-      98,
-      99,
-      100,
-      101,
-      102,
-      103,
-      104,
-      105,
-      169,
-      170,
-      171,
-      172,
-      173,
-      174,
-      175,
-      176,
-      177,
-      178,
-      179,
-      180,
-      181
+      132,
+      133,
+      134,
+      135,
+      136,
+      137,
+      138,
+      139,
+      140,
+      141,
+      142,
+      143,
+      144,
+      145,
+      146,
+      197,
+      198,
+      199,
+      200,
+      201,
+      202,
+      203,
+      204,
+      205,
+      206,
+      207,
+      208,
+      209,
+      210,
+      211
     ],
     "nota": "Blocos intercalados desde 09/08/2026: os três conjuntos atravessam a faixa de rotação inteira. O teste NÃO é 'o futuro' — é generalização entre regimes. Ver src/ml/split_temporal.py."
   },
-  "data_treino": "2026-08-09T00:40:06.943521-03:00",
+  "data_treino": "2026-08-09T02:50:01.010769-03:00",
   "device": "cpu"
 }

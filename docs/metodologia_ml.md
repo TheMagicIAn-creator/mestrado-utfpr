@@ -8,8 +8,8 @@ consulte sempre o artefato vigente e informe o **nível de evidência**.
 
 | Eixo | Dataset | Domínio | Tarefa |
 |---|---|---|---|
-| **Principal** | Paderborn (`Inverter_Data_Set.csv`) | **CA** | Detecção de anomalia por modelagem de normalidade |
-| **Complementar** | PV Farms (`train/test_data.csv`) | **CC** | Classificação supervisionada de falhas conhecidas |
+| **Principal** | Stender (`Inverter_Data_Set.csv`) | **CA experimental, inversor/motor** | Detecção de anomalia por modelagem de normalidade |
+| **Complementar** | PV Farms (`train/test_data.csv`) | **CC simulado** | Classificação supervisionada de falhas conhecidas |
 
 **Regra rígida:** o classificador PV Farms **nunca** diagnostica falhas CA do
 inversor, e métricas de PV Farms **não** se transferem ao pipeline CA. O uso
@@ -33,16 +33,14 @@ desbalanceamento). Três razões, nesta ordem de peso:
 1. **A recorrência é redundante para o alvo.** A dinâmica intra-janela relevante
    às falhas CA já está condensada nas features espectrais de cada janela de
    ~102 ms. A LSTM reaprenderia, no eixo do tempo, o que a FFT já resolveu.
-2. **Features nomeadas habilitam o escore localizado.** O escore é a média dos
-   top-k resíduos padronizados **por feature**, o que permite atribuir o desvio a
-   "harmônico 5 da fase A" e ligá-lo ao modo de falha da FMECA. Um AE-LSTM sobre
-   sinal bruto perderia essa rastreabilidade — e é ela que conecta a detecção à
-   RCM, que é o eixo da dissertação.
-3. **A escolha é validada empiricamente, não por conveniência.** O AE-LSTM fiel
-   ao artigo é mantido como **concorrente** na comparação (`resultados/macro/`),
-   sob o mesmo protocolo E2. A vantagem do método proposto no IGBT — e o
-   **empate** no Fusível AC, cuja assinatura é de banda larga — é exatamente o
-   que a escolha do escore prevê.
+2. **Features nomeadas preservam rastreabilidade.** Mesmo com MSE operacional,
+   os resíduos continuam decomponíveis por RMS, THD e harmônicos de cada fase,
+   permitindo ligar o desvio às assinaturas da FMECA. Um AE-LSTM sobre sinal
+   bruto reduz essa rastreabilidade, importante para a conexão com RCM.
+3. **A escolha é comparada empiricamente.** O AE-LSTM inspirado no artigo é
+   mantido como concorrente em `resultados/macro/`, sob o mesmo protocolo E2.
+   O escore localizado também permanece como ablação, mas deixou de ser o
+   método canônico quando não reproduziu seu ganho no split auditado.
 
 ### Como os hiperparâmetros foram escolhidos
 
@@ -52,10 +50,10 @@ artigo-base: Ibrahim (2022), §5.2, fixa a profundidade por simplificação
 apenas o número de neurônios por camada** (Tabela 2). O mesmo protocolo aqui:
 profundidade fixa e largura varrida.
 
-A topologia vigente é `n→16→8→16→n` (3.893 parâmetros). A anterior era
+A topologia vigente é `n→16→8→16→n` (3.860 parâmetros com 108 features). A anterior era
 `n→64→32→16→32→64→n`, com 19.389 parâmetros para 274 janelas de treino — 70,8
-parâmetros por amostra. O janelamento de 2048 amostras reduz o treino a 136
-janelas, o que levaria a razão a 141,5; por isso a rede encolheu **no mesmo
+parâmetros por amostra. O janelamento de 2048 amostras e o split 50/20/30
+deixam 104 janelas de treino (37,1 parâmetros por janela); por isso a rede encolheu **no mesmo
 conjunto de commits** que alargou a janela. O corte veio de onde estava o peso:
 as camadas de borda (`n×64` e `64×n`) somavam 14.125 dos 19.389 parâmetros.
 
@@ -96,11 +94,10 @@ código latente negativo.
 
 ## 3. Limiar do Autoencoder
 
-- **Limiar operacional = `score_threshold` do `score_method` vigente.** Na
-  execução atual, o método operacional é o escore **localizado**; por isso o
-  valor operacional não deve ser rotulado como MSE p99.
-- **MSE p99 = referência do erro de reconstrução médio**, registrada em
-  `mse_p99` / `limiar_p99`.
+- **Limiar operacional = MSE p99 da calibração**, registrado em
+  `score_threshold`, `mse_p99` e `limiar_p99` com `score_method = mse`.
+- **Escore localizado = ablação diagnóstica**, mantida para comparação, sem
+  controlar a decisão operacional.
 - **μ + 3σ = referência comparativa** (assume normalidade) — **nunca** o limiar
   em uso.
 - **p95 = referência adicional.**
@@ -119,9 +116,10 @@ código latente negativo.
 as métricas nesse limiar fixo — **não** otimiza o limiar no conjunto de teste.
 Gera ROC, **Precision-Recall**, matriz de confusão e `validacao_report.json`
 com `evidence_level = E2` e `threshold_source = bloco_calibracao_temporal`.
-O protocolo canônico é `treino 60% → calibração 20% → teste 20%`, com purga
+O protocolo canônico é `treino 50% → calibração 20% → teste 30%`, com purga
 nas fronteiras. Injeção e validação usam apenas janelas **não sobrepostas** do
-conjunto de teste. Isso remove vazamento de treino, mas não transforma E2 em
+conjunto de teste. A configuração produz 32 trajetórias independentes, sem
+pseudorrepetição, e mantém o piso estatístico de 30. Isso remove vazamento de treino, mas não transforma E2 em
 validação externa: as falhas continuam sintéticas.
 
 Benchmarks exploratórios (ex.: `experimentos_artigos.py`) que escolhem o limiar
@@ -137,7 +135,7 @@ A defesa é dividir por **blocos contíguos** com zona de **purga** na fronteira
 ### Por que três blocos contíguos não bastavam
 
 Três blocos contíguos pressupõem sinal aproximadamente **estacionário**. O
-Paderborn não é: é bancada de acionamento que varre rotação em rampa. Fatiar a
+conjunto Stender não é: é bancada de acionamento que varre rotação em rampa. Fatiar a
 rampa em três produz três **faixas de velocidade**, não três amostras do mesmo
 processo. Medido em 09/08/2026 com 224 janelas:
 
@@ -155,8 +153,8 @@ com IQR de 83 Hz, viu a faixa inteira; quem extrapolava era apenas o limiar.
 ### A correção
 
 `split_temporal.py::split_blocos_intercalados` divide a série em
-`N_BLOCOS_PADRAO = 15` blocos contíguos e os distribui alternadamente
-(`T E T V T T E T V T T E T V T`), com purga em toda fronteira **onde o destino
+`N_BLOCOS_PADRAO = 14` blocos contíguos e os distribui alternadamente
+(`T E V T T E T V E T T V E T`), com purga em toda fronteira **onde o destino
 muda**. A ordem é determinística — cada conjunto recebe posições ideais
 `(k+0,5)/c` e a sequência sai da ordenação delas —, sem sorteio nem semente.
 
@@ -164,11 +162,14 @@ Cobertura da série, antes e depois:
 
 | conjunto | contíguo | intercalado |
 |---|--:|--:|
-| treino | 59% | 100% |
-| calibração | 19% | 72% |
-| teste | 18% | 72% |
+| treino | 59% | 99,6% |
+| calibração | 19% | 69,7% |
+| teste | 18% | 84,6% |
 
-Custo: 24 de 224 janelas descartadas por purga (11%).
+Custo: 22 de 228 janelas descartadas por purga (9,6%). Restam 104 janelas de
+treino, 42 de calibração e 60 de teste; destas últimas, 32 não se sobrepõem.
+O desenho anterior 60/20/20 fornecia apenas 21 trajetórias independentes e
+falhava o piso de 30 do próprio verificador acadêmico.
 
 ### O que muda na afirmação da dissertação
 
@@ -210,6 +211,24 @@ severidade em janelas não sobrepostas do holdout, o intervalo de Wilson de 95%
 e a **SMD₉₅** (menor severidade cuja taxa pontual é ≥ 95%). O campo
 `smd_95_conservadora` exige também limite inferior do IC ≥ 95%; quando n é
 insuficiente, permanece nulo em vez de transmitir certeza artificial.
+Na rodada canônica há 32 repetições independentes por severidade; os intervalos
+continuam obrigatórios porque essa amostra ainda produz incerteza relevante.
+
+**Resolução da calibração de cauda:** as 42 janelas de calibração não autorizam
+subdividi-la em 80/20 para selecionar automaticamente uma meta de FP de 1%:
+o subbloco teria 9 observações e resolução mínima de 11,1%. A auto-calibração
+agora exige pelo menos `ceil(100 / FP_ALVO)` observações no subbloco de
+validação; enquanto esse contrato não é atendido, o limiar usa o fallback p99
+e registra a razão em `limiar.json`.
+
+**Separação na ablação localizada:** a média e o desvio dos resíduos por feature
+são ajustados no bloco de **treino**; somente o percentil do escore é estimado
+na **calibração**. Ajustar ambos na calibração reutilizava
+o mesmo bloco duas vezes e, na rodada diagnóstica 50/20/30, produziu 2,38% de
+FP na calibração contra 15% no teste. A separação derrubou o FP do mesmo modelo
+e split para 1,67% antes da regeneração completa. `limiar.json` registra
+`score_standardization_source = bloco_treino_modelo`. Mesmo corrigida, a
+ablação perdeu sensibilidade no ponto operacional e não substitui o MSE p99.
 
 ## 8. Weibull e RUL sintéticos
 

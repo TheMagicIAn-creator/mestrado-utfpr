@@ -89,6 +89,16 @@ def test_limiar_por_fp_alvo_respeita_o_alvo():
     assert 99.0 <= perc <= 99.9
 
 
+def test_autocalibracao_recusa_subvalidacao_sem_resolucao_para_um_porcento():
+    assert ea.minimo_validacao_fp(1.0) == 100
+    assert ea.pode_autocalibrar_percentil(42, fp_alvo_pct=1.0) is False
+
+
+def test_autocalibracao_aceita_amostra_com_resolucao_suficiente():
+    assert ea.pode_autocalibrar_percentil(650, fp_alvo_pct=1.0) is True
+    assert ea.pode_autocalibrar_percentil(150, fp_alvo_pct=5.0) is True
+
+
 # ── incerteza do limiar, e por que NÃO tentamos "melhorar" o estimador ───────
 
 def test_limiar_continua_sendo_o_percentil_empirico():

@@ -1,18 +1,20 @@
 {
   "manifest_version": 2,
   "stage": "features_ca",
-  "created_at": "2026-08-05T22:52:12.456092-03:00",
-  "git_commit": "d9afe11d1b0bc96c921a5bdcb94058e55631d5ea",
+  "created_at": "2026-08-09T03:24:41.023352-03:00",
+  "git_commit": "3c8e6e0ecba882f977299061d61f9fe89050aed2",
   "code_hash_mode": "text_lf_utf8",
-  "code_sha256": "e853c497d923671c1d879c87fb841a0f75bd510418eae8aab5eed2419eb98eba",
+  "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
+  "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
+  "code_sha256": "23330f891620f442197eae9ea142d3a704449110bf3e0b1c9da8afd5ba9f558e",
   "code_dependencies": {
-    "src.ml.estilo_graficos": "2f69e30b4a00eee6d8b6fd809325840dff2937f95d00dd21960b1ef9c75a0494"
+    "src.ml.estilo_graficos": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49"
   },
   "parameters": {
     "fs": 10000,
     "f0": 60,
-    "janela": 1024,
-    "sobreposicao": 512,
+    "janela": 2048,
+    "sobreposicao": 1024,
     "harmonicos": [
       3,
       5,
@@ -29,9 +31,9 @@
     "dados/processados/features_paderborn_qualidade.png"
   ],
   "output_artifacts": {
-    "dados/processados/features_paderborn.parquet": "f9811859094731d5267d8c95173eac3267a8c1f8fe091ab3fe46db7b5a497cca",
-    "dados/processados/features_paderborn_stats.csv": "3b5e00091be20c67c738462ce147087c984e69ff563596107ca42b61b72bb9dd",
-    "dados/processados/features_paderborn_qualidade.json": "d1c137fe231531170ffd550b9c3aecc112d4cbe08d68b3ec9d6c005b5006d4b8",
-    "dados/processados/features_paderborn_qualidade.png": "e57ab1c19d8a21594290a8b23e6853fcc05f13c93dc6e87ef9624195d1056650"
+    "dados/processados/features_paderborn.parquet": "ba2976a0288ab2fc99d3fb530de385af68c5d8dc226c2cd6a75d08d829af9167",
+    "dados/processados/features_paderborn_stats.csv": "1a01979d787cb75a48f72ae55a8985992ec13b6f21b92c0297cb4767113776c0",
+    "dados/processados/features_paderborn_qualidade.json": "25be51b2f07c590caf0dd34dc1d948a362eb877fb7223bf36fd8436afd47e699",
+    "dados/processados/features_paderborn_qualidade.png": "ea01c365f80cbea35fb23a281711749e363b22e9f6223b043afb11ae317bfad9"
   }
 }

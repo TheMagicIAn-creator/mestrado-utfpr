@@ -4,6 +4,14 @@
 **Repositório auditado:** `mestrado-utfpr`, commit `e5518db` (2026-08-06)
 **Propósito:** dar a Rodolfo Torres domínio explícito sobre cada número que decide um resultado, com a referência que o sustenta e a frase de defesa perante a banca.
 
+> **STATUS: SNAPSHOT HISTÓRICO SUPERADO.** Este inventário registra o estado de
+> 2026-08-06 e não deve ser usado como descrição da execução vigente. O contrato
+> atual usa split intercalado 50/20/30 em 14 blocos (104/42/60 janelas após
+> purgas), escore operacional MSE p99 e mantém o top-k localizado somente como
+> ablação. A autocalibração do percentil também recua explicitamente para p99
+> quando a validação interna não alcança 100 observações. Para números e defesa
+> atuais, use `docs/metodologia_ml.md` e `docs/auditoria_pipeline_ml.md` §30.
+
 > **Como ler.** Cada parâmetro recebe uma **classe**:
 > - 🟢 **Determinado** — decorre de física, norma ou definição matemática. Não é escolha.
 > - 🔵 **Medido** — foi varrido/testado no projeto; há evidência interna registrada.

@@ -34,6 +34,10 @@ READY = "ready"
 STALE = "stale"
 PENDING = "pending"
 
+SUFIXOS_TEXTO_PORTAVEL = {
+    ".csv", ".json", ".md", ".toml", ".txt", ".yaml", ".yml",
+}
+
 
 def sha256_arquivo(caminho) -> str | None:
     """SHA-256 de um arquivo (None se não existe)."""
@@ -52,9 +56,11 @@ def sha256_arquivo_texto_normalizado(caminho) -> str | None:
     p = Path(caminho)
     if not p.exists() or not p.is_file():
         return None
-    texto = p.read_text(encoding="utf-8")
-    texto = texto.replace("\r\n", "\n").replace("\r", "\n")
-    return hashlib.sha256(texto.encode("utf-8")).hexdigest()
+    h = hashlib.sha256()
+    with p.open("r", encoding="utf-8", newline=None) as arquivo:
+        for bloco in iter(lambda: arquivo.read(65536), ""):
+            h.update(bloco.encode("utf-8"))
+    return h.hexdigest()
 
 
 def sha256_texto(texto: str) -> str:
@@ -79,6 +85,19 @@ def _hashes_arquivos(arquivos, *, texto_normalizado: bool = False) -> dict[str, 
         nome: func(caminho)
         for nome, caminho in _mapear_arquivos(arquivos)
     }
+
+
+def _hashes_artefatos_portaveis(arquivos) -> dict[str, str | None]:
+    """Normaliza EOL de textos; preserva bytes de binários científicos."""
+    hashes: dict[str, str | None] = {}
+    for nome, caminho in _mapear_arquivos(arquivos):
+        func = (
+            sha256_arquivo_texto_normalizado
+            if Path(caminho).suffix.lower() in SUFIXOS_TEXTO_PORTAVEL
+            else sha256_arquivo
+        )
+        hashes[nome] = func(caminho)
+    return hashes
 
 
 def _git_commit() -> str:
@@ -111,7 +130,7 @@ def gerar_manifesto(
     Manifesto v2:
     - normaliza CRLF/LF antes de hashear código Python;
     - registra dependências científicas compartilhadas;
-    - registra hash de cada saída, não apenas seu caminho.
+    - registra hash de cada saída, normalizando EOL de formatos textuais.
     """
     outputs_lista = [to_project_relative_path(o) for o in (outputs or [])]
     manifesto = {
@@ -120,14 +139,16 @@ def gerar_manifesto(
         "created_at": created_at or agora_local().isoformat(),
         "git_commit": _git_commit(),
         "code_hash_mode": "text_lf_utf8",
+        "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
+        "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
         "code_sha256": sha256_arquivo_texto_normalizado(code_path) or "",
         "code_dependencies": _hashes_arquivos(
             code_dependencies or {}, texto_normalizado=True
         ),
         "parameters": parameters or {},
-        "input_artifacts": _hashes_arquivos(input_artifacts or {}),
+        "input_artifacts": _hashes_artefatos_portaveis(input_artifacts or {}),
         "outputs": outputs_lista,
-        "output_artifacts": _hashes_arquivos(outputs or {}),
+        "output_artifacts": _hashes_artefatos_portaveis(outputs or {}),
     }
     if evidence_level:
         manifesto["evidence_level"] = evidence_level
@@ -155,8 +176,26 @@ def carregar_manifesto(stage: str) -> dict | None:
         return None
 
 
-def comparar(manifesto_salvo: dict | None, manifesto_atual: dict) -> list[str]:
-    """Motivos de incompatibilidade (lista vazia = compatível)."""
+def _inputs_compativeis(
+    salvo: dict, atual: dict, *, permitir_ausentes: bool
+) -> bool:
+    if not permitir_ausentes:
+        return salvo == atual
+    if set(salvo) != set(atual):
+        return False
+    return all(
+        hash_atual is None or salvo.get(nome) == hash_atual
+        for nome, hash_atual in atual.items()
+    )
+
+
+def comparar(
+    manifesto_salvo: dict | None,
+    manifesto_atual: dict,
+    *,
+    permitir_inputs_ausentes: bool = False,
+) -> list[str]:
+    """Motivos de incompatibilidade; entradas ausentes podem ficar não verificadas."""
     if not manifesto_salvo:
         return ["sem manifesto"]
     motivos = []
@@ -164,6 +203,16 @@ def comparar(manifesto_salvo: dict | None, manifesto_atual: dict) -> list[str]:
     versao_atual = int(manifesto_atual.get("manifest_version") or 1)
     if versao_salva < versao_atual:
         motivos.append("manifesto v2 ausente")
+    if versao_salva >= 2 and (
+        manifesto_salvo.get("input_hash_mode")
+        != manifesto_atual.get("input_hash_mode")
+    ):
+        motivos.append("modo de hash das entradas ausente ou alterado")
+    if versao_salva >= 2 and (
+        manifesto_salvo.get("output_hash_mode")
+        != manifesto_atual.get("output_hash_mode")
+    ):
+        motivos.append("modo de hash das saídas ausente ou alterado")
     if manifesto_salvo.get("code_sha256") != manifesto_atual.get("code_sha256"):
         motivos.append("código da etapa alterado")
     if versao_salva >= 2 and (
@@ -173,7 +222,11 @@ def comparar(manifesto_salvo: dict | None, manifesto_atual: dict) -> list[str]:
         motivos.append("dependência científica alterada")
     if manifesto_salvo.get("parameters") != manifesto_atual.get("parameters"):
         motivos.append("parâmetros alterados")
-    if manifesto_salvo.get("input_artifacts") != manifesto_atual.get("input_artifacts"):
+    if not _inputs_compativeis(
+        manifesto_salvo.get("input_artifacts") or {},
+        manifesto_atual.get("input_artifacts") or {},
+        permitir_ausentes=permitir_inputs_ausentes,
+    ):
         motivos.append("artefato upstream regenerado")
     if versao_salva >= 2 and (
         manifesto_salvo.get("output_artifacts")

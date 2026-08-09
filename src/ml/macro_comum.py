@@ -3,7 +3,7 @@ macro_comum.py — Al IAdo PV
 
 Avaliação COMUM (E2, orientada pela FMECA) e saída UNIFORME para os dois
 macro-códigos de comparação:
-  - src/ml/macro_proposto.py  → nosso método (AE denso + escore localizado)
+  - src/ml/macro_proposto.py  → nosso método (AE denso + MSE p99)
   - src/ml/macro_ibrahim.py   → método do Ibrahim (AE-LSTM temporal)
 
 Ideia: cada macro fornece apenas um SCORER — uma função que recebe uma lista de
@@ -200,9 +200,12 @@ def salvar_saidas(resultados: list[dict], pasta: Path, prefixo: str = "comparaca
         json.dumps(resultados, indent=2, ensure_ascii=False), encoding="utf-8")
 
     caminho_png = plotar_deteccao_severidade(resultados, pasta, prefixo)
-    return {"tabela_md": pasta / f"{prefixo}_tabela.md",
-            "tabela_csv": pasta / f"{prefixo}_tabela.csv",
-            "grafico": caminho_png}
+    return {
+        "tabela_md": pasta / f"{prefixo}_tabela.md",
+        "tabela_csv": pasta / f"{prefixo}_tabela.csv",
+        "resultado_json": pasta / f"{prefixo}_resultado.json",
+        "grafico": caminho_png,
+    }
 
 
 def plotar_deteccao_severidade(resultados: list[dict], pasta: Path,
@@ -222,7 +225,8 @@ def plotar_deteccao_severidade(resultados: list[dict], pasta: Path,
                              layout="constrained", sharey=True)
     if len(falhas) == 1:
         axes = [axes]
-    fig.suptitle("Detecção por severidade a FPR=10% — comparação de métodos (E2, injeção FMECA)")
+    fig.get_layout_engine().set(rect=(0, 0, 1, 0.93))
+    fig.suptitle("Comparação da detecção por severidade a FPR=10% (E2)", y=1.01)
     for ax, fid in zip(axes, falhas):
         info = resultados[0]["falhas"][fid]
         for j, r in enumerate(resultados):

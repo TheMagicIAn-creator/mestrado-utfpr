@@ -1,0 +1,72 @@
+{
+  "manifest_version": 2,
+  "stage": "macro_comparacao",
+  "created_at": "2026-08-09T03:24:43.169077-03:00",
+  "git_commit": "3c8e6e0ecba882f977299061d61f9fe89050aed2",
+  "code_hash_mode": "text_lf_utf8",
+  "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
+  "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
+  "code_sha256": "f342a4a66be59bf2b18823f90ab14be39754e1b470f48dda07d6b2e3731a2629",
+  "code_dependencies": {
+    "macro_proposto": "dd0da039b755b0bf3ab9d7f60628ce36fb918749f0e4bd655b92233edde56e29",
+    "macro_ibrahim": "b3787db7b791a1e7123e47ead9d9f3e045d0153cb207102a52458416a8103ee7",
+    "macro_comum": "dee25ee3577651037423f889635379d9bfe857f0b1d30c4436bc63d4d40d6a57",
+    "modelos_anomalia": "358e14795ca0d35c0eff54f5d76310aa372e2bd6a1cab7224aa06bc4b380cf20",
+    "dados_avaliacao": "400182b3289f95bdaa7eff3bb42a4271abcd94e0f2f9fbf507f7455478890e5a",
+    "injecao_falhas": "065456562d2b17e7aa13fac7f4d36c57f396936d0158fe7e70ee2c2e48a597f3",
+    "escore_anomalia": "71106cad6b7971edcf27533462181cc38f8be4cf7db95a117dbbb43d96de75e1",
+    "features_ca": "23330f891620f442197eae9ea142d3a704449110bf3e0b1c9da8afd5ba9f558e"
+  },
+  "parameters": {
+    "n_janelas": 100,
+    "severidades": [
+      0.05,
+      0.1,
+      0.2,
+      0.3,
+      0.5,
+      0.7,
+      1.0
+    ],
+    "purga": 2,
+    "fracao_ajuste_limiar": 0.8,
+    "aelstm_seq_len": 8,
+    "aelstm_epochs": 60
+  },
+  "input_artifacts": {
+    "dataset_stender": "70c01c0e2ada1898886e981d6b62b21e75add921f233b7b53ac9b3d736477602",
+    "features": "ba2976a0288ab2fc99d3fb530de385af68c5d8dc226c2cd6a75d08d829af9167",
+    "modelo_autoencoder": "f69d52983ebb5a5e55b46dc19fbb5f230e7ab2b609142b0c840668c51a31d738",
+    "limiar_autoencoder": "e69daf4639b9524e3ddddce8f6fc32ab80e2a58e45b94ea18cedf5a9ec730910",
+    "scaler_autoencoder": "b72dc06088a56c955410dff81bad38ed617704e9bc379475ce87b30a97d4d3ae"
+  },
+  "outputs": [
+    "resultados/macro/proposto_tabela.md",
+    "resultados/macro/proposto_tabela.csv",
+    "resultados/macro/proposto_resultado.json",
+    "resultados/macro/proposto_deteccao_severidade.png",
+    "resultados/macro/ibrahim_tabela.md",
+    "resultados/macro/ibrahim_tabela.csv",
+    "resultados/macro/ibrahim_resultado.json",
+    "resultados/macro/ibrahim_deteccao_severidade.png",
+    "resultados/macro/comparacao_tabela.md",
+    "resultados/macro/comparacao_tabela.csv",
+    "resultados/macro/comparacao_resultado.json",
+    "resultados/macro/comparacao_deteccao_severidade.png"
+  ],
+  "output_artifacts": {
+    "resultados/macro/proposto_tabela.md": "5d6b6a149af103c93677a242e3da5e83f6959814441130bacd28c773f9cb89c0",
+    "resultados/macro/proposto_tabela.csv": "fca838c7193df844ddff0105deca5da84bfc2de14161cdd2a8d45b44ed6db649",
+    "resultados/macro/proposto_resultado.json": "ff78b7b3827c8ff7d294acde1cd61fcaab3d6ab183ce2b664b6425bb56193c53",
+    "resultados/macro/proposto_deteccao_severidade.png": "cab948f36b7e3b9dff2e6d863472f8a03aaec9967bc953da6a16b93ed321b03c",
+    "resultados/macro/ibrahim_tabela.md": "a355ffd0fe969000d4d9c6233053f97547403fbd1e6bd5c4a68a705e2ae821a7",
+    "resultados/macro/ibrahim_tabela.csv": "f242d2981a2fe9391305861d86fe97d759e43b572543b3cfce981e833e7e9603",
+    "resultados/macro/ibrahim_resultado.json": "275627d0cb3edd5de9522a23de4189fff43ca5f40fa3ad6d371abeea2921f7ee",
+    "resultados/macro/ibrahim_deteccao_severidade.png": "ec4a5ada56183569016d27ab0e2ce4aa5f30be7a8e778d51e53d365985ed4cd2",
+    "resultados/macro/comparacao_tabela.md": "6b803871c7e95af59b70729ac8e3eb9c4cafe76961038de46cac6744177bb7b5",
+    "resultados/macro/comparacao_tabela.csv": "31f09f45405de6e760658e9cc442b9cbb24083e8aaa74ea351bac09d1613dbe4",
+    "resultados/macro/comparacao_resultado.json": "3604aaf17d1be43deb3be2989c5b575c002101f0925d73ba1bfa9b314e0ea6c3",
+    "resultados/macro/comparacao_deteccao_severidade.png": "615586dd2df65218a3659d000421b34e2103d1bec233ef6fb90b31a7a282fbd6"
+  },
+  "evidence_level": "E2"
+}

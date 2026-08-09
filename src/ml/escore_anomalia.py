@@ -1,7 +1,7 @@
 """
 escore_anomalia.py — Al IAdo PV / fonte ÚNICA do escore de anomalia do pipeline CA.
 
-Dois escores, ambos calibrados para ~1% de falso positivo no bloco saudável:
+Dois escores comparáveis, ambos calibrados no bloco saudável:
 
 - 'mse'        : média do erro de reconstrução sobre TODAS as ~109 features
                  (escore histórico). Dilui falhas localizadas no espectro.
@@ -15,9 +15,10 @@ sinal de anomalia (Ibrahim, 2022, eq. 3); padronização por feature do resíduo
 para tornar cada variável comparável; agregação top-k como régua operacional
 interna para destacar falhas localizadas sem diluição pelo MSE médio.
 
-Método OPERACIONAL padrão: 'localizado'. Para reproduzir EXATAMENTE o pipeline
-antigo, defina a variável de ambiente:
-    AL_IADO_ESCORE_ANOMALIA=mse
+Método OPERACIONAL padrão: 'mse'. O localizado permanece como ablação
+diagnóstica; na auditoria de 09/08/2026 ele não generalizou o ganho anterior
+sob a separação correta entre régua, calibração e teste. Para experimentá-lo:
+    AL_IADO_ESCORE_ANOMALIA=localizado
 O k do top-k é configurável por AL_IADO_ESCORE_K (padrão 5; justificar por
 varredura, ver §13). Este módulo é uma FOLHA: depende só de numpy/torch — nunca
 de autoencoder/injecao/validacao/rul (evita ciclo de import).
@@ -27,13 +28,14 @@ Autor: Rodolfo Torres (UTFPR)
 
 from __future__ import annotations
 
+import math
 import os
 from pathlib import Path
 
 import numpy as np
 
 # ── Configuração operacional (env, com padrões seguros) ─────────────────────
-METODO_ESCORE = os.getenv("AL_IADO_ESCORE_ANOMALIA", "localizado").strip().lower()
+METODO_ESCORE = os.getenv("AL_IADO_ESCORE_ANOMALIA", "mse").strip().lower()
 K_LOCALIZADO = int(os.getenv("AL_IADO_ESCORE_K", "5"))
 # Limiar operacional pelo percentil do erro saudável. Por PADRÃO o percentil é
 # AUTO-CALIBRADO para a taxa de falso positivo alvo (FP_ALVO) num bloco de
@@ -47,6 +49,29 @@ FP_ALVO = float(os.getenv("AL_IADO_ESCORE_FP_ALVO", "1.0"))  # % de FP alvo (aut
 # Semente do bootstrap usado para MEDIR a incerteza do limiar (não para
 # alterá-lo — ver incerteza_do_limiar).
 SEED_BOOTSTRAP = int(os.getenv("AL_IADO_ESCORE_BOOTSTRAP_SEED", "42"))
+
+
+def minimo_validacao_fp(fp_alvo_pct: float = FP_ALVO) -> int:
+    """Amostra mínima para a resolução empírica alcançar o alvo de FP."""
+    alvo = float(fp_alvo_pct)
+    if not (0.0 < alvo <= 100.0):
+        raise ValueError("fp_alvo_pct deve estar em (0, 100].")
+    return int(math.ceil(100.0 / alvo))
+
+
+def pode_autocalibrar_percentil(
+    n_calibracao: int,
+    *,
+    fracao_validacao: float = 0.20,
+    fp_alvo_pct: float = FP_ALVO,
+    minimo_ajuste: int = 30,
+) -> bool:
+    """Evita calibrar uma meta de cauda com subvalidação sem resolução."""
+    if n_calibracao <= 0 or not (0.0 < fracao_validacao < 1.0):
+        return False
+    corte = int(n_calibracao * (1.0 - fracao_validacao))
+    n_validacao = n_calibracao - corte
+    return corte >= minimo_ajuste and n_validacao >= minimo_validacao_fp(fp_alvo_pct)
 
 
 def incerteza_do_limiar(amostra, p: float, n_boot: int = 500,
