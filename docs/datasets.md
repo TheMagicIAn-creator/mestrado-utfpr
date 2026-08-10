@@ -15,7 +15,7 @@ arquivos em `dados/brutos/gpvs/csv/CSV_Files/`, de `F0L.csv` a `F7M.csv`.
 
 O arquivo ZIP oficial tem SHA-256
 `88cd20c848fee86752870cf9b198eab45568c31355685328dd75aba982bf1a63`.
-Os CSVs locais totalizam cerca de 620 MB e permanecem ignorados pelo Git.
+Os 16 CSVs locais totalizam 493.425.214 bytes (aproximadamente 493 MB em base decimal) e permanecem ignorados pelo Git.
 
 ## Protocolo canônico
 
