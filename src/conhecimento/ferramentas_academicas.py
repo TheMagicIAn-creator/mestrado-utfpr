@@ -460,108 +460,61 @@ def _contar_linhas(caminho) -> int:
 
 
 def consultar_datasets(progresso=None, pergunta: str = "") -> dict:
-    """Explica os datasets usados e candidatos com origem e limites explícitos."""
+    """Explica o dataset principal e separa explicitamente os legados."""
     if progresso:
         progresso("Lendo metadados dos datasets...")
+    import json
     from pathlib import Path
 
     from src.core.config import RAIZ_PROJETO
 
-    base = Path(RAIZ_PROJETO) / "dados" / "brutos"
-    linhas = ["## Datasets do projeto\n"]
-
-    # PV Farms (supervisionado, falhas CC simuladas)
-    try:
-        import pandas as pd
-
-        tr = pd.read_csv(base / "train_data.csv", sep=";")
-        te = pd.read_csv(base / "test_data.csv", sep=";")
-        n_feat = tr.shape[1] - (1 if "class" in tr.columns else 0)
-        classes = sorted(tr["class"].unique().tolist()) if "class" in tr.columns else []
-        duplicadas = int(tr.duplicated().sum())
-        linhas.append(
-            f"### PV Farms — benchmark **simulado** (domínio **CC**)\n"
-            f"- Arquivos: `dados/brutos/train_data.csv`, `test_data.csv`\n"
-            f"- Treino: {len(tr)} linhas | Teste: {len(te)} linhas | {n_feat} features\n"
-            f"- Classes: {classes} (Normal, F1 string, F2 string-terra, F3 string-string)\n"
-            f"- Duplicatas exatas no treino: {duplicadas}; a CV mantém cópias no mesmo grupo.\n"
-            f"- Uso: classificação supervisionada exploratória de falhas CC simuladas.\n"
-            f"- Limitação: não é dado de campo e NÃO diagnostica falhas CA do inversor."
-        )
-    except Exception as exc:  # noqa: BLE001
-        linhas.append(
-            "### PV Farms — benchmark **simulado** (domínio **CC**)\n"
-            f"- Arquivos locais não disponíveis para contagem ({exc}).\n"
-            "- Limitação: não é dado de campo e não diagnostica falhas CA."
-        )
-
-    # Stender (saudável, anomalia CA)
-    pad = base / "Inverter_Data_Set.csv"
-    if pad.exists():
-        try:
-            n_rows = max(0, _contar_linhas(pad) - 1)  # menos cabeçalho
-        except Exception:  # noqa: BLE001
-            n_rows = "?"
-        linhas.append(
-            f"\n### Stender (Paderborn University) — normalidade **CA**\n"
-            f"- Arquivo: `dados/brutos/Inverter_Data_Set.csv`\n"
-            f"- Amostras: {n_rows} (inversor IGBT trifásico, 10 kHz, sem rótulos de falha)\n"
-            f"- Origem: bancada experimental de acionamento de motor; NÃO é o "
-            f"Paderborn Bearing Dataset e NÃO é fotovoltaico.\n"
-            f"- Uso: treinar o Autoencoder de normalidade; a validação atual usa "
-            f"falhas sintéticas orientadas pela FMECA (E2).\n"
-            f"- Limitação: existe lacuna de domínio perante inversor PV conectado à rede."
-        )
-    else:
-        linhas.append(
-            "\n### Stender (Paderborn University) — normalidade **CA**\n"
-            "- Arquivo local não encontrado. É uma bancada experimental de "
-            "inversor/motor, não o Paderborn Bearing Dataset e não um sistema PV."
-        )
-
-    gpvs_resultado = Path(RAIZ_PROJETO) / "resultados" / "gpvs" / "validacao_gpvs_e3.json"
+    raiz = Path(RAIZ_PROJETO)
+    gpvs_resultado = raiz / "resultados" / "gpvs" / "validacao_gpvs_e3.json"
+    gpvs_bruto = raiz / "dados" / "brutos" / "gpvs" / "csv" / "CSV_Files"
+    arquivos_gpvs = [gpvs_bruto / f"F{i}{modo}.csv" for i in range(8) for modo in "LM"]
+    n_locais = sum(caminho.exists() for caminho in arquivos_gpvs)
+    linhas = [
+        "## Dataset do pipeline principal\n",
+        "### GPVS-Faults — microrede fotovoltaica experimental\n",
+        "- Única fonte de dados dos resultados canônicos novos.\n",
+        f"- Arquivos locais: {n_locais}/16 (`F0L.csv` a `F7M.csv`).\n",
+        "- F0L/F0M: treino, validação, calibração e teste saudável.\n",
+        "- F1L-F7M: validação E3 de bancada de sete falhas em IPPT/MPPT.\n",
+        "- E2: assinaturas sintéticas FMECA aplicadas somente ao holdout F0.\n",
+        "- DOI: https://doi.org/10.17632/n76t439f65.1.\n",
+    ]
     if gpvs_resultado.exists():
         try:
-            import json
-
             gpvs = json.loads(gpvs_resultado.read_text(encoding="utf-8"))
-            resumo = gpvs["macro_summary"]
-            estrito = resumo["strict_ae"]["all"]
-            adaptativo = resumo["adaptive_ae"]["all"]
+            resumo = gpvs["macro_summary"]["canonical_ae"]["all"]
             linhas.append(
-                "\n### GPVS-Faults — validação experimental **E3 de bancada**\n"
-                "- 16 ensaios de microrede PV conectada à rede; 14 contêm falhas "
-                "introduzidas em IPPT/MPPT.\n"
-                f"- AE adaptativo: AUC macro {adaptativo['auc']['mean']:.3f}, "
-                f"sensibilidade {adaptativo['post_tpr']['mean']:.3f}, "
-                f"especificidade {adaptativo['specificity']['mean']:.3f}.\n"
-                f"- Transferência direta do limiar F0 rejeitada: especificidade "
-                f"macro {estrito['specificity']['mean']:.3f}.\n"
-                "- Escopo: bancada, não campo; detecta desvios, não prova causa e "
-                "não fornece tempos de vida para Weibull/RUL físico."
+                f"- Resultado E3: AUC macro {resumo['auc']['mean']:.3f}, "
+                f"sensibilidade {resumo['sensitivity']['mean']:.3f} e "
+                f"especificidade {resumo['specificity']['mean']:.3f}.\n"
+                "- Um único Autoencoder: sem retreino nem recalibração do limiar "
+                "por ensaio; há baseline de comissionamento pré-falha.\n"
             )
         except Exception as exc:  # noqa: BLE001
             linhas.append(
-                "\n### GPVS-Faults — validação E3 de bancada\n"
                 f"- Artefato presente, mas não foi possível ler as métricas ({exc})."
             )
     else:
         linhas.append(
-            "\n### GPVS-Faults\n"
-            "- Protocolo externo ainda sem artefato local; não atribuir E3 somente "
-            "pela existência do dataset."
+            "- Resultado E3 ainda não publicado; a existência dos CSVs, sozinha, "
+            "não constitui validação."
         )
 
     linhas.append(
-        "\n### Outros candidatos auditados\n"
-        "- **PV residencial:** 862.438 registros operacionais e 10 blocos de "
-        "estado `Fault`; útil para anomalia operacional após limpeza, mas sem "
-        "causa, unidade, reparo ou vidas independentes.\n"
-        "- **PMSM inverter:** 10.892 amostras e nove condições em blocos únicos; "
-        "é acionamento de motor, e as features derivadas publicadas contêm "
-        "divisões por zero. Não deve ser usado sem reconstrução a partir dos sinais brutos.\n"
-        "\n**Separação de domínio:** PV Farms = falhas **CC simuladas**; Stender = "
-        "normalidade **CA** em bancada de acionamento. Os dados não se fundem.\n"
+        "\n### Fora do resultado canônico\n"
+        "- **Stender**, **PMSM**, **PV Farms**, telemetria residencial e Bearing "
+        "DataCenter permanecem apenas como literatura, auditoria ou experimentos "
+        "legados. Nenhuma linha ou métrica deles é fundida ao GPVS.\n"
+        "- **Stender/Paderborn University** e **PV Farms** são preservados pelo "
+        "nome para consulta histórica, nunca como fonte do resultado vigente.\n"
+        "- Stender não é o Paderborn Bearing Dataset; PV Farms é simulado no domínio CC e não "
+        "diagnostica falhas CA do inversor.\n"
+        "\n**Separação de domínio:** GPVS é o único dataset canônico; os demais "
+        "não fornecem amostras nem métricas ao pipeline principal.\n"
         "\n**Weibull físico:** nenhum desses conjuntos fornece, tal como está, "
         "tempos de vida/falha de unidades independentes com censura. A Weibull "
         "atual usa `a_det` sintético (E2), não tempo físico nem RUL de campo."
@@ -578,26 +531,24 @@ def comparar_abordagens_ml(progresso=None, pergunta: str = "") -> dict:
         "## Abordagens de ML na dissertação\n\n"
         "| Abordagem | O que faz | Rótulos? | No projeto |\n"
         "|---|---|---|---|\n"
-        "| **Supervisionada** | classifica falhas CONHECIDAS | sim | PV Farms simulado (**CC**): RF, AdaBoost, LogReg, Naive Bayes, CN2 |\n"
-        "| **Não supervisionada** | aprende a NORMALIDADE e detecta desvios | não | Stender experimental (**CA**, inversor/motor): Autoencoder denso e AE-LSTM do Ibrahim |\n"
-        "| **Sintética (FMECA)** | valida assinaturas CA modeladas | ground truth sintético | injeção no holdout Stender (**E2**) |\n"
-        "| **Externa E3 de bancada** | testa transferência e adaptação no domínio PV/rede | rótulos temporais por ensaio | GPVS-Faults; protocolo separado, não campo |\n\n"
+        "| **Não supervisionada** | aprende a normalidade | não | GPVS F0L/F0M: Autoencoder denso canônico |\n"
+        "| **Sintética FMECA (E2)** | testa assinaturas CA modeladas | ground truth sintético | holdout saudável GPVS F0 |\n"
+        "| **Experimental (E3)** | testa falhas reais de bancada | fase pré/pós-falha | GPVS F1L-F7M, mesmo detector e limiar |\n"
+        "| **Legada/comparativa** | contextualiza métodos | varia | Stender/Paderborn, PMSM, PV Farms e AE-LSTM; fora do resultado canônico |\n\n"
         "**Rigor:**\n"
         "- O não supervisionado DETECTA anomalia, mas NÃO garante diagnóstico "
         "causal da falha.\n"
         "- A validação sintética (E2) depende de calibração física (ex.: o ruído "
         "de sensor é um proxy).\n"
-        "- PV Farms (CC simulado) e Stender (CA experimental) NÃO se fundem: o classificador PV Farms "
-        "não diagnostica falhas CA do inversor, nem transfere suas métricas ao "
-        "pipeline CA.\n"
-        "- Stender é da Paderborn University, mas NÃO é o Paderborn Bearing Dataset "
-        "e NÃO representa diretamente um inversor fotovoltaico conectado à rede.\n"
+        "- Separação de domínio: nenhum dataset externo é fundido ao GPVS ou transfere métricas ao "
+        "pipeline principal.\n"
+        "- PV Farms não diagnostica falhas CA do inversor.\n"
+        "- Na E3 não há retreino nem recalibração do limiar; a primeira metade "
+        "pré-falha serve apenas ao baseline de comissionamento.\n"
         "- Nenhum dataset atual autoriza Weibull em tempo físico; `a_det` permanece "
         "uma intensidade sintética E2.\n"
-        "- Cada experimento por artigo segue o PROTOCOLO do próprio artigo "
-        "(Shewhart 3σ, contaminação a priori, p99 do treino congelado, "
-        "PPO em validação temporal, voto majoritário) — por isso o F1 não é "
-        "comparável entre protocolos; compare métodos pelo AUC."
+        "- Comparações históricas por artigo mantêm protocolos próprios e não "
+        "devem ser somadas às métricas GPVS."
     )
     return {
         "ok": True, "etapa": "Abordagens de ML",

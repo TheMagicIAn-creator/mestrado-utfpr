@@ -34,7 +34,7 @@ Estratégia de severidade:
   empírica do Autoencoder são conceitos distintos (ver docs/fmeca.md).
 
 Entrada:
-  dados/brutos/Inverter_Data_Set.csv
+  dados/brutos/gpvs/csv/CSV_Files/F0L.csv e F0M.csv
   resultados/autoencoder/modelo_autoencoder.pt
   resultados/autoencoder/scaler.pkl
   resultados/autoencoder/limiar.json
@@ -70,21 +70,26 @@ _log = _adaptar_log(_logger)
 
 import json
 import pickle
+import matplotlib
 import numpy as np
 import pandas as pd
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from src.ml.estilo_graficos import (
     COR_ALERTA, TAM, aplicar_estilo, salvar_figura,
 )
 
 aplicar_estilo()
-import matplotlib
-matplotlib.use("Agg")
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from src.ml.features_ca import extrair_janela, JANELA, FS, F0, COLUNAS_CORRENTE
-from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas_holdout
+from src.ml.gpvs_principal import (
+    COLUNAS_CORRENTE, COLUNAS_TENSAO, F0, FS, JANELA,
+    carregar_normalizacao_baseline, extrair_janela,
+    normalizar_vetores_f0, preparar_janelas_holdout,
+)
+
 from src.ml.estatistica import intervalo_wilson
 
 if TYPE_CHECKING:
@@ -94,8 +99,10 @@ if TYPE_CHECKING:
 
 # ── Caminhos ─────────────────────────────────────────────────
 RAIZ          = Path(__file__).parent.parent.parent
-ARQUIVO_CSV   = RAIZ / "dados" / "brutos" / "Inverter_Data_Set.csv"
 PASTA_AE      = RAIZ / "resultados" / "autoencoder"
+# Compatibilidade exclusiva dos comparativos históricos em Stender. O pipeline
+# principal não lê este caminho e usa apenas o GPVS-Faults.
+ARQUIVO_CSV   = RAIZ / "dados" / "brutos" / "Inverter_Data_Set.csv"
 
 # ── Parâmetros de injeção ────────────────────────────────────
 # Severidades: de muito leve a severa
@@ -155,8 +162,8 @@ FALHAS = [
             "comutação deficiente, introduzindo transientes e conteúdo de alta "
             "frequência na corrente CA — modelado como ruído no sinal medido."
         ),
-        "sinais"             : ["i_a"],
-        "formula"            : "i_a += N(0, sev·σ_sinal·0,3)  (proxy do transiente de comutação)",
+        "sinais"             : ["ia"],
+        "formula"            : "ia += N(0, sev·σ_sinal·0,3)  (proxy do transiente de comutação)",
         "severity_definition": "desvio do ruído ≈ sev·σ_sinal·0,3 (componente mais crítico, NPR=315)",
         "source"             : (
             "Torres (2024) TCC — Tab. 3.3 (Cristaldi et al., 2017: Contator AC "
@@ -189,7 +196,7 @@ FALHAS = [
             "IGBT envelhecido (lift-off de bond wire, Vce(sat) elevado) comuta de "
             "forma imperfeita, elevando os harmônicos ímpares e o THD das correntes."
         ),
-        "sinais"             : ["i_a", "i_b", "i_c"],
+        "sinais"             : ["ia", "ib", "ic"],
         "formula"            : "i += sev·(0,30·h5 + 0,20·h7 + 0,10·h11 + 0,05·h13)·amplitude",
         "severity_definition": "fração [0..1] da amplitude harmônica injetada",
         "source"             : (
@@ -221,8 +228,8 @@ FALHAS = [
             "Fusível CA degradado/rompido causa perda parcial de uma fase, "
             "reduzindo a amplitude da corrente dessa fase (desbalanceamento)."
         ),
-        "sinais"             : ["i_a"],
-        "formula"            : "i_a ·= (1 − sev·0,12)  (reduz amplitude da fase A; máx 12%)",
+        "sinais"             : ["ia"],
+        "formula"            : "ia ·= (1 − sev·0,12)  (reduz amplitude da fase A; máx 12%)",
         "severity_definition": "fração de redução da amplitude da fase A (calibrada: máx 12%)",
         "source"             : (
             "Torres (2024) TCC — Tab. 3.3 (Fusíveis AC = 4% dos tickets, 12% "
@@ -298,7 +305,7 @@ def falha_harmonicos_igbt(janela_df: pd.DataFrame,
       1.00 → severa: THD aumenta ~50%
     """
     janela_falha = janela_df.copy()
-    n = JANELA
+    n = len(janela_falha)
     t = np.arange(n) / fs
 
     for col in COLUNAS_CORRENTE:
@@ -343,9 +350,11 @@ def falha_perda_fase_fusivel(janela_df: pd.DataFrame,
     fator        = 1.0 - severidade * 0.12
 
     # Afeta corrente e tensão da fase A
-    janela_falha["i_a_k"] = janela_df["i_a_k"].values * fator
-    if "u_a_k-1" in janela_falha.columns:
-        janela_falha["u_a_k-1"] = janela_df["u_a_k-1"].values * fator
+    fase_i = COLUNAS_CORRENTE[0]
+    fase_v = COLUNAS_TENSAO[0]
+    janela_falha[fase_i] = janela_df[fase_i].values * fator
+    if fase_v in janela_falha.columns:
+        janela_falha[fase_v] = janela_df[fase_v].values * fator
 
     return janela_falha
 
@@ -377,11 +386,12 @@ def falha_transiente_contator(janela_df: pd.DataFrame,
     rng          = np.random.default_rng(seed)
     janela_falha = janela_df.copy()
 
-    sinal   = janela_df["i_a_k"].values
+    fase_i = COLUNAS_CORRENTE[0]
+    sinal   = janela_df[fase_i].values
     std_sig = np.std(sinal)
     ruido   = rng.normal(0, severidade * std_sig * 0.3, size=len(sinal))
 
-    janela_falha["i_a_k"] = sinal + ruido
+    janela_falha[fase_i] = sinal + ruido
     return janela_falha
 
 
@@ -403,7 +413,8 @@ def calcular_erro_reconstrucao(janela_df: pd.DataFrame,
                                 device: torch.device,
                                 colunas_feat: list,
                                 estat_residuo: dict | None = None,
-                                metodo: str = "mse") -> float:
+                                metodo: str = "mse",
+                                normalizacao_baseline: dict | None = None) -> float:
     """
     Extrai features de uma janela, normaliza e calcula o ESCORE de anomalia
     do Autoencoder (fonte única: src/ml/escore_anomalia.py).
@@ -418,6 +429,11 @@ def calcular_erro_reconstrucao(janela_df: pd.DataFrame,
     feats = extrair_janela(janela_df)
     vetor = np.array([feats.get(c, 0.0) for c in colunas_feat],
                      dtype=np.float32)
+    if normalizacao_baseline is not None:
+        ensaio = janela_df.attrs.get("ensaio")
+        vetor = normalizar_vetores_f0(
+            vetor.reshape(1, -1), [ensaio], normalizacao_baseline
+        )[0]
     vetor_norm = scaler.transform(vetor.reshape(1, -1)).astype(np.float32)
     residuo = ea.residuo_de_vetor(modelo, vetor_norm, device)
     return float(ea.pontuar(residuo, estat_residuo, metodo)[0])
@@ -475,6 +491,7 @@ def executar_injecao_falhas() -> bool:
 
     metodo_escore = info_limiar.get("metodo_escore", "mse")
     estat_residuo = ea.carregar_estatistica(PASTA_AE)
+    normalizacao_baseline = carregar_normalizacao_baseline(PASTA_AE)
     _log(f"   ✅ Escore: {ea.descricao_metodo(metodo_escore, info_limiar.get('k_localizado', 5))}")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -486,12 +503,8 @@ def executar_injecao_falhas() -> bool:
     _log(f"   ✅ Limiar de anomalia: {limiar:.4f}")
 
     # ── 2. Carrega dataset e seleciona janelas estáveis ──────
-    _log(f"\n📂 Carregando dataset de Paderborn...")
-    df = carregar_paderborn_compacto(ARQUIVO_CSV)
-    janelas_holdout, meta_holdout = preparar_janelas_holdout(
-        df, n_max=N_JANELAS_SMD
-    )
-    del df
+    _log(f"\n📂 Carregando holdout saudável GPVS F0...")
+    janelas_holdout, meta_holdout = preparar_janelas_holdout(n_max=N_JANELAS_SMD)
     _log(
         f"   ✅ {len(janelas_holdout)} janelas não sobrepostas do bloco de teste "
         "(treino/calibração excluídos)"
@@ -503,7 +516,7 @@ def executar_injecao_falhas() -> bool:
     for janela in janelas_holdout:
         erro   = calcular_erro_reconstrucao(
             janela, modelo, scaler, device, colunas_feat,
-            estat_residuo, metodo_escore,
+            estat_residuo, metodo_escore, normalizacao_baseline,
         )
         erros_baseline.append(erro)
 
@@ -536,7 +549,7 @@ def executar_injecao_falhas() -> bool:
                     janela_falha = fn(janela_base, sev)
                 erro = calcular_erro_reconstrucao(
                     janela_falha, modelo, scaler, device, colunas_feat,
-                    estat_residuo, metodo_escore,
+                    estat_residuo, metodo_escore, normalizacao_baseline,
                 )
                 erros_sev.append(erro)
 

@@ -84,8 +84,8 @@ Rodolfo Torres** (deixados em branco por decisão do autor).
 
 ## Assinatura elétrica de cada falha (ponte FMECA → injeção sintética)
 
-A injeção sintética (`src/ml/injecao_falhas.py`) perturba o sinal saudável do
-Paderborn com a assinatura elétrica coerente com cada componente:
+A injeção sintética (`src/ml/injecao_falhas.py`) perturba janelas saudáveis F0
+do GPVS-Faults com a assinatura elétrica coerente com cada componente:
 
 | Componente | Assinatura elétrica injetada | Mecanismo no código |
 |---|---|---|

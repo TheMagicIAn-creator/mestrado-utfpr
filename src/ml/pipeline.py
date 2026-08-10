@@ -104,20 +104,31 @@ def _valor_manifesto(valor):
     return str(valor)
 
 
+GPVS_F0_INPUTS = tuple(
+    f"dados/brutos/gpvs/csv/CSV_Files/F0{modo}.csv" for modo in "LM"
+)
+GPVS_FAULT_INPUTS = tuple(
+    f"dados/brutos/gpvs/csv/CSV_Files/F{falha}{modo}.csv"
+    for falha in range(1, 8)
+    for modo in "LM"
+)
+GPVS_ALL_INPUTS = GPVS_F0_INPUTS + GPVS_FAULT_INPUTS
+
+
 STAGES: dict[str, PipelineStage] = {
-    "features_ca": PipelineStage(
-        key="features_ca",
-        label="Features CA",
-        module="src.ml.features_ca",
-        function="executar_features_ca",
+    "features_gpvs": PipelineStage(
+        key="features_gpvs",
+        label="Features GPVS-Faults F0",
+        module="src.ml.gpvs_principal",
+        function="executar_features_gpvs",
         parameter_names=("FS", "F0", "JANELA", "SOBREPOSICAO", "HARMONICOS"),
-        code_dependencies=("src.ml.estilo_graficos",),
-        input_artifacts=("dados/brutos/Inverter_Data_Set.csv",),
+        code_dependencies=("src.ml.gpvs", "src.ml.estilo_graficos"),
+        input_artifacts=GPVS_F0_INPUTS,
         artifacts=(
-            "dados/processados/features_paderborn.parquet",
-            "dados/processados/features_paderborn_stats.csv",
-            "dados/processados/features_paderborn_qualidade.json",
-            "dados/processados/features_paderborn_qualidade.png",
+            "dados/processados/features_gpvs.parquet",
+            "dados/processados/features_gpvs_stats.csv",
+            "dados/processados/features_gpvs_qualidade.json",
+            "dados/processados/features_gpvs_qualidade.png",
         ),
     ),
     "autoencoder": PipelineStage(
@@ -128,11 +139,12 @@ STAGES: dict[str, PipelineStage] = {
         parameter_names=(
             "LATENTE_DIM", "EPOCHS", "BATCH_SIZE", "LR", "DROPOUT",
             "PACIENCIA", "SIGMA", "THRESHOLD_METHOD", "SEED",
-            "TRAIN_RATIO", "CALIB_RATIO", "TEST_RATIO",
+            "TRAIN_RATIO", "VALIDATION_RATIO", "CALIBRATION_RATIO", "TEST_RATIO",
         ),
         code_dependencies=(
             "src.ml.escore_anomalia",
-            "src.ml.split_temporal",
+            "src.ml.gpvs",
+            "src.ml.gpvs_principal",
             "src.ml.graficos_autoencoder",
             "src.ml.estilo_graficos",
         ),
@@ -140,6 +152,7 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/modelo_autoencoder.pt",
             "resultados/autoencoder/scaler.pkl",
             "resultados/autoencoder/scaler.pkl.sha256",
+            "resultados/autoencoder/normalizacao_baseline_gpvs.npz",
             "resultados/autoencoder/estatistica_residuo.npz",
             "resultados/autoencoder/limiar.json",
             "resultados/autoencoder/diagnostico_autoencoder.npz",
@@ -149,8 +162,8 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/distribuicao_erro.png",
             "resultados/autoencoder/erro_temporal.png",
         ),
-        depends_on=("features_ca",),
-        input_artifacts=("dados/processados/features_paderborn.parquet",),
+        depends_on=("features_gpvs",),
+        input_artifacts=("dados/processados/features_gpvs.parquet",),
         evidence_level="E2",
     ),
     "injecao_falhas": PipelineStage(
@@ -160,9 +173,9 @@ STAGES: dict[str, PipelineStage] = {
         function="executar_injecao_falhas",
         parameter_names=("A_INJ", "ALVO_SMD", "N_JANELAS_SMD"),
         code_dependencies=(
-            "src.ml.features_ca",
+            "src.ml.gpvs",
+            "src.ml.gpvs_principal",
             "src.ml.autoencoder",
-            "src.ml.dados_avaliacao",
             "src.ml.escore_anomalia",
             "src.ml.estatistica",
             "src.ml.estilo_graficos",
@@ -174,12 +187,12 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/injecao_smd_tabela.csv",
         ),
         depends_on=("autoencoder",),
-        input_artifacts=(
-            "dados/brutos/Inverter_Data_Set.csv",
-            "dados/processados/features_paderborn.parquet",
+        input_artifacts=GPVS_F0_INPUTS + (
+            "dados/processados/features_gpvs.parquet",
             "resultados/autoencoder/modelo_autoencoder.pt",
             "resultados/autoencoder/scaler.pkl",
             "resultados/autoencoder/scaler.pkl.sha256",
+            "resultados/autoencoder/normalizacao_baseline_gpvs.npz",
             "resultados/autoencoder/estatistica_residuo.npz",
             "resultados/autoencoder/limiar.json",
         ),
@@ -187,20 +200,21 @@ STAGES: dict[str, PipelineStage] = {
     ),
     "validacao": PipelineStage(
         key="validacao",
-        label="Validacao Interna E2",
-        module="src.ml.validacao",
-        function="executar_validacao",
+        label="Validacao GPVS E2 + E3",
+        module="src.ml.validacao_gpvs_principal",
+        function="executar_validacao_principal",
         parameter_names=(
             "SEVS_VALIDACAO", "N_JANELAS_SAUDAVEL", "N_JANELAS_FALHA",
             "PREVALENCIA_RARA",
         ),
         code_dependencies=(
-            "src.ml.features_ca",
+            "src.ml.gpvs",
+            "src.ml.gpvs_principal",
             "src.ml.autoencoder",
-            "src.ml.dados_avaliacao",
             "src.ml.escore_anomalia",
             "src.ml.estatistica",
             "src.ml.injecao_falhas",
+            "src.ml.validacao",
             "src.ml.estilo_graficos",
         ),
         artifacts=(
@@ -212,18 +226,27 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/validacao_tabela.csv",
             "resultados/autoencoder/validacao_tabela.md",
             "resultados/autoencoder/validacao_report.json",
+            "resultados/gpvs/validacao_gpvs_e3.json",
+            "resultados/gpvs/validacao_gpvs_cenarios.csv",
+            "resultados/gpvs/validacao_gpvs_cenarios.md",
+            "resultados/gpvs/validacao_gpvs_scores.csv",
+            "resultados/gpvs/relatorio_validacao_gpvs.md",
+            "resultados/gpvs/gpvs_series_temporais.png",
+            "resultados/gpvs/gpvs_metricas_por_cenario.png",
+            "resultados/gpvs/gpvs_transferencia_estrita.png",
+            "resultados/gpvs/gpvs_macro_comparacao.png",
         ),
         depends_on=("injecao_falhas",),
-        input_artifacts=(
-            "dados/brutos/Inverter_Data_Set.csv",
-            "dados/processados/features_paderborn.parquet",
+        input_artifacts=GPVS_ALL_INPUTS + (
+            "dados/processados/features_gpvs.parquet",
             "resultados/autoencoder/modelo_autoencoder.pt",
             "resultados/autoencoder/scaler.pkl",
             "resultados/autoencoder/scaler.pkl.sha256",
+            "resultados/autoencoder/normalizacao_baseline_gpvs.npz",
             "resultados/autoencoder/estatistica_residuo.npz",
             "resultados/autoencoder/limiar.json",
         ),
-        evidence_level="E2",
+        evidence_level="E2+E3",
     ),
     "rul_weibull": PipelineStage(
         key="rul_weibull",
@@ -238,16 +261,15 @@ STAGES: dict[str, PipelineStage] = {
             "TEMPO_FISICO_CALIBRADO",
         ),
         code_dependencies=(
-            "src.ml.features_ca",
+            "src.ml.gpvs",
+            "src.ml.gpvs_principal",
             "src.ml.autoencoder",
-            "src.ml.dados_avaliacao",
             "src.ml.escore_anomalia",
             "src.ml.estatistica",
             "src.ml.confiabilidade",
             "src.ml.graficos_rul",
             "src.ml.injecao_falhas",
             "src.ml.relatorio_weibull",
-            "src.ml.split_temporal",
             "src.ml.estilo_graficos",
             "src.ml.pod_curva",
             "scripts.relatorio_confiabilidade",
@@ -263,12 +285,12 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/relatorio_confiabilidade.json",
         ),
         depends_on=("validacao",),
-        input_artifacts=(
-            "dados/brutos/Inverter_Data_Set.csv",
-            "dados/processados/features_paderborn.parquet",
+        input_artifacts=GPVS_F0_INPUTS + (
+            "dados/processados/features_gpvs.parquet",
             "resultados/autoencoder/modelo_autoencoder.pt",
             "resultados/autoencoder/scaler.pkl",
             "resultados/autoencoder/scaler.pkl.sha256",
+            "resultados/autoencoder/normalizacao_baseline_gpvs.npz",
             "resultados/autoencoder/estatistica_residuo.npz",
             "resultados/autoencoder/diagnostico_autoencoder.npz",
             "resultados/autoencoder/limiar.json",
@@ -281,17 +303,17 @@ ORDEM_ETAPAS_ML = list(STAGES.keys())
 NOMES_ETAPAS = {key: stage.label for key, stage in STAGES.items()}
 ARTEFATOS_ML = {key: list(stage.artifacts) for key, stage in STAGES.items()}
 
-DATASET_PADERBORN = Path(
+DATASET_GPVS = Path(
     os.getenv(
-        "AL_IADO_DATASET_PADERBORN",
-        str(RAIZ_PROJETO / "dados" / "brutos" / "Inverter_Data_Set.csv"),
+        "AL_IADO_DATASET_GPVS",
+        str(RAIZ_PROJETO / "dados" / "brutos" / "gpvs" / "csv" / "CSV_Files"),
     )
 ).expanduser().resolve()
 
 # Subconjunto leve e versionável necessário para consultar uma execução já
 # concluída. Pesos, scalers e dados processados permanecem locais.
 ARTEFATOS_PUBLICADOS: dict[str, tuple[str, ...]] = {
-    "features_ca": ("resultados/manifestos/features_ca.json",),
+    "features_gpvs": ("resultados/manifestos/features_gpvs.json",),
     "autoencoder": (
         "resultados/manifestos/autoencoder.json",
         "resultados/autoencoder/limiar.json",
@@ -308,6 +330,9 @@ ARTEFATOS_PUBLICADOS: dict[str, tuple[str, ...]] = {
         "resultados/manifestos/validacao.json",
         "resultados/autoencoder/validacao_report.json",
         "resultados/autoencoder/validacao_tabela.csv",
+        "resultados/gpvs/validacao_gpvs_e3.json",
+        "resultados/gpvs/validacao_gpvs_cenarios.csv",
+        "resultados/gpvs/relatorio_validacao_gpvs.md",
     ),
     "rul_weibull": (
         "resultados/manifestos/rul_weibull.json",
@@ -316,8 +341,15 @@ ARTEFATOS_PUBLICADOS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+STAGE_ALIASES = {"features_ca": "features_gpvs"}
+
+
+def _chave_canonica(key: str) -> str:
+    return STAGE_ALIASES.get(key, key)
+
 
 def get_stage(key: str) -> PipelineStage:
+    key = _chave_canonica(key)
     try:
         return STAGES[key]
     except KeyError as exc:
@@ -326,11 +358,15 @@ def get_stage(key: str) -> PipelineStage:
 
 def capacidade_recalculo_pipeline() -> dict:
     """Distingue o ambiente de cálculo local do modo de consulta do deploy."""
-    disponivel = DATASET_PADERBORN.is_file()
+    esperados = [DATASET_GPVS / Path(relativo).name for relativo in GPVS_ALL_INPUTS]
+    ausentes = [str(path) for path in esperados if not path.is_file()]
+    disponivel = not ausentes
     return {
         "disponivel": disponivel,
         "modo": "calculo_local" if disponivel else "consulta_publicada",
-        "dataset": str(DATASET_PADERBORN),
+        "dataset": str(DATASET_GPVS),
+        "arquivos_esperados": len(esperados),
+        "arquivos_ausentes": ausentes,
     }
 
 
@@ -353,7 +389,12 @@ def etapa_pendente(key: str) -> bool:
 
 
 def features_ca_pendente() -> bool:
-    return etapa_pendente("features_ca")
+    """Alias histórico; o pipeline principal agora usa features GPVS."""
+    return etapa_pendente("features_gpvs")
+
+
+def features_gpvs_pendente() -> bool:
+    return etapa_pendente("features_gpvs")
 
 
 def autoencoder_pendente() -> bool:
@@ -421,6 +462,7 @@ def _inputs_da_etapa(stage: PipelineStage) -> dict:
 def registrar_manifesto(key: str, parameters: dict | None = None,
                         evidence_level: str | None = None) -> None:
     """Salva o manifesto de proveniência de uma etapa recém-concluída."""
+    key = _chave_canonica(key)
     try:
         from src.ml.proveniencia import gerar_manifesto, salvar_manifesto
 
@@ -449,6 +491,8 @@ def _data_do_manifesto(key: str) -> str:
     """
     from src.ml.proveniencia import carregar_manifesto
 
+    key = _chave_canonica(key)
+
     try:
         salvo = carregar_manifesto(key) or {}
     except Exception:  # noqa: BLE001 - diagnóstico nunca derruba a etapa
@@ -460,6 +504,7 @@ def estado_etapa_completo(key: str) -> dict:
     """{'estado': ready|stale|pending, 'motivos': [...]} via manifesto."""
     from src.ml.proveniencia import estado_etapa
 
+    key = _chave_canonica(key)
     stage = get_stage(key)
     return estado_etapa(
         key, [str(p) for p in stage.paths()],
@@ -496,6 +541,7 @@ def status_markdown() -> str:
 
 def artefatos_a_partir(etapa_inicial: str) -> list[Path]:
     """Lista artefatos da etapa e de todas as que dependem dela."""
+    etapa_inicial = _chave_canonica(etapa_inicial)
     idx = ORDEM_ETAPAS_ML.index(etapa_inicial)
     artefatos = []
     for key in ORDEM_ETAPAS_ML[idx:]:
@@ -522,6 +568,7 @@ def _precisa_rodar(key: str) -> bool:
 
 
 def dependencias_pendentes(etapa: str) -> list[str]:
+    etapa = _chave_canonica(etapa)
     stage = get_stage(etapa)
     return [dep for dep in stage.depends_on if _precisa_rodar(dep)]
 
@@ -585,6 +632,7 @@ def executar_etapa(etapa: str,
     em vez de retornar erro — comportamento que o usuario espera ao pedir
     "rode a validacao" mesmo sem ter rodado features e autoencoder antes.
     """
+    etapa = _chave_canonica(etapa)
     stage = get_stage(etapa)
 
     # Só pula quando a etapa está READY (artefatos presentes E manifesto
@@ -703,14 +751,15 @@ def executar_etapa(etapa: str,
     }
 
 
-def regenerar_pipeline(etapa_inicial: str = "features_ca",
+def regenerar_pipeline(etapa_inicial: str = "features_gpvs",
                        progresso=None) -> list[str]:
     """Refaz a etapa inicial e todas as etapas dependentes."""
+    etapa_inicial = _chave_canonica(etapa_inicial)
     limpar_artefatos(etapa_inicial)
     return executar_pipeline_ml(etapa_inicial, force=False, progresso=progresso)
 
 
-def executar_pipeline_ml(etapa_inicial: str = "features_ca",
+def executar_pipeline_ml(etapa_inicial: str = "features_gpvs",
                          *,
                          force: bool = False,
                          progresso=None) -> list[str]:
@@ -718,6 +767,7 @@ def executar_pipeline_ml(etapa_inicial: str = "features_ca",
     Executa o pipeline em ordem a partir de uma etapa.
     Sem force, etapas prontas sao puladas.
     """
+    etapa_inicial = _chave_canonica(etapa_inicial)
     if force:
         limpar_artefatos(etapa_inicial)
 

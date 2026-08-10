@@ -148,8 +148,7 @@ def test_rul_declara_magnitude_de_injecao_sem_calibracao_fisica():
     assert ajuste["tempo_fisico_calibrado"] is False
     assert tempo["tempo_fisico_calibrado"] is False
     assert tempo["passo_tempo_fisico_horas"] is None
-    # Derivado de JANELA/FS, não fixado: a duração da janela é parâmetro do
-    # pipeline (passou de 1024 para 2048 amostras) e o teste não pode congelá-la.
-    from src.ml.features_ca import FS, JANELA
+    # Derivado de JANELA/FS do dataset principal, não fixado.
+    from src.ml.gpvs_principal import FS, JANELA
 
     assert tempo["janela_aquisicao_s"] == pytest.approx(JANELA / FS)

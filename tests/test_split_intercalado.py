@@ -234,12 +234,8 @@ def test_split_padrao_carrega_os_ratios_do_modulo():
                  "test": TEST_RATIO_PADRAO}
 
 
-def test_autoencoder_e_split_declaram_os_mesmos_ratios():
-    """`autoencoder.py` espelha os ratios para o manifesto lê-los por AST.
-
-    Espelho que diverge da fonte é pior que espelho nenhum: o manifesto
-    registraria um split que não foi o executado.
-    """
+def test_autoencoder_declara_os_quatro_ratios_gpvs():
+    """O manifesto deve ler por AST os quatro papéis canônicos do GPVS."""
     import ast
     from pathlib import Path
 
@@ -252,9 +248,15 @@ def test_autoencoder_e_split_declaram_os_mesmos_ratios():
         for alvo in no.targets
         if isinstance(alvo, ast.Name) and isinstance(no.value, ast.Constant)
     }
-    assert valores["TRAIN_RATIO"] == TRAIN_RATIO_PADRAO
-    assert valores["CALIB_RATIO"] == CALIB_RATIO_PADRAO
-    assert valores["TEST_RATIO"] == TEST_RATIO_PADRAO
+    assert valores["TRAIN_RATIO"] == 0.50
+    assert valores["VALIDATION_RATIO"] == 0.15
+    assert valores["CALIBRATION_RATIO"] == 0.15
+    assert valores["TEST_RATIO"] == 0.20
+    assert sum(
+        valores[chave] for chave in (
+            "TRAIN_RATIO", "VALIDATION_RATIO", "CALIBRATION_RATIO", "TEST_RATIO"
+        )
+    ) == 1.0
 
 
 def test_purga_padrao_cobre_a_sobreposicao_das_janelas():

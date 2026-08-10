@@ -1,331 +1,143 @@
-# Metodologia de ML — Al IAdo PV
+# Metodologia de ML - detector canônico GPVS-Faults
 
-Documento de referência das decisões metodológicas e de integridade acadêmica
-da dissertação. Os **números** ficam nos artefatos (`resultados/...`), não aqui:
-consulte sempre o artefato vigente e informe o **nível de evidência**.
+Este documento define a metodologia vigente da dissertação. Os valores
+numéricos citáveis devem ser lidos dos artefatos em `resultados/`; relatórios
+de auditorias anteriores registram decisões históricas e não substituem este
+contrato.
 
-## 1. Dois eixos de ML (NÃO se fundem)
+## 1. Escopo e fonte de dados
 
-| Eixo | Dataset | Domínio | Tarefa |
-|---|---|---|---|
-| **Principal** | Stender (`Inverter_Data_Set.csv`) | **CA experimental, inversor/motor** | Detecção de anomalia por modelagem de normalidade |
-| **Complementar** | PV Farms (`train/test_data.csv`) | **CC simulado** | Classificação supervisionada de falhas conhecidas |
+O pipeline principal usa exclusivamente o **GPVS-Faults**, uma microrede
+fotovoltaica experimental conectada à rede (DOI
+`10.17632/n76t439f65.1`). Nenhuma amostra de Stender, PMSM, PV Farms,
+telemetria residencial ou Bearing DataCenter é concatenada, usada para ajuste
+ou incorporada às métricas canônicas.
 
-**Regra rígida:** o classificador PV Farms **nunca** diagnostica falhas CA do
-inversor, e métricas de PV Farms **não** se transferem ao pipeline CA. O uso
-combinado é conceitual/arquitetural — não fusão de dados.
+- `F0L` e `F0M`: operação saudável em IPPT e MPPT.
+- `F1L` a `F7M`: 14 ensaios com sete falhas experimentais.
+- **E2:** falhas sintéticas orientadas pela FMECA sobre o teste saudável F0.
+- **E3:** validação experimental pré/pós-falha nos 14 ensaios F1-F7.
 
-Pipeline principal: `features_ca → autoencoder → injecao_falhas → validacao → rul_weibull`.
+E3 significa bancada experimental, não campo. O detector indica desvio da
+normalidade; não prova automaticamente a causa física nem a prevalência
+industrial.
 
-## 2. Arquitetura do Autoencoder — o que é citável e o que é escolha nossa
+Pipeline: `features_gpvs -> autoencoder -> injecao_falhas -> validacao E2+E3
+-> rul_weibull`.
 
-Separar as duas coisas é o que sustenta o capítulo diante da banca.
+## 2. Amostragem, janelas e atributos
 
-**Fundamentado em Ibrahim et al. (2022).** A modelagem de normalidade por
-Autoencoder e o uso do **erro de reconstrução como escore de anomalia** seguem o
-artigo (§3.1, eq. 1–3). A pergunta "por que Autoencoder?" tem resposta citável.
+A taxa de amostragem é inferida da coluna `Time` de cada CSV. O valor observado
+é aproximadamente 10 kHz, embora o manual declare período de 9,9989 us. O
+processamento usa os dados observados e preserva a divergência como ressalva de
+qualidade.
 
-**Escolha deliberada nossa: AE denso sobre features, não AE-LSTM temporal.**
-Ibrahim usa AE-LSTM sobre o sinal; aqui se usa um Autoencoder **denso sobre
-features espectrais** derivadas da FMECA (RMS, THD, harmônicos 5/7/11/13,
-desbalanceamento). Três razões, nesta ordem de peso:
+Cada janela contém 200 amostras, equivalentes a um ciclo nominal de 50 Hz, sem
+sobreposição. São extraídos 24 atributos de sensores primários:
 
-1. **A recorrência é redundante para o alvo.** A dinâmica intra-janela relevante
-   às falhas CA já está condensada nas features espectrais de cada janela de
-   ~102 ms. A LSTM reaprenderia, no eixo do tempo, o que a FFT já resolveu.
-2. **Features nomeadas preservam rastreabilidade.** Mesmo com MSE operacional,
-   os resíduos continuam decomponíveis por RMS, THD e harmônicos de cada fase,
-   permitindo ligar o desvio às assinaturas da FMECA. Um AE-LSTM sobre sinal
-   bruto reduz essa rastreabilidade, importante para a conexão com RCM.
-3. **A escolha é comparada empiricamente.** O AE-LSTM inspirado no artigo é
-   mantido como concorrente em `resultados/macro/`, sob o mesmo protocolo E2.
-   O escore localizado também permanece como ablação, mas deixou de ser o
-   método canônico quando não reproduziu seu ganho no split auditado.
+- mediana e IQR de `Ipv`, `Vpv` e `Vdc`;
+- RMS e THD de corrente e tensão nas três fases;
+- desbalanceamento RMS de corrente e tensão;
+- média e desvio da potência CA;
+- mediana e IQR da potência CC.
 
-### Como os hiperparâmetros foram escolhidos
+O contrato é implementado por `src/ml/gpvs_principal.py`; um teste compara a
+extração por janela com a implementação de referência em `src/ml/gpvs.py`.
 
-Profundidade fixada a priori; largura varrida. O precedente é o do próprio
-artigo-base: Ibrahim (2022), §5.2, fixa a profundidade por simplificação
-(*"the number of hidden layers was chosen to be four layers"*) e **otimiza
-apenas o número de neurônios por camada** (Tabela 2). O mesmo protocolo aqui:
-profundidade fixa e largura varrida.
+## 3. Partições F0 e prevenção de vazamento
 
-A topologia vigente é `n→16→8→16→n` (3.860 parâmetros com 108 features). A anterior era
-`n→64→32→16→32→64→n`, com 19.389 parâmetros para 274 janelas de treino — 70,8
-parâmetros por amostra. O janelamento de 2048 amostras e o split 50/20/30
-deixam 104 janelas de treino (37,1 parâmetros por janela); por isso a rede encolheu **no mesmo
-conjunto de commits** que alargou a janela. O corte veio de onde estava o peso:
-as camadas de borda (`n×64` e `64×n`) somavam 14.125 dos 19.389 parâmetros.
+`F0L` e `F0M` são particionados separadamente, preservando a ordem temporal, em
+quatro papéis: treino 50%, validação 15%, calibração 15% e teste 20%. Há purga
+de duas janelas nas fronteiras. Nenhuma janela é compartilhada entre papéis.
 
-O gargalo passou a **não** ter ReLU: com ela o latente é não negativo por
-construção e unidades podem morrer em zero permanente.
+- **Treino:** ajusta normalização, scaler e pesos.
+- **Validação:** early stopping; não calibra o limiar.
+- **Calibração:** estima o MSE p99 operacional.
+- **Teste:** estima falsos positivos saudáveis sem participar do ajuste.
 
-> **Estado:** a varredura de largura ainda **não foi executada** — exige rerun
-> local com o dataset bruto. Até que seja, os valores vigentes (latente=8,
-> épocas=150, lr=1e-3, dropout=0,2) devem ser apresentados como **defaults
-> dimensionados pela razão parâmetros/amostra**, não como resultado de busca.
-> Escrever o contrário seria afirmar evidência inexistente.
+Os índices completos ficam no diagnóstico NPZ; `limiar.json` publica contagens
+e política do split sem inflar o artefato.
 
-### Lacuna declarada
+## 4. Normalização de comissionamento
 
-O acervo indexado **não contém nenhum artigo de Autoencoder denso sobre features
-handcrafted com topologia reportada** — verificado por varredura em
-`literatura/` e `notas/Literatura/`. Ibrahim ancora o *método* de escolher
-hiperparâmetros, não as dimensões em si.
+Variações de regime entre ensaios provocam deslocamento de nível. O contrato
+aplica, antes do `RobustScaler`, centralização pela mediana e escala pelo IQR.
+O IQR recebe piso igual a 10% do IQR global observado no treino F0, evitando
+amplificação de atributos quase constantes.
 
-Por isso a fundamentação acima é redigida como **escolha justificada**, não como
-"segue a referência X". Buscar uma âncora direta (família provável: AE denso
-sobre features de vibração/corrente em máquinas rotativas) está registrado em
-`notas/Cerebro/Literatura a revisar.md` como melhoria futura de redação — não
-como bloqueio.
+Em F0, as estatísticas são ajustadas somente no treino. Em cada ensaio F1-F7,
+a primeira metade pré-falha fornece o baseline de comissionamento. A segunda
+metade pré-falha permanece isolada para estimar especificidade; todo o trecho
+pós-falha estima sensibilidade.
 
-### ReLU no gargalo — resolvido em 08/08/2026
+Isso é uma normalização por ensaio, mas **não** é retreino do Autoencoder nem
+recalibração do limiar. Pesos, `RobustScaler`, método de escore e limiar ficam
+congelados.
 
-O encoder terminava em `ReLU` no espaço latente, o que zerava componentes
-negativas e podia matar unidades em zero permanente. Havia inconsistência
-interna: a saída do decoder já era linear, com comentário justificando; o
-gargalo não recebia o mesmo tratamento.
+## 5. Autoencoder e limiar
 
-A decisão registrada era não alterar isoladamente, porque trocar a ativação
-invalida os mesmos números que a varredura invalidaria. Foi feito junto com o
-encolhimento da rede, na rodada única (PR #107): **a última camada do encoder é
-linear**, e `tests/test_torch_smoke.py` impede a regressão exigindo que exista
-código latente negativo.
+O modelo é um Autoencoder denso `24 -> 16 -> 8 -> 16 -> 24`, treinado somente
+com F0 saudável. O gargalo e a saída são lineares; validação temporal controla
+o early stopping. O método canônico de decisão é o MSE de reconstrução.
 
-## 3. Limiar do Autoencoder
+- `score_method = mse`.
+- `score_threshold = mse_p99` da calibração F0.
+- `mu + 3 sigma` e p95 são referências, não pontos de decisão.
+- O escore localizado permanece como ablação, nunca como limiar operacional.
 
-- **Limiar operacional = MSE p99 da calibração**, registrado em
-  `score_threshold`, `mse_p99` e `limiar_p99` com `score_method = mse`.
-- O p99 é **nominal e interpolado linearmente**. Com 42 janelas de calibração,
-  a resolução empírica da cauda é `1/42 = 2,38%`; portanto o rótulo p99 não é
-  evidência de FPR observado igual a 1%.
-- **Escore localizado = ablação diagnóstica**, mantida para comparação, sem
-  controlar a decisão operacional.
-- **μ + 3σ = referência comparativa** (assume normalidade) — **nunca** o limiar
-  em uso.
-- **p95 = referência adicional.**
-- O artefato `limiar.json` preserva campos legados (`threshold_method`,
-  `limiar`, `k`, `k_localizado`) e acrescenta nomes inequívocos:
-  `score_method`, `score_threshold`, `mse_p99`, `sigma_multiplier`, `top_k`,
-  `threshold_fallback_percentile` e `threshold_effective_percentile`.
-- A auditoria tabular de calibração fica em
-  `resultados/autoencoder/calibracao_autoencoder.{csv,md}`: ela reporta, por
-  bloco temporal, mediana/IQR/p99 do MSE e excedências acima da referência MSE
-  p99 e do limiar operacional, com a leitura por janela e a sensibilidade em
-  subamostra sem compartilhamento de amostras. O IC95% de Wilson por janela é
-  descritivo: sobreposição e dependência serial impedem tratá-lo como intervalo
-  inferencial de observações independentes.
+O p99 é nominal e interpolado. A taxa de excedência observada deve ser
+reportada separadamente, com intervalo de Wilson descritivo por janela.
 
-## 4. Validação sintética interna E2 (limiar congelado)
+## 6. Validação E2 orientada pela FMECA
 
-`src/ml/validacao.py` carrega o limiar de `limiar.json` (**congelado**) e calcula
-as métricas nesse limiar fixo — **não** otimiza o limiar no conjunto de teste.
-Gera ROC, **Precision-Recall**, matriz de confusão e `validacao_report.json`
-com `evidence_level = E2` e `threshold_source = bloco_calibracao_temporal`.
-O protocolo canônico é `treino 50% → calibração 20% → teste 30%`, com purga
-nas fronteiras. Injeção e validação usam apenas janelas **não sobrepostas** do
-conjunto de teste. A configuração produz 32 janelas sem compartilhamento de
-amostras brutas e mantém o piso estatístico de 30. Isso reduz pseudorrepetição
-direta, mas não prova independência temporal, não remove todo efeito de regime
-e não transforma E2 em
-validação externa: as falhas continuam sintéticas.
+As assinaturas sintéticas de Contator CA, IGBT e Fusível CA são aplicadas a
+janelas não sobrepostas do teste F0. O limiar permanece congelado. Para cada
+severidade são publicados taxa de detecção, IC95% de Wilson e SMD95, a menor
+severidade cuja estimativa pontual alcança 95%.
 
-Benchmarks exploratórios (ex.: `experimentos_artigos.py`) que escolhem o limiar
-no próprio conjunto avaliado são rotulados `threshold_source =
-exploratorio_no_conjunto_avaliado` → **E1**, não estimativa de generalização.
+E2 verifica detectabilidade das assinaturas modeladas; não é falha física
+observada nem desempenho de campo. Proxies, como ruído de sensor para o
+contator, exigem calibração física antes de qualquer afirmação industrial.
 
-## 5. Divisão em blocos intercalados com purga (anti-vazamento + cobertura)
+## 7. Validação E3 experimental
 
-Janelas com 50% de sobreposição **não** podem ser divididas aleatoriamente:
-janelas vizinhas são quase idênticas e vazariam entre treino/calibração/teste.
-A defesa é dividir por **blocos contíguos** com zona de **purga** na fronteira.
+O mesmo detector é aplicado aos 14 ensaios F1L-F7M. Por cenário são publicados
+AUC, sensibilidade pós-falha, especificidade no trecho pré-falha isolado,
+acurácia balanceada e atraso para cinco excedências consecutivas.
 
-### Por que três blocos contíguos não bastavam
+A unidade inferencial macro é o **ensaio**, não cada janela autocorrelacionada.
+Os IC95% macro usam 20.000 reamostragens dos 14 ensaios. ICs de Wilson por
+janela são apenas descritivos. Todos os cenários são publicados, inclusive os
+resultados negativos.
 
-Três blocos contíguos pressupõem sinal aproximadamente **estacionário**. O
-conjunto Stender não é: é bancada de acionamento que varre rotação em rampa. Fatiar a
-rampa em três produz três **faixas de velocidade**, não três amostras do mesmo
-processo. Medido em 09/08/2026 com 224 janelas:
+## 8. Weibull e confiabilidade
 
-| bloco | mediana de F0 | IQR | n |
-|---|--:|--:|--:|
-| treino | 20,45 Hz | 83,13 | 136 |
-| calibração | **51,11 Hz** | **1,46** | 45 |
-| teste | **100,08 Hz** | 17,84 | 43 |
+A análise atual usa `a_det`, a primeira magnitude sintética que produz três
+excedências consecutivas na E2. A Weibull 2P descreve a distribuição de
+detectabilidade; seu eixo não é tempo.
 
-O IQR da calibração é de 1,46 Hz — o bloco inteiro parado num regime só. O
-limiar operacional era congelado ali e aplicado a um bloco operando ao **dobro**
-da fundamental: FPR de 4,4% na calibração contra **62,8%** no teste. O treino,
-com IQR de 83 Hz, viu a faixa inteira; quem extrapolava era apenas o limiar.
+`F_D(a)` é probabilidade de detecção até a magnitude `a`; `S_D(a)` é não
+detecção; `h_D(a)` é intensidade de primeiro cruzamento por magnitude. Esses
+objetos não são probabilidade de falha, confiabilidade, taxa de falha, MTTF ou
+RUL físico. Tais inferências exigiriam várias unidades, exposição temporal,
+falhas e censuras observadas.
 
-### A correção
+## 9. Proveniência e publicação
 
-`split_temporal.py::split_blocos_intercalados` divide a série em
-`N_BLOCOS_PADRAO = 14` blocos contíguos e os distribui alternadamente
-(`T E V T T E T V E T T V E T`), com purga em toda fronteira **onde o destino
-muda**. A ordem é determinística — cada conjunto recebe posições ideais
-`(k+0,5)/c` e a sequência sai da ordenação delas —, sem sorteio nem semente.
+Cada etapa possui manifesto v2 com hash LF-normalizado do código, dependências
+científicas, entradas, parâmetros e saídas. O manifesto E3 inclui os 16 CSVs,
+modelo, scaler, limiar e normalização de baseline. Dados brutos, modelos e
+estado local do Obsidian não são versionados; JSON, CSV, Markdown e figuras
+acadêmicas verificáveis são publicados.
 
-Cobertura da série, antes e depois:
+Estados `ready`, `stale` e `pending` são calculados por `src/ml/proveniencia.py`.
+Uma alteração em código, entrada ou saída torna o estágio desatualizado até a
+regeneração e o novo manifesto.
 
-| conjunto | contíguo | intercalado |
-|---|--:|--:|
-| treino | 59% | 99,6% |
-| calibração | 19% | 69,7% |
-| teste | 18% | 84,6% |
+## 10. Leitura dos resultados
 
-Custo: 22 de 228 janelas descartadas por purga (9,6%). Restam 104 janelas de
-treino, 42 de calibração e 60 de teste; destas últimas, 32 não se sobrepõem.
-O desenho anterior 60/20/20 fornecia apenas 21 trajetórias independentes e
-falhava o piso de 30 do próprio verificador acadêmico.
-
-### O que muda na afirmação da dissertação
-
-O teste **deixa de ser "o futuro"** e passa a ser **generalização entre
-regimes**. Para detecção de anomalia em bancada de velocidade variável isso é
-mais adequado que previsão temporal — o inversor em campo não opera em rampa
-monotônica —, mas é uma afirmação **diferente** e não pode ser apresentada como
-a anterior.
-
-A garantia anti-vazamento não mudou de natureza e é verificada diretamente por
-`tests/test_split_intercalado.py`: nenhuma janela vizinha cai em conjuntos
-diferentes, para nenhum tamanho de série testado.
-
-O split contíguo continua disponível em `split_temporal_com_purga`, e é o que o
-protocolo E1 por artigo (`protocolos_artigos.py`) segue usando — trocá-lo lá
-mudaria resultados históricos publicados.
-
-## 6. Níveis de evidência (E0–E3)
-
-| Nível | Significado |
-|---|---|
-| **E0** | Hipótese |
-| **E1** | Benchmark exploratório (perturbação genérica / dataset rotulado) |
-| **E2** | Validação sintética orientada pela FMECA (injeção/validação do pipeline) |
-| **E3** | Validação experimental externa (bancada / campo) |
-
-O agente **sempre** informa o nível e **nunca** trata E1/E2 como prova de
-desempenho industrial.
-
-## 7. Falhas sintéticas (schema + calibração)
-
-Cada falha injetada (`FALHAS` em `injecao_falhas.py`) declara: `evidence_level`
-(E2), `hipotese_fisica`, `sinais`, `formula`, `severity_definition`, `source` e
-`limitations`. **Contator AC:** o ruído gaussiano é um **proxy** do transiente de comutação
-e exige **calibração física** — não afirmar alta sensibilidade sem essa ressalva.
-
-**SMD probabilística:** `smd_probabilistico` calcula a taxa de detecção por
-severidade em janelas não sobrepostas do holdout, o intervalo de Wilson de 95%
-e a **SMD₉₅** (menor severidade cuja taxa pontual é ≥ 95%). O campo
-`smd_95_conservadora` exige também limite inferior do IC ≥ 95%; quando n é
-insuficiente, permanece nulo em vez de transmitir certeza artificial.
-Na rodada canônica há 32 janelas sem compartilhamento por severidade; os
-intervalos continuam obrigatórios, mas a correlação serial residual deve ser
-mantida como limitação.
-
-**Resolução da calibração de cauda:** as 42 janelas de calibração não autorizam
-subdividi-la em 80/20 para selecionar automaticamente uma meta de FP de 1%:
-o subbloco teria 9 observações e resolução mínima de 11,1%. A auto-calibração
-agora exige pelo menos `ceil(100 / FP_ALVO)` observações no subbloco de
-validação; enquanto esse contrato não é atendido, o limiar usa o fallback p99
-e registra a razão em `limiar.json`.
-
-**Separação na ablação localizada:** a média e o desvio dos resíduos por feature
-são ajustados no bloco de **treino**; somente o percentil do escore é estimado
-na **calibração**. Ajustar ambos na calibração reutilizava
-o mesmo bloco duas vezes e, na rodada diagnóstica 50/20/30, produziu 2,38% de
-FP na calibração contra 15% no teste. A separação derrubou o FP do mesmo modelo
-e split para 1,67% antes da regeneração completa. `limiar.json` registra
-`score_standardization_source = bloco_treino_modelo`. Mesmo corrigida, a
-ablação perdeu sensibilidade no ponto operacional e não substitui o MSE p99.
-
-## 8. Weibull da detectabilidade E2 (não é RUL nem confiabilidade física)
-
-- Cada trajetória mantém a **mesma janela-base** enquanto a magnitude da
-  assinatura sintética cresce. A saída `a_det` é a primeira magnitude em que o
-  detector confirma três excedências consecutivas. Cada trajetória representa
-  uma janela do holdout, **não um ativo acompanhado até falha**.
-- Janelas que já excedem o limiar em `a=0` são excluídas e contabilizadas. As
-  restantes não compartilham amostras brutas, mas independência temporal não é
-  presumida.
-- Não detecção em `a=1` é **indetectabilidade no teto**, não censura física. O
-  MLE a trata como censura à direita apenas sob a hipótese analítica de que a
-  assinatura poderia exceder a nominal.
-- A CDF empírica e o papel de Weibull usam Kaplan-Meier modificado com o
-  tamanho total da amostra. Normalizar postos somente por `n_eventos` é proibido:
-  faria 12 detecções em 31 janelas parecerem quase 100% da população.
-- O ajuste Weibull 2P é uma descrição exploratória da variabilidade do primeiro
-  cruzamento. A síntese paramétrica exige, além de convergência, indetectabilidade
-  de no máximo 50% e triagem visual `R²pp >= 0,90`. O corte de R² é uma política
-  descritiva, não teste formal de aderência.
-- `S_D(a)=P(a_det>a)` é curva de **não detecção**; `F_D(a)` é probabilidade de
-  detectar até a magnitude `a`; `h_D(a)` é intensidade de primeiro cruzamento
-  por unidade de magnitude. Nenhuma é sobrevivência ou taxa de falha do componente.
-- Os nomes canônicos são média paramétrica de `a_det`, `a10/a50` e margem
-  residual de magnitude. `MTTF`, `B10` e `RUL` permanecem apenas como aliases
-  legados de compatibilidade e não podem aparecer como conclusões acadêmicas.
-- O bootstrap usa 1.000 reamostragens de janelas. Seus ICs são condicionais ao
-  experimento E2, pois a ausência de amostras compartilhadas não prova
-  independência serial.
-
-## 9. Métricas
-
-Schema único (`_metricas_classificacao`): accuracy, **balanced_accuracy**,
-precision, recall, f1, **MCC**, AUC, **specificity** (= TN/(TN+FP) no binário) +
-**specificity_macro_ovr** (média one-vs-rest) + `specificity_tipo`,
-**FPR/FNR** (binário), matriz de confusão.
-
-## 10. Proveniência e reprodutibilidade
-
-- **Manifesto v2 por etapa** (`proveniencia.py`): `code_sha256` normalizado para
-  LF, `code_dependencies`, `parameters`, hash das entradas científicas
-  efetivamente lidas pela etapa (incluindo o CSV bruto e o parquet de features
-  que define os índices do holdout nas etapas E2),
-  `output_artifacts` e `git_commit`. Estados **ready / stale / pending**
-  (`estado_pipeline()`), exibidos no chat e na sidebar. Um artefato **sem
-  manifesto = não verificado (pending)**; manifesto v1 = **stale** até
-  regenerar. Nada é apagado automaticamente; recalcular é sob comando (com
-  confirmação).
-- Ordem de execução (`depends_on`) e dependência científica (`input_artifacts`)
-  são contratos distintos. Alterar uma figura ou tabela de apresentação não
-  invalida validação/Weibull que consomem apenas modelo, scaler, sua verificação,
-  estatística de resíduos, limiar, dados brutos e o parquet de features.
-- **Caminhos relativos** nos artefatos (`to_project_relative_path`), resolvidos
-  para absoluto só na interface.
-- **Datasets** validados por `scripts/verificar_datasets.py` (SHA-256, linhas);
-  dados brutos não são versionados.
-
-## 11. Protocolos de avaliação POR ARTIGO (anti "erro de simulação")
-
-Antes, todos os experimentos de anomalia compartilhavam um harness único:
-split **aleatório** de janelas sobrepostas (vazamento temporal) e limiar
-escolhido **no próprio teste** (oráculo) para os modelos sem decisão nativa.
-Agora cada artigo segue o **seu** protocolo (`src/ml/protocolos_artigos.py`)
-e **nenhum limiar enxerga os rótulos do teste**:
-
-| Artigo | Decisão do modelo ativo | `threshold_source` |
-|---|---|---|
-| **Ibrahim (2022)** | AE-LSTM temporal com limiar p99 do erro em bloco de calibração temporal, congelado antes do teste | `p99_erro_seq_temporal_calibracao` |
-
-Cortados da curadoria executável (não são experimentos quantitativos ativos):
-Francisti/Shewhart, Isolation Forest e Prophet do Ibrahim, Sharma, Ahirwar,
-Stender e modelos supervisionados de domínio CC. Esses trabalhos continuam
-citáveis como literatura quando forem úteis ao texto, mas não entram na tabela
-comparativa vigente do Autoencoder denso proposto.
-
-Infraestrutura comum (benchmark justo):
-- **Split temporal com purga** (`split_temporal.py`) — nunca aleatório;
-- **Injeção orientada pela FMECA no espaço de features**: cada anomalia pertence
-  a uma família da FMECA de Torres (2024) — Contator AC (NPR=315), IGBT (NPR=90),
-  Fusível AC (NPR=30) — perturbando apenas as features que a física daquela
-  falha afeta (fonte única: docs/fmeca.md). O resultado reporta **detecção
-  por família** (`deteccao_por_falha`).
-- O `resultado.json` carrega o bloco **`metodologia`** (split, injeção, decisão
-  por modelo, notas de fidelidade ao artigo).
-
-**Leitura correta:** os F1 **não** são comparáveis entre protocolos (cada um
-opera no seu ponto de decisão); o **AUC** é a métrica comparável. Continua
-**E1** (benchmark exploratório com ground truth sintético) — não é validação
-formal nem desempenho industrial. Métricas antigas com
-`exploratorio_no_conjunto_avaliado` permanecem válidas como histórico, mas o
-caminho padrão atual usa decisões a priori/congeladas.
+O resultado deve sempre informar dataset, nível de evidência e unidade de
+análise. Alta especificidade com sensibilidade limitada significa detector
+conservador, não sucesso irrestrito. Diferenças por falha são achados, não
+cenários a serem omitidos. Métricas de experimentos legados permanecem
+consultáveis apenas como histórico e não podem ser combinadas ao GPVS.

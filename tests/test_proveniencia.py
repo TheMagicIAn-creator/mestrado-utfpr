@@ -179,7 +179,7 @@ def test_estado_pipeline_valores_validos():
 
     estados = estado_pipeline()
     assert set(estados) == {
-        "features_ca", "autoencoder", "injecao_falhas", "validacao", "rul_weibull",
+        "features_gpvs", "autoencoder", "injecao_falhas", "validacao", "rul_weibull",
     }
     for info in estados.values():
         assert info["estado"] in {P.READY, P.STALE, P.PENDING}
@@ -228,15 +228,18 @@ def test_pipeline_le_parametros_sem_importar_modulo_pesado(monkeypatch):
 def test_pipeline_registra_apenas_entradas_cientificas_reais():
     from src.ml.pipeline import _inputs_da_etapa, get_stage
 
-    features = _inputs_da_etapa(get_stage("features_ca"))
-    assert any("Inverter_Data_Set.csv" in key for key in features)
+    features = _inputs_da_etapa(get_stage("features_gpvs"))
+    assert any("F0L.csv" in key for key in features)
+    assert any("F0M.csv" in key for key in features)
+    assert get_stage("features_ca").key == "features_gpvs"
 
     inputs = _inputs_da_etapa(get_stage("autoencoder"))
-    assert any("features_paderborn.parquet" in key for key in inputs)
+    assert any("features_gpvs.parquet" in key for key in inputs)
     assert not any(key.endswith(".png") for key in inputs)
 
     validacao = _inputs_da_etapa(get_stage("validacao"))
-    assert any("features_paderborn.parquet" in key for key in validacao)
+    assert any("features_gpvs.parquet" in key for key in validacao)
+    assert any("F7M.csv" in key for key in validacao)
     assert any("modelo_autoencoder.pt" in key for key in validacao)
     assert any("estatistica_residuo.npz" in key for key in validacao)
     assert not any("injecao_falhas_resultados.png" in key for key in validacao)
@@ -255,13 +258,14 @@ def test_pipeline_registra_dependencias_cientificas():
 
     deps = _code_dependencies(get_stage("autoencoder"))
     assert "src.ml.escore_anomalia" in deps
-    assert "src.ml.split_temporal" in deps
+    assert "src.ml.gpvs" in deps
+    assert "src.ml.gpvs_principal" in deps
 
     deps_rul = _code_dependencies(get_stage("rul_weibull"))
     assert "src.ml.graficos_rul" in deps_rul
     assert "src.ml.confiabilidade" in deps_rul
     assert "src.ml.relatorio_weibull" in deps_rul
-    assert "src.ml.split_temporal" in deps_rul
+    assert "src.ml.gpvs_principal" in deps_rul
     assert "scripts.relatorio_confiabilidade" in deps_rul
 
 

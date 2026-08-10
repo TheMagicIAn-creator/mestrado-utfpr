@@ -119,20 +119,15 @@ def test_gpvs_entra_no_resumo_e_nas_figuras_do_agente(tmp_path, monkeypatch):
     }
     bloco = {
         "auc": dict(metrica),
-        "post_tpr": dict(metrica, mean=0.45),
+        "sensitivity": dict(metrica, mean=0.45),
         "specificity": dict(metrica, mean=0.97),
         "balanced_accuracy": dict(metrica, mean=0.71),
     }
-    estrito = {
-        **bloco,
-        "specificity": dict(metrica, mean=0.007),
-    }
     (tmp_path / "validacao_gpvs_e3.json").write_text(
         json.dumps({
+            "schema_version": 2,
             "macro_summary": {
-                "strict_ae": {"all": estrito},
-                "adaptive_ae": {"all": bloco},
-                "adaptive_pca": {"all": bloco},
+                "canonical_ae": {"all": bloco},
             }
         }),
         encoding="utf-8",
@@ -150,7 +145,7 @@ def test_gpvs_entra_no_resumo_e_nas_figuras_do_agente(tmp_path, monkeypatch):
     )
 
     assert "E3 de bancada" in resumo["mensagem"]
-    assert "transferência direta" in resumo["mensagem"]
+    assert "detector ajustado somente" in resumo["mensagem"]
     assert "não é campo" in resumo["mensagem"]
     assert [Path(img["path"]).name for img in resumo["imagens"]] == [
         "gpvs_macro_comparacao.png",

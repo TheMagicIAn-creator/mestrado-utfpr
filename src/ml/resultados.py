@@ -245,10 +245,12 @@ def _focos(pergunta: str) -> set[str]:
         "injection", "defaillance", "defaillances", "severite", "sévérité",
     )):
         focos.add("injecao")
-    if not quer_gpvs and any(t in txt for t in ("validacao", "auc", "f1", "recall", "precision", "roc", "matriz")) and (
+    if any(t in txt for t in ("validacao", "auc", "f1", "recall", "precision", "roc", "matriz")) and (
         not quer_experimentos or "validacao" in txt or "autoencoder" in txt
     ):
-        focos.add("validacao")
+        if not quer_gpvs or any(t in txt for t in ("sintetic", "fmeca", "e2")):
+            focos.add("validacao")
+        focos.add("gpvs")
     if any(t in txt for t in (
         "weibull", "rul", "mttf", "b10", "beta", "eta", "confiabilidade",
         "reliability", "remaining useful life", "confiabilidad", "fiabilite",
@@ -344,14 +346,13 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
     if not focos:
         focos = {
             "autoencoder", "injecao", "validacao", "weibull", "gpvs",
-            "experimentos",
         }
 
     imagens = []
     if "autoencoder" in focos:
-        caminho_qualidade = RAIZ_PROJETO / "dados" / "processados" / "features_paderborn_qualidade.png"
-        _add_img(imagens, caminho_qualidade, "Features - diagnostico espectral e F0", grupo="Qualidade dos dados", ordem=5, ordem_grupo=5)
-        _add_img(imagens, "curva_treino.png", "Autoencoder - convergencia treino/calibracao", grupo="Autoencoder", ordem=10, ordem_grupo=10)
+        caminho_qualidade = RAIZ_PROJETO / "dados" / "processados" / "features_gpvs_qualidade.png"
+        _add_img(imagens, caminho_qualidade, "GPVS F0 - qualidade das features saudáveis", grupo="Qualidade dos dados", ordem=5, ordem_grupo=5)
+        _add_img(imagens, "curva_treino.png", "Autoencoder - convergência treino/validação", grupo="Autoencoder", ordem=10, ordem_grupo=10)
         _add_img(imagens, "distribuicao_erro.png", "Autoencoder - distribuicao MSE e ECDF", grupo="Autoencoder", ordem=20, ordem_grupo=10)
         _add_img(imagens, "erro_temporal.png", "Autoencoder - erro MSE temporal por split", grupo="Autoencoder", ordem=30, ordem_grupo=10)
     if "injecao" in focos:
@@ -370,13 +371,13 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
     if "gpvs" in focos:
         _add_img(
             imagens, "gpvs_macro_comparacao.png",
-            "GPVS E3 - comparação macro entre protocolos e baseline",
+            "GPVS E3 - desempenho macro do detector canônico",
             pasta=PASTA_GPVS, grupo="GPVS-Faults (E3 de bancada)",
             ordem=10, tipo="comparacao", ordem_grupo=50,
         )
         _add_img(
             imagens, "gpvs_transferencia_estrita.png",
-            "GPVS E3 - diagnóstico da transferência direta do limiar",
+            "GPVS E3 - estabilidade pré-falha e sensibilidade pós-falha",
             pasta=PASTA_GPVS, grupo="GPVS-Faults (E3 de bancada)",
             ordem=20, tipo="comparacao", ordem_grupo=50,
         )
@@ -509,6 +510,7 @@ def _resumo_autoencoder() -> str | None:
         f"| Média baseline | {_fmt(d.get('mu'), 4)} |\n"
         f"| Desvio baseline | {_fmt(d.get('sigma'), 4)} |\n"
         f"| Janelas de treino | {d.get('n_janelas_treino', '-')} |\n"
+        f"| Janelas de validação | {d.get('n_janelas_validacao', '-')} |\n"
         f"| Janelas de calibração | {d.get('n_janelas_calibracao', '-')} |\n"
         f"| Janelas de teste | {d.get('n_janelas_teste', '-')} |\n"
         f"| FP teste - escore operacional | {_fmt_excedencia(fp_score, d.get('fp_test_pct', d.get('fp_val_pct')))} |\n"
@@ -519,8 +521,8 @@ def _resumo_autoencoder() -> str | None:
         "Leitura rápida: o detector usa o escore operacional registrado em "
         "`limiar.json`; os gráficos principais de reconstrução permanecem na "
         "escala MSE e são acompanhados por `calibracao_autoencoder.md`. O p99 "
-        "é nominal e interpolado; a subamostra sem compartilhamento evita "
-        "pseudorrepetição direta, mas não prova independência temporal."
+        "é nominal e interpolado. As janelas GPVS são contíguas e não "
+        "sobrepostas, mas isso não prova independência temporal."
     )
 
 
@@ -639,8 +641,8 @@ def _resumo_validacao() -> str | None:
         )
     leitura.append(
         " As linhas mostram todas as severidades, sem escolher apenas a melhor "
-        "AUC. O holdout usa blocos intercalados por regime, com purga; a avaliação "
-        "retém janelas sem compartilhamento direto de amostras, sem presumir "
+        "AUC. O holdout usa os blocos finais de F0L/F0M, com purga; a avaliação "
+        "retém janelas não sobrepostas, sem presumir "
         "independência temporal. A falha continua sintética: não é desempenho "
         "industrial."
     )
@@ -921,7 +923,6 @@ def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> d
     if not focos:
         focos = {
             "autoencoder", "injecao", "validacao", "weibull", "gpvs",
-            "experimentos",
         }
 
     secoes = []

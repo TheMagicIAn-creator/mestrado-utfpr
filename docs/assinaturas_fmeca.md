@@ -87,5 +87,5 @@ ordem de criticidade do NPR da FMECA (Contator AC 315 > IGBT 90 > Fusível AC
 4. A hipótese de compensação B/C do Fusível AC depende do controle.
 5. O índice D (detecção em campo) da FMECA não equivale à detectabilidade
    empírica do Autoencoder — relação a discutir na dissertação.
-6. O dataset base (Paderborn) é de um inversor de bancada saudável;
-   generalização para inversores on-grid de campo não é testada.
+6. O dataset base (GPVS-Faults) é uma microrede PV experimental; a validação
+   E3 continua sendo de bancada e não testa generalização on-grid de campo.

@@ -5,8 +5,8 @@ no lado CA do inversor fotovoltaico.
 
 Fundamentação:
   O Autoencoder aprende a reconstruir o comportamento SAUDÁVEL do inversor
-  a partir do conjunto experimental Stender (Paderborn University), obtido em
-  bancada de acionamento de motor e sem rótulos de falha. Em operação real, sinais anômalos
+  a partir dos ensaios saudáveis F0L/F0M do conjunto experimental GPVS-Faults,
+  obtido em microrede fotovoltaica conectada à rede. Em operação, sinais anômalos
   (falhas) produzem erro de reconstrução alto — acima do limiar operacional
   (percentil 99 do erro saudável). μ + 3σ é mantido apenas como referência
   teórica comparativa, não como limiar operacional.
@@ -17,14 +17,14 @@ Fundamentação:
 
 Arquitetura:
   Entrada : n_features normalizadas (RobustScaler)
-  Encoder : n_features → 16 → 8   (ReLU + Dropout 0.2; gargalo SEM ativação)
-  Latente : 8 dimensões
-  Decoder : 8 → 16 → n_features  (ReLU + saída Linear)
+  Encoder : n_features → 16 → latente (ReLU + Dropout 0.2; gargalo SEM ativação)
+  Latente : 8 dimensões por padrão
+  Decoder : latente → 16 → n_features (ReLU + saída Linear)
   Loss    : MSE — erro de reconstrução por janela
   Limiar  : percentil 99 do erro saudável no bloco de calibração (operacional);
             μ + 3σ é referência comparativa, não o limiar em uso
 
-Entrada : dados/processados/features_paderborn.parquet
+Entrada : dados/processados/features_gpvs.parquet
 Saída   : resultados/autoencoder/
             modelo_autoencoder.pt   ← pesos do modelo
             scaler.pkl              ← RobustScaler ajustado
@@ -103,7 +103,7 @@ def _exigir_torch() -> None:
 
 # ── Caminhos ─────────────────────────────────────────────────
 RAIZ           = Path(__file__).parent.parent.parent
-ARQUIVO_FEAT   = RAIZ / "dados" / "processados" / "features_paderborn.parquet"
+ARQUIVO_FEAT   = RAIZ / "dados" / "processados" / "features_gpvs.parquet"
 PASTA_SAIDA    = RAIZ / "resultados" / "autoencoder"
 
 # ── Hiperparâmetros padrão ────────────────────────────────────
@@ -122,15 +122,14 @@ DROPOUT        = 0.2    # regularização
 # Para varrer o split num experimento, edite aqui e registre a rodada; não há
 # atalho por variável de ambiente, e isso é deliberado.
 #
-# RESSALVA: o total é de cerca de 228 janelas com o janelamento atual. Aumentar a
-# calibração não cria dados — rouba do treino (piora o modelo) ou do teste
-# (piora a confiança na medida de FP).
-# Os ratios vivem em src/ml/split_temporal.py (fonte única do split); aqui
-# ficam como ESPELHO, porque o manifesto de proveniência os lê deste módulo por
-# AST. Um teste garante que os dois lados não divirjam.
-TRAIN_RATIO    = 0.50   # treino do modelo
-CALIB_RATIO    = 0.20   # early stopping + calibracao do limiar
-TEST_RATIO     = 0.30   # avaliacao saudavel final, nunca usada no ajuste
+# F0L e F0M são divididos separadamente. Cada papel é disjunto e a purga fica
+# em src/ml/gpvs.py; estes literais são registrados no manifesto por AST.
+TRAIN_RATIO      = 0.50  # ajuste do scaler e dos pesos
+VALIDATION_RATIO = 0.15  # early stopping
+CALIBRATION_RATIO = 0.15 # escolha do limiar
+TEST_RATIO       = 0.20  # falso positivo saudável final
+# Alias histórico para leitores antigos; já representa só a calibração.
+CALIB_RATIO      = CALIBRATION_RATIO
 PACIENCIA      = 20     # early stopping: épocas sem melhora
 SIGMA          = 3.0    # fator k da REFERÊNCIA μ+kσ (comparativa); o limiar
                         # operacional é o percentil 99, não μ+kσ
@@ -138,7 +137,7 @@ THRESHOLD_METHOD = "p99"
 SEED           = 42
 
 # Colunas de metadado (não entram no modelo)
-META_COLS = ["janela_idx", "amostra_inicio", "tempo_s"]
+from src.ml.gpvs_principal import META_COLS
 
 
 # ============================================================
@@ -160,12 +159,8 @@ class Autoencoder(nn.Module):
         _exigir_torch()
         super().__init__()
 
-        # Arquitetura n→16→latente→16→n. Era n→64→32→latente→32→64→n, com
-        # 19.389 parâmetros para 274 janelas de treino — 70,8 parâmetros POR
-        # AMOSTRA. Com a janela de 2048 e o split atual, o treino tem 104
-        # janelas. A rede atual tem 3.860 parâmetros para 108 features
-        # (razão 37,1 por janela), e o corte veio de onde o peso estava: as camadas de
-        # borda (n×64 e 64×n somavam 14.125 dos 19.389).
+        # Arquitetura compacta n→16→latente→16→n, adequada ao contrato de 24
+        # features e aos dois ensaios saudáveis do GPVS.
         #
         # A saída do gargalo NÃO tem ReLU. Com ReLU o latente é não negativo por
         # construção, e unidades podem morrer em zero permanente — o problema
@@ -382,7 +377,7 @@ def executar_autoencoder(
     _exigir_torch()
 
     _log("=" * 60)
-    _log("  AL IADO PV — AUTOENCODER (Stender/Paderborn University)")
+    _log("  AL IADO PV — AUTOENCODER PRINCIPAL (GPVS-Faults F0)")
     _log("=" * 60)
 
     torch.manual_seed(seed)
@@ -398,49 +393,53 @@ def executar_autoencoder(
     _log(f"\n📂 Carregando features...")
     if not arquivo_feat.exists():
         _log(f"   ❌ Não encontrado: {arquivo_feat}")
-        _log("   Execute primeiro: python src/ml/features_ca.py")
+        _log("   Execute primeiro a etapa features_gpvs do pipeline")
         return False
 
     df = pd.read_parquet(arquivo_feat)
-    tempos = df["tempo_s"].values if "tempo_s" in df.columns else None
+    tempos = df["tempo_centro_s"].values if "tempo_centro_s" in df.columns else None
 
     colunas_feat = [c for c in df.columns if c not in META_COLS]
-    X = df[colunas_feat].values.astype(np.float32)
-    n_janelas, n_features = X.shape
+    X_bruto = df[colunas_feat].values.astype(np.float32)
+    n_janelas, n_features = X_bruto.shape
     _log(f"   ✅ {n_janelas} janelas × {n_features} features")
 
     # ── 2. Normalização com RobustScaler ─────────────────────
     # RobustScaler usa mediana e IQR — resistente a outliers
     # (THD alto em transientes não distorce a escala geral)
     _log(f"\n⚖️  Normalizando com RobustScaler...")
-    # Divisão temporal canônica: treino -> calibração -> teste, com purga.
-    # O teste final nunca participa do scaler, early stopping ou limiar.
-    # Fonte ÚNICA do split. Antes este módulo chamava split_temporal_com_purga
-    # com os próprios ratios, enquanto dados_avaliacao chamava
-    # split_padrao_paderborn: os dois só concordavam porque os números
-    # coincidiam. Divergir aqui faria o bloco de teste do treino ser outro que o
-    # da validação — vazamento silencioso, do pior tipo.
-    from src.ml.split_temporal import nome_protocolo_split, split_padrao_paderborn
+    # F0L e F0M são divididos separadamente em quatro papéis temporais. Assim,
+    # early stopping, escolha do limiar e estimativa final de FP não reutilizam
+    # as mesmas janelas.
+    from src.ml.gpvs_principal import (
+        ajustar_normalizacao_f0,
+        split_features_gpvs,
+    )
 
-    split = split_padrao_paderborn(len(X))
+    split = split_features_gpvs(df)
+    X, normalizacao_baseline = ajustar_normalizacao_f0(df, split)
     idx_tr = split["treino"]
-    idx_calib = split["val"]
+    idx_val = split["validacao"]
+    idx_calib = split["calibracao"]
     idx_teste = split["teste"]
     X_treino_raw = X[idx_tr]
+    X_val_raw = X[idx_val]
     X_calib_raw = X[idx_calib]
     X_teste_raw = X[idx_teste]
     scaler = RobustScaler()
     X_treino = scaler.fit_transform(X_treino_raw).astype(np.float32)
+    X_val = scaler.transform(X_val_raw).astype(np.float32)
     X_calib = scaler.transform(X_calib_raw).astype(np.float32)
     X_teste = scaler.transform(X_teste_raw).astype(np.float32)
     X_all    = scaler.transform(X).astype(np.float32)
     _log(f"   Treino : {len(X_treino)} janelas")
-    _log(f"   Calib. : {len(X_calib)} janelas")
+    _log(f"   Val.   : {len(X_val)} janelas (early stopping)")
+    _log(f"   Calib. : {len(X_calib)} janelas (limiar)")
     _log(f"   Teste  : {len(X_teste)} janelas (isolado)")
 
     # ── 3. DataLoaders ───────────────────────────────────────
     ds_treino = TensorDataset(torch.from_numpy(X_treino))
-    ds_val    = TensorDataset(torch.from_numpy(X_calib))
+    ds_val    = TensorDataset(torch.from_numpy(X_val))
     loader_treino = DataLoader(ds_treino, batch_size=batch_size, shuffle=True)
     loader_val    = DataLoader(ds_val,    batch_size=batch_size, shuffle=False)
 
@@ -468,6 +467,7 @@ def executar_autoencoder(
     # ── 6. Erros de reconstrução (MSE) e resíduos por feature ─
     _log(f"\n📐 Calculando erros de reconstrução...")
     erros_treino = calcular_erros(modelo, torch.from_numpy(X_treino), device)
+    erros_val = calcular_erros(modelo, torch.from_numpy(X_val), device)
     erros_calib = calcular_erros(modelo, torch.from_numpy(X_calib), device)
     erros_teste = calcular_erros(modelo, torch.from_numpy(X_teste), device)
     erros_all    = calcular_erros(modelo, torch.from_numpy(X_all),    device)
@@ -479,9 +479,11 @@ def executar_autoencoder(
     # produziu FP=2,38% na calibração e 15% no teste. Com a régua no treino, o
     # mesmo modelo e split deram 1,67% no teste antes da nova execução completa.
     R_treino = ea.residuo_por_feature(modelo, X_treino, device)
+    R_val = ea.residuo_por_feature(modelo, X_val, device)
     R_calib = ea.residuo_por_feature(modelo, X_calib, device)
     estat_residuo = ea.ajustar_estatistica_residuo(R_treino)
     sc_loc_treino = ea.escore_localizado(R_treino, estat_residuo)
+    sc_loc_val = ea.escore_localizado(R_val, estat_residuo)
     sc_loc_calib = ea.escore_localizado(R_calib, estat_residuo)
     auto_percentil_elegivel = bool(
         ea.AUTO_PERCENTIL and ea.pode_autocalibrar_percentil(len(R_calib))
@@ -563,6 +565,13 @@ def executar_autoencoder(
     _log(f"\n💾 Salvando artefatos...")
     pasta_saida.mkdir(parents=True, exist_ok=True)
 
+    from src.ml.gpvs_principal import salvar_normalizacao_baseline
+
+    arq_normalizacao = salvar_normalizacao_baseline(
+        normalizacao_baseline, pasta_saida
+    )
+    _log(f"   ✅ {arq_normalizacao.name}")
+
     # Modelo PyTorch
     arq_modelo = pasta_saida / "modelo_autoencoder.pt"
     torch.save({
@@ -593,6 +602,7 @@ def executar_autoencoder(
     metadados  = {
         **info_limiar,
         "n_janelas_treino"  : len(X_treino),
+        "n_janelas_validacao": len(X_val),
         "n_janelas_calibracao": len(X_calib),
         "n_janelas_teste"   : len(X_teste),
         "n_features"        : n_features,
@@ -612,21 +622,52 @@ def executar_autoencoder(
             "teste": fp_score_teste,
         },
         "threshold_calibration_resolution_pct": float(100.0 / len(X_calib)),
-        "window_overlap_fraction": 0.5,
-        "window_step_for_no_shared_samples": 2,
+        "window_overlap_fraction": 0.0,
+        "window_step_for_no_shared_samples": 1,
+        "baseline_normalization": {
+            "method": "mediana_e_iqr_por_ensaio",
+            "source_f0": "bloco_treino_de_cada_ensaio",
+            "commissioning_fraction_pre_fault": normalizacao_baseline[
+                "baseline_fraction"
+            ],
+            "minimum_windows": normalizacao_baseline["baseline_min_windows"],
+            "iqr_floor_fraction_of_global_f0_train": normalizacao_baseline[
+                "iqr_floor_fraction"
+            ],
+            "artifact": arq_normalizacao.name,
+            "note": (
+                "Pesos e limiar permanecem globais; em novos ensaios, somente "
+                "o baseline inicial saudável define mediana e IQR locais."
+            ),
+        },
+        "dataset": {
+            "name": "GPVS-Faults",
+            "doi": "10.17632/n76t439f65.1",
+            "healthy_experiments": ["F0L", "F0M"],
+            "fault_experiments_reserved": "F1L-F7M",
+        },
         "split_temporal"    : {
-            "protocolo": nome_protocolo_split(split),
+            "protocolo": "GPVS_F0L_F0M_50_15_15_20_com_purga",
             "estrategia": split["estrategia"],
             "n_blocos": split["n_blocos"],
-            "destinos_dos_blocos": split["destinos"],
             "limites": split["limites"],
             "purge_janelas": split["purge_janelas"],
-            "indices_teste": idx_teste.tolist(),
+            "distancia_sem_compartilhamento": 1,
+            "papeis_por_ensaio": {
+                ensaio: {
+                    papel: {
+                        "inicio": int(indices[0]),
+                        "fim_exclusivo": int(indices[-1]) + 1,
+                        "n": len(indices),
+                    }
+                    for papel, indices in papeis.items()
+                }
+                for ensaio, papeis in split["por_ensaio"].items()
+            },
             "nota": (
-                "Blocos intercalados desde 09/08/2026: os três conjuntos "
-                "atravessam a faixa de rotação inteira. O teste NÃO é 'o "
-                "futuro' — é generalização entre regimes. Ver "
-                "src/ml/split_temporal.py."
+                "F0L e F0M são separados temporalmente em treino, validação, "
+                "calibração e teste. F1-F7 não participam do scaler, do "
+                "treinamento nem do limiar."
             ),
         },
         "data_treino"       : agora_local().isoformat(),
@@ -640,16 +681,24 @@ def executar_autoencoder(
     np.savez_compressed(
         arq_diag,
         historico_treino=np.asarray(hist_t, dtype=np.float32),
+        historico_validacao=np.asarray(hist_v, dtype=np.float32),
+        # Alias mantido para leitores de artefatos anteriores ao split em 4 papéis.
         historico_calibracao=np.asarray(hist_v, dtype=np.float32),
         erros_treino=erros_treino.astype(np.float32),
+        erros_validacao=erros_val.astype(np.float32),
         erros_calibracao=erros_calib.astype(np.float32),
         erros_teste=erros_teste.astype(np.float32),
         erros_todos=erros_all.astype(np.float32),
         scores_operacionais_treino=sc_op_treino.astype(np.float32),
+        scores_operacionais_validacao=(
+            sc_loc_val if metodo == "localizado" else erros_val
+        ).astype(np.float32),
         scores_operacionais_calibracao=sc_op_calib.astype(np.float32),
         scores_operacionais_teste=sc_op_teste.astype(np.float32),
         scores_operacionais_todos=sc_op_all.astype(np.float32),
         tempos=np.asarray(tempos if tempos is not None else [], dtype=np.float32),
+        ensaios=df["ensaio"].astype(str).to_numpy()
+        if "ensaio" in df.columns else np.asarray([], dtype=str),
         indices_teste=idx_teste.astype(np.int32),
         epoca_melhor=np.asarray([ep_melhor], dtype=np.int32),
     )
@@ -669,11 +718,15 @@ def executar_autoencoder(
     )
     if tempos is not None:
         plotar_erro_temporal(
-            erros_all, tempos, info_mse, pasta_saida, indices_teste=idx_teste
+            erros_all, tempos, info_mse, pasta_saida, indices_teste=idx_teste,
+            grupos=df["ensaio"].astype(str).to_numpy()
+            if "ensaio" in df.columns else None,
         )
     salvar_resumo_calibracao(
         erros_treino, erros_calib, erros_teste, metadados, pasta_saida,
+        erros_validacao=erros_val,
         scores_treino=sc_op_treino,
+        scores_validacao=(sc_loc_val if metodo == "localizado" else erros_val),
         scores_calibracao=sc_op_calib,
         scores_teste=sc_op_teste,
     )

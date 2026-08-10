@@ -37,15 +37,15 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "rodar_features_ca",
         "description": (
-            "Extrai features eletricas CA do conjunto experimental Stender "
-            "(Paderborn University). Use quando o usuario pedir para extrair "
-            "features ou preparar dados."
+            "Extrai as 24 features eletricas do GPVS-Faults experimental. "
+            "O nome da ferramenta e mantido por compatibilidade. Use quando o "
+            "usuario pedir para extrair features ou preparar dados."
         ),
     },
     {
         "name": "rodar_autoencoder",
         "description": (
-            "Treina o Autoencoder de normalidade. Depende das features CA. Use "
+            "Treina o Autoencoder de normalidade em F0L/F0M do GPVS-Faults. Use "
             "quando o usuario pedir treinamento do detector de anomalias."
         ),
     },
@@ -59,15 +59,16 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "rodar_validacao",
         "description": (
-            "Calcula metricas formais: AUC-ROC, F1, Recall, Precision. Use "
-            "quando o usuario pedir validacao ou avaliacao do detector."
+            "Calcula a validacao E2 orientada pela FMECA e a validacao E3 nos "
+            "14 ensaios reais F1L-F7M. Use ao avaliar o detector."
         ),
     },
     {
         "name": "rodar_weibull",
         "description": (
-            "Executa analise de Weibull e RUL. Use quando o usuario pedir "
-            "confiabilidade, MTTF, B10, RUL ou vida util remanescente."
+            "Executa Weibull exploratoria da magnitude de detectabilidade E2. "
+            "Nao estima RUL, MTTF ou vida fisica. Use em pedidos de Weibull ou "
+            "detectabilidade."
         ),
     },
     {
@@ -81,7 +82,7 @@ ESPEC_FERRAMENTAS = [
         "name": "consultar_resultados",
         "description": (
             "Mostra resultados ja existentes do pipeline: limiar, SMD, AUC, "
-            "F1, Weibull, RUL e graficos quando solicitados."
+            "sensibilidade, especificidade e Weibull de detectabilidade."
         ),
     },
     {
@@ -155,10 +156,9 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "consultar_datasets",
         "description": (
-            "Explica os datasets do projeto e os candidatos auditados: Stender, "
-            "PV Farms, GPVS-Faults, PV residencial e PMSM. Distingue origem "
-            "experimental, simulada e operacional, dominio CA/CC e aptidao para "
-            "Weibull — lendo as contagens locais dinamicamente."
+            "Explica o GPVS-Faults, unico dataset do pipeline principal, e "
+            "separa candidatos e experimentos legados. Distingue E2, E3 de "
+            "bancada e os requisitos ausentes para Weibull fisico."
         ),
     },
     {
@@ -197,7 +197,7 @@ ESPEC_FERRAMENTAS = [
 
 
 _STAGE_BY_TOOL = {
-    "rodar_features_ca": "features_ca",
+    "rodar_features_ca": "features_gpvs",
     "rodar_autoencoder": "autoencoder",
     "rodar_injecao_falhas": "injecao_falhas",
     "rodar_validacao": "validacao",
@@ -243,7 +243,7 @@ def consultar_status_pipeline(progresso=None, pergunta: str = "") -> dict:
         publicados = estado_resultados_publicados()
         linhas = [
             "## Pipeline de ML — modo de consulta\n",
-            "O site não contém o dataset bruto Stender, portanto não "
+            "O site não contém os CSVs brutos do GPVS-Faults, portanto não "
             "executa treinamento na nuvem. Ele consulta a última execução "
             "local publicada no repositório.\n",
         ]
@@ -300,13 +300,13 @@ def _etapa_por_pergunta(pergunta: str) -> str | None:
         "from scratch", "todo", "todos", "desde cero", "tout", "tous",
         "depuis zero", "depuis zéro",
     )):
-        return "features_ca"
+        return "features_gpvs"
     if any(t in txt for t in (
         "feature", "features", "sinais", "dados processados",
         "signals", "processed data", "senales", "señales", "datos procesados",
         "signaux", "donnees traitees", "données traitées",
     )):
-        return "features_ca"
+        return "features_gpvs"
     if any(t in txt for t in ("autoencoder", "detector", "limiar", "threshold", "umbral", "seuil")):
         return "autoencoder"
     if any(t in txt for t in ("injec", "falha", "failure", "fault", "falla", "defaillance", "smd")):
@@ -383,10 +383,10 @@ def limpar_resultados_ml(progresso=None, pergunta: str = "") -> dict:
 
 
 def _resultado_pos_execucao(stage_key: str, pergunta: str) -> dict:
-    if stage_key == "features_ca":
+    if stage_key == "features_gpvs":
         return {
             "mensagem": (
-                "Features CA extraidas e prontas para o Autoencoder. "
+                "Features GPVS extraidas e prontas para o Autoencoder. "
                 "A proxima etapa metodologica e treinar o modelo de normalidade."
             ),
             "imagens": [],
@@ -408,7 +408,7 @@ def _rodar_stage(stage_key: str, progresso=None, pergunta: str = "") -> dict:
             "etapa": NOMES_ETAPAS[stage_key],
             "mensagem": (
                 "## Cálculo indisponível neste ambiente\n\n"
-                "O dataset bruto Stender não é publicado no Streamlit "
+                "Os 16 CSVs brutos do GPVS-Faults não são publicados no Streamlit "
                 "Cloud. Por isso, o site não pode retreinar esta etapa. Abaixo "
                 "está a última execução local publicada.\n\n"
                 + resumo["mensagem"]
@@ -441,7 +441,7 @@ def _rodar_stage(stage_key: str, progresso=None, pergunta: str = "") -> dict:
 
 
 def rodar_features_ca(progresso=None, pergunta: str = "") -> dict:
-    return _rodar_stage("features_ca", progresso, pergunta)
+    return _rodar_stage("features_gpvs", progresso, pergunta)
 
 
 def rodar_autoencoder(progresso=None, pergunta: str = "") -> dict:
@@ -469,7 +469,7 @@ def rodar_pipeline_completo(progresso=None, pergunta: str = "") -> dict:
             "mensagem": (
                 "## Cálculo indisponível neste ambiente\n\n"
                 "O pipeline pesado só pode ser recalculado no PC que contém "
-                "`dados/brutos/Inverter_Data_Set.csv`. O site está em modo de "
+                "os 16 CSVs em `dados/brutos/gpvs/csv/CSV_Files/`. O site está em modo de "
                 "consulta e preserva a última execução local publicada.\n\n"
                 + status["mensagem"]
                 + "\n\nConsulte uma parte por vez, por exemplo: `mostre os "
@@ -481,7 +481,7 @@ def rodar_pipeline_completo(progresso=None, pergunta: str = "") -> dict:
         }
 
     force = _deve_forcar(pergunta)
-    resultados = executar_pipeline_ml("features_ca", force=force, progresso=progresso)
+    resultados = executar_pipeline_ml("features_gpvs", force=force, progresso=progresso)
     ok = all(not r.startswith("ERRO") for r in resultados)
     resumo = resumir_resultados(pergunta)
     mensagem = "## Execucao do pipeline\n\n" + "\n".join(f"- {r}" for r in resultados)

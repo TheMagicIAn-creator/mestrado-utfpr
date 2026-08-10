@@ -126,14 +126,18 @@ def _posicoes_sem_compartilhamento(
     chave: str,
     n_valores: int,
     *,
-    distancia_minima: int = 2,
+    distancia_minima: int | None = None,
 ) -> np.ndarray:
-    """Seleciona janelas que não compartilham amostras no protocolo de 50%.
+    """Seleciona janelas sem amostras compartilhadas conforme o protocolo.
 
-    Distância dois corresponde a reter uma janela a cada duas no conjunto de
-    features vigente. Isso remove o compartilhamento direto de amostras, mas
-    não autoriza chamar as observações de estatisticamente independentes.
+    A distância vem do metadado do split. Distância dois corresponde ao
+    protocolo histórico com 50% de sobreposição; distância um preserva todas
+    as janelas contíguas e não sobrepostas do GPVS.
     """
+    if distancia_minima is None:
+        distancia_minima = int(
+            (split or {}).get("distancia_sem_compartilhamento", 2)
+        )
     if distancia_minima < 1:
         raise ValueError("distancia_minima deve ser positiva")
     globais = [
@@ -242,7 +246,9 @@ def salvar_resumo_calibracao(
     info_limiar: dict,
     pasta: Path,
     *,
+    erros_validacao: np.ndarray | None = None,
     scores_treino: np.ndarray | None = None,
+    scores_validacao: np.ndarray | None = None,
     scores_calibracao: np.ndarray | None = None,
     scores_teste: np.ndarray | None = None,
 ) -> tuple[Path, Path]:
@@ -263,15 +269,31 @@ def salvar_resumo_calibracao(
             "treino", "treino", erros_treino, scores_treino,
             limiar_mse, limiar_score, split,
         ),
+    ]
+    if erros_validacao is not None:
+        linhas.append(
+            _linha_calibracao(
+                "validacao_early_stopping", "validacao",
+                erros_validacao, scores_validacao,
+                limiar_mse, limiar_score, split,
+            )
+        )
+    chave_calibracao = (
+        "calibracao"
+        if "calibracao" in ((split or {}).get("limites") or {})
+        else "val"
+    )
+    linhas.extend([
         _linha_calibracao(
-            "calibracao", "val", erros_calibracao, scores_calibracao,
+            "calibracao_limiar", chave_calibracao,
+            erros_calibracao, scores_calibracao,
             limiar_mse, limiar_score, split,
         ),
         _linha_calibracao(
             "teste_isolado", "teste", erros_teste, scores_teste,
             limiar_mse, limiar_score, split,
         ),
-    ]
+    ])
     df = pd.DataFrame(linhas)
     csv_path = pasta / "calibracao_autoencoder.csv"
     md_path = pasta / "calibracao_autoencoder.md"
@@ -286,8 +308,9 @@ def salvar_resumo_calibracao(
         "# Calibração acadêmica do Autoencoder",
         "",
         (
-            "> Split temporal com purga. O bloco de teste isolado não participa "
-            "do scaler, do early stopping nem da escolha de limiar."
+            "> Split temporal com purga em quatro papéis disjuntos. O bloco de "
+            "validação orienta somente o early stopping; o de calibração define "
+            "somente o limiar; o teste isolado estima o falso positivo final."
         ),
         "",
         f"- Escore operacional: `{ponto}`.",
@@ -347,9 +370,9 @@ def salvar_resumo_calibracao(
     texto.extend([
         "",
         (
-            "Observação metodológica: 'sem compartilhamento' retém uma janela "
-            "a cada duas dentro de cada bloco, coerente com 50% de sobreposição. "
-            "Isso remove amostras brutas compartilhadas, mas não garante "
+            "Observação metodológica: 'sem compartilhamento' usa a distância "
+            "registrada no protocolo. No GPVS, as janelas são contíguas e sem "
+            "sobreposição, portanto todas são retidas. Isso não garante "
             "independência estatística ou temporal. Os gráficos estão na escala "
             "MSE; a decisão operacional usa o escore registrado em `limiar.json`."
         ),
@@ -365,18 +388,18 @@ def plotar_curvas(hist_treino: list, hist_val: list,
     fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
     epocas = range(1, len(hist_treino) + 1)
     ax.plot(epocas, hist_treino, label="Treino", color=PALETA[0], alpha=0.5)
-    ax.plot(epocas, hist_val, label="Calibração", color=PALETA[1], alpha=0.55)
+    ax.plot(epocas, hist_val, label="Validação", color=PALETA[1], alpha=0.55)
     if len(hist_treino) >= 7:
         treino_suave = pd.Series(hist_treino).rolling(7, center=True, min_periods=1).median()
         val_suave = pd.Series(hist_val).rolling(7, center=True, min_periods=1).median()
         ax.plot(epocas, treino_suave, color=PALETA[0], label="Treino (mediana móvel)")
-        ax.plot(epocas, val_suave, color=PALETA[1], label="Calibração (mediana móvel)")
+        ax.plot(epocas, val_suave, color=PALETA[1], label="Validação (mediana móvel)")
     ax.axvline(epoca_melhor, color=COR_SUCESSO, linestyle="--",
                alpha=0.85, label=f"Melhor época ({epoca_melhor})")
     ax.set_xlabel("Época")
     ax.set_ylabel("MSE Loss")
     ax.set_title("Autoencoder — convergência do treinamento\n"
-                 "A calibração orienta o early stopping; o teste permanece isolado")
+                 "A validação orienta o early stopping; calibração e teste permanecem isolados")
     if hist_val:
         melhor_val = min(hist_val)
         final_val = hist_val[-1]
@@ -385,8 +408,8 @@ def plotar_curvas(hist_treino: list, hist_val: list,
             (
                 f"épocas: {len(hist_treino)}\n"
                 f"melhor época: {epoca_melhor}\n"
-                f"loss calib. mín.: {melhor_val:.4f}\n"
-                f"loss calib. final: {final_val:.4f}"
+                f"loss val. mín.: {melhor_val:.4f}\n"
+                f"loss val. final: {final_val:.4f}"
             ),
             transform=ax.transAxes,
             ha="right",
@@ -400,7 +423,7 @@ def plotar_curvas(hist_treino: list, hist_val: list,
     salvar_figura(
         fig,
         caminho,
-        "Loss de treino pode superar a calibração porque o dropout atua somente durante o treino.",
+        "Loss de treino pode superar a validação porque o dropout atua somente durante o treino.",
     )
     _log(f"   📊 {caminho.name}")
 
@@ -517,22 +540,44 @@ def plotar_distribuicao(erros_treino: np.ndarray,
     _log(f"   📊 {caminho.name}")
 
 
-def _sombrear_split_temporal(ax, tempos: np.ndarray, split: dict | None) -> None:
+def _sombrear_split_temporal(
+    ax,
+    tempos: np.ndarray,
+    split: dict | None,
+    indices_globais: np.ndarray | None = None,
+) -> None:
     if not split:
         return
+    limites = split.get("limites") or {}
     blocos = [
         ("treino", "Treino", PALETA[0]),
-        ("val", "Calibração", PALETA[1]),
+        ("validacao", "Validação", PALETA[1]),
+        ("calibracao", "Calibração", PALETA[3]),
         ("teste", "Teste isolado", PALETA[2]),
     ]
+    if "validacao" not in limites and "val" in limites:
+        blocos = [
+            ("treino", "Treino", PALETA[0]),
+            ("val", "Calibração", PALETA[1]),
+            ("teste", "Teste isolado", PALETA[2]),
+        ]
     n = len(tempos)
+    globais = (
+        np.arange(n, dtype=int)
+        if indices_globais is None
+        else np.asarray(indices_globais, dtype=int)
+    )
+    if len(globais) != n:
+        raise ValueError("indices_globais e tempos devem ter o mesmo tamanho")
     for chave, rotulo, cor in blocos:
         for numero, (ini, fim) in enumerate(_normalizar_intervalos(split, chave)):
-            if not (0 <= ini < fim <= n):
+            mascara = (globais >= ini) & (globais < fim)
+            if not mascara.any():
                 continue
+            x = np.asarray(tempos)[mascara]
             ax.axvspan(
-                float(tempos[ini]),
-                float(tempos[fim - 1]),
+                float(x[0]),
+                float(x[-1]),
                 color=cor,
                 alpha=0.075,
                 label=rotulo if numero == 0 else "_nolegend_",
@@ -543,30 +588,66 @@ def _sombrear_split_temporal(ax, tempos: np.ndarray, split: dict | None) -> None
 def plotar_erro_temporal(erros: np.ndarray,
                          tempos: np.ndarray,
                          info_limiar: dict, pasta: Path,
-                         indices_teste: np.ndarray | None = None):
+                         indices_teste: np.ndarray | None = None,
+                         grupos: np.ndarray | None = None):
     """Erro de reconstrução ao longo do tempo."""
-    fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
-    _sombrear_split_temporal(ax, tempos, info_limiar.get("split_temporal"))
-    ax.plot(tempos, erros, color=PALETA[0], alpha=0.8, linewidth=0.8)
-    ax.axhline(info_limiar["limiar"], color=COR_ALERTA, linestyle="--",
-               linewidth=1.5, label=f"Referência MSE p99 = {info_limiar['limiar']:.4f}")
-    alarmes = erros > info_limiar["limiar"]
-    ax.scatter(tempos[alarmes], erros[alarmes], color=COR_ALERTA, s=22,
-               zorder=3, label="Acima da referência MSE")
-    if (
-        not info_limiar.get("split_temporal")
-        and indices_teste is not None
-        and len(indices_teste)
-    ):
-        inicio_teste = float(tempos[int(indices_teste[0])])
-        ax.axvspan(inicio_teste, float(tempos[-1]), color=COR_NAO_DETECTADO, alpha=0.08,
-                   label="Bloco de teste isolado")
-    ax.set_xlabel("Tempo (s)")
-    ax.set_ylabel("Erro de Reconstrução (MSE)")
-    ax.set_yscale("log")
-    ax.set_title("Erro temporal de reconstrução em dados saudáveis\n"
-                 "Referência MSE p99 e split intercalado com purga")
-    ax.legend()
+    erros, tempos = np.asarray(erros), np.asarray(tempos)
+    grupos_arr = np.asarray(grupos) if grupos is not None else None
+    nomes = (
+        list(dict.fromkeys(grupos_arr.tolist()))
+        if grupos_arr is not None and len(grupos_arr) == len(erros)
+        else [None]
+    )
+    fig, eixos = plt.subplots(
+        len(nomes), 1,
+        figsize=(TAM["unico"][0], 4.2 * len(nomes)),
+        sharey=True,
+        squeeze=False,
+        layout="constrained",
+    )
+    for posicao, (ax, nome) in enumerate(zip(eixos[:, 0], nomes, strict=True)):
+        indices = (
+            np.flatnonzero(grupos_arr == nome)
+            if nome is not None else np.arange(len(erros))
+        )
+        x, y = tempos[indices], erros[indices]
+        _sombrear_split_temporal(
+            ax, x, info_limiar.get("split_temporal"), indices_globais=indices
+        )
+        ax.plot(x, y, color=PALETA[0], alpha=0.8, linewidth=0.8)
+        ax.axhline(
+            info_limiar["limiar"], color=COR_ALERTA, linestyle="--",
+            linewidth=1.5,
+            label=f"Referência MSE p99 = {info_limiar['limiar']:.4f}",
+        )
+        alarmes = y > info_limiar["limiar"]
+        ax.scatter(
+            x[alarmes], y[alarmes], color=COR_ALERTA, s=22,
+            zorder=3, label="Acima da referência MSE",
+        )
+        if (
+            not info_limiar.get("split_temporal")
+            and indices_teste is not None
+            and len(indices_teste)
+        ):
+            teste_local = np.intersect1d(indices, indices_teste)
+            if len(teste_local):
+                inicio_local = int(np.flatnonzero(indices == teste_local[0])[0])
+                ax.axvspan(
+                    float(x[inicio_local]), float(x[-1]),
+                    color=COR_NAO_DETECTADO, alpha=0.08,
+                    label="Bloco de teste isolado",
+                )
+        ax.set_ylabel("Erro de reconstrução (MSE)")
+        ax.set_yscale("log")
+        ax.set_title(str(nome) if nome is not None else "Série saudável")
+        if posicao == 0:
+            ax.legend(ncol=3, fontsize=8)
+    eixos[-1, 0].set_xlabel("Tempo do ensaio (s)")
+    fig.suptitle(
+        "Erro temporal de reconstrução por ensaio saudável\n"
+        "Quatro papéis temporais com purga e referência MSE p99"
+    )
     caminho = pasta / "erro_temporal.png"
     salvar_figura(
         fig,
@@ -628,12 +709,17 @@ def regenerar_graficos_autoencoder(pasta: Path = PASTA_SAIDA) -> bool:
             plotar_erro_temporal(
                 diag["erros_todos"], diag["tempos"], info_mse, pasta,
                 indices_teste=diag["indices_teste"],
+                grupos=diag["ensaios"] if "ensaios" in diag.files else None,
             )
         salvar_resumo_calibracao(
             diag["erros_treino"], diag["erros_calibracao"],
             diag["erros_teste"], info, pasta,
+            erros_validacao=diag["erros_validacao"]
+            if "erros_validacao" in diag.files else None,
             scores_treino=diag["scores_operacionais_treino"]
             if "scores_operacionais_treino" in diag.files else None,
+            scores_validacao=diag["scores_operacionais_validacao"]
+            if "scores_operacionais_validacao" in diag.files else None,
             scores_calibracao=diag["scores_operacionais_calibracao"]
             if "scores_operacionais_calibracao" in diag.files else None,
             scores_teste=diag["scores_operacionais_teste"]

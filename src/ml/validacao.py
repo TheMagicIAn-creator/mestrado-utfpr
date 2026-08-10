@@ -8,8 +8,7 @@ Fundamentação:
   falhas com métricas interpretáveis para a banca de defesa.
 
 Protocolo de validação:
-  1. Classe NEGATIVA (saudável): janelas do período estável de Paderborn
-     (t=10-20s, pós-transiente) — ground truth de operação normal
+  1. Classe NEGATIVA (saudável): janelas de teste dos ensaios GPVS F0L/F0M
   2. Classe POSITIVA (falha): janelas com falhas sintéticas injetadas
      nas 3 severidades mais representativas (0.30, 0.50, 1.00)
   3. Limiar variado de 0 a max_erro para construir a curva ROC
@@ -78,8 +77,14 @@ from sklearn.metrics import (
     f1_score, precision_score, recall_score, accuracy_score
 )
 
-from src.ml.features_ca     import extrair_janela, JANELA, FS
-from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas_holdout
+from src.ml.gpvs_principal import (
+    carregar_normalizacao_baseline,
+    extrair_janela,
+    JANELA,
+    FS,
+    normalizar_vetores_f0,
+    preparar_janelas_holdout,
+)
 from src.ml.estatistica import bootstrap_auc_ci, intervalo_wilson
 from src.ml.injecao_falhas   import (
     FUNCOES_FALHA, FALHAS,
@@ -92,7 +97,6 @@ if TYPE_CHECKING:
 
 # ── Caminhos ─────────────────────────────────────────────────
 RAIZ        = Path(__file__).parent.parent.parent
-ARQUIVO_CSV = RAIZ / "dados" / "brutos" / "Inverter_Data_Set.csv"
 PASTA_AE    = RAIZ / "resultados" / "autoencoder"
 
 # Severidades avaliadas na validação sintética interna E2
@@ -122,7 +126,8 @@ def coletar_erros(janelas_holdout: list[pd.DataFrame],
                   severidade: float,
                   n_janelas: int,
                   estat_residuo: dict | None = None,
-                  metodo: str = "mse") -> np.ndarray:
+                  metodo: str = "mse",
+                  normalizacao_baseline: dict | None = None) -> np.ndarray:
     """
     Coleta o ESCORE de anomalia em janelas não sobrepostas do holdout isolado.
 
@@ -146,6 +151,11 @@ def coletar_erros(janelas_holdout: list[pd.DataFrame],
         feats  = extrair_janela(janela)
         vetor  = np.array([feats.get(c, 0.0) for c in colunas_feat],
                           dtype=np.float32)
+        if normalizacao_baseline is not None:
+            vetor = normalizar_vetores_f0(
+                vetor.reshape(1, -1), [janela.attrs.get("ensaio")],
+                normalizacao_baseline,
+            )[0]
         vnorm  = scaler.transform(vetor.reshape(1, -1)).astype(np.float32)
         residuo = ea.residuo_de_vetor(modelo, vnorm, device)
         erros.append(float(ea.pontuar(residuo, estat_residuo, metodo)[0]))
@@ -504,6 +514,7 @@ def executar_validacao() -> bool:
 
     metodo_escore = info_limiar.get("metodo_escore", "mse")
     estat_residuo = ea.carregar_estatistica(PASTA_AE)
+    normalizacao_baseline = carregar_normalizacao_baseline(PASTA_AE)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     modelo = Autoencoder(n_features, latente_dim).to(device)
@@ -513,18 +524,17 @@ def executar_validacao() -> bool:
 
     # ── 2. Holdout temporal isolado ───────────────────────────
     _log(f"\n📂 Carregando dataset...")
-    df = carregar_paderborn_compacto(ARQUIVO_CSV)
     janelas_holdout, meta_holdout = preparar_janelas_holdout(
-        df, n_max=max(N_JANELAS_SAUDAVEL, N_JANELAS_FALHA)
+        n_max=max(N_JANELAS_SAUDAVEL, N_JANELAS_FALHA)
     )
-    del df
     _log(f"   ✅ {len(janelas_holdout)} janelas não sobrepostas do teste")
 
     # ── 3. Erros classe negativa (saudável) ──────────────────
     _log(f"\n⚕️  Coletando erros — classe SAUDÁVEL ({N_JANELAS_SAUDAVEL} janelas)...")
     erros_neg = coletar_erros(
         janelas_holdout, modelo, scaler, device, colunas_feat,
-        "saudavel", 0.0, N_JANELAS_SAUDAVEL, estat_residuo, metodo_escore
+        "saudavel", 0.0, N_JANELAS_SAUDAVEL, estat_residuo, metodo_escore,
+        normalizacao_baseline,
     )
     _log(f"   μ={erros_neg.mean():.4f} ± {erros_neg.std():.4f} | "
           f"FP={( erros_neg > limiar).mean()*100:.1f}%")
@@ -542,7 +552,8 @@ def executar_validacao() -> bool:
         for sev in SEVS_VALIDACAO:
             erros_pos = coletar_erros(
                 janelas_holdout, modelo, scaler, device, colunas_feat,
-                fid, sev, N_JANELAS_FALHA, estat_residuo, metodo_escore
+                fid, sev, N_JANELAS_FALHA, estat_residuo, metodo_escore,
+                normalizacao_baseline,
             )
 
             seed_boot = 42 + 100 * len(resultados) + int(sev * 100)
