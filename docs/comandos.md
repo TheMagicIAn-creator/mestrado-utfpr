@@ -31,7 +31,7 @@ python -m pytest -W ignore -q           # idem, sem warnings de limpeza de tmp
 **Caminho recomendado — pelo pipeline, que registra proveniência:**
 
 ```powershell
-python -m src.ml.exec_etapa_isolada features_ca
+python -m src.ml.exec_etapa_isolada features_gpvs
 python -m src.ml.exec_etapa_isolada autoencoder
 python -m src.ml.exec_etapa_isolada injecao_falhas
 python -m src.ml.exec_etapa_isolada validacao
@@ -42,11 +42,11 @@ python -m src.ml.exec_etapa_isolada rul_weibull
 manifesto defasado; depois de usar, recalcule pelo caminho acima:
 
 ```powershell
-python src/ml/features_ca.py        # extrai features CA (Paderborn)
+python src/ml/gpvs_principal.py     # extrai 24 features dos ensaios saudáveis F0
 python src/ml/autoencoder.py        # treina o AE; grava limiar.json (score operacional + referências)
 python src/ml/injecao_falhas.py     # injeta falhas FMECA (E2) + schema no report
-python src/ml/validacao.py          # validação interna E2: ROC + PR + matrizes, limiar congelado
-python src/ml/rul_weibull.py        # RUL / Weibull
+python src/ml/validacao_gpvs_principal.py  # validação E2 + E3, limiar congelado
+python src/ml/rul_weibull.py        # Weibull da magnitude de detectabilidade E2
 ```
 
 **Forçar recálculo total** (ignora o estado `ready` de todas as etapas): pelo

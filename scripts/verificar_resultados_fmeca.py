@@ -6,10 +6,9 @@ Uso:
 
 O verificador cruza os formatos publicados (JSON/CSV/PNG) e valida a
 metodologia vigente: holdout temporal com purga, limiar operacional congelado,
-SMD probabilística com Wilson, validação sintética E2 e Weibull com censura à
-direita. Ausência de ajuste por poucos eventos é um resultado válido, não uma
-falha do verificador; nesses casos, a RUL restrita por Kaplan-Meier deve
-permanecer disponível até o horizonte observado.
+SMD probabilística com Wilson, validação sintética E2, validação experimental
+E3 por ensaio e Weibull de detectabilidade com censura à direita. Desempenho
+baixo e ausência de ajuste paramétrico são resultados válidos quando coerentes.
 """
 
 from __future__ import annotations
@@ -25,6 +24,7 @@ if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
 PASTA_AE = RAIZ / "resultados" / "autoencoder"
+PASTA_GPVS = RAIZ / "resultados" / "gpvs"
 PASTA_EXP = RAIZ / "resultados" / "experimentos"
 PASTA_CMP = RAIZ / "resultados" / "comparacao"
 PASTA_MACRO = RAIZ / "resultados" / "macro"
@@ -51,6 +51,12 @@ PNGS_OBRIGATORIOS = (
     "weibull_ttf.png",
     "weibull_confiabilidade.png",
     "weibull_rul.png",
+)
+PNGS_GPVS = (
+    "gpvs_series_temporais.png",
+    "gpvs_metricas_por_cenario.png",
+    "gpvs_transferencia_estrita.png",
+    "gpvs_macro_comparacao.png",
 )
 
 
@@ -134,6 +140,30 @@ def _validar_split_temporal(split: dict) -> tuple[bool, str]:
 
     if purga < 1:
         return False, "purga ausente"
+
+    if estrategia == "temporal_por_ensaio_F0L_F0M":
+        papeis_por_ensaio = split.get("papeis_por_ensaio") or {}
+        if set(papeis_por_ensaio) != {"F0L", "F0M"}:
+            return False, "resumo por ensaio F0L/F0M ausente"
+        ordem = ("treino", "validacao", "calibracao", "teste")
+        for ensaio, papeis in papeis_por_ensaio.items():
+            anteriores = []
+            for papel in ordem:
+                item = papeis.get(papel) or {}
+                inicio, fim, n = (
+                    item.get("inicio"), item.get("fim_exclusivo"), item.get("n")
+                )
+                if not all(isinstance(v, int) for v in (inicio, fim, n)):
+                    return False, f"resumo não inteiro em {ensaio}/{papel}"
+                if inicio < 0 or inicio >= fim or n != fim - inicio:
+                    return False, f"resumo inválido em {ensaio}/{papel}"
+                if [inicio, fim] not in (limites.get(papel) or []):
+                    return False, f"resumo diverge dos limites em {ensaio}/{papel}"
+                anteriores.append((inicio, fim))
+            for anterior, atual in zip(anteriores, anteriores[1:]):
+                if atual[0] - anterior[1] < purga:
+                    return False, f"purga violada em {ensaio}"
+        return True, "ok"
 
     if estrategia == "blocos_intercalados":
         intervalos: list[tuple[int, int, str]] = []
@@ -251,7 +281,10 @@ def checar_limiar(aud: Auditoria) -> dict | None:
             _proximo(percentil_efetivo, percentil_fallback),
             "limiar: percentil efetivo do score mse difere do fallback",
         )
-    for campo in ("n_janelas_treino", "n_janelas_calibracao", "n_janelas_teste"):
+    for campo in (
+        "n_janelas_treino", "n_janelas_validacao",
+        "n_janelas_calibracao", "n_janelas_teste",
+    ):
         aud.exigir(int(dados.get(campo, 0)) > 0, f"limiar: {campo} deve ser positivo")
 
     split = dados.get("split_temporal") or {}
@@ -274,10 +307,13 @@ def checar_limiar(aud: Auditoria) -> dict | None:
             )
 
     linhas_cal = aud.csv(PASTA_AE / "calibracao_autoencoder.csv")
-    aud.exigir(len(linhas_cal) == 3, "calibracao_autoencoder.csv: deve ter treino/calibracao/teste")
+    aud.exigir(len(linhas_cal) == 4, "calibracao_autoencoder.csv: deve ter quatro papéis")
     blocos_cal = {linha.get("bloco") for linha in linhas_cal}
     aud.exigir(
-        blocos_cal == {"treino", "calibracao", "teste_isolado"},
+        blocos_cal == {
+            "treino", "validacao_early_stopping",
+            "calibracao_limiar", "teste_isolado",
+        },
         f"calibracao_autoencoder.csv: blocos {sorted(blocos_cal)}",
     )
     aud.exigir(
@@ -605,6 +641,131 @@ def checar_weibull(aud: Auditoria) -> dict | None:
     return dados
 
 
+def checar_gpvs_e3(aud: Auditoria) -> dict | None:
+    from src.ml.proveniencia import (
+        SUFIXOS_TEXTO_PORTAVEL,
+        sha256_arquivo,
+        sha256_arquivo_texto_normalizado,
+    )
+
+    dados = aud.json(PASTA_GPVS / "validacao_gpvs_e3.json")
+    if not dados:
+        return None
+    cenarios = aud.csv(PASTA_GPVS / "validacao_gpvs_cenarios.csv")
+    scores = aud.csv(PASTA_GPVS / "validacao_gpvs_scores.csv")
+    manifesto = aud.json(RAIZ / "resultados" / "manifestos" / "validacao_gpvs_e3.json")
+
+    esperados = {f"F{i}{modo}" for i in range(1, 8) for modo in "LM"}
+    aud.exigir(dados.get("schema_version") == 2, "GPVS E3: schema_version deve ser 2")
+    aud.exigir(dados.get("evidence_level") == "E3", "GPVS E3: evidence_level incorreto")
+    aud.exigir(len(cenarios) == 14, f"GPVS E3: {len(cenarios)}/14 cenários")
+    aud.exigir(
+        {linha.get("experiment") for linha in cenarios} == esperados,
+        "GPVS E3: conjunto de ensaios incompleto",
+    )
+
+    detector = dados.get("detector") or {}
+    aud.exigir(detector.get("canonical") is True, "GPVS E3: detector não canônico")
+    aud.exigir(
+        detector.get("model_retraining_per_experiment") is False,
+        "GPVS E3: retreino por ensaio deve ser falso",
+    )
+    aud.exigir(
+        detector.get("threshold_recalibration_per_experiment") is False,
+        "GPVS E3: recalibração do limiar deve ser falsa",
+    )
+    aud.exigir(
+        detector.get("commissioning_normalization_per_experiment") is True,
+        "GPVS E3: baseline de comissionamento deve estar declarado",
+    )
+    hashes_detector = {
+        "model_sha256": (PASTA_AE / "modelo_autoencoder.pt", sha256_arquivo),
+        "scaler_sha256": (PASTA_AE / "scaler.pkl", sha256_arquivo),
+        "threshold_sha256": (
+            PASTA_AE / "limiar.json", sha256_arquivo_texto_normalizado,
+        ),
+        "baseline_normalization_sha256": (
+            PASTA_AE / "normalizacao_baseline_gpvs.npz", sha256_arquivo,
+        ),
+    }
+    for campo, (caminho, funcao_hash) in hashes_detector.items():
+        if not caminho.is_file():
+            aud.aviso(
+                f"GPVS E3: {caminho.name} é local/ignorado; hash não "
+                "verificado neste ambiente de consulta"
+            )
+            continue
+        aud.exigir(
+            detector.get(campo) == funcao_hash(caminho),
+            f"GPVS E3: hash divergente em {campo}",
+        )
+
+    por_ensaio = {linha["experiment"]: linha for linha in cenarios}
+    for nome in esperados:
+        linha = por_ensaio.get(nome) or {}
+        for metrica in ("auc", "sensitivity", "specificity", "balanced_accuracy"):
+            aud.exigir(
+                0 <= _numero(linha.get(metrica)) <= 1,
+                f"GPVS E3[{nome}]: {metrica} fora de [0,1]",
+            )
+        aud.exigir(
+            int(_numero(linha.get("n_baseline"), 0)) >= 30,
+            f"GPVS E3[{nome}]: baseline de comissionamento insuficiente",
+        )
+        aud.exigir(
+            int(_numero(linha.get("n_pre_fault"), 0)) > 0
+            and int(_numero(linha.get("n_post_fault"), 0)) > 0,
+            f"GPVS E3[{nome}]: avaliação pré/pós-falha vazia",
+        )
+
+    macros = ((dados.get("macro_summary") or {}).get("canonical_ae") or {}).get("all") or {}
+    for metrica in ("auc", "sensitivity", "specificity", "balanced_accuracy"):
+        publicado = macros.get(metrica) or {}
+        media_csv = sum(_numero(linha.get(metrica)) for linha in cenarios) / 14
+        aud.exigir(
+            _proximo(_numero(publicado.get("mean")), media_csv),
+            f"GPVS E3: média macro de {metrica} diverge do CSV",
+        )
+        aud.exigir(
+            int(publicado.get("n_experiments", 0)) == 14,
+            f"GPVS E3: unidade bootstrap de {metrica} não é 14 ensaios",
+        )
+
+    fases = {linha.get("phase") for linha in scores}
+    aud.exigir(
+        {"commissioning_baseline", "pre_fault", "post_fault"}.issubset(fases),
+        "GPVS E3: fases de comissionamento/avaliação ausentes no CSV de scores",
+    )
+
+    if manifesto:
+        aud.exigir(manifesto.get("manifest_version") == 2, "GPVS E3: manifesto não é v2")
+        aud.exigir(manifesto.get("evidence_level") == "E3", "GPVS E3: manifesto sem E3")
+        aud.exigir(len(manifesto.get("input_artifacts") or {}) == 20, "GPVS E3: manifesto deve ter 20 entradas")
+        aud.exigir(len(manifesto.get("output_artifacts") or {}) == 9, "GPVS E3: manifesto deve ter 9 saídas")
+        for relativo, esperado_hash in (manifesto.get("output_artifacts") or {}).items():
+            caminho = RAIZ / relativo
+            aud.exigir(caminho.is_file(), f"GPVS E3: saída ausente {relativo}")
+            if caminho.is_file():
+                funcao = (
+                    sha256_arquivo_texto_normalizado
+                    if caminho.suffix.lower() in SUFIXOS_TEXTO_PORTAVEL
+                    else sha256_arquivo
+                )
+                aud.exigir(
+                    funcao(caminho) == esperado_hash,
+                    f"GPVS E3: hash de saída divergente em {relativo}",
+                )
+
+    auc = _numero((macros.get("auc") or {}).get("mean"))
+    sens = _numero((macros.get("sensitivity") or {}).get("mean"))
+    esp = _numero((macros.get("specificity") or {}).get("mean"))
+    print(
+        f"• GPVS E3: 14 ensaios e manifesto cruzados | "
+        f"AUC={auc:.3f}, sensibilidade={sens:.3f}, especificidade={esp:.3f}"
+    )
+    return dados
+
+
 def checar_imagens(aud: Auditoria) -> None:
     try:
         from PIL import Image
@@ -612,8 +773,10 @@ def checar_imagens(aud: Auditoria) -> None:
         aud.aviso("Pillow indisponível; integridade visual dos PNGs não foi testada")
         return
 
-    for nome in PNGS_OBRIGATORIOS:
-        caminho = PASTA_AE / nome
+    imagens = [*(PASTA_AE / nome for nome in PNGS_OBRIGATORIOS),
+               *(PASTA_GPVS / nome for nome in PNGS_GPVS)]
+    for caminho in imagens:
+        nome = caminho.name
         if not caminho.is_file():
             aud.erro(f"imagem ausente: {nome}")
             continue
@@ -626,7 +789,7 @@ def checar_imagens(aud: Auditoria) -> None:
             aud.exigir(caminho.stat().st_size >= 20_000, f"{nome}: arquivo suspeito ({caminho.stat().st_size} bytes)")
         except (OSError, ValueError) as exc:
             aud.erro(f"{nome}: PNG inválido ({exc})")
-    print(f"• gráficos: {len(PNGS_OBRIGATORIOS)} PNGs verificados (integridade e resolução)")
+    print(f"• gráficos: {len(imagens)} PNGs verificados (integridade e resolução)")
 
 
 def checar_experimentos(aud: Auditoria) -> None:
@@ -696,37 +859,22 @@ def checar_experimentos(aud: Auditoria) -> None:
             for sev, metricas in por_sev.items():
                 taxa = _numero((metricas or {}).get("taxa"))
                 aud.exigir(0 <= taxa <= 1, f"macrocomparação[{nome}/{fid}/sev={sev}]: taxa inválida")
-    try:
-        from src.ml.macro_comparar import (
-            entradas_proveniencia_indisponiveis,
-            estado_proveniencia,
-        )
-
-        motivos = estado_proveniencia()
-        aud.exigir(
-            not motivos,
-            "macrocomparação: manifesto stale (" + "; ".join(motivos) + ")",
-        )
-        entradas_ausentes = entradas_proveniencia_indisponiveis()
-        if entradas_ausentes:
-            aud.aviso(
-                "macrocomparação: entradas locais não disponíveis para "
-                "revalidação (" + ", ".join(entradas_ausentes) + "); "
-                "integridade dos outputs verificada"
-            )
-    except Exception as exc:
-        aud.erro(f"macrocomparação: falha ao verificar proveniência ({exc})")
-    print(f"• macrocomparação: {len(dados_macro)} métodos, famílias FMECA e tabela publicados")
+    aud.aviso(
+        "macrocomparação em Stender preservada como legado fora do pipeline "
+        "principal GPVS; proveniência não compõe a conclusão atual"
+    )
+    print(f"• macrocomparação legada: {len(dados_macro)} métodos preservados")
 
 
 def main() -> int:
     print("=" * 72)
-    print(" AUDITORIA DOS RESULTADOS — FMECA consolidada e evidência E2")
+    print(" AUDITORIA DOS RESULTADOS — GPVS-Faults, FMECA E2 e bancada E3")
     print("=" * 72)
     auditoria = Auditoria()
     limiar = checar_limiar(auditoria)
     checar_injecao(auditoria, limiar)
     checar_validacao(auditoria, limiar)
+    checar_gpvs_e3(auditoria)
     checar_weibull(auditoria)
     checar_imagens(auditoria)
     checar_experimentos(auditoria)

@@ -28,12 +28,12 @@ src/
 │   ├── dados_avaliacao.py banco E1 comum para comparações locais
 │   ├── estatistica.py    ICs, bootstrap e métricas metodológicas
 │   ├── exec_etapa_isolada.py executa etapa pesada em subprocesso
-│   ├── features_ca.py    features CA do conjunto Stender
+│   ├── gpvs_principal.py contrato de features, split e baseline GPVS
 │   ├── autoencoder.py    modelo de normalidade (limiar p99)
 │   ├── injecao_falhas.py falhas sintéticas FMECA (schema E2) + SMD_95
 │   ├── validacao.py      validação interna E2 (holdout, ROC+PR, ICs)
-│   ├── gpvs.py           validação externa E3 de bancada por ensaio
-│   ├── rul_weibull.py    RUL / Weibull (eixo a_det, nao tempo)
+│   ├── validacao_gpvs_principal.py validação E2+E3 e manifesto específico
+│   ├── rul_weibull.py    Weibull de detectabilidade (eixo a_det, não tempo)
 │   ├── relatorio_weibull.py  montagem do artefato de Weibull
 │   ├── classificador_pv.py classificação supervisionada PV Farms (CC)
 │   ├── experimentos_artigos.py experimentos de ML por artigo-base
@@ -65,10 +65,10 @@ src/
   `artefatos/obsidian_indexado.jsonl.gz` leva esse histórico à nuvem.
 - **Ferramentas (chat):** `decidir_acao` roteia para pipeline ML, experimentos,
   catálogo de literatura, `consultar_datasets`, `comparar_abordagens_ml`, etc.
-- **Pipeline ML:** `features_ca → autoencoder → injecao_falhas → validacao →
+- **Pipeline ML:** `features_gpvs → autoencoder → injecao_falhas → validacao →
   rul_weibull`, cada etapa com manifesto de proveniência.
-- **Validação GPVS:** protocolo independente em `gpvs.py`; não alimenta nem
-  mistura o pipeline Stender/FMECA.
+- **Validação GPVS:** `validacao_gpvs_principal.py` combina E2 sintética no
+  holdout F0 e E3 experimental F1-F7 sem misturar outros datasets.
 
 ## Execução local e nuvem
 - **PC:** possui `dados/brutos/`, treina os modelos, regenera os experimentos e
@@ -90,7 +90,7 @@ src/
   `AL_IADO_INDICE_OBSIDIAN` redireciona seu snapshot portátil. O arquivo
   versionado é durável entre deploys; gravações feitas dentro do Community
   Cloud duram somente até o próximo reinício/redeploy. Já
-  `AL_IADO_DATASET_PADERBORN` permite simular o modo de consulta em testes.
+  `AL_IADO_DATASET_GPVS` aponta para a pasta que contém `F0L.csv` a `F7M.csv`.
   `AL_IADO_EMBEDDINGS_BACKEND` aceita `auto`, `onnx` ou
   `sentence-transformers`; `AL_IADO_ONNX_THREADS` limita threads do backend
   leve. Em `auto`, ausência do dataset ativa ONNX. Modelos, tamanho de saída e
@@ -110,13 +110,12 @@ temporário. Degradação honesta: se o subprocesso não puder ser lançado, cai
 para execução in-process. Variáveis: `AL_IADO_SEM_ISOLAMENTO=1` força
 in-process (debug/CI); `AL_IADO_EXP_CHILD=1` é o marcador interno do filho.
 
-## Eixos de ML
-- **Stender (CA experimental, inversor/motor):** detecção de anomalia por modelagem de normalidade.
-- **PV Farms (CC simulado):** classificação supervisionada de falhas conhecidas.
-- **GPVS-Faults (PV/rede experimental):** validação externa E3 de bancada com
-  transferência estrita auditada e adaptação local temporal.
+## Escopo de ML
 
-Os três eixos **não se fundem** — ver `docs/datasets.md` e `docs/metodologia_ml.md`.
+O resultado canônico usa somente o **GPVS-Faults**: F0L/F0M ajustam o detector,
+o holdout F0 recebe a validação sintética FMECA E2 e F1L-F7M fornecem validação
+experimental E3. Stender, PMSM, PV Farms e outros conjuntos permanecem como
+literatura ou experimentos legados e não alimentam esse pipeline.
 
 ## Instalação modular
 ```powershell

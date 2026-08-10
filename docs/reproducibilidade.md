@@ -40,11 +40,11 @@ python -m pytest                        # suíte completa (contagem: pytest --co
 
 ## Recalcular resultados (exige `dados/brutos/`)
 ```powershell
-python src/ml/features_ca.py
+python src/ml/gpvs_principal.py
 python src/ml/autoencoder.py     # limiar.json (score operacional + referências) + manifesto
 python src/ml/injecao_falhas.py  # falhas FMECA (E2) + schema
-python src/ml/validacao.py       # ROC + PR + matriz, limiar congelado, report E2
-python src/ml/rul_weibull.py
+python src/ml/validacao_gpvs_principal.py  # E2 + E3, limiar congelado
+python src/ml/rul_weibull.py     # magnitude de detectabilidade, não tempo/RUL
 ```
 Enquanto não recalculados com o código atual, as etapas aparecem **stale/pending**
 (comportamento correto).

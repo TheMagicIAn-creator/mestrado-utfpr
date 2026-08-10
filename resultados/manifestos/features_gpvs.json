@@ -1,0 +1,42 @@
+{
+  "manifest_version": 2,
+  "stage": "features_gpvs",
+  "created_at": "2026-08-09T23:37:03.175968-03:00",
+  "git_commit": "a4aa42c2b156e6f4aba260d7dc2518ad272e7d38",
+  "code_hash_mode": "text_lf_utf8",
+  "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
+  "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
+  "code_sha256": "7151a575275ed495ad7477913067aa4409bffc1347caa832e145a0c4dcaa3226",
+  "code_dependencies": {
+    "src.ml.gpvs": "a8938e078322a97a415e3cf20be3e8c76fa52522d189527c88ddcc0e08f4cb73",
+    "src.ml.estilo_graficos": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49"
+  },
+  "parameters": {
+    "fs": 10000,
+    "f0": 50.0,
+    "janela": 200,
+    "sobreposicao": 0,
+    "harmonicos": [
+      5,
+      7,
+      11,
+      13
+    ]
+  },
+  "input_artifacts": {
+    "input:0:F0L.csv": "0af0dddf273838ca4e255d99da50f37f86c9bf9e0b343d3175ccc4366accd458",
+    "input:1:F0M.csv": "3d1ab1fd576c574287097e70bcf4a5b4b1e3b9a7e6043d620d0c958163b53285"
+  },
+  "outputs": [
+    "dados/processados/features_gpvs.parquet",
+    "dados/processados/features_gpvs_stats.csv",
+    "dados/processados/features_gpvs_qualidade.json",
+    "dados/processados/features_gpvs_qualidade.png"
+  ],
+  "output_artifacts": {
+    "dados/processados/features_gpvs.parquet": "613a8e6bb76c99dbb14d8980bc8ea68ba48e9105e9d0d5f089213f00207b3350",
+    "dados/processados/features_gpvs_stats.csv": "b8b6d6c2159feb624f4d337bcdc8eb4cb2417b217d28949952b4071bc06f159b",
+    "dados/processados/features_gpvs_qualidade.json": "c3047a2c5ce97f0c80833b9f9454428ec2f2d32cbba1c997f6a956330af3f607",
+    "dados/processados/features_gpvs_qualidade.png": "694b6b1262fd60e4503a9d80f82ab66c68c90f3d91f331514ca9f8c416fbc69c"
+  }
+}

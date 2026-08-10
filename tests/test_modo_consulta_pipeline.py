@@ -1,13 +1,17 @@
 """Separação explícita entre cálculo local e consulta de artefatos na nuvem."""
 
+from pathlib import Path
+
 def test_capacidade_recalculo_depende_do_dataset(monkeypatch, tmp_path):
     import src.ml.pipeline as pipeline
 
-    dataset = tmp_path / "Inverter_Data_Set.csv"
-    monkeypatch.setattr(pipeline, "DATASET_PADERBORN", dataset)
+    dataset = tmp_path / "gpvs"
+    monkeypatch.setattr(pipeline, "DATASET_GPVS", dataset)
     assert pipeline.capacidade_recalculo_pipeline()["disponivel"] is False
 
-    dataset.write_text("sample", encoding="utf-8")
+    dataset.mkdir()
+    for relativo in pipeline.GPVS_ALL_INPUTS:
+        (dataset / Path(relativo).name).write_text("sample", encoding="utf-8")
     assert pipeline.capacidade_recalculo_pipeline()["disponivel"] is True
 
 

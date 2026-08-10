@@ -1,66 +1,13 @@
-"""
-rul_weibull.py — Al IAdo PV / Fase 5
-Modelagem exploratória da magnitude de primeiro cruzamento com Weibull 2P.
+"""Weibull 2P exploratória da magnitude de primeiro cruzamento E2.
 
-Fundamentação metodológica:
-  O dataset de Paderborn contém apenas dados saudáveis (sem falhas reais).
-  A estratégia adotada — definida na metodologia da dissertação — é varrer a
-  MAGNITUDE da assinatura de falha, com trajetórias sintéticas fundamentadas na
-  FMECA do TCC (Torres, 2024).
+Cada trajetória mantém uma janela saudável F0 e aumenta a assinatura sintética
+de 0 a 1. `a_det` é a primeira magnitude com excedência persistente do limiar.
+O eixo não é tempo: beta é adimensional, e eta, média e a10 são frações da
+assinatura nominal. MTTF, B10 e RUL existem somente como aliases legados.
 
-  Cada trajetória usa uma janela do holdout cuja assinatura se agrava: a magnitude injetada
-  `a_inj` cresce de 0 a 1,0 em N_STEPS pontos sobre a MESMA janela saudável.
-  Registra-se `a_det`, a magnitude em que o Autoencoder confirma a anomalia
-  (escore > limiar por PERSISTENCIA_CRUZAMENTO avaliações seguidas).
-
-  O EIXO NÃO É TEMPO. Sem dados run-to-failure nem taxa de degradação de
-  campo, não existe conversão de magnitude para hora, dia ou ano — e inventá-la
-  seria inventar o número mais importante do capítulo. beta é adimensional;
-  eta, média de a_det e a10 saem em FRAÇÃO DA ASSINATURA NOMINAL. MTTF/B10/RUL
-  permanecem somente como aliases de compatibilidade.
-
-  Ganho de ter renomeado: `a_det` e a SMD da injeção (`a_inj,95`) passam a
-  compartilhar a unidade, e podem ser lidos na mesma régua.
-
-  Com N_TRAJ trajetórias por tipo de falha, ajusta-se a Weibull de 2 parâmetros
-  aos `a_det` obtidos.
-
-Distribuição de Weibull de 2 parâmetros:
-  PDF : f(t) = (β/η) × (t/η)^(β−1) × exp(−(t/η)^β)
-  CDF : F(t) = 1 − exp(−(t/η)^β)
-  S_D(a): exp(−(a/η)^β)              probabilidade de ainda não detectar
-  h_D(a): (β/η) × (a/η)^(β−1)       intensidade de primeiro cruzamento
-
-  Parâmetros:
-    β (shape)  — forma da intensidade de detecção; não indica desgaste
-    η (scale)  — magnitude característica: S_D(η) = e^−1 ≈ 36,8%
-
-Margem residual neste eixo:
-  Para uma falha já agravada até a magnitude `a_atual` sem ter sido detectada,
-  a margem é a magnitude ainda esperada até a detecção:
-    margem = E[a_det − a_atual | a_det > a_atual]
-  calculada com a Weibull truncada em `a_atual`. É margem de assinatura, não
-  vida remanescente em tempo.
-
-Entrada:
-  resultados/autoencoder/modelo_autoencoder.pt
-  resultados/autoencoder/scaler.pkl
-  resultados/autoencoder/limiar.json
-  dados/brutos/Inverter_Data_Set.csv
-  dados/processados/features_paderborn.parquet
-
-Saída:
-  resultados/autoencoder/weibull_ttf.png            (histogramas de a_det)
-  resultados/autoencoder/weibull_confiabilidade.png (S_D(a) e h_D(a))
-  resultados/autoencoder/weibull_distribuicao.png   (f, F e papel de Weibull)
-  resultados/autoencoder/weibull_rul.png
-  resultados/autoencoder/weibull_results.json
-  resultados/autoencoder/weibull_tabela.csv
-
-Uso:
-  python src/ml/rul_weibull.py
-
-Autor: Rodolfo Torres (UTFPR)
+`S_D(a)` descreve não detecção e `h_D(a)` a intensidade de primeiro cruzamento;
+nenhuma das duas representa confiabilidade ou taxa de falha física. F1-F7 não
+entram nesta etapa e permanecem reservados à validação experimental E3.
 """
 
 from __future__ import annotations
@@ -83,24 +30,31 @@ _log = _adaptar_log(_logger)
 
 import json
 import pickle
+import matplotlib
 import numpy as np
 import pandas as pd
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from src.ml.estilo_graficos import (
     COR_ALERTA, COR_TEXTO_SEC, TAM, aplicar_estilo, salvar_figura,
 )
 
 aplicar_estilo()
-import matplotlib
-matplotlib.use("Agg")
 from pathlib import Path
 from scipy.stats import weibull_min
 from scipy.special import gamma as gamma_func, gammaincc
 from scipy.optimize import minimize
 from typing import TYPE_CHECKING
 
-from src.ml.features_ca   import extrair_janela, JANELA, FS
-from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas_holdout
+from src.ml.gpvs_principal import (
+    carregar_normalizacao_baseline,
+    extrair_janela,
+    JANELA,
+    FS,
+    normalizar_vetores_f0,
+    preparar_janelas_holdout,
+)
 from src.ml.injecao_falhas import (
     FUNCOES_FALHA, FALHAS,
 )
@@ -116,7 +70,6 @@ if TYPE_CHECKING:
 
 # ── Caminhos ─────────────────────────────────────────────────
 RAIZ        = Path(__file__).parent.parent.parent
-ARQUIVO_CSV = RAIZ / "dados" / "brutos" / "Inverter_Data_Set.csv"
 PASTA_AE    = RAIZ / "resultados" / "autoencoder"
 
 # ── Parâmetros de simulação ───────────────────────────────────
@@ -218,7 +171,9 @@ def calcular_erros_batch(vetores: np.ndarray,
                          scaler,
                          device: torch.device,
                          estat_residuo: dict | None = None,
-                         metodo: str = "mse") -> np.ndarray:
+                         metodo: str = "mse",
+                         normalizacao_baseline: dict | None = None,
+                         ensaios: list[str] | np.ndarray | None = None) -> np.ndarray:
     """Normaliza um lote de features e retorna o ESCORE de anomalia por amostra.
 
     Escore via src/ml/escore_anomalia.py: MSE médio (padrão) ou localizado
@@ -227,6 +182,12 @@ def calcular_erros_batch(vetores: np.ndarray,
     """
     from src.ml import escore_anomalia as ea
 
+    if normalizacao_baseline is not None:
+        if ensaios is None:
+            raise ValueError("Normalização GPVS exige o ensaio de cada vetor")
+        vetores = normalizar_vetores_f0(
+            vetores, ensaios, normalizacao_baseline
+        )
     vnorm = scaler.transform(vetores).astype(np.float32)
     residuos = ea.residuo_por_feature(modelo, vnorm, device)
     return ea.pontuar(residuos, estat_residuo, metodo)
@@ -241,6 +202,7 @@ def selecionar_janelas_baseline_normais(
     limiar: float,
     estat_residuo: dict | None = None,
     metodo: str = "mse",
+    normalizacao_baseline: dict | None = None,
 ) -> tuple[list[pd.DataFrame], np.ndarray, np.ndarray]:
     """Remove trajetórias cuja janela saudável já nasce acima do limiar."""
     if not janelas:
@@ -252,7 +214,8 @@ def selecionar_janelas_baseline_normais(
         vetores.append([feats.get(coluna, 0.0) for coluna in colunas_feat])
     erros = calcular_erros_batch(
         np.asarray(vetores, dtype=np.float32), modelo, scaler, device,
-        estat_residuo, metodo,
+        estat_residuo, metodo, normalizacao_baseline,
+        [janela.attrs.get("ensaio") for janela in janelas],
     )
     elegiveis = np.asarray(erros <= limiar, dtype=bool)
     return (
@@ -278,7 +241,8 @@ def gerar_a_det(janela_saudavel: pd.DataFrame,
                 batch_size: int = BATCH_INFERENCIA,
                 persistencia: int = PERSISTENCIA_CRUZAMENTO,
                 estat_residuo: dict | None = None,
-                metodo: str = "mse") -> tuple[float, bool]:
+                metodo: str = "mse",
+                normalizacao_baseline: dict | None = None) -> tuple[float, bool]:
     """
     Varre a magnitude da assinatura injetada e devolve ``(a_det, detectou)``.
 
@@ -341,7 +305,9 @@ def gerar_a_det(janela_saudavel: pd.DataFrame,
 
         erros = calcular_erros_batch(
             np.asarray(vetores, dtype=np.float32),
-            modelo, scaler, device, estat_residuo, metodo
+            modelo, scaler, device, estat_residuo, metodo,
+            normalizacao_baseline,
+            [janela_base.attrs.get("ensaio")] * len(vetores),
         )
         erros_trajetoria.extend(float(erro) for erro in erros)
 
@@ -823,6 +789,7 @@ def executar_rul_weibull() -> bool:
 
     metodo_escore = info_limiar.get("metodo_escore", "mse")
     estat_residuo = ea.carregar_estatistica(PASTA_AE)
+    normalizacao_baseline = carregar_normalizacao_baseline(PASTA_AE)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     modelo = Autoencoder(n_features, latente_dim).to(device)
@@ -833,13 +800,11 @@ def executar_rul_weibull() -> bool:
 
     # ── 2. Holdout temporal isolado ───────────────────────────
     _log(f"\n📂 Carregando dataset...")
-    df = carregar_paderborn_compacto(ARQUIVO_CSV)
-    janelas_holdout, meta_holdout = preparar_janelas_holdout(df)
-    del df
+    janelas_holdout, meta_holdout = preparar_janelas_holdout()
     n_janelas_originais = len(janelas_holdout)
     janelas_holdout, erros_baseline, mascara_elegivel = selecionar_janelas_baseline_normais(
         janelas_holdout, modelo, scaler, device, colunas_feat, limiar,
-        estat_residuo, metodo_escore
+        estat_residuo, metodo_escore, normalizacao_baseline,
     )
     n_excluidas = int((~mascara_elegivel).sum())
     meta_holdout["filtro_baseline_ttf"] = {
@@ -876,7 +841,8 @@ def executar_rul_weibull() -> bool:
             a_det, detectou = gerar_a_det(
                 janela_base, modelo, scaler, device,
                 colunas_feat, limiar, fid, N_STEPS, seed=i,
-                estat_residuo=estat_residuo, metodo=metodo_escore
+                estat_residuo=estat_residuo, metodo=metodo_escore,
+                normalizacao_baseline=normalizacao_baseline,
             )
             ttfs.append(a_det)
             eventos.append(detectou)

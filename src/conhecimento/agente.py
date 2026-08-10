@@ -154,7 +154,7 @@ TOPICOS_DISSERTACAO = (
     "manutencao preditiva monitoramento de condicao prognostico",
     "harmonicos THD sinais eletricos CA inversor fotovoltaico",
     "isolation forest random forest XGBoost classificacao falhas PV",
-    "dataset Stender Paderborn University IGBT inversor saudavel benchmark nao bearing",
+    "dataset GPVS-Faults microrede fotovoltaica inversor falhas F0 F1 F7",
     "FMECA NPR criticidade inversor lado CA componente critico",
 )
 
@@ -280,31 +280,28 @@ CONTEXTO DO PROJETO (memorize)
   componentes CA-elétricos do inversor que mais falham (Tab. 3.3 do TCC,
   Cristaldi et al. 2017): Contator AC (NPR=315), IGBT (NPR=90), Fusível AC
   (NPR=30). São ESSAS as falhas injetadas — não LCL/desbalanceamento/sensor.
-- Dataset principal: Stender, Wallscheid e Böcker (Paderborn University),
-  bancada EXPERIMENTAL de inversor IGBT trifásico acionando motor, sem rótulos
-  de falha (~235k amostras, 10 kHz). NÃO é o Paderborn Bearing Dataset e NÃO é
-  fotovoltaico. Sustenta modelagem de normalidade elétrica, com lacuna de
-  domínio perante inversores PV conectados à rede.
+- Dataset principal e único dos resultados novos: GPVS-Faults, microrede
+  fotovoltaica conectada à rede em bancada experimental (~10 kHz). F0L/F0M
+  fornecem operação saudável; F1L-F7M são 14 ensaios reais de falha reservados
+  à validação E3. DOI: 10.17632/n76t439f65.1.
 - PV Farms é um benchmark SIMULADO de planta PV de 250 kW, rotulado com falhas
   CC de strings. NUNCA o apresente como dado de campo ou prova experimental.
-- SEPARAÇÃO DE DOMÍNIO (regra rígida): Stender → detecção de anomalia CA por
-  modelagem de normalidade; PV Farms → classificação supervisionada de falhas
-  CC conhecidas. NUNCA afirme que PV Farms diagnostica falhas CA, nem transfira
-  suas métricas ao pipeline CA. Os dois NÃO se fundem.
-- GPVS-Faults tem protocolo externo executado em `resultados/gpvs/`: 14
-  ensaios de falha em bancada, sem mistura com Stender. É E3 de BANCADA, não
-  campo. O limiar F0 transferido diretamente foi invalidado por deslocamento
-  entre ensaios; o resultado citável usa adaptação local temporal e deve ser
-  lido dinamicamente do artefato, com as falhas não detectadas preservadas.
+- PROIBIDO afirmar: "PV Farms diagnostica falhas CA". Esse classificador legado
+  não diagnostica componentes CA do inversor.
+- REGRA DE SEPARAÇÃO DE DOMÍNIO: nenhum dataset é mesclado ao GPVS no pipeline principal.
+  Stender/Paderborn, PMSM, PV Farms e telemetria residencial são referências
+  ou experimentos legados e não fornecem métricas ao resultado canônico.
+- O Autoencoder canônico é treinado uma vez em F0L/F0M. Na E3 ele é aplicado
+  a F1L-F7M sem retreino e sem recalibração do limiar. A primeira metade
+  pré-falha fornece somente o baseline de comissionamento; a segunda metade
+  pré-falha mede falsos positivos. É E3 de BANCADA, não campo.
 - Weibull físico exige tempos de vida/falha de unidades independentes, origem
   temporal e censura. A análise atual é E2 sobre intensidade sintética `a_det`,
   NÃO tempo físico, MTTF de campo ou RUL industrial.
-- Comparação com a literatura: o comparativo quantitativo vigente é
-  **Proposto (AE denso + MSE p99) × Ibrahim (AE-LSTM temporal)** em
-  `resultados/macro/`. Outros artigos seguem citáveis como literatura quando
-  forem relevantes, mas não entram como experimento ativo da metodologia.
-  (A classificação CC do PV Farms fica no classificador_pv, não como experimento.)
-- Pipeline: features_ca → autoencoder → injecao_falhas → validacao → rul_weibull.
+- Comparações antigas em `resultados/macro/` usam outro domínio e são legado;
+  só as apresente quando o usuário pedir explicitamente o histórico.
+- Pipeline: features_gpvs → autoencoder → injecao_falhas → validacao E2+E3
+  → rul_weibull.
 - Limiar operacional do Autoencoder = percentil 99 do erro de reconstrução
   saudável; μ+3σ é apenas referência comparativa (nunca o limiar em uso).
 - NÃO memorize métricas (limiar, AUC, F1, SMD, MTTF). Os números ficam nos

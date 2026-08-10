@@ -59,19 +59,12 @@ A single Google Gemini API key must be set in a local `.env` file —
 see `.env.example` for the template. The `.env` file is never
 committed to the repository.
 
-### One-time local Git setup
+### Data and artifact policy
 
-`resultados/` (pipeline artifacts) is regenerated only on the PC and is
-git-tracked so the cloud deploy (query-only mode) can display it. Run this
-**once** on any machine that will `git pull`/merge this repo, so a local
-re-run of the pipeline never produces a merge conflict against the
-already-committed artifacts (`.gitattributes` marks `resultados/** merge=ours`,
-but the `ours` driver itself must be registered locally — it isn't something
-a commit can carry):
-
-```
-git config merge.ours.driver true
-```
+The 16 raw GPVS-Faults CSV files remain under the ignored `dados/` directory.
+Reproducible JSON, CSV, Markdown and figures under `resultados/` are tracked so
+the query-only cloud deployment can display the latest verified execution.
+Models, scalers and local Obsidian state are not published.
 
 ## Status
 
@@ -83,16 +76,16 @@ git config merge.ours.driver true
 | 4     | Automation            | Done          |
 | 5     | ML pipeline           | Implemented (E2 + E3 bench) |
 
-Phase 5 status: all five stages (features, autoencoder, fault injection,
-validation, Weibull/RUL) are implemented with provenance manifests.
-Current stage state and metrics live in `resultados/` artifacts (E2 =
-FMEA-guided synthetic validation). A separate GPVS-Faults protocol now provides
-E3 experimental bench validation; field validation is still not performed.
+Phase 5 status: the five-stage pipeline uses GPVS-Faults as its single
+canonical dataset. F0L/F0M train and calibrate the Autoencoder; FMECA-guided
+synthetic injection on the F0 holdout provides E2 evidence, and F1L-F7M provide
+E3 experimental bench validation. Weibull describes synthetic detectability
+magnitude, not physical RUL. Field validation is still not performed.
 
 ## Documentação técnica
 
 - [`docs/metodologia_ml.md`](docs/metodologia_ml.md) — decisões metodológicas e de integridade.
-- [`docs/datasets.md`](docs/datasets.md) — Stender, PV Farms, GPVS-Faults E3 e separação de domínio.
+- [`docs/datasets.md`](docs/datasets.md) — contrato único GPVS-Faults, qualidade e limites.
 - [`docs/evidence_levels.md`](docs/evidence_levels.md) — níveis de evidência E0–E3.
 - [`docs/reproducibilidade.md`](docs/reproducibilidade.md) — manifestos, estados, memória, recálculo.
 - [`docs/memoria_agentes.md`](docs/memoria_agentes.md) — aprendizado validado entre sessões e limites de persistência.

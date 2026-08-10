@@ -67,13 +67,14 @@ na família `conhecimento/ferramentas*`; a interface não implementa regra cient
 | `index_lock.py` | Lock entre threads e processos para escritas no ChromaDB. |
 
 ## `ml/` — pipeline e experimentos
-**Pipeline CA principal** (em ordem; cada etapa alimenta a seguinte):
-`features_ca` → `autoencoder` → `injecao_falhas` → `validacao` → `rul_weibull`,
+**Pipeline GPVS principal** (em ordem; cada etapa alimenta a seguinte):
+`features_gpvs` → `autoencoder` → `injecao_falhas` → `validacao` → `rul_weibull`,
 coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 
 | Arquivo | O que faz |
 |---|---|
-| `features_ca.py` | Etapa 1: extrai features de tempo/frequência/inter-fase do conjunto Stender. |
+| `gpvs_principal.py` | Etapa 1: contrato canônico de 24 features, split F0 e normalização de baseline GPVS. |
+| `features_ca.py` | Extrator Stender preservado para experimentos históricos; não integra o pipeline canônico GPVS. |
 | `autoencoder.py` | Etapa 2: Autoencoder de normalidade + limiar operacional (p99). |
 | `escore_anomalia.py` | Fonte única do MSE operacional e da ablação localizada. |
 | `graficos_autoencoder.py` | Figuras e resumo de calibração sem importar PyTorch. |
@@ -94,7 +95,8 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `exec_etapa_isolada.py` | Executa uma etapa pesada do pipeline em subprocesso. |
 | `eda.py` | Análise exploratória do conjunto Stender (Paderborn University; Plotly). |
 | `retroalimentacao_fmeca.py` | Consolida detectabilidade e ponto operacional para a FMECA. |
-| `gpvs.py` | Validação externa E3 de bancada no GPVS-Faults: transferência estrita, adaptação local, PCA e bootstrap por ensaio. |
+| `gpvs.py` | Adaptador e metadados de referência do GPVS-Faults. |
+| `validacao_gpvs_principal.py` | Etapa 4 composta: E2 FMECA e E3 real com um detector canônico e bootstrap por ensaio. |
 | **Comparação acadêmica vigente** | |
 | `macro_comum.py` | Contratos, métricas e saídas compartilhadas do comparativo. |
 | `macro_proposto.py` | Avalia o método proposto no protocolo comparável. |

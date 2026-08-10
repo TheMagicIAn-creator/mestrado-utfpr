@@ -20,6 +20,9 @@ resultados/modelos_salvos/
 *.h5
 *.pt
 *.pth
+resultados/autoencoder/normalizacao_baseline_gpvs.npz
+# Figuras locais do benchmark histórico, recriadas por testes/execuções opcionais.
+resultados/experimentos/ibrahim/*.png
 
 # ========================
 # PYTHON

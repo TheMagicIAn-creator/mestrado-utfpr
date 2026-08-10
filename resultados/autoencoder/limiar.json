@@ -1,18 +1,18 @@
 {
   "threshold_method": "p99",
-  "limiar": 2.5828206539154053,
-  "limiar_operacional": 2.5828206539154053,
+  "limiar": 0.8577015399932861,
+  "limiar_operacional": 0.8577015399932861,
   "score_method": "mse",
-  "score_threshold": 2.5828206539154053,
-  "mu": 0.48468267917633057,
-  "sigma": 0.5716012120246887,
+  "score_threshold": 0.8577015399932861,
+  "mu": 0.2498898208141327,
+  "sigma": 0.14821715652942657,
   "k": 3.0,
   "sigma_multiplier": 3.0,
-  "limiar_p99": 2.5828206539154053,
-  "mse_p99": 2.5828206539154053,
-  "limiar_p95": 1.9015179872512817,
-  "limiar_mu3sigma": 2.1994863152503967,
-  "limiar_mu3s": 2.1994863152503967,
+  "limiar_p99": 0.8577015399932861,
+  "mse_p99": 0.8577015399932861,
+  "limiar_p95": 0.5157656073570251,
+  "limiar_mu3sigma": 0.6945412904024124,
+  "limiar_mu3s": 0.6945412904024124,
   "threshold_source": "bloco_calibracao_temporal",
   "top_k": null,
   "threshold_fallback_percentile": 99.0,
@@ -20,210 +20,180 @@
   "threshold_quantile_method": "linear",
   "threshold_nominal_tail_probability_pct": 1.0,
   "metodo_escore": "mse",
-  "limiar_mse": 2.5828206539154053,
-  "limiar_localizado": 16.53610623991461,
+  "limiar_mse": 0.8577015399932861,
+  "limiar_localizado": 3.624438011829371,
   "k_localizado": 5,
   "percentil_limiar": 99.0,
   "score_standardization_source": "bloco_treino_modelo",
   "percentil_auto": false,
-  "threshold_auto_validation_n": 9,
+  "threshold_auto_validation_n": 42,
   "threshold_auto_min_validation_n": 100,
   "threshold_auto_reason": "fallback p99: subbloco não resolve empiricamente a meta de FP",
-  "n_janelas_treino": 104,
-  "n_janelas_calibracao": 42,
-  "n_janelas_teste": 60,
-  "n_features": 108,
+  "n_janelas_treino": 711,
+  "n_janelas_validacao": 209,
+  "n_janelas_calibracao": 210,
+  "n_janelas_teste": 281,
+  "n_features": 24,
   "latente_dim": 8,
-  "epochs_treinadas": 148,
-  "epoca_melhor": 128,
-  "loss_val_melhor": 0.4846827103978112,
-  "fp_val_pct": 2.380952380952381,
-  "fp_calib_pct": 2.380952380952381,
-  "fp_test_pct": 1.6666666666666667,
+  "epochs_treinadas": 145,
+  "epoca_melhor": 125,
+  "loss_val_melhor": 0.25155061583199567,
+  "fp_val_pct": 1.4285714285714286,
+  "fp_calib_pct": 1.4285714285714286,
+  "fp_test_pct": 1.4234875444839856,
   "fp_mse_p99": {
     "calibracao": {
-      "count": 1,
-      "n": 42,
-      "rate_pct": 2.380952380952381,
-      "ci95_low_pct": 0.4215404134432499,
-      "ci95_high_pct": 12.321201573766647
+      "count": 3,
+      "n": 210,
+      "rate_pct": 1.4285714285714286,
+      "ci95_low_pct": 0.4870115342065683,
+      "ci95_high_pct": 4.115210539552374,
+      "n_invalid": 0
     },
     "teste": {
-      "count": 1,
-      "n": 60,
-      "rate_pct": 1.6666666666666667,
-      "ci95_low_pct": 0.2948159794786249,
-      "ci95_high_pct": 8.855129727590061
+      "count": 4,
+      "n": 281,
+      "rate_pct": 1.4234875444839858,
+      "ci95_low_pct": 0.554922054303805,
+      "ci95_high_pct": 3.6022883706534157,
+      "n_invalid": 0
     }
   },
   "fp_score_operacional": {
     "calibracao": {
-      "count": 1,
-      "n": 42,
-      "rate_pct": 2.380952380952381,
-      "ci95_low_pct": 0.4215404134432499,
-      "ci95_high_pct": 12.321201573766647
+      "count": 3,
+      "n": 210,
+      "rate_pct": 1.4285714285714286,
+      "ci95_low_pct": 0.4870115342065683,
+      "ci95_high_pct": 4.115210539552374,
+      "n_invalid": 0
     },
     "teste": {
-      "count": 1,
-      "n": 60,
-      "rate_pct": 1.6666666666666667,
-      "ci95_low_pct": 0.2948159794786249,
-      "ci95_high_pct": 8.855129727590061
+      "count": 4,
+      "n": 281,
+      "rate_pct": 1.4234875444839858,
+      "ci95_low_pct": 0.554922054303805,
+      "ci95_high_pct": 3.6022883706534157,
+      "n_invalid": 0
     }
   },
-  "threshold_calibration_resolution_pct": 2.380952380952381,
-  "window_overlap_fraction": 0.5,
-  "window_step_for_no_shared_samples": 2,
-  "split_temporal": {
-    "protocolo": "blocos_intercalados_50_20_30_com_purga_14_blocos",
-    "estrategia": "blocos_intercalados",
-    "n_blocos": 14,
-    "destinos_dos_blocos": [
-      "treino",
-      "teste",
-      "val",
-      "treino",
-      "treino",
-      "teste",
-      "treino",
-      "val",
-      "teste",
-      "treino",
-      "treino",
-      "val",
-      "teste",
-      "treino"
+  "threshold_calibration_resolution_pct": 0.47619047619047616,
+  "window_overlap_fraction": 0.0,
+  "window_step_for_no_shared_samples": 1,
+  "baseline_normalization": {
+    "method": "mediana_e_iqr_por_ensaio",
+    "source_f0": "bloco_treino_de_cada_ensaio",
+    "commissioning_fraction_pre_fault": 0.5,
+    "minimum_windows": 30,
+    "iqr_floor_fraction_of_global_f0_train": 0.1,
+    "artifact": "normalizacao_baseline_gpvs.npz",
+    "note": "Pesos e limiar permanecem globais; em novos ensaios, somente o baseline inicial saudável define mediana e IQR locais."
+  },
+  "dataset": {
+    "name": "GPVS-Faults",
+    "doi": "10.17632/n76t439f65.1",
+    "healthy_experiments": [
+      "F0L",
+      "F0M"
     ],
+    "fault_experiments_reserved": "F1L-F7M"
+  },
+  "split_temporal": {
+    "protocolo": "GPVS_F0L_F0M_50_15_15_20_com_purga",
+    "estrategia": "temporal_por_ensaio_F0L_F0M",
+    "n_blocos": 2,
     "limites": {
       "treino": [
         [
           0,
-          16
+          359
         ],
         [
-          51,
-          65
-        ],
-        [
-          65,
-          81
-        ],
-        [
-          100,
-          114
-        ],
-        [
-          149,
-          163
-        ],
-        [
-          163,
-          179
-        ],
-        [
-          214,
-          228
+          718,
+          1070
         ]
       ],
-      "val": [
+      "validacao": [
         [
-          35,
-          49
+          361,
+          466
         ],
         [
-          116,
-          130
+          1072,
+          1176
+        ]
+      ],
+      "calibracao": [
+        [
+          468,
+          574
         ],
         [
-          181,
-          195
+          1178,
+          1282
         ]
       ],
       "teste": [
         [
-          18,
-          33
+          576,
+          718
         ],
         [
-          83,
-          98
-        ],
-        [
-          132,
-          147
-        ],
-        [
-          197,
-          212
+          1284,
+          1423
         ]
       ]
     },
     "purge_janelas": 2,
-    "indices_teste": [
-      18,
-      19,
-      20,
-      21,
-      22,
-      23,
-      24,
-      25,
-      26,
-      27,
-      28,
-      29,
-      30,
-      31,
-      32,
-      83,
-      84,
-      85,
-      86,
-      87,
-      88,
-      89,
-      90,
-      91,
-      92,
-      93,
-      94,
-      95,
-      96,
-      97,
-      132,
-      133,
-      134,
-      135,
-      136,
-      137,
-      138,
-      139,
-      140,
-      141,
-      142,
-      143,
-      144,
-      145,
-      146,
-      197,
-      198,
-      199,
-      200,
-      201,
-      202,
-      203,
-      204,
-      205,
-      206,
-      207,
-      208,
-      209,
-      210,
-      211
-    ],
-    "nota": "Blocos intercalados desde 09/08/2026: os três conjuntos atravessam a faixa de rotação inteira. O teste NÃO é 'o futuro' — é generalização entre regimes. Ver src/ml/split_temporal.py."
+    "distancia_sem_compartilhamento": 1,
+    "papeis_por_ensaio": {
+      "F0L": {
+        "treino": {
+          "inicio": 0,
+          "fim_exclusivo": 359,
+          "n": 359
+        },
+        "validacao": {
+          "inicio": 361,
+          "fim_exclusivo": 466,
+          "n": 105
+        },
+        "calibracao": {
+          "inicio": 468,
+          "fim_exclusivo": 574,
+          "n": 106
+        },
+        "teste": {
+          "inicio": 576,
+          "fim_exclusivo": 718,
+          "n": 142
+        }
+      },
+      "F0M": {
+        "treino": {
+          "inicio": 718,
+          "fim_exclusivo": 1070,
+          "n": 352
+        },
+        "validacao": {
+          "inicio": 1072,
+          "fim_exclusivo": 1176,
+          "n": 104
+        },
+        "calibracao": {
+          "inicio": 1178,
+          "fim_exclusivo": 1282,
+          "n": 104
+        },
+        "teste": {
+          "inicio": 1284,
+          "fim_exclusivo": 1423,
+          "n": 139
+        }
+      }
+    },
+    "nota": "F0L e F0M são separados temporalmente em treino, validação, calibração e teste. F1-F7 não participam do scaler, do treinamento nem do limiar."
   },
-  "data_treino": "2026-08-09T02:50:01.010769-03:00",
+  "data_treino": "2026-08-09T23:17:29.140436-03:00",
   "device": "cpu"
 }

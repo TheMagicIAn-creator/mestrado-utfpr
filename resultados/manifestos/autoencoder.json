@@ -1,16 +1,17 @@
 {
   "manifest_version": 2,
   "stage": "autoencoder",
-  "created_at": "2026-08-09T14:59:04.007787-03:00",
-  "git_commit": "7f91ff06b4ba1850a6547254392ee39226c33d1a",
+  "created_at": "2026-08-09T23:37:03.309983-03:00",
+  "git_commit": "a4aa42c2b156e6f4aba260d7dc2518ad272e7d38",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
-  "code_sha256": "519bda0ede76a556bfd7d88a42080ede72ae411a8f3623991e325d642465b029",
+  "code_sha256": "8c1cc7ba7cff36907ed5df9b7bd55b8cc4eda3b48c976934749f522d8c258f26",
   "code_dependencies": {
     "src.ml.escore_anomalia": "71106cad6b7971edcf27533462181cc38f8be4cf7db95a117dbbb43d96de75e1",
-    "src.ml.split_temporal": "f6ef704157c63648d3146389f63c56b2bec723771668dd81fc6935a9dfcee30c",
-    "src.ml.graficos_autoencoder": "c0104b2ce0b4b4367209f8879d9524671eccd8f8123ece5ab148e0710a7b6426",
+    "src.ml.gpvs": "a8938e078322a97a415e3cf20be3e8c76fa52522d189527c88ddcc0e08f4cb73",
+    "src.ml.gpvs_principal": "7151a575275ed495ad7477913067aa4409bffc1347caa832e145a0c4dcaa3226",
+    "src.ml.graficos_autoencoder": "e5809f980c299f6f3e43084ad175d9a82cc3ae4e394141e317ca052cdc6fdc16",
     "src.ml.estilo_graficos": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49"
   },
   "parameters": {
@@ -24,16 +25,18 @@
     "threshold_method": "p99",
     "seed": 42,
     "train_ratio": 0.5,
-    "calib_ratio": 0.2,
-    "test_ratio": 0.3
+    "validation_ratio": 0.15,
+    "calibration_ratio": 0.15,
+    "test_ratio": 0.2
   },
   "input_artifacts": {
-    "input:0:features_paderborn.parquet": "ba2976a0288ab2fc99d3fb530de385af68c5d8dc226c2cd6a75d08d829af9167"
+    "input:0:features_gpvs.parquet": "613a8e6bb76c99dbb14d8980bc8ea68ba48e9105e9d0d5f089213f00207b3350"
   },
   "outputs": [
     "resultados/autoencoder/modelo_autoencoder.pt",
     "resultados/autoencoder/scaler.pkl",
     "resultados/autoencoder/scaler.pkl.sha256",
+    "resultados/autoencoder/normalizacao_baseline_gpvs.npz",
     "resultados/autoencoder/estatistica_residuo.npz",
     "resultados/autoencoder/limiar.json",
     "resultados/autoencoder/diagnostico_autoencoder.npz",
@@ -44,17 +47,18 @@
     "resultados/autoencoder/erro_temporal.png"
   ],
   "output_artifacts": {
-    "resultados/autoencoder/modelo_autoencoder.pt": "f69d52983ebb5a5e55b46dc19fbb5f230e7ab2b609142b0c840668c51a31d738",
-    "resultados/autoencoder/scaler.pkl": "b72dc06088a56c955410dff81bad38ed617704e9bc379475ce87b30a97d4d3ae",
-    "resultados/autoencoder/scaler.pkl.sha256": "29ef3220383b344cbfcaa78a41a4f643d89f9ee7e954c312b8f6daa7f2dbe22b",
-    "resultados/autoencoder/estatistica_residuo.npz": "b117a32de2667ac09a6edaf304b3a58bd831f159a05c4ecf9a4c561313c27a7c",
-    "resultados/autoencoder/limiar.json": "c832cdf02113a64d1d46f86e58f139c153c3bf8db0e81b77bf05a0c59f2bad08",
-    "resultados/autoencoder/diagnostico_autoencoder.npz": "bd67fec204bd1043229c18f809de77c6685b111acd4127f06345bbde2f38b526",
-    "resultados/autoencoder/calibracao_autoencoder.csv": "c0d4d04551b2b04a273bf13ae3e5aacf316bcf05958bed69230fb3157e38cb09",
-    "resultados/autoencoder/calibracao_autoencoder.md": "069783722505c5c6405fd98502c115137d2b4058f3067442d4c9b90556a5cf56",
-    "resultados/autoencoder/curva_treino.png": "b322a3730b4a68c19898dc35a87e134284f2661ae74ec3136b99a66d57bb5ce8",
-    "resultados/autoencoder/distribuicao_erro.png": "3a4153f0ab129d71de3546dd16767690a2112bd10c060463c7dc78a6edff5149",
-    "resultados/autoencoder/erro_temporal.png": "c6136c5e2161177b8c524acc61989fcdc26b867f64e90c32dc6d6b5401429ba6"
+    "resultados/autoencoder/modelo_autoencoder.pt": "e2093ea6d3e9450616f31e09a67c54a27a0c4e1677978e98d383f741253bcbca",
+    "resultados/autoencoder/scaler.pkl": "d58e70d7e6558fed635e646a2b5a5aa989d3bbc68d586f92f6cba916510d1f95",
+    "resultados/autoencoder/scaler.pkl.sha256": "d677f8cb7a31d6d2ffe15a800b39be1177b5990fc50cc855ef0868a8b4eb20d9",
+    "resultados/autoencoder/normalizacao_baseline_gpvs.npz": "c248cc113c9276a7c131e37a40bce64de156a887902bae64dff93366562731a7",
+    "resultados/autoencoder/estatistica_residuo.npz": "e86e7a864eea80d0c17edf8a5cd8df685f700fb39c174feef6915ab2fcc067e9",
+    "resultados/autoencoder/limiar.json": "60e15b56bbc41a27cbe813c38208500f8b6e0b9ebe9bc7e184ff7e386e930e26",
+    "resultados/autoencoder/diagnostico_autoencoder.npz": "a5e601f51904ae80af903adea38e234ccff0c46487bba3160321bdad80e3d5d4",
+    "resultados/autoencoder/calibracao_autoencoder.csv": "1b91fd0a877495634c5a2fdf6313e4117d368bb0bf355adf8ff8aa28557052f6",
+    "resultados/autoencoder/calibracao_autoencoder.md": "7a2e7ba07b47aa7344dcdc11b2d7c127185632f8fb01e181c2d9f53ca3e59ee4",
+    "resultados/autoencoder/curva_treino.png": "2e8eeec6152bb035666c9cda4dbe70abaebdc4e09f3565fdf55da769e528248a",
+    "resultados/autoencoder/distribuicao_erro.png": "9b4f5a27bf5a7b6766ba45e6623ec414fa7d5646254ec6653c0b956ec4b49d49",
+    "resultados/autoencoder/erro_temporal.png": "528610a89c9cb1bd51d9dc1b204d8ed3af4fb80dd8a8c3a543513f285b1fe12f"
   },
   "evidence_level": "E2"
 }

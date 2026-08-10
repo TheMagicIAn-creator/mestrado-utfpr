@@ -19,13 +19,18 @@ def resumir_gpvs(pasta: Path) -> str | None:
     try:
         dados = json.loads(caminho.read_text(encoding="utf-8"))
         macro = dados["macro_summary"]
-        estrito = macro["strict_ae"]["all"]
-        adaptativo = macro["adaptive_ae"]["all"]
-        protocolos = [
-            ("Transferência direta AE", estrito),
-            ("AE adaptativo", adaptativo),
-            ("PCA adaptativo", macro["adaptive_pca"]["all"]),
-        ]
+        if "canonical_ae" in macro:
+            canonico = macro["canonical_ae"]["all"]
+            protocolos = [("Autoencoder canônico congelado", canonico)]
+        else:
+            # Compatibilidade de leitura com o schema v1 já publicado.
+            estrito = macro["strict_ae"]["all"]
+            adaptativo = macro["adaptive_ae"]["all"]
+            protocolos = [
+                ("Transferência direta AE", estrito),
+                ("AE adaptativo", adaptativo),
+                ("PCA adaptativo", macro["adaptive_pca"]["all"]),
+            ]
     except (OSError, json.JSONDecodeError, KeyError, TypeError):
         return None
 
@@ -40,20 +45,25 @@ def resumir_gpvs(pasta: Path) -> str | None:
         linhas.append(
             f"| {nome} | {_fmt(auc['mean'])} "
             f"[{_fmt(auc['ci95_low'])}; {_fmt(auc['ci95_high'])}] | "
-            f"{_fmt(metricas['post_tpr']['mean'])} | "
+            f"{_fmt(metricas.get('sensitivity', metricas.get('post_tpr'))['mean'])} | "
             f"{_fmt(metricas['specificity']['mean'])} | "
             f"{_fmt(metricas['balanced_accuracy']['mean'])} | "
             f"{auc.get('n_experiments', '-')} |\n"
         )
-    linhas.append(
-        "\n**Leitura honesta:** a transferência direta do limiar do ensaio F0 "
-        f"é rejeitada: sua especificidade macro é {_fmt(estrito['specificity']['mean'])}. "
-        "Com adaptação usando somente o início saudável de cada ensaio, o AE "
-        f"alcança AUC macro {_fmt(adaptativo['auc']['mean'])} e especificidade "
-        f"{_fmt(adaptativo['specificity']['mean'])}, mas sensibilidade pós-falha "
-        f"de {_fmt(adaptativo['post_tpr']['mean'])}. Os IC95% são bootstrap de "
-        "14 ensaios, não de janelas. E3 aqui significa bancada experimental "
-        "externa; não é campo, não identifica causa automaticamente e não "
-        "calibra Weibull/RUL físico."
-    )
+    if "canonical_ae" in macro:
+        linhas.append(
+            "\n**Leitura honesta:** este é o mesmo detector ajustado somente em "
+            "F0L/F0M e aplicado a F1-F7 sem retreino nem recalibração do limiar. "
+            "A primeira metade pré-falha fornece o baseline de comissionamento; "
+            "a segunda mede a especificidade. Os IC95% macro reamostram 14 "
+            "ensaios, não janelas. E3 significa bancada experimental, não é campo; o "
+            "detector não identifica causa automaticamente nem calibra "
+            "Weibull/RUL físico."
+        )
+    else:
+        linhas.append(
+            "\n**Artefato legado (schema v1):** compara transferência direta e "
+            "adaptação local. Reexecute o pipeline para publicar o detector "
+            "canônico único. É bancada experimental, não é campo."
+        )
     return "".join(linhas)
