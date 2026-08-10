@@ -1,12 +1,12 @@
 {
   "manifest_version": 2,
   "stage": "validacao_gpvs_e3",
-  "created_at": "2026-08-09T23:45:21.739891-03:00",
-  "git_commit": "a4aa42c2b156e6f4aba260d7dc2518ad272e7d38",
+  "created_at": "2026-08-09T23:51:52.340149-03:00",
+  "git_commit": "c2f21e8bdcecfeaa8c1a7c7c83151099e1c8b43d",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
-  "code_sha256": "018572b5e767651dc55406b2e0c074f83aae22b9ec7052cda98d7bd333421a84",
+  "code_sha256": "1af2027669c1dc4911ddc03f4599d602fbda069ef5075cd3484e1b1c7b8b959a",
   "code_dependencies": {
     "gpvs_contract": "a8938e078322a97a415e3cf20be3e8c76fa52522d189527c88ddcc0e08f4cb73",
     "gpvs_principal": "7151a575275ed495ad7477913067aa4409bffc1347caa832e145a0c4dcaa3226",
@@ -71,11 +71,11 @@
     "resultados/gpvs/gpvs_macro_comparacao.png"
   ],
   "output_artifacts": {
-    "resultados/gpvs/validacao_gpvs_e3.json": "81b0e4fb59c17d75695c905d0d75b4214bd17fe584ab457752c855a3082f15f4",
+    "resultados/gpvs/validacao_gpvs_e3.json": "934320c3be42c5f5aeacab13fa60496434b556f5d3b0ed9d70b710e07a02487b",
     "resultados/gpvs/validacao_gpvs_cenarios.csv": "5e21f42167bc47fed858cc8529b721f2a1c3d1b28fa6b938c887f0b6f34acf79",
     "resultados/gpvs/validacao_gpvs_cenarios.md": "a273bcdcba1120b56def647a838cc581eb437fe19f01cd6e3d66bc4bae98315b",
     "resultados/gpvs/validacao_gpvs_scores.csv": "4a8bc37f93eaa4aa88beeb2ad82d0007cf740e9d2075528b01c9ae720cb6a9db",
-    "resultados/gpvs/relatorio_validacao_gpvs.md": "c5346d4872859ce62a9c8e427055eb8a2bee9bac2626c7e11f584f55806b5998",
+    "resultados/gpvs/relatorio_validacao_gpvs.md": "95af0634224814eeeafd6c0cacc103a9b7c4e8f57e0dbc35cf74f5fcfebbb3b4",
     "resultados/gpvs/gpvs_series_temporais.png": "c375033f758589e99bb6bf4c82ff3554b6d9fa64559a6233900502669e1d97cf",
     "resultados/gpvs/gpvs_metricas_por_cenario.png": "6c9cd306cc8cc5cdc1439734329525b5f95d20541493a38f0d0d308ec729e735",
     "resultados/gpvs/gpvs_transferencia_estrita.png": "546b4e0b5dc223c7bde325f63e6cbad6f46a7e4bd4fc8696c8a7f6d0c221018e",

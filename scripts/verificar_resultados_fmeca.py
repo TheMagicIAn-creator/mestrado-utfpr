@@ -679,18 +679,26 @@ def checar_gpvs_e3(aud: Auditoria) -> dict | None:
         "GPVS E3: baseline de comissionamento deve estar declarado",
     )
     hashes_detector = {
-        "model_sha256": PASTA_AE / "modelo_autoencoder.pt",
-        "scaler_sha256": PASTA_AE / "scaler.pkl",
-        "threshold_sha256": PASTA_AE / "limiar.json",
-        "baseline_normalization_sha256": PASTA_AE / "normalizacao_baseline_gpvs.npz",
+        "model_sha256": (PASTA_AE / "modelo_autoencoder.pt", sha256_arquivo),
+        "scaler_sha256": (PASTA_AE / "scaler.pkl", sha256_arquivo),
+        "threshold_sha256": (
+            PASTA_AE / "limiar.json", sha256_arquivo_texto_normalizado,
+        ),
+        "baseline_normalization_sha256": (
+            PASTA_AE / "normalizacao_baseline_gpvs.npz", sha256_arquivo,
+        ),
     }
-    for campo, caminho in hashes_detector.items():
-        aud.exigir(caminho.is_file(), f"GPVS E3: entrada ausente {caminho.name}")
-        if caminho.is_file():
-            aud.exigir(
-                detector.get(campo) == sha256_arquivo(caminho),
-                f"GPVS E3: hash divergente em {campo}",
+    for campo, (caminho, funcao_hash) in hashes_detector.items():
+        if not caminho.is_file():
+            aud.aviso(
+                f"GPVS E3: {caminho.name} é local/ignorado; hash não "
+                "verificado neste ambiente de consulta"
             )
+            continue
+        aud.exigir(
+            detector.get(campo) == funcao_hash(caminho),
+            f"GPVS E3: hash divergente em {campo}",
+        )
 
     por_ensaio = {linha["experiment"]: linha for linha in cenarios}
     for nome in esperados:

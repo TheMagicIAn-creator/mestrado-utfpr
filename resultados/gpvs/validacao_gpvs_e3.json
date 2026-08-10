@@ -2,7 +2,7 @@
   "schema_version": 2,
   "evidence_level": "E3",
   "evidence_scope": "validação experimental externa em bancada; não é campo",
-  "created_at": "2026-08-09T23:45:09.474574-03:00",
+  "created_at": "2026-08-09T23:51:39.450485-03:00",
   "dataset": {
     "name": "GPVS-Faults",
     "doi": "10.17632/n76t439f65.1",
@@ -298,7 +298,7 @@
     "top_k": null,
     "model_sha256": "e2093ea6d3e9450616f31e09a67c54a27a0c4e1677978e98d383f741253bcbca",
     "scaler_sha256": "d58e70d7e6558fed635e646a2b5a5aa989d3bbc68d586f92f6cba916510d1f95",
-    "threshold_sha256": "fe6b8b9c7d3522b49c56e9b84e70f91f800937be9a4825186206662e8891edc0",
+    "threshold_sha256": "60e15b56bbc41a27cbe813c38208500f8b6e0b9ebe9bc7e184ff7e386e930e26",
     "baseline_normalization_sha256": "c248cc113c9276a7c131e37a40bce64de156a887902bae64dff93366562731a7"
   },
   "protocol": {

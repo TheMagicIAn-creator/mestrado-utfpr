@@ -53,7 +53,11 @@ from src.ml.gpvs_principal import (
     carregar_normalizacao_baseline,
     normalizar_comissionamento,
 )
-from src.ml.proveniencia import gerar_manifesto, salvar_manifesto
+from src.ml.proveniencia import (
+    gerar_manifesto,
+    salvar_manifesto,
+    sha256_arquivo_texto_normalizado,
+)
 
 aplicar_estilo()
 
@@ -535,7 +539,9 @@ def executar_validacao_gpvs_principal(
             "top_k": info.get("top_k", info.get("k_localizado")),
             "model_sha256": _sha256(PASTA_AE / "modelo_autoencoder.pt"),
             "scaler_sha256": _sha256(PASTA_AE / "scaler.pkl"),
-            "threshold_sha256": _sha256(PASTA_AE / "limiar.json"),
+            "threshold_sha256": sha256_arquivo_texto_normalizado(
+                PASTA_AE / "limiar.json"
+            ),
             "baseline_normalization_sha256": _sha256(
                 PASTA_AE / "normalizacao_baseline_gpvs.npz"
             ),
