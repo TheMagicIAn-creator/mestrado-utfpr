@@ -14,7 +14,11 @@ O GPVS-Faults foi executado como protocolo independente do conjunto Stender. Os 
 
 ## Decisão metodológica
 
-O limiar aprendido apenas nos ensaios F0 não transfere diretamente aos demais ensaios por deslocamento de distribuição. O resultado operacional usa adaptação local: scaler, AE e limiar são ajustados somente em blocos iniciais saudáveis, com purga e teste pré-falha posterior. Um PCA de reconstrução usa o mesmo split como baseline.
+O limiar aprendido apenas nos ensaios saudáveis F0L/F0M não transfere sem perda aos demais ensaios, por deslocamento de distribuição.
+
+O que o artefato registra (`resultados/gpvs/validacao_gpvs_e3.json`) é `adaptation_per_experiment: false`: **pesos do Autoencoder e limiar permanecem CONGELADOS** em F1–F7. O que é local por ensaio é apenas a **normalização de comissionamento** — a primeira metade das janelas pré-falha define a referência, e a segunda metade, que não entra na normalização, mede a especificidade. Um PCA de reconstrução usa o mesmo split como baseline.
+
+A distinção não é preciosismo: "ajustar o limiar por ensaio" seria recalibrar contra o dado que se quer julgar. Não foi isso que se fez, e a redação anterior desta nota sugeria que sim.
 
 ## Interpretação
 

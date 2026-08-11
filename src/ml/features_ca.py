@@ -123,6 +123,12 @@ FS           = 10_000      # Hz — taxa de amostragem
 # regime nominal. A mediana de F0 medida no bloco de teste foi 100,19 Hz —
 # encostada no teto, que é a assinatura de estimador saturado, não de regime.
 # Ver docs/auditoria_parametros.md §1.
+# ⚠️ AQUI `F0` É FREQUÊNCIA FUNDAMENTAL, EM HZ. No GPVS-Faults — que é o dataset
+# canônico desde 09/08/2026 — `F0L`/`F0M` nomeiam a CONDIÇÃO SAUDÁVEL do ensaio,
+# sentido completamente diferente. Os dois convivem no repositório e nenhum será
+# renomeado: `F0` como frequência é convenção de eletrotécnica, e `F0L`/`F0M`
+# são os nomes dos arquivos publicados por Bakdi et al. (2020). A separação é de
+# ESCRITA. Ver o verbete "Símbolos que colidem" em docs/glossario.md.
 F0           = 60          # Hz — centro da busca (mediana aproximada da faixa)
 F0_MIN       = 12.0        # Hz — 13,5 Hz reais, com ~10% de margem
 F0_MAX       = 115.0       # Hz — 107,7 Hz reais, com ~7% de margem
