@@ -181,3 +181,51 @@ def test_env_minimo_extras_sobrepoe():
 def test_guarda_anti_injecao_existe_e_e_imperativa():
     assert "DADO" in GUARDA_ANTI_INJECAO
     assert "instrução" in GUARDA_ANTI_INJECAO
+
+
+# ── Sidecar de integridade nunca pode viajar sem o artefato ────────────────
+
+def test_nenhum_sidecar_sha256_de_artefato_ignorado_esta_rastreado():
+    """Um checksum versionado de um arquivo NÃO versionado quebra quem der pull.
+
+    Aconteceu de fato em 11/08/2026: `resultados/autoencoder/scaler.pkl` é
+    ignorado (`.gitignore: *.pkl`), mas `scaler.pkl.sha256` estava rastreado.
+    O `git pull` entregou ao pesquisador o hash gerado na máquina do outro
+    agente sobre o pickle gerado na dele, e `carregar_pickle_com_sidecar`
+    abortou com "Integridade violada" — que soa como adulteração, quando era
+    só o par ter sido separado pelo versionamento.
+
+    A regra `*.pkl.sha256` já existia no .gitignore, mas gitignore não afeta
+    arquivo já rastreado: a regra estava inerte. Este teste é o que torna a
+    inércia visível.
+
+    O sidecar é POR MÁQUINA, por construção — ele descreve o artefato local.
+    Versioná-lo é sempre erro.
+    """
+    import subprocess
+
+    from src.core.config import RAIZ_PROJETO
+
+    rastreados = subprocess.run(
+        ["git", "ls-files", "*.sha256"],
+        cwd=RAIZ_PROJETO, capture_output=True, text=True,
+    ).stdout.split()
+    if not rastreados:
+        return
+
+    problemas = []
+    for sidecar in rastreados:
+        artefato = sidecar[: -len(".sha256")]
+        ignorado = subprocess.run(
+            ["git", "check-ignore", "-q", artefato],
+            cwd=RAIZ_PROJETO, capture_output=True,
+        ).returncode == 0
+        if ignorado:
+            problemas.append(f"{sidecar} (o artefato {artefato} é ignorado)")
+
+    assert not problemas, (
+        "sidecar de integridade rastreado para artefato NÃO versionado — "
+        "quem der pull vai receber 'Integridade violada':\n  "
+        + "\n  ".join(problemas)
+        + "\nCorreção: git rm --cached <sidecar>"
+    )
