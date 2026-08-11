@@ -139,6 +139,33 @@ def test_pickle_exige_hash():
         carregar_pickle_verificado("qualquer.pkl", "")
 
 
+def test_mensagem_de_integridade_ensina_a_sair_do_erro(tmp_path):
+    """A mensagem antiga mandava "retreinar ou restaurar" e nada mais.
+
+    O pesquisador seguiu e retreinou — mas o pickle dele estava intacto: o que
+    tinha divergido era o SIDECAR, chegado por `git pull` da máquina do outro
+    agente. Meia hora perdida por uma mensagem que só nomeava a causa rara.
+
+    Adulteração é possível, e a guarda existe para ela. Par dessincronizado é
+    muito mais provável — a mensagem precisa dizer como distinguir, e dar o
+    comando de saída quando o artefato é reconhecidamente do próprio usuário.
+    """
+    alvo = tmp_path / "scaler.pkl"
+    alvo.write_bytes(pickle.dumps({"w": [1]}))
+
+    with pytest.raises(ValueError) as exc:
+        carregar_pickle_verificado(alvo, "0" * 64)
+    msg = str(exc.value)
+
+    assert "execuções diferentes" in msg, "não nomeia a causa provável"
+    assert "gravar_sidecar_sha256" in msg, "não dá o comando de saída"
+    assert "não regenere" in msg, (
+        "precisa dizer o que fazer quando o artefato NÃO é reconhecido — "
+        "regenerar às cegas anula a proteção contra pickle adulterado"
+    )
+    assert str(alvo) in msg, "o caminho tem de estar pronto para copiar"
+
+
 def test_sidecar_grava_e_verifica(tmp_path):
     alvo = tmp_path / "scaler.pkl"
     alvo.write_bytes(pickle.dumps([1.0, 2.0]))

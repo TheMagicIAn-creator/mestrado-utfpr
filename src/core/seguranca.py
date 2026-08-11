@@ -144,11 +144,31 @@ def carregar_pickle_verificado(caminho, sha256_esperado: str):
         )
     real = sha256_de_arquivo(caminho)
     if real != str(sha256_esperado).lower():
+        # A mensagem lista a causa BENIGNA primeiro, e de propósito. Em
+        # 11/08/2026 ela dizia só "arquivo pode ter sido alterado — retreine ou
+        # restaure", e o pesquisador foi retreinar: mas o pickle dele estava
+        # intacto. O que tinha divergido era o SIDECAR, que chegou por `git
+        # pull` da máquina do outro agente enquanto o pickle (ignorado pelo
+        # .gitignore) continuava sendo o local. Adulteração é possível e a
+        # guarda existe para ela; par dessincronizado é MUITO mais provável, e
+        # a mensagem tem de dizer como distinguir.
+        alvo = Path(caminho)
+        sidecar = alvo.with_name(alvo.name + ".sha256")
         raise ValueError(
-            f"Integridade violada em {Path(caminho).name}: SHA-256 não confere "
-            f"com o manifesto (esperado {str(sha256_esperado)[:12]}…, "
-            f"obtido {real[:12]}…). Arquivo pode ter sido alterado — "
-            f"retreine ou restaure o artefato."
+            f"Integridade violada em {alvo.name}: SHA-256 não confere "
+            f"(esperado {str(sha256_esperado)[:12]}…, obtido {real[:12]}…).\n"
+            f"\nCAUSA MAIS PROVÁVEL: o sidecar e o artefato vieram de execuções "
+            f"diferentes — por exemplo, o sidecar chegou por `git pull` e o "
+            f"artefato foi gerado localmente. Nesse caso o arquivo NÃO foi "
+            f"adulterado, só perdeu o par.\n"
+            f"\nSe você reconhece o artefato como seu, regenere o par:\n"
+            f"    python -c \"from src.core.seguranca import "
+            f"gravar_sidecar_sha256; from pathlib import Path; "
+            f"gravar_sidecar_sha256(Path(r'{alvo}'))\"\n"
+            f"\nSe NÃO reconhece — se {alvo.name} não foi produzido por uma "
+            f"execução sua —, não regenere: apague o arquivo e recalcule a "
+            f"etapa que o produz. Pickle executa código ao ser lido.\n"
+            f"\nSidecar: {sidecar}"
         )
     with open(caminho, "rb") as f:
         return pickle.load(f)  # noqa: S301 — integridade conferida acima

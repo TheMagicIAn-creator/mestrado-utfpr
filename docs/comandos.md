@@ -17,6 +17,25 @@ python -m pytest                        # bateria de testes unitários (rápida,
 python -m pytest -W ignore -q           # idem, sem warnings de limpeza de tmp
 ```
 
+### "Integridade violada em scaler.pkl"
+
+Quase sempre **não** é adulteração: é o sidecar `.sha256` e o artefato terem
+vindo de execuções diferentes. Acontece quando um chega por `git pull` e o outro
+é gerado localmente.
+
+Se você **reconhece** o artefato como produzido por uma execução sua, regenere
+o par:
+
+```powershell
+python -c "from src.core.seguranca import gravar_sidecar_sha256; from pathlib import Path; gravar_sidecar_sha256(Path('resultados/autoencoder/scaler.pkl'))"
+```
+
+Se **não** reconhece, não regenere — apague o arquivo e recalcule a etapa que o
+produz. Pickle executa código ao ser lido, e a verificação existe para isso.
+
+O sidecar é **por máquina** e nunca deve ser versionado; `tests/test_seguranca.py`
+reprova se algum `.sha256` de artefato ignorado voltar a ser rastreado.
+
 ## Pipeline de ML (recalcular — exige `dados/brutos/` local)
 
 > ⚠️ **Rodar os módulos direto NÃO grava manifesto de proveniência.** Nenhum
