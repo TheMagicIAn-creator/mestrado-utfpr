@@ -398,5 +398,12 @@ Candidatos verificados:
 | D9 | Weibull-PHM η(s) | Trabalho futuro |
 | D10 | N_STEPS, PERSISTENCIA, ALVO_SMD | Análise de sensibilidade primeiro |
 | D11 | Baseline externo vs troca do AE | Só baseline |
+| D12 | Features do lado CC no vetor E3 | Manter + publicar ablação só-CA |
+| D13 | Escore localizado rebaixado a ablação | Auditar antes de aceitar |
 
 **Nenhuma dessas decisões deve ser tomada pelo Code sem consulta.**
+
+> **D12 e D13 foram abertos em 10/08/2026**, depois da migração para o
+> GPVS-Faults. O contexto, a evidência e as opções estão em
+> `docs/handoff/estado_pos_gpvs_2026-08-10.md`, que também registra o que cada
+> agente mexeu desde as PRs #111–#119.

@@ -3,6 +3,33 @@
 Ponto único de definição dos termos usados em CLAUDE.md, docs/, código e
 dissertação. Em caso de conflito entre documentos, vale a definição daqui.
 
+## ⚠️ Símbolos que colidem — leia antes de escrever
+
+O projeto já pagou caro por um símbolo com dois sentidos (o `D`, resolvido em
+`D_campo` × `POD_mon`). **`F0` é o segundo caso, e ele é real:**
+
+| escrita | significa | onde vive |
+|---|---|---|
+| **`F0`, `F0_MIN`, `F0_MAX`** | **frequência fundamental**, em Hz | `src/ml/features_ca.py`; `src/ml/gpvs_principal.py` (`F0 = GRID_FREQUENCY_HZ`); `tests/test_faixa_f0.py` |
+| **`F0L`, `F0M`**, "ensaios F0", "teste F0", "partições F0" | **condição SAUDÁVEL** do GPVS-Faults (IPPT e MPPT) — ausência de falha | `docs/datasets.md`, `docs/metodologia_ml.md`, `src/ml/gpvs*.py`, `resultados/gpvs/` |
+
+Os dois convivem no mesmo módulo: em `gpvs_principal.py`, `F0` é a frequência
+da rede e `JANELA = FS/F0`, enquanto os arquivos `F0L.csv`/`F0M.csv` são os
+ensaios sem falha. **Não é erro — é homonímia herdada de duas fontes.**
+
+Regra de escrita, para não repetir o problema do `D`:
+
+- ao falar de frequência, escreva **"frequência fundamental"** ou `F0` **com a
+  unidade colada** (`F0 = 50 Hz`);
+- ao falar da condição de ensaio, escreva **`F0L`/`F0M`** ou **"ensaio
+  saudável F0"** — nunca `F0` sozinho;
+- em texto de dissertação, prefira **"condição sem falha"** a "F0".
+
+Os símbolos NÃO foram renomeados no código de propósito: `F0` como frequência
+é convenção universal em eletrotécnica, e `F0L`/`F0M` são os nomes dos arquivos
+publicados por Bakdi et al. (2020). Renomear qualquer um dos dois quebraria a
+correspondência com a fonte externa. A separação é de escrita, não de símbolo.
+
 ## Confiabilidade e manutenção
 
 - **RCM** (Reliability Centred Maintenance): metodologia que orienta o plano
@@ -100,7 +127,8 @@ dissertação. Em caso de conflito entre documentos, vale a definição daqui.
   fronteira onde o destino muda — janelas com 50% de sobreposição nunca cruzam
   conjuntos. Substituiu, em 09/08/2026, os **três blocos contíguos**, que
   fatiavam a rampa de rotação do conjunto Stender em três faixas de velocidade e
-  deixavam a calibração num regime só (IQR de F0 de 1,46 Hz contra 83 Hz do
+  deixavam a calibração num regime só (IQR da frequência fundamental de
+  1,46 Hz contra 83 Hz do
   treino), tornando o limiar congelado inaplicável ao teste. Consequência para
   a redação: o teste **não é "o futuro"**, é generalização entre regimes. Fonte
   única: `src/ml/split_temporal.py`; detalhamento em `docs/metodologia_ml.md` §5.

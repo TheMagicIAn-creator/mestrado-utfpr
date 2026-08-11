@@ -7,8 +7,11 @@ travam as classes de desalinhamento encontradas — só leem TEXTO dos arquivos,
 sem importar módulos pesados, para rodarem no CI leve.
 """
 
+import json
 import re
 from pathlib import Path
+
+import pytest
 
 RAIZ = Path(__file__).resolve().parent.parent
 CLAUDE = (RAIZ / "CLAUDE.md").read_text(encoding="utf-8")
@@ -139,3 +142,87 @@ def test_descricoes_operacionais_usam_fmeca():
         if padrao.search(texto):
             achados.append(py.relative_to(RAIZ).as_posix())
     assert not achados, f"descrição operacional ainda usa FMEA: {achados}"
+
+
+# ── O CLAUDE.md é a constituição do agente; ele não pode envelhecer sozinho ──
+
+def test_claude_md_declara_o_dataset_que_o_pipeline_realmente_usa():
+    """Guarda contra a dessincronia que aconteceu de fato.
+
+    Entre 09 e 10/08/2026 o pipeline canônico migrou de Stender para
+    GPVS-Faults em nove PRs — e o `CLAUDE.md` não foi tocado em nenhuma delas.
+    "GPVS" aparecia zero vezes nele enquanto `pipeline.py` já apontava para
+    `features_gpvs`. Como o `PERFIL_COMPACTO` do agente deriva do CLAUDE.md, o
+    Al IAdo passou a descrever um projeto que não existia mais.
+
+    Nada aqui verifica NÚMERO — números vivem nos artefatos. O que se verifica é
+    que o documento nomeia o mesmo dataset que o código executa.
+    """
+    pipeline = (RAIZ / "src/ml/pipeline.py").read_text(encoding="utf-8")
+    claude = (RAIZ / "CLAUDE.md").read_text(encoding="utf-8")
+
+    if "features_gpvs" not in pipeline:
+        pytest.skip("pipeline não usa a etapa GPVS; guarda não se aplica")
+
+    assert "GPVS" in claude, (
+        "o pipeline canônico roda GPVS-Faults, mas o CLAUDE.md não o menciona. "
+        "O agente responderá sobre o dataset errado."
+    )
+
+
+def test_claude_md_nao_chama_stender_de_dataset_principal():
+    """O conjunto Stender virou referência histórica, não a base de treino."""
+    claude = (RAIZ / "CLAUDE.md").read_text(encoding="utf-8")
+    pipeline = (RAIZ / "src/ml/pipeline.py").read_text(encoding="utf-8")
+    if "features_gpvs" not in pipeline:
+        pytest.skip("pipeline não usa a etapa GPVS; guarda não se aplica")
+
+    proibidas = [
+        "no dataset de operação normal (Paderborn)",
+        "Datasets: Paderborn (inversor saudável) e PV Farms",
+    ]
+    achados = [f for f in proibidas if f in claude]
+    assert not achados, (
+        f"CLAUDE.md ainda aponta Stender/Paderborn como base principal: {achados}"
+    )
+
+
+def test_glossario_desambigua_F0():
+    """`F0` tem dois sentidos vivos: frequência fundamental e ensaio saudável.
+
+    É o mesmo tipo de homonímia que o `D` já causou. O glossário é o árbitro
+    declarado de conflito entre documentos, então a separação mora nele.
+    """
+    glossario = (RAIZ / "docs/glossario.md").read_text(encoding="utf-8")
+    assert "Símbolos que colidem" in glossario
+    for marca in ("F0L", "frequência fundamental", "GRID_FREQUENCY_HZ"):
+        assert marca in glossario, f"o verbete de F0 perdeu a marca {marca!r}"
+
+
+def test_nota_curada_do_gpvs_nao_contradiz_o_artefato():
+    """A nota afirmava que o LIMIAR era ajustado por ensaio; o artefato nega.
+
+    `validacao_gpvs_e3.json` registra `adaptation_per_experiment: false` —
+    pesos e limiar congelados, só a normalização de comissionamento é local.
+    Dizer o contrário faria a banca ler recalibração contra o dado julgado.
+    Pela regra do projeto, artefato prevalece sobre nota.
+    """
+    artefato = RAIZ / "resultados/gpvs/validacao_gpvs_e3.json"
+    nota = RAIZ / "notas/Cerebro/Resultados/Validação experimental GPVS-Faults.md"
+    if not artefato.exists() or not nota.exists():
+        pytest.skip("artefato ou nota do GPVS ausente")
+
+    dados = json.loads(artefato.read_text(encoding="utf-8"))
+    protocolo = json.dumps(dados.get("protocol", {}), ensure_ascii=False)
+    texto = nota.read_text(encoding="utf-8")
+
+    if '"adaptation_per_experiment": false' in protocolo.lower().replace(" ", "") \
+            or dados.get("protocol", {}).get("adaptation_per_experiment") is False:
+        assert "CONGELADOS" in texto or "congelado" in texto, (
+            "o artefato diz que pesos e limiar ficam congelados; a nota curada "
+            "precisa dizer o mesmo"
+        )
+        assert "scaler, AE e limiar são ajustados" not in texto, (
+            "a nota ainda afirma adaptação de limiar por ensaio, que o artefato "
+            "nega em adaptation_per_experiment"
+        )
