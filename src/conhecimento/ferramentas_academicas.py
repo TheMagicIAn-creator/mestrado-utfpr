@@ -87,6 +87,45 @@ def listar_base_bibliografica(progresso=None, pergunta: str = "") -> dict:
     }
 
 
+def _comparacao_desatualizada(pasta_macro) -> str:
+    """Devolve o motivo se a comparação macro for mais velha que o detector.
+
+    Vazio significa "pode citar". A checagem é por MANIFESTO, não por mtime de
+    arquivo: `git checkout` reescreve mtime e mentiria.
+    """
+    import json
+    from pathlib import Path
+
+    from src.core.config import RAIZ_PROJETO
+
+    manifestos = Path(RAIZ_PROJETO) / "resultados" / "manifestos"
+
+    def _lido(nome: str) -> dict:
+        arq = manifestos / f"{nome}.json"
+        if not arq.is_file():
+            return {}
+        try:
+            return json.loads(arq.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return {}
+
+    macro, ae = _lido("macro_comparacao"), _lido("autoencoder")
+    t_macro, t_ae = macro.get("created_at"), ae.get("created_at")
+    if not t_macro or not t_ae:
+        return ""            # sem manifesto dos dois lados, não afirmo nada
+    if t_macro >= t_ae:
+        return ""
+
+    commit_macro = str(macro.get("git_commit", ""))[:8] or "?"
+    commit_ae = str(ae.get("git_commit", ""))[:8] or "?"
+    return (
+        f"Ela foi gerada em `{t_macro[:19]}` (commit `{commit_macro}`), mas o "
+        f"Autoencoder vigente foi treinado depois, em `{t_ae[:19]}` "
+        f"(commit `{commit_ae}`). Os números descrevem um detector que não é "
+        f"mais o do pipeline."
+    )
+
+
 def consultar_comparacao_macro(progresso=None, pergunta: str = "") -> dict:
     """Comparação vigente: método proposto × AE-LSTM do Ibrahim, por AUC e SMD.
 
@@ -125,6 +164,24 @@ def consultar_comparacao_macro(progresso=None, pergunta: str = "") -> dict:
         return {
             "ok": False, "etapa": "Comparação com a literatura",
             "mensagem": f"A comparação publicada está ilegível: {exc}",
+            "imagens": [], "resposta_pronta": True, "forcar_resposta_direta": True,
+        }
+
+    # A comparação pode ter sido medida sobre um modelo que já foi substituído.
+    # Aconteceu: em 09/08/2026 ela saiu às 14:59 e o Autoencoder foi retreinado
+    # às 23:37, na migração para o GPVS-Faults. O artefato não carrega aviso de
+    # obsolescência, então quem perguntasse "sou melhor que o AE-LSTM?" receberia
+    # números de um detector aposentado com cara de vigentes.
+    obsoleta = _comparacao_desatualizada(pasta)
+    if obsoleta:
+        return {
+            "ok": False, "etapa": "Comparação com a literatura",
+            "mensagem": (
+                "⚠️ **A comparação publicada está desatualizada e não deve ser "
+                "citada.**\n\n" + obsoleta
+                + "\n\nRode no PC para atualizá-la: "
+                  "`python -m src.ml.macro_comparar`."
+            ),
             "imagens": [], "resposta_pronta": True, "forcar_resposta_direta": True,
         }
 

@@ -156,3 +156,62 @@ def test_artefato_corrompido_nao_derruba(tmp_path, monkeypatch):
     (pasta / "comparacao_resultado.json").write_text("{ nao é json", encoding="utf-8")
     r = fr.consultar_comparacao_macro()
     assert not r["ok"] and "ileg" in r["mensagem"].lower()
+
+
+# ── A comparação pode envelhecer sem avisar ────────────────────────────────
+
+def test_comparacao_mais_velha_que_o_autoencoder_e_recusada(tmp_path, monkeypatch):
+    """Números de um detector aposentado não podem sair com cara de vigentes.
+
+    Aconteceu: a comparação macro foi gerada em 09/08/2026 às 14:59 e o
+    Autoencoder foi retreinado às 23:37, na migração para o GPVS-Faults. O
+    artefato não carrega aviso de obsolescência, então "sou melhor que o
+    AE-LSTM?" devolveria AUC e SMD de um modelo que não existe mais.
+
+    A checagem é por MANIFESTO e não por mtime: `git checkout` reescreve mtime
+    e mentiria sobre a idade.
+    """
+    import json
+
+    from src.conhecimento import ferramentas_academicas as fa
+
+    manifestos = tmp_path / "resultados" / "manifestos"
+    manifestos.mkdir(parents=True)
+    (manifestos / "macro_comparacao.json").write_text(json.dumps(
+        {"created_at": "2026-08-09T14:59:09", "git_commit": "7f91ff06"}))
+    (manifestos / "autoencoder.json").write_text(json.dumps(
+        {"created_at": "2026-08-09T23:37:03", "git_commit": "a4aa42c2"}))
+    monkeypatch.setattr(fa, "RAIZ_PROJETO", tmp_path, raising=False)
+    monkeypatch.setattr("src.core.config.RAIZ_PROJETO", tmp_path)
+
+    motivo = fa._comparacao_desatualizada(tmp_path / "resultados" / "macro")
+    assert motivo, "comparação mais velha que o detector tem de ser recusada"
+    assert "14:59:09" in motivo and "23:37:03" in motivo
+    assert "7f91ff06" in motivo and "a4aa42c2" in motivo
+
+
+def test_comparacao_mais_nova_que_o_autoencoder_e_aceita(tmp_path, monkeypatch):
+    """Contraprova: a guarda não pode recusar comparação legítima."""
+    import json
+
+    from src.conhecimento import ferramentas_academicas as fa
+
+    manifestos = tmp_path / "resultados" / "manifestos"
+    manifestos.mkdir(parents=True)
+    (manifestos / "macro_comparacao.json").write_text(json.dumps(
+        {"created_at": "2026-08-10T02:00:00", "git_commit": "ffffffff"}))
+    (manifestos / "autoencoder.json").write_text(json.dumps(
+        {"created_at": "2026-08-09T23:37:03", "git_commit": "a4aa42c2"}))
+    monkeypatch.setattr("src.core.config.RAIZ_PROJETO", tmp_path)
+
+    assert fa._comparacao_desatualizada(tmp_path / "resultados" / "macro") == ""
+
+
+def test_sem_manifesto_dos_dois_lados_nao_afirma_obsolescencia(tmp_path, monkeypatch):
+    """Ausência de manifesto não é prova de nada — não inventar veredito."""
+    from src.conhecimento import ferramentas_academicas as fa
+
+    (tmp_path / "resultados" / "manifestos").mkdir(parents=True)
+    monkeypatch.setattr("src.core.config.RAIZ_PROJETO", tmp_path)
+
+    assert fa._comparacao_desatualizada(tmp_path / "resultados" / "macro") == ""

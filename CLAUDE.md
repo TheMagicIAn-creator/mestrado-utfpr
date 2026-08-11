@@ -237,10 +237,14 @@ ESCORE OPERACIONAL — mudou em 09/08/2026: o vigente é o
 **MSE médio** de reconstrução; o escore localizado (top-k
 resíduos padronizados) passou a ABLAÇÃO DIAGNÓSTICA. Qual
 está em uso NÃO se afirma daqui: leia `score_method` em
-resultados/autoencoder/limiar.json. ❓ A comparação macro
-publicada foi montada sobre o escore localizado; enquanto não
-for refeita ou aposentada, apresentá-la exige dizer sob qual
-escore ela foi medida.
+resultados/autoencoder/limiar.json.
+
+A comparação macro TAMBÉM usa MSE — o artefato se identifica
+como "Proposto (AE denso + MSE p99)". O risco dela não é o
+escore, é a IDADE: ela pode ser mais velha que o Autoencoder
+vigente. A ferramenta consultar_comparacao_macro compara os
+manifestos e se RECUSA a citar quando isso acontece, dizendo
+o motivo. Não contornar essa recusa.
 
 NUNCA misturar com os números do framework aposentado: 0,588
 (E1, injeção em features, p99 congelado, teste balanceado) e
