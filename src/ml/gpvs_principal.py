@@ -55,6 +55,7 @@ ARQUIVO_FEATURES = (
     Path(RAIZ_PROJETO) / "dados" / "processados" / "features_gpvs.parquet"
 )
 PASTA_PROCESSADOS = ARQUIVO_FEATURES.parent
+PASTA_QUALIDADE = Path(RAIZ_PROJETO) / "resultados" / "qualidade"
 ENSAIOS_SAUDAVEIS = ("F0L", "F0M")
 META_COLS = [
     "ensaio", "falha", "modo", "janela_idx", "amostra_inicio",
@@ -305,6 +306,7 @@ def _ler_ensaio(caminho: Path) -> pd.DataFrame:
 def executar_features_gpvs(
     diretorio: Path = PASTA_GPVS,
     pasta_saida: Path = PASTA_PROCESSADOS,
+    pasta_qualidade: Path = PASTA_QUALIDADE,
 ) -> bool:
     """Extrai e publica features dos dois ensaios saudáveis GPVS."""
     _log("=" * 60)
@@ -326,10 +328,12 @@ def executar_features_gpvs(
 
     pasta_saida = Path(pasta_saida)
     pasta_saida.mkdir(parents=True, exist_ok=True)
+    pasta_qualidade = Path(pasta_qualidade)
+    pasta_qualidade.mkdir(parents=True, exist_ok=True)
     parquet = pasta_saida / "features_gpvs.parquet"
     stats = pasta_saida / "features_gpvs_stats.csv"
-    qualidade_json = pasta_saida / "features_gpvs_qualidade.json"
-    qualidade_png = pasta_saida / "features_gpvs_qualidade.png"
+    qualidade_json = pasta_qualidade / "features_gpvs_qualidade.json"
+    qualidade_png = pasta_qualidade / "features_gpvs_qualidade.png"
     resultado.to_parquet(parquet, index=False)
     resultado[FEATURE_COLUMNS].describe().T.to_csv(stats)
 

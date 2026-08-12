@@ -42,7 +42,8 @@ except ModuleNotFoundError:
 
 
 PASTA_GPVS = Path(RAIZ_PROJETO) / "dados" / "brutos" / "gpvs" / "csv" / "CSV_Files"
-PASTA_SAIDA = Path(RAIZ_PROJETO) / "resultados" / "gpvs"
+# Isola o benchmark adaptativo dos artefatos canônicos congelados.
+PASTA_SAIDA = Path(RAIZ_PROJETO) / "resultados" / "gpvs" / "legado_adaptativo"
 
 COLUNAS_FONTE = [
     "Time", "Ipv", "Vpv", "Vdc", "ia", "ib", "ic", "va", "vb", "vc",

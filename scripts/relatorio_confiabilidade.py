@@ -114,6 +114,11 @@ def secao_confiabilidade(weibull: dict) -> tuple[list[str], dict]:
         horizonte = float(w.get("rul_restrita_horizonte") or 0.0)
         recomendada = bool(w.get("resumo_parametrico_recomendado", False))
         diagnostico = w.get("diagnostico_papel_weibull") or {}
+        teste_aderencia = w.get("teste_aderencia_quantizada") or {}
+        p_aderencia = teste_aderencia.get("p_value")
+        sensibilidade = w.get("sensibilidade_grade") or {}
+        grade_estavel = sensibilidade.get("estavel")
+        status_aderencia = w.get("status_aderencia", "não informado")
 
         # R(t) em pontos de decisão: os próprios marcos são os pontos naturais.
         pontos = [marcos["b1"], marcos["b10"], marcos["vida_mediana"], eta]
@@ -129,11 +134,27 @@ def secao_confiabilidade(weibull: dict) -> tuple[list[str], dict]:
             + (lambda c: f"[{c[0]:.2f}; {c[1]:.2f}]" if c and c[0] is not None else "—")(
                 w.get("eta_ci95")) + " |",
             "",
-            f"Triagem no papel de Weibull: **R²pp = "
+            f"Diagnóstico visual: **R²pp = "
             f"{float(diagnostico.get('r2', float('nan'))):.3f}**. "
-            + ("Síntese paramétrica recomendada somente no escopo E2."
-               if recomendada else
-               "Síntese paramétrica não recomendada; os marcos abaixo são omitidos."),
+            f"Aderência por bootstrap quantizado: **p = "
+            + (
+                f"{float(p_aderencia):.3f}"
+                if p_aderencia is not None else "não estimado"
+            )
+            + f"** (`{status_aderencia}`). Estabilidade entre grades finas: "
+            + (
+                "**sim**" if grade_estavel is True else
+                "**não**" if grade_estavel is False else
+                "**não avaliada**"
+            )
+            + ".",
+            (
+                "Síntese paramétrica adotada somente como detectabilidade E2."
+                if recomendada else
+                "A curva e os parâmetros permanecem visíveis para auditoria, "
+                "mas a síntese Weibull 2P é exploratória e não sustenta "
+                "inferência física."
+            ),
             "",
         ]
         if not recomendada:
@@ -149,10 +170,12 @@ def secao_confiabilidade(weibull: dict) -> tuple[list[str], dict]:
                 "margem_restrita_inicial": rul_km,
                 "horizonte_observado": horizonte,
             }
-            continue
 
         linhas += [
-            "| Marco | Magnitude de injeção | R nesse ponto |",
+            (
+                "| Marco paramétrico E2 | Magnitude de injeção | "
+                "S_D nesse ponto |"
+            ),
             "|---|--:|--:|",
             f"| a01 (1% detectado) | {marcos['q01']:.2f} | "
             f"{cf.confiabilidade(marcos['b1'], beta, eta):.3f} |",
@@ -175,9 +198,57 @@ def secao_confiabilidade(weibull: dict) -> tuple[list[str], dict]:
                 f"> Observação vai até {horizonte:.1f}; qualquer marco além "
                 "disso é extrapolação do modelo, não dado.", ""]
 
-        dados[fid] = {"beta": beta, "eta": eta, "marcos": marcos,
-                      "interpretacao": leitura, "R_em_marcos": r_em,
-                      "horizonte_observado": horizonte}
+        ajustes_modo = w.get("ajustes_por_modo") or {}
+        if ajustes_modo:
+            linhas += [
+                "#### Estratificação por modo operacional GPVS", "",
+                "| Modo | n | beta | eta | p bootstrap | Grade estável | Uso 2P |",
+                "|---|---:|---:|---:|---:|---|---|",
+            ]
+            for modo in sorted(ajustes_modo):
+                ajuste_modo = ajustes_modo[modo]
+                p_modo = (
+                    ajuste_modo.get("teste_aderencia_quantizada") or {}
+                ).get("p_value")
+                estavel_modo = (
+                    ajuste_modo.get("sensibilidade_grade") or {}
+                ).get("estavel")
+                linhas.append(
+                    f"| {modo} | {ajuste_modo.get('n_traj', '-')} | "
+                    f"{float(ajuste_modo.get('beta', float('nan'))):.3f} | "
+                    f"{float(ajuste_modo.get('eta', float('nan'))):.3f} | "
+                    + (
+                        f"{float(p_modo):.3f}" if p_modo is not None else "—"
+                    )
+                    + f" | {'sim' if estavel_modo else 'não'} | "
+                    + (
+                        "adotado em E2"
+                        if ajuste_modo.get("resumo_parametrico_recomendado")
+                        else "exploratório"
+                    )
+                    + " |"
+                )
+            linhas += [
+                "",
+                "> F0L (IPPT) e F0M (MPPT) são regimes do mesmo dataset "
+                "GPVS. Diferenças entre eles não são eventos adicionais nem "
+                "mistura de bases; são heterogeneidade operacional explícita.",
+                "",
+            ]
+
+        dados[fid] = {
+            "beta": beta,
+            "eta": eta,
+            "marcos": marcos,
+            "interpretacao": leitura,
+            "R_em_marcos": r_em,
+            "horizonte_observado": horizonte,
+            "diagnostico": diagnostico,
+            "teste_aderencia_quantizada": teste_aderencia,
+            "sensibilidade_grade": sensibilidade,
+            "ajustes_por_modo": ajustes_modo,
+            "sintese_parametrica_recomendada": recomendada,
+        }
     return linhas, dados
 
 

@@ -39,6 +39,8 @@ from src.ml.rul_weibull import (
     ajustar_weibull,
     classificar_desfechos,
     metadados_tempo_rul,
+    passos_persistencia,
+    selecionar_trajetorias_holdout,
 )
 
 
@@ -63,6 +65,62 @@ def test_passo_fora_da_grade_e_grampeado_no_teto():
     onde nada foi medido."""
     assert a_det_da_grade(N_STEPS) == pytest.approx(A_DET_MAX)
     assert a_det_da_grade(10 * N_STEPS) == pytest.approx(A_DET_MAX)
+
+
+def test_persistencia_mantem_a_mesma_largura_fisica_entre_grades():
+    for n_steps in (101, 251, 501):
+        pontos = passos_persistencia(n_steps, largura_magnitude=0.02)
+        largura = (pontos - 1) / (n_steps - 1)
+        assert largura >= 0.02
+        assert largura < 0.02 + 1 / (n_steps - 1)
+
+
+def test_selecao_limitada_e_estratificada_por_ensaio():
+    import pandas as pd
+
+    janelas = []
+    for ensaio, quantidade in (("F0L", 142), ("F0M", 135)):
+        for indice in range(quantidade):
+            janela = pd.DataFrame({"indice": [indice]})
+            janela.attrs["ensaio"] = ensaio
+            janelas.append(janela)
+
+    todas = selecionar_trajetorias_holdout(janelas, None)
+    limitadas = selecionar_trajetorias_holdout(janelas, 100)
+    contagem = {
+        ensaio: sum(j.attrs["ensaio"] == ensaio for j in limitadas)
+        for ensaio in ("F0L", "F0M")
+    }
+
+    assert len(todas) == 277
+    assert len(limitadas) == 100
+    assert contagem == {"F0L": 51, "F0M": 49}
+
+
+def test_bootstrap_quantizado_distingue_weibull_de_mistura():
+    passo = 0.002
+    rng = np.random.default_rng(12)
+    weibull = 0.35 * rng.weibull(3.2, size=240)
+    mistura = np.concatenate([
+        0.20 * np.random.default_rng(13).weibull(6.0, size=120),
+        0.52 * np.random.default_rng(14).weibull(8.0, size=120),
+    ])
+
+    def ajustar(amostra):
+        quantizada = np.clip(
+            np.ceil(amostra / passo) * passo, passo, 1.0
+        )
+        return ajustar_weibull(
+            quantizada,
+            amostra <= 1.0,
+            n_boot=0,
+            passo_grade=passo,
+            n_boot_aderencia=120,
+            seed=91,
+        )["teste_aderencia_quantizada"]["p_value"]
+
+    assert ajustar(weibull) > 0.05
+    assert ajustar(mistura) < 0.05
 
 
 # ── escala: o ajuste tem de funcionar em [0; 1] ────────────────────────────

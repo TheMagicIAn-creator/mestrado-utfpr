@@ -638,8 +638,15 @@ def executar_injecao_falhas() -> bool:
             y_smd = resultados[fid][smd]["erro_mediano"]
             ax.scatter([smd], [y_smd], s=90, facecolors="none",
                        edgecolors="black", linewidths=1.5, zorder=4)
-            ax.annotate(f"SMD95={smd}", xy=(smd, y_smd), xytext=(0, 12),
-                        textcoords="offset points", ha="center", fontsize=8)
+            limite_esquerdo = smd == min(SEVERIDADES)
+            ax.annotate(
+                f"SMD95={smd}",
+                xy=(smd, y_smd),
+                xytext=((8 if limite_esquerdo else 0), 12),
+                textcoords="offset points",
+                ha=("left" if limite_esquerdo else "center"),
+                fontsize=8,
+            )
 
     arq_g1 = PASTA_AE / "injecao_falhas_resultados.png"
     salvar_figura(

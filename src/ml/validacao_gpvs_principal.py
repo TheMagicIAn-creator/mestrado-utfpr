@@ -602,6 +602,37 @@ def executar_validacao_gpvs_principal(
     }
 
 
+def regenerar_graficos_gpvs_principal(
+    pasta_saida: Path = PASTA_SAIDA,
+) -> dict:
+    """Regenera somente as figuras canônicas a partir das tabelas versionadas."""
+    pasta_saida = Path(pasta_saida)
+    arq_resultado = pasta_saida / "validacao_gpvs_e3.json"
+    arq_cenarios = pasta_saida / "validacao_gpvs_cenarios.csv"
+    arq_scores = pasta_saida / "validacao_gpvs_scores.csv"
+    ausentes = [
+        caminho for caminho in (arq_resultado, arq_cenarios, arq_scores)
+        if not caminho.exists()
+    ]
+    if ausentes:
+        raise FileNotFoundError(
+            "Artefatos canônicos ausentes: "
+            + ", ".join(str(caminho) for caminho in ausentes)
+        )
+    resultado = json.loads(arq_resultado.read_text(encoding="utf-8"))
+    if resultado.get("schema_version") != 2:
+        raise ValueError(
+            "A regeneração canônica exige validacao_gpvs_e3.json schema v2"
+        )
+    figuras = _plotar(
+        pd.read_csv(arq_cenarios),
+        pd.read_csv(arq_scores),
+        resultado["macro_summary"],
+        pasta_saida,
+    )
+    return {"ok": True, "outputs": [str(caminho) for caminho in figuras]}
+
+
 def executar_validacao_principal() -> bool:
     """Executa E2/FMECA e E3 real como uma única etapa de validação."""
     from src.ml.validacao import executar_validacao
