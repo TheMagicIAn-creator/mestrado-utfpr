@@ -197,11 +197,12 @@ Na sessão anterior o agente apresentou exemplos como `β = 2,15 [1,92; 2,41]` e
 O código declara explicitamente:
 
 ```python
-TTF_UNIDADE = "passo_sintetico_de_degradacao"
+A_DET_UNIDADE = "a_det_fracao_da_assinatura_nominal"
+TTF_UNIDADE = A_DET_UNIDADE  # alias legado
 TEMPO_FISICO_CALIBRADO = False
 ```
 
-**O TTF não está em horas.** Está em passos sintéticos de degradação, e não há calibração para tempo físico. Qualquer η, MTTF, B10 ou RUL expresso em horas seria **falso**.
+**O eixo não está em horas.** A grandeza canônica é `a_det ∈ [0, 1]`, a magnitude da assinatura injetada em que a detecção se confirma. Não há calibração para tempo físico. As chaves TTF, MTTF, B10 e RUL permanecem apenas como aliases legados; interpretá-las ou expressá-las em horas seria **falso**.
 
 **Ação para o Code:** garantir que toda saída de Weibull carregue a unidade declarada, e que nenhum gráfico, tabela ou texto gerado use unidade temporal física enquanto `TEMPO_FISICO_CALIBRADO` for `False`. Adicionar teste automatizado que falhe se isso acontecer.
 

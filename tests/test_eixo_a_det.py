@@ -153,6 +153,78 @@ def test_deteccao_total_zera_a_indetectabilidade():
     assert d["pod_mon_no_teto"] == pytest.approx(1.0)
 
 
+def test_rotulo_empirico_nao_inventa_censura_quando_todos_sao_detectados():
+    from src.ml.graficos_rul import _rotulo_posicoes_empiricas
+
+    rotulo = _rotulo_posicoes_empiricas(np.ones(12, dtype=bool))
+    assert "sem indetectabilidade" in rotulo
+    assert "com censura" not in rotulo
+
+
+def test_rotulo_empirico_quantifica_indetectabilidade_no_teto():
+    from src.ml.graficos_rul import _rotulo_posicoes_empiricas
+
+    rotulo = _rotulo_posicoes_empiricas(
+        np.array([True, True, False, False], dtype=bool)
+    )
+    assert "n=4" in rotulo
+    assert "indetect. no teto=2" in rotulo
+
+
+def test_histograma_marca_indetectabilidade_no_teto(tmp_path, monkeypatch):
+    import matplotlib.pyplot as plt
+
+    from src.ml import graficos_rul
+
+    a = np.concatenate([np.linspace(0.10, 0.65, 20), np.ones(2)])
+    eventos = np.concatenate([
+        np.ones(20, dtype=bool),
+        np.zeros(2, dtype=bool),
+    ])
+    parametros = ajustar_weibull(a, eventos, n_boot=0)
+    a_por_falha = {falha["id"]: a for falha in graficos_rul.FALHAS}
+    eventos_por_falha = {
+        falha["id"]: eventos for falha in graficos_rul.FALHAS
+    }
+    parametros_por_falha = {
+        falha["id"]: parametros for falha in graficos_rul.FALHAS
+    }
+    figuras = []
+
+    monkeypatch.setattr(
+        graficos_rul,
+        "salvar_figura",
+        lambda fig, _path, _rodape: figuras.append(fig),
+    )
+    monkeypatch.setattr(graficos_rul, "_log", lambda _mensagem: None)
+
+    graficos_rul.plotar_ttf_histogramas(
+        a_por_falha, eventos_por_falha, parametros_por_falha, tmp_path
+    )
+
+    assert len(figuras) == 1
+    labels = figuras[0].axes[0].get_legend_handles_labels()[1]
+    assert any("Indetectáveis no teto" in label for label in labels)
+    plt.close(figuras[0])
+
+
+def test_rotulos_visuais_nao_reintroduzem_eixo_temporal():
+    import ast
+    import inspect
+
+    from src.ml import graficos_rul
+
+    arvore = ast.parse(inspect.getsource(graficos_rul))
+    textos = "\n".join(
+        no.value
+        for no in ast.walk(arvore)
+        if isinstance(no, ast.Constant) and isinstance(no.value, str)
+    )
+    for rotulo_proibido in ("F(t) =", "ln t", "f(t) exige", "posição com censura"):
+        assert rotulo_proibido not in textos
+    assert "validação sintética e2" in textos.lower()
+
+
 def test_desfechos_entram_no_resultado_do_ajuste():
     a = np.concatenate([np.linspace(0.1, 0.6, 30), np.full(5, 1.0)])
     ev = np.concatenate([np.ones(30, dtype=bool), np.zeros(5, dtype=bool)])
