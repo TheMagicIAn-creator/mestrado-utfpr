@@ -117,6 +117,7 @@ MIN_EVENTOS_WEIBULL = 10
 MAX_CENSURA_RUL_PCT = 50.0
 MIN_R2_PAPEL_WEIBULL = 0.90
 PERSISTENCIA_CRUZAMENTO = 3
+AJUSTE_WEIBULL_METODO = "mle_interval_censored_grid_right_censored"
 
 
 def a_det_da_grade(passo: int, n_steps: int = N_STEPS) -> float:
@@ -397,31 +398,39 @@ def classificar_desfechos(a_dets: np.ndarray, eventos: np.ndarray) -> dict:
 
 
 def _ajuste_weibull_censurado(
-    ttfs: np.ndarray, eventos: np.ndarray
+    ttfs: np.ndarray,
+    eventos: np.ndarray,
+    passo_grade: float | None = None,
 ) -> tuple[float, float, bool]:
-    """MLE Weibull de dois parâmetros com contribuição de sobrevivência."""
+    """MLE 2P: cruzamentos por célula da grade e censura à direita no horizonte."""
     tempos = np.asarray(ttfs, dtype=float)
     obs = np.asarray(eventos, dtype=bool)
-    tempos = np.clip(tempos, 1e-6, None)
+    tempos = np.clip(tempos, 1e-12, None)
     if int(obs.sum()) < MIN_EVENTOS_WEIBULL:
         return float("nan"), float("nan"), False
 
+    delta_a = float(1.0 / (N_STEPS - 1) if passo_grade is None else passo_grade)
+    if not np.isfinite(delta_a) or delta_a <= 0:
+        raise ValueError("passo_grade deve ser positivo e finito")
+
     def neg_log_likelihood(log_params: np.ndarray) -> float:
         beta, eta = np.exp(log_params)
-        z = np.power(tempos / eta, beta)
-        log_f_evento = (
-            np.log(beta) + (beta - 1.0) * np.log(tempos)
-            - beta * np.log(eta) - z
-        )
-        log_s_censura = -z
-        ll = np.where(obs, log_f_evento, log_s_censura).sum()
+        ll = 0.0
+        if obs.any():
+            direita = tempos[obs]
+            esquerda = np.maximum(0.0, direita - delta_a)
+            z_direita = np.power(direita / eta, beta)
+            z_esquerda = np.power(esquerda / eta, beta)
+            diferenca = np.maximum(z_direita - z_esquerda, np.finfo(float).tiny)
+            # log(S(esquerda) - S(direita)), sem cancelamento numérico.
+            log_massa_intervalo = -z_esquerda + np.log(-np.expm1(-diferenca))
+            ll += float(np.sum(log_massa_intervalo))
+        if (~obs).any():
+            z_censura = np.power(tempos[~obs] / eta, beta)
+            ll += float(np.sum(-z_censura))
         return float(-ll) if np.isfinite(ll) else 1e30
 
-    # O eixo passou de passos (1..120) para a_det ∈ (0; 1]. O chute e os limites
-    # de η eram dimensionados para a escala antiga: `max(mediana, 1.0)` forçava
-    # η_ini = 1,0 (o TETO do novo eixo) e o limite inferior de 0,1 podia PRENDER
-    # o ótimo, já que η de uma falha bem detectada fica abaixo disso. Ambos
-    # passam a acompanhar a escala dos dados.
+    # O chute de eta acompanha a escala a_det, em vez do antigo eixo em passos.
     observados = tempos[obs]
     beta_ini = 2.0
     eta_ini = max(float(np.median(observados)), 1e-4)
@@ -441,8 +450,9 @@ def ajustar_weibull(
     eventos: np.ndarray | None = None,
     n_boot: int = 250,
     seed: int = 42,
+    passo_grade: float | None = None,
 ) -> dict:
-    """Ajusta Weibull censurada e estima incerteza por bootstrap de trajetórias."""
+    """Ajusta Weibull intervalar e estima incerteza por bootstrap."""
     tempos = np.asarray(ttfs, dtype=float)
     obs = (
         np.ones(len(tempos), dtype=bool)
@@ -451,7 +461,12 @@ def ajustar_weibull(
     if len(tempos) != len(obs):
         raise ValueError("ttfs e eventos devem ter o mesmo comprimento.")
 
-    beta, eta, convergiu = _ajuste_weibull_censurado(tempos, obs)
+    delta_a = float(
+        1.0 / (N_STEPS - 1) if passo_grade is None else passo_grade
+    )
+    beta, eta, convergiu = _ajuste_weibull_censurado(
+        tempos, obs, passo_grade=delta_a
+    )
     if convergiu:
         mttf = eta * gamma_func(1 + 1 / beta)
         b10 = eta * (-np.log(0.90)) ** (1 / beta)
@@ -466,7 +481,10 @@ def ajustar_weibull(
     else:
         mttf = b10 = km_rmse = float("nan")
         diagnostico_papel = {
-            "n_pontos": int(obs.sum()), "r2": None, "rmse": None,
+            "n_pontos": 0,
+            "n_eventos": int(obs.sum()),
+            "n_niveis_distintos": int(np.unique(tempos[obs]).size),
+            "r2": None, "rmse": None,
             "metodo_posicoes": None,
         }
 
@@ -475,7 +493,9 @@ def ajustar_weibull(
         rng = np.random.default_rng(seed)
         for _ in range(n_boot):
             idx = rng.integers(0, len(tempos), size=len(tempos))
-            b, e, ok = _ajuste_weibull_censurado(tempos[idx], obs[idx])
+            b, e, ok = _ajuste_weibull_censurado(
+                tempos[idx], obs[idx], passo_grade=delta_a
+            )
             if ok:
                 amostras_boot.append((
                     b,
@@ -509,8 +529,10 @@ def ajustar_weibull(
     resumo_parametrico_recomendado = bool(
         convergiu and not alta_censura and triagem_compativel
     )
-    taxa_bootstrap = (
-        len(amostras_boot) / n_boot if n_boot > 0 else None
+    taxa_bootstrap = len(amostras_boot) / n_boot if n_boot > 0 else None
+    n_niveis_distintos = int(np.unique(tempos[obs]).size)
+    taxa_empates = (
+        1.0 - n_niveis_distintos / int(obs.sum()) if obs.any() else None
     )
 
     return {
@@ -519,7 +541,15 @@ def ajustar_weibull(
         "mttf": float(mttf),
         "b10": float(b10),
         "fit_converged": convergiu,
-        "adequacy_method": "RMSE descritivo entre Kaplan-Meier e Weibull",
+        "fit_method": AJUSTE_WEIBULL_METODO,
+        "event_observation": "interval_censored_on_a_det_grid",
+        "right_censoring": "non_detection_at_observed_horizon",
+        "a_det_grid_step": delta_a,
+        "n_niveis_distintos": n_niveis_distintos,
+        "taxa_empates": taxa_empates,
+        "adequacy_method": (
+            "RMSE Kaplan-Meier e papel Weibull com empates agrupados"
+        ),
         "km_rmse": km_rmse,
         "diagnostico_papel_weibull": diagnostico_papel,
         "triagem_papel_r2_min": MIN_R2_PAPEL_WEIBULL,

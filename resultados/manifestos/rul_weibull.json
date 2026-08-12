@@ -1,22 +1,22 @@
 {
   "manifest_version": 2,
   "stage": "rul_weibull",
-  "created_at": "2026-08-11T21:58:38.618006-03:00",
-  "git_commit": "ccff262586028f1b0c56076eaa219fde24436f50",
+  "created_at": "2026-08-12T07:41:12.390610-03:00",
+  "git_commit": "9e8c7fe69947128acf7dfcacabb8cc2bdbd1f8ff",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
-  "code_sha256": "37f59f12a7e6cff5b6516c36eb4dd0783121ac33f443652ece2e897f9be740c1",
+  "code_sha256": "bad4d11b9382e5fecc81380aa8bac61980514480dd22e762b7e20ca57225b312",
   "code_dependencies": {
     "src.ml.gpvs": "a8938e078322a97a415e3cf20be3e8c76fa52522d189527c88ddcc0e08f4cb73",
     "src.ml.gpvs_principal": "7151a575275ed495ad7477913067aa4409bffc1347caa832e145a0c4dcaa3226",
     "src.ml.autoencoder": "8c1cc7ba7cff36907ed5df9b7bd55b8cc4eda3b48c976934749f522d8c258f26",
     "src.ml.escore_anomalia": "71106cad6b7971edcf27533462181cc38f8be4cf7db95a117dbbb43d96de75e1",
     "src.ml.estatistica": "fde4d602db680706252a6e11c9bb9a2aa84e27b6911275beec7f4148538a4515",
-    "src.ml.confiabilidade": "c9c31d77f8815bdec7bc5ffdf01cc17c676da175b47479eb3f9f63068f31eb0d",
-    "src.ml.graficos_rul": "30e519cc874a39044303d2c8837cd4a0c4bfed200439ba537a7b855ab229811a",
+    "src.ml.confiabilidade": "d9a4913fb14485aa3679de1b74d96d1c614e6a1c4c8c74eed89467c3f7e2dcdb",
+    "src.ml.graficos_rul": "11735bfbcbea472b13a9c89b6fd328f896a0e0785da5ceb0bd16db2e76b94803",
     "src.ml.injecao_falhas": "d4acb5c05c4d12e47e4a18e54da7b5bbb3e59d9ae7b38b4c5d56b51a3d2a60e7",
-    "src.ml.relatorio_weibull": "53b6a48fc1a5405be951487ebb687386bff24b5a2c6e5a1c3ad8f4afb2097a13",
+    "src.ml.relatorio_weibull": "48633bbd59888d5c148cb2d3ea83277a12d4c720a798851369674a2d2d044e39",
     "src.ml.estilo_graficos": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49",
     "src.ml.pod_curva": "af407a1d3b6dd7ce968b20063889b7303b52cc63b8764e498c53cdb96b1b0edc",
     "scripts.relatorio_confiabilidade": "724740db9e0f173325d1ecf09f756ee5dc3df337bccc4f202cea336b4bc47756"
@@ -30,6 +30,7 @@
     "max_censura_rul_pct": 50.0,
     "min_r2_papel_weibull": 0.9,
     "persistencia_cruzamento": 3,
+    "ajuste_weibull_metodo": "mle_interval_censored_grid_right_censored",
     "a_det_unidade": "a_det_fracao_da_assinatura_nominal",
     "ttf_unidade": "a_det_fracao_da_assinatura_nominal",
     "tempo_fisico_calibrado": false
@@ -57,14 +58,14 @@
     "resultados/autoencoder/relatorio_confiabilidade.json"
   ],
   "output_artifacts": {
-    "resultados/autoencoder/weibull_ttf.png": "b34002c594f3eaa051cbb83908579738f9b53b9a756be421c09686236fd9b4d5",
-    "resultados/autoencoder/weibull_confiabilidade.png": "8e56cc5e1592d93306192388c793ece96fb435d58901ee7ad77482abef9001be",
-    "resultados/autoencoder/weibull_distribuicao.png": "38a5a68779f9a81bbac601f197fbc269a99826a652dce6f8301ca13b128aeba0",
-    "resultados/autoencoder/weibull_rul.png": "c6603ce2e2a24aaadf5f6a76620e12d36a91d7346212122e2a40290432332238",
-    "resultados/autoencoder/weibull_results.json": "bc920204f8ec24d049b9baa8f436bfd7f2a3c192517296d0d3411c0e92a6852b",
-    "resultados/autoencoder/weibull_tabela.csv": "9c9da05d8c3a22fc1a0fc8d031954ba1938ec7381cd964e76c133165b8a51e9f",
-    "resultados/autoencoder/relatorio_confiabilidade.md": "ee7960265043eb4b5ad9cd61c02711522e14ea43ae1f38fb19c22f829198c3d1",
-    "resultados/autoencoder/relatorio_confiabilidade.json": "7191a475b91884b0c7659fa20df642da1211a2f0bdf254b04fb7e91e334dba49"
+    "resultados/autoencoder/weibull_ttf.png": "75a828dd3a148c6a627aa51bc195101917a589e8d3275fc6a4adac631a406925",
+    "resultados/autoencoder/weibull_confiabilidade.png": "d51f695732c46987c8593d8adc58e9975543a6a7377e069f1012ede50a34295e",
+    "resultados/autoencoder/weibull_distribuicao.png": "9cdf92d6fdb68d11ba07bb8695ced0bdb5059dbdf789db2739e2f48303070998",
+    "resultados/autoencoder/weibull_rul.png": "a500da70f769ce75e33225e17555cc77ab128842f01512dc9fe2343d0a653042",
+    "resultados/autoencoder/weibull_results.json": "928b7620ebbb612f32274ebb2235c81babdd1a812ff6a612289ba6a1e1061571",
+    "resultados/autoencoder/weibull_tabela.csv": "e5232b6b58402ad8e400922cace9fec77ff44965b5c057b1f41b0775eec77060",
+    "resultados/autoencoder/relatorio_confiabilidade.md": "7d68f4e6cb3023cc0d06ea5e2ca257e2a63b20e3ba0e4330cfa9c665e65754e0",
+    "resultados/autoencoder/relatorio_confiabilidade.json": "c4d64d9889b8e4c9d24dae4d9a5e42a1cafee2f4cfc63ce28427423205f80bc4"
   },
   "evidence_level": "E2"
 }

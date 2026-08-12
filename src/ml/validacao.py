@@ -338,6 +338,16 @@ def plotar_pr(resultados: dict, pasta: Path):
     _log(f"   📊 {arq.name}")
 
 
+def _normalizar_matriz_por_linha(cm: np.ndarray) -> np.ndarray:
+    """Normaliza cada classe real sem alterar as contagens publicadas."""
+    matriz = np.asarray(cm)
+    totais_linha = matriz.sum(axis=1, keepdims=True)
+    return np.divide(
+        matriz, totais_linha, out=np.zeros_like(matriz, dtype=float),
+        where=totais_linha > 0,
+    )
+
+
 def plotar_matrizes(resultados: dict, pasta: Path):
     """Matrizes de confusão para severidade=1.0 de cada falha."""
     fig, axes = plt.subplots(
@@ -354,7 +364,10 @@ def plotar_matrizes(resultados: dict, pasta: Path):
             continue
 
         cm = np.array(resultados[chave]["confusion"])
-        im = ax.imshow(cm, interpolation="nearest", cmap="Blues")
+        proporcoes = _normalizar_matriz_por_linha(cm)
+        ax.imshow(
+            proporcoes, interpolation="nearest", cmap="Blues", vmin=0, vmax=1
+        )
 
         classes = ["Saudável", "Falha"]
         tick_marks = np.arange(2)
@@ -363,12 +376,11 @@ def plotar_matrizes(resultados: dict, pasta: Path):
         ax.set_xticklabels(classes, fontsize=9)
         ax.set_yticklabels(classes, fontsize=9)
 
-        thresh = cm.max() / 2.0
         for i in range(2):
             for j in range(2):
-                ax.text(j, i, f"{cm[i, j]}",
-                        ha="center", va="center", fontsize=14,
-                        color="white" if cm[i, j] > thresh else "black",
+                ax.text(j, i, f"{cm[i, j]}\n({proporcoes[i, j]:.1%})",
+                        ha="center", va="center", fontsize=12,
+                        color="white" if proporcoes[i, j] > 0.55 else "black",
                         fontweight="bold")
 
         f1  = resultados[chave]["f1"]
@@ -383,7 +395,7 @@ def plotar_matrizes(resultados: dict, pasta: Path):
     arq = pasta / "validacao_matriz.png"
     salvar_figura(
         fig, arq,
-        "Matriz no ponto operacional; linhas = classe real, colunas = predição.",
+        "Matriz no ponto operacional; cor normalizada por classe real, rótulos = n (percentual da linha).",
     )
     _log(f"   📊 {arq.name}")
 
@@ -402,19 +414,24 @@ def plotar_matrizes_todas_severidades(resultados: dict, pasta: Path):
             chave = f"{falha['id']}_sev{sev}"
             res = resultados[chave]
             cm = np.asarray(res["confusion"])
-            ax.imshow(cm, interpolation="nearest", cmap="Blues", vmin=0, vmax=cm.max())
+            proporcoes = _normalizar_matriz_por_linha(cm)
+            ax.imshow(
+                proporcoes, interpolation="nearest", cmap="Blues",
+                vmin=0, vmax=1,
+            )
             for i in range(2):
                 for j in range(2):
                     ax.text(
-                        j, i, str(cm[i, j]), ha="center", va="center",
-                        fontsize=12, fontweight="bold",
-                        color="white" if cm[i, j] > cm.max() / 2 else "black",
+                        j, i, f"{cm[i, j]}\n({proporcoes[i, j]:.1%})",
+                        ha="center", va="center", fontsize=10,
+                        fontweight="bold",
+                        color="white" if proporcoes[i, j] > 0.55 else "black",
                     )
             ax.set_xticks([0, 1], ["Saudável", "Falha"], fontsize=8)
             ax.set_yticks([0, 1], ["Saudável", "Falha"], fontsize=8)
             ax.set_title(
                 f"{falha['nome']} · sev={sev:.2f}\n"
-                f"Recall={res['recall']:.2f} · FNR={res['fnr']:.2f}",
+                f"Recall={res['recall']:.3f} · FNR={res['fnr']:.3f}",
                 fontsize=9,
             )
             if coluna == 0:
@@ -425,7 +442,7 @@ def plotar_matrizes_todas_severidades(resultados: dict, pasta: Path):
     arq = pasta / "validacao_matrizes_severidades.png"
     salvar_figura(
         fig, arq,
-        "E2 sintético em janelas não sobrepostas do holdout temporal; n por classe indicado no CSV.",
+        "E2 sintético em janelas não sobrepostas; cor normalizada por classe real, rótulos = n (percentual da linha).",
     )
     _log(f"   📊 {arq.name}")
 
@@ -717,6 +734,22 @@ def executar_validacao() -> bool:
     with open(arq_json, "w", encoding="utf-8") as f:
         json.dump(report_serializavel, f, indent=2, ensure_ascii=False)
     _log(f"   ✅ {arq_json.name}")
+
+    # A retroalimentação é uma saída derivada da MESMA validação. Gerá-la aqui
+    # impede que FMECA, limiar e matrizes descrevam execuções diferentes.
+    from src.ml.retroalimentacao_fmeca import (
+        formatar_markdown,
+        tabela_retroalimentacao,
+    )
+
+    retroalimentacao = tabela_retroalimentacao(arq_json)
+    (PASTA_AE / "retroalimentacao_fmeca.json").write_text(
+        json.dumps(retroalimentacao, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    (PASTA_AE / "retroalimentacao_fmeca.md").write_text(
+        formatar_markdown(retroalimentacao), encoding="utf-8"
+    )
 
     # ── 7. Resumo final ──────────────────────────────────────
     _log(f"\n{'='*60}")

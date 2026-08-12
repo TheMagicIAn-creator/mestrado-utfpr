@@ -59,7 +59,8 @@ import numpy as np
 #   median rank regression for Weibull estimation. Iowa State University.
 FONTE_FORMULAS = "Weibull 2P; ver Nketiah et al. (2021), IJAERS 8(9)"
 FONTE_POSICOES_CENSURADAS = (
-    "NIST/SEMATECH e-Handbook, secao 8.2.1.5: Kaplan-Meier modificado"
+    "NIST/SEMATECH e-Handbook, secao 8.2.1.5: Kaplan-Meier modificado; "
+    "empates agrupados pela media das posicoes"
 )
 
 
@@ -321,6 +322,11 @@ def posicoes_probabilidade_censuradas(
     por exemplo, 12 deteccoes em 31 cenarios parecerem quase 100% da populacao.
     Eventos sao ordenados antes de censuras empatadas, a convencao usual para o
     conjunto em risco.
+
+    Eventos empatados representam a mesma resolucao de observacao. Eles recebem
+    uma unica abscissa e a media das posicoes que ocupariam sem agrupamento.
+    Isso evita transformar uma grade discreta em uma coluna artificial de
+    pontos com probabilidades diferentes no papel de Weibull.
     """
     t = np.asarray(tempos, dtype=float)
     obs = np.asarray(eventos, dtype=bool)
@@ -333,17 +339,22 @@ def posicoes_probabilidade_censuradas(
     t_ord, obs_ord = t[ordem], obs[ordem]
     n = len(t_ord)
     sobrevivencia = (n + 0.7) / (n + 0.4)
-    pontos_t: list[float] = []
-    pontos_f: list[float] = []
+    pontos_por_tempo: dict[float, list[float]] = {}
     for posto, (tempo, evento) in enumerate(zip(t_ord, obs_ord), start=1):
         if not evento:
             continue
         sobrevivencia *= (n - posto + 0.7) / (n - posto + 1.7)
-        pontos_t.append(float(tempo))
-        pontos_f.append(float(1.0 - sobrevivencia))
+        pontos_por_tempo.setdefault(float(tempo), []).append(
+            float(1.0 - sobrevivencia)
+        )
+    pontos_t = np.asarray(list(pontos_por_tempo), dtype=float)
+    pontos_f = np.asarray(
+        [float(np.mean(posicoes)) for posicoes in pontos_por_tempo.values()],
+        dtype=float,
+    )
     return (
-        np.asarray(pontos_t),
-        np.asarray(pontos_f),
+        pontos_t,
+        pontos_f,
         FONTE_POSICOES_CENSURADAS,
     )
 
@@ -362,6 +373,8 @@ def diagnostico_papel_weibull(
     if len(x) < 3:
         return {
             "n_pontos": int(len(x)),
+            "n_eventos": int(np.asarray(eventos, dtype=bool).sum()),
+            "n_niveis_distintos": int(len(x)),
             "r2": None,
             "rmse": None,
             "metodo_posicoes": metodo,
@@ -372,6 +385,8 @@ def diagnostico_papel_weibull(
     r2 = 1.0 - float(np.sum(residuos**2)) / ss_total if ss_total > 0 else None
     return {
         "n_pontos": int(len(x)),
+        "n_eventos": int(np.asarray(eventos, dtype=bool).sum()),
+        "n_niveis_distintos": int(len(x)),
         "r2": float(r2) if r2 is not None else None,
         "rmse": float(np.sqrt(np.mean(residuos**2))),
         "metodo_posicoes": metodo,

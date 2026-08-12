@@ -10,7 +10,7 @@ limiar.json, congelado) e NÃO escolhe o limiar ótimo no próprio conjunto:
 
 import numpy as np
 
-from src.ml.validacao import metricas_no_limiar
+from src.ml.validacao import _normalizar_matriz_por_linha, metricas_no_limiar
 
 
 def test_metricas_respeitam_limiar_passado():
@@ -37,3 +37,11 @@ def test_auc_roc_invariante_ao_limiar():
     a = metricas_no_limiar(neg, pos, 0.50)["auc_roc"]
     b = metricas_no_limiar(neg, pos, 0.80)["auc_roc"]
     assert abs(a - b) < 1e-9  # AUC não depende do limiar (independente do corte)
+
+
+def test_matriz_visual_e_normalizada_por_classe_real():
+    cm = np.array([[90, 10], [2, 8]])
+    proporcoes = _normalizar_matriz_por_linha(cm)
+
+    np.testing.assert_allclose(proporcoes.sum(axis=1), [1.0, 1.0])
+    np.testing.assert_allclose(proporcoes, [[0.9, 0.1], [0.2, 0.8]])

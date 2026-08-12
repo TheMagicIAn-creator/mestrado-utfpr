@@ -57,16 +57,18 @@ def montar_relatorio(
                 "ATENÇÃO AO EIXO: é magnitude de assinatura em [0; 1], não "
                 "tempo. Os nomes canônicos são média de a_det, a10 e margem "
                 "residual; MTTF/B10/RUL permanecem apenas como aliases legados. "
-                "As não detecções entram no MLE "
-                "como censura à direita sob hipótese declarada (ver 'desfechos'); "
+                "Os cruzamentos entram no MLE como censura por intervalo na "
+                "grade de magnitude; as não detecções entram como censura à "
+                "direita sob hipótese declarada (ver 'desfechos'); "
                 "os intervalos vêm de bootstrap de trajetórias."
             ),
             "a_det_origem": "trajetorias_de_magnitude_crescente_cruzando_limiar_AE",
             "ttf_origem": "trajetorias_de_magnitude_crescente_cruzando_limiar_AE",
             "tempo": metadados_tempo,
             "adequacy_note": (
-                "RMSE-KM e R2 no papel censura-aware são descritivos. A triagem "
-                "R2 não é teste formal e não substitui validação externa."
+                "RMSE-KM e R2 no papel com empates agrupados são descritivos. "
+                "A triagem R2 não é teste formal e não substitui validação "
+                "externa."
             ),
             "physical_claims": {
                 "rul": False,
@@ -82,6 +84,10 @@ def montar_relatorio(
             "n_steps"      : n_steps,
             "a_det_unidade": a_det_unidade,
             "a_det_por_passo": 1.0 / (n_steps - 1),
+            "a_det_observacao": "interval_censored_on_grid",
+            "ajuste_weibull_metodo": next(iter(params.values())).get(
+                "fit_method"
+            ) if params else None,
             "ttf_unidade": ttf_unidade,
             "rul_unidade": ttf_unidade,
             "tempo_fisico_calibrado": tempo_fisico_calibrado,
@@ -100,7 +106,9 @@ def montar_relatorio(
             "nome"  : falha["nome"],
             "npr"   : falha["npr"],
             "weibull": json_seguro(params[fid]),
-            "ajuste_weibull_adequado": None,
+            "ajuste_weibull_adequado": params[fid].get(
+                "resumo_parametrico_recomendado", False
+            ),
             "sintese_parametrica_recomendada": params[fid].get(
                 "resumo_parametrico_recomendado", False
             ),
@@ -154,6 +162,10 @@ def montar_relatorio(
             "b10_ci_low": p["b10_ci95"][0],
             "b10_ci_high": p["b10_ci95"][1],
             "km_rmse": p["km_rmse"],
+            "fit_method": p.get("fit_method"),
+            "a_det_grid_step": p.get("a_det_grid_step"),
+            "n_niveis_distintos": p.get("n_niveis_distintos"),
+            "taxa_empates": p.get("taxa_empates"),
             "media_a_det_parametrica": p["media_a_det_parametrica"],
             "media_a_det_parametrica_ci_low": p["media_a_det_parametrica_ci95"][0],
             "media_a_det_parametrica_ci_high": p["media_a_det_parametrica_ci95"][1],

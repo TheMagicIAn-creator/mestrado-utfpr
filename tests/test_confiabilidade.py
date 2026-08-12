@@ -212,6 +212,17 @@ def test_posicoes_censuradas_usam_o_tamanho_total_da_amostra():
     assert "Kaplan-Meier" in metodo
 
 
+def test_posicoes_censuradas_agrupam_empates_da_grade():
+    tempos = np.array([0.2, 0.2, 0.2, 0.4, 0.4, 1.0])
+    eventos = np.array([True, True, True, True, True, False])
+    t, f, metodo = posicoes_probabilidade_censuradas(tempos, eventos)
+
+    np.testing.assert_allclose(t, [0.2, 0.4])
+    assert len(f) == 2
+    assert np.all(np.diff(f) > 0)
+    assert "empates agrupados" in metodo
+
+
 def test_diagnostico_papel_detecta_ajuste_incompativel():
     tempos = np.array([0.20, *np.linspace(0.70, 0.95, 29), 1.0])
     eventos = np.array([True] * 30 + [False])

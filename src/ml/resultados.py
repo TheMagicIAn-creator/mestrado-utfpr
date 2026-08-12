@@ -661,8 +661,8 @@ def _resumo_weibull() -> str | None:
         "## Detectabilidade E2 / Weibull\n\n",
         f"Unidade do eixo: `{unidade}`; tempo físico calibrado: "
         f"{'sim' if tempo.get('tempo_fisico_calibrado') else 'não'}.\n\n",
-        "| Falha | NPR | Detectadas/total | beta (IC95%) | eta (IC95%) | média a_det (IC95%) | a10 (IC95%) | margem restrita | R2 papel | Status |\n",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|\n",
+        "| Falha | NPR | Detectadas/total | Níveis da grade | beta (IC95%) | eta (IC95%) | média a_det (IC95%) | a10 (IC95%) | margem restrita | R2 papel | Status |\n",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|\n",
     ]
     for fid, falha in d.get("falhas", {}).items():
         p = falha.get("weibull", {})
@@ -695,6 +695,7 @@ def _resumo_weibull() -> str | None:
         linhas.append(
             f"| {falha.get('nome', fid)} | {falha.get('npr')} | "
             f"{p.get('n_eventos', '-')}/{p.get('n_traj', '-')} | "
+            f"{p.get('n_niveis_distintos', '-')} | "
             f"{valor_ci('beta', 2)} | {valor_ci('eta')} | "
             f"{media_txt} | {a10_txt} | "
             f"{_fmt(p.get('margem_restrita_inicial', p.get('rul_restrita_inicial')))} | "
@@ -708,8 +709,9 @@ def _resumo_weibull() -> str | None:
         "taxa de falha do componente. A margem restrita de Kaplan-Meier não é "
         "RUL, pois não existe eixo temporal. MTTF, B10 e RUL permanecem apenas "
         "como aliases legados no JSON.\n\n"
-        "Os pontos empíricos usam Kaplan-Meier modificado com o tamanho total "
-        "da amostra. Os ICs vêm de bootstrap de janelas sem amostras "
+        "O MLE usa censura por intervalo na grade de magnitude; os pontos do "
+        "papel de Weibull usam Kaplan-Meier modificado, tamanho total da "
+        "amostra e empates agrupados. Os ICs vêm de bootstrap de janelas sem amostras "
         "compartilhadas, mas independência temporal não foi demonstrada. "
         "O NPR "
         "prioriza risco na FMECA; ele **não determina** quantos eventos o "

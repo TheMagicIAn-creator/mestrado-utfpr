@@ -70,10 +70,10 @@ def _rotulo_posicoes_empiricas(eventos: np.ndarray) -> str:
     n_indetectaveis = int((~eventos).sum())
     if n_indetectaveis:
         return (
-            "posição empírica "
+            "posição empírica agrupada "
             f"(n={n_total}; indetect. no teto={n_indetectaveis})"
         )
-    return f"posição empírica (n={n_total}; sem indetectabilidade)"
+    return f"posição empírica agrupada (n={n_total}; sem indetectabilidade)"
 
 
 def _limites_eixo_magnitude(valores: np.ndarray) -> tuple[float, float]:
@@ -147,23 +147,32 @@ def plotar_ttf_histogramas(
                 label=f"Mediana={np.median(observados):.2f}",
             )
 
-        # A densidade contínua é convertida em contagem esperada por ponto da
-        # grade: f_D(a) × n_total × Δa. Assim a curva e as barras discretas usam
-        # a mesma escala vertical sem depender de bins arbitrários.
+        # O ajuste intervalar é comparado na mesma resolução do experimento:
+        # P(a-delta < A <= a) vezes o número de trajetórias. Uma densidade
+        # contínua sobre barras quantizadas sugeriria precisão inexistente.
         if p["fit_converged"] and len(observados):
-            inicio_curva = max(limite_x[0], 1e-6)
-            fim_curva = min(limite_x[1], 1.0)
-            t_grid = np.linspace(inicio_curva, fim_curva, 400)
-            f_ajustada = densidade(t_grid, p["beta"], p["eta"])
-            escala = len(ttfs) * passo_grade
+            indice_inicial = max(1, int(np.ceil(limite_x[0] / passo_grade)))
+            indice_final = min(
+                N_STEPS - 1, int(np.floor(limite_x[1] / passo_grade))
+            )
+            t_grid = np.arange(indice_inicial, indice_final + 1) * passo_grade
+            massa_ajustada = (
+                acumulada(t_grid, p["beta"], p["eta"])
+                - acumulada(
+                    np.maximum(0.0, t_grid - passo_grade),
+                    p["beta"], p["eta"],
+                )
+            )
+            contagem_ajustada = len(ttfs) * massa_ajustada
             altura_maxima = max(
-                altura_maxima, float(np.nanmax(f_ajustada * escala))
+                altura_maxima, float(np.nanmax(contagem_ajustada))
             )
             recomendada = p.get("resumo_parametrico_recomendado", False)
             ax.plot(
-                t_grid, f_ajustada * escala, color="black", linewidth=2.2,
+                t_grid, contagem_ajustada, color="black", linewidth=2.2,
+                marker="o", markersize=2.8,
                 linestyle="-" if recomendada else "--",
-                label=("Weibull 2P"
+                label=("Massa Weibull 2P por célula"
                        + ("" if recomendada else " — não recomendada")),
             )
 
@@ -524,6 +533,6 @@ def plotar_distribuicao_weibull(
     arq = pasta / "weibull_distribuicao.png"
     salvar_figura(
         fig, arq,
-        "Validação sintética E2. Pontos empíricos usam n total; linha tracejada indica modelo não recomendado. R²pp é triagem, não teste formal.",
+        "Validação sintética E2; MLE com censura por intervalo (Δa=1/119). Pontos empíricos usam n total e empates agrupados; linha tracejada indica modelo não recomendado. R²pp é triagem, não teste formal.",
     )
     _log(f"   📊 {arq.name}")
