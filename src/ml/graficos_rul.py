@@ -18,6 +18,7 @@ from src.ml.rul_weibull import (
     COR_ALERTA,
     COR_TEXTO_SEC,
     FALHAS,
+    N_STEPS,
     TAM,
     Path,
     _log,
@@ -75,16 +76,40 @@ def _rotulo_posicoes_empiricas(eventos: np.ndarray) -> str:
     return f"posição empírica (n={n_total}; sem indetectabilidade)"
 
 
+def _limites_eixo_magnitude(valores: np.ndarray) -> tuple[float, float]:
+    """Enquadra cada componente sem esconder a unidade comum ``a_det``.
+
+    Os painéis são pequenos múltiplos de distribuições com escalas muito
+    diferentes. O Fusível ocupa menos de 5% do domínio nominal; fixar todos os
+    eixos em [0, 1] reduz seus seis valores observados a uma linha no canto.
+    """
+    valores = np.asarray(valores, dtype=float)
+    valores = valores[np.isfinite(valores)]
+    if not valores.size:
+        return 0.0, 1.0
+
+    minimo = float(valores.min())
+    maximo = float(valores.max())
+    passo_grade = 1.0 / (N_STEPS - 1)
+    amplitude = max(maximo - minimo, 2.0 * passo_grade)
+    margem = max(1.5 * passo_grade, 0.08 * amplitude)
+    limite_inferior = max(0.0, minimo - margem)
+    limite_superior = min(1.0, maximo + margem)
+    if np.isclose(maximo, 1.0):
+        limite_superior = 1.01
+    return limite_inferior, limite_superior
+
+
 def plotar_ttf_histogramas(
     ttfs_dict: dict, eventos_dict: dict, params: dict, pasta: Path
 ):
-    """a_det detectados e indetectáveis no teto, com ajuste Weibull."""
+    """Frequência discreta de a_det e ajuste Weibull por componente."""
     n_falhas = len(FALHAS)
     fig, axes = plt.subplots(
         1, n_falhas, figsize=TAM["painel_3"], layout="constrained"
     )
     fig.suptitle(
-        "Primeiro cruzamento do detector por magnitude — validação sintética E2"
+        "Distribuição discreta do primeiro cruzamento — validação sintética E2"
     )
 
     for ax, falha in zip(axes, FALHAS):
@@ -97,54 +122,48 @@ def plotar_ttf_histogramas(
         nao_detectados = ttfs[~eventos]
 
         horizonte = float(max(ttfs))
-        # Menos eventos, menos bins: com 9 eventos em 12 bins o histograma vira
-        # código de barras e sugere ausência de estrutura onde só falta amostra.
-        n_bins = int(min(13, max(5, len(observados) // 2 + 1)))
-        bins = np.linspace(0.0, horizonte, n_bins)
-        MIN_EVENTOS_HIST = 5
-        if len(observados) >= MIN_EVENTOS_HIST:
-            ax.hist(
-                observados, bins=bins, density=False, alpha=0.72,
-                color=falha["cor"], edgecolor="white",
-                label=f"Eventos observados (n={len(observados)})",
+        limite_x = _limites_eixo_magnitude(ttfs)
+        passo_grade = 1.0 / (N_STEPS - 1)
+        altura_maxima = 0.0
+        if len(observados):
+            magnitudes, contagens = np.unique(observados, return_counts=True)
+            altura_maxima = float(contagens.max())
+            ax.bar(
+                magnitudes, contagens, width=0.82 * passo_grade,
+                alpha=0.72, color=falha["cor"], edgecolor="white",
+                linewidth=0.6,
+                label=f"Frequência (n={len(observados)})",
             )
-        elif len(observados):
-            # Pouquíssimos eventos: uma barra solitária parece defeito e engana.
-            # Mostra um aviso claro de amostra insuficiente (mantendo as linhas
-            # de mediana/censura) em vez de um histograma degenerado.
-            ax.set_ylim(0, 1)
+        else:
             ax.text(
-                0.5, 0.6,
-                f"amostra insuficiente\npara histograma (n={len(observados)})",
+                0.5, 0.55, "nenhuma detecção na grade observada",
                 transform=ax.transAxes, ha="center", va="center",
-                fontsize=10, color=COR_TEXTO_SEC,
+                fontsize=9, color=COR_TEXTO_SEC,
             )
         if len(observados):
             ax.axvline(
                 float(np.median(observados)), color="0.35", linestyle="--",
                 linewidth=1.3,
-                label=f"Mediana observada={np.median(observados):.2f}",
+                label=f"Mediana={np.median(observados):.2f}",
             )
 
-        # Curva de Weibull ajustada SOBRE o histograma (quando estimável). A
-        # densidade f(t) integra 1 sobre TODAS as trajetórias; escala-se para a
-        # contagem multiplicando por (n_total × largura_do_bin). n_total inclui
-        # as não detectadas: só assim a curva bate com o histograma dos eventos
-        # observados (que é a fração de f(t) à esquerda do horizonte). Sob alta
-        # censura, a maior parte da massa fica à direita da censura — a curva
-        # baixa perto do histograma é o próprio sinal de que o ajuste extrapola.
+        # A densidade contínua é convertida em contagem esperada por ponto da
+        # grade: f_D(a) × n_total × Δa. Assim a curva e as barras discretas usam
+        # a mesma escala vertical sem depender de bins arbitrários.
         if p["fit_converged"] and len(observados):
-            largura_bin = float(bins[1] - bins[0])
-            # `t_grid` começa acima de zero: f(0) diverge quando β < 1, e
-            # plotar o infinito não informa nada.
-            t_grid = np.linspace(max(horizonte / 400.0, 1e-6), horizonte, 400)
+            inicio_curva = max(limite_x[0], 1e-6)
+            fim_curva = min(limite_x[1], 1.0)
+            t_grid = np.linspace(inicio_curva, fim_curva, 400)
             f_ajustada = densidade(t_grid, p["beta"], p["eta"])
-            escala = len(ttfs) * largura_bin
+            escala = len(ttfs) * passo_grade
+            altura_maxima = max(
+                altura_maxima, float(np.nanmax(f_ajustada * escala))
+            )
             recomendada = p.get("resumo_parametrico_recomendado", False)
             ax.plot(
                 t_grid, f_ajustada * escala, color="black", linewidth=2.2,
                 linestyle="-" if recomendada else "--",
-                label=(f"Weibull 2P (β={p['beta']:.2f}, η={p['eta']:.3f})"
+                label=("Weibull 2P"
                        + ("" if recomendada else " — não recomendada")),
             )
 
@@ -167,7 +186,7 @@ def plotar_ttf_histogramas(
                 and p["b10"] <= horizonte):
             ax.axvline(
                 p["b10"], color="#2a78d6", linestyle=":", linewidth=1.7,
-                label=f"a10 paramétrico={p['b10']:.2f}",
+                label=f"a10={p['b10']:.2f}",
             )
 
         npm_str = f"NPR={falha['npr']}"
@@ -191,14 +210,16 @@ def plotar_ttf_histogramas(
                       + "\nKaplan-Meier permanece válida")
         ax.set_title(f"{nome} ({npm_str})\n{ajuste}", fontsize=9)
         ax.set_xlabel("Magnitude de detecção, $a_{det}$ (fração da assinatura nominal)")
-        ax.set_ylabel("Número de trajetórias")
-        ax.set_xlim(0, 1.02)
-        ax.legend(fontsize=8)
+        ax.set_ylabel("Trajetórias por ponto da grade")
+        ax.set_xlim(*limite_x)
+        if altura_maxima > 0:
+            ax.set_ylim(0.0, altura_maxima * 1.30)
+        ax.legend(fontsize=8, loc="upper right")
 
     arq = pasta / "weibull_ttf.png"
     salvar_figura(
         fig, arq,
-        "Validação sintética E2: cada trajetória é uma janela do holdout, não um ativo. O eixo é magnitude de perturbação CA, sem equivalência com tempo ou vida útil.",
+        "Validação sintética E2; Δa=1/119. Escalas horizontais ajustadas por componente: compare magnitudes pelos valores dos eixos, não pela largura visual. Não há equivalência com tempo ou vida útil.",
     )
     _log(f"   📊 {arq.name}")
 
