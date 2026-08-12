@@ -130,7 +130,7 @@ A_INJ = [0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0]
 # artefatos e scripts antigos; NÃO usar em código novo.
 SEVERIDADES = A_INJ
 ALVO_SMD = 0.95
-N_JANELAS_SMD = 100  # limitado pelo numero de janelas nao sobrepostas do holdout
+N_JANELAS_SMD = 281  # holdout F0 completo: 142 F0L + 139 F0M
 
 # ── Falhas FMECA — FONTE ÚNICA: docs/fmeca.md ────────────────
 # Componentes CA-elétricos do inversor que mais falham (Tab. 3.3 do TCC,
@@ -349,12 +349,11 @@ def falha_perda_fase_fusivel(janela_df: pd.DataFrame,
     janela_falha = janela_df.copy()
     fator        = 1.0 - severidade * 0.12
 
-    # Afeta corrente e tensão da fase A
+    # Um fusível em série altera a corrente conduzida. A tensão no ponto de
+    # medição não é reduzida artificialmente: isso duplicava a assinatura da
+    # falha e fazia features de potência/tensão explodirem sem base física.
     fase_i = COLUNAS_CORRENTE[0]
-    fase_v = COLUNAS_TENSAO[0]
     janela_falha[fase_i] = janela_df[fase_i].values * fator
-    if fase_v in janela_falha.columns:
-        janela_falha[fase_v] = janela_df[fase_v].values * fator
 
     return janela_falha
 
@@ -606,36 +605,54 @@ def executar_injecao_falhas() -> bool:
     _log(f"\n📊 Gerando gráficos...")
     PASTA_AE.mkdir(parents=True, exist_ok=True)
 
-    # Gráfico 1: mediana e intervalo interquartil do erro por falha.
+    # Gráfico 1: escore adimensional relativo ao limiar. Isso preserva as
+    # diferenças entre falhas sem deixar a escala bruta de uma delas achatar
+    # as demais nem sugerir que MSEs de painéis independentes são magnitudes
+    # físicas diretamente comparáveis.
     fig, axes = plt.subplots(
-        1, 3, figsize=TAM["painel_3"], sharey=True, layout="constrained"
+        1, 3, figsize=TAM["painel_3"], sharey=False, layout="constrained"
     )
-    fig.suptitle("Injeção sintética — distribuição do erro no holdout temporal")
+    fig.suptitle("Injeção sintética E2 — escore relativo ao limiar operacional")
 
     for ax, falha in zip(axes, FALHAS):
         fid   = falha["id"]
         sevs = np.asarray(SEVERIDADES, dtype=float)
-        medianas = np.asarray([resultados[fid][s]["erro_mediano"] for s in SEVERIDADES])
-        q25 = np.asarray([resultados[fid][s]["erro_q25"] for s in SEVERIDADES])
-        q75 = np.asarray([resultados[fid][s]["erro_q75"] for s in SEVERIDADES])
+        medianas = np.asarray([
+            resultados[fid][s]["erro_mediano"] / limiar for s in SEVERIDADES
+        ])
+        q25 = np.asarray([
+            resultados[fid][s]["erro_q25"] / limiar for s in SEVERIDADES
+        ])
+        q75 = np.asarray([
+            resultados[fid][s]["erro_q75"] / limiar for s in SEVERIDADES
+        ])
 
         ax.plot(sevs, medianas, marker="o", color=falha["cor"], label="Mediana")
         ax.fill_between(sevs, q25, q75, color=falha["cor"], alpha=0.18,
                         label="Intervalo interquartil")
-        ax.axhline(limiar, color=COR_ALERTA, linestyle="--", linewidth=1.5,
-                   label=f"Limiar = {limiar:.2f}")
-        ax.axhline(baseline_mean, color="#147a3d", linestyle=":",
-                   linewidth=1.2, label=f"Baseline = {baseline_mean:.4f}")
+        ax.axhline(1.0, color=COR_ALERTA, linestyle="--", linewidth=1.5,
+                   label="Limiar operacional = 1")
+        ax.axhline(baseline_mean / limiar, color="#147a3d", linestyle=":",
+                   linewidth=1.2,
+                   label=f"Baseline/limiar = {baseline_mean / limiar:.3f}")
 
         ax.set_title(f"{falha['nome']}\n(NPR={falha['npr']})", fontsize=10)
-        ax.set_xlabel("Severidade")
-        ax.set_ylabel("Erro de reconstrução (MSE, escala log)")
+        ax.set_xlabel(r"Magnitude injetada $a_{inj}$ (fração nominal)")
+        ax.set_ylabel("Escore operacional / limiar (escala log)")
         ax.set_yscale("log")
+        valores_positivos = np.concatenate([
+            medianas[medianas > 0], q25[q25 > 0], q75[q75 > 0],
+            np.asarray([1.0, baseline_mean / limiar]),
+        ])
+        ax.set_ylim(
+            max(float(valores_positivos.min()) * 0.72, 1e-3),
+            float(valores_positivos.max()) * 1.38,
+        )
         ax.legend(fontsize=8)
 
         smd = smd_report[fid]
         if smd:
-            y_smd = resultados[fid][smd]["erro_mediano"]
+            y_smd = resultados[fid][smd]["erro_mediano"] / limiar
             ax.scatter([smd], [y_smd], s=90, facecolors="none",
                        edgecolors="black", linewidths=1.5, zorder=4)
             limite_esquerdo = smd == min(SEVERIDADES)
@@ -652,7 +669,7 @@ def executar_injecao_falhas() -> bool:
     salvar_figura(
         fig,
         arq_g1,
-        "E2 sintético. Cada ponto resume janelas não sobrepostas do teste; a faixa mostra Q25–Q75.",
+        f"E2 sintético, n={len(janelas_holdout)} por nível. Faixa=Q25–Q75; escalas y locais e logarítmicas. Valores >1 excedem o limiar.",
     )
     _log(f"   📊 {arq_g1.name}")
 
@@ -663,7 +680,10 @@ def executar_injecao_falhas() -> bool:
         taxas = np.asarray([resultados[fid][s]["taxa_deteccao"] for s in SEVERIDADES])
         lows = np.asarray([resultados[fid][s]["taxa_ci_low"] for s in SEVERIDADES])
         highs = np.asarray([resultados[fid][s]["taxa_ci_high"] for s in SEVERIDADES])
-        erros_y = np.vstack([taxas - lows, highs - taxas])
+        erros_y = np.vstack([
+            np.maximum(0.0, taxas - lows),
+            np.maximum(0.0, highs - taxas),
+        ])
         ax.errorbar(
             SEVERIDADES, taxas, yerr=erros_y, color=falha["cor"], marker="o",
             capsize=3, label=f"{falha['nome']} (NPR={falha['npr']})",
@@ -671,18 +691,21 @@ def executar_injecao_falhas() -> bool:
 
     ax.axhline(ALVO_SMD, color=COR_ALERTA, linestyle="--",
                label=f"Alvo SMD = {ALVO_SMD:.0%}")
-    ax.set_xlabel("Severidade da falha")
+    ax.set_xlabel(r"Magnitude injetada $a_{inj}$ (fração da assinatura nominal)")
     ax.set_ylabel("Taxa de detecção no limiar operacional")
     ax.set_ylim(-0.03, 1.03)
     ax.set_yticks(np.linspace(0, 1, 6), labels=[f"{v:.0%}" for v in np.linspace(0, 1, 6)])
-    ax.set_title("Detectabilidade por severidade\nIntervalos de Wilson de 95%")
+    ax.set_title(
+        f"Probabilidade de detecção por magnitude — E2\n"
+        f"n={len(janelas_holdout)} por nível; intervalos de Wilson de 95%"
+    )
     ax.legend(loc="best")
 
     arq_g2 = PASTA_AE / "injecao_falhas_comparacao.png"
     salvar_figura(
         fig,
         arq_g2,
-        "SMD95 é a menor severidade cuja taxa pontual atinge 95%; consulte o IC antes de concluir detectabilidade.",
+        "SMD95 é a menor magnitude cuja estimativa pontual atinge 95%; a incerteza está nos IC95% e a magnitude não é a severidade S da FMECA.",
     )
     _log(f"   📊 {arq_g2.name}")
 
@@ -814,6 +837,13 @@ def executar_injecao_falhas() -> bool:
     _log()
     _log(f"  Próximo passo: validação cruzada + métricas finais")
     _log(f"{'='*60}")
+
+    # Mantém o diagnóstico comparativo sincronizado com o mesmo GPVS, as
+    # mesmas janelas e as mesmas funções de injeção desta etapa.
+    from src.ml.diagnostico_escore import executar_diagnostico
+
+    if not executar_diagnostico():
+        return False
 
     return True
 

@@ -42,7 +42,7 @@ FIGURAS = {
     ),
     "resultados/autoencoder/diagnostico_escore.png": (
         "Diagnóstico do escore", "GPVS F0 + injeção FMECA", "E2",
-        "src.ml.autoencoder", "severidade sintética", "escore e separação",
+        "src.ml.diagnostico_escore", "magnitude injetada a_inj", "taxa de detecção",
         False, "canônica",
     ),
     "resultados/autoencoder/distribuicao_erro.png": (
@@ -56,13 +56,13 @@ FIGURAS = {
         True, "canônica",
     ),
     "resultados/autoencoder/injecao_falhas_comparacao.png": (
-        "Detecção por severidade", "GPVS F0 + injeção FMECA", "E2",
-        "src.ml.injecao_falhas", "severidade sintética", "taxa de detecção",
+        "Detecção por magnitude", "GPVS F0 + injeção FMECA", "E2",
+        "src.ml.injecao_falhas", "magnitude injetada a_inj", "taxa de detecção",
         False, "canônica",
     ),
     "resultados/autoencoder/injecao_falhas_resultados.png": (
-        "Escore por severidade", "GPVS F0 + injeção FMECA", "E2",
-        "src.ml.injecao_falhas", "severidade sintética", "escore",
+        "Escore por magnitude", "GPVS F0 + injeção FMECA", "E2",
+        "src.ml.injecao_falhas", "magnitude injetada a_inj", "escore / limiar",
         False, "canônica",
     ),
     "resultados/autoencoder/validacao_matriz.png": (
@@ -74,8 +74,8 @@ FIGURAS = {
         "src.ml.validacao", "classe predita", "classe real", False, "canônica",
     ),
     "resultados/autoencoder/validacao_metricas.png": (
-        "Métricas por severidade", "GPVS F0 + injeção FMECA", "E2",
-        "src.ml.validacao", "severidade sintética", "métrica de classificação",
+        "Métricas por magnitude", "GPVS F0 + injeção FMECA", "E2",
+        "src.ml.validacao", "magnitude injetada a_inj", "métrica de classificação",
         False, "canônica",
     ),
     "resultados/autoencoder/validacao_pr.png": (

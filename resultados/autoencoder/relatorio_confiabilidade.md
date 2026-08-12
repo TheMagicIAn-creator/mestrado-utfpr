@@ -78,34 +78,34 @@ A curva e os parâmetros permanecem visíveis para auditoria, mas a síntese Wei
 
 | Parâmetro | Valor | IC95 |
 |---|--:|---|
-| forma β | 5.314 | [4.88; 6.04] |
-| escala η | 0.05 | [0.04; 0.05] |
+| forma β | 4.184 | [3.92; 4.50] |
+| escala η | 0.59 | [0.57; 0.60] |
 
-Diagnóstico visual: **R²pp = 0.870**. Aderência por bootstrap quantizado: **p = 0.004** (`desvio_detectado_bootstrap_quantizado`). Estabilidade entre grades finas: **sim**.
+Diagnóstico visual: **R²pp = 0.886**. Aderência por bootstrap quantizado: **p = 0.004** (`desvio_detectado_bootstrap_quantizado`). Estabilidade entre grades finas: **sim**.
 A curva e os parâmetros permanecem visíveis para auditoria, mas a síntese Weibull 2P é exploratória e não sustenta inferência física.
 
-> Margem restrita KM no início: **0.04**. É descritiva no domínio observado e não é RUL.
+> Margem restrita KM no início: **0.53**. É descritiva no domínio observado e não é RUL.
 
 | Marco paramétrico E2 | Magnitude de injeção | S_D nesse ponto |
 |---|--:|--:|
-| a01 (1% detectado) | 0.02 | 0.990 |
-| a10 (10% detectado) | 0.03 | 0.900 |
-| a50 (mediana) | 0.04 | 0.500 |
-| η (escala característica) | 0.05 | 0.368 |
-| média paramétrica de a_det | 0.04 | 0.523 |
+| a01 (1% detectado) | 0.20 | 0.990 |
+| a10 (10% detectado) | 0.34 | 0.900 |
+| a50 (mediana) | 0.54 | 0.500 |
+| η (escala característica) | 0.59 | 0.368 |
+| média paramétrica de a_det | 0.53 | 0.512 |
 
 **Leitura de β.** a intensidade parametrica do primeiro cruzamento aumenta com a magnitude injetada. Como o eixo nao e idade, isso NAO significa desgaste nem autoriza intervalo de manutencao
 
 > β descreve somente a forma da intensidade de detecção em função da magnitude. Não implica desgaste, mortalidade infantil ou política de substituição.
 
-> Observação vai até 0.1; qualquer marco além disso é extrapolação do modelo, não dado.
+> Observação vai até 0.9; qualquer marco além disso é extrapolação do modelo, não dado.
 
 #### Estratificação por modo operacional GPVS
 
 | Modo | n | beta | eta | p bootstrap | Grade estável | Uso 2P |
 |---|---:|---:|---:|---:|---|---|
-| F0L | 142 | 4.634 | 0.042 | 0.004 | sim | exploratório |
-| F0M | 135 | 7.259 | 0.049 | 0.606 | sim | adotado em E2 |
+| F0L | 142 | 9.014 | 0.689 | 0.004 | sim | exploratório |
+| F0M | 135 | 9.666 | 0.420 | 0.116 | sim | adotado em E2 |
 
 > F0L (IPPT) e F0M (MPPT) são regimes do mesmo dataset GPVS. Diferenças entre eles não são eventos adicionais nem mistura de bases; são heterogeneidade operacional explícita.
 

@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "stage": "rul_weibull",
-  "created_at": "2026-08-12T09:35:58.005227-03:00",
-  "git_commit": "f9fbaa0bfd8fac36f167aa9827b9f157e1ec2159",
+  "created_at": "2026-08-12T11:13:11.066170-03:00",
+  "git_commit": "ab81ba64e58bb257590ef06b6583995011fca290",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
@@ -14,8 +14,8 @@
     "src.ml.escore_anomalia": "71106cad6b7971edcf27533462181cc38f8be4cf7db95a117dbbb43d96de75e1",
     "src.ml.estatistica": "fde4d602db680706252a6e11c9bb9a2aa84e27b6911275beec7f4148538a4515",
     "src.ml.confiabilidade": "d9a4913fb14485aa3679de1b74d96d1c614e6a1c4c8c74eed89467c3f7e2dcdb",
-    "src.ml.graficos_rul": "7d9a77b8b87a1e597e2d7e5d98543e780a204ff9442154b8ea2647b16c102261",
-    "src.ml.injecao_falhas": "4125bff0d4b5470c69b901e96644c41ac3cb209698eabe162a5d78f0b1cfce61",
+    "src.ml.graficos_rul": "a77bb9d2ae7133493c170de89f7795b5c4ec13732e90a1d5efb18c16017b2627",
+    "src.ml.injecao_falhas": "9c49fce74094957acd647b81b9a4e0d565466b7225f0835355628dd862d69f12",
     "src.ml.rul_weibull_execucao": "f67a90bfde7fc464d7734681eb59dc25ac051c34d91119d5ba4cdc709cc0207c",
     "src.ml.relatorio_weibull": "e5d362a28b1d43e0cabfa90cfb6f1dbc19d7b8c9ff4d633f4db4f6efd2e63e0a",
     "src.ml.estilo_graficos": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49",
@@ -74,18 +74,18 @@
     "resultados/autoencoder/relatorio_confiabilidade.json"
   ],
   "output_artifacts": {
-    "resultados/autoencoder/weibull_ttf.png": "3a8c7ccc80b6bd64be17690421dd14f59fbf4ae6e0f16ef64176c77171b9d650",
-    "resultados/autoencoder/weibull_confiabilidade.png": "b92819a75b7bd53a0314c387386cd253f7081a8192455ad2cb5c47642d357499",
-    "resultados/autoencoder/weibull_distribuicao.png": "52baa6450864b7284c39a45115c1be9a314b3073aba6b63269796d50fc84a574",
-    "resultados/autoencoder/weibull_rul.png": "f5520446606c5c96977eae1a9e9fcdf60380b5b02a800ccb3061163421fcd10c",
-    "resultados/autoencoder/weibull_sensibilidade_grade.png": "d484e70afcab128f0d2883cc1eba6ae775ecc1ea885447a26adaeb6ed86a1ee7",
-    "resultados/autoencoder/weibull_modos_operacao.png": "058edfac9561e87d69f5606544a8d189ad105f303b582f14f1bceb510f5086bb",
-    "resultados/autoencoder/weibull_sensibilidade_grade.csv": "54d2de336e8e4362b6a42a17df9186fc0ecd21b01b7f82e4ab50dc3fc9df6290",
-    "resultados/autoencoder/weibull_trajetorias_grade.csv": "aa2765b1e64c480a0f7c999df975c5dbfd654bf5b7e7bd3bcc148d24b89cae89",
-    "resultados/autoencoder/weibull_results.json": "6ce6efbef18e09ba374f8ef023fa5fdae7406eaea3a57e25bea587eecbb0badc",
-    "resultados/autoencoder/weibull_tabela.csv": "7f48f015b2981bb51b0a1fbc3b78a9017dbe56d896a08b94d6d6817ea69921d2",
-    "resultados/autoencoder/relatorio_confiabilidade.md": "5ac1dbf7f7640406b55b6d52cc6aa9955e9bc868b423dff0dbbf8957c57a4496",
-    "resultados/autoencoder/relatorio_confiabilidade.json": "23b1ffb403fb0f78b9e992147f3f57745d37a11a1a2f7f45508e3a404d97ca76"
+    "resultados/autoencoder/weibull_ttf.png": "57e563b6ee57529097fe4b60efcb5cc80d5e0c0bada463b1a6ee9cbfd8a916a5",
+    "resultados/autoencoder/weibull_confiabilidade.png": "3a109a577065f6d0432fa3ff90ec8276c0907d5d1c34c687f994eca90295189d",
+    "resultados/autoencoder/weibull_distribuicao.png": "4e0a69557407601913de40385dd473d6f3b15c675b725badc1b846bafc2996f9",
+    "resultados/autoencoder/weibull_rul.png": "aa77793c4c780cba0faf79765ebecd26a805c0183243a1d1b6510954b725fc36",
+    "resultados/autoencoder/weibull_sensibilidade_grade.png": "d4c7db7db58f837d4d0480ca7872410e087a3535181ed485d2b988969ed0b3fc",
+    "resultados/autoencoder/weibull_modos_operacao.png": "17310ab29caaf1b9c5afbd4aabc3d640b0f6ff64317f3e246290f05a97ff2993",
+    "resultados/autoencoder/weibull_sensibilidade_grade.csv": "e55479fff6ecd92d17f9a2ee3bd9fdcbc4a8a85ebbaa2b614e97dd3a66e1a9bc",
+    "resultados/autoencoder/weibull_trajetorias_grade.csv": "9e2628ac6c2c36b4ddcdfa5099b70d7e397c2d0eae77f7dc293d2c27b3e7e234",
+    "resultados/autoencoder/weibull_results.json": "d6d532c3b3c5e24dc325f317f0287bf61b40d4e073583ea8e1a44e937b968a88",
+    "resultados/autoencoder/weibull_tabela.csv": "7b759cafdbc626273cbec451bab30c6d7bf8ee749e428dc4752ce54e73e1cfda",
+    "resultados/autoencoder/relatorio_confiabilidade.md": "f554251c0318c00d02ae4fa8fc019c6746d9799c110d3bb357beb7070d67d481",
+    "resultados/autoencoder/relatorio_confiabilidade.json": "14573e0801c47f4ecec7a40f86c974dfff98dc65304d036d00c0a913f8ead61f"
   },
   "evidence_level": "E2"
 }

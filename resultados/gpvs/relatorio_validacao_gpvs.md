@@ -1,6 +1,6 @@
 # Validação experimental GPVS-Faults (E3 de bancada)
 
-Gerado em `2026-08-12T09:14:41.540686-03:00`. Dataset: DOI 10.17632/n76t439f65.1.
+Gerado em `2026-08-12T11:12:41.872978-03:00`. Dataset: DOI 10.17632/n76t439f65.1.
 
 ## Resultado principal
 

@@ -179,12 +179,15 @@ STAGES: dict[str, PipelineStage] = {
             "src.ml.escore_anomalia",
             "src.ml.estatistica",
             "src.ml.estilo_graficos",
+            "src.ml.diagnostico_escore",
         ),
         artifacts=(
             "resultados/autoencoder/injecao_falhas_resultados.png",
             "resultados/autoencoder/injecao_falhas_comparacao.png",
             "resultados/autoencoder/injecao_falhas_report.json",
             "resultados/autoencoder/injecao_smd_tabela.csv",
+            "resultados/autoencoder/diagnostico_escore.png",
+            "resultados/autoencoder/diagnostico_escore.json",
         ),
         depends_on=("autoencoder",),
         input_artifacts=GPVS_F0_INPUTS + (
