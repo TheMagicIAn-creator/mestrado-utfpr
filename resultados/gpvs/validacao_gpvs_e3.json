@@ -2,7 +2,7 @@
   "schema_version": 2,
   "evidence_level": "E3",
   "evidence_scope": "validação experimental externa em bancada; não é campo",
-  "created_at": "2026-08-12T09:14:41.540686-03:00",
+  "created_at": "2026-08-12T11:12:41.872978-03:00",
   "dataset": {
     "name": "GPVS-Faults",
     "doi": "10.17632/n76t439f65.1",

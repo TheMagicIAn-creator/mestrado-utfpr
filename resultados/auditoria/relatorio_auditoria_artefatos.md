@@ -6,7 +6,7 @@ O pipeline canônico usa **GPVS-Faults** (DOI `10.17632/n76t439f65.1`). F0L/F0M 
 
 ## Cobertura versionada
 
-Foram inventariados **71 artefatos científicos rastreados** em `resultados/` e `dados/processados/`, excluindo os arquivos produzidos por esta própria auditoria. canonico: 45, legado_comparativo: 12, manifesto: 8, suplementar: 6. O CSV anexo registra tamanho, SHA-256, etapa proprietária, papel e validação estrutural de cada saída.
+Foram inventariados **71 artefatos científicos rastreados** em `resultados/` e `dados/processados/`, excluindo os arquivos produzidos por esta própria auditoria. canonico: 47, legado_comparativo: 12, manifesto: 8, suplementar: 4. O CSV anexo registra tamanho, SHA-256, etapa proprietária, papel e validação estrutural de cada saída.
 
 Hashes divergentes de manifestos: **0**. JSON/CSV estruturalmente inválidos: **0**.
 
@@ -29,7 +29,7 @@ Modelos (`*.pt`, `*.pkl`), dados brutos, estado local do Obsidian e figuras opci
 |---|---:|---:|---:|---:|---:|---:|---:|---|---|
 | Contator AC | 277/277 | 140 | 49.5% | 3.868 | 0.397 | 0.933 | 0.004 | sim | não recomendada |
 | IGBT | 277/277 | 126 | 54.5% | 3.379 | 0.312 | 0.929 | 0.004 | sim | não recomendada |
-| Fusível AC | 277/277 | 20 | 92.8% | 5.314 | 0.045 | 0.870 | 0.004 | sim | não recomendada |
+| Fusível AC | 277/277 | 143 | 48.4% | 4.184 | 0.586 | 0.886 | 0.004 | sim | não recomendada |
 
 O número de eventos e o número de níveis distintos são grandezas diferentes: empates não removem trajetórias. A interpretação principal é a distribuição empírica global; a Weibull 2P só é adotada quando aderência, resolução e estabilidade permitem.
 

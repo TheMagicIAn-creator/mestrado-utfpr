@@ -1,19 +1,20 @@
 {
   "manifest_version": 2,
   "stage": "injecao_falhas",
-  "created_at": "2026-08-12T09:14:07.917730-03:00",
-  "git_commit": "9bf33a5270e60effd3cf731aa788edb5abdffc13",
+  "created_at": "2026-08-12T10:53:30.957755-03:00",
+  "git_commit": "ab81ba64e58bb257590ef06b6583995011fca290",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
-  "code_sha256": "4125bff0d4b5470c69b901e96644c41ac3cb209698eabe162a5d78f0b1cfce61",
+  "code_sha256": "9c49fce74094957acd647b81b9a4e0d565466b7225f0835355628dd862d69f12",
   "code_dependencies": {
     "src.ml.gpvs": "0c46fdcf11875811a2a33b15deaba735787344e2136e4ad474493c3076b5ac57",
     "src.ml.gpvs_principal": "eba98b65652c22f05dd523e7fb6993b69571f41d51a8b6accfc0b21f8bc72575",
     "src.ml.autoencoder": "8c1cc7ba7cff36907ed5df9b7bd55b8cc4eda3b48c976934749f522d8c258f26",
     "src.ml.escore_anomalia": "71106cad6b7971edcf27533462181cc38f8be4cf7db95a117dbbb43d96de75e1",
     "src.ml.estatistica": "fde4d602db680706252a6e11c9bb9a2aa84e27b6911275beec7f4148538a4515",
-    "src.ml.estilo_graficos": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49"
+    "src.ml.estilo_graficos": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49",
+    "src.ml.diagnostico_escore": "e1eae0d9db3b66d2be324ecbf3b861382c286637d2bc8a18514f697c23998c1b"
   },
   "parameters": {
     "a_inj": [
@@ -26,7 +27,7 @@
       1.0
     ],
     "alvo_smd": 0.95,
-    "n_janelas_smd": 100
+    "n_janelas_smd": 281
   },
   "input_artifacts": {
     "input:0:F0L.csv": "0af0dddf273838ca4e255d99da50f37f86c9bf9e0b343d3175ccc4366accd458",
@@ -43,13 +44,17 @@
     "resultados/autoencoder/injecao_falhas_resultados.png",
     "resultados/autoencoder/injecao_falhas_comparacao.png",
     "resultados/autoencoder/injecao_falhas_report.json",
-    "resultados/autoencoder/injecao_smd_tabela.csv"
+    "resultados/autoencoder/injecao_smd_tabela.csv",
+    "resultados/autoencoder/diagnostico_escore.png",
+    "resultados/autoencoder/diagnostico_escore.json"
   ],
   "output_artifacts": {
-    "resultados/autoencoder/injecao_falhas_resultados.png": "ec1e8856b93a8e0dee3f4e7fdd7a59058d41cc2283e992ea4e29d89653d0409d",
-    "resultados/autoencoder/injecao_falhas_comparacao.png": "7f5cb798a4c4a375114aca2bb1fd2d513b391c69c8ad9fe97111b4e426b87f56",
-    "resultados/autoencoder/injecao_falhas_report.json": "ebca43d8556361a26a73e19a7799b9bb61c819cb921ae577ad9114b9ea5a06bf",
-    "resultados/autoencoder/injecao_smd_tabela.csv": "c444655ea2b72de675aa876996b9f44648548cd41a608d5725f6c28c8301f0d0"
+    "resultados/autoencoder/injecao_falhas_resultados.png": "836459944c5d922fe51ff901af625a2b64ddbae735d994737b41243b0def2060",
+    "resultados/autoencoder/injecao_falhas_comparacao.png": "9eef1636a1b84ce4a0e21bc133507cd4a5d9137a441239606e7b583c0265c90b",
+    "resultados/autoencoder/injecao_falhas_report.json": "462b8a0154dec0c7d99770f6eac8b6818f4929e4342d18be1f31647ccbf69516",
+    "resultados/autoencoder/injecao_smd_tabela.csv": "12ace8e7b59299a8f5c7d1ec6fd69350342fc372403bd7298c1cd1e46645b856",
+    "resultados/autoencoder/diagnostico_escore.png": "e4455239fec232b5597b53999d26033b5d9d620e0a6dde3a61c4cd90b015b07b",
+    "resultados/autoencoder/diagnostico_escore.json": "932f8d076c5a7dd0e13d97cbd1d13aadf5395b3282e01b11a0255cd99707a1db"
   },
   "evidence_level": "E2"
 }

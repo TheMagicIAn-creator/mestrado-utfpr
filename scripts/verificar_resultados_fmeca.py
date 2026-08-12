@@ -35,12 +35,13 @@ ESPERADO = {
     "fusivel_ac": {"nome": "Fusível AC", "s": 5, "o": 3, "d": 2, "npr": 30},
 }
 IDS_ANTIGOS = {"lcl", "desbalanceamento", "sensor"}
-SEVERIDADES_VALIDACAO = {0.3, 0.5, 1.0}
+SEVERIDADES_VALIDACAO = {0.05, 0.10, 0.20, 0.30, 0.50, 0.70, 1.00}
 
 PNGS_OBRIGATORIOS = (
     "curva_treino.png",
     "distribuicao_erro.png",
     "erro_temporal.png",
+    "diagnostico_escore.png",
     "injecao_falhas_resultados.png",
     "injecao_falhas_comparacao.png",
     "validacao_roc.png",
@@ -110,6 +111,17 @@ def _numero(valor, padrao: float = math.nan) -> float:
 def _proximo(a: float, b: float, tolerancia: float = 1e-8) -> bool:
     return math.isfinite(a) and math.isfinite(b) and math.isclose(
         a, b, rel_tol=tolerancia, abs_tol=tolerancia
+    )
+
+
+def _intervalo_proporcao_valido(
+    baixo: float, valor: float, alto: float, tolerancia: float = 1e-12
+) -> bool:
+    """Aceita ruído binário de ponto flutuante nos extremos 0 e 1."""
+    return (
+        -tolerancia <= baixo <= valor + tolerancia
+        and valor <= alto + tolerancia
+        and alto <= 1.0 + tolerancia
     )
 
 
@@ -372,6 +384,18 @@ def checar_injecao(aud: Auditoria, limiar: dict | None) -> dict | None:
     aud.exigir(protocolo.get("sem_sobreposicao") is True, "injeção: janelas devem ser não sobrepostas")
     aud.exigir(int(protocolo.get("n_janelas_usadas", 0)) >= 30, "injeção: amostra insuficiente")
 
+    diagnostico = aud.json(PASTA_AE / "diagnostico_escore.json")
+    if diagnostico:
+        aud.exigir(
+            diagnostico.get("dataset") == "GPVS-Faults",
+            "diagnóstico de escore: dataset deve ser GPVS-Faults",
+        )
+        aud.exigir(
+            int(diagnostico.get("n_janelas", 0))
+            == int(protocolo.get("n_janelas_usadas", 0)),
+            "diagnóstico de escore: amostra diverge da injeção",
+        )
+
     familias = dados.get("falhas") or {}
     aud.exigir(set(familias) == set(ESPERADO), f"injeção: ids {sorted(familias)}")
     aud.exigir(not (set(familias) & IDS_ANTIGOS), "injeção: taxonomia antiga presente")
@@ -402,7 +426,10 @@ def checar_injecao(aud: Auditoria, limiar: dict | None) -> dict | None:
             intervalo = intervalos[severidade]
             baixo, alto = _numero(intervalo.get("low")), _numero(intervalo.get("high"))
             taxa = _numero(taxa)
-            aud.exigir(0 <= baixo <= taxa <= alto <= 1, f"injeção[{falha_id}/{severidade}]: IC de Wilson inválido")
+            aud.exigir(
+                _intervalo_proporcao_valido(baixo, taxa, alto),
+                f"injeção[{falha_id}/{severidade}]: IC de Wilson inválido",
+            )
             aud.exigir(int(repeticoes[severidade]) >= 30, f"injeção[{falha_id}/{severidade}]: n<30")
 
         smd95 = _smd_calculada(taxas, alvo, conservadora=False) if taxas else None
@@ -467,7 +494,8 @@ def checar_validacao(aud: Auditoria, limiar: dict | None) -> dict | None:
 
     casos = {k: v for k, v in dados.items() if k != "__meta__" and isinstance(v, dict)}
     esperados = {
-        f"{fid}_sev{sev}" for fid in ESPERADO for sev in ("0.3", "0.5", "1.0")
+        f"{fid}_sev{float(sev)}"
+        for fid in ESPERADO for sev in sorted(SEVERIDADES_VALIDACAO)
     }
     aud.exigir(set(casos) == esperados, f"validação: casos divergentes ({sorted(set(casos) ^ esperados)})")
 
@@ -480,7 +508,10 @@ def checar_validacao(aud: Auditoria, limiar: dict | None) -> dict | None:
             valor = _numero(caso.get(metrica))
             baixo = _numero(caso.get(f"{metrica}_ci_low"))
             alto = _numero(caso.get(f"{metrica}_ci_high"))
-            aud.exigir(0 <= baixo <= valor <= alto <= 1, f"validação[{chave}]: IC de {metrica} inválido")
+            aud.exigir(
+                _intervalo_proporcao_valido(baixo, valor, alto),
+                f"validação[{chave}]: IC de {metrica} inválido",
+            )
 
         matriz = caso.get("confusion") or []
         aud.exigir(len(matriz) == 2 and all(len(linha) == 2 for linha in matriz), f"validação[{chave}]: matriz 2×2 ausente")
@@ -517,7 +548,10 @@ def checar_validacao(aud: Auditoria, limiar: dict | None) -> dict | None:
                 f"validação CSV/limiar divergem em {chave}/percentil efetivo",
             )
 
-    print(f"• validação: 9 cenários, matrizes, ICs e CSV cruzados ({_texto_ponto_operacao(meta)})")
+    print(
+        f"• validação: {len(esperados)} cenários, matrizes, ICs e CSV "
+        f"cruzados ({_texto_ponto_operacao(meta)})"
+    )
     for fid in ESPERADO:
         caso = casos.get(f"{fid}_sev1.0") or {}
         print(

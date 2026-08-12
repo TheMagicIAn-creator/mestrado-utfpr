@@ -1,5 +1,5 @@
 """
-diagnostico_escore.py — Al IAdo PV / diagnóstico (NÃO altera o pipeline)
+diagnostico_escore.py — Al IAdo PV / diagnóstico comparativo E2 no GPVS
 
 Compara, LADO A LADO e sem substituir nada, dois escores de anomalia sobre
 as MESMAS falhas sintéticas injetadas:
@@ -19,9 +19,9 @@ sem forçar amplitude de injeção (isso seria detecção artificial).
 Cada escore usa o limiar estimado na calibração e a mesma separação de dados.
 O MSE é operacional; o localizado permanece publicado para comparação.
 
-É um DIAGNÓSTICO reversível: lê os artefatos do Autoencoder já treinado,
-injeta com as MESMAS funções de src/ml/injecao_falhas.py e escreve apenas
-resultados/autoencoder/diagnostico_escore.{png,json}. Nada do pipeline muda.
+É um DIAGNÓSTICO de ablação: lê o Autoencoder já treinado, usa o mesmo holdout
+GPVS-Faults F0 e as mesmas funções de src/ml/injecao_falhas.py, sem misturar o
+benchmark Paderborn nem alterar o escore operacional.
 
 Uso:
   python src/ml/diagnostico_escore.py
@@ -110,14 +110,22 @@ def _limiares_comparacao(
 # INTEGRAÇÃO — usa o Autoencoder treinado e a injeção validada
 # ============================================================
 
-def _residuo_por_feature(janela_df, modelo, scaler, device, colunas_feat) -> np.ndarray:
+def _residuo_por_feature(
+    janela_df, modelo, scaler, device, colunas_feat,
+    normalizacao_baseline: dict | None = None,
+) -> np.ndarray:
     """Resíduo (x - x_rec) por feature de UMA janela, em espaço normalizado."""
     import torch
 
-    from src.ml.features_ca import extrair_janela
+    from src.ml.gpvs_principal import extrair_janela, normalizar_vetores_f0
 
     feats = extrair_janela(janela_df)
     vetor = np.array([feats.get(c, 0.0) for c in colunas_feat], dtype=np.float32)
+    if normalizacao_baseline is not None:
+        vetor = normalizar_vetores_f0(
+            vetor.reshape(1, -1), [janela_df.attrs.get("ensaio")],
+            normalizacao_baseline,
+        )[0]
     vetor_norm = scaler.transform(vetor.reshape(1, -1)).astype(np.float32)
     modelo.eval()
     with torch.no_grad():
@@ -131,12 +139,13 @@ def executar_diagnostico(k: int = 5) -> bool:
     import torch
 
     from src.ml.autoencoder import Autoencoder
-    from src.ml.dados_avaliacao import (
-        carregar_paderborn_compacto, preparar_janelas_holdout,
+    from src.ml.gpvs import DOI_GPVS
+    from src.ml.gpvs_principal import (
+        carregar_normalizacao_baseline, preparar_janelas_holdout,
     )
     from src.ml.injecao_falhas import (
         FALHAS, FUNCOES_FALHA, SEVERIDADES, N_JANELAS_SMD, ALVO_SMD,
-        ARQUIVO_CSV, PASTA_AE,
+        PASTA_AE,
     )
     from src.core.seguranca import carregar_pickle_com_sidecar
 
@@ -166,14 +175,20 @@ def executar_diagnostico(k: int = 5) -> bool:
     modelo.eval()
     _log(f"   ✅ Modelo: {n_features} features → latente {latente_dim} | k={k}")
 
-    df = carregar_paderborn_compacto(ARQUIVO_CSV)
-    janelas_holdout, _ = preparar_janelas_holdout(df, n_max=N_JANELAS_SMD)
-    del df
-    _log(f"   ✅ {len(janelas_holdout)} janelas saudáveis do holdout")
+    janelas_holdout, meta_holdout = preparar_janelas_holdout(
+        n_max=N_JANELAS_SMD
+    )
+    normalizacao_baseline = carregar_normalizacao_baseline(PASTA_AE)
+    _log(
+        f"   ✅ {len(janelas_holdout)} janelas saudáveis GPVS F0 "
+        "do holdout temporal"
+    )
 
     # ── Resíduos saudáveis → comparação com a régua ajustada no treino ──
     R_sau = np.vstack([
-        _residuo_por_feature(j, modelo, scaler, device, colunas_feat)
+        _residuo_por_feature(
+            j, modelo, scaler, device, colunas_feat, normalizacao_baseline
+        )
         for j in janelas_holdout
     ])
     from src.ml import escore_anomalia as ea
@@ -205,6 +220,9 @@ def executar_diagnostico(k: int = 5) -> bool:
         "threshold_effective_percentile": percentil_loc,
         "limiar_localizado_operacional": loc_operacional,
         "fp_saudavel_mse_pct": fp_mse, "fp_saudavel_localizado_pct": fp_loc,
+        "dataset": "GPVS-Faults",
+        "dataset_doi": DOI_GPVS,
+        "protocolo_avaliacao": meta_holdout,
         "alvo_smd": ALVO_SMD, "n_janelas": len(janelas_holdout),
         "falhas": {},
     }
@@ -218,7 +236,10 @@ def executar_diagnostico(k: int = 5) -> bool:
             for j, janela in enumerate(janelas_holdout):
                 jf = fn(janela, sev, seed=10_000 + j) if fid == "contator_ac" \
                     else fn(janela, sev)
-                R.append(_residuo_por_feature(jf, modelo, scaler, device, colunas_feat))
+                R.append(_residuo_por_feature(
+                    jf, modelo, scaler, device, colunas_feat,
+                    normalizacao_baseline,
+                ))
             R = np.vstack(R)
             s_mse = escore_mse_medio(R)
             s_loc = escore_localizado(R, stats, k=k)
@@ -256,12 +277,18 @@ def _plotar(saida: dict, FALHAS, pasta) -> None:
     sevs = [float(s) for s in next(iter(saida["falhas"].values()))["por_sev"]]
     fig, axes = plt.subplots(1, len(FALHAS), figsize=TAM["painel_3"],
                              layout="constrained", sharey=True)
-    fig.suptitle("Detectabilidade por severidade — MSE médio × escore localizado")
+    fig.suptitle(
+        "GPVS-Faults F0 — MSE operacional × escore localizado (ablação)"
+    )
     for ax, falha in zip(axes, FALHAS):
         info = saida["falhas"][falha["id"]]
         por = info["por_sev"]
         y_mse = [por[str(s)]["taxa_mse"] * 100 for s in sevs]
         y_loc = [por[str(s)]["taxa_localizado"] * 100 for s in sevs]
+        mse_low = [por[str(s)]["mse_ci"][0] * 100 for s in sevs]
+        mse_high = [por[str(s)]["mse_ci"][1] * 100 for s in sevs]
+        loc_low = [por[str(s)]["loc_ci"][0] * 100 for s in sevs]
+        loc_high = [por[str(s)]["loc_ci"][1] * 100 for s in sevs]
         # A cor codifica o MÉTODO, não a falha — a falha já está no título do
         # painel. Antes, a linha do escore localizado usava `falha["cor"]`
         # (azul, verde, amarelo), enquanto a legenda — desenhada só no primeiro
@@ -271,22 +298,38 @@ def _plotar(saida: dict, FALHAS, pasta) -> None:
         # Convenção de src/ml/estilo_graficos.py: COR_METODO para o método
         # proposto, COR_NEUTRA para o baseline; "a cor segue a entidade, nunca
         # o rank". É a mesma leitura dos gráficos de comparação com o Ibrahim.
-        ax.plot(sevs, y_mse, "o-", color=COR_NEUTRA, label="MSE médio (histórico)")
+        ax.errorbar(
+            sevs, y_mse,
+            yerr=[
+                np.maximum(0.0, np.asarray(y_mse) - mse_low),
+                np.maximum(0.0, np.asarray(mse_high) - y_mse),
+            ],
+            fmt="o-", capsize=2.5, color=COR_NEUTRA,
+            label="MSE médio (operacional)",
+        )
         rotulo_loc = "Localizado (operacional)" if saida.get(
             "limiar_localizado_operacional"
         ) else "Localizado (ablação)"
-        ax.plot(sevs, y_loc, "s-", color=COR_METODO, label=rotulo_loc)
+        ax.errorbar(
+            sevs, y_loc,
+            yerr=[
+                np.maximum(0.0, np.asarray(y_loc) - loc_low),
+                np.maximum(0.0, np.asarray(loc_high) - y_loc),
+            ],
+            fmt="s-", capsize=2.5, color=COR_METODO, label=rotulo_loc,
+        )
         ax.axhline(saida["alvo_smd"] * 100, color=COR_ALERTA, linestyle="--",
                    linewidth=1.5, label=f"Alvo SMD {saida['alvo_smd']*100:.0f}%")
         ax.set_title(f"{falha['nome']} (NPR={falha['npr']})", fontsize=10)
-        ax.set_xlabel("Severidade")
+        ax.set_xlabel(r"Magnitude injetada $a_{inj}$ (fração nominal)")
         ax.set_ylim(0, 105)
     axes[0].set_ylabel("Taxa de detecção (%)")
     axes[0].legend(fontsize=8)
     salvar_figura(
         fig, pasta / "diagnostico_escore.png",
-        "Diagnóstico E2: MSE p99 versus ablação de escore localizado no percentil "
-        f"efetivo p{saida['threshold_effective_percentile']:g}; não altera o pipeline.",
+        f"GPVS-Faults F0, n={saida['n_janelas']} por nível; IC95% de Wilson. "
+        "MSE usa o limiar operacional; localizado é ablação no percentil "
+        f"p{saida['threshold_effective_percentile']:g} e não altera o detector.",
     )
     _log(f"   📊 diagnostico_escore.png")
 

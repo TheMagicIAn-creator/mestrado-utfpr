@@ -67,9 +67,9 @@ N_BOOTSTRAP = 20_000
 SEED_BOOTSTRAP = 20260809
 # Espelho literal dos parâmetros da subetapa E2 para o manifesto do estágio
 # composto. Testes de proveniência impedem divergência silenciosa.
-SEVS_VALIDACAO = [0.30, 0.50, 1.00]
-N_JANELAS_SAUDAVEL = 40
-N_JANELAS_FALHA = 40
+SEVS_VALIDACAO = [0.05, 0.10, 0.20, 0.30, 0.50, 0.70, 1.00]
+N_JANELAS_SAUDAVEL = 281
+N_JANELAS_FALHA = 281
 PREVALENCIA_RARA = 0.05
 
 _log = adaptar_logger_como_print(get_logger("validacao_gpvs_principal"))

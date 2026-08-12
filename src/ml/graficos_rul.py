@@ -262,9 +262,9 @@ def plotar_confiabilidade(
         p    = params[fid]
         ttfs = ttfs_dict[fid]
         eventos = eventos_dict[fid]
-        # O piso acompanha a escala: era 0,1 fixo, o que num eixo que agora vai de
-        # 0 a 1 apagaria os primeiros 10% da curva.
-        t = np.linspace(max(ttfs) / 300.0, float(max(ttfs)), 300)
+        limite_x = _limites_eixo_magnitude(ttfs)
+        inicio_t = max(limite_x[0], float(max(ttfs)) / 500.0, 1e-6)
+        t = np.linspace(inicio_t, limite_x[1], 400)
 
         # Confiabilidade R(t)
         ax_r = axes[0][col]
@@ -284,8 +284,10 @@ def plotar_confiabilidade(
                     + ("" if recomendada else " — exploratória")
                 ),
             )
-            ax_r.fill_between(t, R, alpha=0.12, color=falha["cor"])
+            if recomendada:
+                ax_r.fill_between(t, R, alpha=0.12, color=falha["cor"])
         ax_r.set_ylim([0, 1.05])
+        ax_r.set_xlim(*limite_x)
         ax_r.set_xlabel("Magnitude da perturbação CA, $a$ (fração nominal)")
         ax_r.set_ylabel("$S_D(a)=P(a_{det}>a)$ — ainda não detectada")
         npm_str = f"NPR={falha['npr']}"
@@ -307,15 +309,37 @@ def plotar_confiabilidade(
             ax_h.plot(
                 t, H, color=falha["cor"], linewidth=2,
                 linestyle="-" if recomendada else "--",
+                label=(
+                    "Weibull 2P"
+                    + ("" if recomendada else " — exploratória")
+                ),
             )
+            niveis_obs, contagens_obs = np.unique(
+                np.asarray(ttfs)[np.asarray(eventos, dtype=bool)],
+                return_counts=True,
+            )
+            if len(niveis_obs):
+                tamanhos = 25.0 + 45.0 * np.sqrt(
+                    contagens_obs / contagens_obs.max()
+                )
+                ax_h.scatter(
+                    niveis_obs, np.zeros(len(niveis_obs)), s=tamanhos,
+                    marker="|", color="black", alpha=0.65, clip_on=False,
+                    label="suporte empírico de $a_{det}$",
+                )
+            h_max = float(np.nanmax(H)) if np.isfinite(H).any() else 1.0
+            ax_h.set_ylim(0.0, max(1e-6, h_max * 1.10))
+            ax_h.set_xlim(*limite_x)
             beta_desc = ("crescente ↑" if p["beta"] > 1.1
                          else "constante →" if p["beta"] > 0.9
                          else "decrescente ↓")
             ax_h.set_title(
                 f"Intensidade de detecção $h_D(a)$\n"
                 f"β={p['beta']:.2f} — {beta_desc}"
-                + ("" if recomendada else " · exploratória"), fontsize=9
+                + ("" if recomendada else " · exploratória")
+                + " · escala local", fontsize=9
             )
+            ax_h.legend(fontsize=7.5, loc="best")
         else:
             motivo = (
                 _texto_do_painel_vazio(p) if not p["fit_converged"] else
@@ -337,7 +361,7 @@ def plotar_confiabilidade(
     arq = pasta / "weibull_confiabilidade.png"
     salvar_figura(
         fig, arq,
-        "Validação sintética E2. S_D(a) descreve não detecção do algoritmo, não sobrevivência do componente; h_D(a) não é taxa de falha física.",
+        "E2 sintético. Eixos x e y dos painéis inferiores usam escalas locais ao componente; leia os valores, não a largura visual. S_D(a) e h_D(a) descrevem o detector, não vida ou taxa de falha física.",
     )
     _log(f"   📊 {arq.name}")
 
@@ -450,7 +474,7 @@ def plotar_distribuicao_weibull(
     fig, axes = plt.subplots(3, len(FALHAS), figsize=TAM["painel_9"],
                              layout="constrained")
     fig.suptitle(
-        "Ajuste de Weibull para severidade de detecção ($a_{det}$) — nível E2"
+        "Ajuste de Weibull para magnitude de detecção ($a_{det}$) — nível E2"
     )
 
     for col, falha in enumerate(FALHAS):
@@ -467,6 +491,7 @@ def plotar_distribuicao_weibull(
             24.0 + 72.0 * np.sqrt(contagens_obs / contagens_obs.max())
             if len(contagens_obs) else np.asarray([])
         )
+        limite_x = _limites_eixo_magnitude(ttfs)
 
         ax_f, ax_F, ax_pw = axes[0][col], axes[1][col], axes[2][col]
         ax_f.set_title(f"{falha['nome']} (NPR={falha['npr']})", fontsize=10)
@@ -499,6 +524,7 @@ def plotar_distribuicao_weibull(
                           va="center", transform=ax_F.transAxes,
                           color=COR_TEXTO_SEC)
             ax_F.set_ylim([0, 1.05])
+            ax_F.set_xlim(*limite_x)
             ax_F.set_ylabel(r"$F_D(a)=P(a_{det}\leq a)$")
             ax_F.set_xlabel(
                 "Magnitude de detecção, $a_{det}$ (fração nominal)"
@@ -518,8 +544,10 @@ def plotar_distribuicao_weibull(
             continue
 
         beta, eta = p["beta"], p["eta"]
-        t = np.linspace(max(float(ttfs.max()) / 400.0, 1e-6),
-                        float(ttfs.max()), 400)
+        t = np.linspace(
+            max(limite_x[0], float(ttfs.max()) / 500.0, 1e-6),
+            limite_x[1], 400,
+        )
         recomendada = p.get("resumo_parametrico_recomendado", False)
         estilo = "-" if recomendada else "--"
         r2 = (p.get("diagnostico_papel_weibull") or {}).get("r2")
@@ -530,10 +558,31 @@ def plotar_distribuicao_weibull(
             fontsize=9,
         )
 
-        # ── f_D(a): densidade com os eventos observados ao fundo ──
-        ax_f.plot(t, densidade(t, beta, eta), color=cor, linewidth=2,
-                  linestyle=estilo)
-        ax_f.fill_between(t, densidade(t, beta, eta), alpha=0.12, color=cor)
+        # ── f_D(a): distribuição EMPÍRICA em primeiro plano; a Weibull só
+        # aparece como sobreposição, sempre tracejada quando a aderência foi
+        # rejeitada. Assim, uma curva suave não se passa pelos dados medidos.
+        if eventos.any():
+            valores_evento = ttfs[eventos]
+            bins = np.histogram_bin_edges(valores_evento, bins="fd")
+            if len(bins) < 6:
+                largura = max(
+                    float(valores_evento.max() - valores_evento.min()),
+                    2.0 / (N_STEPS - 1),
+                )
+                centro = float(np.median(valores_evento))
+                bins = np.linspace(
+                    max(0.0, centro - largura), centro + largura, 7
+                )
+            ax_f.hist(
+                valores_evento, bins=bins, density=True,
+                color=cor, edgecolor=cor, alpha=0.28,
+                label=f"Histograma empírico (n={int(eventos.sum())})",
+            )
+        ax_f.plot(
+            t, densidade(t, beta, eta), color=cor, linewidth=2,
+            linestyle=estilo,
+            label="Weibull 2P" + ("" if recomendada else " — exploratória"),
+        )
         if eventos.any():
             ax_f.scatter(
                 niveis_obs,
@@ -542,19 +591,24 @@ def plotar_distribuicao_weibull(
                 marker="|",
                 color=COR_TEXTO_SEC,
                 alpha=0.75,
-                label=(
-                    f"{int(eventos.sum())} trajetórias em "
-                    f"{len(niveis_obs)} níveis"
-                ),
+                label=f"{len(niveis_obs)} níveis observados",
             )
-            ax_f.legend(fontsize=7.5, loc="upper left")
+        ax_f.set_xlim(*limite_x)
+        ax_f.legend(fontsize=7.2, loc="upper left")
         ax_f.set_ylabel("$f_D(a)$")
         ax_f.set_xlabel("Magnitude de detecção, $a_{det}$ (fração nominal)")
 
         # ── F_D(a): acumulada paramétrica contra posição empírica ──
-        ax_F.plot(t, acumulada(t, beta, eta), color=cor, linewidth=2,
-                  linestyle=estilo, label="Weibull 2P")
+        ax_F.plot(
+            t, acumulada(t, beta, eta), color=cor, linewidth=2,
+            linestyle=estilo,
+            label="Weibull 2P" + ("" if recomendada else " — exploratória"),
+        )
         if eventos.any():
+            ax_F.step(
+                t_emp, f_emp, where="post", color="black", linewidth=1.2,
+                alpha=0.72,
+            )
             ax_F.scatter(
                 t_emp,
                 f_emp,
@@ -569,6 +623,7 @@ def plotar_distribuicao_weibull(
                 ),
             )
         ax_F.set_ylim([0, 1.05])
+        ax_F.set_xlim(*limite_x)
         ax_F.set_ylabel(r"$F_D(a)=P(a_{det}\leq a)$")
         ax_F.set_xlabel("Magnitude de detecção, $a_{det}$ (fração nominal)")
         ax_F.legend(fontsize=8)
@@ -602,7 +657,7 @@ def plotar_distribuicao_weibull(
     arq = pasta / "weibull_distribuicao.png"
     salvar_figura(
         fig, arq,
-        f"Validação sintética E2; MLE com censura por intervalo (Δa={1.0 / (N_STEPS - 1):.4f}). Pontos empíricos usam n total; tamanho mostra multiplicidade. Linha tracejada é ajuste exploratório. Aderência usa bootstrap quantizado; R²pp é diagnóstico visual.",
+        f"E2 sintético; MLE intervalar (Δa={1.0 / (N_STEPS - 1):.4f}). Histograma, ECDF e pontos vêm das trajetórias GPVS; tamanho indica empates no mesmo nível. Linha tracejada = Weibull exploratória rejeitada/não adotada. Eixos a_det usam escala local.",
     )
     _log(f"   📊 {arq.name}")
 

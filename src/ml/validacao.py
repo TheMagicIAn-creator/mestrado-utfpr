@@ -10,7 +10,7 @@ Fundamentação:
 Protocolo de validação:
   1. Classe NEGATIVA (saudável): janelas de teste dos ensaios GPVS F0L/F0M
   2. Classe POSITIVA (falha): janelas com falhas sintéticas injetadas
-     nas 3 severidades mais representativas (0.30, 0.50, 1.00)
+     em 7 magnitudes (0.05 a 1.00), incluindo região incipiente e transição
   3. Limiar variado de 0 a max_erro para construir a curva ROC
   4. Métricas no limiar operacional carregado de limiar.json:
      Precision, Recall, F1-Score, Accuracy, AUC-ROC
@@ -61,7 +61,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from src.ml.estilo_graficos import (
-    COR_ALERTA, TAM, aplicar_estilo, salvar_figura,
+    COR_ALERTA, COR_REFERENCIA, PALETA, TAM, aplicar_estilo, salvar_figura,
 )
 
 aplicar_estilo()
@@ -72,7 +72,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from sklearn.metrics import (
-    roc_curve, auc, precision_recall_curve,
+    roc_curve, auc, average_precision_score, precision_recall_curve,
     confusion_matrix, classification_report,
     f1_score, precision_score, recall_score, accuracy_score
 )
@@ -87,7 +87,7 @@ from src.ml.gpvs_principal import (
 )
 from src.ml.estatistica import bootstrap_auc_ci, intervalo_wilson
 from src.ml.injecao_falhas   import (
-    FUNCOES_FALHA, FALHAS,
+    ALVO_SMD, FUNCOES_FALHA, FALHAS,
 )
 
 if TYPE_CHECKING:
@@ -99,12 +99,12 @@ if TYPE_CHECKING:
 RAIZ        = Path(__file__).parent.parent.parent
 PASTA_AE    = RAIZ / "resultados" / "autoencoder"
 
-# Severidades avaliadas na validação sintética interna E2
-SEVS_VALIDACAO = [0.30, 0.50, 1.00]
+# Mesma grade da injeção FMECA: inclui a região incipiente e a transição.
+SEVS_VALIDACAO = [0.05, 0.10, 0.20, 0.30, 0.50, 0.70, 1.00]
 
-# Número de janelas por classe
-N_JANELAS_SAUDAVEL = 40
-N_JANELAS_FALHA    = 40
+# Holdout F0 completo, sem compartilhamento de amostras: 142 F0L + 139 F0M.
+N_JANELAS_SAUDAVEL = 281
+N_JANELAS_FALHA    = 281
 
 # Prevalência REALISTA de falha em operação (falhas CA são eventos raros).
 # O teste é balanceado (50/50) para estimar TPR/FPR de forma estável, mas
@@ -187,7 +187,7 @@ def metricas_no_limiar(erros_neg: np.ndarray,
     roc_auc     = auc(fpr, tpr)
 
     prec_arr, rec_arr, _ = precision_recall_curve(y_true, y_score)
-    pr_auc               = auc(rec_arr, prec_arr)
+    average_precision    = average_precision_score(y_true, y_score)
 
     cm = confusion_matrix(y_true, y_pred)
     tn, fp, fn, tp = cm.ravel()
@@ -216,7 +216,10 @@ def metricas_no_limiar(erros_neg: np.ndarray,
         "f1"         : float(f1_score(y_true, y_pred, zero_division=0)),
         "accuracy"   : float(accuracy_score(y_true, y_pred)),
         "auc_roc"    : float(roc_auc),
-        "auc_pr"     : float(pr_auc),
+        # Nome canônico e alias legado. O bootstrap usa a mesma estatística
+        # (average_precision_score), evitando misturar AP com área trapezoidal.
+        "average_precision": float(average_precision),
+        "auc_pr"     : float(average_precision),
         "specificity": specificity,
         "fnr"        : float(1.0 - tpr_op),
         "recall_ci_low": recall_ci[0],
@@ -225,6 +228,8 @@ def metricas_no_limiar(erros_neg: np.ndarray,
         "specificity_ci_high": specificity_ci[1],
         "precision_ci_low": precision_ci[0],
         "precision_ci_high": precision_ci[1],
+        "average_precision_ci_low": auc_ci["auc_pr_ci_low"],
+        "average_precision_ci_high": auc_ci["auc_pr_ci_high"],
         **auc_ci,
         # Regime raro (prevalência realista de falha CA) — precision/F1 honestos:
         "prevalencia_raro" : pi,
@@ -246,15 +251,85 @@ def metricas_no_limiar(erros_neg: np.ndarray,
 # VISUALIZAÇÕES
 # ============================================================
 
+def _severidades_disponiveis(resultados: dict, falha_id: str) -> list[float]:
+    """Lista magnitudes realmente calculadas para uma família de falha."""
+    prefixo = f"{falha_id}_sev"
+    return sorted(
+        float(chave.removeprefix(prefixo))
+        for chave in resultados
+        if chave.startswith(prefixo)
+    )
+
+
+def _severidade_alvo(
+    resultados: dict, falha_id: str, alvo: float = ALVO_SMD
+) -> float:
+    """Primeira magnitude com recall no alvo; usa o teto se não o atingir."""
+    severidades = _severidades_disponiveis(resultados, falha_id)
+    atingiram = [
+        sev for sev in severidades
+        if resultados[f"{falha_id}_sev{sev}"]["recall"] >= alvo
+    ]
+    return min(atingiram) if atingiram else max(severidades)
+
+
+def _severidade_transicao(resultados: dict, falha_id: str) -> float:
+    """Magnitude cuja sensibilidade fica mais próxima de 50%."""
+    severidades = _severidades_disponiveis(resultados, falha_id)
+    return min(
+        severidades,
+        key=lambda sev: abs(
+            resultados[f"{falha_id}_sev{sev}"]["recall"] - 0.50
+        ),
+    )
+
+
+def _severidades_representativas(
+    resultados: dict, falha_id: str, max_curvas: int = 4
+) -> list[float]:
+    """Seleciona início, transição, SMD95 e teto sem ocultar a tabela completa."""
+    severidades = _severidades_disponiveis(resultados, falha_id)
+    transicao = _severidade_transicao(resultados, falha_id)
+    candidatos = [
+        severidades[0], transicao,
+        _severidade_alvo(resultados, falha_id), severidades[-1],
+    ]
+    selecionadas = list(dict.fromkeys(candidatos))
+    return sorted(selecionadas[:max_curvas])
+
+
+def _severidades_matrizes(resultados: dict, falha_id: str) -> list[float]:
+    """Três níveis informativos: incipiente, transição e SMD95/teto."""
+    severidades = _severidades_disponiveis(resultados, falha_id)
+    transicao = _severidade_transicao(resultados, falha_id)
+    alvo = _severidade_alvo(resultados, falha_id)
+    selecionadas = list(dict.fromkeys([severidades[0], transicao, alvo]))
+    if len(selecionadas) < 3:
+        for sev in reversed(severidades):
+            if sev not in selecionadas:
+                selecionadas.append(sev)
+            if len(selecionadas) == 3:
+                break
+    return sorted(selecionadas)
+
+
+def _anotar_matriz(ax, cm: np.ndarray, proporcoes: np.ndarray) -> None:
+    rotulos = (("TN", "FP"), ("FN", "TP"))
+    for i in range(2):
+        for j in range(2):
+            ax.text(
+                j, i,
+                f"{rotulos[i][j]}\n{cm[i, j]}\n{proporcoes[i, j]:.1%}",
+                ha="center", va="center", fontsize=10, fontweight="bold",
+                color="white" if proporcoes[i, j] > 0.55 else "black",
+            )
+
 def plotar_roc(resultados: dict, limiar: float, pasta: Path):
-    """Curvas ROC para cada combinação falha × severidade."""
+    """Curvas ROC representativas; todos os níveis permanecem no CSV/JSON."""
     fig, axes = plt.subplots(
         1, 3, figsize=TAM["painel_3"], layout="constrained"
     )
-    fig.suptitle("Curvas ROC — Detecção de Anomalias por Tipo de Falha",
-                 fontsize=13, fontweight="bold")
-
-    cores_sev = {0.30: "#FFB300", 0.50: "#FB8C00", 1.00: "#E53935"}
+    fig.suptitle("Validação sintética E2 — curvas ROC por falha")
 
     for ax, falha in zip(axes, FALHAS):
         fid  = falha["id"]
@@ -263,34 +338,38 @@ def plotar_roc(resultados: dict, limiar: float, pasta: Path):
 
         ax.plot([0, 1], [0, 1], "k--", alpha=0.4, linewidth=1)
 
-        for sev in SEVS_VALIDACAO:
+        sevs_plot = _severidades_representativas(resultados, fid)
+        cores_sev = dict(zip(sevs_plot, PALETA[:len(sevs_plot)], strict=True))
+        for sev in sevs_plot:
             chave = f"{fid}_sev{sev}"
             if chave not in resultados:
                 continue
             res = resultados[chave]
-            ax.plot(res["fpr"], res["tpr"],
-                    color=cores_sev[sev], linewidth=2,
-                    label=(f"sev={sev} · AUC={res['auc_roc']:.3f} "
-                           f"[{res['auc_roc_ci_low']:.3f}; {res['auc_roc_ci_high']:.3f}]"))
+            ax.step(
+                res["fpr"], res["tpr"], where="post",
+                color=cores_sev[sev], linewidth=2,
+                label=fr"$a_{{inj}}$={sev:.2f} · AUC={res['auc_roc']:.3f}",
+            )
             ax.scatter(
                 [res["fpr_op"]], [res["tpr_op"]], color=cores_sev[sev],
                 edgecolors="black", linewidths=0.6, s=42, zorder=4,
             )
 
-        npm_str = f"NPR={npr}"
-        ax.set_title(f"{nome}\n({npm_str})", fontsize=10)
+        n_classe = resultados[f"{fid}_sev{sevs_plot[0]}"]["n_neg"]
+        ax.set_title(f"{nome}\nNPR={npr} · n={n_classe}/classe", fontsize=10)
         ax.set_xlabel("Taxa de Falso Positivo")
         ax.set_ylabel("Taxa de Verdadeiro Positivo (Recall)")
-        ax.legend(fontsize=8, loc="lower right")
+        ax.legend(fontsize=7.5, loc="lower right")
         ax.grid(True, alpha=0.3)
         ax.set_xlim([0, 1])
-        ax.set_ylim([0, 1.02])
+        ax.set_ylim([0, 1])
+        ax.set_aspect("equal", adjustable="box")
 
     arq = pasta / "validacao_roc.png"
     salvar_figura(
         fig,
         arq,
-        "Os círculos marcam o limiar operacional congelado; faixas na legenda são IC95% bootstrap da AUC.",
+        f"Círculos: limiar operacional congelado ({limiar:.4f}). Quatro níveis informativos exibidos; sete níveis e IC95% constam na tabela.",
     )
     _log(f"   📊 {arq.name}")
 
@@ -301,39 +380,46 @@ def plotar_pr(resultados: dict, pasta: Path):
     fig, axes = plt.subplots(
         1, 3, figsize=TAM["painel_3"], layout="constrained"
     )
-    fig.suptitle("Curvas Precision-Recall — Detecção de Anomalias por Tipo de Falha",
-                 fontsize=13, fontweight="bold")
-
-    cores_sev = {0.30: "#FFB300", 0.50: "#FB8C00", 1.00: "#E53935"}
+    fig.suptitle("Validação sintética E2 — curvas precisão-revocação por falha")
 
     for ax, falha in zip(axes, FALHAS):
         fid, nome, npr = falha["id"], falha["nome"], falha["npr"]
-        for sev in SEVS_VALIDACAO:
+        sevs_plot = _severidades_representativas(resultados, fid)
+        cores_sev = dict(zip(sevs_plot, PALETA[:len(sevs_plot)], strict=True))
+        ax.axhline(
+            0.5, color=COR_REFERENCIA, linestyle="--", linewidth=1.2,
+            label="Referência aleatória = 0,50",
+        )
+        for sev in sevs_plot:
             chave = f"{fid}_sev{sev}"
             if chave not in resultados:
                 continue
             res = resultados[chave]
-            ax.plot(res["rec_arr"], res["prec_arr"],
-                    color=cores_sev[sev], linewidth=2,
-                    label=f"sev={sev} (AUC-PR={res['auc_pr']:.3f})")
+            ax.step(
+                res["rec_arr"], res["prec_arr"], where="post",
+                color=cores_sev[sev], linewidth=2,
+                label=fr"$a_{{inj}}$={sev:.2f} · AP={res['average_precision']:.3f}",
+            )
             ax.scatter(
                 [res["recall"]], [res["precision"]], color=cores_sev[sev],
                 edgecolors="black", linewidths=0.6, s=42, zorder=4,
             )
-        npm_str = f"NPR={npr}"
-        ax.set_title(f"{nome}\n({npm_str})", fontsize=10)
-        ax.set_xlabel("Recall")
-        ax.set_ylabel("Precision")
-        ax.legend(fontsize=8, loc="lower left")
+        n_classe = resultados[f"{fid}_sev{sevs_plot[0]}"]["n_neg"]
+        ax.set_title(f"{nome}\nNPR={npr} · n={n_classe}/classe", fontsize=10)
+        ax.set_ylabel("Precisão")
+        ax.legend(fontsize=7.2, loc="lower left")
         ax.grid(True, alpha=0.3)
         ax.set_xlim([0, 1])
-        ax.set_ylim([0, 1.02])
+        ax.set_ylim([0, 1])
+        ax.set_aspect("equal", adjustable="box")
+
+    axes[1].set_xlabel("Revocação (sensibilidade)")
 
     arq = pasta / "validacao_pr.png"
     salvar_figura(
         fig,
         arq,
-        "Os círculos marcam o ponto operacional; teste interno balanceado, evidência sintética E2.",
+        "Círculos: ponto operacional. AP usa average precision; classes balanceadas (referência=0,50). Quatro níveis exibidos e sete versionados.",
     )
     _log(f"   📊 {arq.name}")
 
@@ -349,16 +435,18 @@ def _normalizar_matriz_por_linha(cm: np.ndarray) -> np.ndarray:
 
 
 def plotar_matrizes(resultados: dict, pasta: Path):
-    """Matrizes de confusão para severidade=1.0 de cada falha."""
+    """Matrizes no nível de transição mais próximo de 50% de recall."""
     fig, axes = plt.subplots(
         1, 3, figsize=TAM["painel_3"], layout="constrained"
     )
-    fig.suptitle("Matrizes de Confusão — Severidade 1.0 (limiar operacional)",
-                 fontsize=12, fontweight="bold")
+    fig.suptitle(
+        "Validação E2 — nível de transição mais próximo de sensibilidade 50%"
+    )
 
     for ax, falha in zip(axes, FALHAS):
         fid   = falha["id"]
-        chave = f"{fid}_sev1.0"
+        sev = _severidade_transicao(resultados, fid)
+        chave = f"{fid}_sev{sev}"
         if chave not in resultados:
             ax.axis("off")
             continue
@@ -376,18 +464,13 @@ def plotar_matrizes(resultados: dict, pasta: Path):
         ax.set_xticklabels(classes, fontsize=9)
         ax.set_yticklabels(classes, fontsize=9)
 
-        for i in range(2):
-            for j in range(2):
-                ax.text(j, i, f"{cm[i, j]}\n({proporcoes[i, j]:.1%})",
-                        ha="center", va="center", fontsize=12,
-                        color="white" if proporcoes[i, j] > 0.55 else "black",
-                        fontweight="bold")
+        _anotar_matriz(ax, cm, proporcoes)
 
         f1  = resultados[chave]["f1"]
         auc = resultados[chave]["auc_roc"]
         rec = resultados[chave]["recall"]
         npm_str = f"NPR={falha['npr']}"
-        ax.set_title(f"{falha['nome']}\n({npm_str}) · Recall={rec:.2f} · F1={f1:.2f} · AUC={auc:.2f}",
+        ax.set_title(f"{falha['nome']} · $a_{{inj}}$={sev:.2f}\n{npm_str} · Recall={rec:.2f} · F1={f1:.2f} · AUC={auc:.2f}",
                      fontsize=9)
         ax.set_ylabel("Real")
         ax.set_xlabel("Predito")
@@ -395,21 +478,22 @@ def plotar_matrizes(resultados: dict, pasta: Path):
     arq = pasta / "validacao_matriz.png"
     salvar_figura(
         fig, arq,
-        "Matriz no ponto operacional; cor normalizada por classe real, rótulos = n (percentual da linha).",
+        "Limiar congelado. Cor normalizada por classe real; células mostram TN/FP/FN/TP, contagem e percentual da linha.",
     )
     _log(f"   📊 {arq.name}")
 
 
 def plotar_matrizes_todas_severidades(resultados: dict, pasta: Path):
-    """Matrizes de confusão para toda combinação falha x severidade."""
+    """Matrizes em três níveis informativos por falha."""
     fig, axes = plt.subplots(
-        len(FALHAS), len(SEVS_VALIDACAO),
+        len(FALHAS), 3,
         figsize=TAM["painel_9"], layout="constrained",
     )
-    fig.suptitle("Matrizes de confusão — todas as severidades no limiar operacional")
+    fig.suptitle("Validação E2 — matrizes na região incipiente e de transição")
 
     for linha, falha in enumerate(FALHAS):
-        for coluna, sev in enumerate(SEVS_VALIDACAO):
+        sevs_plot = _severidades_matrizes(resultados, falha["id"])
+        for coluna, sev in enumerate(sevs_plot):
             ax = axes[linha][coluna]
             chave = f"{falha['id']}_sev{sev}"
             res = resultados[chave]
@@ -419,18 +503,11 @@ def plotar_matrizes_todas_severidades(resultados: dict, pasta: Path):
                 proporcoes, interpolation="nearest", cmap="Blues",
                 vmin=0, vmax=1,
             )
-            for i in range(2):
-                for j in range(2):
-                    ax.text(
-                        j, i, f"{cm[i, j]}\n({proporcoes[i, j]:.1%})",
-                        ha="center", va="center", fontsize=10,
-                        fontweight="bold",
-                        color="white" if proporcoes[i, j] > 0.55 else "black",
-                    )
+            _anotar_matriz(ax, cm, proporcoes)
             ax.set_xticks([0, 1], ["Saudável", "Falha"], fontsize=8)
             ax.set_yticks([0, 1], ["Saudável", "Falha"], fontsize=8)
             ax.set_title(
-                f"{falha['nome']} · sev={sev:.2f}\n"
+                f"{falha['nome']} · $a_{{inj}}$={sev:.2f}\n"
                 f"Recall={res['recall']:.3f} · FNR={res['fnr']:.3f}",
                 fontsize=9,
             )
@@ -442,7 +519,7 @@ def plotar_matrizes_todas_severidades(resultados: dict, pasta: Path):
     arq = pasta / "validacao_matrizes_severidades.png"
     salvar_figura(
         fig, arq,
-        "E2 sintético em janelas não sobrepostas; cor normalizada por classe real, rótulos = n (percentual da linha).",
+        "Três níveis informativos; os 21 cenários permanecem no CSV/JSON. Cor por classe real; células = TN/FP/FN/TP, n e percentual.",
     )
     _log(f"   📊 {arq.name}")
 
@@ -468,7 +545,7 @@ def plotar_tabela_metricas(tabela_df: pd.DataFrame, pasta: Path):
         ax.set_yticks(range(len(pivot.index)))
         ax.set_xticklabels([str(s) for s in pivot.columns], fontsize=9)
         ax.set_yticklabels(pivot.index, fontsize=8)
-        ax.set_xlabel("Severidade")
+        ax.set_xlabel(r"Magnitude injetada $a_{inj}$")
         ax.set_title(titulo, fontsize=10)
 
         for i in range(len(pivot.index)):
@@ -597,6 +674,9 @@ def executar_validacao() -> bool:
                 "precision": res["precision"],
                 "accuracy" : res["accuracy"],
                 "auc_pr"   : res["auc_pr"],
+                "average_precision": res["average_precision"],
+                "average_precision_ci_low": res["average_precision_ci_low"],
+                "average_precision_ci_high": res["average_precision_ci_high"],
                 "specificity": res["specificity"],
                 "fpr"      : res["fpr_op"],
                 "fnr"      : res["fnr"],
@@ -645,16 +725,18 @@ def executar_validacao() -> bool:
 
     arq_md = PASTA_AE / "validacao_tabela.md"
     cabecalho = (
-        "| Falha | Sev. | AUC-ROC (IC95%) | Recall (IC95%) | FNR | "
-        "Especificidade | n/classe |\n"
-        "|---|---:|---:|---:|---:|---:|---:|\n"
+        "| Falha | a_inj | AUC-ROC (IC95%) | AP (IC95%) | Recall (IC95%) | "
+        "FNR | Especificidade | n/classe |\n"
+        "|---|---:|---:|---:|---:|---:|---:|---:|\n"
     )
     linhas_md = []
     for row in linhas_tabela:
         linhas_md.append(
             f"| {row['falha']} | {row['severidade']:.2f} | "
             f"{row['auc_roc']:.3f} [{row['auc_roc_ci_low']:.3f}; "
-            f"{row['auc_roc_ci_high']:.3f}] | {row['recall']:.3f} "
+            f"{row['auc_roc_ci_high']:.3f}] | {row['average_precision']:.3f} "
+            f"[{row['average_precision_ci_low']:.3f}; "
+            f"{row['average_precision_ci_high']:.3f}] | {row['recall']:.3f} "
             f"[{row['recall_ci_low']:.3f}; {row['recall_ci_high']:.3f}] | "
             f"{row['fnr']:.3f} | {row['specificity']:.3f} | "
             f"{row['n_pos']} |"
