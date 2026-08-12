@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "stage": "rul_weibull",
-  "created_at": "2026-08-11T20:58:04.212588-03:00",
-  "git_commit": "2c1f728733fccf300b75b3f4f7eaaf03f98dfe73",
+  "created_at": "2026-08-11T21:58:38.618006-03:00",
+  "git_commit": "ccff262586028f1b0c56076eaa219fde24436f50",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
@@ -14,7 +14,7 @@
     "src.ml.escore_anomalia": "71106cad6b7971edcf27533462181cc38f8be4cf7db95a117dbbb43d96de75e1",
     "src.ml.estatistica": "fde4d602db680706252a6e11c9bb9a2aa84e27b6911275beec7f4148538a4515",
     "src.ml.confiabilidade": "c9c31d77f8815bdec7bc5ffdf01cc17c676da175b47479eb3f9f63068f31eb0d",
-    "src.ml.graficos_rul": "68a75231c9c06e1ad36c916bfff98dda947d4194cc77dd28201305c12fd64c50",
+    "src.ml.graficos_rul": "30e519cc874a39044303d2c8837cd4a0c4bfed200439ba537a7b855ab229811a",
     "src.ml.injecao_falhas": "d4acb5c05c4d12e47e4a18e54da7b5bbb3e59d9ae7b38b4c5d56b51a3d2a60e7",
     "src.ml.relatorio_weibull": "53b6a48fc1a5405be951487ebb687386bff24b5a2c6e5a1c3ad8f4afb2097a13",
     "src.ml.estilo_graficos": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49",
@@ -57,7 +57,7 @@
     "resultados/autoencoder/relatorio_confiabilidade.json"
   ],
   "output_artifacts": {
-    "resultados/autoencoder/weibull_ttf.png": "864887be5333ba22010cfba50e953d9b82581194eef672b912895699277b9fe7",
+    "resultados/autoencoder/weibull_ttf.png": "b34002c594f3eaa051cbb83908579738f9b53b9a756be421c09686236fd9b4d5",
     "resultados/autoencoder/weibull_confiabilidade.png": "8e56cc5e1592d93306192388c793ece96fb435d58901ee7ad77482abef9001be",
     "resultados/autoencoder/weibull_distribuicao.png": "38a5a68779f9a81bbac601f197fbc269a99826a652dce6f8301ca13b128aeba0",
     "resultados/autoencoder/weibull_rul.png": "c6603ce2e2a24aaadf5f6a76620e12d36a91d7346212122e2a40290432332238",

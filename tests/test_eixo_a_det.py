@@ -171,6 +171,25 @@ def test_rotulo_empirico_quantifica_indetectabilidade_no_teto():
     assert "indetect. no teto=2" in rotulo
 
 
+def test_limites_adaptativos_dao_escala_legivel_ao_fusivel():
+    from src.ml.graficos_rul import _limites_eixo_magnitude
+
+    valores = np.array([0.0336, 0.0420, 0.0504, 0.0756])
+    minimo, maximo = _limites_eixo_magnitude(valores)
+
+    assert 0.0 <= minimo < valores.min()
+    assert valores.max() < maximo <= 1.0
+    assert maximo - minimo < 0.10
+
+
+def test_limites_adaptativos_preservam_o_teto_nominal():
+    from src.ml.graficos_rul import _limites_eixo_magnitude
+
+    minimo, maximo = _limites_eixo_magnitude(np.array([0.35, 0.50, 1.0]))
+    assert minimo < 0.35
+    assert maximo == pytest.approx(1.01)
+
+
 def test_histograma_marca_indetectabilidade_no_teto(tmp_path, monkeypatch):
     import matplotlib.pyplot as plt
 
@@ -205,6 +224,40 @@ def test_histograma_marca_indetectabilidade_no_teto(tmp_path, monkeypatch):
     assert len(figuras) == 1
     labels = figuras[0].axes[0].get_legend_handles_labels()[1]
     assert any("Indetectáveis no teto" in label for label in labels)
+    plt.close(figuras[0])
+
+
+def test_grafico_usa_uma_barra_por_magnitude_da_grade(tmp_path, monkeypatch):
+    import matplotlib.pyplot as plt
+
+    from src.ml import graficos_rul
+
+    a = np.repeat(np.array([0.0336, 0.0420, 0.0504, 0.0756]), 5)
+    eventos = np.ones(len(a), dtype=bool)
+    parametros = ajustar_weibull(a, eventos, n_boot=0)
+    a_por_falha = {falha["id"]: a for falha in graficos_rul.FALHAS}
+    eventos_por_falha = {
+        falha["id"]: eventos for falha in graficos_rul.FALHAS
+    }
+    parametros_por_falha = {
+        falha["id"]: parametros for falha in graficos_rul.FALHAS
+    }
+    figuras = []
+
+    monkeypatch.setattr(
+        graficos_rul,
+        "salvar_figura",
+        lambda fig, _path, _rodape: figuras.append(fig),
+    )
+    monkeypatch.setattr(graficos_rul, "_log", lambda _mensagem: None)
+
+    graficos_rul.plotar_ttf_histogramas(
+        a_por_falha, eventos_por_falha, parametros_por_falha, tmp_path
+    )
+
+    eixo = figuras[0].axes[0]
+    assert len(eixo.patches) == len(np.unique(a))
+    assert eixo.get_xlim()[1] - eixo.get_xlim()[0] < 0.10
     plt.close(figuras[0])
 
 
