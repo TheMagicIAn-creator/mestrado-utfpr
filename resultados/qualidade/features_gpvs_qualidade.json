@@ -1,0 +1,48 @@
+{
+  "dataset": "GPVS-Faults",
+  "doi": "10.17632/n76t439f65.1",
+  "escopo": "somente F0L/F0M saudáveis",
+  "n_ensaios": 2,
+  "n_janelas": 1423,
+  "n_features": 24,
+  "n_nan": 0,
+  "n_inf": 0,
+  "n_duplicadas": 0,
+  "janelas_por_ensaio": {
+    "F0L": 718,
+    "F0M": 705
+  },
+  "inventario": {
+    "F0L": {
+      "dt_median_s": 9.999686226969118e-05,
+      "dt_min_s": 8.533456575054998e-05,
+      "dt_max_s": 0.0001002901082109986,
+      "fs_hz": 10000.313782876543,
+      "sampling_period_us": 99.99686226969118,
+      "rows": 143715,
+      "windows": 718,
+      "window_samples": 200,
+      "window_duration_nominal_s": 0.019999372453938236,
+      "grid_frequency_hz": 50.0,
+      "fault_sample": null,
+      "fault_time_s": null,
+      "discarded_tail_samples": 115
+    },
+    "F0M": {
+      "dt_median_s": 9.999686226969118e-05,
+      "dt_min_s": 9.501168146019978e-05,
+      "dt_max_s": 0.00010498204308984072,
+      "fs_hz": 10000.313782876543,
+      "sampling_period_us": 99.99686226969118,
+      "rows": 141014,
+      "windows": 705,
+      "window_samples": 200,
+      "window_duration_nominal_s": 0.019999372453938236,
+      "grid_frequency_hz": 50.0,
+      "fault_sample": null,
+      "fault_time_s": null,
+      "discarded_tail_samples": 14
+    }
+  },
+  "split": "temporal por ensaio; treino/validação/calibração/teste com purga"
+}

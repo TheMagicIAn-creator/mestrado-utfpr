@@ -350,11 +350,12 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
 
     imagens = []
     if "autoencoder" in focos:
-        caminho_qualidade = RAIZ_PROJETO / "dados" / "processados" / "features_gpvs_qualidade.png"
+        caminho_qualidade = RAIZ_PROJETO / "resultados" / "qualidade" / "features_gpvs_qualidade.png"
         _add_img(imagens, caminho_qualidade, "GPVS F0 - qualidade das features saudáveis", grupo="Qualidade dos dados", ordem=5, ordem_grupo=5)
         _add_img(imagens, "curva_treino.png", "Autoencoder - convergência treino/validação", grupo="Autoencoder", ordem=10, ordem_grupo=10)
         _add_img(imagens, "distribuicao_erro.png", "Autoencoder - distribuicao MSE e ECDF", grupo="Autoencoder", ordem=20, ordem_grupo=10)
         _add_img(imagens, "erro_temporal.png", "Autoencoder - erro MSE temporal por split", grupo="Autoencoder", ordem=30, ordem_grupo=10)
+        _add_img(imagens, "diagnostico_escore.png", "Autoencoder - ablação do escore por severidade", grupo="Autoencoder", ordem=40, ordem_grupo=10)
     if "injecao" in focos:
         _add_img(imagens, "injecao_falhas_resultados.png", "Falhas sinteticas - erro por severidade", grupo="Injecao de falhas", ordem=10, tipo="comparacao", ordem_grupo=20)
         _add_img(imagens, "injecao_falhas_comparacao.png", "Falhas sinteticas - taxa de deteccao e IC95%", grupo="Injecao de falhas", ordem=20, tipo="comparacao", ordem_grupo=20)
@@ -367,7 +368,10 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
     if "weibull" in focos:
         _add_img(imagens, "weibull_ttf.png", "Weibull - primeiro cruzamento do detector", grupo="Weibull / detectabilidade E2", ordem=10, ordem_grupo=40)
         _add_img(imagens, "weibull_confiabilidade.png", "Weibull - curva de nao deteccao", grupo="Weibull / detectabilidade E2", ordem=20, ordem_grupo=40)
-        _add_img(imagens, "weibull_rul.png", "Weibull - margem residual de magnitude", grupo="Weibull / detectabilidade E2", ordem=30, ordem_grupo=40)
+        _add_img(imagens, "weibull_distribuicao.png", "Weibull - densidade, acumulada e papel de probabilidade", grupo="Weibull / detectabilidade E2", ordem=30, ordem_grupo=40)
+        _add_img(imagens, "weibull_rul.png", "Weibull - margem residual de magnitude", grupo="Weibull / detectabilidade E2", ordem=40, ordem_grupo=40)
+        _add_img(imagens, "weibull_sensibilidade_grade.png", "Detectabilidade - sensibilidade a resolucao da grade", grupo="Weibull / detectabilidade E2", ordem=50, ordem_grupo=40)
+        _add_img(imagens, "weibull_modos_operacao.png", "Detectabilidade - estratificacao GPVS F0L e F0M", grupo="Weibull / detectabilidade E2", ordem=60, ordem_grupo=40)
     if "gpvs" in focos:
         _add_img(
             imagens, "gpvs_macro_comparacao.png",
@@ -386,6 +390,12 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
             "GPVS E3 - métricas por cenário experimental",
             pasta=PASTA_GPVS, grupo="GPVS-Faults (E3 de bancada)",
             ordem=30, tipo="comparacao", ordem_grupo=50,
+        )
+        _add_img(
+            imagens, "gpvs_series_temporais.png",
+            "GPVS E3 - séries temporais do detector canônico",
+            pasta=PASTA_GPVS, grupo="GPVS-Faults (E3 de bancada)",
+            ordem=40, tipo="comparacao", ordem_grupo=50,
         )
     if "experimentos" in focos:
         pede_matriz = _pede_matriz(txt)
@@ -641,7 +651,7 @@ def _resumo_validacao() -> str | None:
         )
     leitura.append(
         " As linhas mostram todas as severidades, sem escolher apenas a melhor "
-        "AUC. O holdout usa os blocos finais de F0L/F0M, com purga; a avaliação "
+        "AUC. O holdout usa blocos intercalados de F0L/F0M, com purga; a avaliação "
         "retém janelas não sobrepostas, sem presumir "
         "independência temporal. A falha continua sintética: não é desempenho "
         "industrial."
@@ -651,74 +661,10 @@ def _resumo_validacao() -> str | None:
 
 
 def _resumo_weibull() -> str | None:
-    d = _json(PASTA_AE / "weibull_results.json")
-    if not d:
-        return None
+    from src.ml.resultados_weibull import resumo_weibull
 
-    tempo = d.get("__meta__", {}).get("tempo", {})
-    unidade = tempo.get("ttf_unidade", "passos de degradação sintética")
-    linhas = [
-        "## Detectabilidade E2 / Weibull\n\n",
-        f"Unidade do eixo: `{unidade}`; tempo físico calibrado: "
-        f"{'sim' if tempo.get('tempo_fisico_calibrado') else 'não'}.\n\n",
-        "| Falha | NPR | Detectadas/total | Níveis da grade | beta (IC95%) | eta (IC95%) | média a_det (IC95%) | a10 (IC95%) | margem restrita | R2 papel | Status |\n",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|\n",
-    ]
-    for fid, falha in d.get("falhas", {}).items():
-        p = falha.get("weibull", {})
-        def valor_ci(nome: str, casas: int = 1) -> str:
-            valor = p.get(nome)
-            ci = p.get(f"{nome}_ci95") or [None, None]
-            return f"{_fmt(valor, casas)} [{_fmt(ci[0], casas)}; {_fmt(ci[1], casas)}]"
+    return resumo_weibull()
 
-        status_mapa = {
-            "exploratorio_descritivo": "exploratório legado",
-            "exploratorio_alta_censura": "legado; alta indetectabilidade",
-            "exploratorio_detectabilidade": "exploratório E2",
-            "nao_recomendado_alta_indetectabilidade": "não recomendado; alta indetectabilidade",
-            "nao_recomendado_desvio_papel_weibull": "não recomendado; desvio no papel Weibull",
-            "nao_estimavel": "não estimável",
-            "nao_estimavel_parametrico_rul_restrita": (
-                "Weibull não estimável; KM restrita disponível"
-            ),
-        }
-        status = status_mapa.get(
-            falha.get("status_ajuste"),
-            "exploratório" if p.get("fit_converged") else "não estimável",
-        )
-        recomendada = p.get("resumo_parametrico_recomendado", False)
-        media_txt = (
-            valor_ci("media_a_det_parametrica") if recomendada
-            else "não reportada"
-        )
-        a10_txt = valor_ci("a10_parametrico") if recomendada else "não reportado"
-        linhas.append(
-            f"| {falha.get('nome', fid)} | {falha.get('npr')} | "
-            f"{p.get('n_eventos', '-')}/{p.get('n_traj', '-')} | "
-            f"{p.get('n_niveis_distintos', '-')} | "
-            f"{valor_ci('beta', 2)} | {valor_ci('eta')} | "
-            f"{media_txt} | {a10_txt} | "
-            f"{_fmt(p.get('margem_restrita_inicial', p.get('rul_restrita_inicial')))} | "
-            f"{_fmt((p.get('diagnostico_papel_weibull') or {}).get('r2'), 2)} | {status} |\n"
-        )
-    linhas.append(
-        "\n**Leitura obrigatória:** esta etapa modela a distribuição da "
-        "**magnitude do primeiro cruzamento confirmado do detector**. A curva "
-        "S_D(a) é probabilidade de ainda não detectar; h_D(a) é intensidade de "
-        "detecção por unidade de magnitude. Nenhuma delas é confiabilidade ou "
-        "taxa de falha do componente. A margem restrita de Kaplan-Meier não é "
-        "RUL, pois não existe eixo temporal. MTTF, B10 e RUL permanecem apenas "
-        "como aliases legados no JSON.\n\n"
-        "O MLE usa censura por intervalo na grade de magnitude; os pontos do "
-        "papel de Weibull usam Kaplan-Meier modificado, tamanho total da "
-        "amostra e empates agrupados. Os ICs vêm de bootstrap de janelas sem amostras "
-        "compartilhadas, mas independência temporal não foi demonstrada. "
-        "O NPR "
-        "prioriza risco na FMECA; ele **não determina** quantos eventos o "
-        "experimento sintético produzirá e não explica causalmente a "
-        "indetectabilidade."
-    )
-    return "".join(linhas)
 
 
 def _resumo_experimentos(pergunta: str = "") -> str | None:

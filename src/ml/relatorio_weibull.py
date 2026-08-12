@@ -30,7 +30,7 @@ def montar_relatorio(
     meta_holdout: dict,
     metadados_tempo: dict,
     limiar: float,
-    n_traj_max: int,
+    n_traj_max: int | None,
     n_traj_real: int,
     n_steps: int,
     a_det_unidade: str,
@@ -41,6 +41,7 @@ def montar_relatorio(
     max_censura_rul_pct: float,
     min_r2_papel_weibull: float,
     persistencia_cruzamento: int,
+    persistencia_magnitude: float = 0.02,
     json_seguro,
 ) -> tuple[dict, list[dict]]:
     """Devolve `(relatorio, linhas_da_tabela)`. Não escreve em disco."""
@@ -67,8 +68,10 @@ def montar_relatorio(
             "tempo": metadados_tempo,
             "adequacy_note": (
                 "RMSE-KM e R2 no papel com empates agrupados são descritivos. "
-                "A triagem R2 não é teste formal e não substitui validação "
-                "externa."
+                "A decisão paramétrica usa bootstrap de aderência que reproduz "
+                "a quantização da grade e exige estabilidade entre as duas "
+                "grades mais finas. A estratificação F0L/F0M verifica mistura "
+                "de regimes; nada disso substitui validação externa."
             ),
             "physical_claims": {
                 "rul": False,
@@ -97,6 +100,7 @@ def montar_relatorio(
             "max_censura_rul_pct": max_censura_rul_pct,
             "min_r2_papel_weibull": min_r2_papel_weibull,
             "persistencia_cruzamento": persistencia_cruzamento,
+            "persistencia_magnitude": persistencia_magnitude,
         },
         "falhas": {}
     }
@@ -117,8 +121,14 @@ def montar_relatorio(
                 if not params[fid]["fit_converged"]
                 else "nao_recomendado_alta_indetectabilidade"
                 if params[fid]["rul_parametrica_alta_incerteza"]
-                else "nao_recomendado_desvio_papel_weibull"
-                if not params[fid].get("triagem_papel_compativel", False)
+                else "resolucao_insuficiente_sintese_exploratoria"
+                if not params[fid].get("niveis_suficientes_aderencia", False)
+                else "desvio_aderencia_sintese_exploratoria"
+                if not params[fid].get("aderencia_aceitavel", False)
+                else "instabilidade_grade_sintese_exploratoria"
+                if not (params[fid].get("sensibilidade_grade") or {}).get(
+                    "estavel", True
+                )
                 else "exploratorio_detectabilidade"
             ),
             "ressalva_ajuste": (
@@ -135,6 +145,20 @@ def montar_relatorio(
     for falha in falhas:
         fid = falha["id"]
         p = params[fid]
+        teste_aderencia = p.get("teste_aderencia_quantizada") or {}
+        sensibilidade = p.get("sensibilidade_grade") or {}
+        variacao_grade = sensibilidade.get("variacao_relativa") or {}
+        modos = p.get("ajustes_por_modo") or {}
+
+        def valor_modo(modo: str, chave: str):
+            return (modos.get(modo) or {}).get(chave)
+
+        def p_modo(modo: str):
+            teste = (modos.get(modo) or {}).get(
+                "teste_aderencia_quantizada"
+            ) or {}
+            return teste.get("p_value")
+
         linhas_weibull.append({
             "falha": falha["nome"],
             "npr": falha["npr"],
@@ -174,6 +198,28 @@ def montar_relatorio(
             "a10_parametrico_ci_high": p["a10_parametrico_ci95"][1],
             "papel_weibull_r2": p["diagnostico_papel_weibull"]["r2"],
             "papel_weibull_rmse": p["diagnostico_papel_weibull"]["rmse"],
+            "aderencia_metodo": teste_aderencia.get("metodo"),
+            "aderencia_p_value": teste_aderencia.get("p_value"),
+            "aderencia_alfa": p.get("aderencia_alfa"),
+            "aderencia_aceitavel": p.get("aderencia_aceitavel"),
+            "status_aderencia": p.get("status_aderencia"),
+            "grade_estavel": sensibilidade.get("estavel"),
+            "grade_variacao_beta": variacao_grade.get("beta"),
+            "grade_variacao_eta": variacao_grade.get("eta"),
+            "F0L_n": valor_modo("F0L", "n_traj"),
+            "F0L_beta": valor_modo("F0L", "beta"),
+            "F0L_eta": valor_modo("F0L", "eta"),
+            "F0L_aderencia_p_value": p_modo("F0L"),
+            "F0L_sintese_parametrica_recomendada": valor_modo(
+                "F0L", "resumo_parametrico_recomendado"
+            ),
+            "F0M_n": valor_modo("F0M", "n_traj"),
+            "F0M_beta": valor_modo("F0M", "beta"),
+            "F0M_eta": valor_modo("F0M", "eta"),
+            "F0M_aderencia_p_value": p_modo("F0M"),
+            "F0M_sintese_parametrica_recomendada": valor_modo(
+                "F0M", "resumo_parametrico_recomendado"
+            ),
             "sintese_parametrica_recomendada": p["resumo_parametrico_recomendado"],
             "bootstrap_solicitados": p["bootstrap_solicitados"],
             "bootstrap_validos": p["bootstrap_validos"],

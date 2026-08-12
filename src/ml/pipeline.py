@@ -127,8 +127,8 @@ STAGES: dict[str, PipelineStage] = {
         artifacts=(
             "dados/processados/features_gpvs.parquet",
             "dados/processados/features_gpvs_stats.csv",
-            "dados/processados/features_gpvs_qualidade.json",
-            "dados/processados/features_gpvs_qualidade.png",
+            "resultados/qualidade/features_gpvs_qualidade.json",
+            "resultados/qualidade/features_gpvs_qualidade.png",
         ),
     ),
     "autoencoder": PipelineStage(
@@ -257,9 +257,13 @@ STAGES: dict[str, PipelineStage] = {
         module="src.ml.rul_weibull",
         function="executar_rul_weibull",
         parameter_names=(
-            "N_TRAJ", "N_STEPS", "BATCH_INFERENCIA", "N_BOOTSTRAP",
+            "N_TRAJ", "N_STEPS", "N_STEPS_SENSIBILIDADE",
+            "BATCH_INFERENCIA", "N_BOOTSTRAP", "N_BOOTSTRAP_ADERENCIA",
+            "N_BOOTSTRAP_MODO",
             "MIN_EVENTOS_WEIBULL", "MAX_CENSURA_RUL_PCT",
-            "MIN_R2_PAPEL_WEIBULL",
+            "MIN_R2_PAPEL_WEIBULL", "MIN_NIVEIS_ADERENCIA",
+            "ALFA_ADERENCIA", "MAX_VARIACAO_RELATIVA_GRADE",
+            "PERSISTENCIA_MAGNITUDE",
             "PERSISTENCIA_CRUZAMENTO", "AJUSTE_WEIBULL_METODO",
             "A_DET_UNIDADE", "TTF_UNIDADE",
             "TEMPO_FISICO_CALIBRADO",
@@ -273,6 +277,7 @@ STAGES: dict[str, PipelineStage] = {
             "src.ml.confiabilidade",
             "src.ml.graficos_rul",
             "src.ml.injecao_falhas",
+            "src.ml.rul_weibull_execucao",
             "src.ml.relatorio_weibull",
             "src.ml.estilo_graficos",
             "src.ml.pod_curva",
@@ -283,6 +288,10 @@ STAGES: dict[str, PipelineStage] = {
             "resultados/autoencoder/weibull_confiabilidade.png",
             "resultados/autoencoder/weibull_distribuicao.png",
             "resultados/autoencoder/weibull_rul.png",
+            "resultados/autoencoder/weibull_sensibilidade_grade.png",
+            "resultados/autoencoder/weibull_modos_operacao.png",
+            "resultados/autoencoder/weibull_sensibilidade_grade.csv",
+            "resultados/autoencoder/weibull_trajetorias_grade.csv",
             "resultados/autoencoder/weibull_results.json",
             "resultados/autoencoder/weibull_tabela.csv",
             "resultados/autoencoder/relatorio_confiabilidade.md",
@@ -589,7 +598,11 @@ def _rodar_stage(stage: PipelineStage, progresso=None) -> bool:
     from src.core.seguranca import env_minimo_subprocesso
 
     cmd = [sys.executable, "-m", "src.ml.exec_etapa_isolada", stage.key]
-    env = env_minimo_subprocesso(extras={"AL_IADO_PIPELINE_CHILD": "1"})
+    env = env_minimo_subprocesso(extras={
+        "AL_IADO_PIPELINE_CHILD": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONUTF8": "1",
+    })
     proc = subprocess.Popen(
         cmd,
         cwd=str(RAIZ_PROJETO),

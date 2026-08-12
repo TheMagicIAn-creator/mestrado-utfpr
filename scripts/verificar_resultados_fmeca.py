@@ -50,7 +50,10 @@ PNGS_OBRIGATORIOS = (
     "validacao_metricas.png",
     "weibull_ttf.png",
     "weibull_confiabilidade.png",
+    "weibull_distribuicao.png",
     "weibull_rul.png",
+    "weibull_sensibilidade_grade.png",
+    "weibull_modos_operacao.png",
 )
 PNGS_GPVS = (
     "gpvs_series_temporais.png",
@@ -595,6 +598,19 @@ def checar_weibull(aud: Auditoria) -> dict | None:
                 aud.exigir(_ci_valido(valor, ajuste.get(f"{nome}_ci95")), f"Weibull[{fid}]: IC95 de {nome} inválido")
             aud.exigir(ajuste.get("fit_converged") is True, f"Weibull[{fid}]: ajuste não convergiu")
             r2 = _numero((ajuste.get("diagnostico_papel_weibull") or {}).get("r2"))
+            teste_aderencia = ajuste.get("teste_aderencia_quantizada") or {}
+            p_aderencia = teste_aderencia.get("p_value")
+            alfa_aderencia = _numero(ajuste.get("aderencia_alfa"), 0.05)
+            niveis_suficientes = ajuste.get(
+                "niveis_suficientes_aderencia", True
+            )
+            sensibilidade = ajuste.get("sensibilidade_grade") or {}
+            grade_estavel = sensibilidade.get("estavel", True)
+            if p_aderencia is not None:
+                aud.exigir(
+                    0 <= _numero(p_aderencia) <= 1,
+                    f"Weibull[{fid}]: p-valor de aderência inválido",
+                )
             if censura > max_censura:
                 aud.exigir(
                     ajuste.get("rul_parametrica_alta_incerteza") is True,
@@ -605,12 +621,41 @@ def checar_weibull(aud: Auditoria) -> dict | None:
                     f"Weibull[{fid}]: status de alta indetectabilidade ausente",
                 )
                 aud.exigir(ajuste.get("resumo_parametrico_recomendado") is False, f"Weibull[{fid}]: síntese indevida sob alta indetectabilidade")
-            elif r2 < min_r2:
+            elif not niveis_suficientes:
                 aud.exigir(
-                    falha.get("status_ajuste") == "nao_recomendado_desvio_papel_weibull",
-                    f"Weibull[{fid}]: desvio no papel Weibull deve bloquear síntese",
+                    falha.get("status_ajuste")
+                    == "resolucao_insuficiente_sintese_exploratoria",
+                    f"Weibull[{fid}]: resolução insuficiente deve bloquear síntese",
                 )
-                aud.exigir(ajuste.get("resumo_parametrico_recomendado") is False, f"Weibull[{fid}]: síntese indevida com R² insuficiente")
+                aud.exigir(
+                    ajuste.get("resumo_parametrico_recomendado") is False,
+                    f"Weibull[{fid}]: síntese indevida com poucos níveis",
+                )
+            elif p_aderencia is not None and _numero(p_aderencia) < alfa_aderencia:
+                aud.exigir(
+                    falha.get("status_ajuste")
+                    == "desvio_aderencia_sintese_exploratoria",
+                    f"Weibull[{fid}]: bootstrap rejeitado deve bloquear síntese",
+                )
+                aud.exigir(
+                    ajuste.get("resumo_parametrico_recomendado") is False,
+                    f"Weibull[{fid}]: síntese indevida após rejeição formal",
+                )
+            elif not grade_estavel:
+                aud.exigir(
+                    falha.get("status_ajuste")
+                    == "instabilidade_grade_sintese_exploratoria",
+                    f"Weibull[{fid}]: instabilidade de grade deve bloquear síntese",
+                )
+                aud.exigir(
+                    ajuste.get("resumo_parametrico_recomendado") is False,
+                    f"Weibull[{fid}]: síntese indevida com grade instável",
+                )
+            elif p_aderencia is None and r2 < min_r2:
+                aud.exigir(
+                    ajuste.get("resumo_parametrico_recomendado") is False,
+                    f"Weibull[{fid}]: fallback R² deve bloquear síntese",
+                )
             else:
                 aud.exigir(
                     falha.get("status_ajuste") == "exploratorio_detectabilidade",
@@ -628,6 +673,26 @@ def checar_weibull(aud: Auditoria) -> dict | None:
         aud.exigir(linha.get("status_ajuste") == falha.get("status_ajuste"), f"Weibull CSV/JSON divergem em {fid}/status")
         if ajuste.get("beta") is not None:
             aud.exigir(_proximo(_numero(linha.get("beta")), _numero(ajuste.get("beta"))), f"Weibull CSV/JSON divergem em {fid}/beta")
+
+    trajetorias_grade = aud.csv(
+        PASTA_AE / "weibull_trajetorias_grade.csv"
+    )
+    n_steps_grade = {
+        int(_numero(linha.get("n_steps"), 0)) for linha in trajetorias_grade
+    }
+    n_traj_esperado = int(
+        _numero((dados.get("parametros_simulacao") or {}).get(
+            "n_trajetorias_efetivas"
+        ), 0)
+    )
+    aud.exigir(
+        n_steps_grade == {101, 251, 501},
+        "Weibull: CSV de trajetórias não cobre as três grades",
+    )
+    aud.exigir(
+        len(trajetorias_grade) == n_traj_esperado * len(ESPERADO) * 3,
+        "Weibull: número de trajetórias por grade inconsistente",
+    )
 
     print("• Weibull: eventos, censura, ajustes, ICs e CSV cruzados")
     for fid in ESPERADO:

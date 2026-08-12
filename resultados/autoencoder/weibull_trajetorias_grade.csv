@@ -1,0 +1,2494 @@
+trajetoria_id,ensaio,falha,falha_id,n_steps,delta_a,persistencia_magnitude,persistencia_pontos,a_det,detectou
+0,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.55,True
+1,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.54,True
+2,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.64,True
+3,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.56,True
+4,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.63,True
+5,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.53,True
+6,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.29,True
+7,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.43,True
+8,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.41,True
+9,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.38,True
+10,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.48,True
+11,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.46,True
+12,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.53,True
+13,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.53,True
+14,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.47,True
+15,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.56,True
+16,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.61,True
+17,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.52,True
+18,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.49,True
+19,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.5,True
+20,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.41,True
+21,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.44,True
+22,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.37,True
+23,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.4,True
+24,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.35,True
+25,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.47,True
+26,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.42,True
+27,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.38,True
+28,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.45,True
+29,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.47,True
+30,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.41,True
+31,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.33,True
+32,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.37,True
+33,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.32,True
+34,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+35,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+36,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.33,True
+37,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+38,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+39,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.33,True
+40,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.41,True
+41,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.44,True
+42,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.36,True
+43,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.38,True
+44,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.43,True
+45,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.47,True
+46,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.31,True
+47,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.38,True
+48,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.53,True
+49,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.51,True
+50,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.43,True
+51,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.42,True
+52,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.56,True
+53,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.54,True
+54,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.58,True
+55,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.53,True
+56,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.6,True
+57,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.56,True
+58,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.56,True
+59,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.16,True
+60,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.44,True
+61,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.41,True
+62,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.45,True
+63,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.47,True
+64,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.48,True
+65,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.45,True
+66,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.41,True
+67,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.5,True
+68,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.45,True
+69,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.44,True
+70,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.46,True
+71,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.54,True
+72,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.4,True
+73,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.38,True
+74,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.43,True
+75,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.37,True
+76,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.41,True
+77,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+78,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.4,True
+79,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.43,True
+80,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.36,True
+81,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.42,True
+82,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.48,True
+83,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.42,True
+84,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.37,True
+85,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.38,True
+86,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+87,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.33,True
+88,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.35,True
+89,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.32,True
+90,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.31,True
+91,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.31,True
+92,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.4,True
+93,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.39,True
+94,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.38,True
+95,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.36,True
+96,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.33,True
+97,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.4,True
+98,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.39,True
+99,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.35,True
+100,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.41,True
+101,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.46,True
+102,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.54,True
+103,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.48,True
+104,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.52,True
+105,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.59,True
+106,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.47,True
+107,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.61,True
+108,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.52,True
+109,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.48,True
+110,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.63,True
+111,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.5,True
+112,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.36,True
+113,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.53,True
+114,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.36,True
+115,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.43,True
+116,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.48,True
+117,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.43,True
+118,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.4,True
+119,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.41,True
+120,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.45,True
+121,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.54,True
+122,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.48,True
+123,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.44,True
+124,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.51,True
+125,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.47,True
+126,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.46,True
+127,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.43,True
+128,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.36,True
+129,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.36,True
+130,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.37,True
+131,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.37,True
+132,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.33,True
+133,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.39,True
+134,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.43,True
+135,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.38,True
+136,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.39,True
+137,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.35,True
+138,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+139,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.35,True
+140,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.35,True
+141,F0L,Contator AC,contator_ac,101,0.01,0.02,3,0.38,True
+142,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.37,True
+143,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.3,True
+144,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.35,True
+145,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+146,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+147,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.39,True
+148,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.31,True
+149,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+150,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.3,True
+151,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.32,True
+152,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.33,True
+153,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.37,True
+154,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.36,True
+155,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.27,True
+156,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.27,True
+157,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.2,True
+158,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.26,True
+159,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.39,True
+160,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.33,True
+161,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+162,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.21,True
+163,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.24,True
+164,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.3,True
+165,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.31,True
+166,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.31,True
+167,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.26,True
+168,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+169,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.23,True
+170,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.28,True
+171,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.25,True
+172,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.27,True
+173,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.26,True
+174,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+175,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.26,True
+176,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.28,True
+177,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.26,True
+178,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.24,True
+179,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.27,True
+180,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.22,True
+181,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.24,True
+182,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.27,True
+183,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.2,True
+184,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.28,True
+185,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.25,True
+186,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.22,True
+187,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.22,True
+188,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+189,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.23,True
+190,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.2,True
+191,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.25,True
+192,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.24,True
+193,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.26,True
+194,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.43,True
+195,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.37,True
+196,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.3,True
+197,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.33,True
+198,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.38,True
+199,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.32,True
+200,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.3,True
+201,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.33,True
+202,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+203,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.28,True
+204,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.27,True
+205,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.27,True
+206,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.37,True
+207,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.35,True
+208,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.29,True
+209,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.36,True
+210,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+211,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.28,True
+212,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.36,True
+213,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.21,True
+214,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.27,True
+215,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.29,True
+216,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.24,True
+217,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.19,True
+218,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.24,True
+219,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.27,True
+220,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.26,True
+221,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.23,True
+222,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.25,True
+223,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.21,True
+224,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.23,True
+225,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.3,True
+226,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.27,True
+227,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.27,True
+228,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.27,True
+229,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.31,True
+230,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+231,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.28,True
+232,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.28,True
+233,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.23,True
+234,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.33,True
+235,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.22,True
+236,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.2,True
+237,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.23,True
+238,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.29,True
+239,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.27,True
+240,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.28,True
+241,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.29,True
+242,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.29,True
+243,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.24,True
+244,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.3,True
+245,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.2,True
+246,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.26,True
+247,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+248,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.38,True
+249,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.32,True
+250,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+251,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.37,True
+252,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.32,True
+253,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.36,True
+254,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.33,True
+255,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+256,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.37,True
+257,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.37,True
+258,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.28,True
+259,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.31,True
+260,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.33,True
+261,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.3,True
+262,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.33,True
+263,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.38,True
+264,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.41,True
+265,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.31,True
+266,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.29,True
+267,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.3,True
+268,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.31,True
+269,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.25,True
+270,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.34,True
+271,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.24,True
+272,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.19,True
+273,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.23,True
+274,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.25,True
+275,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.4,True
+276,F0M,Contator AC,contator_ac,101,0.01,0.02,3,0.3,True
+0,F0L,IGBT,igbt,101,0.01,0.02,3,0.39,True
+1,F0L,IGBT,igbt,101,0.01,0.02,3,0.42,True
+2,F0L,IGBT,igbt,101,0.01,0.02,3,0.43,True
+3,F0L,IGBT,igbt,101,0.01,0.02,3,0.41,True
+4,F0L,IGBT,igbt,101,0.01,0.02,3,0.43,True
+5,F0L,IGBT,igbt,101,0.01,0.02,3,0.45,True
+6,F0L,IGBT,igbt,101,0.01,0.02,3,0.25,True
+7,F0L,IGBT,igbt,101,0.01,0.02,3,0.44,True
+8,F0L,IGBT,igbt,101,0.01,0.02,3,0.46,True
+9,F0L,IGBT,igbt,101,0.01,0.02,3,0.42,True
+10,F0L,IGBT,igbt,101,0.01,0.02,3,0.46,True
+11,F0L,IGBT,igbt,101,0.01,0.02,3,0.44,True
+12,F0L,IGBT,igbt,101,0.01,0.02,3,0.44,True
+13,F0L,IGBT,igbt,101,0.01,0.02,3,0.44,True
+14,F0L,IGBT,igbt,101,0.01,0.02,3,0.42,True
+15,F0L,IGBT,igbt,101,0.01,0.02,3,0.41,True
+16,F0L,IGBT,igbt,101,0.01,0.02,3,0.41,True
+17,F0L,IGBT,igbt,101,0.01,0.02,3,0.42,True
+18,F0L,IGBT,igbt,101,0.01,0.02,3,0.37,True
+19,F0L,IGBT,igbt,101,0.01,0.02,3,0.38,True
+20,F0L,IGBT,igbt,101,0.01,0.02,3,0.34,True
+21,F0L,IGBT,igbt,101,0.01,0.02,3,0.34,True
+22,F0L,IGBT,igbt,101,0.01,0.02,3,0.33,True
+23,F0L,IGBT,igbt,101,0.01,0.02,3,0.34,True
+24,F0L,IGBT,igbt,101,0.01,0.02,3,0.32,True
+25,F0L,IGBT,igbt,101,0.01,0.02,3,0.3,True
+26,F0L,IGBT,igbt,101,0.01,0.02,3,0.3,True
+27,F0L,IGBT,igbt,101,0.01,0.02,3,0.33,True
+28,F0L,IGBT,igbt,101,0.01,0.02,3,0.32,True
+29,F0L,IGBT,igbt,101,0.01,0.02,3,0.3,True
+30,F0L,IGBT,igbt,101,0.01,0.02,3,0.26,True
+31,F0L,IGBT,igbt,101,0.01,0.02,3,0.23,True
+32,F0L,IGBT,igbt,101,0.01,0.02,3,0.21,True
+33,F0L,IGBT,igbt,101,0.01,0.02,3,0.19,True
+34,F0L,IGBT,igbt,101,0.01,0.02,3,0.2,True
+35,F0L,IGBT,igbt,101,0.01,0.02,3,0.21,True
+36,F0L,IGBT,igbt,101,0.01,0.02,3,0.2,True
+37,F0L,IGBT,igbt,101,0.01,0.02,3,0.2,True
+38,F0L,IGBT,igbt,101,0.01,0.02,3,0.22,True
+39,F0L,IGBT,igbt,101,0.01,0.02,3,0.22,True
+40,F0L,IGBT,igbt,101,0.01,0.02,3,0.28,True
+41,F0L,IGBT,igbt,101,0.01,0.02,3,0.28,True
+42,F0L,IGBT,igbt,101,0.01,0.02,3,0.28,True
+43,F0L,IGBT,igbt,101,0.01,0.02,3,0.32,True
+44,F0L,IGBT,igbt,101,0.01,0.02,3,0.31,True
+45,F0L,IGBT,igbt,101,0.01,0.02,3,0.32,True
+46,F0L,IGBT,igbt,101,0.01,0.02,3,0.24,True
+47,F0L,IGBT,igbt,101,0.01,0.02,3,0.27,True
+48,F0L,IGBT,igbt,101,0.01,0.02,3,0.33,True
+49,F0L,IGBT,igbt,101,0.01,0.02,3,0.4,True
+50,F0L,IGBT,igbt,101,0.01,0.02,3,0.38,True
+51,F0L,IGBT,igbt,101,0.01,0.02,3,0.35,True
+52,F0L,IGBT,igbt,101,0.01,0.02,3,0.4,True
+53,F0L,IGBT,igbt,101,0.01,0.02,3,0.42,True
+54,F0L,IGBT,igbt,101,0.01,0.02,3,0.41,True
+55,F0L,IGBT,igbt,101,0.01,0.02,3,0.42,True
+56,F0L,IGBT,igbt,101,0.01,0.02,3,0.44,True
+57,F0L,IGBT,igbt,101,0.01,0.02,3,0.44,True
+58,F0L,IGBT,igbt,101,0.01,0.02,3,0.44,True
+59,F0L,IGBT,igbt,101,0.01,0.02,3,0.05,True
+60,F0L,IGBT,igbt,101,0.01,0.02,3,0.41,True
+61,F0L,IGBT,igbt,101,0.01,0.02,3,0.46,True
+62,F0L,IGBT,igbt,101,0.01,0.02,3,0.45,True
+63,F0L,IGBT,igbt,101,0.01,0.02,3,0.46,True
+64,F0L,IGBT,igbt,101,0.01,0.02,3,0.46,True
+65,F0L,IGBT,igbt,101,0.01,0.02,3,0.4,True
+66,F0L,IGBT,igbt,101,0.01,0.02,3,0.44,True
+67,F0L,IGBT,igbt,101,0.01,0.02,3,0.41,True
+68,F0L,IGBT,igbt,101,0.01,0.02,3,0.42,True
+69,F0L,IGBT,igbt,101,0.01,0.02,3,0.41,True
+70,F0L,IGBT,igbt,101,0.01,0.02,3,0.41,True
+71,F0L,IGBT,igbt,101,0.01,0.02,3,0.37,True
+72,F0L,IGBT,igbt,101,0.01,0.02,3,0.41,True
+73,F0L,IGBT,igbt,101,0.01,0.02,3,0.36,True
+74,F0L,IGBT,igbt,101,0.01,0.02,3,0.34,True
+75,F0L,IGBT,igbt,101,0.01,0.02,3,0.33,True
+76,F0L,IGBT,igbt,101,0.01,0.02,3,0.34,True
+77,F0L,IGBT,igbt,101,0.01,0.02,3,0.32,True
+78,F0L,IGBT,igbt,101,0.01,0.02,3,0.31,True
+79,F0L,IGBT,igbt,101,0.01,0.02,3,0.3,True
+80,F0L,IGBT,igbt,101,0.01,0.02,3,0.29,True
+81,F0L,IGBT,igbt,101,0.01,0.02,3,0.32,True
+82,F0L,IGBT,igbt,101,0.01,0.02,3,0.33,True
+83,F0L,IGBT,igbt,101,0.01,0.02,3,0.3,True
+84,F0L,IGBT,igbt,101,0.01,0.02,3,0.22,True
+85,F0L,IGBT,igbt,101,0.01,0.02,3,0.22,True
+86,F0L,IGBT,igbt,101,0.01,0.02,3,0.21,True
+87,F0L,IGBT,igbt,101,0.01,0.02,3,0.19,True
+88,F0L,IGBT,igbt,101,0.01,0.02,3,0.2,True
+89,F0L,IGBT,igbt,101,0.01,0.02,3,0.19,True
+90,F0L,IGBT,igbt,101,0.01,0.02,3,0.2,True
+91,F0L,IGBT,igbt,101,0.01,0.02,3,0.17,True
+92,F0L,IGBT,igbt,101,0.01,0.02,3,0.27,True
+93,F0L,IGBT,igbt,101,0.01,0.02,3,0.27,True
+94,F0L,IGBT,igbt,101,0.01,0.02,3,0.27,True
+95,F0L,IGBT,igbt,101,0.01,0.02,3,0.29,True
+96,F0L,IGBT,igbt,101,0.01,0.02,3,0.3,True
+97,F0L,IGBT,igbt,101,0.01,0.02,3,0.34,True
+98,F0L,IGBT,igbt,101,0.01,0.02,3,0.31,True
+99,F0L,IGBT,igbt,101,0.01,0.02,3,0.2,True
+100,F0L,IGBT,igbt,101,0.01,0.02,3,0.25,True
+101,F0L,IGBT,igbt,101,0.01,0.02,3,0.33,True
+102,F0L,IGBT,igbt,101,0.01,0.02,3,0.37,True
+103,F0L,IGBT,igbt,101,0.01,0.02,3,0.37,True
+104,F0L,IGBT,igbt,101,0.01,0.02,3,0.38,True
+105,F0L,IGBT,igbt,101,0.01,0.02,3,0.42,True
+106,F0L,IGBT,igbt,101,0.01,0.02,3,0.42,True
+107,F0L,IGBT,igbt,101,0.01,0.02,3,0.42,True
+108,F0L,IGBT,igbt,101,0.01,0.02,3,0.44,True
+109,F0L,IGBT,igbt,101,0.01,0.02,3,0.44,True
+110,F0L,IGBT,igbt,101,0.01,0.02,3,0.42,True
+111,F0L,IGBT,igbt,101,0.01,0.02,3,0.43,True
+112,F0L,IGBT,igbt,101,0.01,0.02,3,0.37,True
+113,F0L,IGBT,igbt,101,0.01,0.02,3,0.47,True
+114,F0L,IGBT,igbt,101,0.01,0.02,3,0.43,True
+115,F0L,IGBT,igbt,101,0.01,0.02,3,0.44,True
+116,F0L,IGBT,igbt,101,0.01,0.02,3,0.44,True
+117,F0L,IGBT,igbt,101,0.01,0.02,3,0.41,True
+118,F0L,IGBT,igbt,101,0.01,0.02,3,0.45,True
+119,F0L,IGBT,igbt,101,0.01,0.02,3,0.46,True
+120,F0L,IGBT,igbt,101,0.01,0.02,3,0.42,True
+121,F0L,IGBT,igbt,101,0.01,0.02,3,0.41,True
+122,F0L,IGBT,igbt,101,0.01,0.02,3,0.4,True
+123,F0L,IGBT,igbt,101,0.01,0.02,3,0.41,True
+124,F0L,IGBT,igbt,101,0.01,0.02,3,0.41,True
+125,F0L,IGBT,igbt,101,0.01,0.02,3,0.36,True
+126,F0L,IGBT,igbt,101,0.01,0.02,3,0.36,True
+127,F0L,IGBT,igbt,101,0.01,0.02,3,0.35,True
+128,F0L,IGBT,igbt,101,0.01,0.02,3,0.36,True
+129,F0L,IGBT,igbt,101,0.01,0.02,3,0.33,True
+130,F0L,IGBT,igbt,101,0.01,0.02,3,0.32,True
+131,F0L,IGBT,igbt,101,0.01,0.02,3,0.3,True
+132,F0L,IGBT,igbt,101,0.01,0.02,3,0.28,True
+133,F0L,IGBT,igbt,101,0.01,0.02,3,0.29,True
+134,F0L,IGBT,igbt,101,0.01,0.02,3,0.32,True
+135,F0L,IGBT,igbt,101,0.01,0.02,3,0.3,True
+136,F0L,IGBT,igbt,101,0.01,0.02,3,0.33,True
+137,F0L,IGBT,igbt,101,0.01,0.02,3,0.21,True
+138,F0L,IGBT,igbt,101,0.01,0.02,3,0.2,True
+139,F0L,IGBT,igbt,101,0.01,0.02,3,0.2,True
+140,F0L,IGBT,igbt,101,0.01,0.02,3,0.19,True
+141,F0L,IGBT,igbt,101,0.01,0.02,3,0.2,True
+142,F0M,IGBT,igbt,101,0.01,0.02,3,0.25,True
+143,F0M,IGBT,igbt,101,0.01,0.02,3,0.28,True
+144,F0M,IGBT,igbt,101,0.01,0.02,3,0.29,True
+145,F0M,IGBT,igbt,101,0.01,0.02,3,0.26,True
+146,F0M,IGBT,igbt,101,0.01,0.02,3,0.3,True
+147,F0M,IGBT,igbt,101,0.01,0.02,3,0.26,True
+148,F0M,IGBT,igbt,101,0.01,0.02,3,0.3,True
+149,F0M,IGBT,igbt,101,0.01,0.02,3,0.29,True
+150,F0M,IGBT,igbt,101,0.01,0.02,3,0.28,True
+151,F0M,IGBT,igbt,101,0.01,0.02,3,0.22,True
+152,F0M,IGBT,igbt,101,0.01,0.02,3,0.23,True
+153,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+154,F0M,IGBT,igbt,101,0.01,0.02,3,0.25,True
+155,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+156,F0M,IGBT,igbt,101,0.01,0.02,3,0.25,True
+157,F0M,IGBT,igbt,101,0.01,0.02,3,0.15,True
+158,F0M,IGBT,igbt,101,0.01,0.02,3,0.2,True
+159,F0M,IGBT,igbt,101,0.01,0.02,3,0.22,True
+160,F0M,IGBT,igbt,101,0.01,0.02,3,0.23,True
+161,F0M,IGBT,igbt,101,0.01,0.02,3,0.23,True
+162,F0M,IGBT,igbt,101,0.01,0.02,3,0.16,True
+163,F0M,IGBT,igbt,101,0.01,0.02,3,0.18,True
+164,F0M,IGBT,igbt,101,0.01,0.02,3,0.17,True
+165,F0M,IGBT,igbt,101,0.01,0.02,3,0.18,True
+166,F0M,IGBT,igbt,101,0.01,0.02,3,0.2,True
+167,F0M,IGBT,igbt,101,0.01,0.02,3,0.16,True
+168,F0M,IGBT,igbt,101,0.01,0.02,3,0.17,True
+169,F0M,IGBT,igbt,101,0.01,0.02,3,0.15,True
+170,F0M,IGBT,igbt,101,0.01,0.02,3,0.16,True
+171,F0M,IGBT,igbt,101,0.01,0.02,3,0.22,True
+172,F0M,IGBT,igbt,101,0.01,0.02,3,0.23,True
+173,F0M,IGBT,igbt,101,0.01,0.02,3,0.23,True
+174,F0M,IGBT,igbt,101,0.01,0.02,3,0.25,True
+175,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+176,F0M,IGBT,igbt,101,0.01,0.02,3,0.26,True
+177,F0M,IGBT,igbt,101,0.01,0.02,3,0.23,True
+178,F0M,IGBT,igbt,101,0.01,0.02,3,0.2,True
+179,F0M,IGBT,igbt,101,0.01,0.02,3,0.19,True
+180,F0M,IGBT,igbt,101,0.01,0.02,3,0.2,True
+181,F0M,IGBT,igbt,101,0.01,0.02,3,0.2,True
+182,F0M,IGBT,igbt,101,0.01,0.02,3,0.2,True
+183,F0M,IGBT,igbt,101,0.01,0.02,3,0.21,True
+184,F0M,IGBT,igbt,101,0.01,0.02,3,0.26,True
+185,F0M,IGBT,igbt,101,0.01,0.02,3,0.22,True
+186,F0M,IGBT,igbt,101,0.01,0.02,3,0.27,True
+187,F0M,IGBT,igbt,101,0.01,0.02,3,0.29,True
+188,F0M,IGBT,igbt,101,0.01,0.02,3,0.26,True
+189,F0M,IGBT,igbt,101,0.01,0.02,3,0.23,True
+190,F0M,IGBT,igbt,101,0.01,0.02,3,0.25,True
+191,F0M,IGBT,igbt,101,0.01,0.02,3,0.23,True
+192,F0M,IGBT,igbt,101,0.01,0.02,3,0.25,True
+193,F0M,IGBT,igbt,101,0.01,0.02,3,0.26,True
+194,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+195,F0M,IGBT,igbt,101,0.01,0.02,3,0.28,True
+196,F0M,IGBT,igbt,101,0.01,0.02,3,0.26,True
+197,F0M,IGBT,igbt,101,0.01,0.02,3,0.29,True
+198,F0M,IGBT,igbt,101,0.01,0.02,3,0.31,True
+199,F0M,IGBT,igbt,101,0.01,0.02,3,0.26,True
+200,F0M,IGBT,igbt,101,0.01,0.02,3,0.25,True
+201,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+202,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+203,F0M,IGBT,igbt,101,0.01,0.02,3,0.26,True
+204,F0M,IGBT,igbt,101,0.01,0.02,3,0.25,True
+205,F0M,IGBT,igbt,101,0.01,0.02,3,0.19,True
+206,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+207,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+208,F0M,IGBT,igbt,101,0.01,0.02,3,0.23,True
+209,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+210,F0M,IGBT,igbt,101,0.01,0.02,3,0.22,True
+211,F0M,IGBT,igbt,101,0.01,0.02,3,0.23,True
+212,F0M,IGBT,igbt,101,0.01,0.02,3,0.23,True
+213,F0M,IGBT,igbt,101,0.01,0.02,3,0.22,True
+214,F0M,IGBT,igbt,101,0.01,0.02,3,0.18,True
+215,F0M,IGBT,igbt,101,0.01,0.02,3,0.17,True
+216,F0M,IGBT,igbt,101,0.01,0.02,3,0.15,True
+217,F0M,IGBT,igbt,101,0.01,0.02,3,0.17,True
+218,F0M,IGBT,igbt,101,0.01,0.02,3,0.18,True
+219,F0M,IGBT,igbt,101,0.01,0.02,3,0.16,True
+220,F0M,IGBT,igbt,101,0.01,0.02,3,0.17,True
+221,F0M,IGBT,igbt,101,0.01,0.02,3,0.15,True
+222,F0M,IGBT,igbt,101,0.01,0.02,3,0.16,True
+223,F0M,IGBT,igbt,101,0.01,0.02,3,0.17,True
+224,F0M,IGBT,igbt,101,0.01,0.02,3,0.2,True
+225,F0M,IGBT,igbt,101,0.01,0.02,3,0.22,True
+226,F0M,IGBT,igbt,101,0.01,0.02,3,0.21,True
+227,F0M,IGBT,igbt,101,0.01,0.02,3,0.25,True
+228,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+229,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+230,F0M,IGBT,igbt,101,0.01,0.02,3,0.22,True
+231,F0M,IGBT,igbt,101,0.01,0.02,3,0.19,True
+232,F0M,IGBT,igbt,101,0.01,0.02,3,0.2,True
+233,F0M,IGBT,igbt,101,0.01,0.02,3,0.23,True
+234,F0M,IGBT,igbt,101,0.01,0.02,3,0.22,True
+235,F0M,IGBT,igbt,101,0.01,0.02,3,0.26,True
+236,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+237,F0M,IGBT,igbt,101,0.01,0.02,3,0.22,True
+238,F0M,IGBT,igbt,101,0.01,0.02,3,0.27,True
+239,F0M,IGBT,igbt,101,0.01,0.02,3,0.28,True
+240,F0M,IGBT,igbt,101,0.01,0.02,3,0.28,True
+241,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+242,F0M,IGBT,igbt,101,0.01,0.02,3,0.28,True
+243,F0M,IGBT,igbt,101,0.01,0.02,3,0.27,True
+244,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+245,F0M,IGBT,igbt,101,0.01,0.02,3,0.15,True
+246,F0M,IGBT,igbt,101,0.01,0.02,3,0.21,True
+247,F0M,IGBT,igbt,101,0.01,0.02,3,0.29,True
+248,F0M,IGBT,igbt,101,0.01,0.02,3,0.27,True
+249,F0M,IGBT,igbt,101,0.01,0.02,3,0.26,True
+250,F0M,IGBT,igbt,101,0.01,0.02,3,0.26,True
+251,F0M,IGBT,igbt,101,0.01,0.02,3,0.25,True
+252,F0M,IGBT,igbt,101,0.01,0.02,3,0.27,True
+253,F0M,IGBT,igbt,101,0.01,0.02,3,0.28,True
+254,F0M,IGBT,igbt,101,0.01,0.02,3,0.27,True
+255,F0M,IGBT,igbt,101,0.01,0.02,3,0.28,True
+256,F0M,IGBT,igbt,101,0.01,0.02,3,0.28,True
+257,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+258,F0M,IGBT,igbt,101,0.01,0.02,3,0.22,True
+259,F0M,IGBT,igbt,101,0.01,0.02,3,0.21,True
+260,F0M,IGBT,igbt,101,0.01,0.02,3,0.23,True
+261,F0M,IGBT,igbt,101,0.01,0.02,3,0.23,True
+262,F0M,IGBT,igbt,101,0.01,0.02,3,0.22,True
+263,F0M,IGBT,igbt,101,0.01,0.02,3,0.22,True
+264,F0M,IGBT,igbt,101,0.01,0.02,3,0.24,True
+265,F0M,IGBT,igbt,101,0.01,0.02,3,0.22,True
+266,F0M,IGBT,igbt,101,0.01,0.02,3,0.2,True
+267,F0M,IGBT,igbt,101,0.01,0.02,3,0.17,True
+268,F0M,IGBT,igbt,101,0.01,0.02,3,0.18,True
+269,F0M,IGBT,igbt,101,0.01,0.02,3,0.14,True
+270,F0M,IGBT,igbt,101,0.01,0.02,3,0.18,True
+271,F0M,IGBT,igbt,101,0.01,0.02,3,0.16,True
+272,F0M,IGBT,igbt,101,0.01,0.02,3,0.14,True
+273,F0M,IGBT,igbt,101,0.01,0.02,3,0.14,True
+274,F0M,IGBT,igbt,101,0.01,0.02,3,0.15,True
+275,F0M,IGBT,igbt,101,0.01,0.02,3,0.19,True
+276,F0M,IGBT,igbt,101,0.01,0.02,3,0.21,True
+0,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+1,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+2,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+3,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+4,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+5,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+6,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+7,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+8,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+9,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+10,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+11,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+12,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+13,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+14,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+15,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+16,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+17,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+18,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+19,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+20,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+21,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+22,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+23,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+24,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+25,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+26,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+27,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+28,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+29,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+30,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+31,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+32,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+33,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+34,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+35,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+36,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+37,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+38,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+39,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+40,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+41,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+42,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+43,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+44,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+45,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+46,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.07,True
+47,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.08,True
+48,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+49,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+50,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+51,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+52,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+53,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+54,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+55,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+56,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+57,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+58,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+59,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+60,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+61,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+62,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+63,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+64,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+65,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+66,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+67,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+68,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+69,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+70,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+71,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+72,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+73,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+74,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+75,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+76,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+77,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+78,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+79,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+80,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+81,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+82,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+83,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+84,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+85,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+86,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+87,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+88,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+89,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+90,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+91,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+92,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+93,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+94,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+95,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+96,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+97,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+98,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+99,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.08,True
+100,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.07,True
+101,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+102,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+103,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+104,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+105,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+106,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+107,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+108,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+109,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+110,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+111,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+112,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+113,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+114,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+115,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+116,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+117,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+118,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+119,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+120,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+121,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+122,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+123,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+124,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+125,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+126,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+127,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+128,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+129,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+130,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+131,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+132,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+133,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+134,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+135,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+136,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+137,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+138,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+139,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+140,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+141,F0L,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+142,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+143,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+144,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+145,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+146,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+147,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+148,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+149,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+150,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+151,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+152,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+153,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+154,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+155,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+156,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+157,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+158,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+159,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+160,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+161,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+162,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+163,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+164,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+165,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+166,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+167,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+168,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.07,True
+169,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+170,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+171,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.07,True
+172,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+173,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+174,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+175,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+176,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+177,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+178,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+179,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+180,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+181,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+182,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+183,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+184,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+185,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+186,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+187,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+188,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+189,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+190,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+191,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+192,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+193,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+194,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+195,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+196,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+197,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+198,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+199,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+200,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+201,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+202,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+203,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+204,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+205,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+206,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+207,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+208,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+209,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+210,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+211,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+212,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+213,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+214,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+215,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+216,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+217,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+218,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+219,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+220,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.07,True
+221,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+222,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+223,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+224,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+225,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+226,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+227,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+228,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+229,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+230,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+231,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+232,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+233,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+234,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+235,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+236,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+237,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+238,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+239,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+240,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+241,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+242,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+243,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+244,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+245,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+246,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+247,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+248,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+249,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+250,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+251,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+252,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+253,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.04,True
+254,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+255,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+256,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+257,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+258,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+259,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+260,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+261,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+262,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+263,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+264,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+265,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+266,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+267,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+268,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+269,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+270,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+271,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+272,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+273,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+274,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.05,True
+275,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.07,True
+276,F0M,Fusível AC,fusivel_ac,101,0.01,0.02,3,0.06,True
+0,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.544,True
+1,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.54,True
+2,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.636,True
+3,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.56,True
+4,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.632,True
+5,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.524,True
+6,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.288,True
+7,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.428,True
+8,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.404,True
+9,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.38,True
+10,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.48,True
+11,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.46,True
+12,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.524,True
+13,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.524,True
+14,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.468,True
+15,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.552,True
+16,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.608,True
+17,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.52,True
+18,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.484,True
+19,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.496,True
+20,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.404,True
+21,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.432,True
+22,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.364,True
+23,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.4,True
+24,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.348,True
+25,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.464,True
+26,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.42,True
+27,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.376,True
+28,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.448,True
+29,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.468,True
+30,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.408,True
+31,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.324,True
+32,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.364,True
+33,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.316,True
+34,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.336,True
+35,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.336,True
+36,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.328,True
+37,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.34,True
+38,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.34,True
+39,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.328,True
+40,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.408,True
+41,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.436,True
+42,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.36,True
+43,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.376,True
+44,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.428,True
+45,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.468,True
+46,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.308,True
+47,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.38,True
+48,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.524,True
+49,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.512,True
+50,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.428,True
+51,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.42,True
+52,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.556,True
+53,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.532,True
+54,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.576,True
+55,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.524,True
+56,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.592,True
+57,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.556,True
+58,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.552,True
+59,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.156,True
+60,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.44,True
+61,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.412,True
+62,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.452,True
+63,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.464,True
+64,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.476,True
+65,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.448,True
+66,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.408,True
+67,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.496,True
+68,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.448,True
+69,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.436,True
+70,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.456,True
+71,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.54,True
+72,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.396,True
+73,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.376,True
+74,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.424,True
+75,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.368,True
+76,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.408,True
+77,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.34,True
+78,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.4,True
+79,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.424,True
+80,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.36,True
+81,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.42,True
+82,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.472,True
+83,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.42,True
+84,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.364,True
+85,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.376,True
+86,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.336,True
+87,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.328,True
+88,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.348,True
+89,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.316,True
+90,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.312,True
+91,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.304,True
+92,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.4,True
+93,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.388,True
+94,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.38,True
+95,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.352,True
+96,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.328,True
+97,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.4,True
+98,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.384,True
+99,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.348,True
+100,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.404,True
+101,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.452,True
+102,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.54,True
+103,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.472,True
+104,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.512,True
+105,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.588,True
+106,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.468,True
+107,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.604,True
+108,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.516,True
+109,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.48,True
+110,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.624,True
+111,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.496,True
+112,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.36,True
+113,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.524,True
+114,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.36,True
+115,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.424,True
+116,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.476,True
+117,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.428,True
+118,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.4,True
+119,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.404,True
+120,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.448,True
+121,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.536,True
+122,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.472,True
+123,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.436,True
+124,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.508,True
+125,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.464,True
+126,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.46,True
+127,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.424,True
+128,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.36,True
+129,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.356,True
+130,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.368,True
+131,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.368,True
+132,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.332,True
+133,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.384,True
+134,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.424,True
+135,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.372,True
+136,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.388,True
+137,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.348,True
+138,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.34,True
+139,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.352,True
+140,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.352,True
+141,F0L,Contator AC,contator_ac,251,0.004,0.02,6,0.38,True
+142,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.364,True
+143,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.3,True
+144,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.352,True
+145,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.34,True
+146,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.332,True
+147,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.388,True
+148,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.304,True
+149,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.332,True
+150,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.3,True
+151,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.312,True
+152,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.324,True
+153,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.368,True
+154,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.356,True
+155,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.268,True
+156,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.268,True
+157,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.2,True
+158,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.26,True
+159,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.384,True
+160,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.324,True
+161,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.34,True
+162,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.204,True
+163,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.232,True
+164,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.296,True
+165,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.308,True
+166,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.312,True
+167,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.256,True
+168,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.332,True
+169,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.232,True
+170,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.276,True
+171,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.244,True
+172,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.268,True
+173,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.26,True
+174,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.332,True
+175,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.256,True
+176,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.276,True
+177,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.252,True
+178,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.232,True
+179,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.272,True
+180,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.22,True
+181,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.24,True
+182,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.268,True
+183,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.2,True
+184,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.28,True
+185,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.248,True
+186,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.22,True
+187,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.212,True
+188,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.34,True
+189,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.228,True
+190,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.2,True
+191,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.252,True
+192,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.24,True
+193,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.26,True
+194,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.428,True
+195,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.364,True
+196,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.3,True
+197,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.324,True
+198,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.376,True
+199,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.316,True
+200,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.292,True
+201,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.324,True
+202,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.336,True
+203,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.276,True
+204,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.264,True
+205,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.264,True
+206,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.368,True
+207,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.348,True
+208,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.292,True
+209,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.356,True
+210,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.332,True
+211,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.28,True
+212,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.352,True
+213,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.208,True
+214,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.272,True
+215,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.284,True
+216,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.232,True
+217,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.188,True
+218,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.24,True
+219,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.272,True
+220,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.26,True
+221,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.232,True
+222,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.244,True
+223,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.212,True
+224,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.232,True
+225,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.296,True
+226,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.264,True
+227,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.264,True
+228,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.272,True
+229,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.308,True
+230,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.336,True
+231,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.28,True
+232,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.28,True
+233,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.228,True
+234,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.328,True
+235,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.22,True
+236,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.2,True
+237,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.228,True
+238,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.288,True
+239,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.264,True
+240,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.28,True
+241,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.284,True
+242,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.284,True
+243,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.24,True
+244,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.292,True
+245,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.2,True
+246,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.26,True
+247,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.34,True
+248,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.372,True
+249,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.316,True
+250,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.336,True
+251,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.372,True
+252,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.312,True
+253,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.356,True
+254,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.324,True
+255,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.332,True
+256,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.364,True
+257,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.372,True
+258,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.276,True
+259,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.308,True
+260,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.328,True
+261,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.296,True
+262,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.332,True
+263,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.372,True
+264,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.408,True
+265,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.304,True
+266,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.288,True
+267,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.296,True
+268,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.304,True
+269,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.252,True
+270,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.34,True
+271,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.232,True
+272,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.188,True
+273,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.228,True
+274,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.244,True
+275,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.4,True
+276,F0M,Contator AC,contator_ac,251,0.004,0.02,6,0.296,True
+0,F0L,IGBT,igbt,251,0.004,0.02,6,0.388,True
+1,F0L,IGBT,igbt,251,0.004,0.02,6,0.412,True
+2,F0L,IGBT,igbt,251,0.004,0.02,6,0.424,True
+3,F0L,IGBT,igbt,251,0.004,0.02,6,0.412,True
+4,F0L,IGBT,igbt,251,0.004,0.02,6,0.428,True
+5,F0L,IGBT,igbt,251,0.004,0.02,6,0.444,True
+6,F0L,IGBT,igbt,251,0.004,0.02,6,0.248,True
+7,F0L,IGBT,igbt,251,0.004,0.02,6,0.436,True
+8,F0L,IGBT,igbt,251,0.004,0.02,6,0.46,True
+9,F0L,IGBT,igbt,251,0.004,0.02,6,0.42,True
+10,F0L,IGBT,igbt,251,0.004,0.02,6,0.46,True
+11,F0L,IGBT,igbt,251,0.004,0.02,6,0.436,True
+12,F0L,IGBT,igbt,251,0.004,0.02,6,0.44,True
+13,F0L,IGBT,igbt,251,0.004,0.02,6,0.436,True
+14,F0L,IGBT,igbt,251,0.004,0.02,6,0.416,True
+15,F0L,IGBT,igbt,251,0.004,0.02,6,0.408,True
+16,F0L,IGBT,igbt,251,0.004,0.02,6,0.408,True
+17,F0L,IGBT,igbt,251,0.004,0.02,6,0.416,True
+18,F0L,IGBT,igbt,251,0.004,0.02,6,0.364,True
+19,F0L,IGBT,igbt,251,0.004,0.02,6,0.38,True
+20,F0L,IGBT,igbt,251,0.004,0.02,6,0.34,True
+21,F0L,IGBT,igbt,251,0.004,0.02,6,0.34,True
+22,F0L,IGBT,igbt,251,0.004,0.02,6,0.324,True
+23,F0L,IGBT,igbt,251,0.004,0.02,6,0.332,True
+24,F0L,IGBT,igbt,251,0.004,0.02,6,0.32,True
+25,F0L,IGBT,igbt,251,0.004,0.02,6,0.3,True
+26,F0L,IGBT,igbt,251,0.004,0.02,6,0.296,True
+27,F0L,IGBT,igbt,251,0.004,0.02,6,0.328,True
+28,F0L,IGBT,igbt,251,0.004,0.02,6,0.32,True
+29,F0L,IGBT,igbt,251,0.004,0.02,6,0.296,True
+30,F0L,IGBT,igbt,251,0.004,0.02,6,0.256,True
+31,F0L,IGBT,igbt,251,0.004,0.02,6,0.224,True
+32,F0L,IGBT,igbt,251,0.004,0.02,6,0.204,True
+33,F0L,IGBT,igbt,251,0.004,0.02,6,0.188,True
+34,F0L,IGBT,igbt,251,0.004,0.02,6,0.2,True
+35,F0L,IGBT,igbt,251,0.004,0.02,6,0.208,True
+36,F0L,IGBT,igbt,251,0.004,0.02,6,0.2,True
+37,F0L,IGBT,igbt,251,0.004,0.02,6,0.192,True
+38,F0L,IGBT,igbt,251,0.004,0.02,6,0.212,True
+39,F0L,IGBT,igbt,251,0.004,0.02,6,0.216,True
+40,F0L,IGBT,igbt,251,0.004,0.02,6,0.276,True
+41,F0L,IGBT,igbt,251,0.004,0.02,6,0.28,True
+42,F0L,IGBT,igbt,251,0.004,0.02,6,0.276,True
+43,F0L,IGBT,igbt,251,0.004,0.02,6,0.32,True
+44,F0L,IGBT,igbt,251,0.004,0.02,6,0.308,True
+45,F0L,IGBT,igbt,251,0.004,0.02,6,0.316,True
+46,F0L,IGBT,igbt,251,0.004,0.02,6,0.24,True
+47,F0L,IGBT,igbt,251,0.004,0.02,6,0.264,True
+48,F0L,IGBT,igbt,251,0.004,0.02,6,0.324,True
+49,F0L,IGBT,igbt,251,0.004,0.02,6,0.396,True
+50,F0L,IGBT,igbt,251,0.004,0.02,6,0.38,True
+51,F0L,IGBT,igbt,251,0.004,0.02,6,0.352,True
+52,F0L,IGBT,igbt,251,0.004,0.02,6,0.4,True
+53,F0L,IGBT,igbt,251,0.004,0.02,6,0.42,True
+54,F0L,IGBT,igbt,251,0.004,0.02,6,0.404,True
+55,F0L,IGBT,igbt,251,0.004,0.02,6,0.416,True
+56,F0L,IGBT,igbt,251,0.004,0.02,6,0.44,True
+57,F0L,IGBT,igbt,251,0.004,0.02,6,0.436,True
+58,F0L,IGBT,igbt,251,0.004,0.02,6,0.44,True
+59,F0L,IGBT,igbt,251,0.004,0.02,6,0.048,True
+60,F0L,IGBT,igbt,251,0.004,0.02,6,0.404,True
+61,F0L,IGBT,igbt,251,0.004,0.02,6,0.46,True
+62,F0L,IGBT,igbt,251,0.004,0.02,6,0.448,True
+63,F0L,IGBT,igbt,251,0.004,0.02,6,0.456,True
+64,F0L,IGBT,igbt,251,0.004,0.02,6,0.46,True
+65,F0L,IGBT,igbt,251,0.004,0.02,6,0.396,True
+66,F0L,IGBT,igbt,251,0.004,0.02,6,0.436,True
+67,F0L,IGBT,igbt,251,0.004,0.02,6,0.408,True
+68,F0L,IGBT,igbt,251,0.004,0.02,6,0.416,True
+69,F0L,IGBT,igbt,251,0.004,0.02,6,0.412,True
+70,F0L,IGBT,igbt,251,0.004,0.02,6,0.412,True
+71,F0L,IGBT,igbt,251,0.004,0.02,6,0.368,True
+72,F0L,IGBT,igbt,251,0.004,0.02,6,0.404,True
+73,F0L,IGBT,igbt,251,0.004,0.02,6,0.36,True
+74,F0L,IGBT,igbt,251,0.004,0.02,6,0.336,True
+75,F0L,IGBT,igbt,251,0.004,0.02,6,0.332,True
+76,F0L,IGBT,igbt,251,0.004,0.02,6,0.332,True
+77,F0L,IGBT,igbt,251,0.004,0.02,6,0.32,True
+78,F0L,IGBT,igbt,251,0.004,0.02,6,0.308,True
+79,F0L,IGBT,igbt,251,0.004,0.02,6,0.3,True
+80,F0L,IGBT,igbt,251,0.004,0.02,6,0.284,True
+81,F0L,IGBT,igbt,251,0.004,0.02,6,0.316,True
+82,F0L,IGBT,igbt,251,0.004,0.02,6,0.324,True
+83,F0L,IGBT,igbt,251,0.004,0.02,6,0.3,True
+84,F0L,IGBT,igbt,251,0.004,0.02,6,0.22,True
+85,F0L,IGBT,igbt,251,0.004,0.02,6,0.212,True
+86,F0L,IGBT,igbt,251,0.004,0.02,6,0.204,True
+87,F0L,IGBT,igbt,251,0.004,0.02,6,0.192,True
+88,F0L,IGBT,igbt,251,0.004,0.02,6,0.196,True
+89,F0L,IGBT,igbt,251,0.004,0.02,6,0.192,True
+90,F0L,IGBT,igbt,251,0.004,0.02,6,0.196,True
+91,F0L,IGBT,igbt,251,0.004,0.02,6,0.164,True
+92,F0L,IGBT,igbt,251,0.004,0.02,6,0.272,True
+93,F0L,IGBT,igbt,251,0.004,0.02,6,0.268,True
+94,F0L,IGBT,igbt,251,0.004,0.02,6,0.268,True
+95,F0L,IGBT,igbt,251,0.004,0.02,6,0.284,True
+96,F0L,IGBT,igbt,251,0.004,0.02,6,0.296,True
+97,F0L,IGBT,igbt,251,0.004,0.02,6,0.332,True
+98,F0L,IGBT,igbt,251,0.004,0.02,6,0.312,True
+99,F0L,IGBT,igbt,251,0.004,0.02,6,0.2,True
+100,F0L,IGBT,igbt,251,0.004,0.02,6,0.252,True
+101,F0L,IGBT,igbt,251,0.004,0.02,6,0.328,True
+102,F0L,IGBT,igbt,251,0.004,0.02,6,0.364,True
+103,F0L,IGBT,igbt,251,0.004,0.02,6,0.364,True
+104,F0L,IGBT,igbt,251,0.004,0.02,6,0.38,True
+105,F0L,IGBT,igbt,251,0.004,0.02,6,0.42,True
+106,F0L,IGBT,igbt,251,0.004,0.02,6,0.412,True
+107,F0L,IGBT,igbt,251,0.004,0.02,6,0.412,True
+108,F0L,IGBT,igbt,251,0.004,0.02,6,0.44,True
+109,F0L,IGBT,igbt,251,0.004,0.02,6,0.436,True
+110,F0L,IGBT,igbt,251,0.004,0.02,6,0.42,True
+111,F0L,IGBT,igbt,251,0.004,0.02,6,0.432,True
+112,F0L,IGBT,igbt,251,0.004,0.02,6,0.372,True
+113,F0L,IGBT,igbt,251,0.004,0.02,6,0.464,True
+114,F0L,IGBT,igbt,251,0.004,0.02,6,0.432,True
+115,F0L,IGBT,igbt,251,0.004,0.02,6,0.44,True
+116,F0L,IGBT,igbt,251,0.004,0.02,6,0.432,True
+117,F0L,IGBT,igbt,251,0.004,0.02,6,0.408,True
+118,F0L,IGBT,igbt,251,0.004,0.02,6,0.444,True
+119,F0L,IGBT,igbt,251,0.004,0.02,6,0.452,True
+120,F0L,IGBT,igbt,251,0.004,0.02,6,0.412,True
+121,F0L,IGBT,igbt,251,0.004,0.02,6,0.412,True
+122,F0L,IGBT,igbt,251,0.004,0.02,6,0.4,True
+123,F0L,IGBT,igbt,251,0.004,0.02,6,0.408,True
+124,F0L,IGBT,igbt,251,0.004,0.02,6,0.408,True
+125,F0L,IGBT,igbt,251,0.004,0.02,6,0.356,True
+126,F0L,IGBT,igbt,251,0.004,0.02,6,0.356,True
+127,F0L,IGBT,igbt,251,0.004,0.02,6,0.344,True
+128,F0L,IGBT,igbt,251,0.004,0.02,6,0.36,True
+129,F0L,IGBT,igbt,251,0.004,0.02,6,0.328,True
+130,F0L,IGBT,igbt,251,0.004,0.02,6,0.32,True
+131,F0L,IGBT,igbt,251,0.004,0.02,6,0.3,True
+132,F0L,IGBT,igbt,251,0.004,0.02,6,0.276,True
+133,F0L,IGBT,igbt,251,0.004,0.02,6,0.292,True
+134,F0L,IGBT,igbt,251,0.004,0.02,6,0.32,True
+135,F0L,IGBT,igbt,251,0.004,0.02,6,0.292,True
+136,F0L,IGBT,igbt,251,0.004,0.02,6,0.328,True
+137,F0L,IGBT,igbt,251,0.004,0.02,6,0.208,True
+138,F0L,IGBT,igbt,251,0.004,0.02,6,0.2,True
+139,F0L,IGBT,igbt,251,0.004,0.02,6,0.2,True
+140,F0L,IGBT,igbt,251,0.004,0.02,6,0.188,True
+141,F0L,IGBT,igbt,251,0.004,0.02,6,0.2,True
+142,F0M,IGBT,igbt,251,0.004,0.02,6,0.252,True
+143,F0M,IGBT,igbt,251,0.004,0.02,6,0.28,True
+144,F0M,IGBT,igbt,251,0.004,0.02,6,0.284,True
+145,F0M,IGBT,igbt,251,0.004,0.02,6,0.256,True
+146,F0M,IGBT,igbt,251,0.004,0.02,6,0.296,True
+147,F0M,IGBT,igbt,251,0.004,0.02,6,0.256,True
+148,F0M,IGBT,igbt,251,0.004,0.02,6,0.296,True
+149,F0M,IGBT,igbt,251,0.004,0.02,6,0.288,True
+150,F0M,IGBT,igbt,251,0.004,0.02,6,0.272,True
+151,F0M,IGBT,igbt,251,0.004,0.02,6,0.216,True
+152,F0M,IGBT,igbt,251,0.004,0.02,6,0.224,True
+153,F0M,IGBT,igbt,251,0.004,0.02,6,0.236,True
+154,F0M,IGBT,igbt,251,0.004,0.02,6,0.248,True
+155,F0M,IGBT,igbt,251,0.004,0.02,6,0.24,True
+156,F0M,IGBT,igbt,251,0.004,0.02,6,0.244,True
+157,F0M,IGBT,igbt,251,0.004,0.02,6,0.144,True
+158,F0M,IGBT,igbt,251,0.004,0.02,6,0.196,True
+159,F0M,IGBT,igbt,251,0.004,0.02,6,0.216,True
+160,F0M,IGBT,igbt,251,0.004,0.02,6,0.228,True
+161,F0M,IGBT,igbt,251,0.004,0.02,6,0.228,True
+162,F0M,IGBT,igbt,251,0.004,0.02,6,0.152,True
+163,F0M,IGBT,igbt,251,0.004,0.02,6,0.172,True
+164,F0M,IGBT,igbt,251,0.004,0.02,6,0.172,True
+165,F0M,IGBT,igbt,251,0.004,0.02,6,0.176,True
+166,F0M,IGBT,igbt,251,0.004,0.02,6,0.192,True
+167,F0M,IGBT,igbt,251,0.004,0.02,6,0.156,True
+168,F0M,IGBT,igbt,251,0.004,0.02,6,0.164,True
+169,F0M,IGBT,igbt,251,0.004,0.02,6,0.152,True
+170,F0M,IGBT,igbt,251,0.004,0.02,6,0.16,True
+171,F0M,IGBT,igbt,251,0.004,0.02,6,0.22,True
+172,F0M,IGBT,igbt,251,0.004,0.02,6,0.228,True
+173,F0M,IGBT,igbt,251,0.004,0.02,6,0.232,True
+174,F0M,IGBT,igbt,251,0.004,0.02,6,0.248,True
+175,F0M,IGBT,igbt,251,0.004,0.02,6,0.236,True
+176,F0M,IGBT,igbt,251,0.004,0.02,6,0.256,True
+177,F0M,IGBT,igbt,251,0.004,0.02,6,0.224,True
+178,F0M,IGBT,igbt,251,0.004,0.02,6,0.196,True
+179,F0M,IGBT,igbt,251,0.004,0.02,6,0.184,True
+180,F0M,IGBT,igbt,251,0.004,0.02,6,0.2,True
+181,F0M,IGBT,igbt,251,0.004,0.02,6,0.2,True
+182,F0M,IGBT,igbt,251,0.004,0.02,6,0.2,True
+183,F0M,IGBT,igbt,251,0.004,0.02,6,0.208,True
+184,F0M,IGBT,igbt,251,0.004,0.02,6,0.26,True
+185,F0M,IGBT,igbt,251,0.004,0.02,6,0.216,True
+186,F0M,IGBT,igbt,251,0.004,0.02,6,0.264,True
+187,F0M,IGBT,igbt,251,0.004,0.02,6,0.288,True
+188,F0M,IGBT,igbt,251,0.004,0.02,6,0.26,True
+189,F0M,IGBT,igbt,251,0.004,0.02,6,0.228,True
+190,F0M,IGBT,igbt,251,0.004,0.02,6,0.244,True
+191,F0M,IGBT,igbt,251,0.004,0.02,6,0.224,True
+192,F0M,IGBT,igbt,251,0.004,0.02,6,0.248,True
+193,F0M,IGBT,igbt,251,0.004,0.02,6,0.26,True
+194,F0M,IGBT,igbt,251,0.004,0.02,6,0.232,True
+195,F0M,IGBT,igbt,251,0.004,0.02,6,0.28,True
+196,F0M,IGBT,igbt,251,0.004,0.02,6,0.26,True
+197,F0M,IGBT,igbt,251,0.004,0.02,6,0.284,True
+198,F0M,IGBT,igbt,251,0.004,0.02,6,0.312,True
+199,F0M,IGBT,igbt,251,0.004,0.02,6,0.252,True
+200,F0M,IGBT,igbt,251,0.004,0.02,6,0.252,True
+201,F0M,IGBT,igbt,251,0.004,0.02,6,0.236,True
+202,F0M,IGBT,igbt,251,0.004,0.02,6,0.24,True
+203,F0M,IGBT,igbt,251,0.004,0.02,6,0.256,True
+204,F0M,IGBT,igbt,251,0.004,0.02,6,0.244,True
+205,F0M,IGBT,igbt,251,0.004,0.02,6,0.184,True
+206,F0M,IGBT,igbt,251,0.004,0.02,6,0.232,True
+207,F0M,IGBT,igbt,251,0.004,0.02,6,0.236,True
+208,F0M,IGBT,igbt,251,0.004,0.02,6,0.228,True
+209,F0M,IGBT,igbt,251,0.004,0.02,6,0.236,True
+210,F0M,IGBT,igbt,251,0.004,0.02,6,0.22,True
+211,F0M,IGBT,igbt,251,0.004,0.02,6,0.228,True
+212,F0M,IGBT,igbt,251,0.004,0.02,6,0.228,True
+213,F0M,IGBT,igbt,251,0.004,0.02,6,0.216,True
+214,F0M,IGBT,igbt,251,0.004,0.02,6,0.18,True
+215,F0M,IGBT,igbt,251,0.004,0.02,6,0.172,True
+216,F0M,IGBT,igbt,251,0.004,0.02,6,0.152,True
+217,F0M,IGBT,igbt,251,0.004,0.02,6,0.168,True
+218,F0M,IGBT,igbt,251,0.004,0.02,6,0.176,True
+219,F0M,IGBT,igbt,251,0.004,0.02,6,0.16,True
+220,F0M,IGBT,igbt,251,0.004,0.02,6,0.164,True
+221,F0M,IGBT,igbt,251,0.004,0.02,6,0.152,True
+222,F0M,IGBT,igbt,251,0.004,0.02,6,0.16,True
+223,F0M,IGBT,igbt,251,0.004,0.02,6,0.164,True
+224,F0M,IGBT,igbt,251,0.004,0.02,6,0.2,True
+225,F0M,IGBT,igbt,251,0.004,0.02,6,0.212,True
+226,F0M,IGBT,igbt,251,0.004,0.02,6,0.204,True
+227,F0M,IGBT,igbt,251,0.004,0.02,6,0.244,True
+228,F0M,IGBT,igbt,251,0.004,0.02,6,0.236,True
+229,F0M,IGBT,igbt,251,0.004,0.02,6,0.236,True
+230,F0M,IGBT,igbt,251,0.004,0.02,6,0.216,True
+231,F0M,IGBT,igbt,251,0.004,0.02,6,0.188,True
+232,F0M,IGBT,igbt,251,0.004,0.02,6,0.192,True
+233,F0M,IGBT,igbt,251,0.004,0.02,6,0.224,True
+234,F0M,IGBT,igbt,251,0.004,0.02,6,0.22,True
+235,F0M,IGBT,igbt,251,0.004,0.02,6,0.256,True
+236,F0M,IGBT,igbt,251,0.004,0.02,6,0.236,True
+237,F0M,IGBT,igbt,251,0.004,0.02,6,0.212,True
+238,F0M,IGBT,igbt,251,0.004,0.02,6,0.268,True
+239,F0M,IGBT,igbt,251,0.004,0.02,6,0.28,True
+240,F0M,IGBT,igbt,251,0.004,0.02,6,0.276,True
+241,F0M,IGBT,igbt,251,0.004,0.02,6,0.24,True
+242,F0M,IGBT,igbt,251,0.004,0.02,6,0.276,True
+243,F0M,IGBT,igbt,251,0.004,0.02,6,0.264,True
+244,F0M,IGBT,igbt,251,0.004,0.02,6,0.24,True
+245,F0M,IGBT,igbt,251,0.004,0.02,6,0.148,True
+246,F0M,IGBT,igbt,251,0.004,0.02,6,0.204,True
+247,F0M,IGBT,igbt,251,0.004,0.02,6,0.292,True
+248,F0M,IGBT,igbt,251,0.004,0.02,6,0.264,True
+249,F0M,IGBT,igbt,251,0.004,0.02,6,0.252,True
+250,F0M,IGBT,igbt,251,0.004,0.02,6,0.256,True
+251,F0M,IGBT,igbt,251,0.004,0.02,6,0.244,True
+252,F0M,IGBT,igbt,251,0.004,0.02,6,0.264,True
+253,F0M,IGBT,igbt,251,0.004,0.02,6,0.276,True
+254,F0M,IGBT,igbt,251,0.004,0.02,6,0.268,True
+255,F0M,IGBT,igbt,251,0.004,0.02,6,0.272,True
+256,F0M,IGBT,igbt,251,0.004,0.02,6,0.272,True
+257,F0M,IGBT,igbt,251,0.004,0.02,6,0.236,True
+258,F0M,IGBT,igbt,251,0.004,0.02,6,0.212,True
+259,F0M,IGBT,igbt,251,0.004,0.02,6,0.204,True
+260,F0M,IGBT,igbt,251,0.004,0.02,6,0.228,True
+261,F0M,IGBT,igbt,251,0.004,0.02,6,0.224,True
+262,F0M,IGBT,igbt,251,0.004,0.02,6,0.216,True
+263,F0M,IGBT,igbt,251,0.004,0.02,6,0.216,True
+264,F0M,IGBT,igbt,251,0.004,0.02,6,0.24,True
+265,F0M,IGBT,igbt,251,0.004,0.02,6,0.22,True
+266,F0M,IGBT,igbt,251,0.004,0.02,6,0.196,True
+267,F0M,IGBT,igbt,251,0.004,0.02,6,0.168,True
+268,F0M,IGBT,igbt,251,0.004,0.02,6,0.18,True
+269,F0M,IGBT,igbt,251,0.004,0.02,6,0.136,True
+270,F0M,IGBT,igbt,251,0.004,0.02,6,0.172,True
+271,F0M,IGBT,igbt,251,0.004,0.02,6,0.156,True
+272,F0M,IGBT,igbt,251,0.004,0.02,6,0.136,True
+273,F0M,IGBT,igbt,251,0.004,0.02,6,0.136,True
+274,F0M,IGBT,igbt,251,0.004,0.02,6,0.148,True
+275,F0M,IGBT,igbt,251,0.004,0.02,6,0.188,True
+276,F0M,IGBT,igbt,251,0.004,0.02,6,0.204,True
+0,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+1,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+2,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+3,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+4,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+5,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+6,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+7,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+8,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+9,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+10,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+11,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+12,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+13,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+14,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+15,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+16,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+17,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+18,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+19,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+20,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+21,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+22,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+23,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+24,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+25,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+26,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+27,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+28,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+29,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+30,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+31,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+32,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+33,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+34,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+35,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+36,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+37,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+38,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+39,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+40,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+41,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+42,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+43,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+44,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+45,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+46,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.072,True
+47,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.072,True
+48,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+49,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+50,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+51,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+52,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+53,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+54,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+55,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+56,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+57,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+58,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+59,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+60,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+61,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+62,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+63,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+64,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+65,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+66,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+67,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+68,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+69,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+70,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+71,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+72,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+73,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+74,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+75,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+76,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+77,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+78,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+79,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+80,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+81,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+82,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+83,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+84,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+85,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+86,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+87,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+88,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+89,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+90,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+91,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+92,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+93,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+94,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+95,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+96,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+97,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+98,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+99,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.072,True
+100,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.068,True
+101,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+102,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+103,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+104,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+105,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+106,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+107,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+108,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+109,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+110,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+111,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+112,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+113,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+114,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+115,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+116,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+117,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+118,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+119,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+120,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+121,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+122,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+123,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+124,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+125,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+126,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+127,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+128,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+129,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+130,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+131,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+132,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+133,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+134,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+135,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+136,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+137,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+138,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+139,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+140,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+141,F0L,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+142,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+143,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+144,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+145,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+146,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+147,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+148,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+149,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+150,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+151,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+152,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+153,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+154,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+155,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+156,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+157,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+158,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+159,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+160,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+161,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+162,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+163,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+164,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+165,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+166,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+167,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+168,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.064,True
+169,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+170,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+171,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.064,True
+172,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+173,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+174,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+175,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+176,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+177,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+178,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+179,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+180,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+181,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+182,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+183,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+184,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+185,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+186,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+187,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+188,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+189,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+190,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+191,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+192,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+193,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+194,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+195,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+196,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+197,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+198,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+199,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+200,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+201,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+202,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+203,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+204,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+205,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+206,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+207,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+208,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+209,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+210,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+211,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+212,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+213,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+214,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+215,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+216,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+217,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+218,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+219,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+220,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.064,True
+221,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+222,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+223,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.06,True
+224,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+225,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+226,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+227,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+228,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+229,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+230,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+231,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+232,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+233,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.06,True
+234,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+235,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+236,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.032,True
+237,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+238,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+239,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+240,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+241,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+242,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+243,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+244,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+245,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+246,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+247,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+248,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+249,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+250,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+251,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.04,True
+252,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+253,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.036,True
+254,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+255,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.044,True
+256,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+257,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+258,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+259,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+260,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+261,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+262,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+263,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+264,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+265,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+266,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+267,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+268,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+269,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+270,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+271,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.06,True
+272,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.06,True
+273,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.052,True
+274,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.048,True
+275,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.064,True
+276,F0M,Fusível AC,fusivel_ac,251,0.004,0.02,6,0.056,True
+0,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.542,True
+1,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.538,True
+2,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.634,True
+3,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.558,True
+4,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.63,True
+5,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.522,True
+6,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.286,True
+7,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.426,True
+8,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.402,True
+9,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.38,True
+10,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.478,True
+11,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.46,True
+12,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.524,True
+13,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.524,True
+14,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.468,True
+15,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.552,True
+16,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.608,True
+17,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.518,True
+18,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.482,True
+19,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.496,True
+20,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.402,True
+21,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.432,True
+22,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.362,True
+23,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.398,True
+24,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.346,True
+25,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.462,True
+26,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.418,True
+27,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.376,True
+28,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.446,True
+29,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.466,True
+30,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.406,True
+31,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.322,True
+32,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.362,True
+33,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.314,True
+34,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.336,True
+35,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.336,True
+36,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.328,True
+37,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.34,True
+38,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.34,True
+39,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.326,True
+40,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.406,True
+41,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.434,True
+42,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.36,True
+43,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.374,True
+44,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.428,True
+45,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.466,True
+46,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.308,True
+47,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.378,True
+48,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.524,True
+49,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.51,True
+50,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.428,True
+51,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.418,True
+52,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.554,True
+53,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.532,True
+54,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.576,True
+55,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.524,True
+56,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.592,True
+57,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.556,True
+58,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.552,True
+59,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.154,True
+60,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.438,True
+61,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.41,True
+62,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.45,True
+63,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.464,True
+64,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.474,True
+65,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.448,True
+66,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.406,True
+67,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.496,True
+68,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.446,True
+69,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.434,True
+70,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.454,True
+71,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.538,True
+72,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.394,True
+73,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.374,True
+74,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.422,True
+75,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.368,True
+76,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.408,True
+77,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.34,True
+78,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.398,True
+79,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.422,True
+80,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.36,True
+81,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.42,True
+82,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.472,True
+83,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.42,True
+84,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.362,True
+85,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.374,True
+86,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.334,True
+87,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.328,True
+88,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.348,True
+89,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.314,True
+90,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.31,True
+91,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.304,True
+92,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.398,True
+93,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.386,True
+94,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.378,True
+95,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.352,True
+96,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.328,True
+97,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.398,True
+98,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.382,True
+99,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.348,True
+100,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.402,True
+101,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.452,True
+102,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.54,True
+103,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.472,True
+104,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.512,True
+105,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.588,True
+106,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.468,True
+107,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.602,True
+108,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.516,True
+109,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.48,True
+110,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.624,True
+111,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.496,True
+112,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.36,True
+113,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.522,True
+114,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.358,True
+115,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.422,True
+116,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.474,True
+117,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.426,True
+118,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.398,True
+119,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.404,True
+120,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.448,True
+121,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.534,True
+122,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.472,True
+123,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.434,True
+124,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.506,True
+125,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.464,True
+126,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.46,True
+127,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.424,True
+128,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.36,True
+129,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.356,True
+130,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.368,True
+131,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.366,True
+132,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.33,True
+133,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.384,True
+134,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.424,True
+135,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.372,True
+136,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.386,True
+137,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.346,True
+138,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.34,True
+139,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.35,True
+140,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.35,True
+141,F0L,Contator AC,contator_ac,501,0.002,0.02,11,0.378,True
+142,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.364,True
+143,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.3,True
+144,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.35,True
+145,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.338,True
+146,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.332,True
+147,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.388,True
+148,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.304,True
+149,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.332,True
+150,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.3,True
+151,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.312,True
+152,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.322,True
+153,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.366,True
+154,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.356,True
+155,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.268,True
+156,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.268,True
+157,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.198,True
+158,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.26,True
+159,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.382,True
+160,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.324,True
+161,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.34,True
+162,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.202,True
+163,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.232,True
+164,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.294,True
+165,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.306,True
+166,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.31,True
+167,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.256,True
+168,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.332,True
+169,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.23,True
+170,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.274,True
+171,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.242,True
+172,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.266,True
+173,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.258,True
+174,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.332,True
+175,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.254,True
+176,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.274,True
+177,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.252,True
+178,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.232,True
+179,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.27,True
+180,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.218,True
+181,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.238,True
+182,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.266,True
+183,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.198,True
+184,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.28,True
+185,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.246,True
+186,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.218,True
+187,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.212,True
+188,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.34,True
+189,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.228,True
+190,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.2,True
+191,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.25,True
+192,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.238,True
+193,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.26,True
+194,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.426,True
+195,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.362,True
+196,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.3,True
+197,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.324,True
+198,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.374,True
+199,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.314,True
+200,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.292,True
+201,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.322,True
+202,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.334,True
+203,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.276,True
+204,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.264,True
+205,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.264,True
+206,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.368,True
+207,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.346,True
+208,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.29,True
+209,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.354,True
+210,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.332,True
+211,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.28,True
+212,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.352,True
+213,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.208,True
+214,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.27,True
+215,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.282,True
+216,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.232,True
+217,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.188,True
+218,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.238,True
+219,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.27,True
+220,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.26,True
+221,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.23,True
+222,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.244,True
+223,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.21,True
+224,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.23,True
+225,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.294,True
+226,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.262,True
+227,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.264,True
+228,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.27,True
+229,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.308,True
+230,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.334,True
+231,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.278,True
+232,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.278,True
+233,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.226,True
+234,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.326,True
+235,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.22,True
+236,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.2,True
+237,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.228,True
+238,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.288,True
+239,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.262,True
+240,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.28,True
+241,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.284,True
+242,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.284,True
+243,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.24,True
+244,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.292,True
+245,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.198,True
+246,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.26,True
+247,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.34,True
+248,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.372,True
+249,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.316,True
+250,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.334,True
+251,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.37,True
+252,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.312,True
+253,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.356,True
+254,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.322,True
+255,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.332,True
+256,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.362,True
+257,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.37,True
+258,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.274,True
+259,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.308,True
+260,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.328,True
+261,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.294,True
+262,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.33,True
+263,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.372,True
+264,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.406,True
+265,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.302,True
+266,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.288,True
+267,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.296,True
+268,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.302,True
+269,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.25,True
+270,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.338,True
+271,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.232,True
+272,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.188,True
+273,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.228,True
+274,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.242,True
+275,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.4,True
+276,F0M,Contator AC,contator_ac,501,0.002,0.02,11,0.294,True
+0,F0L,IGBT,igbt,501,0.002,0.02,11,0.388,True
+1,F0L,IGBT,igbt,501,0.002,0.02,11,0.412,True
+2,F0L,IGBT,igbt,501,0.002,0.02,11,0.424,True
+3,F0L,IGBT,igbt,501,0.002,0.02,11,0.41,True
+4,F0L,IGBT,igbt,501,0.002,0.02,11,0.428,True
+5,F0L,IGBT,igbt,501,0.002,0.02,11,0.444,True
+6,F0L,IGBT,igbt,501,0.002,0.02,11,0.248,True
+7,F0L,IGBT,igbt,501,0.002,0.02,11,0.434,True
+8,F0L,IGBT,igbt,501,0.002,0.02,11,0.458,True
+9,F0L,IGBT,igbt,501,0.002,0.02,11,0.42,True
+10,F0L,IGBT,igbt,501,0.002,0.02,11,0.458,True
+11,F0L,IGBT,igbt,501,0.002,0.02,11,0.436,True
+12,F0L,IGBT,igbt,501,0.002,0.02,11,0.438,True
+13,F0L,IGBT,igbt,501,0.002,0.02,11,0.436,True
+14,F0L,IGBT,igbt,501,0.002,0.02,11,0.414,True
+15,F0L,IGBT,igbt,501,0.002,0.02,11,0.408,True
+16,F0L,IGBT,igbt,501,0.002,0.02,11,0.408,True
+17,F0L,IGBT,igbt,501,0.002,0.02,11,0.416,True
+18,F0L,IGBT,igbt,501,0.002,0.02,11,0.364,True
+19,F0L,IGBT,igbt,501,0.002,0.02,11,0.378,True
+20,F0L,IGBT,igbt,501,0.002,0.02,11,0.338,True
+21,F0L,IGBT,igbt,501,0.002,0.02,11,0.338,True
+22,F0L,IGBT,igbt,501,0.002,0.02,11,0.324,True
+23,F0L,IGBT,igbt,501,0.002,0.02,11,0.332,True
+24,F0L,IGBT,igbt,501,0.002,0.02,11,0.32,True
+25,F0L,IGBT,igbt,501,0.002,0.02,11,0.3,True
+26,F0L,IGBT,igbt,501,0.002,0.02,11,0.296,True
+27,F0L,IGBT,igbt,501,0.002,0.02,11,0.328,True
+28,F0L,IGBT,igbt,501,0.002,0.02,11,0.318,True
+29,F0L,IGBT,igbt,501,0.002,0.02,11,0.294,True
+30,F0L,IGBT,igbt,501,0.002,0.02,11,0.256,True
+31,F0L,IGBT,igbt,501,0.002,0.02,11,0.222,True
+32,F0L,IGBT,igbt,501,0.002,0.02,11,0.202,True
+33,F0L,IGBT,igbt,501,0.002,0.02,11,0.188,True
+34,F0L,IGBT,igbt,501,0.002,0.02,11,0.2,True
+35,F0L,IGBT,igbt,501,0.002,0.02,11,0.206,True
+36,F0L,IGBT,igbt,501,0.002,0.02,11,0.198,True
+37,F0L,IGBT,igbt,501,0.002,0.02,11,0.192,True
+38,F0L,IGBT,igbt,501,0.002,0.02,11,0.212,True
+39,F0L,IGBT,igbt,501,0.002,0.02,11,0.214,True
+40,F0L,IGBT,igbt,501,0.002,0.02,11,0.276,True
+41,F0L,IGBT,igbt,501,0.002,0.02,11,0.28,True
+42,F0L,IGBT,igbt,501,0.002,0.02,11,0.274,True
+43,F0L,IGBT,igbt,501,0.002,0.02,11,0.318,True
+44,F0L,IGBT,igbt,501,0.002,0.02,11,0.306,True
+45,F0L,IGBT,igbt,501,0.002,0.02,11,0.314,True
+46,F0L,IGBT,igbt,501,0.002,0.02,11,0.238,True
+47,F0L,IGBT,igbt,501,0.002,0.02,11,0.264,True
+48,F0L,IGBT,igbt,501,0.002,0.02,11,0.324,True
+49,F0L,IGBT,igbt,501,0.002,0.02,11,0.396,True
+50,F0L,IGBT,igbt,501,0.002,0.02,11,0.378,True
+51,F0L,IGBT,igbt,501,0.002,0.02,11,0.35,True
+52,F0L,IGBT,igbt,501,0.002,0.02,11,0.4,True
+53,F0L,IGBT,igbt,501,0.002,0.02,11,0.42,True
+54,F0L,IGBT,igbt,501,0.002,0.02,11,0.404,True
+55,F0L,IGBT,igbt,501,0.002,0.02,11,0.416,True
+56,F0L,IGBT,igbt,501,0.002,0.02,11,0.44,True
+57,F0L,IGBT,igbt,501,0.002,0.02,11,0.434,True
+58,F0L,IGBT,igbt,501,0.002,0.02,11,0.438,True
+59,F0L,IGBT,igbt,501,0.002,0.02,11,0.048,True
+60,F0L,IGBT,igbt,501,0.002,0.02,11,0.404,True
+61,F0L,IGBT,igbt,501,0.002,0.02,11,0.458,True
+62,F0L,IGBT,igbt,501,0.002,0.02,11,0.446,True
+63,F0L,IGBT,igbt,501,0.002,0.02,11,0.456,True
+64,F0L,IGBT,igbt,501,0.002,0.02,11,0.458,True
+65,F0L,IGBT,igbt,501,0.002,0.02,11,0.394,True
+66,F0L,IGBT,igbt,501,0.002,0.02,11,0.436,True
+67,F0L,IGBT,igbt,501,0.002,0.02,11,0.406,True
+68,F0L,IGBT,igbt,501,0.002,0.02,11,0.414,True
+69,F0L,IGBT,igbt,501,0.002,0.02,11,0.41,True
+70,F0L,IGBT,igbt,501,0.002,0.02,11,0.41,True
+71,F0L,IGBT,igbt,501,0.002,0.02,11,0.368,True
+72,F0L,IGBT,igbt,501,0.002,0.02,11,0.402,True
+73,F0L,IGBT,igbt,501,0.002,0.02,11,0.358,True
+74,F0L,IGBT,igbt,501,0.002,0.02,11,0.334,True
+75,F0L,IGBT,igbt,501,0.002,0.02,11,0.33,True
+76,F0L,IGBT,igbt,501,0.002,0.02,11,0.332,True
+77,F0L,IGBT,igbt,501,0.002,0.02,11,0.318,True
+78,F0L,IGBT,igbt,501,0.002,0.02,11,0.306,True
+79,F0L,IGBT,igbt,501,0.002,0.02,11,0.298,True
+80,F0L,IGBT,igbt,501,0.002,0.02,11,0.284,True
+81,F0L,IGBT,igbt,501,0.002,0.02,11,0.316,True
+82,F0L,IGBT,igbt,501,0.002,0.02,11,0.324,True
+83,F0L,IGBT,igbt,501,0.002,0.02,11,0.298,True
+84,F0L,IGBT,igbt,501,0.002,0.02,11,0.218,True
+85,F0L,IGBT,igbt,501,0.002,0.02,11,0.212,True
+86,F0L,IGBT,igbt,501,0.002,0.02,11,0.202,True
+87,F0L,IGBT,igbt,501,0.002,0.02,11,0.19,True
+88,F0L,IGBT,igbt,501,0.002,0.02,11,0.196,True
+89,F0L,IGBT,igbt,501,0.002,0.02,11,0.19,True
+90,F0L,IGBT,igbt,501,0.002,0.02,11,0.196,True
+91,F0L,IGBT,igbt,501,0.002,0.02,11,0.164,True
+92,F0L,IGBT,igbt,501,0.002,0.02,11,0.27,True
+93,F0L,IGBT,igbt,501,0.002,0.02,11,0.266,True
+94,F0L,IGBT,igbt,501,0.002,0.02,11,0.268,True
+95,F0L,IGBT,igbt,501,0.002,0.02,11,0.284,True
+96,F0L,IGBT,igbt,501,0.002,0.02,11,0.296,True
+97,F0L,IGBT,igbt,501,0.002,0.02,11,0.332,True
+98,F0L,IGBT,igbt,501,0.002,0.02,11,0.31,True
+99,F0L,IGBT,igbt,501,0.002,0.02,11,0.198,True
+100,F0L,IGBT,igbt,501,0.002,0.02,11,0.25,True
+101,F0L,IGBT,igbt,501,0.002,0.02,11,0.326,True
+102,F0L,IGBT,igbt,501,0.002,0.02,11,0.364,True
+103,F0L,IGBT,igbt,501,0.002,0.02,11,0.362,True
+104,F0L,IGBT,igbt,501,0.002,0.02,11,0.38,True
+105,F0L,IGBT,igbt,501,0.002,0.02,11,0.418,True
+106,F0L,IGBT,igbt,501,0.002,0.02,11,0.412,True
+107,F0L,IGBT,igbt,501,0.002,0.02,11,0.412,True
+108,F0L,IGBT,igbt,501,0.002,0.02,11,0.438,True
+109,F0L,IGBT,igbt,501,0.002,0.02,11,0.436,True
+110,F0L,IGBT,igbt,501,0.002,0.02,11,0.418,True
+111,F0L,IGBT,igbt,501,0.002,0.02,11,0.43,True
+112,F0L,IGBT,igbt,501,0.002,0.02,11,0.37,True
+113,F0L,IGBT,igbt,501,0.002,0.02,11,0.464,True
+114,F0L,IGBT,igbt,501,0.002,0.02,11,0.43,True
+115,F0L,IGBT,igbt,501,0.002,0.02,11,0.438,True
+116,F0L,IGBT,igbt,501,0.002,0.02,11,0.432,True
+117,F0L,IGBT,igbt,501,0.002,0.02,11,0.408,True
+118,F0L,IGBT,igbt,501,0.002,0.02,11,0.444,True
+119,F0L,IGBT,igbt,501,0.002,0.02,11,0.452,True
+120,F0L,IGBT,igbt,501,0.002,0.02,11,0.412,True
+121,F0L,IGBT,igbt,501,0.002,0.02,11,0.41,True
+122,F0L,IGBT,igbt,501,0.002,0.02,11,0.398,True
+123,F0L,IGBT,igbt,501,0.002,0.02,11,0.406,True
+124,F0L,IGBT,igbt,501,0.002,0.02,11,0.406,True
+125,F0L,IGBT,igbt,501,0.002,0.02,11,0.356,True
+126,F0L,IGBT,igbt,501,0.002,0.02,11,0.356,True
+127,F0L,IGBT,igbt,501,0.002,0.02,11,0.344,True
+128,F0L,IGBT,igbt,501,0.002,0.02,11,0.36,True
+129,F0L,IGBT,igbt,501,0.002,0.02,11,0.328,True
+130,F0L,IGBT,igbt,501,0.002,0.02,11,0.318,True
+131,F0L,IGBT,igbt,501,0.002,0.02,11,0.298,True
+132,F0L,IGBT,igbt,501,0.002,0.02,11,0.274,True
+133,F0L,IGBT,igbt,501,0.002,0.02,11,0.29,True
+134,F0L,IGBT,igbt,501,0.002,0.02,11,0.32,True
+135,F0L,IGBT,igbt,501,0.002,0.02,11,0.292,True
+136,F0L,IGBT,igbt,501,0.002,0.02,11,0.326,True
+137,F0L,IGBT,igbt,501,0.002,0.02,11,0.206,True
+138,F0L,IGBT,igbt,501,0.002,0.02,11,0.2,True
+139,F0L,IGBT,igbt,501,0.002,0.02,11,0.198,True
+140,F0L,IGBT,igbt,501,0.002,0.02,11,0.188,True
+141,F0L,IGBT,igbt,501,0.002,0.02,11,0.2,True
+142,F0M,IGBT,igbt,501,0.002,0.02,11,0.25,True
+143,F0M,IGBT,igbt,501,0.002,0.02,11,0.278,True
+144,F0M,IGBT,igbt,501,0.002,0.02,11,0.284,True
+145,F0M,IGBT,igbt,501,0.002,0.02,11,0.256,True
+146,F0M,IGBT,igbt,501,0.002,0.02,11,0.294,True
+147,F0M,IGBT,igbt,501,0.002,0.02,11,0.254,True
+148,F0M,IGBT,igbt,501,0.002,0.02,11,0.296,True
+149,F0M,IGBT,igbt,501,0.002,0.02,11,0.288,True
+150,F0M,IGBT,igbt,501,0.002,0.02,11,0.272,True
+151,F0M,IGBT,igbt,501,0.002,0.02,11,0.214,True
+152,F0M,IGBT,igbt,501,0.002,0.02,11,0.224,True
+153,F0M,IGBT,igbt,501,0.002,0.02,11,0.236,True
+154,F0M,IGBT,igbt,501,0.002,0.02,11,0.246,True
+155,F0M,IGBT,igbt,501,0.002,0.02,11,0.24,True
+156,F0M,IGBT,igbt,501,0.002,0.02,11,0.242,True
+157,F0M,IGBT,igbt,501,0.002,0.02,11,0.142,True
+158,F0M,IGBT,igbt,501,0.002,0.02,11,0.196,True
+159,F0M,IGBT,igbt,501,0.002,0.02,11,0.216,True
+160,F0M,IGBT,igbt,501,0.002,0.02,11,0.226,True
+161,F0M,IGBT,igbt,501,0.002,0.02,11,0.226,True
+162,F0M,IGBT,igbt,501,0.002,0.02,11,0.152,True
+163,F0M,IGBT,igbt,501,0.002,0.02,11,0.172,True
+164,F0M,IGBT,igbt,501,0.002,0.02,11,0.17,True
+165,F0M,IGBT,igbt,501,0.002,0.02,11,0.174,True
+166,F0M,IGBT,igbt,501,0.002,0.02,11,0.192,True
+167,F0M,IGBT,igbt,501,0.002,0.02,11,0.154,True
+168,F0M,IGBT,igbt,501,0.002,0.02,11,0.162,True
+169,F0M,IGBT,igbt,501,0.002,0.02,11,0.15,True
+170,F0M,IGBT,igbt,501,0.002,0.02,11,0.16,True
+171,F0M,IGBT,igbt,501,0.002,0.02,11,0.22,True
+172,F0M,IGBT,igbt,501,0.002,0.02,11,0.228,True
+173,F0M,IGBT,igbt,501,0.002,0.02,11,0.23,True
+174,F0M,IGBT,igbt,501,0.002,0.02,11,0.248,True
+175,F0M,IGBT,igbt,501,0.002,0.02,11,0.236,True
+176,F0M,IGBT,igbt,501,0.002,0.02,11,0.254,True
+177,F0M,IGBT,igbt,501,0.002,0.02,11,0.224,True
+178,F0M,IGBT,igbt,501,0.002,0.02,11,0.194,True
+179,F0M,IGBT,igbt,501,0.002,0.02,11,0.184,True
+180,F0M,IGBT,igbt,501,0.002,0.02,11,0.198,True
+181,F0M,IGBT,igbt,501,0.002,0.02,11,0.198,True
+182,F0M,IGBT,igbt,501,0.002,0.02,11,0.198,True
+183,F0M,IGBT,igbt,501,0.002,0.02,11,0.206,True
+184,F0M,IGBT,igbt,501,0.002,0.02,11,0.258,True
+185,F0M,IGBT,igbt,501,0.002,0.02,11,0.214,True
+186,F0M,IGBT,igbt,501,0.002,0.02,11,0.264,True
+187,F0M,IGBT,igbt,501,0.002,0.02,11,0.286,True
+188,F0M,IGBT,igbt,501,0.002,0.02,11,0.258,True
+189,F0M,IGBT,igbt,501,0.002,0.02,11,0.228,True
+190,F0M,IGBT,igbt,501,0.002,0.02,11,0.244,True
+191,F0M,IGBT,igbt,501,0.002,0.02,11,0.222,True
+192,F0M,IGBT,igbt,501,0.002,0.02,11,0.248,True
+193,F0M,IGBT,igbt,501,0.002,0.02,11,0.258,True
+194,F0M,IGBT,igbt,501,0.002,0.02,11,0.232,True
+195,F0M,IGBT,igbt,501,0.002,0.02,11,0.28,True
+196,F0M,IGBT,igbt,501,0.002,0.02,11,0.26,True
+197,F0M,IGBT,igbt,501,0.002,0.02,11,0.284,True
+198,F0M,IGBT,igbt,501,0.002,0.02,11,0.31,True
+199,F0M,IGBT,igbt,501,0.002,0.02,11,0.252,True
+200,F0M,IGBT,igbt,501,0.002,0.02,11,0.25,True
+201,F0M,IGBT,igbt,501,0.002,0.02,11,0.236,True
+202,F0M,IGBT,igbt,501,0.002,0.02,11,0.238,True
+203,F0M,IGBT,igbt,501,0.002,0.02,11,0.254,True
+204,F0M,IGBT,igbt,501,0.002,0.02,11,0.244,True
+205,F0M,IGBT,igbt,501,0.002,0.02,11,0.184,True
+206,F0M,IGBT,igbt,501,0.002,0.02,11,0.232,True
+207,F0M,IGBT,igbt,501,0.002,0.02,11,0.234,True
+208,F0M,IGBT,igbt,501,0.002,0.02,11,0.228,True
+209,F0M,IGBT,igbt,501,0.002,0.02,11,0.234,True
+210,F0M,IGBT,igbt,501,0.002,0.02,11,0.22,True
+211,F0M,IGBT,igbt,501,0.002,0.02,11,0.226,True
+212,F0M,IGBT,igbt,501,0.002,0.02,11,0.226,True
+213,F0M,IGBT,igbt,501,0.002,0.02,11,0.216,True
+214,F0M,IGBT,igbt,501,0.002,0.02,11,0.18,True
+215,F0M,IGBT,igbt,501,0.002,0.02,11,0.17,True
+216,F0M,IGBT,igbt,501,0.002,0.02,11,0.15,True
+217,F0M,IGBT,igbt,501,0.002,0.02,11,0.168,True
+218,F0M,IGBT,igbt,501,0.002,0.02,11,0.174,True
+219,F0M,IGBT,igbt,501,0.002,0.02,11,0.16,True
+220,F0M,IGBT,igbt,501,0.002,0.02,11,0.164,True
+221,F0M,IGBT,igbt,501,0.002,0.02,11,0.15,True
+222,F0M,IGBT,igbt,501,0.002,0.02,11,0.158,True
+223,F0M,IGBT,igbt,501,0.002,0.02,11,0.162,True
+224,F0M,IGBT,igbt,501,0.002,0.02,11,0.2,True
+225,F0M,IGBT,igbt,501,0.002,0.02,11,0.212,True
+226,F0M,IGBT,igbt,501,0.002,0.02,11,0.204,True
+227,F0M,IGBT,igbt,501,0.002,0.02,11,0.244,True
+228,F0M,IGBT,igbt,501,0.002,0.02,11,0.234,True
+229,F0M,IGBT,igbt,501,0.002,0.02,11,0.236,True
+230,F0M,IGBT,igbt,501,0.002,0.02,11,0.214,True
+231,F0M,IGBT,igbt,501,0.002,0.02,11,0.188,True
+232,F0M,IGBT,igbt,501,0.002,0.02,11,0.192,True
+233,F0M,IGBT,igbt,501,0.002,0.02,11,0.222,True
+234,F0M,IGBT,igbt,501,0.002,0.02,11,0.218,True
+235,F0M,IGBT,igbt,501,0.002,0.02,11,0.256,True
+236,F0M,IGBT,igbt,501,0.002,0.02,11,0.234,True
+237,F0M,IGBT,igbt,501,0.002,0.02,11,0.212,True
+238,F0M,IGBT,igbt,501,0.002,0.02,11,0.268,True
+239,F0M,IGBT,igbt,501,0.002,0.02,11,0.28,True
+240,F0M,IGBT,igbt,501,0.002,0.02,11,0.276,True
+241,F0M,IGBT,igbt,501,0.002,0.02,11,0.238,True
+242,F0M,IGBT,igbt,501,0.002,0.02,11,0.274,True
+243,F0M,IGBT,igbt,501,0.002,0.02,11,0.262,True
+244,F0M,IGBT,igbt,501,0.002,0.02,11,0.238,True
+245,F0M,IGBT,igbt,501,0.002,0.02,11,0.146,True
+246,F0M,IGBT,igbt,501,0.002,0.02,11,0.202,True
+247,F0M,IGBT,igbt,501,0.002,0.02,11,0.29,True
+248,F0M,IGBT,igbt,501,0.002,0.02,11,0.264,True
+249,F0M,IGBT,igbt,501,0.002,0.02,11,0.252,True
+250,F0M,IGBT,igbt,501,0.002,0.02,11,0.256,True
+251,F0M,IGBT,igbt,501,0.002,0.02,11,0.244,True
+252,F0M,IGBT,igbt,501,0.002,0.02,11,0.262,True
+253,F0M,IGBT,igbt,501,0.002,0.02,11,0.276,True
+254,F0M,IGBT,igbt,501,0.002,0.02,11,0.266,True
+255,F0M,IGBT,igbt,501,0.002,0.02,11,0.272,True
+256,F0M,IGBT,igbt,501,0.002,0.02,11,0.272,True
+257,F0M,IGBT,igbt,501,0.002,0.02,11,0.236,True
+258,F0M,IGBT,igbt,501,0.002,0.02,11,0.212,True
+259,F0M,IGBT,igbt,501,0.002,0.02,11,0.202,True
+260,F0M,IGBT,igbt,501,0.002,0.02,11,0.226,True
+261,F0M,IGBT,igbt,501,0.002,0.02,11,0.222,True
+262,F0M,IGBT,igbt,501,0.002,0.02,11,0.216,True
+263,F0M,IGBT,igbt,501,0.002,0.02,11,0.214,True
+264,F0M,IGBT,igbt,501,0.002,0.02,11,0.24,True
+265,F0M,IGBT,igbt,501,0.002,0.02,11,0.218,True
+266,F0M,IGBT,igbt,501,0.002,0.02,11,0.196,True
+267,F0M,IGBT,igbt,501,0.002,0.02,11,0.168,True
+268,F0M,IGBT,igbt,501,0.002,0.02,11,0.18,True
+269,F0M,IGBT,igbt,501,0.002,0.02,11,0.136,True
+270,F0M,IGBT,igbt,501,0.002,0.02,11,0.172,True
+271,F0M,IGBT,igbt,501,0.002,0.02,11,0.156,True
+272,F0M,IGBT,igbt,501,0.002,0.02,11,0.136,True
+273,F0M,IGBT,igbt,501,0.002,0.02,11,0.136,True
+274,F0M,IGBT,igbt,501,0.002,0.02,11,0.148,True
+275,F0M,IGBT,igbt,501,0.002,0.02,11,0.188,True
+276,F0M,IGBT,igbt,501,0.002,0.02,11,0.202,True
+0,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+1,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+2,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+3,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+4,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+5,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+6,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+7,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+8,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+9,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+10,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+11,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+12,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+13,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+14,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+15,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+16,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+17,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+18,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+19,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+20,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+21,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+22,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.034,True
+23,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.034,True
+24,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+25,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+26,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+27,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.034,True
+28,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.034,True
+29,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+30,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+31,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+32,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+33,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+34,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+35,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+36,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+37,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+38,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+39,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+40,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+41,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+42,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+43,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+44,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.054,True
+45,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+46,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.07,True
+47,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.072,True
+48,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+49,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.05,True
+50,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+51,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+52,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.05,True
+53,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+54,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+55,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+56,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+57,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+58,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+59,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+60,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+61,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+62,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+63,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+64,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+65,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+66,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+67,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+68,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+69,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+70,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+71,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+72,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+73,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+74,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+75,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+76,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.034,True
+77,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.034,True
+78,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+79,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+80,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.034,True
+81,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+82,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+83,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+84,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.034,True
+85,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+86,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+87,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+88,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+89,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.034,True
+90,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+91,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+92,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+93,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+94,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+95,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+96,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+97,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+98,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.054,True
+99,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.072,True
+100,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.066,True
+101,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.05,True
+102,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.05,True
+103,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+104,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+105,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.052,True
+106,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+107,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+108,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+109,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+110,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+111,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+112,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+113,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+114,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+115,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+116,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+117,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+118,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+119,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+120,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+121,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+122,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+123,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+124,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+125,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+126,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+127,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+128,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+129,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.034,True
+130,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.034,True
+131,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+132,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.034,True
+133,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+134,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+135,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+136,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+137,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+138,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.034,True
+139,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+140,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+141,F0L,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+142,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+143,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+144,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+145,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+146,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+147,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+148,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+149,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+150,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+151,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+152,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.052,True
+153,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+154,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.052,True
+155,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+156,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+157,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+158,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.05,True
+159,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+160,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.052,True
+161,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.054,True
+162,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.052,True
+163,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.052,True
+164,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.054,True
+165,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.054,True
+166,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.056,True
+167,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.056,True
+168,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.062,True
+169,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+170,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.056,True
+171,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.064,True
+172,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+173,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+174,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+175,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+176,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+177,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+178,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+179,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+180,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+181,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.052,True
+182,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+183,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+184,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+185,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+186,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.05,True
+187,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+188,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+189,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+190,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+191,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+192,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+193,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+194,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+195,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+196,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.034,True
+197,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+198,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+199,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+200,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+201,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+202,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+203,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+204,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.052,True
+205,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.054,True
+206,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+207,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+208,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+209,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+210,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.05,True
+211,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+212,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.054,True
+213,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.05,True
+214,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.054,True
+215,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.05,True
+216,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.056,True
+217,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.056,True
+218,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.056,True
+219,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.05,True
+220,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.062,True
+221,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.052,True
+222,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+223,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.058,True
+224,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.054,True
+225,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+226,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+227,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+228,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+229,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+230,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+231,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+232,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+233,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.058,True
+234,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+235,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.052,True
+236,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.032,True
+237,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+238,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+239,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+240,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+241,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+242,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+243,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.042,True
+244,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+245,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.04,True
+246,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+247,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+248,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+249,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+250,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+251,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.038,True
+252,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+253,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.036,True
+254,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+255,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.044,True
+256,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+257,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.052,True
+258,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+259,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+260,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+261,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+262,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.046,True
+263,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+264,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.052,True
+265,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.052,True
+266,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.054,True
+267,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+268,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.05,True
+269,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.052,True
+270,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.056,True
+271,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.058,True
+272,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.06,True
+273,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.05,True
+274,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.048,True
+275,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.064,True
+276,F0M,Fusível AC,fusivel_ac,501,0.002,0.02,11,0.056,True

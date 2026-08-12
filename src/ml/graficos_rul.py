@@ -76,6 +76,20 @@ def _rotulo_posicoes_empiricas(eventos: np.ndarray) -> str:
     return f"posição empírica agrupada (n={n_total}; sem indetectabilidade)"
 
 
+def _rotulo_aderencia(p: dict) -> str:
+    """Rótulo curto baseado no teste formal, sem transformar E2 em validação."""
+    teste = p.get("teste_aderencia_quantizada") or {}
+    p_value = teste.get("p_value")
+    status = p.get("status_aderencia")
+    if status == "resolucao_insuficiente":
+        return "resolução insuficiente para síntese 2P"
+    if p_value is None:
+        return "ajuste 2P exploratório"
+    if p.get("aderencia_aceitavel"):
+        return f"compatível com 2P (bootstrap p={p_value:.3f})"
+    return f"desvio da 2P (bootstrap p={p_value:.3f})"
+
+
 def _limites_eixo_magnitude(valores: np.ndarray) -> tuple[float, float]:
     """Enquadra cada componente sem esconder a unidade comum ``a_det``.
 
@@ -173,7 +187,7 @@ def plotar_ttf_histogramas(
                 marker="o", markersize=2.8,
                 linestyle="-" if recomendada else "--",
                 label=("Massa Weibull 2P por célula"
-                       + ("" if recomendada else " — não recomendada")),
+                       + ("" if recomendada else " — exploratória")),
             )
 
         if len(nao_detectados):
@@ -211,8 +225,7 @@ def plotar_ttf_histogramas(
             ajuste = (
                 f"{beta_txt} · η={p['eta']:.3f}{r2_txt} · "
                 f"indetect.={p['censura_pct']:.0f}%"
-                + ("\nmodelo não recomendado para síntese"
-                   if not recomendada else "")
+                + (f"\n{_rotulo_aderencia(p)}" if not recomendada else "")
             )
         else:
             ajuste = (_aviso_nao_estimavel(p)
@@ -228,7 +241,7 @@ def plotar_ttf_histogramas(
     arq = pasta / "weibull_ttf.png"
     salvar_figura(
         fig, arq,
-        "Validação sintética E2; Δa=1/119. Escalas horizontais ajustadas por componente: compare magnitudes pelos valores dos eixos, não pela largura visual. Não há equivalência com tempo ou vida útil.",
+        f"Validação sintética E2; Δa={1.0 / (N_STEPS - 1):.4f}. Escalas horizontais ajustadas por componente: compare magnitudes pelos valores dos eixos, não pela largura visual. Não há equivalência com tempo ou vida útil.",
     )
     _log(f"   📊 {arq.name}")
 
@@ -266,7 +279,10 @@ def plotar_confiabilidade(
             ax_r.plot(
                 t, R, color=falha["cor"], linewidth=2,
                 linestyle="-" if recomendada else "--",
-                label="Weibull 2P" + ("" if recomendada else " — cautela"),
+                label=(
+                    "Weibull 2P"
+                    + ("" if recomendada else " — exploratória")
+                ),
             )
             ax_r.fill_between(t, R, alpha=0.12, color=falha["cor"])
         ax_r.set_ylim([0, 1.05])
@@ -276,7 +292,7 @@ def plotar_confiabilidade(
         titulo_ajuste = (
             f"β={p['beta']:.2f}, η={p['eta']:.3f}, "
             f"R²pp={(p.get('diagnostico_papel_weibull') or {}).get('r2', float('nan')):.2f}"
-            + ("\nMODELO NÃO RECOMENDADO PARA SÍNTESE"
+            + (f"\n{_rotulo_aderencia(p)}"
                if not p.get("resumo_parametrico_recomendado", False) else "")
             if p["fit_converged"] else _aviso_nao_estimavel(p)
         )
@@ -285,15 +301,20 @@ def plotar_confiabilidade(
 
         # Taxa de falha h(t)
         ax_h = axes[1][col]
-        if p["fit_converged"] and p.get("resumo_parametrico_recomendado", False):
+        if p["fit_converged"]:
             H = taxa_falha(t, p["beta"], p["eta"])
-            ax_h.plot(t, H, color=falha["cor"], linewidth=2)
+            recomendada = p.get("resumo_parametrico_recomendado", False)
+            ax_h.plot(
+                t, H, color=falha["cor"], linewidth=2,
+                linestyle="-" if recomendada else "--",
+            )
             beta_desc = ("crescente ↑" if p["beta"] > 1.1
                          else "constante →" if p["beta"] > 0.9
                          else "decrescente ↓")
             ax_h.set_title(
                 f"Intensidade de detecção $h_D(a)$\n"
-                f"β={p['beta']:.2f} — {beta_desc}", fontsize=9
+                f"β={p['beta']:.2f} — {beta_desc}"
+                + ("" if recomendada else " · exploratória"), fontsize=9
             )
         else:
             motivo = (
@@ -306,7 +327,7 @@ def plotar_confiabilidade(
                       color=COR_TEXTO_SEC, fontsize=7.5, wrap=True)
             ax_h.set_title("Intensidade não reportável", fontsize=9)
         # Eixo numérico num painel sem curva sugere dado que não existe.
-        if p["fit_converged"] and p.get("resumo_parametrico_recomendado", False):
+        if p["fit_converged"]:
             ax_h.set_xlabel("Magnitude da perturbação CA, $a$ (fração nominal)")
             ax_h.set_ylabel("$h_D(a)$ por unidade de $a$")
         else:
@@ -354,7 +375,7 @@ def plotar_rul(
         ax.set_ylim(0, max(horizonte, max(ruls_km, default=0.0)) * 1.05)
 
         eixos_legenda = [ax]
-        if p["fit_converged"] and p.get("resumo_parametrico_recomendado", False):
+        if p["fit_converged"]:
             ruls_param = [
                 margem_condicional_weibull(t, p["beta"], p["eta"])
                 for t in t_pontos
@@ -365,7 +386,12 @@ def plotar_rul(
             ax_param = ax.twinx() if p["rul_parametrica_alta_incerteza"] else ax
             ax_param.plot(
                 t_pontos, ruls_param, color="black", linewidth=1.8,
-                linestyle="--", label="Margem Weibull",
+                linestyle="--",
+                label=(
+                    "Margem Weibull"
+                    if p.get("resumo_parametrico_recomendado", False)
+                    else "Margem Weibull exploratória"
+                ),
             )
             if ax_param is not ax:
                 ax_param.set_ylabel("Margem Weibull extrapolada")
@@ -373,16 +399,23 @@ def plotar_rul(
                 eixos_legenda.append(ax_param)
 
         status = (
-            "Weibull não recomendada"
+            "2P exploratória"
             if p["fit_converged"] and not p.get("resumo_parametrico_recomendado", False)
-            else "Weibull + KM"
+            else "2P adotada em E2"
             if p.get("resumo_parametrico_recomendado", False)
             else "Somente KM restrita"
         )
+        p_aderencia = (
+            p.get("teste_aderencia_quantizada") or {}
+        ).get("p_value")
+        p_txt = (
+            f"p={p_aderencia:.3f}"
+            if p_aderencia is not None else "p não estimado"
+        )
         ax.set_title(
             f"{falha['nome']} (NPR={falha['npr']})\n"
-            f"detectadas={p['n_eventos']} · indetect. no teto={p['censura_pct']:.0f}% · {status}",
-            fontsize=9,
+            f"n={p['n_eventos']} · {p_txt} · {status}",
+            fontsize=8.5,
         )
         handles, labels = [], []
         for eixo in eixos_legenda:
@@ -427,6 +460,13 @@ def plotar_distribuicao_weibull(
         eventos = np.asarray(eventos_dict[fid], dtype=bool)
         cor = falha["cor"]
         t_emp, f_emp, _ = posicoes_probabilidade_censuradas(ttfs, eventos)
+        niveis_obs, contagens_obs = np.unique(
+            ttfs[eventos], return_counts=True
+        )
+        tamanhos_pontos = (
+            24.0 + 72.0 * np.sqrt(contagens_obs / contagens_obs.max())
+            if len(contagens_obs) else np.asarray([])
+        )
 
         ax_f, ax_F, ax_pw = axes[0][col], axes[1][col], axes[2][col]
         ax_f.set_title(f"{falha['nome']} (NPR={falha['npr']})", fontsize=10)
@@ -486,7 +526,7 @@ def plotar_distribuicao_weibull(
         ax_f.set_title(
             f"{falha['nome']} (NPR={falha['npr']})\n"
             f"R²pp={r2:.2f} · "
-            + ("síntese recomendada" if recomendada else "não recomendada"),
+            + ("síntese 2P adotada" if recomendada else _rotulo_aderencia(p)),
             fontsize=9,
         )
 
@@ -495,8 +535,19 @@ def plotar_distribuicao_weibull(
                   linestyle=estilo)
         ax_f.fill_between(t, densidade(t, beta, eta), alpha=0.12, color=cor)
         if eventos.any():
-            ax_f.plot(ttfs[eventos], np.zeros(int(eventos.sum())), "|",
-                      color=COR_TEXTO_SEC, markersize=10, alpha=0.7)
+            ax_f.scatter(
+                niveis_obs,
+                np.zeros(len(niveis_obs)),
+                s=tamanhos_pontos,
+                marker="|",
+                color=COR_TEXTO_SEC,
+                alpha=0.75,
+                label=(
+                    f"{int(eventos.sum())} trajetórias em "
+                    f"{len(niveis_obs)} níveis"
+                ),
+            )
+            ax_f.legend(fontsize=7.5, loc="upper left")
         ax_f.set_ylabel("$f_D(a)$")
         ax_f.set_xlabel("Magnitude de detecção, $a_{det}$ (fração nominal)")
 
@@ -504,9 +555,19 @@ def plotar_distribuicao_weibull(
         ax_F.plot(t, acumulada(t, beta, eta), color=cor, linewidth=2,
                   linestyle=estilo, label="Weibull 2P")
         if eventos.any():
-            ax_F.plot(t_emp, f_emp, "o", color="black",
-                      markersize=4,
-                      label=_rotulo_posicoes_empiricas(eventos))
+            ax_F.scatter(
+                t_emp,
+                f_emp,
+                s=tamanhos_pontos,
+                color="black",
+                edgecolors="white",
+                linewidths=0.5,
+                zorder=3,
+                label=(
+                    f"posição empírica: n={int(eventos.size)}, "
+                    f"{len(t_emp)} níveis; tamanho = multiplicidade"
+                ),
+            )
         ax_F.set_ylim([0, 1.05])
         ax_F.set_ylabel(r"$F_D(a)=P(a_{det}\leq a)$")
         ax_F.set_xlabel("Magnitude de detecção, $a_{det}$ (fração nominal)")
@@ -515,8 +576,16 @@ def plotar_distribuicao_weibull(
         # ── papel de Weibull: a reta é o teste visual do ajuste ──
         if eventos.sum() >= 3:
             x_p, y_p = eixos_papel_weibull(t_emp, f_emp)
-            ax_pw.plot(x_p, y_p, "o", color="black", markersize=4,
-                       label="observado")
+            ax_pw.scatter(
+                x_p,
+                y_p,
+                s=tamanhos_pontos,
+                color="black",
+                edgecolors="white",
+                linewidths=0.5,
+                zorder=3,
+                label="observado; tamanho = multiplicidade",
+            )
             x_r = np.linspace(x_p.min(), x_p.max(), 50)
             # reta do ajuste: y = β·(ln a_det − ln η)
             ax_pw.plot(x_r, beta * (x_r - np.log(eta)), color=cor, linewidth=2,
@@ -533,6 +602,117 @@ def plotar_distribuicao_weibull(
     arq = pasta / "weibull_distribuicao.png"
     salvar_figura(
         fig, arq,
-        "Validação sintética E2; MLE com censura por intervalo (Δa=1/119). Pontos empíricos usam n total e empates agrupados; linha tracejada indica modelo não recomendado. R²pp é triagem, não teste formal.",
+        f"Validação sintética E2; MLE com censura por intervalo (Δa={1.0 / (N_STEPS - 1):.4f}). Pontos empíricos usam n total; tamanho mostra multiplicidade. Linha tracejada é ajuste exploratório. Aderência usa bootstrap quantizado; R²pp é diagnóstico visual.",
+    )
+    _log(f"   📊 {arq.name}")
+
+
+def plotar_sensibilidade_grade(
+    resultados_grade: dict[int, tuple[dict, dict]],
+    pasta: Path,
+) -> None:
+    """Compara a ECDF de ``a_det`` sob todas as resoluções declaradas."""
+    fig, axes = plt.subplots(
+        1, len(FALHAS), figsize=TAM["painel_3"], layout="constrained"
+    )
+    fig.suptitle(
+        "Sensibilidade do primeiro cruzamento à resolução da grade — E2"
+    )
+    estilos = (":", "--", "-")
+    for ax, falha in zip(axes, FALHAS):
+        fid = falha["id"]
+        for estilo, (n_steps, (a_dets, eventos)) in zip(
+            estilos[-len(resultados_grade):], sorted(resultados_grade.items()),
+            strict=True,
+        ):
+            observados = np.sort(a_dets[fid][eventos[fid]])
+            ecdf = np.arange(1, len(observados) + 1) / len(a_dets[fid])
+            ax.step(
+                observados, ecdf, where="post", linewidth=1.8,
+                linestyle=estilo, color=falha["cor"],
+                label=(
+                    f"{n_steps} pontos · Δa={1.0/(n_steps-1):.3f} · "
+                    f"{len(np.unique(observados))} níveis"
+                ),
+            )
+        ax.set_title(f"{falha['nome']} (NPR={falha['npr']})", fontsize=10)
+        ax.set_xlabel("Magnitude de detecção, $a_{det}$")
+        ax.set_ylabel("Probabilidade empírica acumulada")
+        ax.set_ylim(0, 1.02)
+        ax.legend(fontsize=7.5, loc="lower right")
+    arq = pasta / "weibull_sensibilidade_grade.png"
+    salvar_figura(
+        fig,
+        arq,
+        "Mesmas janelas GPVS e largura de confirmação 0,02 em todas as grades; convergência visual separa efeito de resolução de efeito amostral.",
+    )
+    _log(f"   📊 {arq.name}")
+
+
+def plotar_modos_operacao(
+    ttfs_dict: dict,
+    eventos_dict: dict,
+    ensaios: np.ndarray,
+    params: dict,
+    pasta: Path,
+) -> None:
+    """Expõe a heterogeneidade F0L/F0M que a curva global mascara."""
+    cores_modo = {"F0L": "#2a78d6", "F0M": "#d98f00"}
+    fig, axes = plt.subplots(
+        1, len(FALHAS), figsize=TAM["painel_3"], layout="constrained"
+    )
+    fig.suptitle(
+        "Primeiro cruzamento por modo operacional GPVS — E2 sintético"
+    )
+    for ax, falha in zip(axes, FALHAS):
+        fid = falha["id"]
+        linhas_status = []
+        for modo in ("F0L", "F0M"):
+            mascara = ensaios == modo
+            tempos = ttfs_dict[fid][mascara]
+            eventos = eventos_dict[fid][mascara]
+            t_emp, f_emp, _ = posicoes_probabilidade_censuradas(
+                tempos, eventos
+            )
+            ajuste = params[fid]["ajustes_por_modo"][modo]
+            ax.step(
+                t_emp, f_emp, where="mid", color=cores_modo[modo],
+                linewidth=2.0, label=f"{modo} empírico (n={len(tempos)})",
+            )
+            if ajuste["fit_converged"]:
+                t = np.linspace(
+                    max(float(tempos.min()) / 2.0, 1e-6),
+                    float(tempos.max()),
+                    300,
+                )
+                adotado = ajuste.get("resumo_parametrico_recomendado", False)
+                ax.plot(
+                    t, acumulada(t, ajuste["beta"], ajuste["eta"]),
+                    color=cores_modo[modo], linewidth=1.6,
+                    linestyle="-" if adotado else "--",
+                    label=f"{modo} Weibull 2P"
+                    + ("" if adotado else " exploratória"),
+                )
+            p_value = (
+                ajuste.get("teste_aderencia_quantizada") or {}
+            ).get("p_value")
+            linhas_status.append(
+                f"{modo}: p={p_value:.3f}"
+                if p_value is not None else f"{modo}: p indisponível"
+            )
+        ax.set_title(
+            f"{falha['nome']} (NPR={falha['npr']})\n"
+            + " · ".join(linhas_status),
+            fontsize=9,
+        )
+        ax.set_xlabel("Magnitude de detecção, $a_{det}$")
+        ax.set_ylabel("Probabilidade empírica acumulada")
+        ax.set_ylim(0, 1.02)
+        ax.legend(fontsize=7.2, loc="lower right")
+    arq = pasta / "weibull_modos_operacao.png"
+    salvar_figura(
+        fig,
+        arq,
+        "F0L (IPPT) e F0M (MPPT) pertencem ao mesmo GPVS, mas são regimes distintos. Linhas tracejadas mantêm ajustes exploratórios visíveis; p vem de bootstrap paramétrico com quantização.",
     )
     _log(f"   📊 {arq.name}")

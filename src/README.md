@@ -82,6 +82,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `injecao_falhas.py` | Etapa 3: falhas sintéticas orientadas pela FMECA + SMD. |
 | `validacao.py` | Etapa 4: métricas no limiar congelado (ROC/PR/F1/AUC). |
 | `rul_weibull.py` | Etapa 5: varredura de magnitude, primeiro cruzamento `a_det`, Weibull 2P exploratória e margem residual. É detectabilidade E2, **não RUL**. |
+| `rul_weibull_execucao.py` | Orquestra a execução pesada e a regeneração tabular/gráfica da etapa 5. |
 | `confiabilidade.py` | Funções matemáticas da Weibull, posições censura-aware e diagnóstico do papel. O chamador distingue tempo de magnitude. |
 | `pod_curva.py` | Arcabouço POD (MIL-HDBK-1823A / LS-POD NASA): limites de tolerância, critério de viabilidade do ensaio, gatilhos de deriva de campo e checagem das hipóteses. |
 | `relatorio_weibull.py` | Montagem de `weibull_results.json` e `weibull_tabela.csv`. Recebe tudo por parâmetro — não importa `rul_weibull`, para não fechar ciclo. |
@@ -112,6 +113,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `classificador_pv.py` | Pipeline CLI de classificação PV Farms (Ghoneim) + carregamento de dados. |
 | `classificador_pv_infer.py` | Persistência/inferência do classificador (pickle verificado SHA-256). |
 | `resultados.py` | Lê e resume artefatos JSON/CSV/PNG sem depender do agente. |
+| `resultados_weibull.py` | Produz a síntese textual da detectabilidade E2 a partir dos artefatos Weibull versionados. |
 | `resultados_gpvs.py` | Formata o resumo E3 do GPVS-Faults sem ampliar a fachada geral de resultados. |
 
 ## `interface/` + raiz do pacote

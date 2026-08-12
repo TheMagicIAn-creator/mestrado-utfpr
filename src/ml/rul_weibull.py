@@ -73,8 +73,11 @@ RAIZ        = Path(__file__).parent.parent.parent
 PASTA_AE    = RAIZ / "resultados" / "autoencoder"
 
 # ── Parâmetros de simulação ───────────────────────────────────
-N_TRAJ  = 100    # teto; o n efetivo não excede janelas do holdout
-N_STEPS = 120    # pontos da grade de magnitude por trajetória (a_inj 0→1,0)
+# ``None`` usa todo o holdout elegível. O teto histórico de 100 pegava as
+# primeiras janelas ordenadas e, no GPVS atual, selecionava somente F0L.
+N_TRAJ: int | None = None
+N_STEPS = 501     # Δa=0,002; resolução principal da magnitude a_inj em [0, 1]
+N_STEPS_SENSIBILIDADE = (101, 251, 501)
 
 # ── O EIXO NÃO É TEMPO ──────────────────────────────────────────────────────
 # Até 08/08/2026 este módulo chamava o eixo de TTF (time to failure) e a unidade
@@ -113,10 +116,19 @@ TEMPO_FISICO_NOTA = (
 )
 BATCH_INFERENCIA = 16
 N_BOOTSTRAP = 1000
+N_BOOTSTRAP_ADERENCIA = 250
+N_BOOTSTRAP_MODO = 500
 MIN_EVENTOS_WEIBULL = 10
 MAX_CENSURA_RUL_PCT = 50.0
 MIN_R2_PAPEL_WEIBULL = 0.90
-PERSISTENCIA_CRUZAMENTO = 3
+MIN_NIVEIS_ADERENCIA = 8
+ALFA_ADERENCIA = 0.05
+MAX_VARIACAO_RELATIVA_GRADE = 0.10
+# A persistência é uma largura no eixo físico do experimento, não uma contagem
+# de pontos. Assim, refinar a grade não muda a definição do detector.
+PERSISTENCIA_MAGNITUDE = 0.02
+# Alias legado: calculado para a grade principal e mantido nos manifestos.
+PERSISTENCIA_CRUZAMENTO = 11
 AJUSTE_WEIBULL_METODO = "mle_interval_censored_grid_right_censored"
 
 
@@ -129,6 +141,74 @@ def a_det_da_grade(passo: int, n_steps: int = N_STEPS) -> float:
     """
     n = max(int(n_steps), 2)
     return float(np.clip(int(passo) / (n - 1), A_DET_MIN, A_DET_MAX))
+
+
+def passos_persistencia(
+    n_steps: int,
+    largura_magnitude: float = PERSISTENCIA_MAGNITUDE,
+) -> int:
+    """Converte a largura de confirmação em número de pontos da grade.
+
+    O intervalo entre o primeiro e o último ponto confirmado deve cobrir ao
+    menos ``largura_magnitude``. Há um ponto a mais que o número de intervalos.
+    """
+    n = max(int(n_steps), 2)
+    largura = float(largura_magnitude)
+    if not np.isfinite(largura) or largura < 0:
+        raise ValueError("largura_magnitude deve ser finita e não negativa")
+    return max(1, int(np.ceil(largura * (n - 1))) + 1)
+
+
+def selecionar_trajetorias_holdout(
+    janelas: list[pd.DataFrame],
+    n_max: int | None = N_TRAJ,
+) -> list[pd.DataFrame]:
+    """Seleciona trajetórias com cobertura determinística de cada ensaio F0.
+
+    O caminho canônico usa todas as janelas elegíveis. Se um teto for aplicado
+    em uma execução exploratória, a seleção é uniforme dentro de cada ensaio e
+    a alocação é proporcional, evitando o viés histórico das primeiras linhas.
+    """
+    if n_max is None or len(janelas) <= n_max:
+        return list(janelas)
+    if n_max <= 0:
+        raise ValueError("n_max deve ser positivo ou None")
+
+    grupos: dict[str, list[pd.DataFrame]] = {}
+    for janela in janelas:
+        ensaio = str(janela.attrs.get("ensaio", "sem_ensaio"))
+        grupos.setdefault(ensaio, []).append(janela)
+
+    total = len(janelas)
+    alocacao = {
+        ensaio: int(np.floor(n_max * len(grupo) / total))
+        for ensaio, grupo in grupos.items()
+    }
+    for ensaio in sorted(grupos):
+        if alocacao[ensaio] == 0 and n_max >= len(grupos):
+            alocacao[ensaio] = 1
+    while sum(alocacao.values()) < n_max:
+        ensaio = max(
+            grupos,
+            key=lambda nome: (
+                n_max * len(grupos[nome]) / total - alocacao[nome],
+                len(grupos[nome]) - alocacao[nome],
+                nome,
+            ),
+        )
+        if alocacao[ensaio] >= len(grupos[ensaio]):
+            break
+        alocacao[ensaio] += 1
+
+    selecionadas: list[pd.DataFrame] = []
+    for ensaio in sorted(grupos):
+        grupo = grupos[ensaio]
+        quantidade = min(alocacao[ensaio], len(grupo))
+        if quantidade <= 0:
+            continue
+        posicoes = np.linspace(0, len(grupo) - 1, quantidade).round().astype(int)
+        selecionadas.extend(grupo[int(pos)] for pos in np.unique(posicoes))
+    return selecionadas
 
 
 def metadados_tempo_rul() -> dict:
@@ -240,7 +320,7 @@ def gerar_a_det(janela_saudavel: pd.DataFrame,
                 n_steps: int,
                 seed: int,
                 batch_size: int = BATCH_INFERENCIA,
-                persistencia: int = PERSISTENCIA_CRUZAMENTO,
+                persistencia: int | None = None,
                 estat_residuo: dict | None = None,
                 metodo: str = "mse",
                 normalizacao_baseline: dict | None = None) -> tuple[float, bool]:
@@ -251,9 +331,10 @@ def gerar_a_det(janela_saudavel: pd.DataFrame,
     sobre a MESMA janela saudável — a trajetória representa um único ativo cuja
     falha se agrava, não um ativo diferente a cada ponto.
 
-    ``a_det`` é a magnitude em que o escore permanece acima do limiar por
-    ``persistencia`` avaliações consecutivas; a persistência evita declarar
-    detecção por um pico isolado.
+    ``a_det`` é a magnitude em que o escore permanece acima do limiar por uma
+    largura fixa de magnitude. ``persistencia`` permite sobrescrever a contagem
+    de pontos apenas em testes/compatibilidade; por padrão ela é derivada de
+    :func:`passos_persistencia`, para que refinar a grade não mude o detector.
 
     Se nem em ``a_inj = 1,0`` o escore confirma, devolve ``(1.0, False)``. Isso
     NÃO é censura à direita no sentido usual — ver `classificar_desfechos`: a
@@ -282,6 +363,10 @@ def gerar_a_det(janela_saudavel: pd.DataFrame,
 
     modelo.eval()
 
+    persistencia_efetiva = (
+        passos_persistencia(n_steps)
+        if persistencia is None else max(int(persistencia), 1)
+    )
     erros_trajetoria: list[float] = []
     for inicio_batch in range(0, n_steps, batch_size):
         fim_batch = min(inicio_batch + batch_size, n_steps)
@@ -311,27 +396,29 @@ def gerar_a_det(janela_saudavel: pd.DataFrame,
             [janela_base.attrs.get("ensaio")] * len(vetores),
         )
         erros_trajetoria.extend(float(erro) for erro in erros)
+        acima = np.asarray(erros_trajetoria) > limiar
+        if persistencia_efetiva == 1:
+            cruzamentos = np.flatnonzero(acima)
+        elif len(acima) >= persistencia_efetiva:
+            confirmados = np.convolve(
+                acima.astype(int),
+                np.ones(persistencia_efetiva, dtype=int),
+                mode="valid",
+            ) >= persistencia_efetiva
+            # O evento é registrado quando o critério fica confirmado, não no
+            # primeiro ponto ainda isolado da sequência.
+            cruzamentos = (
+                np.flatnonzero(confirmados) + persistencia_efetiva - 1
+            )
+        else:
+            cruzamentos = np.asarray([], dtype=int)
 
-    acima = np.asarray(erros_trajetoria) > limiar
-    persistencia = max(int(persistencia), 1)
-    if persistencia == 1:
-        cruzamentos = np.flatnonzero(acima)
-    elif len(acima) >= persistencia:
-        confirmados = np.convolve(
-            acima.astype(int), np.ones(persistencia, dtype=int), mode="valid"
-        ) >= persistencia
-        # O evento é registrado quando o critério fica confirmado, não no
-        # primeiro ponto ainda isolado da sequência.
-        cruzamentos = np.flatnonzero(confirmados) + persistencia - 1
-    else:
-        cruzamentos = np.asarray([], dtype=int)
-
-    if len(cruzamentos) > 0:
-        return a_det_da_grade(int(cruzamentos[0]), n_steps), True
+        if len(cruzamentos) > 0:
+            return a_det_da_grade(int(cruzamentos[0]), n_steps), True
 
     # Não confirmou nem no topo da grade. O desfecho é registrado em a_inj = 1,0
     # — a última magnitude REALMENTE aplicada. A versão anterior devolvia
-    # `n_steps` (120), um índice fora da grade (que vai de 0 a 119): o desfecho
+    # `n_steps`, um índice fora da grade (que vai de 0 a n_steps-1): o desfecho
     # era carimbado num ponto do eixo onde nada foi medido.
     return A_DET_MAX, False
 
@@ -445,12 +532,84 @@ def _ajuste_weibull_censurado(
     return float(beta), float(eta), convergiu
 
 
+def teste_aderencia_weibull_quantizada(
+    tempos: np.ndarray,
+    eventos: np.ndarray,
+    beta: float,
+    eta: float,
+    *,
+    passo_grade: float,
+    n_boot: int = N_BOOTSTRAP_ADERENCIA,
+    seed: int = 20260812,
+) -> dict:
+    """Bootstrap paramétrico de aderência compatível com a grade observada.
+
+    A estatística compara as posições empíricas agrupadas à CDF ajustada. Cada
+    réplica nasce da Weibull 2P, é quantizada para o extremo direito da mesma
+    grade, recebe a mesma regra de horizonte e é reajustada. O p-valor, assim,
+    não pune o modelo apenas pelos empates produzidos pelo experimento.
+    """
+    from src.ml.confiabilidade import posicoes_probabilidade_censuradas
+
+    t = np.asarray(tempos, dtype=float)
+    obs = np.asarray(eventos, dtype=bool)
+    t_emp, f_emp, metodo = posicoes_probabilidade_censuradas(t, obs)
+    if len(t_emp) < 3 or n_boot <= 0:
+        return {
+            "metodo": "bootstrap_parametrico_cdf_quantizada",
+            "estatistica": None,
+            "p_value": None,
+            "bootstrap_solicitados": int(max(n_boot, 0)),
+            "bootstrap_validos": 0,
+            "n_niveis": int(len(t_emp)),
+            "posicoes_empiricas": metodo,
+        }
+
+    f_ajustada = weibull_min.cdf(t_emp, beta, loc=0, scale=eta)
+    estatistica = float(np.mean((f_emp - f_ajustada) ** 2))
+    rng = np.random.default_rng(seed)
+    horizonte = float(np.max(t))
+    estatisticas_boot: list[float] = []
+    for _ in range(int(n_boot)):
+        simulados_continuos = eta * rng.weibull(beta, size=len(t))
+        eventos_sim = simulados_continuos <= horizonte
+        simulados = np.ceil(simulados_continuos / passo_grade) * passo_grade
+        simulados = np.clip(simulados, passo_grade, horizonte)
+        beta_b, eta_b, ok = _ajuste_weibull_censurado(
+            simulados, eventos_sim, passo_grade=passo_grade
+        )
+        if not ok:
+            continue
+        tb, fb, _ = posicoes_probabilidade_censuradas(simulados, eventos_sim)
+        if len(tb) < 3:
+            continue
+        ajuste_b = weibull_min.cdf(tb, beta_b, loc=0, scale=eta_b)
+        estatisticas_boot.append(float(np.mean((fb - ajuste_b) ** 2)))
+
+    p_value = None
+    if estatisticas_boot:
+        p_value = float(
+            (1 + np.sum(np.asarray(estatisticas_boot) >= estatistica))
+            / (1 + len(estatisticas_boot))
+        )
+    return {
+        "metodo": "bootstrap_parametrico_cdf_quantizada",
+        "estatistica": estatistica,
+        "p_value": p_value,
+        "bootstrap_solicitados": int(n_boot),
+        "bootstrap_validos": len(estatisticas_boot),
+        "n_niveis": int(len(t_emp)),
+        "posicoes_empiricas": metodo,
+    }
+
+
 def ajustar_weibull(
     ttfs: np.ndarray,
     eventos: np.ndarray | None = None,
     n_boot: int = 250,
     seed: int = 42,
     passo_grade: float | None = None,
+    n_boot_aderencia: int = 0,
 ) -> dict:
     """Ajusta Weibull intervalar e estima incerteza por bootstrap."""
     tempos = np.asarray(ttfs, dtype=float)
@@ -478,6 +637,15 @@ def ajustar_weibull(
         diagnostico_papel = cf.diagnostico_papel_weibull(
             tempos, obs, beta, eta
         )
+        teste_aderencia = teste_aderencia_weibull_quantizada(
+            tempos,
+            obs,
+            beta,
+            eta,
+            passo_grade=delta_a,
+            n_boot=n_boot_aderencia,
+            seed=seed + 10_000,
+        )
     else:
         mttf = b10 = km_rmse = float("nan")
         diagnostico_papel = {
@@ -486,6 +654,15 @@ def ajustar_weibull(
             "n_niveis_distintos": int(np.unique(tempos[obs]).size),
             "r2": None, "rmse": None,
             "metodo_posicoes": None,
+        }
+        teste_aderencia = {
+            "metodo": "bootstrap_parametrico_cdf_quantizada",
+            "estatistica": None,
+            "p_value": None,
+            "bootstrap_solicitados": int(max(n_boot_aderencia, 0)),
+            "bootstrap_validos": 0,
+            "n_niveis": 0,
+            "posicoes_empiricas": None,
         }
 
     amostras_boot: list[tuple[float, float, float, float]] = []
@@ -526,13 +703,33 @@ def ajustar_weibull(
         convergiu and r2_papel is not None
         and r2_papel >= MIN_R2_PAPEL_WEIBULL
     )
+    p_aderencia = teste_aderencia.get("p_value")
+    niveis_suficientes = int(np.unique(tempos[obs]).size) >= MIN_NIVEIS_ADERENCIA
+    aderencia_aceitavel = (
+        bool(p_aderencia >= ALFA_ADERENCIA)
+        if p_aderencia is not None else triagem_compativel
+    )
     resumo_parametrico_recomendado = bool(
-        convergiu and not alta_censura and triagem_compativel
+        convergiu and not alta_censura and niveis_suficientes
+        and aderencia_aceitavel
     )
     taxa_bootstrap = len(amostras_boot) / n_boot if n_boot > 0 else None
     n_niveis_distintos = int(np.unique(tempos[obs]).size)
     taxa_empates = (
         1.0 - n_niveis_distintos / int(obs.sum()) if obs.any() else None
+    )
+    status_aderencia = (
+        "nao_estimavel"
+        if not convergiu else
+        "resolucao_insuficiente"
+        if not niveis_suficientes else
+        "nao_testado_formalmente_triagem_visual_compativel"
+        if p_aderencia is None and triagem_compativel else
+        "nao_testado_formalmente_triagem_visual_incompativel"
+        if p_aderencia is None else
+        "compativel_bootstrap_quantizado"
+        if aderencia_aceitavel else
+        "desvio_detectado_bootstrap_quantizado"
     )
 
     return {
@@ -552,11 +749,17 @@ def ajustar_weibull(
         ),
         "km_rmse": km_rmse,
         "diagnostico_papel_weibull": diagnostico_papel,
+        "teste_aderencia_quantizada": teste_aderencia,
+        "aderencia_alfa": ALFA_ADERENCIA,
+        "aderencia_aceitavel": aderencia_aceitavel,
+        "min_niveis_aderencia": MIN_NIVEIS_ADERENCIA,
+        "niveis_suficientes_aderencia": niveis_suficientes,
+        "status_aderencia": status_aderencia,
         "triagem_papel_r2_min": MIN_R2_PAPEL_WEIBULL,
         "triagem_papel_compativel": triagem_compativel,
         "triagem_papel_nota": (
-            "R2 no papel de Weibull e triagem visual descritiva, nao teste "
-            "formal de aderencia nem validacao externa."
+            "R2 no papel de Weibull e triagem visual descritiva. O criterio "
+            "principal usa bootstrap parametrico com a mesma quantizacao."
         ),
         "resumo_parametrico_recomendado": resumo_parametrico_recomendado,
         "n_traj": int(len(tempos)),
@@ -759,6 +962,7 @@ margem_condicional_weibull = rul_condicional
 _EXPORTACOES_TARDIAS = (("src.ml.graficos_rul", (
     "plotar_ttf_histogramas", "plotar_confiabilidade",
     "plotar_distribuicao_weibull", "plotar_rul",
+    "plotar_sensibilidade_grade", "plotar_modos_operacao",
 )),)
 
 
@@ -773,215 +977,16 @@ def __getattr__(nome: str):
 # ============================================================
 
 def executar_rul_weibull() -> bool:
-    from src.ml.graficos_rul import (
-        plotar_confiabilidade,
-        plotar_distribuicao_weibull,
-        plotar_rul,
-        plotar_ttf_histogramas,
-    )
+    from src.ml.rul_weibull_execucao import executar_rul_weibull as executar
 
-    _log("=" * 60)
-    _log("  AL IADO PV — DETECTABILIDADE E2 COM WEIBULL")
-    _log("=" * 60)
-    _log(f"\n  Teto de trajetórias por falha: {N_TRAJ}")
-    _log(f"  Grade de magnitude   : {N_STEPS} pontos (a_inj 0→1,0)")
-    _log(f"  Eixo do Weibull      : a_det — fração da assinatura nominal, NÃO tempo")
+    return executar()
 
-    # ── 1. Carrega artefatos ─────────────────────────────────
-    _log(f"\n📂 Carregando artefatos...")
-    for arq in [PASTA_AE/"modelo_autoencoder.pt",
-                PASTA_AE/"scaler.pkl",
-                PASTA_AE/"limiar.json"]:
-        if not arq.exists():
-            _log(f"   ❌ {arq.name} não encontrado")
-            return False
 
-    import torch
-    from src.ml.autoencoder import Autoencoder
+def regenerar_graficos_weibull(pasta: Path = PASTA_AE) -> dict:
+    from src.ml.rul_weibull_execucao import regenerar_graficos_weibull as regenerar
 
-    checkpoint = torch.load(PASTA_AE/"modelo_autoencoder.pt",
-                            map_location="cpu", weights_only=False)
-    from src.core.seguranca import carregar_pickle_com_sidecar
+    return regenerar(pasta)
 
-    scaler = carregar_pickle_com_sidecar(PASTA_AE / "scaler.pkl")
-    with open(PASTA_AE/"limiar.json", "r") as f:
-        info_limiar = json.load(f)
-
-    n_features   = checkpoint["n_features"]
-    latente_dim  = checkpoint["latente_dim"]
-    colunas_feat = checkpoint["colunas_feat"]
-    limiar       = info_limiar["limiar"]   # OPERACIONAL (método escolhido)
-
-    # Escore operacional (o MESMO que definiu o limiar): método + régua.
-    # O TTF é o passo em que ESTE escore cruza ESTE limiar. Sem a régua
-    # (artefato antigo), cai para MSE.
-    from src.ml import escore_anomalia as ea
-
-    metodo_escore = info_limiar.get("metodo_escore", "mse")
-    estat_residuo = ea.carregar_estatistica(PASTA_AE)
-    normalizacao_baseline = carregar_normalizacao_baseline(PASTA_AE)
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    modelo = Autoencoder(n_features, latente_dim).to(device)
-    modelo.load_state_dict(checkpoint["state_dict"])
-    modelo.eval()
-    _log(f"   ✅ Limiar={limiar:.4f} | device={device} | "
-          f"escore={ea.descricao_metodo(metodo_escore, info_limiar.get('k_localizado', 5))}")
-
-    # ── 2. Holdout temporal isolado ───────────────────────────
-    _log(f"\n📂 Carregando dataset...")
-    janelas_holdout, meta_holdout = preparar_janelas_holdout()
-    n_janelas_originais = len(janelas_holdout)
-    janelas_holdout, erros_baseline, mascara_elegivel = selecionar_janelas_baseline_normais(
-        janelas_holdout, modelo, scaler, device, colunas_feat, limiar,
-        estat_residuo, metodo_escore, normalizacao_baseline,
-    )
-    n_excluidas = int((~mascara_elegivel).sum())
-    meta_holdout["filtro_baseline_ttf"] = {
-        "criterio": "erro_reconstrucao_baseline <= limiar",
-        "limiar": float(limiar),
-        "n_janelas_antes": n_janelas_originais,
-        "n_janelas_elegiveis": len(janelas_holdout),
-        "n_janelas_excluidas": n_excluidas,
-        "erros_baseline": [float(x) for x in erros_baseline],
-    }
-    if not janelas_holdout:
-        _log("   ❌ Nenhuma janela saudável ficou abaixo do limiar para gerar TTF")
-        return False
-    n_traj_real = min(N_TRAJ, len(janelas_holdout))
-    _log(f"   ✅ {n_janelas_originais} janelas não sobrepostas do teste")
-    _log(f"   ✅ {len(janelas_holdout)} elegíveis; {n_excluidas} excluídas por anomalia em t=0")
-    _log(f"   ✅ {n_traj_real} trajetórias por janela serão usadas; "
-         "independência temporal não é presumida")
-
-    # ── 3. Gera TTFs por tipo de falha ───────────────────────
-    _log(f"\n⚙️  Gerando trajetórias de degradação...")
-    ttfs_dict = {}
-    eventos_dict = {}
-
-    for idx_falha, falha in enumerate(FALHAS):
-        fid  = falha["id"]
-        nome = falha["nome"]
-        _log(f"\n   🔴 {nome} ({n_traj_real} trajetórias × {N_STEPS} passos)...")
-
-        ttfs = []
-        eventos = []
-        for i in range(n_traj_real):
-            janela_base = janelas_holdout[i]
-            a_det, detectou = gerar_a_det(
-                janela_base, modelo, scaler, device,
-                colunas_feat, limiar, fid, N_STEPS, seed=i,
-                estat_residuo=estat_residuo, metodo=metodo_escore,
-                normalizacao_baseline=normalizacao_baseline,
-            )
-            ttfs.append(a_det)
-            eventos.append(detectou)
-            if (i + 1) % 20 == 0:
-                _log(f"      [{i+1:>3}/{n_traj_real}] a_det médio até agora: "
-                      f"{np.mean(ttfs):.3f}", end="\r")
-
-        ttfs = np.array(ttfs, dtype=float)
-        eventos = np.asarray(eventos, dtype=bool)
-        ttfs_dict[fid] = ttfs
-        eventos_dict[fid] = eventos
-        d = classificar_desfechos(ttfs, eventos)
-        _log(f"\n      a_det: μ={ttfs.mean():.3f} ± {ttfs.std():.3f} | "
-              f"min={ttfs.min():.3f} | max={ttfs.max():.3f}")
-        _log(f"      POD_mon no teto (a_inj=1,0): {d['pod_mon_no_teto']:.1%} | "
-             f"indetectáveis no teto: {d['n_indetectaveis_no_teto']}/{d['n_traj']}")
-
-    # ── 4. Ajuste de Weibull ─────────────────────────────────
-    _log(f"\n📐 Ajustando distribuição de Weibull...")
-    params = {}
-    for falha in FALHAS:
-        fid = falha["id"]
-        p = ajustar_weibull(
-            ttfs_dict[fid], eventos_dict[fid], n_boot=N_BOOTSTRAP,
-            seed=42 + len(params),
-        )
-        params[fid] = p
-        npm_str = f"NPR={falha['npr']}"
-        _log(f"\n   {falha['nome']} ({npm_str})")
-        if p["fit_converged"]:
-            _log(f"      β={p['beta']:.3f}  η={p['eta']:.3f}  "
-                  f"média(a_det)={p['mttf']:.3f}  a10={p['b10']:.3f}")
-            _log(f"      Censura={p['censura_pct']:.0f}% | "
-                 f"R²(papel)={p['diagnostico_papel_weibull']['r2']:.3f} | "
-                 f"bootstrap={p['bootstrap_validos']}/{p['bootstrap_solicitados']}")
-        else:
-            _log(
-                f"      ⚠️ Weibull não estimável: {p['n_eventos']} eventos; "
-                f"mínimo configurado={MIN_EVENTOS_WEIBULL}. "
-                "Margem restrita por Kaplan-Meier será mantida."
-            )
-
-    # ── 5. Visualizações ─────────────────────────────────────
-    _log(f"\n📊 Gerando gráficos...")
-    plotar_ttf_histogramas(ttfs_dict, eventos_dict, params, PASTA_AE)
-    plotar_confiabilidade(ttfs_dict, eventos_dict, params, PASTA_AE)
-    plotar_distribuicao_weibull(ttfs_dict, eventos_dict, params, PASTA_AE)
-    plotar_rul(ttfs_dict, eventos_dict, params, PASTA_AE)
-
-    # ── 6. Salva resultados ──────────────────────────────────
-    # A montagem do artefato vive em src/ml/relatorio_weibull.py: este módulo
-    # ficou com a matemática, aquele com a serialização. Ver o docstring de lá.
-    from src.ml.relatorio_weibull import montar_relatorio
-
-    relatorio, linhas_weibull = montar_relatorio(
-        params=params, a_dets_dict=ttfs_dict, eventos_dict=eventos_dict,
-        falhas=FALHAS, meta_holdout=meta_holdout,
-        metadados_tempo=metadados_tempo_rul(), limiar=float(limiar),
-        n_traj_max=N_TRAJ, n_traj_real=n_traj_real, n_steps=N_STEPS,
-        a_det_unidade=A_DET_UNIDADE, ttf_unidade=TTF_UNIDADE,
-        tempo_fisico_calibrado=TEMPO_FISICO_CALIBRADO,
-        tempo_fisico_nota=TEMPO_FISICO_NOTA,
-        min_eventos_weibull=MIN_EVENTOS_WEIBULL,
-        max_censura_rul_pct=MAX_CENSURA_RUL_PCT,
-        min_r2_papel_weibull=MIN_R2_PAPEL_WEIBULL,
-        persistencia_cruzamento=PERSISTENCIA_CRUZAMENTO,
-        json_seguro=_json_seguro,
-    )
-
-    arq_json = PASTA_AE / "weibull_results.json"
-    with open(arq_json, "w", encoding="utf-8") as f:
-        json.dump(relatorio, f, indent=2, ensure_ascii=False)
-    _log(f"   ✅ {arq_json.name}")
-
-    arq_tabela = PASTA_AE / "weibull_tabela.csv"
-    pd.DataFrame(linhas_weibull).to_csv(arq_tabela, index=False)
-    _log(f"   📋 {arq_tabela.name}")
-    from scripts.relatorio_confiabilidade import main as gerar_relatorio
-    gerar_relatorio()
-
-    # ── 7. Resumo final ──────────────────────────────────────
-    _log(f"\n{'='*60}")
-    _log(f"  ANÁLISE DE DETECTABILIDADE WEIBULL E2 CONCLUÍDA!")
-    _log(f"\n  Valores em FRAÇÃO DA ASSINATURA NOMINAL (a_det), não em tempo.")
-    _log(f"\n  {'Falha':<28} {'β':>6} {'η':>7} {'média a':>8} {'a10':>8} {'POD@1,0':>8}")
-    _log(f"  {'-'*68}")
-    for falha in FALHAS:
-        fid = falha["id"]
-        p   = params[fid]
-        media = f"{p['media_a_det_parametrica']:>8.3f}" if p["resumo_parametrico_recomendado"] else f"{'--':>8}"
-        a10 = f"{p['a10_parametrico']:>8.3f}" if p["resumo_parametrico_recomendado"] else f"{'--':>8}"
-        _log(f"  {falha['nome']:<28} "
-              f"{p['beta']:>6.3f} {p['eta']:>7.3f} "
-              f"{media} {a10} "
-              f"{p['desfechos']['pod_mon_no_teto']:>7.1%}")
-
-    # A leitura do β só vale se o IC95 não cruzar 1 — quem decide isso é
-    # confiabilidade.classificar_forma, e a conclusão dela já vem no artefato.
-    _log(f"\n  Interpretação do β (válida só quando o IC95 não cruza 1):")
-    for falha in FALHAS:
-        p = params[falha["id"]]
-        interp = p.get("interpretacao") or {}
-        if interp.get("leitura"):
-            marca = "" if interp.get("conclusivo") else "⚠️  "
-            _log(f"  {marca}{falha['nome']}: {interp['leitura']}")
-    _log(f"\n  Fase 5 do pipeline de ML concluída!")
-    _log(f"  Relatório acadêmico e artefatos integrados atualizados.")
-    _log(f"{'='*60}")
-    return True
 
 
 # ============================================================

@@ -4,6 +4,8 @@ import csv
 import json
 
 from scripts.auditar_artefatos_resultados import (
+    FIGURAS,
+    construir_catalogo_figuras,
     construir_inventario,
     qualidade_estrutural,
     sha256_arquivo,
@@ -43,3 +45,19 @@ def test_inventario_atual_nao_tem_hash_divergente():
         item for item in inventario
         if item["hash_manifesto"] == "divergente"
     ]
+
+
+def test_catalogo_cobre_todas_as_figuras_canonicas_e_declara_eixos():
+    catalogo = construir_catalogo_figuras()
+    assert len(catalogo) == len(FIGURAS) == 25
+    assert all(item["gerador"] for item in catalogo)
+    assert all(item["eixo_x"] and item["eixo_y"] for item in catalogo)
+    assert sum(bool(item["eixo_temporal"]) for item in catalogo) == 3
+
+
+def test_saida_legada_gpvs_nao_colide_com_saida_canonica():
+    from src.ml.gpvs import PASTA_SAIDA as PASTA_LEGADA
+    from src.ml.validacao_gpvs_principal import PASTA_SAIDA as PASTA_CANONICA
+
+    assert PASTA_LEGADA != PASTA_CANONICA
+    assert PASTA_LEGADA.parent == PASTA_CANONICA
