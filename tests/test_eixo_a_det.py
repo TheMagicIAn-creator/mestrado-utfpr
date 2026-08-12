@@ -83,6 +83,22 @@ def test_weibull_recupera_parametros_na_escala_da_magnitude():
     assert r["eta"] == pytest.approx(eta_v, rel=0.20)
 
 
+def test_ajuste_declara_censura_intervalar_na_grade():
+    rng = np.random.default_rng(31)
+    passo = 1.0 / (N_STEPS - 1)
+    amostra_continua = 0.35 * rng.weibull(3.0, 300)
+    a = np.clip(np.ceil(amostra_continua / passo) * passo, passo, 1.0)
+    r = ajustar_weibull(
+        a, np.ones(len(a), dtype=bool), n_boot=0, passo_grade=passo
+    )
+
+    assert r["fit_method"] == "mle_interval_censored_grid_right_censored"
+    assert r["event_observation"] == "interval_censored_on_a_det_grid"
+    assert r["a_det_grid_step"] == pytest.approx(passo)
+    assert r["n_niveis_distintos"] == len(np.unique(a))
+    assert r["taxa_empates"] == pytest.approx(1 - len(np.unique(a)) / len(a))
+
+
 def test_marcos_ficam_dentro_da_faixa_de_magnitude():
     rng = np.random.default_rng(4)
     a = np.clip(0.35 * rng.weibull(3.0, 200), 1e-4, 1.0)

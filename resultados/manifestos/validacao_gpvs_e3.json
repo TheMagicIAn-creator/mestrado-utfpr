@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "stage": "validacao_gpvs_e3",
-  "created_at": "2026-08-09T23:51:52.340149-03:00",
-  "git_commit": "c2f21e8bdcecfeaa8c1a7c7c83151099e1c8b43d",
+  "created_at": "2026-08-12T07:35:08.602379-03:00",
+  "git_commit": "9e8c7fe69947128acf7dfcacabb8cc2bdbd1f8ff",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
@@ -71,11 +71,11 @@
     "resultados/gpvs/gpvs_macro_comparacao.png"
   ],
   "output_artifacts": {
-    "resultados/gpvs/validacao_gpvs_e3.json": "934320c3be42c5f5aeacab13fa60496434b556f5d3b0ed9d70b710e07a02487b",
+    "resultados/gpvs/validacao_gpvs_e3.json": "b67caee3bca0d897cf95a9e4896c8abafd05d24ab73ad5d813003efc89aa298a",
     "resultados/gpvs/validacao_gpvs_cenarios.csv": "5e21f42167bc47fed858cc8529b721f2a1c3d1b28fa6b938c887f0b6f34acf79",
     "resultados/gpvs/validacao_gpvs_cenarios.md": "a273bcdcba1120b56def647a838cc581eb437fe19f01cd6e3d66bc4bae98315b",
     "resultados/gpvs/validacao_gpvs_scores.csv": "4a8bc37f93eaa4aa88beeb2ad82d0007cf740e9d2075528b01c9ae720cb6a9db",
-    "resultados/gpvs/relatorio_validacao_gpvs.md": "95af0634224814eeeafd6c0cacc103a9b7c4e8f57e0dbc35cf74f5fcfebbb3b4",
+    "resultados/gpvs/relatorio_validacao_gpvs.md": "9567890759a3a41a659c47887f4c346838f3b0cd8fe017130f089fa185343011",
     "resultados/gpvs/gpvs_series_temporais.png": "c375033f758589e99bb6bf4c82ff3554b6d9fa64559a6233900502669e1d97cf",
     "resultados/gpvs/gpvs_metricas_por_cenario.png": "6c9cd306cc8cc5cdc1439734329525b5f95d20541493a38f0d0d308ec729e735",
     "resultados/gpvs/gpvs_transferencia_estrita.png": "546b4e0b5dc223c7bde325f63e6cbad6f46a7e4bd4fc8696c8a7f6d0c221018e",

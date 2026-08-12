@@ -8,18 +8,18 @@
 
 | Parâmetro | Valor | IC95 |
 |---|--:|---|
-| forma β | 5.335 | [4.80; 6.17] |
-| escala η | 0.46 | [0.44; 0.48] |
+| forma β | 5.287 | [4.75; 6.12] |
+| escala η | 0.46 | [0.44; 0.47] |
 
-Triagem no papel de Weibull: **R²pp = 0.925**. Síntese paramétrica recomendada somente no escopo E2.
+Triagem no papel de Weibull: **R²pp = 0.911**. Síntese paramétrica recomendada somente no escopo E2.
 
 | Marco | Magnitude de injeção | R nesse ponto |
 |---|--:|--:|
 | a01 (1% detectado) | 0.19 | 0.990 |
 | a10 (10% detectado) | 0.30 | 0.900 |
-| a50 (mediana) | 0.43 | 0.500 |
+| a50 (mediana) | 0.42 | 0.500 |
 | η (escala característica) | 0.46 | 0.368 |
-| média paramétrica de a_det | 0.42 | 0.524 |
+| média paramétrica de a_det | 0.42 | 0.523 |
 
 **Leitura de β.** a intensidade parametrica do primeiro cruzamento aumenta com a magnitude injetada. Como o eixo nao e idade, isso NAO significa desgaste nem autoriza intervalo de manutencao
 
@@ -31,10 +31,10 @@ Triagem no papel de Weibull: **R²pp = 0.925**. Síntese paramétrica recomendad
 
 | Parâmetro | Valor | IC95 |
 |---|--:|---|
-| forma β | 4.379 | [3.73; 5.27] |
-| escala η | 0.36 | [0.35; 0.38] |
+| forma β | 4.316 | [3.67; 5.20] |
+| escala η | 0.36 | [0.34; 0.37] |
 
-Triagem no papel de Weibull: **R²pp = 0.868**. Síntese paramétrica não recomendada; os marcos abaixo são omitidos.
+Triagem no papel de Weibull: **R²pp = 0.790**. Síntese paramétrica não recomendada; os marcos abaixo são omitidos.
 
 > Margem restrita KM no início: **0.33**. É descritiva no domínio observado e não é RUL.
 
@@ -42,10 +42,10 @@ Triagem no papel de Weibull: **R²pp = 0.868**. Síntese paramétrica não recom
 
 | Parâmetro | Valor | IC95 |
 |---|--:|---|
-| forma β | 4.322 | [3.73; 6.80] |
-| escala η | 0.04 | [0.04; 0.05] |
+| forma β | 4.115 | [3.50; 6.83] |
+| escala η | 0.04 | [0.04; 0.04] |
 
-Triagem no papel de Weibull: **R²pp = 0.568**. Síntese paramétrica não recomendada; os marcos abaixo são omitidos.
+Triagem no papel de Weibull: **R²pp = 0.455**. Síntese paramétrica não recomendada; os marcos abaixo são omitidos.
 
 > Margem restrita KM no início: **0.04**. É descritiva no domínio observado e não é RUL.
 

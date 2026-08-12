@@ -2,23 +2,23 @@
   "evidence_level": "E2",
   "confiabilidade": {
     "contator_ac": {
-      "beta": 5.335216778162433,
-      "eta": 0.4594839838040017,
+      "beta": 5.287040571330139,
+      "eta": 0.4551852869683017,
       "marcos": {
-        "q01": 0.19400435284529188,
-        "q10": 0.30136108591590993,
-        "q50": 0.42897865948846725,
-        "media": 0.4234615350425694,
-        "b1": 0.19400435284529188,
-        "b10": 0.30136108591590993,
-        "vida_mediana": 0.42897865948846725,
-        "mttf": 0.4234615350425694,
-        "eta": 0.4594839838040017,
+        "q01": 0.1906852908764637,
+        "q10": 0.29739647785831874,
+        "q50": 0.42469942028286867,
+        "media": 0.4192821045177263,
+        "b1": 0.1906852908764637,
+        "b10": 0.29739647785831874,
+        "vida_mediana": 0.42469942028286867,
+        "mttf": 0.4192821045177263,
+        "eta": 0.4551852869683017,
         "R_em_eta": 0.36787944117144233,
         "nota_eta": "eta e a escala caracteristica: R(eta) = exp(-1) aprox. 0,368 para qualquer beta; 63,2% dos eventos modelados ja ocorreram"
       },
       "interpretacao": {
-        "beta": 5.335216778162433,
+        "beta": 5.287040571330139,
         "regime": "intensidade_deteccao_crescente",
         "leitura": "a intensidade parametrica do primeiro cruzamento aumenta com a magnitude injetada. Como o eixo nao e idade, isso NAO significa desgaste nem autoriza intervalo de manutencao",
         "conclusivo": true,
@@ -28,32 +28,36 @@
       "R_em_marcos": {
         "0.2": 0.99,
         "0.3": 0.9,
-        "0.4": 0.5000000000000001,
+        "0.4": 0.5000000000000002,
         "0.5": 0.36787944117144233
       },
       "horizonte_observado": 0.6302521008403361
     },
     "igbt": {
-      "beta": 4.378856894264672,
-      "eta": 0.3626340880668445,
+      "beta": 4.316380282541768,
+      "eta": 0.3582604384614912,
       "diagnostico": {
-        "n_pontos": 100,
-        "r2": 0.8684484839961358,
-        "rmse": 0.44909717843282104,
-        "metodo_posicoes": "NIST/SEMATECH e-Handbook, secao 8.2.1.5: Kaplan-Meier modificado"
+        "n_pontos": 34,
+        "n_eventos": 100,
+        "n_niveis_distintos": 34,
+        "r2": 0.7904851695821073,
+        "rmse": 0.6624866917930364,
+        "metodo_posicoes": "NIST/SEMATECH e-Handbook, secao 8.2.1.5: Kaplan-Meier modificado; empates agrupados pela media das posicoes"
       },
       "sintese_parametrica_recomendada": false,
       "margem_restrita_inicial": 0.3298319327731093,
       "horizonte_observado": 0.46218487394957986
     },
     "fusivel_ac": {
-      "beta": 4.321567063077193,
-      "eta": 0.04355674850336042,
+      "beta": 4.1145917548872095,
+      "eta": 0.03917763439914501,
       "diagnostico": {
-        "n_pontos": 100,
-        "r2": 0.5684362027620624,
-        "rmse": 0.8134201016791576,
-        "metodo_posicoes": "NIST/SEMATECH e-Handbook, secao 8.2.1.5: Kaplan-Meier modificado"
+        "n_pontos": 6,
+        "n_eventos": 100,
+        "n_niveis_distintos": 6,
+        "r2": 0.454873475207605,
+        "rmse": 0.7343025794456862,
+        "metodo_posicoes": "NIST/SEMATECH e-Handbook, secao 8.2.1.5: Kaplan-Meier modificado; empates agrupados pela media das posicoes"
       },
       "sintese_parametrica_recomendada": false,
       "margem_restrita_inicial": 0.04016806722689076,
