@@ -6,8 +6,8 @@ POR QUE ESTE TESTE EXISTE
 Em 06/08/2026 o commit `e5518db`, um **`vault backup` automático** do plugin
 Obsidian Git, deletou 24 arquivos de `resultados/autoencoder/` — entre eles
 `limiar.json`, `validacao_report.json`, `weibull_results.json` e
-`weibull_confiabilidade.png`, que é justamente a figura com as curvas R(t) e
-h(t) que o pesquisador relatou "não ter visto".
+`weibull_confiabilidade.png`, que é justamente a figura com a sobrevivência
+empírica do detector que o pesquisador relatou "não ter visto".
 
 Não foi caso isolado: pelo menos cinco commits `vault backup` tocaram
 `resultados/`. A causa é o plugin estar commitando o repositório inteiro em vez
@@ -47,6 +47,9 @@ ARTEFATOS_ESSENCIAIS = [
     "resultados/autoencoder/weibull_tabela.csv",
     # a figura que motivou esta guarda
     "resultados/autoencoder/weibull_confiabilidade.png",
+    "resultados/autoencoder/weibull_intensidade_deteccao.png",
+    "resultados/autoencoder/weibull_funcoes_distribuicao.png",
+    "resultados/autoencoder/weibull_distribuicao.png",
 ]
 
 
@@ -68,12 +71,18 @@ def test_artefato_essencial_nao_esta_vazio(relativo):
 
 
 def test_curva_de_confiabilidade_esta_publicada():
-    """A figura com R(t) e h(t) é a evidência interpretativa do capítulo de RUL.
+    """As funções do detector ficam publicadas sem alegação física indevida.
 
     Foi a que o pesquisador reportou não ter visto, e a que o backup apagou.
     """
-    png = RAIZ_PROJETO / "resultados/autoencoder/weibull_confiabilidade.png"
-    assert png.exists() and png.stat().st_size > 10_000, (
-        "weibull_confiabilidade.png ausente ou truncada — sem ela não há curva "
-        "de confiabilidade nem de taxa de falha para mostrar"
+    nomes = (
+        "weibull_confiabilidade.png",
+        "weibull_intensidade_deteccao.png",
+        "weibull_funcoes_distribuicao.png",
+        "weibull_distribuicao.png",
     )
+    for nome in nomes:
+        png = RAIZ_PROJETO / "resultados/autoencoder" / nome
+        assert png.exists() and png.stat().st_size > 10_000, (
+            f"{nome} ausente ou truncada — a evidência Weibull ficou incompleta"
+        )

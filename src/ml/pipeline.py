@@ -289,6 +289,8 @@ STAGES: dict[str, PipelineStage] = {
         artifacts=(
             "resultados/autoencoder/weibull_ttf.png",
             "resultados/autoencoder/weibull_confiabilidade.png",
+            "resultados/autoencoder/weibull_intensidade_deteccao.png",
+            "resultados/autoencoder/weibull_funcoes_distribuicao.png",
             "resultados/autoencoder/weibull_distribuicao.png",
             "resultados/autoencoder/weibull_rul.png",
             "resultados/autoencoder/weibull_sensibilidade_grade.png",

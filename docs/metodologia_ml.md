@@ -122,6 +122,13 @@ objetos não são probabilidade de falha, confiabilidade, taxa de falha, MTTF ou
 RUL físico. Tais inferências exigiriam várias unidades, exposição temporal,
 falhas e censuras observadas.
 
+As evidências visuais são publicadas separadamente: o papel de probabilidade
+(`weibull_distribuicao.png`) verifica linearidade; PDF/CDF empíricas e
+paramétricas ficam em `weibull_funcoes_distribuicao.png`; sobrevivência do
+detector e intensidade paramétrica ficam, respectivamente, em
+`weibull_confiabilidade.png` e `weibull_intensidade_deteccao.png`. Essa
+separação impede interpretar marcas amostrais como uma taxa física observada.
+
 ## 9. Proveniência e publicação
 
 Cada etapa possui manifesto v2 com hash LF-normalizado do código, dependências

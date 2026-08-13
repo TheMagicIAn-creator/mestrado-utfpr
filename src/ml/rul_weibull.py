@@ -961,6 +961,7 @@ margem_condicional_weibull = rul_condicional
 
 _EXPORTACOES_TARDIAS = (("src.ml.graficos_rul", (
     "plotar_ttf_histogramas", "plotar_confiabilidade",
+    "plotar_intensidade_deteccao", "plotar_funcoes_distribuicao_weibull",
     "plotar_distribuicao_weibull", "plotar_rul",
     "plotar_sensibilidade_grade", "plotar_modos_operacao",
 )),)

@@ -51,6 +51,8 @@ PNGS_OBRIGATORIOS = (
     "validacao_metricas.png",
     "weibull_ttf.png",
     "weibull_confiabilidade.png",
+    "weibull_intensidade_deteccao.png",
+    "weibull_funcoes_distribuicao.png",
     "weibull_distribuicao.png",
     "weibull_rul.png",
     "weibull_sensibilidade_grade.png",

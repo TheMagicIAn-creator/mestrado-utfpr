@@ -23,6 +23,7 @@ from src.ml.confiabilidade import (
     densidade,
     diagnostico_papel_weibull,
     eixos_papel_weibull,
+    intensidade_weibull,
     marcos,
     mediana_de_posto,
     posicoes_probabilidade_censuradas,
@@ -55,6 +56,17 @@ def test_taxa_de_falha_e_densidade_sobre_confiabilidade(beta):
     np.testing.assert_allclose(taxa_falha(t, beta, eta),
                                densidade(t, beta, eta) / confiabilidade(t, beta, eta),
                                rtol=1e-10)
+
+
+@pytest.mark.parametrize("beta", FORMAS)
+def test_intensidade_canonica_preserva_alias_legado(beta):
+    eixo = np.linspace(0.01, 1.0, 50)
+    np.testing.assert_allclose(
+        intensidade_weibull(eixo, beta, 0.4),
+        taxa_falha(eixo, beta, 0.4),
+        rtol=0.0,
+        atol=0.0,
+    )
 
 
 @pytest.mark.parametrize("beta", FORMAS)
