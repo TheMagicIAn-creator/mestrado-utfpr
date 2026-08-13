@@ -83,9 +83,11 @@ correspondência com a fonte externa. A separação é de escrita, não de símb
   toda não detecção é do segundo tipo; tratá-la como censura no MLE pressupõe
   que a falha real possa ter assinatura maior que a nominal — hipótese
   declarada no campo `desfechos` do artefato, não suposição tácita.
-- **Teste KS (Kolmogorov–Smirnov)**: teste de aderência entre os `a_det`
-  simulados e a Weibull ajustada. p ≤ 0,05 → ajuste REJEITADO → MTTF/B10
-  indicativos, não conclusivos (campo `ajuste_weibull_adequado`).
+- **Bootstrap de aderência quantizado**: teste paramétrico que simula a Weibull
+  ajustada, reaplica a quantização da grade de `a_det` e compara a discrepância
+  observada com a distribuição bootstrap. `p <= 0,05` rejeita a Weibull 2P para
+  síntese. O `R²pp` do papel Weibull é apenas diagnóstico visual, não substitui
+  esse teste. Na execução canônica global, `p=0,004` para os três componentes.
 - **RUL** (Remaining Useful Life): vida útil remanescente. No eixo `a_det` a
   grandeza calculada é a **margem de magnitude até detectar** —
   `E[a_det − a | a_det > a]` —, não vida em tempo; o nome RUL é mantido porque

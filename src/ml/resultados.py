@@ -368,10 +368,12 @@ def imagens_relevantes(pergunta: str = "") -> list[dict]:
     if "weibull" in focos:
         _add_img(imagens, "weibull_ttf.png", "Weibull - primeiro cruzamento do detector", grupo="Weibull / detectabilidade E2", ordem=10, ordem_grupo=40)
         _add_img(imagens, "weibull_confiabilidade.png", "Weibull - curva de nao deteccao", grupo="Weibull / detectabilidade E2", ordem=20, ordem_grupo=40)
-        _add_img(imagens, "weibull_distribuicao.png", "Weibull - densidade, acumulada e papel de probabilidade", grupo="Weibull / detectabilidade E2", ordem=30, ordem_grupo=40)
-        _add_img(imagens, "weibull_rul.png", "Weibull - margem residual de magnitude", grupo="Weibull / detectabilidade E2", ordem=40, ordem_grupo=40)
-        _add_img(imagens, "weibull_sensibilidade_grade.png", "Detectabilidade - sensibilidade a resolucao da grade", grupo="Weibull / detectabilidade E2", ordem=50, ordem_grupo=40)
-        _add_img(imagens, "weibull_modos_operacao.png", "Detectabilidade - estratificacao GPVS F0L e F0M", grupo="Weibull / detectabilidade E2", ordem=60, ordem_grupo=40)
+        _add_img(imagens, "weibull_intensidade_deteccao.png", "Weibull - intensidade de primeiro cruzamento (nao taxa de falha fisica)", grupo="Weibull / detectabilidade E2", ordem=30, ordem_grupo=40)
+        _add_img(imagens, "weibull_funcoes_distribuicao.png", "Weibull - densidade e distribuicao acumulada", grupo="Weibull / detectabilidade E2", ordem=40, ordem_grupo=40)
+        _add_img(imagens, "weibull_distribuicao.png", "Weibull - papel de probabilidade e diagnostico de linearidade", grupo="Weibull / detectabilidade E2", ordem=50, ordem_grupo=40)
+        _add_img(imagens, "weibull_rul.png", "Weibull - margem residual de magnitude", grupo="Weibull / detectabilidade E2", ordem=60, ordem_grupo=40)
+        _add_img(imagens, "weibull_sensibilidade_grade.png", "Detectabilidade - sensibilidade a resolucao da grade", grupo="Weibull / detectabilidade E2", ordem=70, ordem_grupo=40)
+        _add_img(imagens, "weibull_modos_operacao.png", "Detectabilidade - estratificacao GPVS F0L e F0M", grupo="Weibull / detectabilidade E2", ordem=80, ordem_grupo=40)
     if "gpvs" in focos:
         _add_img(
             imagens, "gpvs_macro_comparacao.png",

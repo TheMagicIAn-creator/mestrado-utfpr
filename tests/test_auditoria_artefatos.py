@@ -49,7 +49,7 @@ def test_inventario_atual_nao_tem_hash_divergente():
 
 def test_catalogo_cobre_todas_as_figuras_canonicas_e_declara_eixos():
     catalogo = construir_catalogo_figuras()
-    assert len(catalogo) == len(FIGURAS) == 25
+    assert len(catalogo) == len(FIGURAS) == 27
     assert all(item["gerador"] for item in catalogo)
     assert all(item["eixo_x"] and item["eixo_y"] for item in catalogo)
     assert sum(bool(item["eixo_temporal"]) for item in catalogo) == 3

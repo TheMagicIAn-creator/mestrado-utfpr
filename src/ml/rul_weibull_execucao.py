@@ -50,6 +50,8 @@ def executar_rul_weibull() -> bool:
     from src.ml.graficos_rul import (
         plotar_confiabilidade,
         plotar_distribuicao_weibull,
+        plotar_funcoes_distribuicao_weibull,
+        plotar_intensidade_deteccao,
         plotar_modos_operacao,
         plotar_rul,
         plotar_sensibilidade_grade,
@@ -341,6 +343,10 @@ def executar_rul_weibull() -> bool:
     _log(f"\n📊 Gerando gráficos...")
     plotar_ttf_histogramas(ttfs_dict, eventos_dict, params, PASTA_AE)
     plotar_confiabilidade(ttfs_dict, eventos_dict, params, PASTA_AE)
+    plotar_intensidade_deteccao(ttfs_dict, eventos_dict, params, PASTA_AE)
+    plotar_funcoes_distribuicao_weibull(
+        ttfs_dict, eventos_dict, params, PASTA_AE
+    )
     plotar_distribuicao_weibull(ttfs_dict, eventos_dict, params, PASTA_AE)
     plotar_rul(ttfs_dict, eventos_dict, params, PASTA_AE)
     plotar_sensibilidade_grade(resultados_grade, PASTA_AE)
@@ -412,10 +418,12 @@ def executar_rul_weibull() -> bool:
 
 
 def regenerar_graficos_weibull(pasta: Path = PASTA_AE) -> dict:
-    """Regenera as seis figuras a partir dos artefatos tabulares versionados."""
+    """Regenera as oito figuras a partir dos artefatos tabulares versionados."""
     from src.ml.graficos_rul import (
         plotar_confiabilidade,
         plotar_distribuicao_weibull,
+        plotar_funcoes_distribuicao_weibull,
+        plotar_intensidade_deteccao,
         plotar_modos_operacao,
         plotar_rul,
         plotar_sensibilidade_grade,
@@ -461,6 +469,8 @@ def regenerar_graficos_weibull(pasta: Path = PASTA_AE) -> dict:
     )
     plotar_ttf_histogramas(a_dets, eventos, params, pasta)
     plotar_confiabilidade(a_dets, eventos, params, pasta)
+    plotar_intensidade_deteccao(a_dets, eventos, params, pasta)
+    plotar_funcoes_distribuicao_weibull(a_dets, eventos, params, pasta)
     plotar_distribuicao_weibull(a_dets, eventos, params, pasta)
     plotar_rul(a_dets, eventos, params, pasta)
     plotar_sensibilidade_grade(resultados_grade, pasta)
@@ -469,6 +479,8 @@ def regenerar_graficos_weibull(pasta: Path = PASTA_AE) -> dict:
         "ok": True,
         "outputs": [str(pasta / nome) for nome in (
             "weibull_ttf.png", "weibull_confiabilidade.png",
+            "weibull_intensidade_deteccao.png",
+            "weibull_funcoes_distribuicao.png",
             "weibull_distribuicao.png", "weibull_rul.png",
             "weibull_sensibilidade_grade.png",
             "weibull_modos_operacao.png",

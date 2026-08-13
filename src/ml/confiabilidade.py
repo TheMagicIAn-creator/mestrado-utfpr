@@ -3,11 +3,17 @@ confiabilidade.py — Al IAdo PV
 
 As funções fechadas da distribuição de Weibull de 2 parâmetros, como **número**.
 
+As fórmulas são definidas para um eixo genérico ``x >= 0``. Nomes físicos como
+``taxa de falha`` e ``vida`` só são válidos quando ``x`` é tempo de operação.
+No experimento E2 deste projeto, ``x = a_det`` é magnitude de detecção; portanto
+``h_D(a)`` é intensidade de primeiro cruzamento do detector, não taxa de falha
+do componente.
+
 POR QUE ESTE MÓDULO EXISTE
 ==========================
-`R(t)` e `h(t)` já eram calculadas — mas **dentro do código de plotagem**
+`S(x)` e `h(x)` já eram calculadas — mas **dentro do código de plotagem**
 (`graficos_rul.py`), inline, e o resultado ia só para o PNG. Consequência: o
-agente não conseguia responder "qual a confiabilidade em t = 40?" com número, a
+agente não conseguia responder o valor de uma função em um ponto com número, a
 dissertação não tinha valor para tabelar, e a banca não tinha o que conferir.
 Era o que o pesquisador chamou de "muito resultado e pouca margem
 interpretativa".
@@ -17,25 +23,25 @@ daqui em vez de recalcular — fonte única.
 
 AS FUNÇÕES, E O QUE CADA UMA RESPONDE
 =====================================
-Com forma ``β`` (beta) e escala ``η`` (eta), para ``t > 0``:
+Com forma ``β`` (beta) e escala ``η`` (eta), para ``x > 0``:
 
-    f(t) = (β/η)·(t/η)^(β−1)·exp(−(t/η)^β)     densidade
-    F(t) = 1 − exp(−(t/η)^β)                    probabilidade de já ter falhado
-    R(t) = exp(−(t/η)^β)                        probabilidade de sobreviver
-    h(t) = (β/η)·(t/η)^(β−1)                    taxa de falha INSTANTÂNEA
-    H(t) = (t/η)^β                              taxa acumulada, = −ln R(t)
-    B_p  = η·(−ln(1−p))^(1/β)                   quantil: idade em que p% falhou
-    MTTF = η·Γ(1 + 1/β)                         vida média
+    f(x) = (β/η)·(x/η)^(β−1)·exp(−(x/η)^β)     densidade
+    F(x) = 1 − exp(−(x/η)^β)                    distribuição acumulada
+    S(x) = exp(−(x/η)^β)                        função de sobrevivência
+    h(x) = (β/η)·(x/η)^(β−1)                    intensidade instantânea
+    H(x) = (x/η)^β                              intensidade acumulada, = −ln S(x)
+    Q_p  = η·(−ln(1−p))^(1/β)                   quantil de ordem p
+    E[X] = η·Γ(1 + 1/β)                         média
 
-A leitura de engenharia está em ``h(t)``, não em ``MTTF``:
+A leitura física abaixo só se aplica quando ``x=t`` é tempo de operação:
 
     β < 1  →  h decrescente  →  mortalidade infantil; trocar não ajuda
     β = 1  →  h constante    →  falha aleatória; manutenção preventiva é inútil
     β > 1  →  h crescente    →  desgaste; existe intervalo ótimo de troca
 
-**Mas essa leitura só se sustenta se o IC de β não cruzar 1.** Se cruzar, a
-afirmação honesta é "não se distingue de taxa constante" — ver
-``classificar_forma``.
+Além de exigir eixo temporal, essa leitura só se sustenta se o IC de β não
+cruzar 1. Em ``a_det`` nenhuma dessas três interpretações físicas é autorizada;
+ver ``classificar_forma(..., eixo_tempo=False)``.
 
 UNIDADE
 =======
@@ -105,7 +111,7 @@ def acumulada(t, beta: float, eta: float) -> np.ndarray:
 
 
 def densidade(t, beta: float, eta: float) -> np.ndarray:
-    """``f(t)`` — densidade de probabilidade. É a "distribuição de Weibull".
+    """``f(x)`` — densidade da distribuição de Weibull.
 
     Em ``t = 0`` a densidade diverge para β < 1, vale ``1/η`` para β = 1 e vale
     0 para β > 1 — o que dá à família as formas características.
@@ -117,17 +123,27 @@ def densidade(t, beta: float, eta: float) -> np.ndarray:
     return np.where(np.isfinite(dens), dens, np.inf)
 
 
-def taxa_falha(t, beta: float, eta: float) -> np.ndarray:
-    """``h(t) = f(t)/R(t) = (β/η)·(t/η)^(β−1)`` — taxa de falha instantânea.
+def intensidade_weibull(t, beta: float, eta: float) -> np.ndarray:
+    """``h(x)=f(x)/S(x)`` — intensidade instantânea da Weibull.
 
-    É a grandeza que decide manutenção, e a que o MTTF esconde. Note que ela
-    NÃO é probabilidade: é taxa, e pode passar de 1.
+    Não é probabilidade e pode superar 1. Sua interpretação depende da unidade
+    do eixo: para tempo de operação pode ser taxa de falha; para ``a_det`` é a
+    intensidade paramétrica do primeiro cruzamento por unidade de magnitude.
     """
     b, e = _validar(beta, eta)
     v = _t(t)
     with np.errstate(divide="ignore", invalid="ignore"):
         h = (b / e) * (v / e) ** (b - 1.0)
     return np.where(np.isfinite(h), h, np.inf)
+
+
+def taxa_falha(t, beta: float, eta: float) -> np.ndarray:
+    """Alias legado de :func:`intensidade_weibull`.
+
+    O nome só deve aparecer em aplicações cujo eixo seja tempo físico. Ele é
+    mantido para compatibilidade com relatórios e chamadas históricas.
+    """
+    return intensidade_weibull(t, beta, eta)
 
 
 def taxa_acumulada(t, beta: float, eta: float) -> np.ndarray:
@@ -266,7 +282,7 @@ def curvas(beta: float, eta: float, t_max: float, n: int = 200) -> dict:
         "R": confiabilidade(t, beta, eta).tolist(),
         "F": acumulada(t, beta, eta).tolist(),
         "f": densidade(t, beta, eta).tolist(),
-        "h": taxa_falha(t, beta, eta).tolist(),
+        "h": intensidade_weibull(t, beta, eta).tolist(),
         "H": taxa_acumulada(t, beta, eta).tolist(),
         "n_pontos": int(n),
         "fonte": FONTE_FORMULAS,

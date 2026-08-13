@@ -4,6 +4,12 @@ Data: 09/08/2026
 Escopo: `rul_weibull.py`, funções matemáticas, gráficos, relatórios, artefatos,
 proveniência e respostas do ALIAdo.
 
+> **Registro histórico.** Os números da seção "Resultado após reexecução
+> controlada" pertencem à campanha anterior baseada no Paderborn e não são os
+> resultados canônicos atuais. Desde 12/08/2026, o eixo principal usa somente
+> GPVS-Faults; a auditoria vigente está em
+> `docs/auditoria_figuras_weibull_2026-08-13.md`.
+
 ## Conclusão executiva
 
 A etapa não mede tempo até falha. Ela varre uma assinatura sintética de falha

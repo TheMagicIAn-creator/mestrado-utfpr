@@ -335,6 +335,78 @@ def test_grafico_usa_uma_barra_por_magnitude_da_grade(tmp_path, monkeypatch):
     plt.close(figuras[0])
 
 
+def test_figuras_weibull_separam_funcoes_e_papel_probabilidade(
+    tmp_path, monkeypatch
+):
+    import matplotlib.pyplot as plt
+
+    from src.ml import graficos_rul
+
+    rng = np.random.default_rng(88)
+    amostra = np.clip(0.42 * rng.weibull(3.0, 120), 0.01, 0.95)
+    passo = 1.0 / (N_STEPS - 1)
+    a = np.ceil(amostra / passo) * passo
+    eventos = np.ones(len(a), dtype=bool)
+    parametros = ajustar_weibull(
+        a, eventos, n_boot=0, n_boot_aderencia=0, passo_grade=passo
+    )
+    a_por_falha = {falha["id"]: a for falha in graficos_rul.FALHAS}
+    eventos_por_falha = {
+        falha["id"]: eventos for falha in graficos_rul.FALHAS
+    }
+    parametros_por_falha = {
+        falha["id"]: parametros for falha in graficos_rul.FALHAS
+    }
+    figuras = {}
+
+    def capturar(fig, caminho, nota):
+        figuras[caminho.name] = (fig, nota)
+
+    monkeypatch.setattr(graficos_rul, "salvar_figura", capturar)
+    monkeypatch.setattr(graficos_rul, "_log", lambda _mensagem: None)
+
+    graficos_rul.plotar_confiabilidade(
+        a_por_falha, eventos_por_falha, parametros_por_falha, tmp_path
+    )
+    graficos_rul.plotar_intensidade_deteccao(
+        a_por_falha, eventos_por_falha, parametros_por_falha, tmp_path
+    )
+    graficos_rul.plotar_funcoes_distribuicao_weibull(
+        a_por_falha, eventos_por_falha, parametros_por_falha, tmp_path
+    )
+    graficos_rul.plotar_distribuicao_weibull(
+        a_por_falha, eventos_por_falha, parametros_por_falha, tmp_path
+    )
+
+    assert set(figuras) == {
+        "weibull_confiabilidade.png",
+        "weibull_intensidade_deteccao.png",
+        "weibull_funcoes_distribuicao.png",
+        "weibull_distribuicao.png",
+    }
+    assert len(figuras["weibull_confiabilidade.png"][0].axes) == 3
+    assert len(figuras["weibull_intensidade_deteccao.png"][0].axes) == 3
+    assert len(figuras["weibull_funcoes_distribuicao.png"][0].axes) == 6
+    assert len(figuras["weibull_distribuicao.png"][0].axes) == 3
+
+    intensidade, nota_intensidade = figuras[
+        "weibull_intensidade_deteccao.png"
+    ]
+    assert all(not eixo.collections for eixo in intensidade.axes)
+    assert "Não há pontos empíricos de taxa" in nota_intensidade
+
+    funcoes = figuras["weibull_funcoes_distribuicao.png"][0]
+    assert all(not eixo.collections for eixo in funcoes.axes[:3])
+
+    papel = figuras["weibull_distribuicao.png"][0]
+    assert all(eixo.collections for eixo in papel.axes)
+    assert all(eixo.lines for eixo in papel.axes)
+    assert all("ln" in eixo.get_xlabel() for eixo in papel.axes)
+
+    for figura, _nota in figuras.values():
+        plt.close(figura)
+
+
 def test_rotulos_visuais_nao_reintroduzem_eixo_temporal():
     import ast
     import inspect

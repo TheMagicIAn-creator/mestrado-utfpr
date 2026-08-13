@@ -93,13 +93,24 @@ FIGURAS = {
         False, "canônica",
     ),
     "resultados/autoencoder/weibull_confiabilidade.png": (
-        "Sobrevivência e intensidade de detecção", "GPVS F0 + injeção FMECA",
+        "Sobrevivência empírica do detector", "GPVS F0 + injeção FMECA",
         "E2", "src.ml.graficos_rul", "magnitude a_det",
-        "S_D(a) / h_D(a)", False, "canônica",
+        "S_D(a)", False, "canônica",
+    ),
+    "resultados/autoencoder/weibull_intensidade_deteccao.png": (
+        "Intensidade paramétrica do primeiro cruzamento",
+        "GPVS F0 + injeção FMECA", "E2", "src.ml.graficos_rul",
+        "magnitude a_det", "h_D(a), não taxa de falha física",
+        False, "canônica",
+    ),
+    "resultados/autoencoder/weibull_funcoes_distribuicao.png": (
+        "Funções da magnitude de detecção", "GPVS F0 + injeção FMECA",
+        "E2", "src.ml.graficos_rul", "magnitude a_det",
+        "densidade / CDF", False, "canônica",
     ),
     "resultados/autoencoder/weibull_distribuicao.png": (
-        "Distribuição do primeiro cruzamento", "GPVS F0 + injeção FMECA", "E2",
-        "src.ml.graficos_rul", "magnitude a_det", "densidade / CDF / papel",
+        "Papel de probabilidade Weibull", "GPVS F0 + injeção FMECA", "E2",
+        "src.ml.graficos_rul", "ln(a_det)", "ln[-ln(1-F_D)]",
         False, "canônica",
     ),
     "resultados/autoencoder/weibull_rul.png": (
@@ -441,6 +452,9 @@ def escrever_relatorios(inventario: list[dict], catalogo: list[dict]) -> None:
         "- O papel Weibull agrupa empates da grade. `R2pp` permanece diagnóstico "
         "visual; a decisão usa bootstrap paramétrico com a mesma quantização e "
         "estabilidade entre as duas grades mais finas.\n",
+        "- Papel de probabilidade, PDF/CDF, sobrevivência e intensidade são "
+        "figuras separadas. A intensidade `h_D(a)` não contém marcas empíricas "
+        "sobre o eixo e é rotulada como não física.\n",
         "- F0L e F0M são estratificados. Ambos pertencem ao GPVS; nenhum "
         "Paderborn ou PMSM entra nos gráficos canônicos.\n",
         "- As matrizes de confusão preservam contagens, normalizam a cor por "
