@@ -84,6 +84,8 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `rul_weibull.py` | Etapa 5: varredura de magnitude, primeiro cruzamento `a_det`, Weibull 2P exploratória e margem residual. É detectabilidade E2, **não RUL**. |
 | `rul_weibull_execucao.py` | Orquestra a execução pesada e a regeneração tabular/gráfica da etapa 5. |
 | `confiabilidade.py` | Funções matemáticas da Weibull, posições censura-aware e diagnóstico do papel. O chamador distingue tempo de magnitude. |
+| `confiabilidade_fisica_v2.py` | Cenários bibliográficos de taxa constante, conversões dimensionais e funções exponenciais físicas; não estima vida pelo GPVS. |
+| `graficos_confiabilidade_fisica_v2.py` | Figuras acadêmicas de confiabilidade, probabilidade, densidade, taxa de falha e marcos B1/B10 dos cenários bibliográficos. |
 | `pod_curva.py` | Arcabouço POD (MIL-HDBK-1823A / LS-POD NASA): limites de tolerância, critério de viabilidade do ensaio, gatilhos de deriva de campo e checagem das hipóteses. |
 | `relatorio_weibull.py` | Montagem de `weibull_results.json` e `weibull_tabela.csv`. Recebe tudo por parâmetro — não importa `rul_weibull`, para não fechar ciclo. |
 | `graficos_rul.py` | Figuras acadêmicas de primeiro cruzamento, não detecção, diagnóstico Weibull e margem de magnitude. |
