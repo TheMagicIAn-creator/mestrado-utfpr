@@ -55,6 +55,8 @@ jobs:
             tests/test_proveniencia.py \
             tests/test_autoencoder_v2.py \
             tests/test_autoencoder_v2_resultados.py \
+            tests/test_confiabilidade_fisica_v2.py \
+            tests/test_confiabilidade_fisica_resultados.py \
             tests/test_recuperacao_hibrida.py \
             tests/test_chamadas_dos_scripts.py
           do
