@@ -1,26 +1,18 @@
-"""Entrada ASGI da aplicacao web ALIAdo PV."""
+"""Ponte ASGI da aplicacao canonica ALIAdo PV Web V2.
 
-# ANTES de qualquer import pesado: permitir runtimes OpenMP duplicados
-# (torch/numpy/onnxruntime/Orange) para não crashar com access violation no
-# Windows durante o carregamento dos modelos.
-import os
+O comando recomendado e ``python -m src.webapp_v2``. Este modulo permanece
+como compatibilidade para ``python app.py`` e servidores ASGI que importam
+``app:app``. Ele nunca inicializa a interface Streamlit legada.
+"""
 
-os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
-
-# Blindar stdout/stderr contra caracteres fora do cp1252 no Windows.
-from src.core.utils import configurar_saida_utf8
-
-configurar_saida_utf8()
-
-from src.webapp.app import app  # noqa: E402,I001 - ambiente precede imports pesados
-
+from src.webapp_v2.launcher import bloquear_execucao_streamlit
 
 if __name__ == "__main__":
-    import uvicorn
+    bloquear_execucao_streamlit()
 
-    uvicorn.run(
-        app,
-        host=os.getenv("AL_IADO_HOST", "127.0.0.1"),
-        port=int(os.getenv("PORT", "8000")),
-        log_level=os.getenv("AL_IADO_LOG_LEVEL", "info"),
-    )
+from src.webapp_v2.app import app  # noqa: E402
+
+if __name__ == "__main__":
+    from src.webapp_v2.launcher import main
+
+    main(app)

@@ -1,8 +1,9 @@
 # Arquitetura — Al IAdo PV
 
-Pacote Python modular. Ponto de entrada: `app.py` (ASGI/Starlette), que serve
-o dashboard acadêmico e a API do agente sem recalcular resultados no startup.
-Há também `main.py` (chat no terminal).
+Pacote Python modular. Ponto de entrada canônico: `python -m src.webapp_v2`
+(ASGI/Starlette), que abre primeiro o agente e mantém os resultados acadêmicos
+em vistas somente leitura. `app.py` é um alias ASGI e rejeita o executor
+Streamlit. Há também `main.py` (chat no terminal).
 
 ```
 src/
@@ -40,7 +41,7 @@ src/
 │   ├── experimentos_artigos.py experimentos de ML por artigo-base
 │   ├── exec_experimento_isolado.py roda experimento pesado em subprocesso
 │   └── resultados.py     leitura/resumo de artefatos
-├── webapp/               aplicação web V2
+├── webapp_v2/            aplicação web canônica V2
 │   ├── app.py            rotas ASGI, estáticos e segurança HTTP
 │   ├── contracts.py      contratos científicos somente leitura
 │   ├── agent_adapter.py  fronteira HTTP do agente sob demanda
@@ -50,10 +51,15 @@ src/
 ```
 
 ## Fluxos
-- **Dashboard:** `app.py` → Starlette → contratos JSON V2 → HTML/Plotly. Essa
+- **Aplicação V2:** `webapp_v2` → Starlette → contratos JSON V2 → HTML/Plotly.
+  O agente é a vista inicial; as vistas científicas usam somente artefatos V2. Essa
   rota não importa ChromaDB, embeddings ou Torch e nunca inicia treinamento.
-- **Primeiro turno do agente:** `agent_adapter` → `base_runtime` → restauração
+- **Inicialização do agente:** `webapp_v2/agent_adapter` → `base_runtime` → restauração
   dos snapshots → encoder local/ONNX → ChromaDB + BM25 → Gemini.
+- **Reconciliação científica:** perguntas sobre resultados → `scientific_context`
+  → os mesmos contratos JSON das figuras → prompt autoritativo do agente.
+- **Sessão V2:** resposta → `session_journal` → Markdown em `notas/sessoes/`
+  → reindexação na memória sem dependência de Streamlit.
 - **Reprocessamento:** scripts e ferramentas acionam explicitamente o
   orquestrador; abrir a página é sempre uma operação somente leitura.
 - **RAG:** pergunta → expansão local → embeddings + BM25 → fusão RRF →

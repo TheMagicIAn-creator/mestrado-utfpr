@@ -4,6 +4,7 @@ starlette
 uvicorn
 plotly
 python-multipart
+markdown-it-py
 openpyxl
 python-docx
 pillow

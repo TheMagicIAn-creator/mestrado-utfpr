@@ -467,6 +467,7 @@ def perguntar(
     colecao_obsidian = None,
     indice_lexical = None,
     auditor = None,
+    contexto_autoritativo: str | None = None,
 ) -> str:
     """
     Pipeline RAG completo com memória e streaming.
@@ -521,6 +522,12 @@ def perguntar(
         indice_lexical=indice_lexical,
         colecao_obsidian=colecao_obsidian,
     )
+
+    if contexto_autoritativo:
+        prompt += (
+            "\n\n## Contrato cientifico autoritativo da execucao atual\n"
+            + contexto_autoritativo
+        )
 
     auditoria = None
     if consultar_literatura and auditor is not None and citacoes:

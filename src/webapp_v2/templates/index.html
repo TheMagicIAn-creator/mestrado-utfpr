@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Painel acadêmico do ALIAdo PV para detecção e confiabilidade de inversores fotovoltaicos.">
-  <title>ALIAdo PV | Resultados V2</title>
+  <title>ALIAdo PV | Web V2</title>
   <link rel="stylesheet" href="/static/styles.css">
   <script defer src="/vendor/plotly.min.js"></script>
   <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
@@ -24,7 +24,10 @@
       </div>
 
       <nav class="primary-nav">
-        <button class="nav-item is-active" type="button" data-target="overview" aria-current="page">
+        <button class="nav-item is-active" type="button" data-target="agent" aria-current="page">
+          <i data-lucide="message-square-text" aria-hidden="true"></i><span>Agente</span>
+        </button>
+        <button class="nav-item" type="button" data-target="overview">
           <i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Visão geral</span>
         </button>
         <button class="nav-item" type="button" data-target="autoencoder">
@@ -38,9 +41,6 @@
         </button>
         <button class="nav-item" type="button" data-target="evidence">
           <i data-lucide="files" aria-hidden="true"></i><span>Evidências</span>
-        </button>
-        <button class="nav-item" type="button" data-target="agent">
-          <i data-lucide="message-square-text" aria-hidden="true"></i><span>Agente</span>
         </button>
       </nav>
 
@@ -58,8 +58,8 @@
     <div class="workspace">
       <header class="topbar">
         <div>
-          <span class="topbar-kicker" id="view-kicker">Resultados V2</span>
-          <strong id="view-title">Visão geral</strong>
+          <span class="topbar-kicker" id="view-kicker">Pesquisa assistida</span>
+          <strong id="view-title">Agente</strong>
         </div>
         <div class="topbar-meta">
           <a id="dataset-link" href="https://doi.org/10.17632/n76t439f65.1" target="_blank" rel="noreferrer">GPVS-Faults</a>
@@ -76,7 +76,7 @@
           <span>Carregando contratos científicos</span>
         </div>
 
-        <section class="view is-active" id="view-overview" data-view="overview" aria-labelledby="overview-title">
+        <section class="view" id="view-overview" data-view="overview" aria-labelledby="overview-title" hidden>
           <header class="view-header">
             <div>
               <p class="eyebrow">Detector congelado · GPVS-Faults</p>
@@ -240,17 +240,17 @@
           </section>
         </section>
 
-        <section class="view agent-view" id="view-agent" data-view="agent" aria-labelledby="agent-title" hidden>
+        <section class="view agent-view is-active" id="view-agent" data-view="agent" aria-labelledby="agent-title">
           <header class="view-header">
-            <div><p class="eyebrow">RAG local · inicialização sob demanda</p><h1 id="agent-title">Agente ALIAdo</h1></div>
-            <span class="agent-status" id="agent-status"><span></span><span id="agent-status-text">Não inicializado</span></span>
+            <div><p class="eyebrow">Gemini · busca híbrida · auditoria de evidências</p><h1 id="agent-title">Agente ALIAdo V2</h1></div>
+            <span class="agent-status" id="agent-status"><span></span><span id="agent-status-text">Preparando agente</span></span>
           </header>
 
           <div class="chat-surface">
             <div class="chat-messages" id="chat-messages" aria-live="polite">
               <article class="message assistant-message">
                 <div class="message-author">ALIAdo PV</div>
-                <p>Os contratos V2 estão disponíveis. Posso interpretar resultados, consultar a literatura indexada ou acionar ferramentas do projeto.</p>
+                <div class="message-content"><p>Olá, Rodolfo. Em que parte da dissertação trabalhamos agora?</p></div>
               </article>
             </div>
 

@@ -18,3 +18,4 @@ uvicorn
 httpx
 plotly
 python-multipart
+markdown-it-py

@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 from starlette.applications import Starlette
 from starlette.concurrency import run_in_threadpool
@@ -16,19 +19,21 @@ from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from src.core.config import RAIZ_PROJETO
-from src.webapp.agent_adapter import (
+from src.webapp_v2 import APP_ID, APP_NAME, APP_VERSION, SCHEMA_VERSION
+from src.webapp_v2.agent_adapter import (
     MAX_ATTACHMENT_BYTES,
     MAX_ATTACHMENTS,
     AgentAdapter,
     AgenteIndisponivel,
 )
-from src.webapp.contracts import (
+from src.webapp_v2.contracts import (
     AUTOENCODER,
     CONFIABILIDADE,
     ContratoWebInvalido,
     dashboard_contract,
     reliability_curves_contract,
 )
+from src.webapp_v2.rendering import render_agent_markdown
 
 RAIZ = Path(RAIZ_PROJETO)
 WEB_ROOT = Path(__file__).resolve().parent
@@ -83,6 +88,18 @@ async def reliability_curves_api(_request: Request) -> JSONResponse:
     return JSONResponse(contract)
 
 
+async def version_api(_request: Request) -> JSONResponse:
+    return JSONResponse(
+        {
+            "application": APP_ID,
+            "name": APP_NAME,
+            "version": APP_VERSION,
+            "schema_version": SCHEMA_VERSION,
+            "interface": "asgi",
+        }
+    )
+
+
 async def plotly_bundle(_request: Request) -> Response:
     from plotly.offline import get_plotlyjs
 
@@ -93,13 +110,20 @@ async def plotly_bundle(_request: Request) -> Response:
     )
 
 
-async def _chat_payload(request: Request) -> tuple[str, list, list[tuple[str, bytes]]]:
+async def _chat_payload(
+    request: Request,
+) -> tuple[str, list, list[tuple[str, bytes]], str | None]:
     content_type = request.headers.get("content-type", "").lower()
     if content_type.startswith("application/json"):
         payload = await request.json()
         if not isinstance(payload, dict):
             raise ValueError("O corpo JSON deve ser um objeto")
-        return payload.get("message", ""), payload.get("history", []), []
+        return (
+            payload.get("message", ""),
+            payload.get("history", []),
+            [],
+            payload.get("session_id"),
+        )
 
     if content_type.startswith("multipart/form-data"):
         form = await request.form()
@@ -118,7 +142,12 @@ async def _chat_payload(request: Request) -> tuple[str, list, list[tuple[str, by
             dados = await upload.read(MAX_ATTACHMENT_BYTES + 1)
             anexos.append((upload.filename or "anexo", dados))
             await upload.close()
-        return str(form.get("message") or ""), historico, anexos
+        return (
+            str(form.get("message") or ""),
+            historico,
+            anexos,
+            str(form.get("session_id") or "") or None,
+        )
 
     raise ValueError("Use application/json ou multipart/form-data")
 
@@ -137,6 +166,9 @@ def create_app(agent_adapter: AgentAdapter | None = None) -> Starlette:
             contracts["detail"] = str(exc)
         return JSONResponse(
             {
+                "application": APP_ID,
+                "version": APP_VERSION,
+                "schema_version": SCHEMA_VERSION,
                 "status": status,
                 "contracts": contracts,
                 "agent": adapter.status(),
@@ -145,16 +177,33 @@ def create_app(agent_adapter: AgentAdapter | None = None) -> Starlette:
 
     async def chat_api(request: Request) -> JSONResponse:
         try:
-            mensagem, historico, anexos = await _chat_payload(request)
+            mensagem, historico, anexos, session_id = await _chat_payload(request)
             resposta = await run_in_threadpool(
                 adapter.answer,
                 mensagem,
                 historico,
                 anexos,
+                session_id,
             )
-            return JSONResponse({"status": "ok", **resposta})
+            return JSONResponse(
+                {
+                    "status": "ok",
+                    **resposta,
+                    "answer_html": render_agent_markdown(resposta["answer"]),
+                    "agent": adapter.status(),
+                }
+            )
         except (ValueError, json.JSONDecodeError) as exc:
             return JSONResponse({"error": "invalid_request", "detail": str(exc)}, status_code=400)
+        except AgenteIndisponivel as exc:
+            return JSONResponse(
+                {"error": "agent_unavailable", "detail": str(exc)}, status_code=503
+            )
+
+    async def initialize_agent_api(_request: Request) -> JSONResponse:
+        try:
+            status = await run_in_threadpool(adapter.initialize)
+            return JSONResponse({"status": "ok", "agent": status})
         except AgenteIndisponivel as exc:
             return JSONResponse(
                 {"error": "agent_unavailable", "detail": str(exc)}, status_code=503
@@ -168,8 +217,10 @@ def create_app(agent_adapter: AgentAdapter | None = None) -> Starlette:
         Route("/", homepage, methods=["GET"]),
         Route("/api/dashboard", dashboard_api, methods=["GET"]),
         Route("/api/reliability/curves", reliability_curves_api, methods=["GET"]),
+        Route("/api/version", version_api, methods=["GET"]),
         Route("/api/health", health_api, methods=["GET"]),
         Route("/api/chat", chat_api, methods=["POST"]),
+        Route("/api/agent/initialize", initialize_agent_api, methods=["POST"]),
         Route("/api/agent/reset", reset_agent_api, methods=["POST"]),
         Route("/vendor/plotly.min.js", plotly_bundle, methods=["GET"]),
         Mount("/static", app=StaticFiles(directory=STATIC_ROOT), name="static"),
