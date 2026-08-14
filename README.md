@@ -31,7 +31,7 @@ src/
 ├── core/            shared infrastructure (config, utils)
 ├── conhecimento/    knowledge agent — RAG pipeline
 ├── ml/              Machine Learning pipeline
-├── webapp/          Starlette API + semantic HTML/CSS/JavaScript
+├── webapp_v2/       canonical Starlette V2 + semantic HTML/CSS/JavaScript
 └── orquestrador.py  backend flow coordinator
 ```
 
@@ -39,7 +39,7 @@ src/
 - **conhecimento** — PDF indexing, semantic + BM25 RAG, fixed-role all-Gemini team (Pro/Flash/Flash-Lite),
   memory consolidation
 - **ml** — exploratory data analysis and fault classification
-- **webapp** — read-only scientific contracts, interactive Plotly views and
+- **webapp_v2** — read-only scientific contracts, interactive Plotly views and
   an HTTP adapter for the ALIAdo agent
 - **orquestrador** — executes explicitly requested indexing and ML operations;
   it is not run when the dashboard opens
@@ -57,13 +57,15 @@ src/
 ## How to run
 
 ```powershell
-python app.py
+python -m src.webapp_v2
 # development with reload:
-uvicorn app:app --reload
+uvicorn src.webapp_v2.app:app --reload
 ```
 
-Open `http://127.0.0.1:8000`. The legacy Streamlit modules remain isolated
-only for migration history and are no longer the application entry point.
+Open `http://127.0.0.1:8000`. `python app.py` remains a compatibility alias.
+`streamlit run app.py` is intentionally rejected, so the legacy interface can
+never be confused with the canonical V2. The Streamlit modules remain frozen
+only for migration history.
 
 A single Google Gemini API key must be set in a local `.env` file —
 see `.env.example` for the template. The `.env` file is never
@@ -107,7 +109,7 @@ magnitude, not physical RUL. Field validation is still not performed.
 ```powershell
 python scripts/verificar_ambiente.py    # diagnóstico (imports, chaves, datasets, ChromaDB, pipeline)
 python -m pytest                        # testes unitários
-python app.py                            # interface em http://127.0.0.1:8000
+python -m src.webapp_v2                  # interface em http://127.0.0.1:8000
 ```
 
 ## Author

@@ -10,12 +10,15 @@ from typing import Callable
 from src.core.config import RAIZ_PROJETO
 from src.core.logs import get_logger
 from src.core.seguranca import mascarar_segredos
+from src.webapp_v2.scientific_context import scientific_context_for
+from src.webapp_v2.session_journal import SessionJournal
 
 MAX_MESSAGE_CHARS = 12_000
 MAX_HISTORY_ITEMS = 16
 MAX_ATTACHMENTS = 4
 MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024
 _logger = get_logger("webapp.agent_adapter")
+AGENT_ENGINE = "src.conhecimento.agente.perguntar"
 
 
 class AgenteIndisponivel(RuntimeError):
@@ -69,8 +72,13 @@ def _validar_anexos(anexos) -> list[tuple[str, bytes]]:
 class AgentAdapter:
     """Inicializa a base somente no primeiro turno e serializa esse carregamento."""
 
-    def __init__(self, answerer: Callable | None = None):
+    def __init__(
+        self,
+        answerer: Callable | None = None,
+        session_journal: SessionJournal | None = None,
+    ):
         self._answerer = answerer
+        self._session_journal = session_journal or SessionJournal()
         self._lock = threading.RLock()
         self._components: _Componentes | None = None
         self._state = "ready" if answerer is not None else "idle"
@@ -80,10 +88,19 @@ class AgentAdapter:
         with self._lock:
             return {
                 "state": self._state,
-                "provider": "Google Gemini" if self._state == "ready" else None,
+                "provider": "Google Gemini",
+                "engine": AGENT_ENGINE,
+                "retrieval": ["semantic", "bm25", "sessions", "obsidian"],
+                "evidence_audit": True,
                 "detail": self._error,
                 "lazy_initialization": True,
             }
+
+    def initialize(self) -> dict:
+        """Aquece o mesmo runtime usado pela conversa e devolve seu estado."""
+        if self._answerer is None:
+            self._initialize()
+        return self.status()
 
     def reset(self) -> None:
         with self._lock:
@@ -157,6 +174,7 @@ class AgentAdapter:
         anexos_bytes: list[tuple[str, bytes]],
     ) -> dict:
         componentes = self._initialize()
+        contexto_cientifico = scientific_context_for(mensagem)
         anexos = []
         if anexos_bytes:
             from src.conhecimento.leitor_anexos import ler_anexos
@@ -178,7 +196,14 @@ class AgentAdapter:
                         llm=componentes.llm,
                         progresso=None,
                         decisao=decisao,
-                        contexto=self._contexto(historico),
+                        contexto="\n\n".join(
+                            item
+                            for item in (
+                                self._contexto(historico),
+                                contexto_cientifico,
+                            )
+                            if item
+                        ),
                     )
                     imagens = []
                     if saida.get("resultado"):
@@ -197,6 +222,7 @@ class AgentAdapter:
                         "answer": resposta_ferramenta,
                         "images": imagens,
                         "route": "tool",
+                        "scientific_contract": "v2" if contexto_cientifico else None,
                     }
             except AgenteIndisponivel:
                 raise
@@ -231,10 +257,22 @@ class AgentAdapter:
             colecao_obsidian=componentes.obsidian,
             indice_lexical=componentes.indice_lexical,
             auditor=componentes.auditor,
+            contexto_autoritativo=contexto_cientifico,
         )
-        return {"answer": resposta, "images": [], "route": "rag"}
+        return {
+            "answer": resposta,
+            "images": [],
+            "route": "rag",
+            "scientific_contract": "v2" if contexto_cientifico else None,
+        }
 
-    def answer(self, message: str, history=None, attachments=None) -> dict:
+    def answer(
+        self,
+        message: str,
+        history=None,
+        attachments=None,
+        session_id: str | None = None,
+    ) -> dict:
         mensagem = str(message or "").strip()
         if not mensagem:
             raise ValueError("A mensagem não pode estar vazia")
@@ -242,6 +280,19 @@ class AgentAdapter:
             raise ValueError(f"A mensagem excede {MAX_MESSAGE_CHARS} caracteres")
         historico = _historico_normalizado(history)
         anexos = _validar_anexos(attachments)
+        session_id = self._session_journal.validar_session_id(session_id)
+
+        if self._answerer is None and not anexos:
+            from src.conhecimento.agente_interacao import resposta_interacao_simples
+
+            resposta_simples = resposta_interacao_simples(mensagem)
+            if resposta_simples:
+                return {
+                    "answer": resposta_simples,
+                    "images": [],
+                    "route": "local",
+                    "memories_saved": 0,
+                }
 
         try:
             if self._answerer is not None:
@@ -263,6 +314,24 @@ class AgentAdapter:
             raise AgenteIndisponivel("O agente retornou uma resposta vazia")
         resposta.setdefault("images", [])
         resposta.setdefault("route", "adapter")
+        resposta.setdefault("memories_saved", 0)
+        if self._answerer is None and self._components is not None:
+            aprender = getattr(self._components.auditor, "aprender_da_interacao", None)
+            if callable(aprender):
+                try:
+                    aprendizado = aprender(mensagem, str(resposta["answer"]))
+                    resposta["memories_saved"] = int(
+                        getattr(aprendizado, "salvas", 0) or 0
+                    )
+                except Exception as exc:
+                    _logger.warning("aprendizado do turno indisponivel: %s", exc)
+            resposta["session"] = self._session_journal.record(
+                session_id,
+                mensagem,
+                str(resposta["answer"]),
+                resposta["images"],
+                self._components.modelo_embeddings,
+            )
         with self._lock:
             self._state = "ready"
             self._error = None

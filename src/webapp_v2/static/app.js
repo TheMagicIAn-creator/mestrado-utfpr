@@ -1,5 +1,29 @@
 "use strict";
 
+const CHAT_STORAGE_KEY = "aliado-v2-chat";
+const SESSION_ID_KEY = "aliado-v2-session-id";
+
+function newSessionId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `${Date.now()}_${Math.random().toString(36).slice(2, 14)}`;
+}
+
+function loadChatHistory() {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(CHAT_STORAGE_KEY) || "[]");
+    return Array.isArray(value) ? value.slice(-16) : [];
+  } catch (_error) {
+    return [];
+  }
+}
+
+function persistChatHistory() {
+  sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(state.chatHistory.slice(-16)));
+}
+
+const browserSessionId = sessionStorage.getItem(SESSION_ID_KEY) || newSessionId();
+sessionStorage.setItem(SESSION_ID_KEY, browserSessionId);
+
 const state = {
   dashboard: null,
   reliabilityCurves: null,
@@ -7,7 +31,9 @@ const state = {
   trialMetric: "auc_roc",
   reliabilityFunction: "reliability",
   selectedScenarios: new Set(),
-  chatHistory: [],
+  chatHistory: loadChatHistory(),
+  sessionId: browserSessionId,
+  agentWarmupPromise: null,
 };
 
 const VIEW_META = {
@@ -121,7 +147,7 @@ function refreshIcons() {
 }
 
 function switchView(view, updateHash = true) {
-  if (!VIEW_META[view]) view = "overview";
+  if (!VIEW_META[view]) view = "agent";
   document.querySelectorAll(".view").forEach((section) => {
     const active = section.dataset.view === view;
     section.hidden = !active;
@@ -139,6 +165,7 @@ function switchView(view, updateHash = true) {
   window.requestAnimationFrame(() => {
     renderChartsForView(view);
   });
+  if (view === "agent") void warmupAgent();
 }
 
 function initializeNavigation() {
@@ -146,7 +173,7 @@ function initializeNavigation() {
     button.addEventListener("click", () => switchView(button.dataset.target));
   });
   const initial = location.hash.replace("#", "");
-  switchView(VIEW_META[initial] ? initial : "overview", false);
+  switchView(VIEW_META[initial] ? initial : "agent", false);
 }
 
 function initializeTheme() {
@@ -615,7 +642,25 @@ function updateAgentStatus(status) {
   $("agent-status-text").textContent = names[status.state] || status.state;
   label.classList.toggle("is-ready", status.state === "ready");
   label.classList.toggle("is-error", status.state === "error");
-  if (status.detail) label.title = status.detail;
+  label.title = status.detail || `${status.provider || "Gemini"} · ${status.engine || "agente V2"}`;
+}
+
+async function warmupAgent() {
+  if (state.health?.agent?.state === "ready") return state.health.agent;
+  if (state.agentWarmupPromise) return state.agentWarmupPromise;
+  updateAgentStatus({ state: "loading", provider: "Google Gemini" });
+  state.agentWarmupPromise = fetchJSON("/api/agent/initialize", { method: "POST" })
+    .then((result) => {
+      state.health = { ...(state.health || {}), agent: result.agent };
+      updateAgentStatus(result.agent);
+      return result.agent;
+    })
+    .catch((error) => {
+      updateAgentStatus({ state: "error", detail: error.message });
+      state.agentWarmupPromise = null;
+      throw error;
+    });
+  return state.agentWarmupPromise;
 }
 
 function renderChartsForView(view) {
@@ -645,10 +690,13 @@ function initializeControls() {
   });
 }
 
-function addChatMessage(role, content, images = []) {
+function addChatMessage(role, content, images = [], renderedHtml = "") {
   const article = createElement("article", `message ${role === "user" ? "user-message" : "assistant-message"}`);
   article.append(createElement("div", "message-author", role === "user" ? "Rodolfo" : "ALIAdo PV"));
-  article.append(createElement("p", "", content));
+  const body = createElement("div", "message-content");
+  if (role === "assistant" && renderedHtml) body.innerHTML = renderedHtml;
+  else body.textContent = content;
+  article.append(body);
   if (images.length) {
     const gallery = createElement("div", "message-images");
     images.forEach((item) => {
@@ -669,6 +717,12 @@ function initializeChat() {
   const form = $("chat-form");
   const input = $("chat-input");
   const files = $("chat-files");
+  if (state.chatHistory.length) {
+    $("chat-messages").replaceChildren();
+    state.chatHistory.forEach((item) => {
+      addChatMessage(item.role, item.content, [], item.renderedHtml || "");
+    });
+  }
   files.addEventListener("change", () => {
     const names = Array.from(files.files).map((file) => file.name);
     $("attachment-line").textContent = names.length ? names.join(" · ") : "";
@@ -690,31 +744,40 @@ function initializeChat() {
     sendButton.disabled = true;
     input.disabled = true;
     addChatMessage("user", message);
-    const historyForRequest = state.chatHistory.slice(-16);
+    const historyForRequest = state.chatHistory.slice(-16).map(({ role, content }) => ({ role, content }));
     state.chatHistory.push({ role: "user", content: message });
+    persistChatHistory();
     const waiting = addChatMessage("assistant", "Analisando…");
     waiting.classList.add("is-waiting");
     updateAgentStatus({ state: "loading" });
     try {
+      await warmupAgent();
       let options;
       if (files.files.length) {
         const data = new FormData();
         data.append("message", message);
         data.append("history", JSON.stringify(historyForRequest));
+        data.append("session_id", state.sessionId);
         Array.from(files.files).slice(0, 4).forEach((file) => data.append("files", file));
         options = { method: "POST", body: data };
       } else {
         options = {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message, history: historyForRequest }),
+          body: JSON.stringify({ message, history: historyForRequest, session_id: state.sessionId }),
         };
       }
       const result = await fetchJSON("/api/chat", options);
       waiting.remove();
-      addChatMessage("assistant", result.answer, result.images || []);
-      state.chatHistory.push({ role: "assistant", content: result.answer });
-      updateAgentStatus({ state: "ready" });
+      addChatMessage("assistant", result.answer, result.images || [], result.answer_html || "");
+      state.chatHistory.push({
+        role: "assistant",
+        content: result.answer,
+        renderedHtml: result.answer_html || "",
+      });
+      persistChatHistory();
+      updateAgentStatus(result.agent || { state: "ready" });
+      if (result.memories_saved) showToast(`${result.memories_saved} memória(s) validada(s)`);
       input.value = "";
       files.value = "";
       $("attachment-line").textContent = "";
@@ -748,11 +811,11 @@ async function loadApplication() {
     updateHealth(health);
     $("loading-state").hidden = true;
     document.querySelectorAll(".view").forEach((view) => {
-      if (view.dataset.view === location.hash.replace("#", "") || (!location.hash && view.dataset.view === "overview")) {
+      if (view.dataset.view === location.hash.replace("#", "") || (!location.hash && view.dataset.view === "agent")) {
         view.hidden = false;
       }
     });
-    const activeView = document.querySelector(".view:not([hidden])")?.dataset.view || "overview";
+    const activeView = document.querySelector(".view:not([hidden])")?.dataset.view || "agent";
     renderChartsForView(activeView);
     refreshIcons();
   } catch (error) {

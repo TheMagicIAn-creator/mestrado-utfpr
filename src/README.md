@@ -118,12 +118,16 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `resultados_weibull.py` | Produz a síntese textual da detectabilidade E2 a partir dos artefatos Weibull versionados. |
 | `resultados_gpvs.py` | Formata o resumo E3 do GPVS-Faults sem ampliar a fachada geral de resultados. |
 
-## `webapp/`, `interface/` legada + raiz do pacote
+## `webapp_v2/`, `interface/` legada + raiz do pacote
 | Arquivo | O que faz |
 |---|---|
-| `webapp/app.py` | Aplicação ASGI, API, arquivos estáticos e cabeçalhos de segurança. |
-| `webapp/contracts.py` | Valida os resultados V2 e fornece contratos somente leitura ao navegador. |
-| `webapp/agent_adapter.py` | Liga o chat HTTP ao RAG e às ferramentas, com inicialização sob demanda. |
+| `webapp_v2/app.py` | Aplicação ASGI V2, API, arquivos estáticos e cabeçalhos de segurança. |
+| `webapp_v2/contracts.py` | Valida apenas resultados V2 e fornece contratos somente leitura. |
+| `webapp_v2/agent_adapter.py` | Liga o chat ao mesmo RAG, Gemini e ferramentas, com aquecimento explícito. |
+| `webapp_v2/launcher.py` | Entrada canônica e bloqueio da execução acidental via Streamlit. |
+| `webapp_v2/rendering.py` | Converte Markdown acadêmico em HTML sem aceitar HTML bruto do modelo. |
+| `webapp_v2/scientific_context.py` | Reconcilia respostas do agente com os contratos que alimentam as figuras. |
+| `webapp_v2/session_journal.py` | Grava e reindexa sessões V2 sem estado do Streamlit. |
 | `base_runtime.py` | Restaura índices, escolhe embeddings e prepara BM25 sem depender da UI. |
 | `interface/streamlit_app.py` | Interface legada preservada apenas durante a migração; não é entrypoint. |
 | `interface/apoio_streamlit.py` | Helpers leves de estado, espera e falhas, importáveis sem instalar a UI. |
@@ -137,7 +141,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 
 ## Dois fluxos para entender o todo
 
-**1. Pergunta no chat** (`webapp/agent_adapter` → `agente`/`ferramentas`):
+**1. Pergunta no chat** (`webapp_v2/agent_adapter` → `agente`/`ferramentas`):
 `roteamento_ferramentas.decidir_acao`, reexportado pela fachada, decide se é
 caso de **ferramenta** (rodar/consultar ML) ou de **RAG**. Se RAG: o agente
 expande a query → combina ChromaDB semântico e
