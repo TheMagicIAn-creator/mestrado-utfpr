@@ -5,9 +5,10 @@ FONTE ÚNICA dos componentes/modos/índices: docs/fmeca.md.
 
 Fundamentação metodológica:
   A FMECA (FMEA + Criticidade; NPR = S×O×D) aponta o inversor como o
-  componente mais crítico do SFV. Pela Tab. 3.3 do TCC (Cristaldi et al.,
-  2017), os componentes CA-elétricos do inversor que mais falham — e são
-  detectáveis no sinal — são Contator AC, IGBT e Fusível AC.
+  componente mais crítico do SFV. A partir da Tab. 3.3 do TCC, o pesquisador
+  selecionou Contator AC, IGBT e Fusível AC entre os modos CA-elétricos
+  observáveis no sinal. Os NPR abaixo foram estipulados para a dissertação;
+  não são os RPN publicados por Cristaldi et al. (2017).
 
   A prioridade NPR define a ordem de injeção: primeiro as falhas de maior
   criticidade. Cada falha é modelada pela sua assinatura elétrica esperada
@@ -133,8 +134,8 @@ ALVO_SMD = 0.95
 N_JANELAS_SMD = 281  # holdout F0 completo: 142 F0L + 139 F0M
 
 # ── Falhas FMECA — FONTE ÚNICA: docs/fmeca.md ────────────────
-# Componentes CA-elétricos do inversor que mais falham (Tab. 3.3 do TCC,
-# Cristaldi et al. 2017). NPR = S×O×D (índice da FMECA; D NUNCA é o NPR).
+# Modos CA-eletricos selecionados por serem observaveis nos sinais disponiveis
+# (Tab. 3.3 do TCC). NPR = S×O×D (indice da FMECA; D NUNCA e o NPR).
 # Índices S/O/D estipulados pelo pesquisador (Torres, 2024) — ver docs/fmeca.md.
 # Modo de falha / efeito / causa: reservados para preenchimento por Rodolfo.
 # Ordenadas por criticidade (NPR): Contator AC > IGBT > Fusível AC.

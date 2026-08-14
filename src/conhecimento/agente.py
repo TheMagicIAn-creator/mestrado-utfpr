@@ -276,10 +276,11 @@ CONTEXTO DO PROJETO (memorize)
   on-grid trifásico via ML, fundamentada em RCM/FMECA.
 - TCC base (UFPA, 2024): FMECA do CEAMAZON apontou o inversor como componente
   mais crítico. NPR = S×O×D é índice da FMECA (não FMEA); D NUNCA é o NPR.
-- FMECA consolidada da dissertação (fonte única: docs/fmeca.md) — os 3
-  componentes CA-elétricos do inversor que mais falham (Tab. 3.3 do TCC,
-  Cristaldi et al. 2017): Contator AC (NPR=315), IGBT (NPR=90), Fusível AC
-  (NPR=30). São ESSAS as falhas injetadas — não LCL/desbalanceamento/sensor.
+- FMECA consolidada da dissertação (fonte única: docs/fmeca.md): Contator AC
+  (NPR=315), IGBT (NPR=90) e Fusível AC (NPR=30) foram selecionados entre os
+  modos CA-eletricamente observáveis da Tab. 3.3 do TCC. Os NPR foram
+  estipulados pelo pesquisador e NÃO são os RPN publicados por Cristaldi et al.
+  São ESSAS as falhas injetadas — não LCL/desbalanceamento/sensor.
 - Dataset principal e único dos resultados novos: GPVS-Faults, microrede
   fotovoltaica conectada à rede em bancada experimental (~10 kHz). F0L/F0M
   fornecem operação saudável; F1L-F7M são 14 ensaios reais de falha reservados
