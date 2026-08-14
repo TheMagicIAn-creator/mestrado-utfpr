@@ -2,7 +2,8 @@
 
 ## Aplicação
 ```powershell
-streamlit run app.py        # interface (use streamlit run, NÃO python app.py)
+python app.py               # aplicação ASGI em http://127.0.0.1:8000
+uvicorn app:app --reload    # desenvolvimento com recarga automática
 python main.py              # chat no terminal
 ```
 
@@ -75,9 +76,9 @@ python scripts/exportar_indice_literatura.py   # gera artefatos/literatura_index
 ```
 
 O diretório `base_conhecimento/` é local, incremental e ignorado pelo Git. O
-snapshot gzip é portátil e versionável: quando a coleção está vazia, o
-Streamlit o restaura automaticamente. O botão de indexação da interface é
-apenas um fallback para deploys sem snapshot válido.
+snapshot gzip é portátil e versionável: quando a coleção está vazia, o runtime
+web o restaura automaticamente no primeiro turno do agente. A abertura do
+dashboard não carrega embeddings, não abre ChromaDB e não executa ML.
 
 ## Bateria determinística do agente (RAG/roteamento)
 ```powershell
@@ -86,12 +87,12 @@ python scripts/avaliar_agente_100.py --com-memoria   # grava a avaliação na co
 ```
 
 ## Observações
-- No Windows, `streamlit run app.py` (não `python app.py`, que roda em "bare mode" e sai sem servir).
+- No Windows, `python app.py` inicia o Uvicorn; encerre com `Ctrl+C`.
 - `KMP_DUPLICATE_LIB_OK=TRUE` é definido cedo (config/app/main) para evitar crash de OpenMP duplicado.
 - Etapas aparecem como **stale/pending** até serem recalculadas com o código atual (cria o manifesto).
 - O pipeline pesado roda no PC porque `dados/brutos/` não é publicado. Na
   nuvem, o app consulta os resultados versionados e não afirma ter retreinado modelos.
-- O progresso do ML vai para `logs/al_iado_pv.log` (terminal silencioso no app);
+- O progresso do ML vai para `logs/al_iado_pv.log`;
   scripts rodados à mão reativam o eco automaticamente. Leia o log em UTF-8:
   `Get-Content logs\al_iado_pv.log -Tail 20 -Encoding utf8` (sem `-Encoding utf8`
   o PowerShell distorce acentos — o arquivo está correto). Emojis ficam só na

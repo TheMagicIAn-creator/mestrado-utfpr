@@ -1,7 +1,8 @@
 # Arquitetura — Al IAdo PV
 
-Pacote Python modular. Ponto de entrada: `app.py` (Streamlit), que dispara o
-orquestrador no backend. Há também `main.py` (chat no terminal).
+Pacote Python modular. Ponto de entrada: `app.py` (ASGI/Starlette), que serve
+o dashboard acadêmico e a API do agente sem recalcular resultados no startup.
+Há também `main.py` (chat no terminal).
 
 ```
 src/
@@ -39,15 +40,22 @@ src/
 │   ├── experimentos_artigos.py experimentos de ML por artigo-base
 │   ├── exec_experimento_isolado.py roda experimento pesado em subprocesso
 │   └── resultados.py     leitura/resumo de artefatos
+├── webapp/               aplicação web V2
+│   ├── app.py            rotas ASGI, estáticos e segurança HTTP
+│   ├── contracts.py      contratos científicos somente leitura
+│   ├── agent_adapter.py  fronteira HTTP do agente sob demanda
+│   ├── templates/        HTML semântico
+│   └── static/           CSS responsivo e visualizações Plotly
 └── orquestrador.py       coordena init + pipeline
 ```
 
 ## Fluxos
-- **Init local:** `app.py` → `configurar_saida_utf8` +
-  `KMP_DUPLICATE_LIB_OK` → `carregar_base` (ChromaDB, embeddings, perfil) →
-  watcher + orquestrador.
-- **Init nuvem:** `app.py` → restauração do snapshot portátil → encoder ONNX
-  sob demanda → perfil. O deploy não inicia watcher nem orquestrador.
+- **Dashboard:** `app.py` → Starlette → contratos JSON V2 → HTML/Plotly. Essa
+  rota não importa ChromaDB, embeddings ou Torch e nunca inicia treinamento.
+- **Primeiro turno do agente:** `agent_adapter` → `base_runtime` → restauração
+  dos snapshots → encoder local/ONNX → ChromaDB + BM25 → Gemini.
+- **Reprocessamento:** scripts e ferramentas acionam explicitamente o
+  orquestrador; abrir a página é sempre uma operação somente leitura.
 - **RAG:** pergunta → expansão local → embeddings + BM25 → fusão RRF →
   reranking → memória classificada do Obsidian → auditoria compacta do Gemini Flash → prompt
   com memória validada → síntese final do Gemini.
@@ -73,7 +81,7 @@ src/
 ## Execução local e nuvem
 - **PC:** possui `dados/brutos/`, treina os modelos, regenera os experimentos e
   publica apenas os artefatos científicos verificáveis.
-- **Streamlit Cloud:** restaura `artefatos/literatura_indexada.jsonl.gz` em um
+- **Deploy ASGI:** restaura `artefatos/literatura_indexada.jsonl.gz` em um
   ChromaDB efêmero e consulta os JSONs, CSVs e PNGs versionados em `resultados/`.
   Sem os datasets brutos, não tenta representar uma execução de treino como
   concluída na nuvem. Para manter a memória dentro do limite do serviço, usa a
@@ -93,7 +101,8 @@ src/
   `AL_IADO_DATASET_GPVS` aponta para a pasta que contém `F0L.csv` a `F7M.csv`.
   `AL_IADO_EMBEDDINGS_BACKEND` aceita `auto`, `onnx` ou
   `sentence-transformers`; `AL_IADO_ONNX_THREADS` limita threads do backend
-  leve. Em `auto`, ausência do dataset ativa ONNX. Modelos, tamanho de saída e
+  leve. Em `auto`, ausência do dataset ativa ONNX. `AL_IADO_HOST`, `PORT` e
+  `AL_IADO_LOG_LEVEL` configuram o servidor. Modelos, tamanho de saída e
   orçamentos do RAG são ajustáveis por `AL_IADO_GEMINI_MODEL`,
   `AL_IADO_GEMINI_MODEL_AUDITOR`, `AL_IADO_GEMINI_MODEL_FUNDO`, `AL_IADO_GEMINI_MAX_OUTPUT_TOKENS` e
   `AL_IADO_RAG_*`. Datas de interface usam `AL_IADO_TIMEZONE`
@@ -103,8 +112,8 @@ src/
 Experimentos por artigo que carregam bibliotecas pesadas (`torch`)
 rodam em **subprocesso** via
 `exec_experimento_isolado.executar_experimento_isolado(key)`. Um segfault,
-conflito de OpenMP ou estouro de memória derruba apenas o filho — o app
-Streamlit segue de pé e recebe uma mensagem de falha legível. O progresso é
+conflito de OpenMP ou estouro de memória derruba apenas o filho — o servidor
+ASGI segue de pé e recebe uma mensagem de falha legível. O progresso é
 lido do stdout do filho e encaminhado ao vivo; o resultado volta por um JSON
 temporário. Degradação honesta: se o subprocesso não puder ser lançado, cai
 para execução in-process. Variáveis: `AL_IADO_SEM_ISOLAMENTO=1` força

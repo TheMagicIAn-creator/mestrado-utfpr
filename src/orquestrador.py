@@ -2,9 +2,9 @@
 orquestrador.py - Al IAdo PV
 Coordenacao leve do backend.
 
-Na inicializacao do Streamlit, este modulo executa apenas tarefas rapidas:
-reprocessamento completo se houver sinal explicito e indexacao de PDFs novos.
-Pipeline de ML e resultados sao acionados por prompt via ferramentas.
+O runtime ASGI nao executa este modulo ao abrir o dashboard. Reprocessamento,
+indexacao de PDFs e pipeline de ML sao acionados explicitamente por scripts ou
+pelas ferramentas do agente.
 """
 
 from __future__ import annotations

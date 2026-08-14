@@ -1,6 +1,9 @@
-# UI — interface Streamlit + leitura de anexos (Office/imagens).
+# UI web ASGI + gráficos interativos + leitura de anexos (Office/imagens).
 -r requirements-core.txt
-streamlit
+starlette
+uvicorn
+plotly
+python-multipart
 openpyxl
 python-docx
 pillow
