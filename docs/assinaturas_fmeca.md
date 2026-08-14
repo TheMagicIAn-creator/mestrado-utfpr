@@ -8,11 +8,12 @@ dissertação.
 > **Fonte única dos componentes/modos/índices: `docs/fmeca.md`.** Este arquivo
 > é a justificativa física; os números (S, O, D, NPR) vêm de lá.
 
-Os três componentes são os **componentes internos CA-elétricos do inversor que
-mais falham** segundo a **Tabela 3.3 do TCC** (Cristaldi, Khalil & Soulatintork,
-2017), reforçada por Golnas (2012) e Voss et al. (2009). NPR = S×O×D (índice da
-**FMECA**, não FMEA; D nunca é o NPR). Índices S/O/D estipulados pelo
-pesquisador (Torres, 2024).
+Os três componentes foram **selecionados entre os modos CA-elétricos
+observáveis nos sinais disponíveis** a partir da Tabela 3.3 do TCC. Software de
+controle e PCB têm mais tickets, mas não integram este recorte de monitoramento
+elétrico. NPR = S×O×D (índice da **FMECA**, não FMEA; D nunca é o NPR).
+Os índices S/O/D foram estipulados pelo pesquisador (Torres, 2024) e não
+reproduzem os RPN da tabela de criticidade de Cristaldi et al. (2017).
 
 Nível de evidência: **E2 no pipeline principal** (injeção no sinal bruto) e
 **E1 nos experimentos por artigo** (injeção no espaço de features). Em ambos, as

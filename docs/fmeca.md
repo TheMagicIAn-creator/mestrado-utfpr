@@ -46,11 +46,15 @@
 
 ## Seleção dos componentes (justificativa bibliográfica)
 
-Os três componentes abaixo são os **componentes internos CA-elétricos do
-inversor que mais contribuem para falhas**, segundo a **Tabela 3.3 do TCC**
-(adaptada de Cristaldi, Khalil & Soulatintork, 2017), reforçada por Golnas
-(2012, Tab. 3.2 — inversor = 43% dos tickets, 36% da energia perdida) e Voss
-et al. (2009, Fig. 3.16–3.17 — inversor como componente crítico):
+Os três componentes abaixo foram **selecionados entre os modos internos
+CA-elétricos observáveis nos sinais disponíveis**, a partir da Tabela 3.3 do TCC.
+Software de controle e PCB lideram a tabela em tickets, mas ficam fora deste
+recorte de monitoramento elétrico. O TCC atribui sua tabela a Cristaldi, Khalil
+e Soulatiantork (2017); os percentuais transcritos abaixo e os NPR oficiais da
+dissertação devem ser lidos como a consolidação de Torres (2024), não como
+reprodução literal da tabela de criticidade do artigo original. Golnas (2012,
+Tab. 3.2) e Voss et al. (2009, Fig. 3.16–3.17) sustentam a criticidade geral do
+inversor:
 
 | Componente | % tickets (Tab. 3.3) | % kWh perdidos | Detectável no sinal CA? |
 |---|---:|---:|---|
@@ -79,6 +83,9 @@ Rodolfo Torres** (deixados em branco por decisão do autor).
   com base no TCC (Torres, 2024) e nas suas referências cruzadas — Tab. 3.3
   (Cristaldi et al., 2017), Golnas (2012), Voss et al. (2009) — seguindo as
   escalas das Tabelas 4.6/4.7/4.8. NPR = S×O×D calculado.
+- Referência cruzada: a tabela de CA do artigo de Cristaldi et al. (2017)
+  publica outros índices, como RPN 150 para contatores AC/DC e 63 para IGBT.
+  Esses valores bibliográficos não substituem a FMECA oficial acima.
 - Nível de evidência: **E1/E2** (fundamentação bibliográfica + engenharia +
   injeção sintética), **não** medição de campo (E3).
 
