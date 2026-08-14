@@ -2,7 +2,7 @@
 
 O ambiente local usa SentenceTransformer para indexação e treinamento. No
 deploy de consulta, o mesmo encoder é executado pelo ONNX Runtime em versão
-quantizada. Isso evita carregar PyTorch no processo do Streamlit sem trocar o
+quantizada. Isso evita carregar PyTorch no processo web sem trocar o
 espaço vetorial usado pelo snapshot da literatura.
 """
 
@@ -64,7 +64,7 @@ class ModeloEmbeddingsONNX:
     multilíngue ocupa memória relevante quando materializado; por isso ele é
     aberto somente durante a tokenização e liberado antes da inferência. Um
     lock serializa consultas concorrentes para impedir picos multiplicados por
-    sessões simultâneas do Streamlit.
+    sessões web simultâneas.
     """
 
     def __init__(

@@ -465,6 +465,8 @@ def perguntar(
     nome_provedor: str | None = None,
     anexos: list | None = None,
     colecao_obsidian = None,
+    indice_lexical = None,
+    auditor = None,
 ) -> str:
     """
     Pipeline RAG completo com memória e streaming.
@@ -477,6 +479,7 @@ def perguntar(
     from src.conhecimento.agente_contexto import catalogo_literatura, preparar_prompt
     from src.conhecimento.agente_interacao import (
         _espera_retry_429,
+        deve_consultar_literatura,
         formatar_referencias_markdown,
         remover_bloco_fontes_llm,
         resposta_interacao_simples,
@@ -505,6 +508,7 @@ def perguntar(
     except Exception as exc:
         _logger.warning("atalho de catálogo indisponível; seguindo para o RAG: %s", exc)
 
+    consultar_literatura = deve_consultar_literatura(pergunta, colecao)
     prompt, citacoes = preparar_prompt(
         pergunta=pergunta,
         perfil=perfil,
@@ -514,8 +518,27 @@ def perguntar(
         colecao_sessoes=colecao_sessoes,
         nome_provedor=nome_provedor,
         anexos=anexos,
+        indice_lexical=indice_lexical,
         colecao_obsidian=colecao_obsidian,
     )
+
+    auditoria = None
+    if consultar_literatura and auditor is not None and citacoes:
+        try:
+            auditoria = auditor.auditar_evidencias(pergunta, citacoes)
+            from src.conhecimento.multiagente import filtrar_citacoes_auditadas
+
+            citacoes = filtrar_citacoes_auditadas(citacoes, auditoria)
+        except Exception as exc:
+            _logger.warning("auditoria de evidencias indisponivel: %s", exc)
+
+    if hasattr(llm, "contextualizar_prompt"):
+        prompt = llm.contextualizar_prompt(prompt, pergunta, auditoria)
+
+    if consultar_literatura:
+        from src.core.citacao_guarda import montar_restricao_fontes
+
+        prompt = prompt + "\n\n" + montar_restricao_fontes(citacoes)
 
     conteudo_humano = montar_conteudo_humano(
         prompt, anexos, eh_multimodal(nome_provedor)
@@ -562,6 +585,15 @@ def perguntar(
                     time.sleep(espera)
                 else:
                     raise
+
+    from src.core.citacao_guarda import alerta_citacao_infundada
+
+    aviso = alerta_citacao_infundada(
+        texto_completo,
+        citacoes if consultar_literatura else {},
+    )
+    if aviso:
+        texto_completo = aviso.strip() + "\n\n" + texto_completo
 
     refs_md = formatar_referencias_markdown(citacoes)
     if refs_md:

@@ -21,15 +21,17 @@ real fault data is scarce.
 
 ## Architecture
 
-The project is a modular Python package. The single entry point is
-`app.py`, which launches a Streamlit interface and runs a backend
-orchestrator on startup.
+The project is a modular Python package. The primary entry point is
+`app.py`, an ASGI application that serves the academic dashboard and exposes
+the knowledge agent through HTTP. Scientific results are read from validated,
+versioned contracts; opening the page never retrains a model.
 
 ```
 src/
 ├── core/            shared infrastructure (config, utils)
 ├── conhecimento/    knowledge agent — RAG pipeline
 ├── ml/              Machine Learning pipeline
+├── webapp/          Starlette API + semantic HTML/CSS/JavaScript
 └── orquestrador.py  backend flow coordinator
 ```
 
@@ -37,13 +39,16 @@ src/
 - **conhecimento** — PDF indexing, semantic + BM25 RAG, fixed-role all-Gemini team (Pro/Flash/Flash-Lite),
   memory consolidation
 - **ml** — exploratory data analysis and fault classification
-- **orquestrador** — runs pending steps on startup, skips
-  what is already done (state verification)
+- **webapp** — read-only scientific contracts, interactive Plotly views and
+  an HTTP adapter for the ALIAdo agent
+- **orquestrador** — executes explicitly requested indexing and ML operations;
+  it is not run when the dashboard opens
 
 ## Tech stack
 
 - Python 3.13
-- Streamlit — local and cloud web interface
+- Starlette + Uvicorn — local or cloud ASGI application
+- Plotly — interactive scientific views backed by versioned data
 - ChromaDB — local vector database restored from a portable cloud snapshot
 - sentence-transformers — multilingual embeddings
 - LLM provider — Google Gemini (Pro for chat, Flash for auditing, Flash-Lite for background)
@@ -51,9 +56,14 @@ src/
 
 ## How to run
 
+```powershell
+python app.py
+# development with reload:
+uvicorn app:app --reload
 ```
-streamlit run app.py
-```
+
+Open `http://127.0.0.1:8000`. The legacy Streamlit modules remain isolated
+only for migration history and are no longer the application entry point.
 
 A single Google Gemini API key must be set in a local `.env` file —
 see `.env.example` for the template. The `.env` file is never
@@ -72,7 +82,7 @@ Models, scalers and local Obsidian state are not published.
 |-------|-----------------------|---------------|
 | 1     | Foundation            | Done          |
 | 2     | RAG agent             | Done          |
-| 3     | Streamlit interface   | Done          |
+| 3     | ASGI web application  | Done (V2)     |
 | 4     | Automation            | Done          |
 | 5     | ML pipeline           | Implemented (E2 + E3 bench) |
 
@@ -89,6 +99,7 @@ magnitude, not physical RUL. Field validation is still not performed.
 - [`docs/evidence_levels.md`](docs/evidence_levels.md) — níveis de evidência E0–E3.
 - [`docs/reproducibilidade.md`](docs/reproducibilidade.md) — manifestos, estados, memória, recálculo.
 - [`docs/memoria_agentes.md`](docs/memoria_agentes.md) — aprendizado validado entre sessões e limites de persistência.
+- [`docs/aplicacao_web_v2.md`](docs/aplicacao_web_v2.md) — aplicação ASGI, contratos HTTP e execução local/nuvem.
 - [`docs/comandos.md`](docs/comandos.md) — todos os comandos.
 
 ## Verificação rápida
@@ -96,7 +107,7 @@ magnitude, not physical RUL. Field validation is still not performed.
 ```powershell
 python scripts/verificar_ambiente.py    # diagnóstico (imports, chaves, datasets, ChromaDB, pipeline)
 python -m pytest                        # testes unitários
-streamlit run app.py                    # interface (use 'streamlit run', não 'python app.py')
+python app.py                            # interface em http://127.0.0.1:8000
 ```
 
 ## Author

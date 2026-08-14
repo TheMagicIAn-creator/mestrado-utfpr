@@ -118,10 +118,14 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `resultados_weibull.py` | Produz a síntese textual da detectabilidade E2 a partir dos artefatos Weibull versionados. |
 | `resultados_gpvs.py` | Formata o resumo E3 do GPVS-Faults sem ampliar a fachada geral de resultados. |
 
-## `interface/` + raiz do pacote
+## `webapp/`, `interface/` legada + raiz do pacote
 | Arquivo | O que faz |
 |---|---|
-| `interface/streamlit_app.py` | Ponto de entrada da UI: estado, base, boas-vindas, streaming e chat. |
+| `webapp/app.py` | Aplicação ASGI, API, arquivos estáticos e cabeçalhos de segurança. |
+| `webapp/contracts.py` | Valida os resultados V2 e fornece contratos somente leitura ao navegador. |
+| `webapp/agent_adapter.py` | Liga o chat HTTP ao RAG e às ferramentas, com inicialização sob demanda. |
+| `base_runtime.py` | Restaura índices, escolhe embeddings e prepara BM25 sem depender da UI. |
+| `interface/streamlit_app.py` | Interface legada preservada apenas durante a migração; não é entrypoint. |
 | `interface/apoio_streamlit.py` | Helpers leves de estado, espera e falhas, importáveis sem instalar a UI. |
 | `interface/sidebar.py` | Status, diagnóstico e controles laterais. |
 | `interface/renderizacao_imagens.py` | Agrupamento, antevisão e download de figuras. |
@@ -133,7 +137,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 
 ## Dois fluxos para entender o todo
 
-**1. Pergunta no chat** (`streamlit_app` → `agente`/`ferramentas`):
+**1. Pergunta no chat** (`webapp/agent_adapter` → `agente`/`ferramentas`):
 `roteamento_ferramentas.decidir_acao`, reexportado pela fachada, decide se é
 caso de **ferramenta** (rodar/consultar ML) ou de **RAG**. Se RAG: o agente
 expande a query → combina ChromaDB semântico e
@@ -146,5 +150,5 @@ do Ibrahim/AE-LSTM (`protocolos_artigos`) com split temporal e injeção FMECA;
 os scorers vêm de `modelos_anomalia`. Resultados em
 `resultados/experimentos/<key>/`.
 
-> Os entrypoints ficam na **raiz do repo** (não em `src/`): `app.py` (Streamlit),
+> Os entrypoints ficam na **raiz do repo** (não em `src/`): `app.py` (ASGI),
 > `main.py` (chat no terminal) e `watcher.py` (monitora `novos_pdfs/`).
