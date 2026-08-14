@@ -1,0 +1,605 @@
+{
+  "schema_version": 2,
+  "created_at": "2026-08-13T21:50:02.278695-03:00",
+  "dataset": {
+    "name": "GPVS-Faults",
+    "doi": "10.17632/n76t439f65.1",
+    "healthy_training_trials": [
+      "F0L",
+      "F0M"
+    ],
+    "held_out_fault_trials": [
+      "F1L",
+      "F1M",
+      "F2L",
+      "F2M",
+      "F3L",
+      "F3M",
+      "F4L",
+      "F4M",
+      "F5L",
+      "F5M",
+      "F6L",
+      "F6M",
+      "F7L",
+      "F7M"
+    ],
+    "raw_inventory": {
+      "F1L": {
+        "sha256": "967132ceb23cebc5e475b4bc2e9a35979e71707cc9a173945bb12f755a882151",
+        "size_bytes": 29494147,
+        "windows": 645
+      },
+      "F1M": {
+        "sha256": "ead7cdab3792d78f9167dfe44df5af8e791f11aec14be743186a4948749adee9",
+        "size_bytes": 31478790,
+        "windows": 695
+      },
+      "F2L": {
+        "sha256": "85181f21528bad220d43adaa554c32715e50dc0276be067d62f0b07e72767d28",
+        "size_bytes": 32562656,
+        "windows": 710
+      },
+      "F2M": {
+        "sha256": "c1f72b9565d62d26f6fe75235b4e1d0b51f1af987bd5de2c8fc5cd18dc08dfeb",
+        "size_bytes": 32721289,
+        "windows": 720
+      },
+      "F3L": {
+        "sha256": "d1817539f46c8f699abd2d1fc42d5b976a3cea311aee02028d108bdca0eee6b2",
+        "size_bytes": 23717045,
+        "windows": 517
+      },
+      "F3M": {
+        "sha256": "c9a5fdc0b421e9fe4c4b36ddda4d939a20834dc98cfd80447aae84a3d2a4c153",
+        "size_bytes": 15925490,
+        "windows": 349
+      },
+      "F4L": {
+        "sha256": "3c1d14f4b4011f5a93b446aab7f3bdfdcc87c173e80ccce1c75dfe0492eeb8c8",
+        "size_bytes": 32771693,
+        "windows": 720
+      },
+      "F4M": {
+        "sha256": "6e7d836bec1b5f18d88e2dc75c3e4671409e3e356f4e00787a27307d8e984053",
+        "size_bytes": 32771582,
+        "windows": 720
+      },
+      "F5L": {
+        "sha256": "d502ac4eecb8469074a0b74c0533a3f8596d405eed12fa927e6b34455966c747",
+        "size_bytes": 32720605,
+        "windows": 715
+      },
+      "F5M": {
+        "sha256": "9c733c063117d62113abb418529dbbdf241e11d9b34ffba55e0586474c2227a3",
+        "size_bytes": 32909670,
+        "windows": 720
+      },
+      "F6L": {
+        "sha256": "70169cf1eff18483f71ee516bdfb5b9cb3d361d407c1f81c1992e5f4b72af363",
+        "size_bytes": 32923343,
+        "windows": 720
+      },
+      "F6M": {
+        "sha256": "3b21ec10273724bdd439600605eb336d0633113f19f79b9ee8c77e16fb554d64",
+        "size_bytes": 32762347,
+        "windows": 720
+      },
+      "F7L": {
+        "sha256": "d098f584d4a5b100e34a8cb83cbde9355de352a3751accd09de93f4f7ee92060",
+        "size_bytes": 32929561,
+        "windows": 720
+      },
+      "F7M": {
+        "sha256": "cd3e60928d65a2d4a224f1b154107601fe5a86ab14e1b33a8a87fb7ec8457745",
+        "size_bytes": 32776047,
+        "windows": 720
+      }
+    }
+  },
+  "protocol": {
+    "inference_unit": "experiment",
+    "window_duration_s": 0.02,
+    "window_overlap": 0,
+    "commissioning_baseline": "first_half_of_pre_fault",
+    "negative_test": "second_half_of_pre_fault",
+    "positive_test": "all_post_fault_windows",
+    "fault_boundary_fraction": 0.5,
+    "fault_boundary_source": "Mendeley Data description: faults introduced manually halfway",
+    "fault_boundary_semantics": "nominal_record_midpoint_not_instrumented_trigger",
+    "sustained_detection_windows": 5,
+    "threshold_comparison": "anomaly_index > 1",
+    "architecture_selected_without_fault_trials": true,
+    "field_prevalence_estimated": false
+  },
+  "canonical_seed": 42,
+  "macro_summary": {
+    "autoencoder_ensemble": {
+      "auc_roc": {
+        "mean": 0.7777401492499693,
+        "ci95_low": 0.6933490868481147,
+        "ci95_high": 0.8575958844997152,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "average_precision": {
+        "mean": 0.863281657403867,
+        "ci95_low": 0.8061670960139395,
+        "ci95_high": 0.918771017864033,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sensitivity": {
+        "mean": 0.4311352209354152,
+        "ci95_low": 0.23564390577203684,
+        "ci95_high": 0.6274091909071184,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "specificity": {
+        "mean": 0.9627028322087056,
+        "ci95_low": 0.9253964536595456,
+        "ci95_high": 0.9856603394242588,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "balanced_accuracy": {
+        "mean": 0.6969190265720604,
+        "ci95_low": 0.6026828809220288,
+        "ci95_high": 0.7941357004993084,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "mcc": {
+        "mean": 0.4058276841992489,
+        "ci95_low": 0.23423599552933716,
+        "ci95_high": 0.5887204997536555,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sustained_detection": {
+        "n": 9,
+        "total": 14,
+        "rate": 0.6428571428571429
+      }
+    },
+    "autoencoder_v2": {
+      "auc_roc": {
+        "mean": 0.7775582664897344,
+        "ci95_low": 0.6953811748247751,
+        "ci95_high": 0.8586971926970064,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "average_precision": {
+        "mean": 0.8634687149080521,
+        "ci95_low": 0.8068783085798565,
+        "ci95_high": 0.9167839398578106,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sensitivity": {
+        "mean": 0.4552020148205688,
+        "ci95_low": 0.2676192504190976,
+        "ci95_high": 0.645465923717573,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "specificity": {
+        "mean": 0.9526841028320873,
+        "ci95_low": 0.9161988399594136,
+        "ci95_high": 0.9780752095354289,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "balanced_accuracy": {
+        "mean": 0.7039430588263281,
+        "ci95_low": 0.6152192483823195,
+        "ci95_high": 0.796071503568886,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "mcc": {
+        "mean": 0.42008781929812283,
+        "ci95_low": 0.2544976858677097,
+        "ci95_high": 0.5941015468135632,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sustained_detection": {
+        "n": 11,
+        "total": 14,
+        "rate": 0.7857142857142857
+      }
+    },
+    "pca": {
+      "auc_roc": {
+        "mean": 0.7888201413473138,
+        "ci95_low": 0.7071677881293822,
+        "ci95_high": 0.8664462097595156,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "average_precision": {
+        "mean": 0.8685948791347441,
+        "ci95_low": 0.8111081266698392,
+        "ci95_high": 0.9224995984713076,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sensitivity": {
+        "mean": 0.41578134988958354,
+        "ci95_low": 0.22148459457301906,
+        "ci95_high": 0.618117943611996,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "specificity": {
+        "mean": 0.9843142458673001,
+        "ci95_low": 0.9720815021577112,
+        "ci95_high": 0.9936507936507936,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "balanced_accuracy": {
+        "mean": 0.7000477978784418,
+        "ci95_low": 0.6039097220033071,
+        "ci95_high": 0.8006134139900505,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "mcc": {
+        "mean": 0.4095204184619816,
+        "ci95_low": 0.22961502796696348,
+        "ci95_high": 0.6010176691709039,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sustained_detection": {
+        "n": 9,
+        "total": 14,
+        "rate": 0.6428571428571429
+      }
+    }
+  },
+  "paired_comparison_autoencoder_v2_minus_pca": {
+    "auc_roc": {
+      "contrast": "autoencoder_v2_minus_pca",
+      "metric": "auc_roc",
+      "mean_difference": -0.011261874857579688,
+      "ci95_low": -0.022447336813083967,
+      "ci95_high": -0.0017417984783224,
+      "n_pairs": 14,
+      "wins_a": 4,
+      "ties": 1,
+      "wins_b": 9,
+      "bootstrap_resamples": 20000,
+      "ci_includes_zero": false
+    },
+    "average_precision": {
+      "contrast": "autoencoder_v2_minus_pca",
+      "metric": "average_precision",
+      "mean_difference": -0.005126164226692019,
+      "ci95_low": -0.011993825323849964,
+      "ci95_high": 0.00084261376906261,
+      "n_pairs": 14,
+      "wins_a": 6,
+      "ties": 1,
+      "wins_b": 7,
+      "bootstrap_resamples": 20000,
+      "ci_includes_zero": true
+    },
+    "sensitivity": {
+      "contrast": "autoencoder_v2_minus_pca",
+      "metric": "sensitivity",
+      "mean_difference": 0.03942066493098522,
+      "ci95_low": 0.016445116687745953,
+      "ci95_high": 0.06776087802656365,
+      "n_pairs": 14,
+      "wins_a": 10,
+      "ties": 4,
+      "wins_b": 0,
+      "bootstrap_resamples": 20000,
+      "ci_includes_zero": false
+    },
+    "specificity": {
+      "contrast": "autoencoder_v2_minus_pca",
+      "metric": "specificity",
+      "mean_difference": -0.03163014303521284,
+      "ci95_low": -0.05764114583563785,
+      "ci95_high": -0.013721721642775752,
+      "n_pairs": 14,
+      "wins_a": 0,
+      "ties": 3,
+      "wins_b": 11,
+      "bootstrap_resamples": 20000,
+      "ci_includes_zero": false
+    },
+    "balanced_accuracy": {
+      "contrast": "autoencoder_v2_minus_pca",
+      "metric": "balanced_accuracy",
+      "mean_difference": 0.0038952609478861778,
+      "ci95_low": -0.01029577995773786,
+      "ci95_high": 0.01856467860656051,
+      "n_pairs": 14,
+      "wins_a": 7,
+      "ties": 3,
+      "wins_b": 4,
+      "bootstrap_resamples": 20000,
+      "ci_includes_zero": true
+    },
+    "mcc": {
+      "contrast": "autoencoder_v2_minus_pca",
+      "metric": "mcc",
+      "mean_difference": 0.010567400836141225,
+      "ci95_low": -0.017899435199690308,
+      "ci95_high": 0.04376551361120078,
+      "n_pairs": 14,
+      "wins_a": 6,
+      "ties": 2,
+      "wins_b": 6,
+      "bootstrap_resamples": 20000,
+      "ci_includes_zero": true
+    }
+  },
+  "seed_robustness": {
+    "13": {
+      "auc_roc": {
+        "mean": 0.7746646348965494,
+        "ci95_low": 0.6914801845736445,
+        "ci95_high": 0.8565899453172272,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "average_precision": {
+        "mean": 0.8618111364410632,
+        "ci95_low": 0.8048958703208957,
+        "ci95_high": 0.9156613529557074,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sensitivity": {
+        "mean": 0.42705548953946254,
+        "ci95_low": 0.2338225452679784,
+        "ci95_high": 0.6259428461704586,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "specificity": {
+        "mean": 0.9668753297221183,
+        "ci95_low": 0.9407399445666998,
+        "ci95_high": 0.9847923036770992,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "balanced_accuracy": {
+        "mean": 0.6969654096307905,
+        "ci95_low": 0.6043177817876173,
+        "ci95_high": 0.7935648738346638,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "mcc": {
+        "mean": 0.4070590853591481,
+        "ci95_low": 0.23288235119548925,
+        "ci95_high": 0.5888295266013388,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sustained_detection": {
+        "n": 9,
+        "total": 14,
+        "rate": 0.6428571428571429
+      }
+    },
+    "29": {
+      "auc_roc": {
+        "mean": 0.7785603363143626,
+        "ci95_low": 0.6969721052364443,
+        "ci95_high": 0.859033793037438,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "average_precision": {
+        "mean": 0.864294617360546,
+        "ci95_low": 0.8073339916921667,
+        "ci95_high": 0.9175025148350423,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sensitivity": {
+        "mean": 0.42543923849441306,
+        "ci95_low": 0.22848479859994833,
+        "ci95_high": 0.6274782941652732,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "specificity": {
+        "mean": 0.9626069896791244,
+        "ci95_low": 0.9178347606442115,
+        "ci95_high": 0.9894220069211395,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "balanced_accuracy": {
+        "mean": 0.6940231140867689,
+        "ci95_low": 0.6012042235860863,
+        "ci95_high": 0.7908046962555234,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "mcc": {
+        "mean": 0.40053479104642536,
+        "ci95_low": 0.22492780637350318,
+        "ci95_high": 0.5840399425800086,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sustained_detection": {
+        "n": 9,
+        "total": 14,
+        "rate": 0.6428571428571429
+      }
+    },
+    "42": {
+      "auc_roc": {
+        "mean": 0.7775582664897344,
+        "ci95_low": 0.6953811748247751,
+        "ci95_high": 0.8586971926970064,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "average_precision": {
+        "mean": 0.8634687149080521,
+        "ci95_low": 0.8068783085798565,
+        "ci95_high": 0.9167839398578106,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sensitivity": {
+        "mean": 0.4552020148205688,
+        "ci95_low": 0.2676192504190976,
+        "ci95_high": 0.645465923717573,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "specificity": {
+        "mean": 0.9526841028320873,
+        "ci95_low": 0.9161988399594136,
+        "ci95_high": 0.9780752095354289,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "balanced_accuracy": {
+        "mean": 0.7039430588263281,
+        "ci95_low": 0.6152192483823195,
+        "ci95_high": 0.796071503568886,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "mcc": {
+        "mean": 0.42008781929812283,
+        "ci95_low": 0.2544976858677097,
+        "ci95_high": 0.5941015468135632,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sustained_detection": {
+        "n": 11,
+        "total": 14,
+        "rate": 0.7857142857142857
+      }
+    },
+    "71": {
+      "auc_roc": {
+        "mean": 0.7781928219203449,
+        "ci95_low": 0.6997434043027602,
+        "ci95_high": 0.8568707586334097,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "average_precision": {
+        "mean": 0.8623117882797448,
+        "ci95_low": 0.8069135597360408,
+        "ci95_high": 0.915103545206824,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sensitivity": {
+        "mean": 0.45066575633847317,
+        "ci95_low": 0.26196572563690945,
+        "ci95_high": 0.6433923176806686,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "specificity": {
+        "mean": 0.9561025256865703,
+        "ci95_low": 0.9171876240635786,
+        "ci95_high": 0.9816475349269299,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "balanced_accuracy": {
+        "mean": 0.7033841410125217,
+        "ci95_low": 0.6134277909977236,
+        "ci95_high": 0.7967986462813438,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "mcc": {
+        "mean": 0.4200164518159548,
+        "ci95_low": 0.2514803797964132,
+        "ci95_high": 0.5957297904652085,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sustained_detection": {
+        "n": 11,
+        "total": 14,
+        "rate": 0.7857142857142857
+      }
+    },
+    "101": {
+      "auc_roc": {
+        "mean": 0.7761827719794578,
+        "ci95_low": 0.6935546915134041,
+        "ci95_high": 0.8575412549895517,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "average_precision": {
+        "mean": 0.8622289495816109,
+        "ci95_low": 0.8048146898367762,
+        "ci95_high": 0.9164042642426476,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sensitivity": {
+        "mean": 0.4242999824315336,
+        "ci95_low": 0.22830537569003068,
+        "ci95_high": 0.6254735421496854,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "specificity": {
+        "mean": 0.966509801546748,
+        "ci95_low": 0.9304555467458373,
+        "ci95_high": 0.9891681480488363,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "balanced_accuracy": {
+        "mean": 0.6954048919891408,
+        "ci95_low": 0.6025301567831833,
+        "ci95_high": 0.7922964462645193,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "mcc": {
+        "mean": 0.40639685922137786,
+        "ci95_low": 0.2332232863713944,
+        "ci95_high": 0.5879999282795456,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000
+      },
+      "sustained_detection": {
+        "n": 9,
+        "total": 14,
+        "rate": 0.6428571428571429
+      }
+    }
+  },
+  "limitations": [
+    "Janelas do mesmo ensaio são autocorrelacionadas.",
+    "Curvas ROC/PR por janela são descritivas; IC macro usa ensaios.",
+    "GPVS não contém vida até falha, censura ou tempos de reparo.",
+    "F1 é a única falha diretamente rotulada como IGBT."
+  ],
+  "local_artifacts": {
+    "model_seed_13_sha256": "31ae753113d1ebe55b77d52d7fc7801cd749d9343dc20381b64aa6590b3a67ec",
+    "model_seed_29_sha256": "6e4340773abce70d2ee80d905379cf7bc8dc0210b0c2dd704707c79f71c87b41",
+    "model_seed_42_sha256": "f1c171c0270dc7f70a4ce34b6afbe49e6938a8c7f2ae77461b39fe08e1202b40",
+    "model_seed_71_sha256": "07e0798be93e30ead8864c56aa934cf39549f0bab27ad405d97fb219240f31dd",
+    "model_seed_101_sha256": "0db309dfd26cd2245528b3da4c5e915fbe0fe6242a7848685a89ab961d3bb80e"
+  }
+}
