@@ -21,6 +21,7 @@ resultados/modelos_salvos/
 *.pt
 *.pth
 resultados/autoencoder/normalizacao_baseline_gpvs.npz
+resultados/v2/autoencoder/normalizacao_baseline_gpvs.npz
 # Figuras locais do benchmark histórico, recriadas por testes/execuções opcionais.
 resultados/experimentos/ibrahim/*.png
 

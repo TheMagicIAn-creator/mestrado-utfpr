@@ -53,6 +53,8 @@ jobs:
             tests/test_ae_lstm_temporal.py \
             tests/test_comparacao_macro.py \
             tests/test_proveniencia.py \
+            tests/test_autoencoder_v2.py \
+            tests/test_autoencoder_v2_resultados.py \
             tests/test_recuperacao_hibrida.py \
             tests/test_chamadas_dos_scripts.py
           do
@@ -116,4 +118,4 @@ jobs:
       - name: Contrato do Autoencoder e do escore (torch real, dados de brinquedo)
         run: |
           python -m pytest -p no:cacheprovider -q -W ignore \
-            tests/test_torch_smoke.py -m "not pesado"
+            tests/test_torch_smoke.py tests/test_autoencoder_v2.py -m "not pesado"
