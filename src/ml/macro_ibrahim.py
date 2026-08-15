@@ -103,15 +103,56 @@ def treinar_detector(X_normal: np.ndarray):
 # ETAPA 3 — SCORER (mesma interface do macro_proposto)
 # ============================================================
 
+# Regimes de contexto temporal do AE-LSTM. A escolha NÃO é detalhe de
+# implementação: ela decide o que a comparação com o AE denso está medindo.
+CONTEXTO_NORMAL = "normal"
+CONTEXTO_TRAJETORIA = "trajetoria"
+CONTEXTOS = (CONTEXTO_NORMAL, CONTEXTO_TRAJETORIA)
+
+
 def construir_scorer(model, X_contexto: np.ndarray, colunas, scaler,
-                     normalizacao=None):
-    """callable(list[DataFrame]) -> escores. Cada janela é pontuada como
-    'a janela ATUAL dado o histórico normal precedente' (erro no último passo)."""
+                     normalizacao=None, contexto: str = CONTEXTO_NORMAL):
+    """callable(list[DataFrame]) -> escores, no último passo da sequência.
+
+    O PARÂMETRO `contexto` EXISTE POR UM MOTIVO CIENTÍFICO
+    =====================================================
+    `sequencias_com_contexto` monta, para cada janela pontuada, L-1
+    predecessores mais a janela no último passo. De onde vêm os predecessores
+    muda o que o AE-LSTM enxerga:
+
+    - `normal` (padrão): predecessores do fluxo SAUDÁVEL de calibração. Durante
+      a varredura de magnitude o modelo vê `normal, …, normal, INJETADA` — um
+      DEGRAU. Ele detecta descontinuidade contra uma linha de base sã.
+
+    - `trajetoria`: predecessores são os próprios itens, isto é, as magnitudes
+      ANTERIORES da mesma trajetória. O modelo vê uma série que DEGRADA
+      progressivamente, que é o fenômeno físico que a dissertação modela
+      (contato que se desgasta, IGBT que envelhece).
+
+    Por que importa: em 15/08/2026 o AE-LSTM apareceu detectando com 1/3 da
+    magnitude do AE denso nas três falhas. Sob `normal`, parte desse ganho pode
+    vir do contraste que a varredura fabrica — em campo o histórico também
+    estaria degradado, e o degrau não existiria. Comparar os dois regimes separa
+    ganho de ARQUITETURA de ganho de CONTRASTE.
+
+    Nenhum dos dois é "o certo": são perguntas diferentes. `normal` responde
+    "detecta início abrupto?"; `trajetoria` responde "detecta degradação
+    progressiva?". A dissertação precisa dizer qual está reportando.
+    """
     from src.ml.modelos_anomalia import pontuar_ae_lstm, sequencias_com_contexto
+
+    if contexto not in CONTEXTOS:
+        raise ValueError(
+            f"contexto do AE-LSTM deve ser um de {CONTEXTOS}; recebido {contexto!r}"
+        )
 
     def scorer(janelas):
         X = features_das_janelas(janelas, colunas, scaler, normalizacao)
-        seq = sequencias_com_contexto(X_contexto, X, SEQ_LEN)
+        # Com `trajetoria`, os predecessores saem do próprio lote: para o item i
+        # no passo t, `sequencias_com_contexto` usa a posição i-(L-1)+t, que são
+        # exatamente as magnitudes anteriores da mesma janela-base.
+        base = X if contexto == CONTEXTO_TRAJETORIA else X_contexto
+        seq = sequencias_com_contexto(base, X, SEQ_LEN)
         return pontuar_ae_lstm(model, seq)
 
     return scorer

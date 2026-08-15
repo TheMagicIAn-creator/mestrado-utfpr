@@ -109,7 +109,8 @@ def _pasta_do_modelo(nome: str) -> Path:
 # ETAPA 1 — os dois detectores, sobre o MESMO holdout
 # ============================================================
 
-def montar_detectores(janelas_calib: list, bracos=None) -> list[dict]:
+def montar_detectores(janelas_calib: list, bracos=None,
+                      contexto_lstm: str | None = None) -> list[dict]:
     """Constrói os scorers dos braços pedidos — por padrão, os dois.
 
     Nome, cor e construção do detector vêm todos de `bracos_modelo`. Antes
@@ -126,7 +127,7 @@ def montar_detectores(janelas_calib: list, bracos=None) -> list[dict]:
             "braco": braco,
             "nome": braco.nome,
             "cor": braco.cor,
-            "scorer": construir_scorer(braco, janelas_calib),
+            "scorer": construir_scorer(braco, janelas_calib, contexto_lstm),
         }
         for braco in (bracos if bracos is not None else BRACOS)
     ]
@@ -408,7 +409,8 @@ def registrar_manifesto(n_janelas: int | None = None,
 
 def executar(n_janelas: int | None = None, n_steps: int | None = None,
              n_trajetorias: int | None = None, n_boot: int = 0,
-             bracos: list[str] | None = None) -> dict:
+             bracos: list[str] | None = None,
+             contexto_lstm: str | None = None) -> dict:
     from src.ml.gpvs_principal import preparar_janelas_holdout
     from src.ml.injecao_falhas import FALHAS, N_JANELAS_SMD
     from src.ml.macro_comum import (
@@ -444,7 +446,7 @@ def executar(n_janelas: int | None = None, n_steps: int | None = None,
     # Sem `bracos`, roda os dois. Com um só, nada do outro e treinado nem
     # gravado -- e o pedido de nao misturar e atendido na raiz.
     selecionados = [por_id(b) for b in bracos] if bracos else None
-    detectores = montar_detectores(j_cal, selecionados)
+    detectores = montar_detectores(j_cal, selecionados, contexto_lstm)
 
     blocos = []
     for detector in detectores:
@@ -474,6 +476,12 @@ def executar(n_janelas: int | None = None, n_steps: int | None = None,
         )
         bloco["cor"] = detector["cor"]
         bloco["braco_id"] = detector["braco"].id
+        # O regime de contexto viaja com o resultado: sem isso, duas
+        # execucoes que medem perguntas DIFERENTES ficam indistinguiveis.
+        if detector["braco"].id == "ae_lstm":
+            bloco["contexto_lstm"] = (
+                contexto_lstm or "normal"
+            )
         bloco["percentil_limiar"] = float(percentil)
         blocos.append(bloco)
 
@@ -521,6 +529,11 @@ def main(argv: list[str] | None = None) -> None:
                    help="teto de trajetórias por falha (padrão: todas)")
     p.add_argument("--n-boot", type=int, default=0,
                    help="reamostragens do IC do ajuste (padrão: 0, sem IC)")
+    p.add_argument("--contexto-lstm", choices=("normal", "trajetoria"),
+                   default=None,
+                   help="histórico que o AE-LSTM vê na varredura. `normal` "
+                        "(padrão) = degrau contra linha de base sã; "
+                        "`trajetoria` = série que degrada, o fenômeno físico.")
     p.add_argument("--braco", action="append", dest="bracos", default=None,
                    metavar="ID",
                    help="roda SÓ este braço (ae_denso | ae_lstm). Pode repetir. "
@@ -531,7 +544,7 @@ def main(argv: list[str] | None = None) -> None:
 
     habilitar_console()
     executar(args.n_janelas, args.n_steps, args.n_trajetorias,
-             args.n_boot, args.bracos)
+             args.n_boot, args.bracos, args.contexto_lstm)
 
 
 if __name__ == "__main__":

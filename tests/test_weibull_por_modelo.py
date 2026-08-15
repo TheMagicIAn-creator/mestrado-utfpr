@@ -269,3 +269,51 @@ def test_a_comparacao_traz_o_empirico_e_marca_o_parametrico():
     assert "a10_empirico" in linha and "a50_empirico" in linha
     assert "a10_2p" in linha
     assert "a10" not in linha, "o nome ambiguo nao pode voltar"
+
+
+# ── o regime de contexto do AE-LSTM decide o que se está medindo ───────────
+
+def test_os_dois_regimes_de_contexto_existem_e_sao_validados():
+    from src.ml.macro_ibrahim import CONTEXTO_NORMAL, CONTEXTO_TRAJETORIA, CONTEXTOS
+
+    assert CONTEXTO_NORMAL in CONTEXTOS and CONTEXTO_TRAJETORIA in CONTEXTOS
+    with pytest.raises(ValueError) as erro:
+        from src.ml.macro_ibrahim import construir_scorer
+        construir_scorer(None, np.zeros((4, 3)), ["a"], None,
+                         contexto="degrau_magico")
+    assert "normal" in str(erro.value) and "trajetoria" in str(erro.value)
+
+
+def test_trajetoria_usa_os_proprios_itens_como_historico():
+    """A diferença entre 'detecta degrau' e 'detecta degradação'.
+
+    Sob `normal`, o AE-LSTM vê L-1 janelas SAUDÁVEIS antes da injetada — um
+    degrau que a varredura fabrica e que o campo não daria. Sob `trajetoria`,
+    o histórico são as magnitudes anteriores da mesma janela-base.
+    """
+    from src.ml.modelos_anomalia import sequencias_com_contexto
+
+    itens = np.arange(12, dtype=np.float32).reshape(6, 2)
+    contexto_sao = np.zeros((6, 2), dtype=np.float32)
+
+    com_degrau = sequencias_com_contexto(contexto_sao, itens, 3)
+    com_trajetoria = sequencias_com_contexto(itens, itens, 3)
+
+    # Nos dois, o ÚLTIMO passo é sempre o item pontuado.
+    np.testing.assert_allclose(com_degrau[:, -1], itens)
+    np.testing.assert_allclose(com_trajetoria[:, -1], itens)
+    # Mas o histórico difere: saudável contra magnitudes anteriores.
+    np.testing.assert_allclose(com_degrau[3, 0], contexto_sao[1])
+    np.testing.assert_allclose(com_trajetoria[3, 0], itens[1])
+    assert not np.allclose(com_degrau, com_trajetoria)
+
+
+def test_o_regime_viaja_com_o_resultado():
+    """Duas execuções que medem perguntas DIFERENTES não podem ficar
+    indistinguíveis no artefato."""
+    from pathlib import Path
+
+    fonte = (Path(__file__).resolve().parents[1]
+             / "src/ml/macro_weibull.py").read_text(encoding="utf-8")
+    assert 'bloco["contexto_lstm"]' in fonte
+    assert '"--contexto-lstm"' in fonte

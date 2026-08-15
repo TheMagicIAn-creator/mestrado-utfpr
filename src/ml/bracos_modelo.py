@@ -148,7 +148,8 @@ def preparar_pastas() -> dict[str, Path]:
     return caminhos
 
 
-def construir_scorer(braco: BracoModelo, janelas_calibracao: list):
+def construir_scorer(braco: BracoModelo, janelas_calibracao: list,
+                     contexto_lstm: str | None = None):
     """Detector pronto para pontuar, para QUALQUER braço.
 
     Interface única: ``Callable[[list[DataFrame]], np.ndarray]`` — a mesma que
@@ -186,7 +187,8 @@ def construir_scorer(braco: BracoModelo, janelas_calibracao: list):
         )
         modelo = macro_ibrahim.treinar_detector(X_cal)
         return macro_ibrahim.construir_scorer(
-            modelo, X_cal, colunas, scaler, normalizacao
+            modelo, X_cal, colunas, scaler, normalizacao,
+            contexto=contexto_lstm or macro_ibrahim.CONTEXTO_NORMAL,
         )
 
     raise KeyError(f"Braço sem construtor de detector: {braco.id}")

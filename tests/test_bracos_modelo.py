@@ -120,7 +120,7 @@ def test_montar_detectores_respeita_a_selecao(monkeypatch):
 
     construidos = []
 
-    def falso_scorer(braco, janelas):
+    def falso_scorer(braco, janelas, contexto_lstm=None):
         construidos.append(braco.id)
         return lambda janelas_: []
 
