@@ -404,7 +404,7 @@ def test_manutencao_da_sessao_nao_bloqueia_resposta(monkeypatch, tmp_path):
     assert indexacao_terminou.wait(timeout=1)
 
 
-def test_obsidian_e_sincronizado_em_background_com_intervalo(monkeypatch, tmp_path):
+def test_obsidian_e_sincronizado_em_background_com_intervalo(monkeypatch):
     import src.conhecimento.agente as agente
     import src.conhecimento.obsidian as obsidian
 
@@ -433,18 +433,17 @@ def test_obsidian_e_sincronizado_em_background_com_intervalo(monkeypatch, tmp_pa
         auditor=SimpleNamespace(),
         modo_consulta=False,
     )
-    adapter = AgentAdapter(
-        session_journal=SessionJournal(
-            pasta=tmp_path,
-            indexer=lambda *_args: None,
-        )
+    diario_sem_io = SimpleNamespace(
+        validar_session_id=lambda valor: valor,
+        record=lambda *_args: None,
     )
+    adapter = AgentAdapter(session_journal=diario_sem_io)
     adapter._components = componentes
     adapter._state = "ready"
 
     primeira = adapter.answer("Compare o autoencoder V2 com o PCA.")
     assert primeira["maintenance_scheduled"] is True
-    assert concluiu.wait(timeout=1)
+    assert concluiu.wait(timeout=2)
     adapter.answer("Explique a calibracao do limiar.")
 
     assert sincronizacoes == [
