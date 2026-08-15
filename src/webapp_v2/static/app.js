@@ -160,6 +160,10 @@ function switchView(view, updateHash = true) {
     if (active) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");
   });
+  // Só a vista do agente vira tela cheia: a página para de rolar e a lista de
+  // mensagens passa a ser o único elemento rolável. Nas demais, a rolagem
+  // normal da página é o certo — são painéis longos de leitura.
+  document.body.classList.toggle("is-agent-view", view === "agent");
   $("view-kicker").textContent = VIEW_META[view][0];
   $("view-title").textContent = VIEW_META[view][1];
   if (updateHash) history.replaceState(null, "", `#${view}`);
@@ -715,6 +719,10 @@ function addChatMessage(role, content, images = [], renderedHtml = "") {
     messageBody.appendChild(gallery);
   }
   $("chat-messages").appendChild(article);
+  // Assim que Rodolfo fala, as sugestões saem de cena e a área devolvida vai
+  // para a conversa. Só o turno do usuário conta: a saudação inicial do agente
+  // não é conversa iniciada.
+  if (isUser) document.body.classList.add("has-conversation");
   window.requestAnimationFrame(() => {
     $("chat-messages").scrollTo({ top: $("chat-messages").scrollHeight, behavior: "smooth" });
   });

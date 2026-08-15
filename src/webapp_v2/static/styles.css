@@ -21,6 +21,10 @@
   --plot-grid: #dfe3e5;
   --shadow: 0 12px 34px rgba(21, 27, 31, 0.14);
   --sidebar-width: 232px;
+  /* Comprimento da coluna de leitura do chat. Um só token para mensagens,
+     sugestões e compositor — antes eram 780/680/900 px em três regras, e as
+     três bordas não se alinhavam. */
+  --chat-col: 860px;
 }
 
 html[data-theme="dark"] {
@@ -111,7 +115,7 @@ input:focus-visible,
 }
 
 .app-shell {
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .sidebar {
@@ -284,7 +288,9 @@ input:focus-visible,
 }
 
 .workspace {
-  min-height: 100vh;
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
   margin-left: var(--sidebar-width);
 }
 
@@ -335,6 +341,7 @@ input:focus-visible,
 
 main {
   width: min(100%, 1520px);
+  flex: 1 1 auto;
   margin: 0 auto;
   padding: 30px 32px 72px;
 }
@@ -940,9 +947,19 @@ h2 {
   animation: status-pulse 1.2s ease-in-out infinite;
 }
 
+/* A superfície do chat NÃO tem altura própria: ela ocupa o que sobrar da
+   coluna. Antes era `min-height: calc(100vh - 240px)` com a lista de mensagens
+   em `max-height: calc(100vh - 354px)` — duas constantes que só valiam para uma
+   combinação exata de topbar, cabeçalho e sugestões. Bastava o cabeçalho
+   quebrar em duas linhas, ou a fileira de sugestões passar para a segunda
+   linha, para o chat aparecer como uma janelinha no meio da página. É por isso
+   que a tela parecia menor do que a área disponível.
+
+   Com flexbox não há número mágico: o que sobrar é do chat. */
 .chat-surface {
   display: flex;
-  min-height: calc(100vh - 240px);
+  min-height: 0;
+  flex: 1 1 auto;
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -953,16 +970,24 @@ h2 {
 
 .chat-messages {
   display: flex;
+  min-height: 0;      /* sem isto, um filho longo estoura o flex e nada rola */
   flex: 1 1 auto;
   flex-direction: column;
   gap: 22px;
-  max-height: calc(100vh - 354px);
-  min-height: 330px;
   overflow-y: auto;
-  padding: 30px clamp(18px, 6vw, 74px);
+  padding: 30px clamp(16px, 5vw, 48px);
   background: color-mix(in srgb, var(--canvas) 48%, var(--surface));
   scrollbar-color: var(--line-strong) transparent;
   scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+
+/* Coluna de leitura centrada, como nas interfaces de referência: o texto para
+   de percorrer 1520 px de tela larga e fica no comprimento de linha legível. */
+.chat-messages > * {
+  width: 100%;
+  max-width: var(--chat-col);
+  margin-inline: auto;
 }
 
 .message {
@@ -1000,19 +1025,25 @@ h2 {
   color: var(--amber);
 }
 
+/* A resposta do agente NÃO é balão. As respostas aqui trazem tabelas, blocos de
+   código e figuras — conteúdo que uma caixa de 78% da largura espreme e força a
+   rolar na horizontal. Nas interfaces de referência a fala do assistente ocupa
+   a coluna inteira e só o turno do usuário é balão; é o que faz uma tabela
+   FMECA caber sem barra lateral. */
 .message-body {
-  width: fit-content;
-  max-width: min(78%, 780px);
-  padding: 13px 15px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--ink) 6%, transparent);
+  min-width: 0;
+  width: 100%;
+  padding: 2px 0 0;
+  border: 0;
+  background: transparent;
 }
 
 .user-message .message-body {
-  max-width: min(76%, 680px);
-  border-color: #2675d8;
+  width: fit-content;
+  max-width: min(84%, 640px);
+  padding: 11px 14px;
+  border: 1px solid #2675d8;
+  border-radius: 12px;
   background: #2675d8;
   color: #ffffff;
 }
@@ -1182,10 +1213,107 @@ h2 {
   transition: opacity 160ms ease;
 }
 
+/* ============================================================
+   VISTA DO AGENTE EM TELA CHEIA
+   ============================================================
+   O corpo ganha `is-agent-view` quando o chat está aberto (switchView, em
+   app.js). Só então a página deixa de rolar e o chat passa a ocupar a altura
+   inteira, com a lista de mensagens como ÚNICO elemento rolável — o
+   comportamento das interfaces de referência.
+
+   Nas outras vistas nada muda: painéis, gráficos e tabelas continuam com a
+   rolagem normal da página, que é o certo para conteúdo longo de leitura.
+
+   `100dvh` e não `100vh`: no celular a `vh` conta a barra de endereço mesmo
+   quando ela está recolhida, e o compositor ficava escondido atrás dela. */
+body.is-agent-view {
+  overflow: hidden;
+}
+
+body.is-agent-view .workspace {
+  height: 100dvh;
+  min-height: 0;
+}
+
+body.is-agent-view main {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  max-width: none;
+  flex-direction: column;
+  padding: 0 clamp(12px, 3vw, 28px) 14px;
+  overflow: hidden;
+}
+
+body.is-agent-view .agent-view {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+/* Cabeçalho compacto: a topbar JÁ diz "Agente", e o bloco grande repetia o
+   título mais um subtítulo, consumindo 84 px acima da conversa. Medido no
+   Chromium, o chat subiu de 58% para 68% da altura útil num laptop de 720 px
+   só com isto. Sobra a marca de presença e o estado do agente, que são
+   informação viva. */
+body.is-agent-view .agent-header {
+  min-height: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 10px 0;
+}
+
+body.is-agent-view .agent-header .eyebrow {
+  display: none;
+}
+
+body.is-agent-view .agent-header h1 {
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+body.is-agent-view .agent-presence-mark {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+  font-size: 13px;
+}
+
+/* O aviso de carregamento reserva 300 px por `min-height`. No fluxo normal isso
+   centra o texto na página; dentro da coluna do chat, roubaria a área da
+   conversa mesmo depois de resolvido. */
+body.is-agent-view .loading-state {
+  min-height: 0;
+  flex: 0 0 auto;
+  padding: 10px 0;
+}
+
+/* As sugestões são um ponto de partida. Depois do primeiro turno elas viram
+   ruído fixo ocupando ~60 px permanentes — nas interfaces de referência elas
+   somem quando a conversa começa. */
+body.has-conversation .prompt-row {
+  display: none;
+}
+
+/* Sem borda e sem sombra em tela cheia: o cartão flutuante era exatamente o
+   efeito de "janela dentro da janela" que o pesquisador descreveu. */
+body.is-agent-view .chat-surface {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.is-agent-view .chat-messages {
+  padding-inline: 0;
+  background: transparent;
+}
+
 .prompt-row {
   display: flex;
   flex-wrap: wrap;
-  width: min(calc(100% - 36px), 900px);
+  width: min(100%, var(--chat-col));
   gap: 8px;
   margin: 0 auto;
   padding: 14px 0 0;
@@ -1223,7 +1351,7 @@ h2 {
   grid-template-columns: 38px minmax(0, 1fr) 42px;
   align-items: end;
   gap: 7px;
-  width: min(calc(100% - 36px), 900px);
+  width: min(100%, var(--chat-col));
   margin: 11px auto 0;
   padding: 8px;
   border: 1px solid var(--line-strong);
@@ -1294,7 +1422,7 @@ h2 {
 }
 
 .attachment-line {
-  width: min(calc(100% - 36px), 900px);
+  width: min(100%, var(--chat-col));
   min-height: 24px;
   margin: 0 auto;
   padding: 4px 0 0;
@@ -1475,6 +1603,22 @@ h2 {
     padding: 24px 18px 92px;
   }
 
+  /* Abaixo de 900 px a navegação vira barra fixa no rodapé (62 px). Sem esta
+     folga o compositor fica ATRÁS dela — a caixa de texto existe, recebe foco,
+     e o usuário não a enxerga. O `padding-bottom: 92px` do fluxo normal já
+     cobria isso; a vista em tela cheia precisa do seu próprio. */
+  body.is-agent-view main {
+    padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px) + 10px);
+  }
+
+  /* Título e estado lado a lado: empilhados, comem duas linhas do que já é a
+     tela mais apertada. */
+  body.is-agent-view .agent-header {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+
   .two-column,
   .two-column.wide-left {
     grid-template-columns: 1fr;
@@ -1615,10 +1759,12 @@ h2 {
   }
 
   .chat-messages {
-    min-height: 270px;
-    max-height: calc(100dvh - 430px);
     gap: 18px;
     padding: 20px 12px;
+  }
+
+  body.is-agent-view .chat-messages {
+    padding: 16px 2px;
   }
 
   .message {
@@ -1638,7 +1784,7 @@ h2 {
   }
 
   .prompt-row {
-    width: calc(100% - 16px);
+    width: 100%;
     flex-wrap: nowrap;
     overflow-x: auto;
     padding-top: 12px;
@@ -1646,7 +1792,7 @@ h2 {
   }
 
   .chat-composer {
-    width: calc(100% - 16px);
+    width: 100%;
     grid-template-columns: 36px minmax(0, 1fr) 40px;
     margin-top: 10px;
     padding: 6px;
@@ -1658,7 +1804,7 @@ h2 {
   }
 
   .attachment-line {
-    width: calc(100% - 16px);
+    width: 100%;
   }
 
   .image-dialog {
