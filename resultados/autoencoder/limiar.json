@@ -194,6 +194,6 @@
     },
     "nota": "F0L e F0M são separados temporalmente em treino, validação, calibração e teste. F1-F7 não participam do scaler, do treinamento nem do limiar."
   },
-  "data_treino": "2026-08-12T09:13:47.337948-03:00",
+  "data_treino": "2026-08-15T14:22:12.216059-03:00",
   "device": "cpu"
 }
