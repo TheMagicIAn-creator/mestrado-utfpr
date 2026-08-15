@@ -83,19 +83,25 @@ import numpy as np
 RAIZ = Path(__file__).parent.parent.parent
 PASTA_SAIDA = RAIZ / "resultados" / "macro" / "weibull"
 
-# Pasta por modelo. O nome do arquivo dentro dela é o MESMO das figuras do
-# pipeline principal (weibull_confiabilidade.png etc.) de propósito: o leitor
-# compara figuras homônimas em pastas distintas, sem precisar traduzir nomes.
-SLUG = {
-    "Proposto (AE denso + MSE p99)": "proposto",
-    "Ibrahim 2022 (AE-LSTM temporal)": "ibrahim",
-}
-
-
 def _pasta_do_modelo(nome: str) -> Path:
-    slug = SLUG.get(nome)
-    if slug is None:
-        slug = "".join(c if c.isalnum() else "_" for c in nome.lower())[:40]
+    """Pasta do BRAÇO, não uma subpasta deste macro.
+
+    Era um dicionário `SLUG` local — a quarta cópia da identidade dos modelos.
+    Agora vem de `bracos_modelo`, que é a fonte única: id, rótulo, cor e pasta
+    nascem juntos e não podem divergir.
+
+    O nome do arquivo dentro da pasta é o MESMO das figuras do pipeline
+    principal (weibull_confiabilidade.png etc.) de propósito: o leitor compara
+    figuras homônimas em pastas distintas, sem traduzir nomes.
+    """
+    from src.ml.bracos_modelo import identificar
+
+    braco = identificar(nome)
+    if braco is not None:
+        return braco.pasta / "weibull"
+    # Braço não registrado (ablação exploratória): pasta própria e estável, para
+    # não colidir com os dois oficiais.
+    slug = "".join(c if c.isalnum() else "_" for c in nome.lower())[:40]
     return PASTA_SAIDA / slug
 
 
@@ -103,38 +109,27 @@ def _pasta_do_modelo(nome: str) -> Path:
 # ETAPA 1 — os dois detectores, sobre o MESMO holdout
 # ============================================================
 
-def montar_detectores(janelas_calib: list, colunas, scaler,
-                      normalizacao) -> list[dict]:
-    """Constrói os scorers dos dois métodos comparados.
+def montar_detectores(janelas_calib: list, bracos=None) -> list[dict]:
+    """Constrói os scorers dos braços pedidos — por padrão, os dois.
 
-    O AE denso vem congelado do disco: é o detector da dissertação, e
-    re-treiná-lo aqui inventaria um modelo que nenhum artefato registra. O
-    AE-LSTM é treinado no bloco de CALIBRAÇÃO, exatamente como em
-    `macro_ibrahim` — nunca nas janelas que virarão trajetória.
+    Nome, cor e construção do detector vêm todos de `bracos_modelo`. Antes
+    estavam repetidos aqui como literais, e essa era a quarta cópia da
+    identidade dos modelos.
+
+    Aceitar `bracos` é o que atende ao pedido de não misturar: rodar só o denso
+    é `montar_detectores(j_cal, [DENSO])`, e nada do LSTM é treinado nem gravado.
     """
-    from src.ml import macro_ibrahim, macro_proposto
+    from src.ml.bracos_modelo import BRACOS, construir_scorer
 
-    detectores = []
-
-    det = macro_proposto.carregar_detector()
-    detectores.append({
-        "nome": macro_proposto.NOME,
-        "cor": "#2a78d6",
-        "scorer": macro_proposto.construir_scorer(det),
-    })
-
-    X_cal = macro_ibrahim.features_das_janelas(
-        janelas_calib, colunas, scaler, normalizacao
-    )
-    modelo_lstm = macro_ibrahim.treinar_detector(X_cal)
-    detectores.append({
-        "nome": macro_ibrahim.NOME,
-        "cor": "#1baf7a",
-        "scorer": macro_ibrahim.construir_scorer(
-            modelo_lstm, X_cal, colunas, scaler, normalizacao
-        ),
-    })
-    return detectores
+    return [
+        {
+            "braco": braco,
+            "nome": braco.nome,
+            "cor": braco.cor,
+            "scorer": construir_scorer(braco, janelas_calib),
+        }
+        for braco in (bracos if bracos is not None else BRACOS)
+    ]
 
 
 # ============================================================
@@ -317,9 +312,13 @@ def _saidas_weibull() -> list[Path]:
         PASTA_SAIDA / "detectabilidade_por_modelo.csv",
         PASTA_SAIDA / "comparacao_confiabilidade.png",
     ]
+    # As curvas moram na pasta do BRAÇO, não numa subpasta deste macro: é a
+    # separação que o pesquisador pediu, e ela precisa aparecer no manifesto.
+    from src.ml.bracos_modelo import BRACOS
+
     arquivos += [
-        PASTA_SAIDA / slug / nome
-        for slug in SLUG.values()
+        braco.pasta / "weibull" / nome
+        for braco in BRACOS
         for nome in ("weibull_distribuicao.png", "weibull_confiabilidade.png",
                      "weibull_funcoes_distribuicao.png",
                      "weibull_intensidade_deteccao.png")
@@ -395,19 +394,15 @@ def registrar_manifesto(n_janelas: int | None = None,
 # ============================================================
 
 def executar(n_janelas: int | None = None, n_steps: int | None = None,
-             n_trajetorias: int | None = None, n_boot: int = 0) -> dict:
-    import torch
-
-    from src.core.seguranca import carregar_pickle_com_sidecar
-    from src.ml.gpvs_principal import (
-        carregar_normalizacao_baseline, preparar_janelas_holdout,
-    )
+             n_trajetorias: int | None = None, n_boot: int = 0,
+             bracos: list[str] | None = None) -> dict:
+    from src.ml.gpvs_principal import preparar_janelas_holdout
     from src.ml.injecao_falhas import FALHAS, N_JANELAS_SMD
     from src.ml.macro_comum import (
         calibrar_limiar, conferir_escala_do_limiar,
         dividir_calibracao_avaliacao,
     )
-    from src.ml.macro_proposto import NOME as macro_proposto_nome_valor
+    from src.ml.bracos_modelo import DENSO, por_id
     from src.ml.rul_weibull import N_STEPS, selecionar_trajetorias_holdout
     from src.ml.weibull_por_modelo import (
         comparar_detectabilidade, detectabilidade_do_modelo,
@@ -426,9 +421,6 @@ def executar(n_janelas: int | None = None, n_steps: int | None = None,
             "Autoencoder não treinado. Rode antes:\n"
             "  python -m src.ml.exec_etapa_isolada features_gpvs && "
             "python -m src.ml.exec_etapa_isolada autoencoder")
-    ckpt = torch.load(arq_modelo, map_location="cpu", weights_only=False)
-    scaler = carregar_pickle_com_sidecar(pasta_ae / "scaler.pkl")
-    colunas = ckpt["colunas_feat"]
 
     _log("\n  Carregando holdout F0 do GPVS-Faults (teste isolado)...")
     janelas, _meta = preparar_janelas_holdout(n_max=n_janelas or N_JANELAS_SMD)
@@ -436,8 +428,10 @@ def executar(n_janelas: int | None = None, n_steps: int | None = None,
     _log(f"  {len(janelas)} janelas | calibração={len(j_cal)} | "
          f"avaliação={len(j_aval)} (disjuntos)")
 
-    normalizacao = carregar_normalizacao_baseline(pasta_ae)
-    detectores = montar_detectores(j_cal, colunas, scaler, normalizacao)
+    # Sem `bracos`, roda os dois. Com um só, nada do outro e treinado nem
+    # gravado -- e o pedido de nao misturar e atendido na raiz.
+    selecionados = [por_id(b) for b in bracos] if bracos else None
+    detectores = montar_detectores(j_cal, selecionados)
 
     blocos = []
     for detector in detectores:
@@ -447,7 +441,7 @@ def executar(n_janelas: int | None = None, n_steps: int | None = None,
         limiar, percentil = calibrar_limiar(scorer, j_cal)
         _log(f"\n  {nome}")
         _log(f"    limiar = {limiar:.5f} (percentil {percentil:.1f})")
-        if nome == macro_proposto_nome_valor:
+        if detector["braco"] is DENSO:
             alerta = conferir_escala_do_limiar(nome, limiar, pasta_ae)
             if alerta:
                 _log(f"    {alerta}")
@@ -466,6 +460,7 @@ def executar(n_janelas: int | None = None, n_steps: int | None = None,
             n_max_trajetorias=n_trajetorias, n_boot=n_boot,
         )
         bloco["cor"] = detector["cor"]
+        bloco["braco_id"] = detector["braco"].id
         bloco["percentil_limiar"] = float(percentil)
         blocos.append(bloco)
 
@@ -513,12 +508,17 @@ def main(argv: list[str] | None = None) -> None:
                    help="teto de trajetórias por falha (padrão: todas)")
     p.add_argument("--n-boot", type=int, default=0,
                    help="reamostragens do IC do ajuste (padrão: 0, sem IC)")
+    p.add_argument("--braco", action="append", dest="bracos", default=None,
+                   metavar="ID",
+                   help="roda SÓ este braço (ae_denso | ae_lstm). Pode repetir. "
+                        "Sem a opção, roda os dois e emite a comparação.")
     args = p.parse_args(argv)
 
     from src.core.logs import habilitar_console
 
     habilitar_console()
-    executar(args.n_janelas, args.n_steps, args.n_trajetorias, args.n_boot)
+    executar(args.n_janelas, args.n_steps, args.n_trajetorias,
+             args.n_boot, args.bracos)
 
 
 if __name__ == "__main__":

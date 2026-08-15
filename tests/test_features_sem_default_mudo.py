@@ -196,17 +196,32 @@ def test_vetores_de_janelas_aplica_a_normalizacao_de_baseline():
 
 @pytest.mark.parametrize("caminho", ("src/ml/macro_proposto.py",
                                      "src/ml/macro_ibrahim.py",
-                                     "src/ml/macro_weibull.py"))
+                                     "src/ml/bracos_modelo.py"))
 def test_os_macros_carregam_a_normalizacao_de_baseline(caminho):
-    """Guarda estrutural: o macro que esquecer a normalização reprova aqui.
+    """Guarda estrutural: quem monta detector e esquece a normalização reprova.
 
     Não basta usar o extrator certo — a representação de entrada tem DOIS
     passos, e pular o segundo produz número plausível, não erro.
+
+    `macro_weibull` saiu desta lista porque deixou de montar detector: ele
+    delega a `bracos_modelo.construir_scorer`, que é quem carrega a
+    normalização. A guarda segue a responsabilidade, não o arquivo.
     """
     fonte = (RAIZ / caminho).read_text(encoding="utf-8")
     assert "normaliza" in fonte, (
         f"{caminho} não menciona a normalização de baseline; features cruas "
         "num scaler de features normalizadas é resultado errado sem aviso"
     )
-    if caminho.endswith("macro_weibull.py"):
+    if caminho.endswith("bracos_modelo.py"):
         assert "carregar_normalizacao_baseline" in fonte
+
+
+def test_macro_weibull_nao_monta_detector_por_conta_propria():
+    """A delegação tem de continuar existindo, senão a guarda acima vira letra
+    morta: bastaria macro_weibull voltar a montar o scorer sozinho."""
+    fonte = (RAIZ / "src/ml/macro_weibull.py").read_text(encoding="utf-8")
+    assert "from src.ml.bracos_modelo import BRACOS, construir_scorer" in fonte
+    assert "carregar_pickle_com_sidecar" not in fonte, (
+        "macro_weibull voltou a carregar artefato de detector por fora do "
+        "registro de braços"
+    )
