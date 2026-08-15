@@ -23,8 +23,14 @@
   --sidebar-width: 232px;
   /* Comprimento da coluna de leitura do chat. Um só token para mensagens,
      sugestões e compositor — antes eram 780/680/900 px em três regras, e as
-     três bordas não se alinhavam. */
-  --chat-col: 860px;
+     três bordas não se alinhavam.
+
+     Escala com a tela em vez de ser fixo. Um 860 px fixo é confortável para
+     texto corrido, mas num monitor de 1900 px sobra meia tela vazia e o chat
+     volta a PARECER pequeno — que é a queixa original, com outra causa. As
+     respostas aqui carregam tabela FMECA e bloco de código, então largura é
+     conteúdo, não desperdício. O teto evita a linha quilométrica que cansa. */
+  --chat-col: clamp(680px, 74vw, 1280px);
 }
 
 html[data-theme="dark"] {
@@ -1308,6 +1314,18 @@ body.is-agent-view .chat-surface {
 body.is-agent-view .chat-messages {
   padding-inline: 0;
   background: transparent;
+}
+
+/* "ALIADO PV" e "Rodolfo" repetidos acima de cada turno são ruído: só há dois
+   interlocutores e a marca já os distingue. Nenhuma das interfaces de
+   referência rotula turno a turno. Fica no DOM para leitor de tela. */
+body.is-agent-view .message-author {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .prompt-row {

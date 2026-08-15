@@ -2,10 +2,10 @@
 
 Mapa rápido para não se perder. O pacote tem **4 áreas**. `core/` é a base;
 os módulos `conhecimento/ferramentas*` funcionam como adaptadores e podem acionar `ml/`;
-`interface/` e `orquestrador.py` compõem os fluxos no topo:
+`webapp_v2/` e `orquestrador.py` compõem os fluxos no topo:
 
 ```
-                 interface/ + orquestrador.py
+                 webapp_v2/ + orquestrador.py
                          │
                  conhecimento/ (RAG / agente)
                          │ ferramentas
@@ -16,6 +16,8 @@ core/  ◄──────────────── ml/ (pipeline e exper
 Regra de ouro: **`core/` é a fundação** (todos importam dela; ela não importa
 ninguém). `ml/` não depende do agente. A integração RAG→ML fica concentrada em
 na família `conhecimento/ferramentas*`; a interface não implementa regra científica.
+A V1 Streamlit (`src/interface/`) foi **removida** em 15/08/2026 — ver
+`docs/aplicacao_web_v2.md` para as duas capacidades que a V2 ainda não portou.
 
 ---
 
@@ -132,12 +134,6 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `webapp_v2/scientific_context.py` | Reconcilia respostas do agente com os contratos que alimentam as figuras. |
 | `webapp_v2/session_journal.py` | Grava e reindexa sessões V2 sem estado do Streamlit. |
 | `base_runtime.py` | Restaura índices, escolhe embeddings e prepara BM25 sem depender da UI. |
-| `interface/streamlit_app.py` | Interface legada preservada apenas durante a migração; não é entrypoint. |
-| `interface/apoio_streamlit.py` | Helpers leves de estado, espera e falhas, importáveis sem instalar a UI. |
-| `interface/sidebar.py` | Status, diagnóstico e controles laterais. |
-| `interface/renderizacao_imagens.py` | Agrupamento, antevisão e download de figuras. |
-| `interface/ciclo_chat.py` | Persistência da sessão e caminhos de resposta por ferramenta/RAG. |
-| `interface/streamlit_proxy.py` | Referência tardia ao Streamlit atual para testes e hot-reload. |
 | `orquestrador.py` | Coordenação leve do backend na init (reprocessamento por sinal + indexação de PDFs novos). |
 
 ---

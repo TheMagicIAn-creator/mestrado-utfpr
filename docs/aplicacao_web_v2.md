@@ -84,10 +84,21 @@ O deploy público deve adicionar autenticação e persistência de sessão na
 plataforma de hospedagem. O servidor local assume um único pesquisador e não
 expõe dados brutos, modelos ou estado local do Obsidian como arquivos estáticos.
 
-## Interface legada
+## Interface legada — REMOVIDA em 15/08/2026
 
-Os módulos em `src/interface/` permanecem congelados para testes e histórico de
-migração. Nenhum módulo de `src/webapp_v2/` pode importá-los. Eles não fazem
-parte de `requirements-ui.txt` e não devem ser usados em novos deploys.
-`streamlit run app.py` é bloqueado deliberadamente; `python app.py` apenas
-delega ao launcher V2 por compatibilidade.
+`src/interface/` (a V1 Streamlit) foi apagada. Estava congelada desde a
+migração, nenhum módulo de `src/webapp_v2/` a importava e `app.py` já bloqueava
+sua execução — era código morto ocupando a leitura do repositório.
+
+O histórico permanece no Git. `streamlit run app.py` continua bloqueado;
+`python app.py` delega ao launcher V2 por compatibilidade.
+
+**Duas capacidades da V1 NÃO foram portadas para a V2**, e isso é dívida
+declarada, não descuido de quem removeu:
+
+- o **registro de atalhos** (`resolver_atalho`): exportar conversa, inventário
+  do vault, consulta cronológica, cofre de trechos. `src/conhecimento/atalhos.py`
+  segue vivo e testado — falta a V2 chamá-lo;
+- os **avisos de falha operacional** ("Sessão salva, mas não foi indexada na
+  memória", "Não foi possível sincronizar o Obsidian neste turno" etc.), que a
+  V1 mostrava e a V2 hoje engole.

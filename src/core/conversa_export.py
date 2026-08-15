@@ -3,10 +3,10 @@ conversa_export.py — Al IAdo PV
 
 Exportação do histórico da conversa do chat para um arquivo .txt baixável.
 
-Lógica PURA (stdlib apenas, sem Streamlit): detecção da intenção e montagem do
-transcrito completo. O botão de download em si é responsabilidade da interface
-(src/interface/streamlit_app.py), que tem acesso a `st.session_state` e ao
-`st.download_button`. Manter a lógica aqui a torna testável sem carregar a UI.
+Lógica PURA (stdlib apenas): detecção da intenção e montagem do transcrito
+completo. A entrega do arquivo em si é responsabilidade da interface — hoje a
+Web V2 (`src/webapp_v2/`). Manter a lógica aqui a torna testável sem carregar
+a UI, e foi o que permitiu a V1 Streamlit ser removida sem tocar nela.
 
 Motivação: sem isto, um pedido como "gere um .txt do histórico" ia ao LLM, que
 NÃO tem como criar arquivos — então ele apenas *afirmava* ter gerado (alucinação)
