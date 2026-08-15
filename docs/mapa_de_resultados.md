@@ -66,6 +66,22 @@ as **mesmas** realizações de ruído. O que difere é a arquitetura e o limiar 
 o limiar difere **de propósito**: escores de detectores distintos não são
 comparáveis em escala. Fonte única da regra: `macro_comum.calibrar_limiar`.
 
+### Matrizes de confusão
+
+| Onde | O que é |
+|---|---|
+| `resultados/autoencoder/validacao_matriz.png` | validação do detector do pipeline |
+| `resultados/autoencoder/validacao_matrizes_severidades.png` | uma matriz por severidade injetada |
+| `resultados/v2/autoencoder/matrizes_confusao.png` | experimento v2 |
+| `resultados/classificacao_pv/matriz_confusao.png` | PV Farms, lado CC, E1 |
+
+**A comparação macro não tem matriz de confusão, e isso é decisão, não falta.**
+Sob prevalência rara a matriz no limiar calibrado é enganosa: com FP alvo de 1%,
+quase toda a massa cai na diagonal do negativo e a figura sugere um desempenho
+que a AUC não confirma. É por isso que o comparativo ranqueia por **AUC** e
+**SMD@FPR=10%**, que independem do limiar. Registrado em `macro_comum.py` e
+`macro_comparar.py`.
+
 ### Criticidade e priorização
 
 | Afirmação | Fonte |

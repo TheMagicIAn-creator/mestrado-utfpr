@@ -397,9 +397,9 @@ def executar(n_janelas: int | None = None, n_steps: int | None = None,
 
     from src.core.seguranca import carregar_pickle_com_sidecar
     from src.ml.gpvs_principal import preparar_janelas_holdout
-    from src.ml.injecao_falhas import N_JANELAS_SMD
+    from src.ml.injecao_falhas import FALHAS, N_JANELAS_SMD
     from src.ml.macro_comum import calibrar_limiar, dividir_calibracao_avaliacao
-    from src.ml.rul_weibull import N_STEPS
+    from src.ml.rul_weibull import N_STEPS, selecionar_trajetorias_holdout
     from src.ml.weibull_por_modelo import (
         comparar_detectabilidade, detectabilidade_do_modelo,
     )
@@ -437,8 +437,15 @@ def executar(n_janelas: int | None = None, n_steps: int | None = None,
         limiar, percentil = calibrar_limiar(scorer, j_cal)
         _log(f"\n  {nome}")
         _log(f"    limiar = {limiar:.5f} (percentil {percentil:.1f})")
-        _log(f"    varrendo magnitude em {len(j_aval)} janelas × 3 falhas "
-             f"({n_steps} passos, parada antecipada)...")
+        n_traj = len(selecionar_trajetorias_holdout(j_aval, n_trajetorias))
+        # Teto, não previsão: a parada antecipada corta a varredura no primeiro
+        # cruzamento confirmado, então falha detectável custa uma fração disto.
+        # O número existe para o pesquisador poder desistir ANTES de esperar.
+        teto = n_traj * len(FALHAS) * n_steps
+        _log(f"    varrendo magnitude em {n_traj} trajetórias × {len(FALHAS)} "
+             f"falhas × {n_steps} passos")
+        _log(f"    teto de {teto:,} pontuações de janela (parada antecipada "
+             f"reduz muito); use --n-trajetorias para cortar")
 
         bloco = detectabilidade_do_modelo(
             nome, scorer, limiar, j_aval, n_steps=n_steps,
