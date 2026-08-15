@@ -46,7 +46,20 @@ if os.getenv("AL_IADO_CERT_SISTEMA", "").strip().lower() in {"1", "true", "sim"}
               "seguindo com o bundle padrão do certifi.")
 
 from pathlib import Path
-from dotenv import load_dotenv
+
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError as _erro:  # dependencia declarada ausente
+    # Mensagem em vez de rastro cru: o caso real e o ambiente virtual
+    # desativado, e `No module named 'dotenv'` nao diz isso a ninguem.
+    raise ModuleNotFoundError(
+        "Dependencia 'python-dotenv' ausente. A causa quase sempre e o "
+        "ambiente virtual DESATIVADO -- o prompt mostra (.venv) quando esta "
+        "ativo.\n"
+        "  Windows:  .venv\\Scripts\\Activate.ps1\n"
+        "  Linux:    source .venv/bin/activate\n"
+        "Se o venv estiver ativo e o erro persistir: pip install -r requirements.txt"
+    ) from _erro
 
 
 # ============================================================
