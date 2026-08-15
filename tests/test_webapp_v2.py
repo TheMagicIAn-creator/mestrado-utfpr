@@ -407,10 +407,12 @@ def test_manutencao_da_sessao_nao_bloqueia_resposta(monkeypatch, tmp_path):
 def test_obsidian_e_sincronizado_em_background_com_intervalo(monkeypatch):
     import src.conhecimento.agente as agente
     import src.conhecimento.obsidian as obsidian
+    import src.webapp_v2.agent_adapter as agent_adapter
 
     sincronizacoes = []
     concluiu = Event()
     monkeypatch.setenv("AL_IADO_OBSIDIAN_SYNC_INTERVAL_S", "300")
+    monkeypatch.setattr(agent_adapter, "monotonic", lambda: 10.0)
     monkeypatch.setattr(
         agente,
         "perguntar",

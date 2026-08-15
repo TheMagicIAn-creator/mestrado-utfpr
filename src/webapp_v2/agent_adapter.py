@@ -85,7 +85,7 @@ class AgentAdapter:
         self._lock = threading.RLock()
         self._initialization_lock = threading.Lock()
         self._maintenance_lock = threading.Lock()
-        self._last_obsidian_sync = 0.0
+        self._last_obsidian_sync: float | None = None
         self._components: _Componentes | None = None
         self._state = "ready" if answerer is not None else "idle"
         self._error: str | None = None
@@ -333,7 +333,10 @@ class AgentAdapter:
             intervalo = DEFAULT_OBSIDIAN_SYNC_INTERVAL_S
 
         agora = monotonic()
-        if agora - self._last_obsidian_sync < intervalo:
+        if (
+            self._last_obsidian_sync is not None
+            and agora - self._last_obsidian_sync < intervalo
+        ):
             return
         self._last_obsidian_sync = agora
         try:
