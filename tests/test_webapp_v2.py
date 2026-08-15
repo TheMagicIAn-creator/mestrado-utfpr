@@ -433,7 +433,12 @@ def test_obsidian_e_sincronizado_em_background_com_intervalo(monkeypatch, tmp_pa
         auditor=SimpleNamespace(),
         modo_consulta=False,
     )
-    adapter = AgentAdapter(session_journal=SessionJournal(pasta=tmp_path))
+    adapter = AgentAdapter(
+        session_journal=SessionJournal(
+            pasta=tmp_path,
+            indexer=lambda *_args: None,
+        )
+    )
     adapter._components = componentes
     adapter._state = "ready"
 
