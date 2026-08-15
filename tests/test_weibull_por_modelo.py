@@ -180,7 +180,7 @@ def test_comparacao_alinha_os_modelos_por_falha():
     comp = comparar_detectabilidade([denso, lstm])
     assert comp["n_modelos"] == 2
     assert len(comp["linhas"]) == 6          # 2 modelos × 3 falhas
-    assert {l["modelo"] for l in comp["linhas"]} == {"AE denso", "AE-LSTM (Ibrahim)"}
+    assert {r["modelo"] for r in comp["linhas"]} == {"AE denso", "AE-LSTM (Ibrahim)"}
     for linha in comp["linhas"]:
         assert linha["evidence_level"] == "E2"
         assert 0.0 <= linha["pod_mon_no_teto"] <= 1.0

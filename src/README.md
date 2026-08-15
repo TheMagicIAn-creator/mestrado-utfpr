@@ -107,6 +107,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `macro_proposto.py` | Avalia o método proposto no protocolo comparável. |
 | `macro_ibrahim.py` | Avalia o AE-LSTM temporal inspirado em Ibrahim (2022). |
 | `macro_comparar.py` | Fonte única Proposto × Ibrahim para AUC e SMD. |
+| `macro_weibull.py` | As quatro curvas (papel de Weibull, `S_D`, `f_D`/`F_D`, `h_D`) **por modelo**, sobre o GPVS. Ponto de entrada separado porque a varredura de magnitude é cara; limiar calibrado por modelo, trajetórias e ruído compartilhados. |
 | **Harness histórico por artigo** | |
 | `experimentos_artigos.py` | Registry do comparativo ativo Ibrahim/AE-LSTM, métricas e runner de anomalia. |
 | `graficos_experimentos.py` | Figuras e comparações visuais do harness por artigo. |

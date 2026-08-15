@@ -130,7 +130,8 @@ def entradas_proveniencia_indisponiveis(n_janelas: int | None = None) -> list[st
     ]
 
 
-def executar(n_janelas: int | None = None) -> list[dict]:
+def executar(n_janelas: int | None = None, com_weibull: bool = False,
+             n_steps: int | None = None) -> list[dict]:
     from src.ml import macro_ibrahim, macro_proposto
     from src.ml.macro_comum import salvar_saidas, tabela_enxuta
 
@@ -160,11 +161,41 @@ def executar(n_janelas: int | None = None) -> list[dict]:
     _log("  severidade mostra a partir de que intensidade cada método enxerga")
     _log("  cada falha da FMECA. Ambos calibram o limiar em dados saudáveis.")
     _log("=" * 60)
+
+    # As curvas de confiabilidade por modelo NÃO saem daqui por padrão. A
+    # varredura de magnitude custa até N_STEPS inferências por trajetória, por
+    # falha, por modelo — ordens de grandeza acima do resto deste script. Quem
+    # quer as curvas pede por elas.
+    if com_weibull:
+        from src.ml import macro_weibull
+
+        _log("\n[3/3] Detectabilidade por modelo (varredura de magnitude)...")
+        macro_weibull.executar(n_janelas, n_steps)
+    else:
+        _log("\n  As curvas por modelo (papel de Weibull, S_D, f_D/F_D, h_D)")
+        _log("  não entram aqui: a varredura de magnitude é cara. Rode")
+        _log("  `python -m src.ml.macro_weibull` — ou repita este comando com")
+        _log("  `--weibull`.")
     return resultados
 
 
-if __name__ == "__main__":
+def main(argv: list[str] | None = None) -> None:
+    import argparse
+
+    p = argparse.ArgumentParser(description="Comparativo proposto × Ibrahim")
+    p.add_argument("--n-janelas", type=int, default=None,
+                   help="teto de janelas do holdout (padrão: todas)")
+    p.add_argument("--weibull", action="store_true",
+                   help="também gera as curvas de detectabilidade por modelo")
+    p.add_argument("--n-steps", type=int, default=None,
+                   help="passos da grade de magnitude quando --weibull")
+    args = p.parse_args(argv)
+
     from src.core.logs import habilitar_console
 
     habilitar_console()
-    executar()
+    executar(args.n_janelas, com_weibull=args.weibull, n_steps=args.n_steps)
+
+
+if __name__ == "__main__":
+    main()

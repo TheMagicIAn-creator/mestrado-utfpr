@@ -58,6 +58,35 @@ def dividir_calibracao_avaliacao(janelas: list, frac_calib: float = 0.4,
     return janelas[:n_cal], janelas[min(n, n_cal + purga):]
 
 
+def calibrar_limiar(scorer, janelas_calib: list) -> tuple[float, float]:
+    """Fixa o limiar operacional de UM método no bloco de calibração.
+
+    Devolve ``(limiar, percentil)``. O limiar sai do bloco de CALIBRAÇÃO e é
+    auto-ajustado ao FP alvo contra a cauda do próprio bloco; nunca enxerga o
+    bloco de avaliação.
+
+    Está numa função própria porque tem DOIS consumidores — `avaliar_deteccao`
+    (AUC/SMD por severidade) e `macro_weibull` (varredura de magnitude por
+    modelo). Duplicar a regra faria a mesma comparação sair com limiares
+    calibrados por critérios diferentes, e a diferença entre modelos passaria a
+    medir a discrepância entre as duas cópias.
+
+    A calibração é por MÉTODO, e isso é obrigatório: o MSE de um autoencoder
+    denso e o de um AE-LSTM vivem em escalas distintas. Um limiar único
+    compararia unidades diferentes.
+    """
+    from src.ml import escore_anomalia as ea
+
+    s_cal = np.asarray(scorer(janelas_calib), dtype=float)
+    if len(s_cal) >= 10:
+        corte = max(1, int(len(s_cal) * FRACAO_AJUSTE_LIMIAR))
+        # fp_alvo_pct=None => usa ea.FP_ALVO. Antes havia um 1.0 literal aqui,
+        # que ignorava AL_IADO_ESCORE_FP_ALVO e tornava a varredura de
+        # calibração impossível de conduzir pelo macro.
+        return ea.limiar_por_fp_alvo(s_cal[:corte], s_cal[corte:])
+    return float(np.percentile(s_cal, 99)), 99.0
+
+
 def avaliar_deteccao(nome: str, cor: str, scorer, janelas_calib: list,
                      janelas_aval: list, seed: int = 42) -> dict:
     """Avalia UM método sobre a injeção FMECA por severidade.
@@ -70,20 +99,9 @@ def avaliar_deteccao(nome: str, cor: str, scorer, janelas_calib: list,
 
     from src.ml.injecao_falhas import ALVO_SMD, FALHAS, FUNCOES_FALHA, SEVERIDADES
     from src.ml.estatistica import intervalo_wilson
-    from src.ml import escore_anomalia as ea
 
-    s_cal = np.asarray(scorer(janelas_calib), dtype=float)   # fixa o limiar
+    limiar, percentil = calibrar_limiar(scorer, janelas_calib)
     s_sau = np.asarray(scorer(janelas_aval), dtype=float)    # mede FP (não visto)
-    # Limiar do bloco de CALIBRAÇÃO; auto-ajustado ao FP alvo contra a cauda do
-    # próprio bloco. Nunca enxerga o bloco de avaliação.
-    if len(s_cal) >= 10:
-        corte = max(1, int(len(s_cal) * FRACAO_AJUSTE_LIMIAR))
-        # fp_alvo_pct=None => usa ea.FP_ALVO. Antes havia um 1.0 literal aqui,
-        # que ignorava AL_IADO_ESCORE_FP_ALVO e tornava a varredura de
-        # calibração impossível de conduzir pelo macro.
-        limiar, percentil = ea.limiar_por_fp_alvo(s_cal[:corte], s_cal[corte:])
-    else:
-        limiar, percentil = float(np.percentile(s_cal, 99)), 99.0
     fp = float((s_sau > limiar).mean() * 100.0)   # FP HONESTO: bloco não visto
 
     res = {"nome": nome, "cor": cor, "limiar": float(limiar),

@@ -172,6 +172,13 @@ def comparar_detectabilidade(modelos: list[dict]) -> dict:
                 "detectadas": dados["desfechos"]["n_detectadas"],
                 "pod_mon_no_teto": dados["desfechos"]["pod_mon_no_teto"],
                 "ajuste_convergiu": bool(w.get("fit_converged")),
+                # Sem isto a tabela citaria a10/mediana da 2P sem dizer que o
+                # teste de aderência quantizada REJEITOU o ajuste — que é o
+                # estado corrente nas três falhas. O número existe; o direito de
+                # apresentá-lo como resumo, não.
+                "resumo_parametrico_recomendado": bool(
+                    w.get("resumo_parametrico_recomendado", False)
+                ),
                 # Menor é melhor: o detector confirma com menos assinatura.
                 "a10": w.get("b10"),
                 "a_det_mediana": w.get("vida_mediana") or w.get("mediana"),
