@@ -225,3 +225,50 @@ def test_nota_curada_do_gpvs_nao_contradiz_o_artefato():
             "a nota ainda afirma adaptação de limiar por ensaio, que o artefato "
             "nega em adaptation_per_experiment"
         )
+
+
+def test_mapa_de_resultados_separa_detectabilidade_de_confiabilidade_fisica():
+    """Duas famílias de curva compartilham os mesmos três nomes.
+
+    `S_D(a)`/`h_D(a)` (detectabilidade, eixo = magnitude da assinatura, E2,
+    medida no GPVS) e `R(t)`/`h(t)` (confiabilidade física, eixo = anos,
+    bibliográfica). Ambas se chamam "confiabilidade", "falha" e "taxa de
+    falha" — e o pesquisador pediu as duas famílias pelo mesmo nome.
+
+    Confundi-las é o erro mais caro possível na banca: uma diz quando o
+    DETECTOR enxerga, a outra quando o COMPONENTE quebra. O mapa é o árbitro,
+    e tem de nomear a diferença explicitamente.
+    """
+    mapa = RAIZ / "docs/mapa_de_resultados.md"
+    assert mapa.exists(), "docs/mapa_de_resultados.md sumiu"
+    texto = mapa.read_text(encoding="utf-8")
+
+    for marca in ("S_D(a)", "h_D(a)", "R(t)", "primeiro cruzamento"):
+        assert marca in texto, f"o mapa perdeu a marca {marca!r}"
+    assert "fração da assinatura nominal injetada" in texto
+    assert "anos" in texto
+
+    # O mapa não pode virar tabela de métricas: valor citado em documento
+    # envelhece em silêncio, e a regra do projeto é ler o artefato vigente.
+    assert "não repete valores" in texto or "não** repete valores" in texto
+
+
+def test_o_artefato_v2_de_confiabilidade_declara_que_nao_estima_do_dataset():
+    """A ressalva tem de viajar com o dado, não só com o texto.
+
+    Se um dia o artefato perder essa declaração, o mapa passa a afirmar por
+    conta própria — e nós voltamos a ter duas fontes para a mesma ressalva.
+    """
+    artefato = RAIZ / "resultados/v2/confiabilidade/resultado.json"
+    if not artefato.exists():
+        pytest.skip("confiabilidade v2 ainda não publicada")
+
+    dados = json.loads(artefato.read_text(encoding="utf-8"))
+    assert dados.get("status") == "bibliographic_sensitivity_not_dataset_estimate"
+    assert dados.get("dataset_role") == (
+        "detector_evaluation_only_not_physical_reliability"
+    )
+    assert dados.get("model", {}).get("time_unit") == "year", (
+        "o eixo da confiabilidade física é TEMPO; se virar magnitude, ela "
+        "colidiu com a detectabilidade"
+    )
