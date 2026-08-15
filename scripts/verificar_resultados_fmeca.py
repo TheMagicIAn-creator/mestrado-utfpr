@@ -744,9 +744,9 @@ def checar_weibull(aud: Auditoria) -> dict | None:
 
 def checar_gpvs_e3(aud: Auditoria) -> dict | None:
     from src.ml.proveniencia import (
-        SUFIXOS_TEXTO_PORTAVEL,
         sha256_arquivo,
-        sha256_arquivo_texto_normalizado,
+        funcao_de_hash_para,
+        sha256_json_estavel,
     )
 
     dados = aud.json(PASTA_GPVS / "validacao_gpvs_e3.json")
@@ -783,7 +783,7 @@ def checar_gpvs_e3(aud: Auditoria) -> dict | None:
         "model_sha256": (PASTA_AE / "modelo_autoencoder.pt", sha256_arquivo),
         "scaler_sha256": (PASTA_AE / "scaler.pkl", sha256_arquivo),
         "threshold_sha256": (
-            PASTA_AE / "limiar.json", sha256_arquivo_texto_normalizado,
+            PASTA_AE / "limiar.json", sha256_json_estavel,
         ),
         "baseline_normalization_sha256": (
             PASTA_AE / "normalizacao_baseline_gpvs.npz", sha256_arquivo,
@@ -847,13 +847,11 @@ def checar_gpvs_e3(aud: Auditoria) -> dict | None:
             caminho = RAIZ / relativo
             aud.exigir(caminho.is_file(), f"GPVS E3: saída ausente {relativo}")
             if caminho.is_file():
-                funcao = (
-                    sha256_arquivo_texto_normalizado
-                    if caminho.suffix.lower() in SUFIXOS_TEXTO_PORTAVEL
-                    else sha256_arquivo
-                )
+                # Fonte unica da escolha de hash: o verificador tem de usar
+                # exatamente a mesma regra que gravou o manifesto, senao a
+                # divergencia que ele acusa e dele mesmo.
                 aud.exigir(
-                    funcao(caminho) == esperado_hash,
+                    funcao_de_hash_para(caminho)(caminho) == esperado_hash,
                     f"GPVS E3: hash de saída divergente em {relativo}",
                 )
 

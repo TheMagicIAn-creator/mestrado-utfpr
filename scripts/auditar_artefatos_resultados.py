@@ -175,14 +175,16 @@ def sha256_arquivo(caminho: Path) -> str:
 
 
 def sha256_manifesto(caminho: Path) -> str:
-    """Replica o hash v2: LF/UTF-8 para texto e bytes para binários."""
-    if caminho.suffix.lower() not in SUFIXOS_TEXTO_PORTAVEL:
-        return sha256_arquivo(caminho)
-    digest = hashlib.sha256()
-    with caminho.open("r", encoding="utf-8", newline=None) as arquivo:
-        for bloco in iter(lambda: arquivo.read(64 * 1024), ""):
-            digest.update(bloco.encode("utf-8"))
-    return digest.hexdigest()
+    """Hash na MESMA regra que gravou o manifesto — delegada, não replicada.
+
+    Isto era uma reimplementação ("replica o hash v2"). Réplica de regra é
+    réplica que deriva: quando `proveniencia` passou a hashear JSON sem os
+    campos de data, esta cópia continuou hasheando os bytes e acusou divergência
+    inexistente. O auditor tem de perguntar a regra, não adivinhá-la.
+    """
+    from src.ml.proveniencia import funcao_de_hash_para
+
+    return funcao_de_hash_para(caminho)(caminho)
 
 
 def _finito(valor) -> bool:

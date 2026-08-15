@@ -73,19 +73,23 @@ def blocos():
 # ── pastas: um modelo não pode apagar as figuras do outro ──────────────────
 
 def test_cada_modelo_tem_pasta_propria():
+    """A pasta agora e a do BRACO (bracos_modelo), nao um slug local."""
     p = macro_weibull._pasta_do_modelo("Proposto (AE denso + MSE p99)")
     i = macro_weibull._pasta_do_modelo("Ibrahim 2022 (AE-LSTM temporal)")
     assert p != i
-    assert p.name == "proposto" and i.name == "ibrahim"
+    assert p.parent.name == "ae_denso" and i.parent.name == "ae_lstm"
 
 
 def test_modelo_desconhecido_ainda_ganha_pasta_estavel():
-    """Sem isto, um terceiro modelo cairia na raiz e colidiria com os dois."""
+    """Ablacao exploratoria nao pode cair na pasta de nenhum dos dois bracos."""
+    from src.ml.bracos_modelo import BRACOS
+
     a = macro_weibull._pasta_do_modelo("PCA linear (ablação)")
     b = macro_weibull._pasta_do_modelo("PCA linear (ablação)")
     assert a == b
     assert a.parent == macro_weibull.PASTA_SAIDA
-    assert a != macro_weibull.PASTA_SAIDA
+    for braco in BRACOS:
+        assert not a.is_relative_to(braco.pasta)
 
 
 # ── o encaixe com graficos_rul ─────────────────────────────────────────────
@@ -102,7 +106,10 @@ def test_conversao_para_o_formato_dos_plots(blocos):
 
 
 def test_desenhar_modelo_emite_as_quatro_figuras(blocos, tmp_path, monkeypatch):
-    monkeypatch.setattr(macro_weibull, "PASTA_SAIDA", tmp_path)
+    # Remenda a RAIZ dos bracos: `braco.pasta` a resolve em tempo de chamada,
+    # entao o teste nao escreve em resultados/ do repositorio.
+    import src.ml.bracos_modelo as bm
+    monkeypatch.setattr(bm, "PASTA_MODELOS", tmp_path)
     figuras = macro_weibull.desenhar_modelo(blocos[0])
 
     assert set(figuras) == {
@@ -111,12 +118,13 @@ def test_desenhar_modelo_emite_as_quatro_figuras(blocos, tmp_path, monkeypatch):
     for chave, caminho in figuras.items():
         assert caminho.exists(), f"{chave} não foi escrita"
         assert caminho.stat().st_size > 0
-        assert caminho.parent == tmp_path / "proposto"
+        assert caminho.parent == tmp_path / "ae_denso" / "weibull"
 
 
 def test_dois_modelos_nao_sobrescrevem_um_ao_outro(blocos, tmp_path, monkeypatch):
     """Os nomes de arquivo são iguais nos dois — a pasta é que separa."""
-    monkeypatch.setattr(macro_weibull, "PASTA_SAIDA", tmp_path)
+    import src.ml.bracos_modelo as bm
+    monkeypatch.setattr(bm, "PASTA_MODELOS", tmp_path)
     a = macro_weibull.desenhar_modelo(blocos[0])
     b = macro_weibull.desenhar_modelo(blocos[1])
 

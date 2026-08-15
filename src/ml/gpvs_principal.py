@@ -111,6 +111,42 @@ def vetor_de_features(janela_df: pd.DataFrame,
     return np.array([feats[c] for c in colunas_feat], dtype=np.float32)
 
 
+def vetores_de_janelas(
+    janelas: list[pd.DataFrame],
+    colunas_feat: list[str],
+    normalizacao_baseline: dict | None = None,
+) -> np.ndarray:
+    """Lista de janelas → matriz (n, F) na representação EXATA do treino.
+
+    Esta é a featurização canônica completa, e existe porque a parcial não
+    bastava. `vetor_de_features` resolve a ordem e a ausência de colunas, mas
+    ainda faltava o segundo passo: a **normalização de comissionamento por
+    ensaio** (`normalizar_vetores_f0`), que o pipeline aplica ANTES do scaler
+    e que `autoencoder.py` usa no treino (`ajustar_normalizacao_f0`).
+
+    Os macro-códigos pulavam esse passo e entregavam features CRUAS a um scaler
+    ajustado sobre features normalizadas. O efeito medido em 15/08/2026: o
+    limiar operacional do mesmo autoencoder saiu 0,8577 no pipeline e 52.577,8
+    no macro — 61 mil vezes maior. Com um limiar desses nada cruza, e a
+    comparação publicava POD_mon = 0,00 nas três falhas, para os DOIS modelos,
+    como se ambos fossem cegos.
+
+    É o mesmo defeito dos vetores de zeros, um passo adiante: o macro divergiu
+    da cadeia canônica na representação de entrada. Por isso a conversão inteira
+    mora aqui, e não em cada chamador.
+
+    Sem `normalizacao_baseline` a matriz sai só extraída — caminho válido apenas
+    para quem não usa o scaler do pipeline.
+    """
+    matriz = np.asarray(
+        [vetor_de_features(j, colunas_feat) for j in janelas], dtype=np.float32
+    )
+    if normalizacao_baseline is None:
+        return matriz
+    ensaios = [str(j.attrs.get("ensaio")) for j in janelas]
+    return normalizar_vetores_f0(matriz, ensaios, normalizacao_baseline)
+
+
 def extrair_janela(janela_df: pd.DataFrame) -> dict[str, float]:
     """Extrai as mesmas 24 features de ``gpvs.extrair_features_gpvs``."""
     ausentes = [c for c in COLUNAS_PRIMARIAS if c not in janela_df.columns]

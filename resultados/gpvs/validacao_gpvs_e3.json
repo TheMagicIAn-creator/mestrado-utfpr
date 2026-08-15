@@ -298,7 +298,7 @@
     "top_k": null,
     "model_sha256": "7cc80b0892f67403feac5dbe0e2f69b48b0933ec24cb009fc703fd06c17c0c86",
     "scaler_sha256": "d58e70d7e6558fed635e646a2b5a5aa989d3bbc68d586f92f6cba916510d1f95",
-    "threshold_sha256": "ce691e6be5741b511f907deafb6f16bcfc45518b86b02e84baa4d7667cda8d2a",
+    "threshold_sha256": "362e58def20c94c9dddabfbba25690c0dda368a435f9664229dd9f4c7e215c28",
     "baseline_normalization_sha256": "c248cc113c9276a7c131e37a40bce64de156a887902bae64dff93366562731a7"
   },
   "protocol": {

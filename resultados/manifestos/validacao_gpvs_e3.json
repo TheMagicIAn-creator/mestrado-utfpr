@@ -71,7 +71,7 @@
     "resultados/gpvs/gpvs_macro_comparacao.png"
   ],
   "output_artifacts": {
-    "resultados/gpvs/validacao_gpvs_e3.json": "8efe64261f21c395062e50cc4118b02cc98c87dc16ed05d48b7c785db836dc02",
+    "resultados/gpvs/validacao_gpvs_e3.json": "8a37b4bebb0d055da78579ccf3071f6a30496342d35b0551c68639f89f841812",
     "resultados/gpvs/validacao_gpvs_cenarios.csv": "5e21f42167bc47fed858cc8529b721f2a1c3d1b28fa6b938c887f0b6f34acf79",
     "resultados/gpvs/validacao_gpvs_cenarios.md": "a273bcdcba1120b56def647a838cc581eb437fe19f01cd6e3d66bc4bae98315b",
     "resultados/gpvs/validacao_gpvs_scores.csv": "4a8bc37f93eaa4aa88beeb2ad82d0007cf740e9d2075528b01c9ae720cb6a9db",

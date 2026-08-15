@@ -52,7 +52,7 @@
     "resultados/autoencoder/scaler.pkl.sha256": "d677f8cb7a31d6d2ffe15a800b39be1177b5990fc50cc855ef0868a8b4eb20d9",
     "resultados/autoencoder/normalizacao_baseline_gpvs.npz": "c248cc113c9276a7c131e37a40bce64de156a887902bae64dff93366562731a7",
     "resultados/autoencoder/estatistica_residuo.npz": "e86e7a864eea80d0c17edf8a5cd8df685f700fb39c174feef6915ab2fcc067e9",
-    "resultados/autoencoder/limiar.json": "ce691e6be5741b511f907deafb6f16bcfc45518b86b02e84baa4d7667cda8d2a",
+    "resultados/autoencoder/limiar.json": "362e58def20c94c9dddabfbba25690c0dda368a435f9664229dd9f4c7e215c28",
     "resultados/autoencoder/diagnostico_autoencoder.npz": "a5e601f51904ae80af903adea38e234ccff0c46487bba3160321bdad80e3d5d4",
     "resultados/autoencoder/calibracao_autoencoder.csv": "1b91fd0a877495634c5a2fdf6313e4117d368bb0bf355adf8ff8aa28557052f6",
     "resultados/autoencoder/calibracao_autoencoder.md": "7a2e7ba07b47aa7344dcdc11b2d7c127185632f8fb01e181c2d9f53ca3e59ee4",

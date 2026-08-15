@@ -250,7 +250,8 @@ def test_macros_usam_o_extrator_do_dataset_canonico():
             no.module
             for no in ast.walk(arvore)
             if isinstance(no, ast.ImportFrom) and no.module
-            and any(a.name in {"extrair_janela", "vetor_de_features"}
+            and any(a.name in {"extrair_janela", "vetor_de_features",
+                               "vetores_de_janelas"}
                     for a in no.names)
         }
         assert origens == {"src.ml.gpvs_principal"}, (

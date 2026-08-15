@@ -85,9 +85,16 @@ def carregar_detector():
 
     estat = ea.carregar_estatistica(PASTA_AE)
     metodo = info.get("metodo_escore", "mse")
+    # Normalização de comissionamento por ensaio. O autoencoder foi TREINADO
+    # sobre features assim normalizadas (autoencoder.ajustar_normalizacao_f0);
+    # pontuar sem ela entrega features cruas a um scaler de features
+    # normalizadas, e o limiar sai ordens de grandeza fora.
+    from src.ml.gpvs_principal import carregar_normalizacao_baseline
+
     return {"modelo": modelo, "scaler": scaler, "device": device,
             "colunas": ckpt["colunas_feat"], "estat": estat, "metodo": metodo,
-            "k": info.get("k_localizado", ea.K_LOCALIZADO)}
+            "k": info.get("k_localizado", ea.K_LOCALIZADO),
+            "normalizacao": carregar_normalizacao_baseline(PASTA_AE)}
 
 
 # ============================================================
@@ -113,13 +120,12 @@ def construir_scorer(det: dict):
     # O acesso passa a ser `[c]` e não `.get(c, 0.0)` DE PROPÓSITO: feature que
     # falta é defeito, e tem de estourar alto. O default silencioso foi o que
     # transformou uma incompatibilidade de dataset num resultado plausível.
-    from src.ml.gpvs_principal import vetor_de_features
+    from src.ml.gpvs_principal import vetores_de_janelas
     from src.ml import escore_anomalia as ea
 
     def scorer(janelas):
-        vetores = np.asarray(
-            [vetor_de_features(j, det["colunas"]) for j in janelas],
-            dtype=np.float32,
+        vetores = vetores_de_janelas(
+            janelas, det["colunas"], det["normalizacao"]
         )
         vnorm = det["scaler"].transform(vetores).astype(np.float32)
         residuos = ea.residuo_por_feature(det["modelo"], vnorm, det["device"])

@@ -19,7 +19,12 @@ def test_scorer_proposto_encadeia_features_residuo_e_escore(monkeypatch):
     # O extrator canonico e o do GPVS desde 15/08/2026. Antes este monkeypatch
     # apontava para features_ca (Stender) -- o mesmo modulo que, em producao,
     # devolvia 0,0 para as 24 features do GPVS sem levantar erro.
-    monkeypatch.setattr(gpvs_principal, "extrair_janela", lambda janela: janela)
+    monkeypatch.setattr(
+        gpvs_principal, "vetores_de_janelas",
+        lambda janelas, colunas, normalizacao=None: np.asarray(
+            [[j["a"], j["b"]] for j in janelas], dtype=np.float32
+        ),
+    )
 
     def residuo(modelo, valores, device):
         capturado["valores"] = valores
@@ -39,6 +44,10 @@ def test_scorer_proposto_encadeia_features_residuo_e_escore(monkeypatch):
         "estat": object(),
         "metodo": "localizado",
         "k": 2,
+        # Sem esta chave o scorer estoura KeyError -- e isso e a guarda: o
+        # detector que nao carregar a normalizacao de comissionamento nao
+        # pontua, em vez de pontuar errado.
+        "normalizacao": None,
     }
 
     escores = macro_proposto.construir_scorer(detector)([{"a": 1, "b": 2}])
@@ -54,7 +63,9 @@ def test_scorer_ibrahim_preserva_contexto_temporal(monkeypatch):
     monkeypatch.setattr(
         macro_ibrahim,
         "features_das_janelas",
-        lambda janelas, colunas, scaler: np.array([[3.0, 4.0], [5.0, 6.0]]),
+        lambda janelas, colunas, scaler, normalizacao=None: (
+            np.array([[3.0, 4.0], [5.0, 6.0]])
+        ),
     )
 
     def com_contexto(base, atual, tamanho):

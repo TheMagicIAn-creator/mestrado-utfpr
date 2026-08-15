@@ -87,6 +87,62 @@ def calibrar_limiar(scorer, janelas_calib: list) -> tuple[float, float]:
     return float(np.percentile(s_cal, 99)), 99.0
 
 
+# Quantas vezes o limiar do macro pode divergir do limiar do pipeline antes de
+# ser suspeito. Vinte é folgado de propósito: bloco de calibração diferente e
+# alvo de FP auto-ajustado mudam o valor legitimamente. O que este guarda pega é
+# ordem de grandeza — o caso real foi 61.000×.
+FATOR_SUSPEITO_LIMIAR = 20.0
+
+
+def conferir_escala_do_limiar(nome: str, limiar: float,
+                              pasta_ae: Path | None = None) -> str | None:
+    """Alerta quando o limiar do macro foge da escala do limiar do pipeline.
+
+    POR QUE EXISTE
+    ==============
+    Em 15/08/2026 os dois macros pontuaram com features CRUAS num scaler
+    ajustado sobre features normalizadas por comissionamento. O limiar do mesmo
+    autoencoder saiu 0,8577 no pipeline e 52.577,8 no macro. Nada cruzou, e a
+    tabela publicou POD_mon = 0,00 nas três falhas, para os DOIS modelos — com
+    cara de resultado científico ("nenhum detector enxerga"), quando era defeito
+    de representação de entrada.
+
+    Nenhum teste de CI pega isso: depende do modelo treinado e do dataset, que
+    só existem na máquina do pesquisador. Então o alerta mora no runtime, onde
+    o dado está. Devolve a mensagem (ou None) em vez de levantar — um limiar
+    fora de escala é fortíssimo indício, não prova, e abortar impediria uma
+    investigação legítima.
+
+    Só vale para o método PROPOSTO: o AE-LSTM tem escala própria e nenhum
+    limiar de referência publicado.
+    """
+    import json
+
+    pasta = Path(pasta_ae) if pasta_ae else (
+        Path(__file__).parent.parent.parent / "resultados" / "autoencoder"
+    )
+    arquivo = pasta / "limiar.json"
+    if not arquivo.is_file():
+        return None
+    try:
+        referencia = float(json.loads(arquivo.read_text(encoding="utf-8"))["limiar"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    if not (referencia > 0 and float(limiar) > 0):
+        return None
+
+    razao = max(float(limiar) / referencia, referencia / float(limiar))
+    if razao < FATOR_SUSPEITO_LIMIAR:
+        return None
+    return (
+        f"⚠️  {nome}: limiar {limiar:.4g} contra {referencia:.4g} do pipeline "
+        f"({razao:.0f}× de diferença). Escala assim indica que a representação "
+        f"de entrada divergiu da canônica — confira se a normalização de "
+        f"comissionamento (gpvs_principal.vetores_de_janelas) está sendo "
+        f"aplicada antes do scaler."
+    )
+
+
 def avaliar_deteccao(nome: str, cor: str, scorer, janelas_calib: list,
                      janelas_aval: list, seed: int = 42) -> dict:
     """Avalia UM método sobre a injeção FMECA por severidade.

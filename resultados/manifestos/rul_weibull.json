@@ -86,10 +86,10 @@
     "resultados/autoencoder/weibull_modos_operacao.png": "17310ab29caaf1b9c5afbd4aabc3d640b0f6ff64317f3e246290f05a97ff2993",
     "resultados/autoencoder/weibull_sensibilidade_grade.csv": "e55479fff6ecd92d17f9a2ee3bd9fdcbc4a8a85ebbaa2b614e97dd3a66e1a9bc",
     "resultados/autoencoder/weibull_trajetorias_grade.csv": "9e2628ac6c2c36b4ddcdfa5099b70d7e397c2d0eae77f7dc293d2c27b3e7e234",
-    "resultados/autoencoder/weibull_results.json": "d6d532c3b3c5e24dc325f317f0287bf61b40d4e073583ea8e1a44e937b968a88",
+    "resultados/autoencoder/weibull_results.json": "8692e4bf1b66f309a9f956104b871ad542cf559f1b6446391ea0f1e1b68155b7",
     "resultados/autoencoder/weibull_tabela.csv": "7b759cafdbc626273cbec451bab30c6d7bf8ee749e428dc4752ce54e73e1cfda",
     "resultados/autoencoder/relatorio_confiabilidade.md": "f554251c0318c00d02ae4fa8fc019c6746d9799c110d3bb357beb7070d67d481",
-    "resultados/autoencoder/relatorio_confiabilidade.json": "14573e0801c47f4ecec7a40f86c974dfff98dc65304d036d00c0a913f8ead61f"
+    "resultados/autoencoder/relatorio_confiabilidade.json": "272a474ef7aba32cd46b415e913ecb3a2c7456933524899378c3a4ea230fe6ac"
   },
   "evidence_level": "E2"
 }
