@@ -78,11 +78,11 @@ def features_das_janelas(janelas, colunas, scaler) -> np.ndarray:
     `features_ca` (Stender), que depois da migração devolvia 0,0 para as 24
     features do GPVS sem levantar erro. Ver a nota em macro_proposto.py.
     """
-    from src.ml.gpvs_principal import extrair_janela
+    from src.ml.gpvs_principal import vetor_de_features
 
-    vet = np.asarray([
-        [extrair_janela(j)[c] for c in colunas] for j in janelas
-    ], dtype=np.float32)
+    vet = np.asarray(
+        [vetor_de_features(j, colunas) for j in janelas], dtype=np.float32
+    )
     return scaler.transform(vet).astype(np.float32)
 
 

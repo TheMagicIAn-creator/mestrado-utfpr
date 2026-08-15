@@ -27,7 +27,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
-from src.ml.gpvs_principal import JANELA, extrair_janela, normalizar_vetores_f0
+from src.ml.gpvs_principal import (
+    JANELA, normalizar_vetores_f0, vetor_de_features,
+)
 from src.ml.injecao_falhas import FUNCOES_FALHA
 
 # ── Grade de magnitude ──────────────────────────────────────────────────────
@@ -110,10 +112,10 @@ def selecionar_janelas_baseline_normais(
     if not janelas:
         return [], np.asarray([], dtype=float), np.asarray([], dtype=bool)
 
-    vetores = []
-    for janela in janelas:
-        feats = extrair_janela(janela)
-        vetores.append([feats.get(coluna, 0.0) for coluna in colunas_feat])
+    # Era `.get(coluna, 0.0)` aqui e `[c]` estrito na varredura, no MESMO módulo
+    # e com o MESMO colunas_feat: o filtro de elegibilidade aceitaria em silêncio
+    # a janela zerada que a varredura logo adiante rejeitaria com KeyError.
+    vetores = [vetor_de_features(janela, colunas_feat) for janela in janelas]
     erros = calcular_erros_batch(
         np.asarray(vetores, dtype=np.float32), modelo, scaler, device,
         estat_residuo, metodo, normalizacao_baseline,
@@ -219,8 +221,7 @@ def gerar_a_det(janela_saudavel: pd.DataFrame,
                     janela = fn(janela, float(sev))
 
             if scorer is None:
-                feats = extrair_janela(janela)
-                vetores.append([feats[c] for c in colunas_feat])
+                vetores.append(vetor_de_features(janela, colunas_feat))
             else:
                 vetores.append(janela)
 

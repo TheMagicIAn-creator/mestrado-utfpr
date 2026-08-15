@@ -242,16 +242,21 @@ def test_macros_usam_o_extrator_do_dataset_canonico():
         fonte = (RAIZ_PROJETO / f"src/ml/{nome}.py").read_text(encoding="utf-8")
         arvore = ast.parse(fonte)
 
+        # A featurização pode entrar por `extrair_janela` (dicionário) ou pela
+        # fonte única `vetor_de_features` (vetor na ordem do modelo, sem default
+        # mudo). O que NÃO pode é vir de outro módulo — foi assim que o extrator
+        # do Stender continuou alimentando colunas do GPVS.
         origens = {
             no.module
             for no in ast.walk(arvore)
             if isinstance(no, ast.ImportFrom) and no.module
-            and any(a.name == "extrair_janela" for a in no.names)
+            and any(a.name in {"extrair_janela", "vetor_de_features"}
+                    for a in no.names)
         }
         assert origens == {"src.ml.gpvs_principal"}, (
-            f"{nome} importa extrair_janela de {origens or 'lugar nenhum'}; "
-            "tem de vir de gpvs_principal, o mesmo extrator que gerou as "
-            "features de treino do detector"
+            f"{nome} featuriza a partir de {origens or 'lugar nenhum'}; tem de "
+            "vir de gpvs_principal, o mesmo extrator que gerou as features de "
+            "treino do detector"
         )
 
         assert "extrair_janela(j).get(" not in fonte, (

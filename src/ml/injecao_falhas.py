@@ -87,8 +87,8 @@ from typing import TYPE_CHECKING
 
 from src.ml.gpvs_principal import (
     COLUNAS_CORRENTE, COLUNAS_TENSAO, F0, FS, JANELA,
-    carregar_normalizacao_baseline, extrair_janela,
-    normalizar_vetores_f0, preparar_janelas_holdout,
+    carregar_normalizacao_baseline,
+    normalizar_vetores_f0, preparar_janelas_holdout, vetor_de_features,
 )
 
 from src.ml.estatistica import intervalo_wilson
@@ -426,9 +426,7 @@ def calcular_erro_reconstrucao(janela_df: pd.DataFrame,
     """
     from src.ml import escore_anomalia as ea
 
-    feats = extrair_janela(janela_df)
-    vetor = np.array([feats.get(c, 0.0) for c in colunas_feat],
-                     dtype=np.float32)
+    vetor = vetor_de_features(janela_df, colunas_feat)
     if normalizacao_baseline is not None:
         ensaio = janela_df.attrs.get("ensaio")
         vetor = normalizar_vetores_f0(

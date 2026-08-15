@@ -79,11 +79,11 @@ from sklearn.metrics import (
 
 from src.ml.gpvs_principal import (
     carregar_normalizacao_baseline,
-    extrair_janela,
     JANELA,
     FS,
     normalizar_vetores_f0,
     preparar_janelas_holdout,
+    vetor_de_features,
 )
 from src.ml.estatistica import bootstrap_auc_ci, intervalo_wilson
 from src.ml.injecao_falhas   import (
@@ -148,9 +148,7 @@ def coletar_erros(janelas_holdout: list[pd.DataFrame],
             else:
                 janela = fn(janela, severidade)
 
-        feats  = extrair_janela(janela)
-        vetor  = np.array([feats.get(c, 0.0) for c in colunas_feat],
-                          dtype=np.float32)
+        vetor  = vetor_de_features(janela, colunas_feat)
         if normalizacao_baseline is not None:
             vetor = normalizar_vetores_f0(
                 vetor.reshape(1, -1), [janela.attrs.get("ensaio")],
