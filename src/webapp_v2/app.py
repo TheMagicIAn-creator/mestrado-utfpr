@@ -30,6 +30,7 @@ from src.webapp_v2.agent_adapter import (
 from src.webapp_v2.contracts import (
     AUTOENCODER,
     CONFIABILIDADE,
+    DETECTABILIDADE,
     ContratoWebInvalido,
     dashboard_contract,
     reliability_curves_contract,
@@ -236,6 +237,20 @@ def create_app(agent_adapter: AgentAdapter | None = None) -> Starlette:
             "/artifacts/reliability",
             app=StaticFiles(directory=CONFIABILIDADE),
             name="artifacts-reliability",
+        ),
+        *(
+            [
+                Mount(
+                    "/artifacts/detectability",
+                    app=StaticFiles(directory=DETECTABILIDADE),
+                    name="artifacts-detectability",
+                )
+            ]
+            # A pasta só existe depois de `python -m src.ml.macro_weibull`.
+            # StaticFiles com diretório inexistente estoura na criação do app,
+            # e isso derrubaria a aplicação inteira por causa de um artefato
+            # opcional.
+            if DETECTABILIDADE.is_dir() else []
         ),
     ]
     app = Starlette(

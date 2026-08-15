@@ -147,30 +147,6 @@ def test_falha_ao_salvar_e_reportada_nao_engolida(monkeypatch):
     assert "OSError" in r.texto
 
 
-def test_a_interface_nao_chama_os_detectores_por_fora():
-    """Sem isto, os `if` voltam a se espalhar pelo render — foi como chegamos aqui.
-
-    A interface deve conhecer UMA porta (`resolver_atalho`). Se um detector
-    reaparecer em streamlit_app.py, o registro deixou de ser o lugar único.
-    """
-    from pathlib import Path
-
-    fonte = Path("src/interface/streamlit_app.py").read_text(encoding="utf-8")
-    assert "resolver_atalho" in fonte, "a interface precisa usar o registro"
-    for detector in (
-        "quer_exportar_conversa",
-        "responder_inventario_vault",
-        "responder_consulta_cronologica",
-        "resposta_interacao_simples",
-        "quer_salvar_snippet",
-        "quer_recuperar_snippet",
-        "_tratar_snippet",
-    ):
-        assert detector not in fonte, (
-            f"{detector} voltou para a interface — deve viver em atalhos.py"
-        )
-
-
 def test_sem_bloco_de_codigo_orienta_em_vez_de_falhar(monkeypatch):
     from src.conhecimento import snippets as snp
 

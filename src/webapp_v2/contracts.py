@@ -17,6 +17,29 @@ from src.ml.proveniencia import sha256_arquivo
 RAIZ = Path(RAIZ_PROJETO)
 AUTOENCODER = RAIZ / "resultados" / "v2" / "autoencoder"
 CONFIABILIDADE = RAIZ / "resultados" / "v2" / "confiabilidade"
+# Detectabilidade por COMPONENTE e por MODELO — o que a dissertação de fato
+# defende. Os cenários bibliográficos de `CONFIABILIDADE` são taxas de falha de
+# inversor INTEIRO (Colli, Obeidat, Dhople); nenhum deles fala dos três
+# componentes da FMECA, e nenhum foi pedido pelo pesquisador. Ficam como
+# sensibilidade secundária; o resultado primário vem daqui.
+DETECTABILIDADE = RAIZ / "resultados" / "macro" / "weibull"
+
+# Subpasta por modelo, espelhando macro_weibull._pasta_do_modelo.
+MODELOS_DETECTABILIDADE = (
+    ("proposto", "Proposto — AE denso"),
+    ("ibrahim", "Ibrahim 2022 — AE-LSTM temporal"),
+)
+
+FIGURAS_DETECTABILIDADE = (
+    ("weibull_distribuicao.png", "Papel de probabilidade Weibull",
+     "Os pontos caem sobre uma reta? Se não, a 2P não descreve estes dados."),
+    ("weibull_confiabilidade.png", "S_D(a) — ainda não detectado",
+     "Com que fração da assinatura o detector confirma a falha?"),
+    ("weibull_funcoes_distribuicao.png", "Densidade e acumulada de a_det",
+     "Como as magnitudes de detecção se distribuem?"),
+    ("weibull_intensidade_deteccao.png", "h_D(a) — intensidade do 1º cruzamento",
+     "A chance de detectar cresce ou satura com a magnitude?"),
+)
 
 
 class ContratoWebInvalido(RuntimeError):
@@ -145,6 +168,77 @@ def _selection_rows() -> list[dict]:
     return linhas
 
 
+def _detectability_contract() -> dict:
+    """Detectabilidade por componente da FMECA e por MODELO, quando publicada.
+
+    Nunca levanta `ContratoWebInvalido`: `macro_weibull` é um ponto de entrada
+    separado (a varredura de magnitude é cara), então a ausência é o caso
+    normal e não pode derrubar a aplicação inteira. Sem artefato, devolve o
+    comando que o produz.
+    """
+    tabela = DETECTABILIDADE / "detectabilidade_por_modelo.json"
+    if not tabela.is_file():
+        return {
+            "available": False,
+            "command": "python -m src.ml.macro_weibull",
+            "note": (
+                "As curvas por componente e por modelo ainda não foram "
+                "publicadas. Elas são o resultado de confiabilidade que a "
+                "dissertação defende — os cenários bibliográficos abaixo são "
+                "sensibilidade secundária, de inversor inteiro, e não falam "
+                "dos componentes da FMECA."
+            ),
+            "models": [],
+            "rows": [],
+        }
+
+    dados = _json(tabela)
+    comparacao = dados.get("comparacao", {})
+
+    modelos = []
+    for slug, rotulo in MODELOS_DETECTABILIDADE:
+        figuras = []
+        for arquivo, titulo, pergunta in FIGURAS_DETECTABILIDADE:
+            caminho = DETECTABILIDADE / slug / arquivo
+            if not caminho.is_file():
+                continue
+            figuras.append({
+                "title": titulo,
+                "question": pergunta,
+                "url": f"/artifacts/detectability/{slug}/{arquivo}",
+                "download_url": f"/artifacts/detectability/{slug}/{arquivo}",
+                "size_bytes": caminho.stat().st_size,
+                "sha256": sha256_arquivo(caminho),
+            })
+        if figuras:
+            modelos.append({"slug": slug, "label": rotulo, "figures": figuras})
+
+    sobreposicao = DETECTABILIDADE / "comparacao_confiabilidade.png"
+    return {
+        "available": True,
+        "evidence_level": "E2",
+        "axis": "a — fração da assinatura nominal injetada (NÃO é tempo)",
+        "note": (
+            "S_D(a) é probabilidade de o detector AINDA NÃO ter detectado e "
+            "h_D(a) é intensidade de primeiro cruzamento. Nenhuma das duas é "
+            "confiabilidade ou taxa de falha física do componente."
+        ),
+        "models": modelos,
+        "rows": comparacao.get("linhas", []),
+        "overlay": (
+            {
+                "title": "S_D(a) sobreposta — proposto × Ibrahim",
+                "question": "Qual modelo confirma a falha com menos assinatura?",
+                "url": "/artifacts/detectability/comparacao_confiabilidade.png",
+                "download_url": "/artifacts/detectability/comparacao_confiabilidade.png",
+                "size_bytes": sobreposicao.stat().st_size,
+                "sha256": sha256_arquivo(sobreposicao),
+            }
+            if sobreposicao.is_file() else None
+        ),
+    }
+
+
 def _reliability_contract() -> dict:
     resultado = _json(CONFIABILIDADE / "resultado.json")
     if int(resultado.get("schema_version", 0)) != 2:
@@ -176,6 +270,14 @@ def _reliability_contract() -> dict:
             }
         )
     return {
+        "detectability": _detectability_contract(),
+        # As curvas bibliográficas passam a ser explicitamente SECUNDÁRIAS: são
+        # taxas de inversor inteiro, não dos componentes da FMECA.
+        "scenarios_are_secondary": True,
+        "scenarios_scope_note": (
+            "Cenários de inversor INTEIRO, de literatura. Não descrevem "
+            "Contator AC, IGBT ou Fusível AC, e não saem do GPVS."
+        ),
         "status": resultado["status"],
         "dataset_role": resultado["dataset_role"],
         "analysis_date": resultado["analysis_date"],

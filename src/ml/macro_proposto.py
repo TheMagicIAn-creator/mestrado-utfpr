@@ -100,14 +100,27 @@ def construir_scorer(det: dict):
     É a interface que o macro_comum espera — a MESMA que o macro_ibrahim provê,
     garantindo que os dois sejam avaliados exatamente do mesmo jeito.
     """
-    from src.ml.features_ca import extrair_janela
+    # Extrator do GPVS — o MESMO que produziu as features de treino do detector.
+    #
+    # Era `features_ca.extrair_janela` (Stender). Isso passou a ser um bug MUDO
+    # depois da migração para o GPVS: `det["colunas"]` são as 24 features do
+    # GPVS (`Ipv_median`, `ia_thd`, `p_ac_mean`…), e o extrator do Stender
+    # devolve 108 features com nomes OUTROS (`i_a_rms`, `i_a_harm_5`…). Nenhum
+    # dos 24 nomes existia no dicionário, então `.get(c, 0.0)` devolvia 0,0 para
+    # TODOS eles — um vetor de zeros, sem erro de shape, sem aviso. O
+    # autoencoder reconstruía o nada e a comparação publicava esse número.
+    #
+    # O acesso passa a ser `[c]` e não `.get(c, 0.0)` DE PROPÓSITO: feature que
+    # falta é defeito, e tem de estourar alto. O default silencioso foi o que
+    # transformou uma incompatibilidade de dataset num resultado plausível.
+    from src.ml.gpvs_principal import vetor_de_features
     from src.ml import escore_anomalia as ea
 
     def scorer(janelas):
-        vetores = np.asarray([
-            [extrair_janela(j).get(c, 0.0) for c in det["colunas"]]
-            for j in janelas
-        ], dtype=np.float32)
+        vetores = np.asarray(
+            [vetor_de_features(j, det["colunas"]) for j in janelas],
+            dtype=np.float32,
+        )
         vnorm = det["scaler"].transform(vetores).astype(np.float32)
         residuos = ea.residuo_por_feature(det["modelo"], vnorm, det["device"])
         return ea.pontuar(residuos, det["estat"], det["metodo"], det["k"])
@@ -120,8 +133,8 @@ def construir_scorer(det: dict):
 # ============================================================
 
 def executar(n_janelas: int | None = None) -> dict:
-    from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas_holdout
-    from src.ml.injecao_falhas import ARQUIVO_CSV, N_JANELAS_SMD
+    from src.ml.gpvs_principal import preparar_janelas_holdout
+    from src.ml.injecao_falhas import N_JANELAS_SMD
     from src.ml.macro_comum import (
         avaliar_deteccao, dividir_calibracao_avaliacao, salvar_saidas,
     )
@@ -135,11 +148,9 @@ def executar(n_janelas: int | None = None) -> dict:
     _log(f"\n  Detector: AE denso | escore = "
          f"{ea.descricao_metodo(det['metodo'], det['k'])}")
 
-    _log("\n  Carregando holdout temporal isolado (Paderborn)...")
-    df = carregar_paderborn_compacto(ARQUIVO_CSV)
-    janelas, _meta = preparar_janelas_holdout(df, n_max=n_janelas or N_JANELAS_SMD)
-    del df
-    _log(f"  {len(janelas)} janelas não sobrepostas do bloco de teste")
+    _log("\n  Carregando holdout F0 do GPVS-Faults (teste isolado)...")
+    janelas, _meta = preparar_janelas_holdout(n_max=n_janelas or N_JANELAS_SMD)
+    _log(f"  {len(janelas)} janelas não sobrepostas do bloco de teste F0")
 
     # Calibração e avaliação DISJUNTAS (com purga): o limiar sai do 1º bloco;
     # FP/AUC/injeção vêm do 2º, que o detector nunca viu.

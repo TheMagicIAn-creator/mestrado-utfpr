@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import shutil
+from pathlib import Path
 
 from src.conhecimento.intencoes_ferramentas import _experimentos_alvo
 from src.core.config import RAIZ_PROJETO
@@ -225,10 +226,82 @@ def consultar_comparacao_macro(progresso=None, pergunta: str = "") -> dict:
                 "group": "Comparação com a literatura", "inline": False,
             })
 
+    extra, figuras_weibull = _detectabilidade_por_modelo(pasta / "weibull")
     return {
         "ok": True, "etapa": "Comparação com a literatura",
-        "mensagem": msg, "imagens": imagens, "resposta_pronta": True,
+        "mensagem": msg + extra, "imagens": imagens + figuras_weibull,
+        "resposta_pronta": True,
     }
+
+
+# Rótulo das figuras por modelo. A chave é a subpasta escrita por
+# `macro_weibull._pasta_do_modelo`.
+_MODELOS_WEIBULL = {
+    "proposto": "Método proposto (AE denso)",
+    "ibrahim": "Ibrahim 2022 (AE-LSTM temporal)",
+}
+
+_FIGURAS_WEIBULL = (
+    ("weibull_distribuicao.png", "papel de probabilidade Weibull"),
+    ("weibull_confiabilidade.png", "S_D(a) — probabilidade de ainda não detectar"),
+    ("weibull_funcoes_distribuicao.png", "densidade e acumulada de a_det"),
+    ("weibull_intensidade_deteccao.png", "h_D(a) — intensidade do 1º cruzamento"),
+)
+
+
+def _detectabilidade_por_modelo(pasta: Path) -> tuple[str, list[dict]]:
+    """Anexa as curvas de detectabilidade POR MODELO, quando publicadas.
+
+    São as quatro curvas que o pesquisador pediu — papel de Weibull,
+    confiabilidade, densidade/acumulada e intensidade — desta vez com um jogo
+    por DETECTOR, e não só para o Autoencoder do pipeline.
+
+    Silenciosa quando o artefato não existe: `macro_weibull` é um ponto de
+    entrada separado justamente porque a varredura é cara, então a ausência é o
+    caso normal, não erro.
+    """
+    tabela = pasta / "detectabilidade_por_modelo.md"
+    if not tabela.is_file():
+        return (
+            "\n\n---\n**Curvas de confiabilidade por modelo** — ainda não "
+            "publicadas. Rode no PC: `python -m src.ml.macro_weibull` "
+            "(varredura de magnitude; use `--n-steps 101` para um ensaio "
+            "rápido).",
+            [],
+        )
+
+    texto = (
+        "\n\n---\n## Detectabilidade por modelo (E2)\n\n"
+        + tabela.read_text(encoding="utf-8").strip()
+        + "\n\n**Como ler** — `a10` e `a_det` mediana são a MAGNITUDE da "
+        "assinatura em que o detector confirma a falha; **menores são "
+        "melhores**. `POD_mon@a=1` é a fração detectada na assinatura nominal "
+        "cheia, e é o elo com o `D_mon` da FMECA.\n\n"
+        "⚠️ O eixo **não é tempo**. `S_D(a)` é probabilidade de ainda não "
+        "detectar e `h_D(a)` é intensidade de primeiro cruzamento — nenhuma "
+        "das duas é confiabilidade ou taxa de falha física do componente. "
+        "Onde a coluna \"2P adotada\" disser **não**, o teste de aderência "
+        "rejeitou a Weibull: a leitura defensável é a curva empírica "
+        "(Kaplan-Meier), não os parâmetros β e η."
+    )
+
+    imagens = []
+    for slug, rotulo in _MODELOS_WEIBULL.items():
+        for arquivo, legenda in _FIGURAS_WEIBULL:
+            caminho = pasta / slug / arquivo
+            if caminho.is_file():
+                imagens.append({
+                    "path": str(caminho), "caption": f"{rotulo} — {legenda}",
+                    "group": "Detectabilidade por modelo", "inline": False,
+                })
+    sobreposicao = pasta / "comparacao_confiabilidade.png"
+    if sobreposicao.is_file():
+        imagens.insert(0, {
+            "path": str(sobreposicao),
+            "caption": "S_D(a) sobreposta — proposto × Ibrahim, por falha",
+            "group": "Detectabilidade por modelo", "inline": False,
+        })
+    return texto, imagens
 
 
 def listar_experimentos_artigos(progresso=None, pergunta: str = "") -> dict:

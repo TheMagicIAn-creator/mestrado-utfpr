@@ -2,10 +2,10 @@
 
 Mapa rápido para não se perder. O pacote tem **4 áreas**. `core/` é a base;
 os módulos `conhecimento/ferramentas*` funcionam como adaptadores e podem acionar `ml/`;
-`interface/` e `orquestrador.py` compõem os fluxos no topo:
+`webapp_v2/` e `orquestrador.py` compõem os fluxos no topo:
 
 ```
-                 interface/ + orquestrador.py
+                 webapp_v2/ + orquestrador.py
                          │
                  conhecimento/ (RAG / agente)
                          │ ferramentas
@@ -16,6 +16,8 @@ core/  ◄──────────────── ml/ (pipeline e exper
 Regra de ouro: **`core/` é a fundação** (todos importam dela; ela não importa
 ninguém). `ml/` não depende do agente. A integração RAG→ML fica concentrada em
 na família `conhecimento/ferramentas*`; a interface não implementa regra científica.
+A V1 Streamlit (`src/interface/`) foi **removida** em 15/08/2026 — ver
+`docs/aplicacao_web_v2.md` para as duas capacidades que a V2 ainda não portou.
 
 ---
 
@@ -83,6 +85,8 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `validacao.py` | Etapa 4: métricas no limiar congelado (ROC/PR/F1/AUC). |
 | `rul_weibull.py` | Etapa 5: varredura de magnitude, primeiro cruzamento `a_det`, Weibull 2P exploratória e margem residual. É detectabilidade E2, **não RUL**. |
 | `rul_weibull_execucao.py` | Orquestra a execução pesada e a regeneração tabular/gráfica da etapa 5. |
+| `varredura_a_det.py` | A varredura de magnitude: janela saudável + assinatura crescente → `a_det`. Separada do ajuste porque tem dois consumidores (o AE denso do pipeline e qualquer detector via `scorer`). `rul_weibull` reexporta. |
+| `weibull_por_modelo.py` | Detectabilidade E2 (`a_det` → Weibull) para **qualquer** detector, via `scorer`. É o que permite comparar AE denso × AE-LSTM nas curvas, e não só em AUC/SMD. Não reimplementa fórmula: orquestra `rul_weibull` e `confiabilidade`. |
 | `confiabilidade.py` | Funções matemáticas da Weibull, posições censura-aware e diagnóstico do papel. O chamador distingue tempo de magnitude. |
 | `confiabilidade_fisica_v2.py` | Cenários bibliográficos de taxa constante, conversões dimensionais e funções exponenciais físicas; não estima vida pelo GPVS. |
 | `graficos_confiabilidade_fisica_v2.py` | Figuras acadêmicas de confiabilidade, probabilidade, densidade, taxa de falha e marcos B1/B10 dos cenários bibliográficos. |
@@ -105,6 +109,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `macro_proposto.py` | Avalia o método proposto no protocolo comparável. |
 | `macro_ibrahim.py` | Avalia o AE-LSTM temporal inspirado em Ibrahim (2022). |
 | `macro_comparar.py` | Fonte única Proposto × Ibrahim para AUC e SMD. |
+| `macro_weibull.py` | As quatro curvas (papel de Weibull, `S_D`, `f_D`/`F_D`, `h_D`) **por modelo**, sobre o GPVS. Ponto de entrada separado porque a varredura de magnitude é cara; limiar calibrado por modelo, trajetórias e ruído compartilhados. |
 | **Harness histórico por artigo** | |
 | `experimentos_artigos.py` | Registry do comparativo ativo Ibrahim/AE-LSTM, métricas e runner de anomalia. |
 | `graficos_experimentos.py` | Figuras e comparações visuais do harness por artigo. |
@@ -129,12 +134,6 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `webapp_v2/scientific_context.py` | Reconcilia respostas do agente com os contratos que alimentam as figuras. |
 | `webapp_v2/session_journal.py` | Grava e reindexa sessões V2 sem estado do Streamlit. |
 | `base_runtime.py` | Restaura índices, escolhe embeddings e prepara BM25 sem depender da UI. |
-| `interface/streamlit_app.py` | Interface legada preservada apenas durante a migração; não é entrypoint. |
-| `interface/apoio_streamlit.py` | Helpers leves de estado, espera e falhas, importáveis sem instalar a UI. |
-| `interface/sidebar.py` | Status, diagnóstico e controles laterais. |
-| `interface/renderizacao_imagens.py` | Agrupamento, antevisão e download de figuras. |
-| `interface/ciclo_chat.py` | Persistência da sessão e caminhos de resposta por ferramenta/RAG. |
-| `interface/streamlit_proxy.py` | Referência tardia ao Streamlit atual para testes e hot-reload. |
 | `orquestrador.py` | Coordenação leve do backend na init (reprocessamento por sinal + indexação de PDFs novos). |
 
 ---

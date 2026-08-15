@@ -74,6 +74,43 @@ def _thd_um_ciclo(x: np.ndarray, max_harmonica: int = 40) -> float:
     return float(np.sqrt(np.sum(espectro[2:limite] ** 2)) / fundamental)
 
 
+def vetor_de_features(janela_df: pd.DataFrame,
+                      colunas_feat: list[str]) -> np.ndarray:
+    """Janela → vetor na ordem em que o modelo foi treinado, SEM default mudo.
+
+    Existe porque quatro pontos da cadeia canônica escreviam, cada um por conta
+    própria::
+
+        [extrair_janela(j).get(c, 0.0) for c in colunas_feat]
+
+    O `.get(c, 0.0)` transforma incompatibilidade de features em número
+    plausível. Foi exatamente assim que o comparativo denso × Ibrahim passou a
+    pontuar vetores de 24 zeros depois da migração para o GPVS: nenhum nome do
+    checkpoint existia no extrator novo, todos caíram no default, e o
+    autoencoder reconstruía o nada sem erro de shape e sem aviso.
+
+    Na cadeia canônica o mesmo silêncio contaminaria SMD, taxas de detecção E2 e
+    a elegibilidade das trajetórias que sustentam o Weibull — números que vão
+    para a dissertação.
+
+    Feature que falta é defeito e tem de estourar alto, dizendo QUAL falta e de
+    onde vem a discrepância.
+    """
+    feats = extrair_janela(janela_df)
+    ausentes = [c for c in colunas_feat if c not in feats]
+    if ausentes:
+        raise KeyError(
+            f"O modelo espera {len(colunas_feat)} features e o extrator do GPVS "
+            f"não produz {len(ausentes)} delas: {ausentes[:8]}"
+            + (" ..." if len(ausentes) > 8 else "")
+            + ". Isso indica checkpoint treinado com outro conjunto de features "
+              "(por exemplo, o extrator Stender de features_ca.py). Retreine com "
+              "`python -m src.ml.exec_etapa_isolada features_gpvs && "
+              "python -m src.ml.exec_etapa_isolada autoencoder`."
+        )
+    return np.array([feats[c] for c in colunas_feat], dtype=np.float32)
+
+
 def extrair_janela(janela_df: pd.DataFrame) -> dict[str, float]:
     """Extrai as mesmas 24 features de ``gpvs.extrair_features_gpvs``."""
     ausentes = [c for c in COLUNAS_PRIMARIAS if c not in janela_df.columns]

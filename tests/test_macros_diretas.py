@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from src.ml import escore_anomalia, features_ca, macro_comparar, macro_ibrahim, macro_proposto
+from src.ml import escore_anomalia, gpvs_principal, macro_comparar, macro_ibrahim, macro_proposto
 from src.ml import macro_comum
 
 
@@ -16,7 +16,10 @@ class _Scaler:
 
 def test_scorer_proposto_encadeia_features_residuo_e_escore(monkeypatch):
     capturado = {}
-    monkeypatch.setattr(features_ca, "extrair_janela", lambda janela: janela)
+    # O extrator canonico e o do GPVS desde 15/08/2026. Antes este monkeypatch
+    # apontava para features_ca (Stender) -- o mesmo modulo que, em producao,
+    # devolvia 0,0 para as 24 features do GPVS sem levantar erro.
+    monkeypatch.setattr(gpvs_principal, "extrair_janela", lambda janela: janela)
 
     def residuo(modelo, valores, device):
         capturado["valores"] = valores

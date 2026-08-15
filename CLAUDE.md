@@ -31,6 +31,31 @@ Foco atual: Detecção de anomalias no lado CA do inversor
 por modelagem de normalidade, e estimativa de RUL
 (Remaining Useful Life).
 
+CERNE DA DISSERTAÇÃO (decidido em 15/08/2026): a comparação
+entre o **Autoencoder DENSO proposto** e o **AE-LSTM temporal
+de Ibrahim (2022)**, sobre o GPVS-Faults, no mesmo protocolo.
+Não é apêndice nem benchmark exploratório — é a pergunta de
+pesquisa. A tese a defender é: para assinatura elétrica de
+falha em componente CA, o AE denso por janela compete com (ou
+supera) o AE-LSTM temporal, que é a arquitetura que a
+literatura assume superior por capturar correlação na série.
+
+Consequências obrigatórias para o agente:
+- Toda métrica de anomalia é apresentada PARA OS DOIS, lado a
+  lado, nunca só para o proposto.
+- Os dois passam pelo MESMO holdout, a MESMA injeção FMECA e
+  as MESMAS realizações de ruído. O que difere é a arquitetura
+  e o limiar — e o limiar difere de propósito: escores de
+  detectores distintos não são comparáveis em escala
+  (fonte única: macro_comum.calibrar_limiar).
+- A comparação se faz por AUC, SMD@FPR=10% e pelas curvas de
+  detectabilidade por modelo (a_det → Weibull). Nunca pela
+  detecção no limiar calibrado, que é conservadora demais com
+  calibração pequena.
+- Ao interpretar, o agente deve dizer o que a diferença
+  SIGNIFICA — se o ganho temporal do LSTM aparece ou não nesta
+  classe de falha, e por quê — não apenas qual número é maior.
+
 ## Fundamentação Metodológica
 A pesquisa apoia-se no TCC de graduação de Rodolfo
 (UFPA, 2024): "Aplicação da Metodologia Reliability
@@ -174,16 +199,18 @@ Detecção de anomalias no lado CA — pipeline principal
 (módulos existentes em src/ml/; o estado vigente de cada
 etapa vem dos manifestos ou da ferramenta
 consultar_status_pipeline, nunca deste arquivo):
-- Autoencoder (modelagem de normalidade — principal)
+- Autoencoder DENSO (modelagem de normalidade — método proposto)
+- AE-LSTM temporal de Ibrahim (2022) — **braço comparativo do
+  cerne**, não experimento lateral. src/ml/modelos_anomalia.py,
+  orquestrado por src/ml/macro_ibrahim.py. Agnóstico a dataset:
+  recebe as mesmas 24 features do GPVS que o denso.
 - Injeção de falhas sintéticas FMECA + validação sintética interna E2
-- Análise de Weibull (confiabilidade e RUL)
-
-Disponível via experimento por artigo (não no pipeline):
-- AE-LSTM temporal (Ibrahim)
+- Análise de Weibull (detectabilidade e RUL), POR MODELO —
+  src/ml/weibull_por_modelo.py + src/ml/macro_weibull.py
 
 Planejados (sem implementação no pacote):
 - Processo Gaussiano (prognóstico com incerteza)
-- LSTM/GRU dedicados a séries temporais no pipeline
+- GRU dedicado a séries temporais no pipeline
 
 ## Experimentos por Artigo-Base
 APOSENTADO DO CHAT (2026-07-30). O framework
@@ -202,16 +229,25 @@ consultar_comparacao_macro, que LÊ a comparação publicada e
 nunca treina. Para recalcular: python -m src.ml.macro_comparar
 no PC.
 
-PAPEL DOS EXPERIMENTOS: são COMPARAÇÃO com a literatura, não
-são o método da dissertação (esse é o pipeline principal —
-Autoencoder no sinal → injeção FMECA → validação → Weibull).
-Servem para mostrar que a abordagem escolhida se sustenta
-frente às alternativas. Nunca confundir os dois na dissertação.
+PAPEL DOS EXPERIMENTOS POR ARTIGO (o framework aposentado): eram
+comparação exploratória com a literatura. Foram substituídos
+pelos macro-códigos e não voltam.
 
-CURADORIA — núcleo comparativo vigente:
-- Ibrahim (2022) — AE-LSTM temporal como concorrente direto do
-  Autoencoder denso proposto. A comparação acadêmica publicada é
-  Proposto × Ibrahim, por AUC e SMD@FPR=10%, no mesmo protocolo E2.
+Isso NÃO rebaixa a comparação com o Ibrahim — ao contrário. Ela
+saiu do framework aposentado e virou o CERNE (ver "Tema da
+Pesquisa"). O que o agente nunca deve fazer é apresentar o
+método proposto sozinho quando a pergunta é de desempenho: a
+resposta certa é sempre o par, no mesmo protocolo.
+
+CURADORIA — o par comparativo:
+- Proposto — Autoencoder DENSO por janela, MSE de reconstrução.
+- Ibrahim (2022) — AE-LSTM temporal, encoder/decoder recorrentes
+  sobre sequências de janelas (§3.1 do artigo), erro de
+  reconstrução como escore (eq. 3).
+A comparação publicada é Proposto × Ibrahim por AUC e
+SMD@FPR=10% (resultados/macro/), mais as curvas de
+detectabilidade por modelo (resultados/macro/weibull/), tudo no
+mesmo protocolo E2 sobre o GPVS-Faults.
 
 CORTADOS (não são experimentos/modelos quantitativos vigentes):
 - Francisti/Shewhart, Isolation Forest e Prophet do Ibrahim, Ghoneim,
@@ -291,7 +327,6 @@ mestrado-utfpr/
 │   │     experimentos_artigos.py, protocolos_artigos.py,
 │   │     modelos_anomalia.py, exec_experimento_isolado.py,
 │   │     estilo_graficos.py (estilo/tamanho único dos plots)
-│   ├── interface/            → streamlit_app.py
 │   └── orquestrador.py       → automações de startup
 ├── scripts/                  → manutenção/avaliação manual
 │     (reconstruir_literatura, reindexar_sessoes,
@@ -577,8 +612,8 @@ provam desempenho industrial DE CAMPO: E3 de campo continua não realizada.
   agente NÃO despeja as figuras na tela. Cada artefato oferece antevisão
   responsiva sob demanda e download; a imagem só é renderizada inline quando
   Rodolfo pede explicitamente ("mostre os gráficos", "veja a curva ROC").
-  Comportamento em src/ml/resultados.py (flag inline) e
-  src/interface/streamlit_app.py (_controles_antevisao / renderizar_imagens).
+  Comportamento em src/ml/resultados.py (flag inline) e na Web V2
+  (src/webapp_v2/rendering.py + static/app.js).
 - Comparações de experimentos oferecem heatmap, pequenos múltiplos por pontos
   e barras horizontais sob comando. Contagens usam escala própria e cobertura
   percentual, para uma referência grande não achatar as diferenças entre modelos.

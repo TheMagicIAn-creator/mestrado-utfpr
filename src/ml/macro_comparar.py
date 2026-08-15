@@ -57,7 +57,8 @@ def _saidas_macro() -> list[Path]:
 
 def manifesto_atual(n_janelas: int | None = None) -> dict:
     """Descreve integralmente o comparativo sem depender do pipeline principal."""
-    from src.ml.injecao_falhas import ARQUIVO_CSV, N_JANELAS_SMD, SEVERIDADES
+    from src.ml.gpvs_principal import ARQUIVO_FEATURES, PASTA_GPVS
+    from src.ml.injecao_falhas import N_JANELAS_SMD, SEVERIDADES
     from src.ml.macro_comum import FRACAO_AJUSTE_LIMIAR, PURGA
     from src.ml.macro_ibrahim import EPOCHS, SEQ_LEN
     from src.ml.proveniencia import gerar_manifesto
@@ -74,8 +75,12 @@ def manifesto_atual(n_janelas: int | None = None) -> dict:
             "aelstm_epochs": EPOCHS,
         },
         {
-            "dataset_stender": ARQUIVO_CSV,
-            "features": RAIZ / "dados/processados/features_paderborn.parquet",
+            # Fonte unica desde 15/08/2026. Era o Stender; a comparacao ficou
+            # para tras na migracao do pipeline e passou a pontuar vetores de
+            # zeros em silencio. Ver a nota em macro_proposto.construir_scorer.
+            "dataset_gpvs_f0l": PASTA_GPVS / "F0L.csv",
+            "dataset_gpvs_f0m": PASTA_GPVS / "F0M.csv",
+            "features": ARQUIVO_FEATURES,
             "modelo_autoencoder": RAIZ / "resultados/autoencoder/modelo_autoencoder.pt",
             "limiar_autoencoder": RAIZ / "resultados/autoencoder/limiar.json",
             "scaler_autoencoder": RAIZ / "resultados/autoencoder/scaler.pkl",
@@ -89,10 +94,10 @@ def manifesto_atual(n_janelas: int | None = None) -> dict:
                 "macro_ibrahim": "src/ml/macro_ibrahim.py",
                 "macro_comum": "src/ml/macro_comum.py",
                 "modelos_anomalia": "src/ml/modelos_anomalia.py",
-                "dados_avaliacao": "src/ml/dados_avaliacao.py",
+                "gpvs": "src/ml/gpvs.py",
+                "gpvs_principal": "src/ml/gpvs_principal.py",
                 "injecao_falhas": "src/ml/injecao_falhas.py",
                 "escore_anomalia": "src/ml/escore_anomalia.py",
-                "features_ca": "src/ml/features_ca.py",
             }.items()
         },
         evidence_level="E2",
@@ -125,7 +130,8 @@ def entradas_proveniencia_indisponiveis(n_janelas: int | None = None) -> list[st
     ]
 
 
-def executar(n_janelas: int | None = None) -> list[dict]:
+def executar(n_janelas: int | None = None, com_weibull: bool = False,
+             n_steps: int | None = None) -> list[dict]:
     from src.ml import macro_ibrahim, macro_proposto
     from src.ml.macro_comum import salvar_saidas, tabela_enxuta
 
@@ -155,11 +161,41 @@ def executar(n_janelas: int | None = None) -> list[dict]:
     _log("  severidade mostra a partir de que intensidade cada método enxerga")
     _log("  cada falha da FMECA. Ambos calibram o limiar em dados saudáveis.")
     _log("=" * 60)
+
+    # As curvas de confiabilidade por modelo NÃO saem daqui por padrão. A
+    # varredura de magnitude custa até N_STEPS inferências por trajetória, por
+    # falha, por modelo — ordens de grandeza acima do resto deste script. Quem
+    # quer as curvas pede por elas.
+    if com_weibull:
+        from src.ml import macro_weibull
+
+        _log("\n[3/3] Detectabilidade por modelo (varredura de magnitude)...")
+        macro_weibull.executar(n_janelas, n_steps)
+    else:
+        _log("\n  As curvas por modelo (papel de Weibull, S_D, f_D/F_D, h_D)")
+        _log("  não entram aqui: a varredura de magnitude é cara. Rode")
+        _log("  `python -m src.ml.macro_weibull` — ou repita este comando com")
+        _log("  `--weibull`.")
     return resultados
 
 
-if __name__ == "__main__":
+def main(argv: list[str] | None = None) -> None:
+    import argparse
+
+    p = argparse.ArgumentParser(description="Comparativo proposto × Ibrahim")
+    p.add_argument("--n-janelas", type=int, default=None,
+                   help="teto de janelas do holdout (padrão: todas)")
+    p.add_argument("--weibull", action="store_true",
+                   help="também gera as curvas de detectabilidade por modelo")
+    p.add_argument("--n-steps", type=int, default=None,
+                   help="passos da grade de magnitude quando --weibull")
+    args = p.parse_args(argv)
+
     from src.core.logs import habilitar_console
 
     habilitar_console()
-    executar()
+    executar(args.n_janelas, com_weibull=args.weibull, n_steps=args.n_steps)
+
+
+if __name__ == "__main__":
+    main()
