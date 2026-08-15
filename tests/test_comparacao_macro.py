@@ -215,3 +215,61 @@ def test_sem_manifesto_dos_dois_lados_nao_afirma_obsolescencia(tmp_path, monkeyp
     monkeypatch.setattr("src.core.config.RAIZ_PROJETO", tmp_path)
 
     assert fa._comparacao_desatualizada(tmp_path / "resultados" / "macro") == ""
+
+
+# ── A comparação tem de ver o MESMO vetor que o detector foi treinado a ver ──
+
+def test_macros_usam_o_extrator_do_dataset_canonico():
+    """O bug mais caro desta sessão foi mudo, e este teste é a rede contra ele.
+
+    Depois da migração para o GPVS, `macro_proposto` e `macro_ibrahim`
+    continuaram importando `features_ca.extrair_janela` — o extrator do Stender,
+    que devolve ~108 features com nomes como `i_a_rms`. Mas `det["colunas"]` são
+    as 24 features do GPVS (`Ipv_median`, `ia_thd`, …). Nenhum dos 24 nomes
+    existia no dicionário, e o acesso era `.get(c, 0.0)`.
+
+    Resultado: vetor de 24 ZEROS, sem erro de shape, sem aviso. O autoencoder
+    reconstruía o nada e a comparação publicava esse número como AUC.
+
+    Duas coisas travadas aqui: o extrator tem de ser o do dataset canônico, e o
+    acesso NÃO pode ter default silencioso.
+    """
+    import ast
+
+    from src.core.config import RAIZ_PROJETO
+
+    for nome in ("macro_proposto", "macro_ibrahim"):
+        fonte = (RAIZ_PROJETO / f"src/ml/{nome}.py").read_text(encoding="utf-8")
+        arvore = ast.parse(fonte)
+
+        origens = {
+            no.module
+            for no in ast.walk(arvore)
+            if isinstance(no, ast.ImportFrom) and no.module
+            and any(a.name == "extrair_janela" for a in no.names)
+        }
+        assert origens == {"src.ml.gpvs_principal"}, (
+            f"{nome} importa extrair_janela de {origens or 'lugar nenhum'}; "
+            "tem de vir de gpvs_principal, o mesmo extrator que gerou as "
+            "features de treino do detector"
+        )
+
+        assert "extrair_janela(j).get(" not in fonte, (
+            f"{nome} usa `.get(coluna, default)` ao montar o vetor de features. "
+            "Feature que falta é defeito e tem de estourar: foi o default "
+            "silencioso que transformou incompatibilidade de dataset em "
+            "resultado plausível."
+        )
+
+
+def test_macros_nao_carregam_mais_o_dataset_stender():
+    """GPVS é o único dataset de estimativa. O Stender saiu da cadeia."""
+    from src.core.config import RAIZ_PROJETO
+
+    for nome in ("macro_proposto", "macro_ibrahim", "macro_comparar"):
+        fonte = (RAIZ_PROJETO / f"src/ml/{nome}.py").read_text(encoding="utf-8")
+        for proibido in ("carregar_paderborn_compacto", "features_paderborn"):
+            assert proibido not in fonte, (
+                f"{nome} ainda referencia {proibido} — o comparativo precisa "
+                "rodar sobre o GPVS para ser pertinente"
+            )

@@ -71,11 +71,17 @@ EPOCHS = int(os.getenv("AL_IADO_AELSTM_EPOCHS", "60"))
 # ============================================================
 
 def features_das_janelas(janelas, colunas, scaler) -> np.ndarray:
-    """Janelas de sinal → matriz (n, F) normalizada, na ordem do treino."""
-    from src.ml.features_ca import extrair_janela
+    """Janelas de sinal → matriz (n, F) normalizada, na ordem do treino.
+
+    Extrator do GPVS, o MESMO do macro proposto — é o que torna a comparação
+    legítima: os dois modelos veem exatamente o mesmo vetor de entrada. Era
+    `features_ca` (Stender), que depois da migração devolvia 0,0 para as 24
+    features do GPVS sem levantar erro. Ver a nota em macro_proposto.py.
+    """
+    from src.ml.gpvs_principal import extrair_janela
 
     vet = np.asarray([
-        [extrair_janela(j).get(c, 0.0) for c in colunas] for j in janelas
+        [extrair_janela(j)[c] for c in colunas] for j in janelas
     ], dtype=np.float32)
     return scaler.transform(vet).astype(np.float32)
 
@@ -118,8 +124,8 @@ def executar(n_janelas: int | None = None) -> dict:
     import torch
 
     from src.core.seguranca import carregar_pickle_com_sidecar
-    from src.ml.dados_avaliacao import carregar_paderborn_compacto, preparar_janelas_holdout
-    from src.ml.injecao_falhas import ARQUIVO_CSV, N_JANELAS_SMD
+    from src.ml.gpvs_principal import preparar_janelas_holdout
+    from src.ml.injecao_falhas import N_JANELAS_SMD
     from src.ml.macro_comum import (
         avaliar_deteccao, dividir_calibracao_avaliacao, salvar_saidas,
     )
@@ -133,16 +139,15 @@ def executar(n_janelas: int | None = None) -> dict:
     if not arq_modelo.exists():
         raise FileNotFoundError(
             "Artefatos de features/scaler ausentes. Rode antes:\n"
-            "  python src/ml/features_ca.py && python src/ml/autoencoder.py")
+            "  python -m src.ml.exec_etapa_isolada features_gpvs && "
+            "python -m src.ml.exec_etapa_isolada autoencoder")
     ckpt = torch.load(arq_modelo, map_location="cpu", weights_only=False)
     scaler = carregar_pickle_com_sidecar(PASTA_AE / "scaler.pkl")
     colunas = ckpt["colunas_feat"]
 
-    _log("\n  Carregando holdout temporal isolado (Paderborn)...")
-    df = carregar_paderborn_compacto(ARQUIVO_CSV)
-    janelas, _meta = preparar_janelas_holdout(df, n_max=n_janelas or N_JANELAS_SMD)
-    del df
-    _log(f"  {len(janelas)} janelas não sobrepostas do bloco de teste")
+    _log("\n  Carregando holdout F0 do GPVS-Faults (teste isolado)...")
+    janelas, _meta = preparar_janelas_holdout(n_max=n_janelas or N_JANELAS_SMD)
+    _log(f"  {len(janelas)} janelas não sobrepostas do bloco de teste F0")
 
     # MESMA divisão do macro proposto: o AE-LSTM é treinado e calibrado no 1º
     # bloco; FP/AUC/injeção saem do 2º, DISJUNTO (com purga). Sem isso o modelo

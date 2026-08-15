@@ -57,7 +57,8 @@ def _saidas_macro() -> list[Path]:
 
 def manifesto_atual(n_janelas: int | None = None) -> dict:
     """Descreve integralmente o comparativo sem depender do pipeline principal."""
-    from src.ml.injecao_falhas import ARQUIVO_CSV, N_JANELAS_SMD, SEVERIDADES
+    from src.ml.gpvs_principal import ARQUIVO_FEATURES, PASTA_GPVS
+    from src.ml.injecao_falhas import N_JANELAS_SMD, SEVERIDADES
     from src.ml.macro_comum import FRACAO_AJUSTE_LIMIAR, PURGA
     from src.ml.macro_ibrahim import EPOCHS, SEQ_LEN
     from src.ml.proveniencia import gerar_manifesto
@@ -74,8 +75,12 @@ def manifesto_atual(n_janelas: int | None = None) -> dict:
             "aelstm_epochs": EPOCHS,
         },
         {
-            "dataset_stender": ARQUIVO_CSV,
-            "features": RAIZ / "dados/processados/features_paderborn.parquet",
+            # Fonte unica desde 15/08/2026. Era o Stender; a comparacao ficou
+            # para tras na migracao do pipeline e passou a pontuar vetores de
+            # zeros em silencio. Ver a nota em macro_proposto.construir_scorer.
+            "dataset_gpvs_f0l": PASTA_GPVS / "F0L.csv",
+            "dataset_gpvs_f0m": PASTA_GPVS / "F0M.csv",
+            "features": ARQUIVO_FEATURES,
             "modelo_autoencoder": RAIZ / "resultados/autoencoder/modelo_autoencoder.pt",
             "limiar_autoencoder": RAIZ / "resultados/autoencoder/limiar.json",
             "scaler_autoencoder": RAIZ / "resultados/autoencoder/scaler.pkl",
@@ -89,10 +94,10 @@ def manifesto_atual(n_janelas: int | None = None) -> dict:
                 "macro_ibrahim": "src/ml/macro_ibrahim.py",
                 "macro_comum": "src/ml/macro_comum.py",
                 "modelos_anomalia": "src/ml/modelos_anomalia.py",
-                "dados_avaliacao": "src/ml/dados_avaliacao.py",
+                "gpvs": "src/ml/gpvs.py",
+                "gpvs_principal": "src/ml/gpvs_principal.py",
                 "injecao_falhas": "src/ml/injecao_falhas.py",
                 "escore_anomalia": "src/ml/escore_anomalia.py",
-                "features_ca": "src/ml/features_ca.py",
             }.items()
         },
         evidence_level="E2",
