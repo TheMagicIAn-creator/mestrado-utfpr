@@ -7,11 +7,7 @@ import pandas as pd
 import pytest
 
 from src.core.config import RAIZ_PROJETO
-from src.ml.proveniencia import (
-    SUFIXOS_TEXTO_PORTAVEL,
-    sha256_arquivo,
-    sha256_arquivo_texto_normalizado,
-)
+from src.ml.proveniencia import funcao_de_hash_para
 
 
 RAIZ = Path(RAIZ_PROJETO)
@@ -76,9 +72,8 @@ def test_manifesto_gpvs_v2_confere_outputs_versionados():
     for relativo, esperado in manifesto["output_artifacts"].items():
         caminho = RAIZ / relativo
         assert caminho.exists(), relativo
-        funcao = (
-            sha256_arquivo_texto_normalizado
-            if caminho.suffix.lower() in SUFIXOS_TEXTO_PORTAVEL
-            else sha256_arquivo
-        )
-        assert funcao(caminho) == esperado, relativo
+        # Delegado, nao replicado: esta era a TERCEIRA copia da regra de hash
+        # (as outras em verificar_resultados_fmeca e auditar_artefatos). Copia
+        # de regra deriva -- quando JSON passou a ser hasheado sem os campos de
+        # data, as tres copias passaram a acusar divergencia inexistente.
+        assert funcao_de_hash_para(caminho)(caminho) == esperado, relativo

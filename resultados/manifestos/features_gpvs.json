@@ -36,7 +36,7 @@
   "output_artifacts": {
     "dados/processados/features_gpvs.parquet": "613a8e6bb76c99dbb14d8980bc8ea68ba48e9105e9d0d5f089213f00207b3350",
     "dados/processados/features_gpvs_stats.csv": "b8b6d6c2159feb624f4d337bcdc8eb4cb2417b217d28949952b4071bc06f159b",
-    "resultados/qualidade/features_gpvs_qualidade.json": "c3047a2c5ce97f0c80833b9f9454428ec2f2d32cbba1c997f6a956330af3f607",
+    "resultados/qualidade/features_gpvs_qualidade.json": "980e9c7bea725df4a678dfa1ba18b843146474872cdaa547a177e2b7eaf3a583",
     "resultados/qualidade/features_gpvs_qualidade.png": "694b6b1262fd60e4503a9d80f82ab66c68c90f3d91f331514ca9f8c416fbc69c"
   }
 }

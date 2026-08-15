@@ -63,6 +63,65 @@ def sha256_arquivo_texto_normalizado(caminho) -> str | None:
     return h.hexdigest()
 
 
+# Campos que registram QUANDO o artefato foi escrito, não O QUE ele afirma.
+# Entram no artefato de propósito — proveniência legítima — mas não podem entrar
+# no hash: o pipeline é determinístico por semente, então rodar de novo produz o
+# MESMO resultado com relógio diferente.
+CAMPOS_VOLATEIS = frozenset({
+    "data_treino", "data_geracao", "data_execucao", "created_at",
+    "generated_at", "timestamp", "gerado_em", "executado_em",
+})
+
+
+def _sem_campos_volateis(valor):
+    if isinstance(valor, dict):
+        return {
+            chave: _sem_campos_volateis(sub)
+            for chave, sub in valor.items()
+            if chave not in CAMPOS_VOLATEIS
+        }
+    if isinstance(valor, list):
+        return [_sem_campos_volateis(item) for item in valor]
+    return valor
+
+
+def sha256_json_estavel(caminho) -> str | None:
+    """SHA-256 do CONTEÚDO CIENTÍFICO de um JSON, sem os carimbos de tempo.
+
+    POR QUE EXISTE
+    ==============
+    Em 15/08/2026 o pesquisador re-rodou a etapa `autoencoder`. O treino é
+    determinístico: o limiar saiu bit a bit idêntico, `0.8577015399932861`. A
+    ÚNICA diferença no arquivo foi ``data_treino``, de 12/08 para 15/08.
+
+    Mesmo assim o SHA-256 mudou, e com ele quebraram o manifesto de proveniência
+    e o `threshold_sha256` do registro E3 — dois testes reprovando no `main` por
+    causa de um relógio. Pior que o incômodo: treina o leitor a ignorar
+    divergência de hash, que é exatamente o alarme que deveria ser levado a
+    sério quando um artefato muda de verdade.
+
+    Hashear os bytes de um arquivo que contém a hora de escrita torna a cadeia
+    de proveniência instável por construção. Aqui o JSON é lido, os campos
+    voláteis são removidos em profundidade, e o resto é serializado
+    canonicamente (chaves ordenadas) antes de hashear.
+
+    Se o arquivo não for JSON válido, cai no hash textual — nunca devolve nada
+    silenciosamente errado.
+    """
+    p = Path(caminho)
+    if not p.exists() or not p.is_file():
+        return None
+    try:
+        dados = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return sha256_arquivo_texto_normalizado(p)
+    canonico = json.dumps(
+        _sem_campos_volateis(dados),
+        sort_keys=True, ensure_ascii=False, separators=(",", ":"),
+    )
+    return hashlib.sha256(canonico.encode("utf-8")).hexdigest()
+
+
 def sha256_texto(texto: str) -> str:
     return hashlib.sha256(texto.encode("utf-8")).hexdigest()
 
@@ -87,17 +146,27 @@ def _hashes_arquivos(arquivos, *, texto_normalizado: bool = False) -> dict[str, 
     }
 
 
+def funcao_de_hash_para(caminho):
+    """Escolhe o hash pela natureza do arquivo, não pelo acaso da extensão.
+
+    JSON leva o hash ESTÁVEL (sem os campos de data), porque é onde o pipeline
+    grava carimbo de tempo junto com o resultado. Demais textos levam o hash com
+    EOL normalizada; binário científico é hasheado byte a byte.
+    """
+    sufixo = Path(caminho).suffix.lower()
+    if sufixo == ".json":
+        return sha256_json_estavel
+    if sufixo in SUFIXOS_TEXTO_PORTAVEL:
+        return sha256_arquivo_texto_normalizado
+    return sha256_arquivo
+
+
 def _hashes_artefatos_portaveis(arquivos) -> dict[str, str | None]:
     """Normaliza EOL de textos; preserva bytes de binários científicos."""
-    hashes: dict[str, str | None] = {}
-    for nome, caminho in _mapear_arquivos(arquivos):
-        func = (
-            sha256_arquivo_texto_normalizado
-            if Path(caminho).suffix.lower() in SUFIXOS_TEXTO_PORTAVEL
-            else sha256_arquivo
-        )
-        hashes[nome] = func(caminho)
-    return hashes
+    return {
+        nome: funcao_de_hash_para(caminho)(caminho)
+        for nome, caminho in _mapear_arquivos(arquivos)
+    }
 
 
 def _git_commit() -> str:

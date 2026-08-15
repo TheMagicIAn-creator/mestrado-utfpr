@@ -51,10 +51,10 @@
   "output_artifacts": {
     "resultados/autoencoder/injecao_falhas_resultados.png": "836459944c5d922fe51ff901af625a2b64ddbae735d994737b41243b0def2060",
     "resultados/autoencoder/injecao_falhas_comparacao.png": "9eef1636a1b84ce4a0e21bc133507cd4a5d9137a441239606e7b583c0265c90b",
-    "resultados/autoencoder/injecao_falhas_report.json": "462b8a0154dec0c7d99770f6eac8b6818f4929e4342d18be1f31647ccbf69516",
+    "resultados/autoencoder/injecao_falhas_report.json": "320e550dd4033f2a8ba8867a35510a4f169cc518e28c58d6e6948c68c7dc2818",
     "resultados/autoencoder/injecao_smd_tabela.csv": "12ace8e7b59299a8f5c7d1ec6fd69350342fc372403bd7298c1cd1e46645b856",
     "resultados/autoencoder/diagnostico_escore.png": "e4455239fec232b5597b53999d26033b5d9d620e0a6dde3a61c4cd90b015b07b",
-    "resultados/autoencoder/diagnostico_escore.json": "932f8d076c5a7dd0e13d97cbd1d13aadf5395b3282e01b11a0255cd99707a1db"
+    "resultados/autoencoder/diagnostico_escore.json": "d736a398d5d62feb7086fa07d5846553c2b2771441d782eef996859e78bebd21"
   },
   "evidence_level": "E2"
 }

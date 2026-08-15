@@ -58,15 +58,15 @@
   "output_artifacts": {
     "resultados/macro/proposto_tabela.md": "5d6b6a149af103c93677a242e3da5e83f6959814441130bacd28c773f9cb89c0",
     "resultados/macro/proposto_tabela.csv": "fca838c7193df844ddff0105deca5da84bfc2de14161cdd2a8d45b44ed6db649",
-    "resultados/macro/proposto_resultado.json": "ff78b7b3827c8ff7d294acde1cd61fcaab3d6ab183ce2b664b6425bb56193c53",
+    "resultados/macro/proposto_resultado.json": "cb223b702dc8b6098ea6983161dcb441cce0ddaec003cce71bed5eac9f667a31",
     "resultados/macro/proposto_deteccao_severidade.png": "cab948f36b7e3b9dff2e6d863472f8a03aaec9967bc953da6a16b93ed321b03c",
     "resultados/macro/ibrahim_tabela.md": "a355ffd0fe969000d4d9c6233053f97547403fbd1e6bd5c4a68a705e2ae821a7",
     "resultados/macro/ibrahim_tabela.csv": "f242d2981a2fe9391305861d86fe97d759e43b572543b3cfce981e833e7e9603",
-    "resultados/macro/ibrahim_resultado.json": "275627d0cb3edd5de9522a23de4189fff43ca5f40fa3ad6d371abeea2921f7ee",
+    "resultados/macro/ibrahim_resultado.json": "030b3df9f7ed88b93156dbd1a35906ff7910b6f1695bb4fa87a8edd49907bea9",
     "resultados/macro/ibrahim_deteccao_severidade.png": "ec4a5ada56183569016d27ab0e2ce4aa5f30be7a8e778d51e53d365985ed4cd2",
     "resultados/macro/comparacao_tabela.md": "6b803871c7e95af59b70729ac8e3eb9c4cafe76961038de46cac6744177bb7b5",
     "resultados/macro/comparacao_tabela.csv": "31f09f45405de6e760658e9cc442b9cbb24083e8aaa74ea351bac09d1613dbe4",
-    "resultados/macro/comparacao_resultado.json": "3604aaf17d1be43deb3be2989c5b575c002101f0925d73ba1bfa9b314e0ea6c3",
+    "resultados/macro/comparacao_resultado.json": "13363a27720891c6a9cdecd6509e80574718e0f01d6ff1e269639829ddba0263",
     "resultados/macro/comparacao_deteccao_severidade.png": "615586dd2df65218a3659d000421b34e2103d1bec233ef6fb90b31a7a282fbd6"
   },
   "evidence_level": "E2"

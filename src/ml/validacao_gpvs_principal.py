@@ -56,7 +56,7 @@ from src.ml.gpvs_principal import (
 from src.ml.proveniencia import (
     gerar_manifesto,
     salvar_manifesto,
-    sha256_arquivo_texto_normalizado,
+    sha256_json_estavel,
 )
 
 aplicar_estilo()
@@ -539,7 +539,10 @@ def executar_validacao_gpvs_principal(
             "top_k": info.get("top_k", info.get("k_localizado")),
             "model_sha256": _sha256(PASTA_AE / "modelo_autoencoder.pt"),
             "scaler_sha256": _sha256(PASTA_AE / "scaler.pkl"),
-            "threshold_sha256": sha256_arquivo_texto_normalizado(
+            # Hash ESTAVEL: limiar.json carrega `data_treino`, e o treino e
+            # deterministico. Hashear os bytes fazia um rerun identico
+            # invalidar a cadeia de proveniencia por causa do relogio.
+            "threshold_sha256": sha256_json_estavel(
                 PASTA_AE / "limiar.json"
             ),
             "baseline_normalization_sha256": _sha256(
