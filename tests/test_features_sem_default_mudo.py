@@ -153,3 +153,60 @@ def test_a_conversao_janela_para_vetor_tem_fonte_unica(caminho):
     assert "vetor_de_features" in texto or "det[\"colunas\"]" in texto, (
         f"{caminho} extrai features sem passar pela fonte única"
     )
+
+
+# ── a normalização de comissionamento não pode ser pulada ──────────────────
+
+def _normalizacao_de_mentira(colunas: list[str]) -> dict:
+    """Baseline sintético com deslocamento grande, para o efeito ser visível."""
+    n = len(colunas)
+    base = {"mediana": np.full(n, 1000.0), "escala": np.full(n, 10.0)}
+    return {
+        "feature_columns": list(colunas),
+        "iqr_floor": np.full(n, 1e-6),
+        "baselines": {"F0L": base, "F0M": base},
+    }
+
+
+def test_vetores_de_janelas_aplica_a_normalizacao_de_baseline():
+    """O passo que faltava, e que zerou a detecção dos DOIS modelos.
+
+    O autoencoder é treinado sobre features normalizadas por ensaio
+    (`autoencoder.ajustar_normalizacao_f0`). Pontuar sem essa normalização
+    entrega features CRUAS a um scaler ajustado sobre normalizadas — medido em
+    15/08/2026, o limiar saiu 0,8577 no pipeline e 52.577,8 no macro.
+    """
+    from src.ml.gpvs_principal import vetores_de_janelas
+
+    janela = _janela()
+    janela.attrs["ensaio"] = "F0L"
+    colunas = list(extrair_janela(janela))[:5]
+
+    cru = vetores_de_janelas([janela], colunas)
+    normalizado = vetores_de_janelas(
+        [janela], colunas, _normalizacao_de_mentira(colunas)
+    )
+
+    assert cru.shape == normalizado.shape == (1, 5)
+    assert not np.allclose(cru, normalizado), (
+        "a normalização de baseline não foi aplicada — é exatamente o defeito "
+        "que inflou o limiar em 61 mil vezes"
+    )
+
+
+@pytest.mark.parametrize("caminho", ("src/ml/macro_proposto.py",
+                                     "src/ml/macro_ibrahim.py",
+                                     "src/ml/macro_weibull.py"))
+def test_os_macros_carregam_a_normalizacao_de_baseline(caminho):
+    """Guarda estrutural: o macro que esquecer a normalização reprova aqui.
+
+    Não basta usar o extrator certo — a representação de entrada tem DOIS
+    passos, e pular o segundo produz número plausível, não erro.
+    """
+    fonte = (RAIZ / caminho).read_text(encoding="utf-8")
+    assert "normaliza" in fonte, (
+        f"{caminho} não menciona a normalização de baseline; features cruas "
+        "num scaler de features normalizadas é resultado errado sem aviso"
+    )
+    if caminho.endswith("macro_weibull.py"):
+        assert "carregar_normalizacao_baseline" in fonte

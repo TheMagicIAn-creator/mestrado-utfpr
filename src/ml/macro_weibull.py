@@ -103,7 +103,8 @@ def _pasta_do_modelo(nome: str) -> Path:
 # ETAPA 1 — os dois detectores, sobre o MESMO holdout
 # ============================================================
 
-def montar_detectores(janelas_calib: list, colunas, scaler) -> list[dict]:
+def montar_detectores(janelas_calib: list, colunas, scaler,
+                      normalizacao) -> list[dict]:
     """Constrói os scorers dos dois métodos comparados.
 
     O AE denso vem congelado do disco: é o detector da dissertação, e
@@ -122,13 +123,15 @@ def montar_detectores(janelas_calib: list, colunas, scaler) -> list[dict]:
         "scorer": macro_proposto.construir_scorer(det),
     })
 
-    X_cal = macro_ibrahim.features_das_janelas(janelas_calib, colunas, scaler)
+    X_cal = macro_ibrahim.features_das_janelas(
+        janelas_calib, colunas, scaler, normalizacao
+    )
     modelo_lstm = macro_ibrahim.treinar_detector(X_cal)
     detectores.append({
         "nome": macro_ibrahim.NOME,
         "cor": "#1baf7a",
         "scorer": macro_ibrahim.construir_scorer(
-            modelo_lstm, X_cal, colunas, scaler
+            modelo_lstm, X_cal, colunas, scaler, normalizacao
         ),
     })
     return detectores
@@ -396,9 +399,15 @@ def executar(n_janelas: int | None = None, n_steps: int | None = None,
     import torch
 
     from src.core.seguranca import carregar_pickle_com_sidecar
-    from src.ml.gpvs_principal import preparar_janelas_holdout
+    from src.ml.gpvs_principal import (
+        carregar_normalizacao_baseline, preparar_janelas_holdout,
+    )
     from src.ml.injecao_falhas import FALHAS, N_JANELAS_SMD
-    from src.ml.macro_comum import calibrar_limiar, dividir_calibracao_avaliacao
+    from src.ml.macro_comum import (
+        calibrar_limiar, conferir_escala_do_limiar,
+        dividir_calibracao_avaliacao,
+    )
+    from src.ml.macro_proposto import NOME as macro_proposto_nome_valor
     from src.ml.rul_weibull import N_STEPS, selecionar_trajetorias_holdout
     from src.ml.weibull_por_modelo import (
         comparar_detectabilidade, detectabilidade_do_modelo,
@@ -427,7 +436,8 @@ def executar(n_janelas: int | None = None, n_steps: int | None = None,
     _log(f"  {len(janelas)} janelas | calibração={len(j_cal)} | "
          f"avaliação={len(j_aval)} (disjuntos)")
 
-    detectores = montar_detectores(j_cal, colunas, scaler)
+    normalizacao = carregar_normalizacao_baseline(pasta_ae)
+    detectores = montar_detectores(j_cal, colunas, scaler, normalizacao)
 
     blocos = []
     for detector in detectores:
@@ -437,6 +447,10 @@ def executar(n_janelas: int | None = None, n_steps: int | None = None,
         limiar, percentil = calibrar_limiar(scorer, j_cal)
         _log(f"\n  {nome}")
         _log(f"    limiar = {limiar:.5f} (percentil {percentil:.1f})")
+        if nome == macro_proposto_nome_valor:
+            alerta = conferir_escala_do_limiar(nome, limiar, pasta_ae)
+            if alerta:
+                _log(f"    {alerta}")
         n_traj = len(selecionar_trajetorias_holdout(j_aval, n_trajetorias))
         # Teto, não previsão: a parada antecipada corta a varredura no primeiro
         # cruzamento confirmado, então falha detectável custa uma fração disto.

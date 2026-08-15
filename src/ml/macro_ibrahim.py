@@ -51,7 +51,6 @@ _logger = _get_logger("macro_ibrahim")
 _log = _adaptar_log(_logger)
 
 
-import json
 import os
 from pathlib import Path
 
@@ -70,19 +69,20 @@ EPOCHS = int(os.getenv("AL_IADO_AELSTM_EPOCHS", "60"))
 # ETAPA 1 — features das janelas (mesma base do macro proposto)
 # ============================================================
 
-def features_das_janelas(janelas, colunas, scaler) -> np.ndarray:
+def features_das_janelas(janelas, colunas, scaler, normalizacao=None) -> np.ndarray:
     """Janelas de sinal → matriz (n, F) normalizada, na ordem do treino.
 
-    Extrator do GPVS, o MESMO do macro proposto — é o que torna a comparação
-    legítima: os dois modelos veem exatamente o mesmo vetor de entrada. Era
-    `features_ca` (Stender), que depois da migração devolvia 0,0 para as 24
-    features do GPVS sem levantar erro. Ver a nota em macro_proposto.py.
+    Featurização canônica do GPVS, a MESMA do macro proposto — é o que torna a
+    comparação legítima: os dois modelos veem exatamente o mesmo vetor de
+    entrada. Dois defeitos já moraram aqui, ambos por divergir dessa cadeia:
+    o extrator do Stender devolvendo 0,0 para as 24 features do GPVS, e a
+    ausência da normalização de comissionamento por ensaio, que inflou o limiar
+    em 61 mil vezes e zerou a detecção dos dois modelos. Ver
+    `gpvs_principal.vetores_de_janelas`.
     """
-    from src.ml.gpvs_principal import vetor_de_features
+    from src.ml.gpvs_principal import vetores_de_janelas
 
-    vet = np.asarray(
-        [vetor_de_features(j, colunas) for j in janelas], dtype=np.float32
-    )
+    vet = vetores_de_janelas(janelas, colunas, normalizacao)
     return scaler.transform(vet).astype(np.float32)
 
 
@@ -103,13 +103,14 @@ def treinar_detector(X_normal: np.ndarray):
 # ETAPA 3 — SCORER (mesma interface do macro_proposto)
 # ============================================================
 
-def construir_scorer(model, X_contexto: np.ndarray, colunas, scaler):
+def construir_scorer(model, X_contexto: np.ndarray, colunas, scaler,
+                     normalizacao=None):
     """callable(list[DataFrame]) -> escores. Cada janela é pontuada como
     'a janela ATUAL dado o histórico normal precedente' (erro no último passo)."""
     from src.ml.modelos_anomalia import pontuar_ae_lstm, sequencias_com_contexto
 
     def scorer(janelas):
-        X = features_das_janelas(janelas, colunas, scaler)
+        X = features_das_janelas(janelas, colunas, scaler, normalizacao)
         seq = sequencias_com_contexto(X_contexto, X, SEQ_LEN)
         return pontuar_ae_lstm(model, seq)
 
@@ -124,7 +125,9 @@ def executar(n_janelas: int | None = None) -> dict:
     import torch
 
     from src.core.seguranca import carregar_pickle_com_sidecar
-    from src.ml.gpvs_principal import preparar_janelas_holdout
+    from src.ml.gpvs_principal import (
+        carregar_normalizacao_baseline, preparar_janelas_holdout,
+    )
     from src.ml.injecao_falhas import N_JANELAS_SMD
     from src.ml.macro_comum import (
         avaliar_deteccao, dividir_calibracao_avaliacao, salvar_saidas,
@@ -144,6 +147,7 @@ def executar(n_janelas: int | None = None) -> dict:
     ckpt = torch.load(arq_modelo, map_location="cpu", weights_only=False)
     scaler = carregar_pickle_com_sidecar(PASTA_AE / "scaler.pkl")
     colunas = ckpt["colunas_feat"]
+    normalizacao = carregar_normalizacao_baseline(PASTA_AE)
 
     _log("\n  Carregando holdout F0 do GPVS-Faults (teste isolado)...")
     janelas, _meta = preparar_janelas_holdout(n_max=n_janelas or N_JANELAS_SMD)
@@ -157,12 +161,12 @@ def executar(n_janelas: int | None = None) -> dict:
     _log(f"  calibração={len(j_cal)} | avaliação={len(j_aval)} (disjuntos)")
 
     _log("\n  Treinando AE-LSTM temporal no fluxo NORMAL (bloco de calibração)...")
-    X_cal = features_das_janelas(j_cal, colunas, scaler)
+    X_cal = features_das_janelas(j_cal, colunas, scaler, normalizacao)
     model = treinar_detector(X_cal)
 
     _log("\n  Avaliando detecção por severidade (mesma injeção FMECA)...")
     # contexto temporal do scorer = fluxo normal do bloco de calibração
-    scorer = construir_scorer(model, X_cal, colunas, scaler)
+    scorer = construir_scorer(model, X_cal, colunas, scaler, normalizacao)
     resultado = avaliar_deteccao(NOME, "#1baf7a", scorer, j_cal, j_aval)
 
     _log(f"\n  Limiar auto-calibrado = {resultado['limiar']:.4f} "
