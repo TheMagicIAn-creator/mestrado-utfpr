@@ -54,9 +54,8 @@ def test_modelos_citados_existem_no_codigo():
     for texto, nome in ((CLAUDE, "CLAUDE.md"), (ENV_EXAMPLE, ".env.example")):
         for p in proibidos:
             assert p not in texto, f"{nome} cita modelo inexistente no código: {p!r}"
-    # Aliases -latest (a família 2.5 foi aposentada em 2026; versões explícitas
-    # giram rápido). Nível 1 = pro (conversa); 2 = flash (auditor); 3 = flash-lite.
-    for modelo in ("gemini-pro-latest", "gemini-flash-latest", "gemini-flash-lite-latest"):
+    # Modelos GA explicitos verificados na API; Pro continua opt-in.
+    for modelo in ("gemini-pro-latest", "gemini-3.6-flash", "gemini-3.5-flash-lite"):
         assert modelo in PROVEDORES, f"provedores.py não define {modelo}"
         assert modelo in CLAUDE, f"CLAUDE.md não documenta o modelo real {modelo}"
 

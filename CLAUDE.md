@@ -397,19 +397,21 @@ A equipe é 100% Gemini, um modelo por nível de tarefa — a escolha segue os
 limites de taxa por modelo do plano pago (quanto mais barato o modelo, maior o
 RPM/TPM, então o trabalho repetitivo desce de nível):
 - Conversa, interpretação de ferramentas, multimodalidade (imagens) e síntese
-  final: por padrão `gemini-flash-latest` (GA, rápido e estável). É a única voz
+  final: por padrão `gemini-3.6-flash` (GA, rápido e estável). É a única voz
   do chat. O `gemini-pro-latest` é opt-in via `AL_IADO_GEMINI_MODEL` para máximo
   raciocínio — mas é lento no trivial e sofre 503 de alta demanda, por isso não
   é o default. Saudações/reações casuais nem chegam ao modelo (atalho local
   `resposta_interacao_simples`).
-- Gemini Flash (`gemini-flash-latest`, alias -latest) tem o papel fixo de auditor de evidências e
+  O chat usa `thinking_level=low`, equilibrando rigor e latência; níveis maiores
+  continuam configuráveis por `AL_IADO_GEMINI_THINKING_LEVEL`.
+- Gemini Flash-Lite (`gemini-3.5-flash-lite`, GA) tem o papel fixo de auditor de evidências e
   porteiro da memória. Recebe entradas estruturadas e independentes da conversa,
-  em JSON. Os limites seguem o plano contratado e podem ser configurados por
+  em JSON, com `thinking_level=minimal`. Os limites seguem o plano contratado e podem ser configurados por
   variáveis `AL_IADO_*`.
 - Resiliência a modelos: chamadas retentam em erro transitório (503/429) com
-  backoff e caem para o modelo de fallback (`gemini-flash-latest`) se o
+  backoff e caem para o modelo de fallback (`gemini-3.5-flash`) se o
   configurado estiver aposentado (404) — o chat não trava por rotação/sobrecarga.
-- Gemini Flash-Lite (`gemini-flash-lite-latest`, alias -latest) roda as tarefas de fundo em lote
+- Gemini Flash-Lite (`gemini-3.5-flash-lite`, GA) roda as tarefas de fundo em lote
   (metadados de PDF e consolidação de memória): o modelo mais barato/veloz, com
   o maior limite de taxa.
 - Python continua responsável por cálculos, ferramentas, indexação, gráficos,
@@ -474,7 +476,7 @@ Sessões e memórias usam chunks menores (500/50).
 
 Extração de metadados em cascata (processador_pdf.py —
 roda APENAS para PDFs novos vindos de novos_pdfs/):
-  LLM de fundo (gemini-flash-lite-latest) → regex → metadados
+  LLM de fundo (gemini-3.5-flash-lite) → regex → metadados
   internos do PDF → registra pendência
 Na reindexação de PDFs já nomeados em literatura/,
 autor/título/ano vêm do NOME do arquivo (regex), sem LLM.
@@ -600,14 +602,14 @@ provam desempenho industrial DE CAMPO: E3 de campo continua não realizada.
 - Linguagem    : Python 3.13.3
 - IDE          : PyCharm
 - Versionamento: GitHub (mestrado-utfpr)
-- Interface    : Streamlit (aplicação web local e em nuvem)
+- Interface    : ASGI Web V2 (Starlette + HTML/CSS/JavaScript)
 - Memória      : sessões no ChromaDB + memória validada em JSON versionável
-- LLM          : equipe 100% Gemini, aliases -latest (a família 2.5 foi
-                 aposentada em 2026) — Nível 1 conversa/síntese/imagens em
-                 `gemini-flash-latest` por padrão (GA, estável; `gemini-pro-latest`
+- LLM          : equipe 100% Gemini com modelos GA explícitos — Nível 1
+                 conversa/síntese/imagens em `gemini-3.6-flash` por padrão
+                 (GA, estável; `gemini-pro-latest`
                  é opt-in via AL_IADO_GEMINI_MODEL para máximo raciocínio),
-                 Nível 2 `gemini-flash-latest` (auditoria de evidências
-                 e validação da memória, em JSON) e Nível 3 `gemini-flash-lite-latest`
+                 Nível 2 `gemini-3.5-flash-lite` (auditoria de evidências
+                 e validação da memória, em JSON) e Nível 3 `gemini-3.5-flash-lite`
                  (tarefas de fundo em lote: metadados de PDF e consolidação de
                  memória — o mais barato/veloz, maior limite de taxa). Modelos
                  configuráveis por env (AL_IADO_GEMINI_MODEL /

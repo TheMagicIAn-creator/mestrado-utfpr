@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections import Counter
 from pathlib import Path
+from threading import Event, Thread, Timer
+from time import monotonic
 from types import SimpleNamespace
 
 import pytest
@@ -107,7 +109,7 @@ def test_health_reflete_contratos_e_inicializacao_sob_demanda(client):
     assert response.status_code == 200
     dados = response.json()
     assert dados["application"] == "aliado-pv-web"
-    assert dados["version"] == "2.0.0"
+    assert dados["version"] == "2.1.0"
     assert dados["schema_version"] == 2
     assert dados["status"] == "ok"
     assert dados["contracts"] == {
@@ -131,7 +133,7 @@ def test_versao_e_aquecimento_identificam_a_v2(client):
     assert version.json() == {
         "application": "aliado-pv-web",
         "name": "ALIAdo PV",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "schema_version": 2,
         "interface": "asgi",
     }
@@ -158,6 +160,64 @@ def test_chat_json_limita_historico_sem_recalcular_resultados(client, chamadas):
     assert len(recebido) == 16
     assert recebido[0]["content"] == "4"
     assert anexos == []
+
+
+def test_saudacao_local_nao_aguarda_aquecimento_da_base(monkeypatch, tmp_path):
+    import src.conhecimento.base_runtime as base_runtime
+    import src.conhecimento.multiagente as multiagente
+
+    iniciou = Event()
+    liberar = Event()
+
+    def carregar_base_lenta(
+        *,
+        sincronizar_obsidian_local=True,
+        embeddings_baixo_consumo=False,
+    ):
+        assert sincronizar_obsidian_local is False
+        assert embeddings_baixo_consumo is True
+        iniciou.set()
+        liberar.wait(timeout=3)
+        return SimpleNamespace(
+            perfil="perfil",
+            modelo_embeddings=object(),
+            literatura=object(),
+            sessoes=object(),
+            obsidian=object(),
+            indice_lexical=object(),
+            modo_consulta=True,
+        )
+
+    monkeypatch.setattr(base_runtime, "carregar_base_conhecimento", carregar_base_lenta)
+    monkeypatch.setattr(
+        multiagente,
+        "criar_equipe_agentes",
+        lambda: SimpleNamespace(conversa=object(), auditor=object()),
+    )
+    adapter = AgentAdapter(session_journal=SessionJournal(pasta=tmp_path))
+    aquecimento = Thread(target=adapter.initialize, daemon=True)
+    aquecimento.start()
+    assert iniciou.wait(timeout=1)
+
+    # Evita deadlock em uma regressao: a implementacao antiga so respondia
+    # depois que este timer liberava o carregamento pesado.
+    liberacao_de_seguranca = Timer(1.5, liberar.set)
+    liberacao_de_seguranca.daemon = True
+    liberacao_de_seguranca.start()
+    with TestClient(create_app(adapter)) as test_client:
+        inicio = monotonic()
+        response = test_client.post(
+            "/api/chat",
+            json={"message": "oi", "history": [], "session_id": "sessao_rapida"},
+        )
+        duracao = monotonic() - inicio
+
+    liberar.set()
+    aquecimento.join(timeout=2)
+    assert response.status_code == 200
+    assert response.json()["route"] == "local"
+    assert response.json()["response_ms"] < 800
+    assert duracao < 0.8
 
 
 def test_chat_multipart_sanitiza_nome_do_anexo(client, chamadas):
@@ -264,6 +324,146 @@ def test_v2_reutiliza_pipeline_rag_completo_da_v1(monkeypatch):
     assert "nao ha superioridade global" in capturado["contexto_autoritativo"].lower()
 
 
+def test_v2_evitar_roteador_llm_em_pergunta_discursiva_canonica(monkeypatch):
+    import src.conhecimento.agente as agente
+    import src.conhecimento.ferramentas as ferramentas
+
+    def roteador_nao_esperado(*_args):
+        raise AssertionError("roteador semantico nao deveria ser chamado")
+
+    monkeypatch.setattr(ferramentas, "decidir_acao", roteador_nao_esperado)
+    monkeypatch.setattr(
+        agente,
+        "perguntar",
+        lambda **_kwargs: "Comparacao respondida pelo RAG compartilhado",
+    )
+    adapter = AgentAdapter()
+    adapter._components = _Componentes(
+        perfil="perfil-v2",
+        modelo_embeddings=object(),
+        literatura=object(),
+        sessoes=object(),
+        obsidian=object(),
+        indice_lexical=object(),
+        llm=object(),
+        auditor=SimpleNamespace(),
+        modo_consulta=True,
+    )
+    adapter._state = "ready"
+
+    resposta = adapter.answer("Compare o autoencoder V2 com o PCA.")
+
+    assert resposta["route"] == "rag"
+    assert resposta["scientific_contract"] == "v2"
+
+
+def test_manutencao_da_sessao_nao_bloqueia_resposta(monkeypatch, tmp_path):
+    import src.conhecimento.agente as agente
+
+    indexacao_iniciou = Event()
+    liberar_indexacao = Event()
+    indexacao_terminou = Event()
+
+    def indexar_lento(_caminho, _modelo):
+        indexacao_iniciou.set()
+        liberar_indexacao.wait(timeout=3)
+        indexacao_terminou.set()
+
+    monkeypatch.setattr(
+        agente,
+        "perguntar",
+        lambda **_kwargs: "Resposta cientifica pronta",
+    )
+    adapter = AgentAdapter(
+        session_journal=SessionJournal(pasta=tmp_path, indexer=indexar_lento)
+    )
+    adapter._components = _Componentes(
+        perfil="perfil-v2",
+        modelo_embeddings=object(),
+        literatura=object(),
+        sessoes=object(),
+        obsidian=object(),
+        indice_lexical=object(),
+        llm=object(),
+        auditor=SimpleNamespace(),
+        modo_consulta=True,
+    )
+    adapter._state = "ready"
+
+    inicio = monotonic()
+    resposta = adapter.answer(
+        "Compare o autoencoder V2 com o PCA.",
+        session_id="sessao_manutencao",
+    )
+    duracao = monotonic() - inicio
+
+    assert resposta["maintenance_scheduled"] is True
+    assert duracao < 1.0
+    assert indexacao_iniciou.wait(timeout=1)
+    liberar_indexacao.set()
+    assert indexacao_terminou.wait(timeout=1)
+
+
+def test_obsidian_e_sincronizado_em_background_com_intervalo(monkeypatch, tmp_path):
+    import src.conhecimento.agente as agente
+    import src.conhecimento.obsidian as obsidian
+
+    sincronizacoes = []
+    concluiu = Event()
+    monkeypatch.setenv("AL_IADO_OBSIDIAN_SYNC_INTERVAL_S", "300")
+    monkeypatch.setattr(
+        agente,
+        "perguntar",
+        lambda **_kwargs: "Resposta cientifica pronta",
+    )
+
+    def sincronizar(colecao, modelo):
+        sincronizacoes.append((colecao, modelo))
+        concluiu.set()
+
+    monkeypatch.setattr(obsidian, "sincronizar_obsidian", sincronizar)
+    componentes = _Componentes(
+        perfil="perfil-v2",
+        modelo_embeddings=object(),
+        literatura=object(),
+        sessoes=object(),
+        obsidian=object(),
+        indice_lexical=object(),
+        llm=object(),
+        auditor=SimpleNamespace(),
+        modo_consulta=False,
+    )
+    adapter = AgentAdapter(session_journal=SessionJournal(pasta=tmp_path))
+    adapter._components = componentes
+    adapter._state = "ready"
+
+    primeira = adapter.answer("Compare o autoencoder V2 com o PCA.")
+    assert primeira["maintenance_scheduled"] is True
+    assert concluiu.wait(timeout=1)
+    adapter.answer("Explique a calibracao do limiar.")
+
+    assert sincronizacoes == [
+        (componentes.obsidian, componentes.modelo_embeddings),
+    ]
+
+
+def test_runtime_preserva_sincronizacao_local_por_padrao():
+    import inspect
+
+    from src.conhecimento.base_runtime import carregar_base_conhecimento
+
+    parametro = inspect.signature(carregar_base_conhecimento).parameters[
+        "sincronizar_obsidian_local"
+    ]
+    assert parametro.default is True
+    assert (
+        inspect.signature(carregar_base_conhecimento)
+        .parameters["embeddings_baixo_consumo"]
+        .default
+        is False
+    )
+
+
 def test_diario_v2_persiste_e_reindexa_turnos_sem_streamlit(tmp_path):
     indexados = []
     journal = SessionJournal(
@@ -323,6 +523,11 @@ def test_frontend_nao_recalcula_metricas_nem_fixa_faixas_logaritmicas():
     assert "fetchJSON(\"/api/dashboard\")" in javascript
     assert 'fetchJSON("/api/agent/initialize"' in javascript
     assert 'view.dataset.view === "agent"' in javascript
+    assert "await warmupAgent();" not in javascript
+    assert "typing-indicator" in javascript
+    assert 'event.key === "Enter" && !event.shiftKey' in javascript
+    assert "if (!state.chatRequestActive) updateAgentStatus(result.agent);" in javascript
+    assert "message-avatar" in html
 
 
 def test_resposta_markdown_preserva_formato_sem_executar_html_bruto():
