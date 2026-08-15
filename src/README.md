@@ -83,6 +83,8 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `validacao.py` | Etapa 4: métricas no limiar congelado (ROC/PR/F1/AUC). |
 | `rul_weibull.py` | Etapa 5: varredura de magnitude, primeiro cruzamento `a_det`, Weibull 2P exploratória e margem residual. É detectabilidade E2, **não RUL**. |
 | `rul_weibull_execucao.py` | Orquestra a execução pesada e a regeneração tabular/gráfica da etapa 5. |
+| `varredura_a_det.py` | A varredura de magnitude: janela saudável + assinatura crescente → `a_det`. Separada do ajuste porque tem dois consumidores (o AE denso do pipeline e qualquer detector via `scorer`). `rul_weibull` reexporta. |
+| `weibull_por_modelo.py` | Detectabilidade E2 (`a_det` → Weibull) para **qualquer** detector, via `scorer`. É o que permite comparar AE denso × AE-LSTM nas curvas, e não só em AUC/SMD. Não reimplementa fórmula: orquestra `rul_weibull` e `confiabilidade`. |
 | `confiabilidade.py` | Funções matemáticas da Weibull, posições censura-aware e diagnóstico do papel. O chamador distingue tempo de magnitude. |
 | `confiabilidade_fisica_v2.py` | Cenários bibliográficos de taxa constante, conversões dimensionais e funções exponenciais físicas; não estima vida pelo GPVS. |
 | `graficos_confiabilidade_fisica_v2.py` | Figuras acadêmicas de confiabilidade, probabilidade, densidade, taxa de falha e marcos B1/B10 dos cenários bibliográficos. |
