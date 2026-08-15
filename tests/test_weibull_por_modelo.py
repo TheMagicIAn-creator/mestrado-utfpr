@@ -232,3 +232,40 @@ def test_rul_weibull_reexporta_a_varredura():
     for nome in ("gerar_a_det", "calcular_erros_batch", "a_det_da_grade",
                  "passos_persistencia", "selecionar_janelas_baseline_normais"):
         assert getattr(rul_weibull, nome) is getattr(varredura_a_det, nome)
+
+
+# ── o número citável não pode vir de um ajuste rejeitado ───────────────────
+
+def test_percentil_empirico_e_exato_sem_censura():
+    """Com POD_mon = 1,00 nao ha censura: o quantil e medido, nao modelado."""
+    from src.ml.weibull_por_modelo import percentis_empiricos
+
+    a = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
+    r = percentis_empiricos(a, np.ones(5, dtype=bool))
+    assert r["a50_empirico"] == pytest.approx(0.3)
+    assert r["censura_presente"] is False
+    assert r["fracao_detectada"] == 1.0
+
+
+def test_percentil_acima_da_fracao_detectada_e_none():
+    """Nao identificavel tem de voltar None, nunca um numero que parece medido."""
+    from src.ml.weibull_por_modelo import percentis_empiricos
+
+    a = np.array([0.1, 0.2, 1.0, 1.0])
+    eventos = np.array([True, True, False, False])
+    r = percentis_empiricos(a, eventos)
+    assert r["a10_empirico"] is not None
+    assert r["a90_empirico"] is None, "90% nao e identificavel com 50% detectado"
+    assert r["censura_presente"] is True
+
+
+def test_a_comparacao_traz_o_empirico_e_marca_o_parametrico():
+    """`a10_2p` tem nome que denuncia a origem; antes se chamava so `a10`."""
+    janelas = [_janela(i) for i in range(4)]
+    bloco = detectabilidade_do_modelo(
+        "x", _scorer_proporcional_a_magnitude(8.0), 3.0, janelas, n_steps=21)
+    linha = comparar_detectabilidade([bloco])["linhas"][0]
+
+    assert "a10_empirico" in linha and "a50_empirico" in linha
+    assert "a10_2p" in linha
+    assert "a10" not in linha, "o nome ambiguo nao pode voltar"

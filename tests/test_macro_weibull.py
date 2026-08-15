@@ -147,10 +147,14 @@ def test_tabela_declara_quando_a_2p_nao_foi_adotada(blocos):
     for linha in comp["linhas"]:
         assert "resumo_parametrico_recomendado" in linha
     md = macro_weibull.tabela_markdown(comp)
-    assert "2P adotada" in md
     assert "POD_mon@a=1" in md
-    # 6 linhas de dado (2 modelos × 3 falhas) + cabeçalho + separador
-    assert len(md.splitlines()) == 8
+    # A coluna paramétrica tem de dizer "rejeitada", nao um numero: publicar
+    # a10 da 2P sob "2P adotada: nao" foi o defeito da primeira tabela valida.
+    assert "rejeitada" in md
+    assert "a10 emp." in md and "a50 emp." in md
+    # 6 linhas de dado (2 modelos × 3 falhas) + cabecalho + separador + nota
+    corpo = [l for l in md.splitlines() if l.startswith("|")]
+    assert len(corpo) == 8
 
 
 def test_tabela_nao_quebra_com_ajuste_nao_convergido(blocos):

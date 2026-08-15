@@ -251,22 +251,35 @@ def plotar_comparacao_confiabilidade(blocos: list[dict]) -> Path:
 def tabela_markdown(comparacao: dict) -> str:
     """Tabela por modelo × falha, nos marcos que decidem manutenção."""
     linhas = [
-        "| Modelo | Falha (NPR) | n | detectadas | POD_mon@a=1 | a10 | "
-        "a_det mediana | 2P adotada |",
-        "|---|---|---:|---:|---:|---:|---:|---|",
+        "| Modelo | Falha (NPR) | n | detectadas | POD_mon@a=1 | a10 emp. | "
+        "a50 emp. | a90 emp. | a10 (2P) |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for r in comparacao["linhas"]:
         def _num(valor, casas=3):
             return f"{valor:.{casas}f}" if isinstance(valor, (int, float)) \
                 and valor == valor else "—"
 
+        # O paramétrico só aparece quando o ajuste se recomenda. Publicá-lo
+        # sob "2P adotada: não" foi o que fez a primeira tabela válida comparar
+        # os modelos por um número que o teste de aderência havia rejeitado.
+        a10_2p = (
+            _num(r.get("a10_2p"))
+            if r.get("resumo_parametrico_recomendado") else "rejeitada"
+        )
         linhas.append(
             f"| {r['modelo']} | {r['falha']} (NPR={r['npr']}) | "
             f"{r['n_trajetorias']} | {r['detectadas']} | "
-            f"{r['pod_mon_no_teto']:.2f} | {_num(r.get('a10'))} | "
-            f"{_num(r.get('a_det_mediana'))} | "
-            f"{'sim' if r.get('resumo_parametrico_recomendado') else 'não'} |"
+            f"{r['pod_mon_no_teto']:.2f} | {_num(r.get('a10_empirico'))} | "
+            f"{_num(r.get('a50_empirico'))} | {_num(r.get('a90_empirico'))} | "
+            f"{a10_2p} |"
         )
+    linhas.append("")
+    linhas.append(
+        "`emp.` = percentil medido nos dados, exato quando não há censura "
+        "(POD_mon = 1,00). É o número citável. A coluna 2P só traz valor quando "
+        "o teste de aderência recomenda o ajuste."
+    )
     return "\n".join(linhas)
 
 

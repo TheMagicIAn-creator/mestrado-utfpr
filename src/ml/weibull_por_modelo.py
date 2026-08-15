@@ -149,6 +149,50 @@ def detectabilidade_do_modelo(
     }
 
 
+def percentis_empiricos(a_dets, eventos, quantis=(0.10, 0.50, 0.90)) -> dict:
+    """Percentis de `a_det` medidos NOS DADOS, sem passar por ajuste nenhum.
+
+    POR QUE ISTO EXISTE
+    ===================
+    A primeira execução válida do comparativo (15/08/2026) publicou `a10` vindo
+    do `b10` da Weibull 2P — e a coluna ao lado dizia, nas seis linhas, "2P
+    adotada: **não**". Ou seja: o único número comparável da tabela vinha de um
+    ajuste que o próprio teste de aderência havia rejeitado. A mediana, que
+    seria plenamente defensável, saía como "—" porque o ajuste não produz essa
+    chave.
+
+    Com POD_mon = 1,00 não há censura: todas as trajetórias detectaram dentro da
+    grade. Nesse regime o percentil empírico é EXATO e não precisa de modelo.
+    É este o número que vai para a dissertação; o paramétrico fica como leitura
+    secundária, e só quando o ajuste se recomendar.
+
+    Com censura presente, os percentis acima da fração observada não são
+    identificáveis e voltam como None — em vez de um número que pareceria
+    medido.
+    """
+    a = np.asarray(a_dets, dtype=float)
+    obs = np.asarray(eventos, dtype=bool)
+    if not len(a):
+        return {f"a{int(q * 100)}_empirico": None for q in quantis}
+
+    detectados = np.sort(a[obs])
+    fracao_observada = float(obs.mean())
+
+    resultado: dict[str, float | None] = {}
+    for q in quantis:
+        chave = f"a{int(q * 100)}_empirico"
+        # O quantil q só é identificável se a fração detectada o alcança.
+        if not len(detectados) or q > fracao_observada:
+            resultado[chave] = None
+            continue
+        # Quantil sobre a amostra COMPLETA, não só sobre os detectados: com
+        # censura, ignorar os não detectados enviesaria para baixo.
+        resultado[chave] = float(np.quantile(a, q))
+    resultado["fracao_detectada"] = fracao_observada
+    resultado["censura_presente"] = bool(fracao_observada < 1.0)
+    return resultado
+
+
 def comparar_detectabilidade(modelos: list[dict]) -> dict:
     """Junta os blocos de dois ou mais modelos numa tabela comparável.
 
@@ -179,9 +223,15 @@ def comparar_detectabilidade(modelos: list[dict]) -> dict:
                 "resumo_parametrico_recomendado": bool(
                     w.get("resumo_parametrico_recomendado", False)
                 ),
+                # EMPÍRICOS primeiro: são o que a dissertação pode citar sem
+                # depender de um ajuste que o teste de aderência rejeitou.
                 # Menor é melhor: o detector confirma com menos assinatura.
-                "a10": w.get("b10"),
-                "a_det_mediana": w.get("vida_mediana") or w.get("mediana"),
+                **percentis_empiricos(dados["a_dets"],
+                                      dados["eventos_observados"]),
+                # Paramétricos, leitura SECUNDÁRIA. `a10_2p` deixa explícito no
+                # nome que o número sai da Weibull 2P — antes se chamava `a10`,
+                # e a tabela o apresentava como se fosse medido.
+                "a10_2p": w.get("b10"),
                 "beta": w.get("beta"),
                 "eta": w.get("eta"),
                 "evidence_level": "E2",
