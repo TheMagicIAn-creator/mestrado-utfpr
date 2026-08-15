@@ -22,7 +22,14 @@ from __future__ import annotations
 try:
     from src.core.logs import adaptar_logger_como_print as _adaptar_log
     from src.core.logs import get_logger as _get_logger
-except ModuleNotFoundError:  # execução direta
+except ModuleNotFoundError as _erro:  # execução direta
+    # Só trata a ausência do PACOTE `src` (rodar o arquivo direto, sem a raiz no
+    # sys.path). Qualquer outra dependência faltando é repassada: reimportar não
+    # a faria aparecer, e o retry produzia um traceback DUPLO com a causa real
+    # ("No module named 'dotenv'") enterrada no meio — foi o que aconteceu com o
+    # venv desativado em 15/08/2026.
+    if (_erro.name or "").split(".")[0] != "src":
+        raise
     import sys as _sys
     from pathlib import Path as _Path
     _raiz = str(_Path(__file__).resolve().parents[2])
