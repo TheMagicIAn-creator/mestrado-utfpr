@@ -2,26 +2,25 @@
 provedores.py — Al IAdo PV
 Gerencia os provedores de LLM disponíveis.
 
-Equipe 100% Gemini, um modelo por nível de tarefa. Usa os ALIASES -latest, que
-sempre apontam para a versão vigente de cada tier — a família Gemini 2.5 foi
-aposentada em 2026 e versões explícitas giram rápido, então fixar número quebra:
+Equipe 100% Gemini, um modelo por nível de tarefa. Usa identificadores GA
+explícitos e verificados na API para evitar a latência de aliases indisponíveis:
 
   • NÍVEL 1 — conversa, síntese final e interpretação de imagens
-      gemini-flash-latest por padrão (GA, rápido, estável). O Pro é opt-in via
+      gemini-3.6-flash por padrão (GA, rápido, estável). O Pro é opt-in via
       AL_IADO_GEMINI_MODEL=gemini-pro-latest para máximo raciocínio — mas é lento
       no trivial e sofre 503 de alta demanda, por isso não é o default.
   • NÍVEL 2 — auditoria de evidências e porteiro da memória validada
-      gemini-flash-latest (rápido, JSON estruturado nativo, GA; roda a cada
+      gemini-3.5-flash-lite (rápido, JSON estruturado nativo, GA; roda a cada
       turno com literatura sem competir com o orçamento do pro).
   • NÍVEL 3 — tarefas de fundo em lote: metadados de PDF e consolidação
-      gemini-flash-lite-latest (o mais barato/veloz; ideal para varrer os PDFs
+      gemini-3.5-flash-lite (o mais barato/veloz; ideal para varrer os PDFs
       ou resumir sessões sem custo relevante).
   • SEM LLM — expansão de query, BM25, RRF, reranking, cálculos e ferramentas
       continuam heurísticas locais determinísticas.
 
 Resiliência: GeminiLeve tenta o modelo configurado e, se ele estiver
 indisponível (404/aposentado), cai automaticamente para MODELO_GEMINI_FALLBACK
-(gemini-flash-latest, GA) — o app nunca mais trava por rotação de modelo.
+(gemini-3.5-flash, GA) — o app nao trava por rotacao de modelo.
 
 Autor: Rodolfo Torres (UTFPR)
 """
@@ -47,10 +46,9 @@ def _dormir(segundos: float) -> None:
 
 
 # NÍVEL 3 — modelo de FUNDO (extração de metadados de PDF e consolidação de
-# memória): o mais econômico da família, com o maior limite de taxa. Usa o alias
-# estável -latest (hoje, família Gemini 3 Flash-Lite) para não quebrar quando a
-# versão explícita for aposentada.
-MODELO_GEMINI_FUNDO = os.getenv("AL_IADO_GEMINI_MODEL_FUNDO", "gemini-flash-lite-latest")
+# memória): o mais econômico da família, com o maior limite de taxa. Usa o
+# identificador GA verificado e mantém fallbacks para futura aposentadoria.
+MODELO_GEMINI_FUNDO = os.getenv("AL_IADO_GEMINI_MODEL_FUNDO", "gemini-3.5-flash-lite")
 
 
 # ============================================================
@@ -64,7 +62,7 @@ PROVEDORES = {
         # e sujeito a 503 de alta demanda). Para máximo raciocínio, o pesquisador
         # sobe para gemini-pro-latest via AL_IADO_GEMINI_MODEL (cai no Flash se
         # o Pro não estiver liberado/estiver sobrecarregado).
-        "modelo"    : os.getenv("AL_IADO_GEMINI_MODEL", "gemini-flash-latest"),
+        "modelo"    : os.getenv("AL_IADO_GEMINI_MODEL", "gemini-3.6-flash"),
         "env_key"   : "GOOGLE_API_KEY",
         "limite"    : "conforme o plano da API",
         "emoji"     : "🔵",
@@ -72,7 +70,7 @@ PROVEDORES = {
     },
     "2": {
         "nome"      : "Google Gemini (auditor)",
-        "modelo"    : os.getenv("AL_IADO_GEMINI_MODEL_AUDITOR", "gemini-flash-latest"),
+        "modelo"    : os.getenv("AL_IADO_GEMINI_MODEL_AUDITOR", "gemini-3.5-flash-lite"),
         "env_key"   : "GOOGLE_API_KEY",
         "limite"    : "conforme o plano da API",
         "emoji"     : "🟢",
@@ -158,17 +156,15 @@ def texto_da_resposta(resposta) -> str:
     return "".join(_partes(conteudo) or ())
 
 
-# Alias estável do Gemini que sempre aponta para o Flash GA atual (hoje,
-# gemini-3.5-flash). É o último degrau do fallback: se o modelo configurado
-# some (a família 2.5 foi desativada em 2026, e versões giram rápido), a
-# chamada cai aqui e o app nunca trava por 404 de modelo.
-MODELO_GEMINI_FALLBACK = os.getenv("AL_IADO_GEMINI_FALLBACK", "gemini-flash-latest")
+# Fallback GA explicito: se o modelo configurado some, a chamada cai na versao
+# estavel anterior do Flash sem pagar a tentativa em um alias inexistente.
+MODELO_GEMINI_FALLBACK = os.getenv("AL_IADO_GEMINI_FALLBACK", "gemini-3.5-flash")
 
 # Modelo ALTERNATIVO de último recurso quando o principal está sobrecarregado
 # (503): pool de capacidade diferente do Flash, para não só re-bater no mesmo
 # modelo lotado. Qualidade menor, mas responde em vez de estourar erro.
 MODELO_GEMINI_ALTERNATIVO = os.getenv(
-    "AL_IADO_GEMINI_ALTERNATIVO", "gemini-flash-lite-latest"
+    "AL_IADO_GEMINI_ALTERNATIVO", "gemini-3.5-flash-lite"
 )
 
 
@@ -211,13 +207,18 @@ class GeminiLeve:
 
     def __init__(self, api_key: str, model: str, temperature: float = 0.45,
                  max_output_tokens: int = 8192, client=None,
-                 fallbacks: tuple[str, ...] = ()) -> None:
+                 fallbacks: tuple[str, ...] = (),
+                 thinking_level: str | None = None) -> None:
         self.api_key = api_key
         self.model = model
         self.temperature = float(temperature)
         self.max_output_tokens = max(256, int(max_output_tokens))
         self._client = client
         self.fallbacks = tuple(f for f in fallbacks if f)
+        niveis = {"minimal", "low", "medium", "high"}
+        if thinking_level is not None and thinking_level not in niveis:
+            raise ValueError(f"thinking_level invalido: {thinking_level}")
+        self.thinking_level = thinking_level
 
     def _obter_client(self):
         if self._client is None:
@@ -236,6 +237,19 @@ class GeminiLeve:
                 ordem.append(m)
         return ordem
 
+    def _config_para_modelo(self, modelo: str, config: dict) -> dict:
+        """Adapta a configuracao ao contrato dos modelos Gemini 3.x."""
+        saida = dict(config)
+        if modelo.startswith("gemini-3."):
+            # Sampling foi descontinuado na familia 3.x. O nivel de thinking
+            # explicito evita que o chat pague o custo medio em toda pergunta.
+            saida.pop("temperature", None)
+            if self.thinking_level:
+                saida["thinking_config"] = {
+                    "thinking_level": self.thinking_level,
+                }
+        return saida
+
     def _gerar(self, contents, config, *, stream: bool = False):
         """Executa generate_content(_stream) com retry transitório + fallback.
 
@@ -246,12 +260,13 @@ class GeminiLeve:
         """
         erro_final = None
         for modelo in self._candidatos():
+            config_modelo = self._config_para_modelo(modelo, config)
             for tentativa in range(1, _MAX_RETENTATIVAS + 2):
                 try:
                     cliente = self._obter_client()
                     if stream:
                         fluxo = cliente.models.generate_content_stream(
-                            model=modelo, contents=contents, config=config,
+                            model=modelo, contents=contents, config=config_modelo,
                         )
                         iterador = iter(fluxo)
                         primeiro = next(iterador, _SEM_ITEM)  # força a chamada
@@ -264,7 +279,7 @@ class GeminiLeve:
 
                         return _fluxo()
                     resposta = cliente.models.generate_content(
-                        model=modelo, contents=contents, config=config,
+                        model=modelo, contents=contents, config=config_modelo,
                     )
                     self._fixar_modelo(modelo)
                     return resposta
@@ -387,6 +402,7 @@ def inicializar_llm_fundo(
         temperature=temperature,
         max_output_tokens=max_output_tokens,
         fallbacks=(MODELO_GEMINI_ALTERNATIVO, MODELO_GEMINI_FALLBACK),
+        thinking_level=os.getenv("AL_IADO_GEMINI_THINKING_LEVEL_FUNDO", "minimal"),
     )
 
 
@@ -463,6 +479,7 @@ def inicializar_provedor(escolha: str):
                 os.getenv("AL_IADO_GEMINI_MAX_OUTPUT_TOKENS", "8192")
             ),
             fallbacks=(MODELO_GEMINI_FALLBACK, MODELO_GEMINI_ALTERNATIVO),
+            thinking_level=os.getenv("AL_IADO_GEMINI_THINKING_LEVEL", "low"),
         )
 
     # NÍVEL 2 — Gemini Flash: auditor de evidências e porteiro da memória.
@@ -474,6 +491,9 @@ def inicializar_provedor(escolha: str):
             temperature=0.2,
             max_output_tokens=2048,
             fallbacks=(MODELO_GEMINI_ALTERNATIVO,),
+            thinking_level=os.getenv(
+                "AL_IADO_GEMINI_THINKING_LEVEL_AUDITOR", "minimal"
+            ),
         )
 
     print(f"  ✅ {info['nome']} pronto! (limite: {info['limite']})")

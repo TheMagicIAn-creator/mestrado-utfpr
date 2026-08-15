@@ -34,6 +34,7 @@ const state = {
   chatHistory: loadChatHistory(),
   sessionId: browserSessionId,
   agentWarmupPromise: null,
+  chatRequestActive: false,
 };
 
 const VIEW_META = {
@@ -638,9 +639,10 @@ function updateHealth(health) {
 
 function updateAgentStatus(status) {
   const label = $("agent-status");
-  const names = { idle: "Não inicializado", loading: "Carregando base", ready: "Conectado", error: "Indisponível" };
+  const names = { idle: "Em espera", loading: "Preparando pesquisa", working: "Pensando", ready: "Conectado", error: "Indisponível" };
   $("agent-status-text").textContent = names[status.state] || status.state;
   label.classList.toggle("is-ready", status.state === "ready");
+  label.classList.toggle("is-loading", status.state === "loading" || status.state === "working");
   label.classList.toggle("is-error", status.state === "error");
   label.title = status.detail || `${status.provider || "Gemini"} · ${status.engine || "agente V2"}`;
 }
@@ -652,11 +654,11 @@ async function warmupAgent() {
   state.agentWarmupPromise = fetchJSON("/api/agent/initialize", { method: "POST" })
     .then((result) => {
       state.health = { ...(state.health || {}), agent: result.agent };
-      updateAgentStatus(result.agent);
+      if (!state.chatRequestActive) updateAgentStatus(result.agent);
       return result.agent;
     })
     .catch((error) => {
-      updateAgentStatus({ state: "error", detail: error.message });
+      if (!state.chatRequestActive) updateAgentStatus({ state: "error", detail: error.message });
       state.agentWarmupPromise = null;
       throw error;
     });
@@ -691,12 +693,16 @@ function initializeControls() {
 }
 
 function addChatMessage(role, content, images = [], renderedHtml = "") {
-  const article = createElement("article", `message ${role === "user" ? "user-message" : "assistant-message"}`);
-  article.append(createElement("div", "message-author", role === "user" ? "Rodolfo" : "ALIAdo PV"));
-  const body = createElement("div", "message-content");
-  if (role === "assistant" && renderedHtml) body.innerHTML = renderedHtml;
-  else body.textContent = content;
-  article.append(body);
+  const isUser = role === "user";
+  const article = createElement("article", `message ${isUser ? "user-message" : "assistant-message"}`);
+  article.append(createElement("div", "message-avatar", isUser ? "R" : "A"));
+  const messageBody = createElement("div", "message-body");
+  messageBody.append(createElement("div", "message-author", isUser ? "Rodolfo" : "ALIAdo PV"));
+  const contentBody = createElement("div", "message-content");
+  if (!isUser && renderedHtml) contentBody.innerHTML = renderedHtml;
+  else contentBody.textContent = content;
+  messageBody.append(contentBody);
+  article.append(messageBody);
   if (images.length) {
     const gallery = createElement("div", "message-images");
     images.forEach((item) => {
@@ -706,17 +712,50 @@ function addChatMessage(role, content, images = [], renderedHtml = "") {
       image.loading = "lazy";
       gallery.appendChild(image);
     });
-    article.appendChild(gallery);
+    messageBody.appendChild(gallery);
   }
   $("chat-messages").appendChild(article);
-  $("chat-messages").scrollTop = $("chat-messages").scrollHeight;
+  window.requestAnimationFrame(() => {
+    $("chat-messages").scrollTo({ top: $("chat-messages").scrollHeight, behavior: "smooth" });
+  });
   return article;
+}
+
+function addWaitingMessage(hasAttachments) {
+  const article = addChatMessage("assistant", "");
+  article.classList.add("is-waiting");
+  const content = article.querySelector(".message-content");
+  const indicator = createElement("div", "typing-indicator");
+  const dots = createElement("span", "typing-dots");
+  dots.setAttribute("aria-hidden", "true");
+  dots.append(createElement("i"), createElement("i"), createElement("i"));
+  const label = createElement("span", "typing-label", hasAttachments ? "Lendo os arquivos" : "Organizando sua pergunta");
+  indicator.append(dots, label);
+  content.replaceChildren(indicator);
+  const phases = hasAttachments
+    ? [[1800, "Relacionando os arquivos às evidências"], [7000, "Conferindo consistência e referências"]]
+    : [[1400, "Consultando a base científica"], [6500, "Conferindo evidências e coerência"]];
+  article.waitingTimers = phases.map(([delay, text]) => window.setTimeout(() => { label.textContent = text; }, delay));
+  return article;
+}
+
+function removeWaitingMessage(article) {
+  (article.waitingTimers || []).forEach((timer) => window.clearTimeout(timer));
+  article.classList.add("is-leaving");
+  window.setTimeout(() => article.remove(), 120);
+}
+
+function resizeChatInput(input) {
+  input.style.height = "auto";
+  input.style.height = `${Math.min(input.scrollHeight, 144)}px`;
+  input.style.overflowY = input.scrollHeight > 144 ? "auto" : "hidden";
 }
 
 function initializeChat() {
   const form = $("chat-form");
   const input = $("chat-input");
   const files = $("chat-files");
+  resizeChatInput(input);
   if (state.chatHistory.length) {
     $("chat-messages").replaceChildren();
     state.chatHistory.forEach((item) => {
@@ -733,32 +772,42 @@ function initializeChat() {
       form.requestSubmit();
     });
   });
+  input.addEventListener("input", () => resizeChatInput(input));
   input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) form.requestSubmit();
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+      event.preventDefault();
+      form.requestSubmit();
+    }
   });
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const message = input.value.trim();
     if (!message) return;
+    const selectedFiles = Array.from(files.files).slice(0, 4);
+    const hasAttachments = selectedFiles.length > 0;
     const sendButton = form.querySelector("button[type='submit']");
     sendButton.disabled = true;
     input.disabled = true;
+    form.classList.add("is-busy");
+    state.chatRequestActive = true;
     addChatMessage("user", message);
     const historyForRequest = state.chatHistory.slice(-16).map(({ role, content }) => ({ role, content }));
     state.chatHistory.push({ role: "user", content: message });
     persistChatHistory();
-    const waiting = addChatMessage("assistant", "Analisando…");
-    waiting.classList.add("is-waiting");
-    updateAgentStatus({ state: "loading" });
+    const waiting = addWaitingMessage(hasAttachments);
+    updateAgentStatus({ state: "working" });
+    input.value = "";
+    files.value = "";
+    $("attachment-line").textContent = "";
+    resizeChatInput(input);
     try {
-      await warmupAgent();
       let options;
-      if (files.files.length) {
+      if (hasAttachments) {
         const data = new FormData();
         data.append("message", message);
         data.append("history", JSON.stringify(historyForRequest));
         data.append("session_id", state.sessionId);
-        Array.from(files.files).slice(0, 4).forEach((file) => data.append("files", file));
+        selectedFiles.forEach((file) => data.append("files", file));
         options = { method: "POST", body: data };
       } else {
         options = {
@@ -768,26 +817,29 @@ function initializeChat() {
         };
       }
       const result = await fetchJSON("/api/chat", options);
-      waiting.remove();
-      addChatMessage("assistant", result.answer, result.images || [], result.answer_html || "");
+      removeWaitingMessage(waiting);
+      const responseArticle = addChatMessage("assistant", result.answer, result.images || [], result.answer_html || "");
+      responseArticle.dataset.route = result.route || "agent";
       state.chatHistory.push({
         role: "assistant",
         content: result.answer,
         renderedHtml: result.answer_html || "",
       });
       persistChatHistory();
+      state.chatRequestActive = false;
       updateAgentStatus(result.agent || { state: "ready" });
       if (result.memories_saved) showToast(`${result.memories_saved} memória(s) validada(s)`);
-      input.value = "";
-      files.value = "";
-      $("attachment-line").textContent = "";
     } catch (error) {
-      waiting.remove();
+      removeWaitingMessage(waiting);
       addChatMessage("assistant", `Não foi possível concluir a resposta: ${error.message}`);
+      state.chatRequestActive = false;
       updateAgentStatus({ state: "error", detail: error.message });
     } finally {
+      state.chatRequestActive = false;
       sendButton.disabled = false;
       input.disabled = false;
+      form.classList.remove("is-busy");
+      resizeChatInput(input);
       input.focus();
     }
   });

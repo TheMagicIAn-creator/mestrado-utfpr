@@ -73,6 +73,27 @@ def test_gemini_invoke_json_forca_json_e_limita_saida():
     assert chamadas[0]["config"]["response_mime_type"] == "application/json"
 
 
+def test_gemini_3_remove_sampling_e_controla_thinking():
+    chamadas = []
+
+    class Models:
+        def generate_content(self, **kwargs):
+            chamadas.append(kwargs)
+            return SimpleNamespace(text="ok")
+
+    llm = GeminiLeve(
+        "chave",
+        "gemini-3.6-flash",
+        client=SimpleNamespace(models=Models()),
+        thinking_level="low",
+    )
+
+    assert llm.invoke([_Mensagem("analise")]).content == "ok"
+    config = chamadas[0]["config"]
+    assert "temperature" not in config
+    assert config["thinking_config"] == {"thinking_level": "low"}
+
+
 def test_gemini_cai_para_fallback_quando_modelo_indisponivel():
     """404 'no longer available' num modelo deve cair para o próximo candidato,
     e o modelo que funcionar vira o novo self.model (sem repetir o 404)."""
@@ -165,10 +186,10 @@ def test_conversa_e_auditor_tem_modelo_alternativo_de_verdade(monkeypatch):
     monkeypatch.delenv("AL_IADO_GEMINI_MODEL", raising=False)
     conversa, _ = pv.inicializar_provedor("1")
     auditor, _ = pv.inicializar_provedor("2")
-    assert "gemini-flash-lite-latest" in conversa._candidatos()
-    assert "gemini-flash-lite-latest" in auditor._candidatos()
+    assert "gemini-3.5-flash-lite" in conversa._candidatos()
+    assert "gemini-3.5-flash-lite" in auditor._candidatos()
     # o alternativo vem por último (último recurso), não na frente.
-    assert conversa._candidatos()[-1] == "gemini-flash-lite-latest"
+    assert conversa._candidatos()[-1] == "gemini-3.5-flash-lite"
 
 
 def test_503_persistente_no_flash_escapa_para_flash_lite(monkeypatch):

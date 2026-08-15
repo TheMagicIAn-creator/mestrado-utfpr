@@ -241,30 +241,36 @@
         </section>
 
         <section class="view agent-view is-active" id="view-agent" data-view="agent" aria-labelledby="agent-title">
-          <header class="view-header">
-            <div><p class="eyebrow">Gemini · busca híbrida · auditoria de evidências</p><h1 id="agent-title">Agente ALIAdo V2</h1></div>
+          <header class="view-header agent-header">
+            <div class="agent-identity">
+              <div class="agent-presence-mark" aria-hidden="true"><span>A</span><i></i></div>
+              <div><p class="eyebrow">Gemini · busca híbrida · auditoria de evidências</p><h1 id="agent-title">Agente ALIAdo V2</h1></div>
+            </div>
             <span class="agent-status" id="agent-status"><span></span><span id="agent-status-text">Preparando agente</span></span>
           </header>
 
           <div class="chat-surface">
             <div class="chat-messages" id="chat-messages" aria-live="polite">
               <article class="message assistant-message">
-                <div class="message-author">ALIAdo PV</div>
-                <div class="message-content"><p>Olá, Rodolfo. Em que parte da dissertação trabalhamos agora?</p></div>
+                <div class="message-avatar" aria-hidden="true">A</div>
+                <div class="message-body">
+                  <div class="message-author">ALIAdo PV</div>
+                  <div class="message-content"><p>Olá, Rodolfo. Em que parte da dissertação trabalhamos agora?</p></div>
+                </div>
               </article>
             </div>
 
             <div class="prompt-row" id="prompt-row">
-              <button type="button" data-prompt="Compare o autoencoder V2 com o PCA e explique o trade-off para a dissertação.">Comparar AE × PCA</button>
-              <button type="button" data-prompt="Explique a diferença entre confiabilidade física e a detectabilidade medida no GPVS.">Confiabilidade × detecção</button>
-              <button type="button" data-prompt="Prepare um resumo dos resultados atuais para apresentar à orientadora.">Resumo para orientadora</button>
+              <button type="button" data-prompt="Compare o autoencoder V2 com o PCA e explique o trade-off para a dissertação."><i data-lucide="git-compare-arrows" aria-hidden="true"></i><span>Comparar AE × PCA</span></button>
+              <button type="button" data-prompt="Explique a diferença entre confiabilidade física e a detectabilidade medida no GPVS."><i data-lucide="activity" aria-hidden="true"></i><span>Confiabilidade × detecção</span></button>
+              <button type="button" data-prompt="Prepare um resumo dos resultados atuais para apresentar à orientadora."><i data-lucide="file-text" aria-hidden="true"></i><span>Resumo para orientadora</span></button>
             </div>
 
             <form class="chat-composer" id="chat-form">
               <label class="file-button" for="chat-files" title="Anexar arquivos" aria-label="Anexar arquivos"><i data-lucide="paperclip" aria-hidden="true"></i></label>
               <input id="chat-files" name="files" type="file" multiple hidden>
-              <textarea id="chat-input" name="message" rows="2" maxlength="12000" placeholder="Pergunte sobre os resultados, a literatura ou o pipeline" required></textarea>
-              <button class="send-button" type="submit" aria-label="Enviar mensagem" title="Enviar"><i data-lucide="send" aria-hidden="true"></i></button>
+              <textarea id="chat-input" name="message" rows="1" maxlength="12000" placeholder="Pergunte sobre os resultados, a literatura ou o pipeline" required></textarea>
+              <button class="send-button" type="submit" aria-label="Enviar mensagem" title="Enviar"><i data-lucide="arrow-up" aria-hidden="true"></i></button>
             </form>
             <div class="attachment-line" id="attachment-line" aria-live="polite"></div>
           </div>

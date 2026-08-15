@@ -49,8 +49,19 @@ def _versao_indice_lexical(colecao, *, modo_consulta: bool) -> str:
     return versao + ":" + ":".join(ids_amostra)
 
 
-def carregar_base_conhecimento() -> BaseConhecimento:
-    """Monta o runtime RAG sem acoplar ciclo de vida a uma biblioteca de UI."""
+def carregar_base_conhecimento(
+    *,
+    sincronizar_obsidian_local: bool = True,
+    embeddings_baixo_consumo: bool = False,
+) -> BaseConhecimento:
+    """Monta o runtime RAG sem acoplar ciclo de vida a uma biblioteca de UI.
+
+    Interfaces interativas podem adiar a varredura incremental do Obsidian e
+    trabalhar imediatamente com a colecao persistente ja disponivel. O valor
+    padrao preserva o comportamento dos fluxos em lote e da interface legada.
+    O encoder leve ONNX usa o mesmo espaco vetorial e evita carregar PyTorch
+    quando a interface somente consulta indices existentes.
+    """
     import chromadb
 
     from src.conhecimento.agente import carregar_perfil
@@ -76,7 +87,8 @@ def carregar_base_conhecimento() -> BaseConhecimento:
         metadata={"hnsw:space": "cosine"},
     )
 
-    if ARQUIVO_INDICE_OBSIDIAN.is_file():
+    total_obsidian = obsidian.count()
+    if total_obsidian == 0 and ARQUIVO_INDICE_OBSIDIAN.is_file():
         try:
             from src.conhecimento.indice_portatil import importar_colecao
 
@@ -90,6 +102,10 @@ def carregar_base_conhecimento() -> BaseConhecimento:
             )
         except Exception as exc:
             relatorio.append(f"Obsidian: snapshot indisponivel ({exc}).")
+    elif total_obsidian:
+        relatorio.append(
+            f"Obsidian: {total_obsidian} chunks persistentes disponiveis."
+        )
 
     if literatura.count() == 0 and ARQUIVO_INDICE_LITERATURA.is_file():
         try:
@@ -104,9 +120,11 @@ def carregar_base_conhecimento() -> BaseConhecimento:
 
     capacidade = capacidade_recalculo_pipeline()
     modo_consulta = not bool(capacidade["disponivel"])
-    modelo = criar_modelo_embeddings(modo_consulta=modo_consulta)
+    modo_embeddings_consulta = modo_consulta or embeddings_baixo_consumo
+    modelo = criar_modelo_embeddings(modo_consulta=modo_embeddings_consulta)
     relatorio.append(
-        f"Embeddings: backend {backend_embeddings(modo_consulta=modo_consulta)}."
+        "Embeddings: backend "
+        f"{backend_embeddings(modo_consulta=modo_embeddings_consulta)}."
     )
 
     try:
@@ -116,10 +134,14 @@ def carregar_base_conhecimento() -> BaseConhecimento:
         )
 
         espelhar_memoria_validada(ARQUIVO_MEMORIA_VALIDADA)
-        if not modo_consulta:
+        if not modo_consulta and sincronizar_obsidian_local:
             estado = sincronizar_obsidian(obsidian, modelo)
             relatorio.append(
                 f"Obsidian: {estado['notas_ativas']} notas locais sincronizadas."
+            )
+        elif not modo_consulta:
+            relatorio.append(
+                "Obsidian: colecao persistente carregada; sincronizacao incremental adiada."
             )
     except Exception as exc:
         relatorio.append(f"Obsidian: sincronizacao indisponivel ({exc}).")

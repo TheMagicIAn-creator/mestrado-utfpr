@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import threading
 from dataclasses import dataclass
 from pathlib import Path
+from time import monotonic
 from typing import Callable
 
 from src.core.config import RAIZ_PROJETO
@@ -19,6 +21,7 @@ MAX_ATTACHMENTS = 4
 MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024
 _logger = get_logger("webapp.agent_adapter")
 AGENT_ENGINE = "src.conhecimento.agente.perguntar"
+DEFAULT_OBSIDIAN_SYNC_INTERVAL_S = 300.0
 
 
 class AgenteIndisponivel(RuntimeError):
@@ -80,6 +83,9 @@ class AgentAdapter:
         self._answerer = answerer
         self._session_journal = session_journal or SessionJournal()
         self._lock = threading.RLock()
+        self._initialization_lock = threading.Lock()
+        self._maintenance_lock = threading.Lock()
+        self._last_obsidian_sync: float | None = None
         self._components: _Componentes | None = None
         self._state = "ready" if answerer is not None else "idle"
         self._error: str | None = None
@@ -112,15 +118,25 @@ class AgentAdapter:
         with self._lock:
             if self._components is not None:
                 return self._components
-            self._state = "loading"
-            self._error = None
+
+        # A carga da base pode levar dezenas de segundos. Um lock separado
+        # serializa esse trabalho sem bloquear status e respostas locais.
+        with self._initialization_lock:
+            with self._lock:
+                if self._components is not None:
+                    return self._components
+                self._state = "loading"
+                self._error = None
             try:
                 from src.conhecimento.base_runtime import carregar_base_conhecimento
                 from src.conhecimento.multiagente import criar_equipe_agentes
 
                 equipe = criar_equipe_agentes()
-                base = carregar_base_conhecimento()
-                self._components = _Componentes(
+                base = carregar_base_conhecimento(
+                    sincronizar_obsidian_local=False,
+                    embeddings_baixo_consumo=True,
+                )
+                componentes = _Componentes(
                     perfil=base.perfil,
                     modelo_embeddings=base.modelo_embeddings,
                     literatura=base.literatura,
@@ -131,12 +147,17 @@ class AgentAdapter:
                     auditor=equipe.auditoria,
                     modo_consulta=base.modo_consulta,
                 )
-                self._state = "ready"
-                return self._components
+                with self._lock:
+                    self._components = componentes
+                    self._state = "ready"
+                    self._error = None
+                return componentes
             except Exception as exc:
-                self._state = "error"
-                self._error = mascarar_segredos(str(exc))
-                raise AgenteIndisponivel(self._error) from exc
+                erro = mascarar_segredos(str(exc))
+                with self._lock:
+                    self._state = "error"
+                    self._error = erro
+                raise AgenteIndisponivel(erro) from exc
 
     @staticmethod
     def _contexto(historico: list[dict[str, str]]) -> str:
@@ -187,8 +208,18 @@ class AgentAdapter:
                     decidir_acao,
                     processar_com_ferramentas,
                 )
+                from src.conhecimento.roteamento_ferramentas import _decisao_rapida
 
-                decisao = decidir_acao(mensagem, componentes.llm)
+                decisao_local = (
+                    _decisao_rapida(mensagem) if contexto_cientifico else None
+                )
+                # Perguntas discursivas inequivocas sobre os contratos V2 nao
+                # precisam gastar uma chamada ao Gemini apenas para concluir
+                # que nenhuma ferramenta deve ser executada.
+                if decisao_local and not decisao_local.get("usar_ferramenta"):
+                    decisao = decisao_local
+                else:
+                    decisao = decidir_acao(mensagem, componentes.llm)
                 if decisao.get("usar_ferramenta"):
                     saida = processar_com_ferramentas(
                         pergunta=mensagem,
@@ -230,17 +261,6 @@ class AgentAdapter:
                 # O RAG permanece disponível quando o classificador de ferramenta falha.
                 _logger.warning("roteamento por ferramenta indisponivel; usando RAG: %s", exc)
 
-        if not componentes.modo_consulta:
-            try:
-                from src.conhecimento.obsidian import sincronizar_obsidian
-
-                sincronizar_obsidian(
-                    componentes.obsidian,
-                    componentes.modelo_embeddings,
-                )
-            except Exception as exc:
-                _logger.warning("sincronizacao incremental do Obsidian falhou: %s", exc)
-
         from src.conhecimento.agente import perguntar
 
         resposta = perguntar(
@@ -265,6 +285,83 @@ class AgentAdapter:
             "route": "rag",
             "scientific_contract": "v2" if contexto_cientifico else None,
         }
+
+    def _postprocess_interaction(
+        self,
+        mensagem: str,
+        resposta: dict,
+        session_id: str | None,
+        componentes: _Componentes,
+    ) -> None:
+        """Persiste sessao e memoria sem atrasar a resposta HTTP."""
+        with self._maintenance_lock:
+            try:
+                self._session_journal.record(
+                    session_id,
+                    mensagem,
+                    str(resposta["answer"]),
+                    resposta["images"],
+                    componentes.modelo_embeddings,
+                )
+            except Exception as exc:
+                _logger.warning("registro assincrono da sessao falhou: %s", exc)
+
+            aprender = getattr(componentes.auditor, "aprender_da_interacao", None)
+            if callable(aprender):
+                try:
+                    aprender(mensagem, str(resposta["answer"]))
+                except Exception as exc:
+                    _logger.warning("aprendizado assincrono indisponivel: %s", exc)
+
+            self._sync_obsidian_if_due(componentes)
+
+    def _sync_obsidian_if_due(self, componentes: _Componentes) -> None:
+        """Atualiza notas locais fora do caminho critico e com limitacao temporal."""
+        if componentes.modo_consulta:
+            return
+        try:
+            intervalo = max(
+                0.0,
+                float(
+                    os.getenv(
+                        "AL_IADO_OBSIDIAN_SYNC_INTERVAL_S",
+                        str(DEFAULT_OBSIDIAN_SYNC_INTERVAL_S),
+                    )
+                ),
+            )
+        except ValueError:
+            intervalo = DEFAULT_OBSIDIAN_SYNC_INTERVAL_S
+
+        agora = monotonic()
+        if (
+            self._last_obsidian_sync is not None
+            and agora - self._last_obsidian_sync < intervalo
+        ):
+            return
+        self._last_obsidian_sync = agora
+        try:
+            from src.conhecimento.obsidian import sincronizar_obsidian
+
+            sincronizar_obsidian(
+                componentes.obsidian,
+                componentes.modelo_embeddings,
+            )
+        except Exception as exc:
+            _logger.warning("sincronizacao assincrona do Obsidian falhou: %s", exc)
+
+    def _schedule_postprocessing(
+        self,
+        mensagem: str,
+        resposta: dict,
+        session_id: str | None,
+        componentes: _Componentes,
+    ) -> None:
+        threading.Thread(
+            target=self._postprocess_interaction,
+            args=(mensagem, resposta, session_id, componentes),
+            name="aliado-v2-maintenance",
+            daemon=True,
+        ).start()
 
     def answer(
         self,
@@ -316,22 +413,14 @@ class AgentAdapter:
         resposta.setdefault("route", "adapter")
         resposta.setdefault("memories_saved", 0)
         if self._answerer is None and self._components is not None:
-            aprender = getattr(self._components.auditor, "aprender_da_interacao", None)
-            if callable(aprender):
-                try:
-                    aprendizado = aprender(mensagem, str(resposta["answer"]))
-                    resposta["memories_saved"] = int(
-                        getattr(aprendizado, "salvas", 0) or 0
-                    )
-                except Exception as exc:
-                    _logger.warning("aprendizado do turno indisponivel: %s", exc)
-            resposta["session"] = self._session_journal.record(
-                session_id,
+            componentes = self._components
+            self._schedule_postprocessing(
                 mensagem,
-                str(resposta["answer"]),
-                resposta["images"],
-                self._components.modelo_embeddings,
+                resposta,
+                session_id,
+                componentes,
             )
+            resposta["maintenance_scheduled"] = True
         with self._lock:
             self._state = "ready"
             self._error = None

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from time import perf_counter
 
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
@@ -177,6 +178,7 @@ def create_app(agent_adapter: AgentAdapter | None = None) -> Starlette:
 
     async def chat_api(request: Request) -> JSONResponse:
         try:
+            inicio = perf_counter()
             mensagem, historico, anexos, session_id = await _chat_payload(request)
             resposta = await run_in_threadpool(
                 adapter.answer,
@@ -191,6 +193,7 @@ def create_app(agent_adapter: AgentAdapter | None = None) -> Starlette:
                     **resposta,
                     "answer_html": render_agent_markdown(resposta["answer"]),
                     "agent": adapter.status(),
+                    "response_ms": round((perf_counter() - inicio) * 1000, 1),
                 }
             )
         except (ValueError, json.JSONDecodeError) as exc:
