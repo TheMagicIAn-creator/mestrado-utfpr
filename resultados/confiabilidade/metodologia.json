@@ -1,0 +1,132 @@
+{
+  "schema_version": 2,
+  "status": "bibliographic_component_sensitivity",
+  "experimental_dataset": "GPVS-Faults",
+  "dataset_role": "detector_evaluation_only_not_physical_reliability",
+  "time_unit_primary": "hour",
+  "hours_per_year": 8760.0,
+  "formulas": {
+    "reliability": "R(t) = exp(-lambda*t)",
+    "cumulative_failure": "F(t) = 1 - R(t)",
+    "failure_density": "f(t) = lambda*exp(-lambda*t)",
+    "hazard": "h(t) = lambda"
+  },
+  "physical_weibull": {
+    "status": "not_estimable_from_current_dataset",
+    "beta": null,
+    "eta": null,
+    "reason": "Ausência de tempos de vida, exposição e censura por ativo no GPVS-Faults"
+  },
+  "scenarios": [
+    {
+      "scenario_id": "contator_ac_derived",
+      "component_id": "contator_ac",
+      "component_name": "Contator AC",
+      "plot_label": "Contator AC - cenário derivado",
+      "evidence_type": "derived_sensitivity",
+      "lambda_per_hour": 2.1e-05,
+      "source_pdf": "literatura/inversores-pv/torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+      "pdf_page": 35,
+      "printed_page": 34,
+      "source_table": "Tabelas 3.3 e 3.4",
+      "original_expression": "1,75e-4 falha/h x 12% dos chamados",
+      "conversion_formula": "lambda_contator = lambda_inversor * 0.12",
+      "ticket_share": 0.12,
+      "caveat": "Alocação proporcional de uma taxa agregada de inversor; não é uma taxa de falha observada diretamente para contatores.",
+      "lambda_per_year": 0.18395999999999998,
+      "reciprocal_time_hours": 47619.04761904762,
+      "reciprocal_time_years": 5.435964340073929,
+      "time_model": "exponential_constant_hazard",
+      "time_unit_primary": "hour",
+      "hours_per_year": 8760.0
+    },
+    {
+      "scenario_id": "igbt_derived",
+      "component_id": "igbt",
+      "component_name": "IGBT",
+      "plot_label": "IGBT - cenário derivado",
+      "evidence_type": "derived_sensitivity",
+      "lambda_per_hour": 1.05e-05,
+      "source_pdf": "literatura/inversores-pv/torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+      "pdf_page": 35,
+      "printed_page": 34,
+      "source_table": "Tabelas 3.3 e 3.4",
+      "original_expression": "1,75e-4 falha/h x 6% dos chamados",
+      "conversion_formula": "lambda_igbt = lambda_inversor * 0.06",
+      "ticket_share": 0.06,
+      "caveat": "Alocação proporcional de uma taxa agregada de inversor; não é uma taxa de falha observada diretamente para IGBTs.",
+      "lambda_per_year": 0.09197999999999999,
+      "reciprocal_time_hours": 95238.09523809524,
+      "reciprocal_time_years": 10.871928680147859,
+      "time_model": "exponential_constant_hazard",
+      "time_unit_primary": "hour",
+      "hours_per_year": 8760.0
+    },
+    {
+      "scenario_id": "fusivel_ac_derived",
+      "component_id": "fusivel_ac",
+      "component_name": "Fusível AC",
+      "plot_label": "Fusível AC - cenário derivado",
+      "evidence_type": "derived_sensitivity",
+      "lambda_per_hour": 7e-06,
+      "source_pdf": "literatura/inversores-pv/torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+      "pdf_page": 35,
+      "printed_page": 34,
+      "source_table": "Tabelas 3.3 e 3.4",
+      "original_expression": "1,75e-4 falha/h x 4% dos chamados",
+      "conversion_formula": "lambda_fusivel_derivada = lambda_inversor * 0.04",
+      "ticket_share": 0.04,
+      "caveat": "Alocação proporcional de uma taxa agregada de inversor. É mantida separada da taxa bibliográfica direta do fusível.",
+      "lambda_per_year": 0.06132,
+      "reciprocal_time_hours": 142857.14285714287,
+      "reciprocal_time_years": 16.30789302022179,
+      "time_model": "exponential_constant_hazard",
+      "time_unit_primary": "hour",
+      "hours_per_year": 8760.0
+    },
+    {
+      "scenario_id": "fusivel_ac_direct",
+      "component_id": "fusivel_ac",
+      "component_name": "Fusível AC",
+      "plot_label": "Fusível - taxa direta da Tabela 3.4",
+      "evidence_type": "direct_bibliographic",
+      "lambda_per_hour": 2.17e-06,
+      "source_pdf": "literatura/inversores-pv/torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+      "pdf_page": 35,
+      "printed_page": 34,
+      "source_table": "Tabela 3.4",
+      "original_expression": "2,17e-6 falha/h",
+      "conversion_formula": "lambda_ano = lambda_hora * 8760",
+      "ticket_share": null,
+      "caveat": "Taxa transcrita para o subcomponente genérico fusível, adaptada de Colli (2015); não foi medida no GPVS-Faults.",
+      "lambda_per_year": 0.0190092,
+      "reciprocal_time_hours": 460829.4930875576,
+      "reciprocal_time_years": 52.60610651684448,
+      "time_model": "exponential_constant_hazard",
+      "time_unit_primary": "hour",
+      "hours_per_year": 8760.0
+    }
+  ],
+  "source": {
+    "artifact": "literatura/inversores-pv/torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+    "sha256": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
+    "pdf_page": 35,
+    "printed_page": 34,
+    "tables": [
+      "Tabela 3.3",
+      "Tabela 3.4"
+    ]
+  },
+  "data_files": {
+    "scenarios": "cenarios.csv",
+    "curves": "curvas.csv"
+  },
+  "figures": [
+    "confiabilidade_probabilidade_falha.png",
+    "confiabilidade_probabilidade_falha.pdf",
+    "densidade_taxa_falha.png",
+    "densidade_taxa_falha.pdf",
+    "taxas_componentes.png",
+    "taxas_componentes.pdf"
+  ]
+}
