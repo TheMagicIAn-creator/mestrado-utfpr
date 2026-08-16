@@ -1,0 +1,55 @@
+{
+  "manifest_version": 2,
+  "stage": "confiabilidade_componentes",
+  "created_at": "2026-08-15T22:43:17.132764-03:00",
+  "git_commit": "de3cf729af7b7aacd7927ab01fe5d9dee8678acf",
+  "code_hash_mode": "text_lf_utf8",
+  "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
+  "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
+  "code_sha256": "9f63e6f92ff66319a849950f984c67ea3912b74f2935d0655fb399d81c789d18",
+  "code_dependencies": {
+    "reliability": "44aa8cf93a5b5fed9dbc22d34495e57199824a797534e7c35122db33ff6d2f5a",
+    "plots": "97fb03fea139a4193517d6cb13fe8bb2b1f70326bce2e975e97cd9bb2a026e33",
+    "style": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49"
+  },
+  "parameters": {
+    "model": "exponential_constant_hazard",
+    "hours_per_year": 8760.0,
+    "horizon_years": 20.0,
+    "n_points": 401,
+    "scenarios": [
+      "contator_ac_derived",
+      "igbt_derived",
+      "fusivel_ac_derived",
+      "fusivel_ac_direct"
+    ]
+  },
+  "input_artifacts": {
+    "torres_tcc": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e"
+  },
+  "outputs": [
+    "resultados/confiabilidade/cenarios.csv",
+    "resultados/confiabilidade/curvas.csv",
+    "resultados/confiabilidade/confiabilidade_probabilidade_falha.png",
+    "resultados/confiabilidade/confiabilidade_probabilidade_falha.pdf",
+    "resultados/confiabilidade/densidade_taxa_falha.png",
+    "resultados/confiabilidade/densidade_taxa_falha.pdf",
+    "resultados/confiabilidade/taxas_componentes.png",
+    "resultados/confiabilidade/taxas_componentes.pdf",
+    "resultados/confiabilidade/metodologia.json",
+    "resultados/confiabilidade/relatorio.md"
+  ],
+  "output_artifacts": {
+    "resultados/confiabilidade/cenarios.csv": "47c855cf7ee3fcac4e9a7566980853b01667f091ee944a9bc776ca9218108887",
+    "resultados/confiabilidade/curvas.csv": "1672af0446e33ce933b40b043b29ea870abacfa9b3eea4ecb562b4cf2dffe68b",
+    "resultados/confiabilidade/confiabilidade_probabilidade_falha.png": "db1131bc924c242200fcde3494a1097e2012cbad10f3b05688be9b0dbae295c3",
+    "resultados/confiabilidade/confiabilidade_probabilidade_falha.pdf": "d0ad95f2f29f81b496101f096a3e28d9ebce6a1a1e8213099a013084e7a610bf",
+    "resultados/confiabilidade/densidade_taxa_falha.png": "2843f5883166dbbdb28cba3bc10c2790928a14f925c3073737398e7681de7038",
+    "resultados/confiabilidade/densidade_taxa_falha.pdf": "f3f7af6d936f74f264a92a2e3c207be1e4f42fdd2323b20a34d4d9f1a231e1a2",
+    "resultados/confiabilidade/taxas_componentes.png": "e879bda432c465928a3b1794029ebd8c4cd0bdad6e6973bf09f29cce2d1a6545",
+    "resultados/confiabilidade/taxas_componentes.pdf": "e93ab90421eb9e72381d7067809ca6ee4b8ab8d0e8cde43a09bf9564c5e3de17",
+    "resultados/confiabilidade/metodologia.json": "68617160e47e826b804e4cd5bd2e1f6b7172ef458e1cbd8f3839e3cc851a9551",
+    "resultados/confiabilidade/relatorio.md": "2ef264af6dd854a6f5da127126a4df1accad38c4ff6a4a39baf844e09baab585"
+  },
+  "evidence_level": "bibliographic_sensitivity"
+}
