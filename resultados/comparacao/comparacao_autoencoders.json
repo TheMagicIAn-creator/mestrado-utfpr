@@ -1,0 +1,1478 @@
+{
+  "schema_version": 2,
+  "created_at": "2026-08-20T23:01:31.302675-03:00",
+  "title": "Autoencoder Denso versus AE-LSTM no GPVS-Faults",
+  "dataset": {
+    "dataset": "GPVS-Faults",
+    "doi": "10.17632/n76t439f65.1",
+    "official_zip_sha256": "88cd20c848fee86752870cf9b198eab45568c31355685328dd75aba982bf1a63",
+    "active_dataset_count": 1,
+    "experiments": [
+      "F0L",
+      "F0M",
+      "F1L",
+      "F1M",
+      "F2L",
+      "F2M",
+      "F3L",
+      "F3M",
+      "F4L",
+      "F4M",
+      "F5L",
+      "F5M",
+      "F6L",
+      "F6M",
+      "F7L",
+      "F7M"
+    ],
+    "healthy_experiments": [
+      "F0L",
+      "F0M"
+    ],
+    "fault_experiments": [
+      "F1L",
+      "F1M",
+      "F2L",
+      "F2M",
+      "F3L",
+      "F3M",
+      "F4L",
+      "F4M",
+      "F5L",
+      "F5M",
+      "F6L",
+      "F6M",
+      "F7L",
+      "F7M"
+    ],
+    "fault_boundary": {
+      "method": "nominal_mid_record",
+      "instrumented_trigger_available": false,
+      "caveat": "A fronteira de 50% é nominal; os CSVs não fornecem canal de disparo."
+    },
+    "raw_files": {
+      "F0L": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F0L.csv",
+        "bytes": 32849893,
+        "sha256": "0af0dddf273838ca4e255d99da50f37f86c9bf9e0b343d3175ccc4366accd458"
+      },
+      "F0M": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F0M.csv",
+        "bytes": 32111056,
+        "sha256": "3d1ab1fd576c574287097e70bcf4a5b4b1e3b9a7e6043d620d0c958163b53285"
+      },
+      "F1L": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F1L.csv",
+        "bytes": 29494147,
+        "sha256": "967132ceb23cebc5e475b4bc2e9a35979e71707cc9a173945bb12f755a882151"
+      },
+      "F1M": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F1M.csv",
+        "bytes": 31478790,
+        "sha256": "ead7cdab3792d78f9167dfe44df5af8e791f11aec14be743186a4948749adee9"
+      },
+      "F2L": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F2L.csv",
+        "bytes": 32562656,
+        "sha256": "85181f21528bad220d43adaa554c32715e50dc0276be067d62f0b07e72767d28"
+      },
+      "F2M": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F2M.csv",
+        "bytes": 32721289,
+        "sha256": "c1f72b9565d62d26f6fe75235b4e1d0b51f1af987bd5de2c8fc5cd18dc08dfeb"
+      },
+      "F3L": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F3L.csv",
+        "bytes": 23717045,
+        "sha256": "d1817539f46c8f699abd2d1fc42d5b976a3cea311aee02028d108bdca0eee6b2"
+      },
+      "F3M": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F3M.csv",
+        "bytes": 15925490,
+        "sha256": "c9a5fdc0b421e9fe4c4b36ddda4d939a20834dc98cfd80447aae84a3d2a4c153"
+      },
+      "F4L": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F4L.csv",
+        "bytes": 32771693,
+        "sha256": "3c1d14f4b4011f5a93b446aab7f3bdfdcc87c173e80ccce1c75dfe0492eeb8c8"
+      },
+      "F4M": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F4M.csv",
+        "bytes": 32771582,
+        "sha256": "6e7d836bec1b5f18d88e2dc75c3e4671409e3e356f4e00787a27307d8e984053"
+      },
+      "F5L": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F5L.csv",
+        "bytes": 32720605,
+        "sha256": "d502ac4eecb8469074a0b74c0533a3f8596d405eed12fa927e6b34455966c747"
+      },
+      "F5M": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F5M.csv",
+        "bytes": 32909670,
+        "sha256": "9c733c063117d62113abb418529dbbdf241e11d9b34ffba55e0586474c2227a3"
+      },
+      "F6L": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F6L.csv",
+        "bytes": 32923343,
+        "sha256": "70169cf1eff18483f71ee516bdfb5b9cb3d361d407c1f81c1992e5f4b72af363"
+      },
+      "F6M": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F6M.csv",
+        "bytes": 32762347,
+        "sha256": "3b21ec10273724bdd439600605eb336d0633113f19f79b9ee8c77e16fb554d64"
+      },
+      "F7L": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F7L.csv",
+        "bytes": 32929561,
+        "sha256": "d098f584d4a5b100e34a8cb83cbde9355de352a3751accd09de93f4f7ee92060"
+      },
+      "F7M": {
+        "path": "dados/brutos/gpvs/csv/CSV_Files/F7M.csv",
+        "bytes": 32776047,
+        "sha256": "cd3e60928d65a2d4a224f1b154107601fe5a86ab14e1b33a8a87fb7ec8457745"
+      }
+    },
+    "processed": {
+      "healthy_features": "dados/processados/features_gpvs.parquet",
+      "fault_features": "dados/processados/features_gpvs_falhas.parquet",
+      "n_healthy_windows": 1423,
+      "n_fault_windows": 9391,
+      "feature_columns": [
+        "Ipv_median",
+        "Ipv_iqr",
+        "Vpv_median",
+        "Vpv_iqr",
+        "Vdc_median",
+        "Vdc_iqr",
+        "ia_rms",
+        "ib_rms",
+        "ic_rms",
+        "va_rms",
+        "vb_rms",
+        "vc_rms",
+        "ia_thd",
+        "ib_thd",
+        "ic_thd",
+        "va_thd",
+        "vb_thd",
+        "vc_thd",
+        "i_rms_unbalance",
+        "v_rms_unbalance",
+        "p_ac_mean",
+        "p_ac_std",
+        "p_dc_median",
+        "p_dc_iqr"
+      ]
+    },
+    "extraction_metadata": {
+      "F0L": {
+        "dt_median_s": 9.999686226969118e-05,
+        "dt_min_s": 8.533456575054998e-05,
+        "dt_max_s": 0.0001002901082109986,
+        "fs_hz": 10000.313782876543,
+        "sampling_period_us": 99.99686226969118,
+        "rows": 143715,
+        "windows": 718,
+        "window_samples": 200,
+        "window_duration_s": 0.019999372453938236,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": null,
+        "fault_sample_nominal": null,
+        "fault_time_nominal_s": null,
+        "discarded_tail_samples": 115
+      },
+      "F0M": {
+        "dt_median_s": 9.999686226969118e-05,
+        "dt_min_s": 9.501168146019978e-05,
+        "dt_max_s": 0.00010498204308984072,
+        "fs_hz": 10000.313782876543,
+        "sampling_period_us": 99.99686226969118,
+        "rows": 141014,
+        "windows": 705,
+        "window_samples": 200,
+        "window_duration_s": 0.019999372453938236,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": null,
+        "fault_sample_nominal": null,
+        "fault_time_nominal_s": null,
+        "discarded_tail_samples": 14
+      },
+      "F1L": {
+        "dt_median_s": 9.999686226969118e-05,
+        "dt_min_s": 8.29885983000267e-05,
+        "dt_max_s": 0.0001187646018201427,
+        "fs_hz": 10000.313782876543,
+        "sampling_period_us": 99.99686226969118,
+        "rows": 129013,
+        "windows": 645,
+        "window_samples": 200,
+        "window_duration_s": 0.019999372453938236,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": "nominal_mid_record",
+        "fault_sample_nominal": 64506,
+        "fault_time_nominal_s": 6.45003523349854,
+        "discarded_tail_samples": 13
+      },
+      "F1M": {
+        "dt_median_s": 9.999686226969118e-05,
+        "dt_min_s": 8.093587678992265e-05,
+        "dt_max_s": 0.00011495240472036983,
+        "fs_hz": 10000.313782876543,
+        "sampling_period_us": 99.99686226969118,
+        "rows": 139014,
+        "windows": 695,
+        "window_samples": 200,
+        "window_duration_s": 0.019999372453938236,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": "nominal_mid_record",
+        "fault_sample_nominal": 69507,
+        "fault_time_nominal_s": 6.95002804897324,
+        "discarded_tail_samples": 14
+      },
+      "F2L": {
+        "dt_median_s": 9.999686226969118e-05,
+        "dt_min_s": 9.354545180073615e-05,
+        "dt_max_s": 0.00011788486402952714,
+        "fs_hz": 10000.313782876543,
+        "sampling_period_us": 99.99686226969118,
+        "rows": 142128,
+        "windows": 710,
+        "window_samples": 200,
+        "window_duration_s": 0.019999372453938236,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": "nominal_mid_record",
+        "fault_sample_nominal": 71064,
+        "fault_time_nominal_s": 7.10003536545921,
+        "discarded_tail_samples": 128
+      },
+      "F2M": {
+        "dt_median_s": 9.999686226969118e-05,
+        "dt_min_s": 9.0906238501276e-05,
+        "dt_max_s": 0.00010908748610027885,
+        "fs_hz": 10000.313782876543,
+        "sampling_period_us": 99.99686226969118,
+        "rows": 144015,
+        "windows": 720,
+        "window_samples": 200,
+        "window_duration_s": 0.019999372453938236,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": "nominal_mid_record",
+        "fault_sample_nominal": 72007,
+        "fault_time_nominal_s": 7.20002079113647,
+        "discarded_tail_samples": 15
+      },
+      "F3L": {
+        "dt_median_s": 9.999686226969118e-05,
+        "dt_min_s": 9.207922214038433e-05,
+        "dt_max_s": 0.00010850099424963844,
+        "fs_hz": 10000.313782876543,
+        "sampling_period_us": 99.99686226969118,
+        "rows": 103497,
+        "windows": 517,
+        "window_samples": 200,
+        "window_duration_s": 0.019999372453938236,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": "nominal_mid_record",
+        "fault_sample_nominal": 51748,
+        "fault_time_nominal_s": 5.1743268759602,
+        "discarded_tail_samples": 97
+      },
+      "F3M": {
+        "dt_median_s": 9.999686226969118e-05,
+        "dt_min_s": 9.794414076003122e-05,
+        "dt_max_s": 0.0001023428297104445,
+        "fs_hz": 10000.313782876543,
+        "sampling_period_us": 99.99686226969118,
+        "rows": 69967,
+        "windows": 349,
+        "window_samples": 200,
+        "window_duration_s": 0.019999372453938236,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": "nominal_mid_record",
+        "fault_sample_nominal": 34983,
+        "fault_time_nominal_s": 3.49803167466593,
+        "discarded_tail_samples": 167
+      },
+      "F4L": {
+        "dt_median_s": 9.999686226969118e-05,
+        "dt_min_s": 5.043830002993133e-05,
+        "dt_max_s": 0.00014691621113005482,
+        "fs_hz": 10000.313782876543,
+        "sampling_period_us": 99.99686226969118,
+        "rows": 144014,
+        "windows": 720,
+        "window_samples": 200,
+        "window_duration_s": 0.019999372453938236,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": "nominal_mid_record",
+        "fault_sample_nominal": 72007,
+        "fault_time_nominal_s": 7.20006213881265,
+        "discarded_tail_samples": 14
+      },
+      "F4M": {
+        "dt_median_s": 9.999686226969118e-05,
+        "dt_min_s": 9.119948430047486e-05,
+        "dt_max_s": 0.00011612538843897013,
+        "fs_hz": 10000.313782876543,
+        "sampling_period_us": 99.99686226969118,
+        "rows": 144014,
+        "windows": 720,
+        "window_samples": 200,
+        "window_duration_s": 0.019999372453938236,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": "nominal_mid_record",
+        "fault_sample_nominal": 72007,
+        "fault_time_nominal_s": 7.20008999717604,
+        "discarded_tail_samples": 14
+      },
+      "F5L": {
+        "dt_median_s": 9.999686226969118e-05,
+        "dt_min_s": 8.240210644494539e-05,
+        "dt_max_s": 0.000111140207630811,
+        "fs_hz": 10000.313782876543,
+        "sampling_period_us": 99.99686226969118,
+        "rows": 143015,
+        "windows": 715,
+        "window_samples": 200,
+        "window_duration_s": 0.019999372453938236,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": "nominal_mid_record",
+        "fault_sample_nominal": 71507,
+        "fault_time_nominal_s": 7.14998042583415,
+        "discarded_tail_samples": 15
+      },
+      "F5M": {
+        "dt_median_s": 9.999686226969118e-05,
+        "dt_min_s": 4.750584071988584e-05,
+        "dt_max_s": 0.0001633379832401971,
+        "fs_hz": 10000.313782876543,
+        "sampling_period_us": 99.99686226969118,
+        "rows": 144014,
+        "windows": 720,
+        "window_samples": 200,
+        "window_duration_s": 0.019999372453938236,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": "nominal_mid_record",
+        "fault_sample_nominal": 72007,
+        "fault_time_nominal_s": 7.20009029042197,
+        "discarded_tail_samples": 14
+      },
+      "F6L": {
+        "dt_median_s": 9.99965690300364e-05,
+        "dt_min_s": 6.128821969930698e-05,
+        "dt_max_s": 0.0001486752507302569,
+        "fs_hz": 10000.343108768318,
+        "sampling_period_us": 99.9965690300364,
+        "rows": 144015,
+        "windows": 720,
+        "window_samples": 200,
+        "window_duration_s": 0.01999931380600728,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": "nominal_mid_record",
+        "fault_sample_nominal": 72007,
+        "fault_time_nominal_s": 7.20001785862479,
+        "discarded_tail_samples": 15
+      },
+      "F6M": {
+        "dt_median_s": 9.99965690300364e-05,
+        "dt_min_s": 9.413166762062275e-05,
+        "dt_max_s": 0.00010586147043945004,
+        "fs_hz": 10000.343108768318,
+        "sampling_period_us": 99.9965690300364,
+        "rows": 144015,
+        "windows": 720,
+        "window_samples": 200,
+        "window_duration_s": 0.01999931380600728,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": "nominal_mid_record",
+        "fault_sample_nominal": 72007,
+        "fault_time_nominal_s": 7.2000078882924,
+        "discarded_tail_samples": 15
+      },
+      "F7L": {
+        "dt_median_s": 9.99965690300364e-05,
+        "dt_min_s": 8.97329915670042e-05,
+        "dt_max_s": 0.00010762094087013452,
+        "fs_hz": 10000.343108768318,
+        "sampling_period_us": 99.9965690300364,
+        "rows": 144015,
+        "windows": 720,
+        "window_samples": 200,
+        "window_duration_s": 0.01999931380600728,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": "nominal_mid_record",
+        "fault_sample_nominal": 72007,
+        "fault_time_nominal_s": 7.20003310736846,
+        "discarded_tail_samples": 15
+      },
+      "F7M": {
+        "dt_median_s": 9.99965690300364e-05,
+        "dt_min_s": 3.665563381005654e-05,
+        "dt_max_s": 0.0001551266422801234,
+        "fs_hz": 10000.343108768318,
+        "sampling_period_us": 99.9965690300364,
+        "rows": 144015,
+        "windows": 720,
+        "window_samples": 200,
+        "window_duration_s": 0.01999931380600728,
+        "grid_frequency_hz": 50.0,
+        "fault_boundary_method": "nominal_mid_record",
+        "fault_sample_nominal": 72007,
+        "fault_time_nominal_s": 7.19998530842197,
+        "discarded_tail_samples": 15
+      }
+    }
+  },
+  "protocol": {
+    "healthy_roles_nominal": {
+      "train": 0.5,
+      "validation": 0.15,
+      "calibration": 0.15,
+      "test": 0.2
+    },
+    "healthy_role_counts_after_purge": {
+      "train": 711,
+      "validation": 209,
+      "calibration": 210,
+      "test": 281
+    },
+    "split_strategy": "temporal_blocks_per_F0L_F0M",
+    "purge_windows": 2,
+    "feature_count": 24,
+    "feature_columns": [
+      "Ipv_median",
+      "Ipv_iqr",
+      "Vpv_median",
+      "Vpv_iqr",
+      "Vdc_median",
+      "Vdc_iqr",
+      "ia_rms",
+      "ib_rms",
+      "ic_rms",
+      "va_rms",
+      "vb_rms",
+      "vc_rms",
+      "ia_thd",
+      "ib_thd",
+      "ic_thd",
+      "va_thd",
+      "vb_thd",
+      "vc_thd",
+      "i_rms_unbalance",
+      "v_rms_unbalance",
+      "p_ac_mean",
+      "p_ac_std",
+      "p_dc_median",
+      "p_dc_iqr"
+    ],
+    "model_selection_uses_fault_data": false,
+    "e3": "14 ensaios reais de bancada; pesos, scaler e limiares congelados; bootstrap no nível do ensaio",
+    "e2": "janelas F0 compartilhadas, mesmas perturbações e mesma grade de magnitude para ambos os modelos"
+  },
+  "models": {
+    "ae_denso": {
+      "name": "Autoencoder Denso",
+      "reference_seed": 42,
+      "stability_seeds": [
+        13,
+        29,
+        42,
+        71,
+        101
+      ],
+      "architecture": "24-16-8-16-24",
+      "n_parameters": 1088,
+      "score_method": "mean_squared_reconstruction_error",
+      "threshold_method": "empirical_p99_higher",
+      "score_threshold": 0.8241625428199768,
+      "threshold_effective_percentile": 99.0,
+      "healthy_test_false_positive_rate": 0.017793594306049824,
+      "best_epoch": 111,
+      "stopped_epoch": 131,
+      "best_validation_loss": 0.2557632625102997
+    },
+    "ae_lstm": {
+      "name": "AE-LSTM",
+      "reference_seed": 42,
+      "stability_seeds": [
+        13,
+        29,
+        42,
+        71,
+        101
+      ],
+      "architecture": "AE-LSTM temporal: L=8, hidden=32, latent=8",
+      "n_parameters": 17216,
+      "score_method": "mean_squared_reconstruction_error",
+      "threshold_method": "empirical_p99_higher",
+      "score_threshold": 3.293553590774536,
+      "threshold_effective_percentile": 99.0,
+      "healthy_test_false_positive_rate": 0.028469750889679714,
+      "best_epoch": 53,
+      "stopped_epoch": 73,
+      "best_validation_loss": 0.7416642904281616
+    }
+  },
+  "e3": {
+    "evidence_level": "E3_bench",
+    "primary_metric": "auc_pr",
+    "confusion_matrix_unit": "window_descriptive_only",
+    "fault_boundary_method": "nominal_mid_record",
+    "fault_boundary_caveat": "Os CSVs não fornecem canal de disparo; 50% é fronteira nominal.",
+    "macro": [
+      {
+        "model": "ae_denso",
+        "model_name": "Autoencoder Denso",
+        "metric": "auc_pr",
+        "estimate": 0.8607589231887786,
+        "ci95_low": 0.8044385470791792,
+        "ci95_high": 0.9152290946222683,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_denso",
+        "model_name": "Autoencoder Denso",
+        "metric": "auc_roc",
+        "estimate": 0.7719397785838549,
+        "ci95_low": 0.6869095025141309,
+        "ci95_high": 0.8521295045637047,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_denso",
+        "model_name": "Autoencoder Denso",
+        "metric": "sensitivity",
+        "estimate": 0.41256885415720024,
+        "ci95_low": 0.21715115691661446,
+        "ci95_high": 0.6223059188916623,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_denso",
+        "model_name": "Autoencoder Denso",
+        "metric": "specificity",
+        "estimate": 0.9703590576560412,
+        "ci95_low": 0.9405898945252371,
+        "ci95_high": 0.9890875855847966,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_denso",
+        "model_name": "Autoencoder Denso",
+        "metric": "balanced_accuracy",
+        "estimate": 0.6914639559066206,
+        "ci95_low": 0.5964263700747964,
+        "ci95_high": 0.7905950057606895,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_denso",
+        "model_name": "Autoencoder Denso",
+        "metric": "mcc",
+        "estimate": 0.3989166570605029,
+        "ci95_low": 0.22347682297959442,
+        "ci95_high": 0.5821334810034694,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_denso",
+        "model_name": "Autoencoder Denso",
+        "metric": "f1",
+        "estimate": 0.47424617928362334,
+        "ci95_low": 0.27723931037245286,
+        "ci95_high": 0.6723840998721653,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_denso",
+        "model_name": "Autoencoder Denso",
+        "metric": "precision",
+        "estimate": 0.8648448854178084,
+        "ci95_low": 0.7148112631376788,
+        "ci95_high": 0.9624124478672111,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_denso",
+        "model_name": "Autoencoder Denso",
+        "metric": "false_positive_rate",
+        "estimate": 0.0296409423439587,
+        "ci95_low": 0.010548172757475082,
+        "ci95_high": 0.059503285793400015,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_lstm",
+        "model_name": "AE-LSTM",
+        "metric": "auc_pr",
+        "estimate": 0.8409618301937369,
+        "ci95_low": 0.7800727812411365,
+        "ci95_high": 0.9028200679096128,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_lstm",
+        "model_name": "AE-LSTM",
+        "metric": "auc_roc",
+        "estimate": 0.7481236679782776,
+        "ci95_low": 0.6598490123260681,
+        "ci95_high": 0.8361189331385405,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_lstm",
+        "model_name": "AE-LSTM",
+        "metric": "sensitivity",
+        "estimate": 0.39139204276402006,
+        "ci95_low": 0.18623947958011797,
+        "ci95_high": 0.6068184585709255,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_lstm",
+        "model_name": "AE-LSTM",
+        "metric": "specificity",
+        "estimate": 0.9681377080147341,
+        "ci95_low": 0.9337619035156808,
+        "ci95_high": 0.9984082646093818,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_lstm",
+        "model_name": "AE-LSTM",
+        "metric": "balanced_accuracy",
+        "estimate": 0.6797648753893769,
+        "ci95_low": 0.5786019274117539,
+        "ci95_high": 0.7842530282835677,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_lstm",
+        "model_name": "AE-LSTM",
+        "metric": "mcc",
+        "estimate": 0.36117095244410813,
+        "ci95_low": 0.16966967927407475,
+        "ci95_high": 0.5600632008212352,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_lstm",
+        "model_name": "AE-LSTM",
+        "metric": "f1",
+        "estimate": 0.43544397875670093,
+        "ci95_low": 0.2163328495792585,
+        "ci95_high": 0.6573901714184854,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_lstm",
+        "model_name": "AE-LSTM",
+        "metric": "precision",
+        "estimate": 0.7402162666817503,
+        "ci95_low": 0.5093167701863354,
+        "ci95_high": 0.9277599103061744,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      },
+      {
+        "model": "ae_lstm",
+        "model_name": "AE-LSTM",
+        "metric": "false_positive_rate",
+        "estimate": 0.031862291985266016,
+        "ci95_low": 0.0011949099937926754,
+        "ci95_high": 0.0659673411784515,
+        "n_experiments": 14,
+        "bootstrap_resamples": 20000,
+        "bootstrap_unit": "experiment"
+      }
+    ],
+    "paired_differences": [
+      {
+        "metric": "auc_pr",
+        "difference_dense_minus_lstm": 0.019797092995041638,
+        "ci95_low": 0.0041986715014850455,
+        "ci95_high": 0.03892530445168685,
+        "n_paired_experiments": 14,
+        "bootstrap_unit": "paired_experiment"
+      },
+      {
+        "metric": "auc_roc",
+        "difference_dense_minus_lstm": 0.023816110605577263,
+        "ci95_low": 0.006212990452600793,
+        "ci95_high": 0.04472316236627602,
+        "n_paired_experiments": 14,
+        "bootstrap_unit": "paired_experiment"
+      },
+      {
+        "metric": "sensitivity",
+        "difference_dense_minus_lstm": 0.021176811393180204,
+        "ci95_low": 0.00017015197581817892,
+        "ci95_high": 0.052134880807279814,
+        "n_paired_experiments": 14,
+        "bootstrap_unit": "paired_experiment"
+      },
+      {
+        "metric": "specificity",
+        "difference_dense_minus_lstm": 0.0022213496413073163,
+        "ci95_low": -0.017845326139890056,
+        "ci95_high": 0.028513248912642224,
+        "n_paired_experiments": 14,
+        "bootstrap_unit": "paired_experiment"
+      },
+      {
+        "metric": "balanced_accuracy",
+        "difference_dense_minus_lstm": 0.01169908051724376,
+        "ci95_low": -0.0014326262084651427,
+        "ci95_high": 0.028033632721501917,
+        "n_paired_experiments": 14,
+        "bootstrap_unit": "paired_experiment"
+      },
+      {
+        "metric": "mcc",
+        "difference_dense_minus_lstm": 0.03774570461639475,
+        "ci95_low": 0.0009841508134185873,
+        "ci95_high": 0.08154047519424797,
+        "n_paired_experiments": 14,
+        "bootstrap_unit": "paired_experiment"
+      },
+      {
+        "metric": "f1",
+        "difference_dense_minus_lstm": 0.03880220052692242,
+        "ci95_low": 0.0043614549910093794,
+        "ci95_high": 0.09059478559160565,
+        "n_paired_experiments": 14,
+        "bootstrap_unit": "paired_experiment"
+      },
+      {
+        "metric": "precision",
+        "difference_dense_minus_lstm": 0.12462861873605803,
+        "ci95_low": -0.13659784777944764,
+        "ci95_high": 0.3871426058768284,
+        "n_paired_experiments": 14,
+        "bootstrap_unit": "paired_experiment"
+      },
+      {
+        "metric": "false_positive_rate",
+        "difference_dense_minus_lstm": -0.0022213496413073215,
+        "ci95_low": -0.028060585582661276,
+        "ci95_high": 0.017679438609596334,
+        "n_paired_experiments": 14,
+        "bootstrap_unit": "paired_experiment"
+      }
+    ],
+    "stability": [
+      {
+        "model": "ae_denso",
+        "seed": 13,
+        "metric": "auc_pr",
+        "macro_mean": 0.8608010005133373
+      },
+      {
+        "model": "ae_denso",
+        "seed": 13,
+        "metric": "auc_roc",
+        "macro_mean": 0.7720736490546524
+      },
+      {
+        "model": "ae_denso",
+        "seed": 13,
+        "metric": "sensitivity",
+        "macro_mean": 0.41303256211643413
+      },
+      {
+        "model": "ae_denso",
+        "seed": 13,
+        "metric": "specificity",
+        "macro_mean": 0.9693909066329764
+      },
+      {
+        "model": "ae_denso",
+        "seed": 13,
+        "metric": "balanced_accuracy",
+        "macro_mean": 0.6912117343747053
+      },
+      {
+        "model": "ae_denso",
+        "seed": 13,
+        "metric": "mcc",
+        "macro_mean": 0.39505608795225633
+      },
+      {
+        "model": "ae_denso",
+        "seed": 13,
+        "metric": "f1",
+        "macro_mean": 0.47474744401473934
+      },
+      {
+        "model": "ae_denso",
+        "seed": 13,
+        "metric": "precision",
+        "macro_mean": 0.8498940877626949
+      },
+      {
+        "model": "ae_denso",
+        "seed": 13,
+        "metric": "false_positive_rate",
+        "macro_mean": 0.030609093367023433
+      },
+      {
+        "model": "ae_denso",
+        "seed": 29,
+        "metric": "auc_pr",
+        "macro_mean": 0.8623865896895199
+      },
+      {
+        "model": "ae_denso",
+        "seed": 29,
+        "metric": "auc_roc",
+        "macro_mean": 0.7728631522396252
+      },
+      {
+        "model": "ae_denso",
+        "seed": 29,
+        "metric": "sensitivity",
+        "macro_mean": 0.41777578593489323
+      },
+      {
+        "model": "ae_denso",
+        "seed": 29,
+        "metric": "specificity",
+        "macro_mean": 0.9629115358586174
+      },
+      {
+        "model": "ae_denso",
+        "seed": 29,
+        "metric": "balanced_accuracy",
+        "macro_mean": 0.6903436608967553
+      },
+      {
+        "model": "ae_denso",
+        "seed": 29,
+        "metric": "mcc",
+        "macro_mean": 0.3926049504685472
+      },
+      {
+        "model": "ae_denso",
+        "seed": 29,
+        "metric": "f1",
+        "macro_mean": 0.47918069049649487
+      },
+      {
+        "model": "ae_denso",
+        "seed": 29,
+        "metric": "precision",
+        "macro_mean": 0.907959915025752
+      },
+      {
+        "model": "ae_denso",
+        "seed": 29,
+        "metric": "false_positive_rate",
+        "macro_mean": 0.037088464141382615
+      },
+      {
+        "model": "ae_denso",
+        "seed": 42,
+        "metric": "auc_pr",
+        "macro_mean": 0.8607589231887786
+      },
+      {
+        "model": "ae_denso",
+        "seed": 42,
+        "metric": "auc_roc",
+        "macro_mean": 0.7719397785838549
+      },
+      {
+        "model": "ae_denso",
+        "seed": 42,
+        "metric": "sensitivity",
+        "macro_mean": 0.41256885415720024
+      },
+      {
+        "model": "ae_denso",
+        "seed": 42,
+        "metric": "specificity",
+        "macro_mean": 0.9703590576560412
+      },
+      {
+        "model": "ae_denso",
+        "seed": 42,
+        "metric": "balanced_accuracy",
+        "macro_mean": 0.6914639559066206
+      },
+      {
+        "model": "ae_denso",
+        "seed": 42,
+        "metric": "mcc",
+        "macro_mean": 0.3989166570605029
+      },
+      {
+        "model": "ae_denso",
+        "seed": 42,
+        "metric": "f1",
+        "macro_mean": 0.47424617928362334
+      },
+      {
+        "model": "ae_denso",
+        "seed": 42,
+        "metric": "precision",
+        "macro_mean": 0.8648448854178084
+      },
+      {
+        "model": "ae_denso",
+        "seed": 42,
+        "metric": "false_positive_rate",
+        "macro_mean": 0.0296409423439587
+      },
+      {
+        "model": "ae_denso",
+        "seed": 71,
+        "metric": "auc_pr",
+        "macro_mean": 0.8619978211027138
+      },
+      {
+        "model": "ae_denso",
+        "seed": 71,
+        "metric": "auc_roc",
+        "macro_mean": 0.7723851008234329
+      },
+      {
+        "model": "ae_denso",
+        "seed": 71,
+        "metric": "sensitivity",
+        "macro_mean": 0.410526246047255
+      },
+      {
+        "model": "ae_denso",
+        "seed": 71,
+        "metric": "specificity",
+        "macro_mean": 0.9710426543168154
+      },
+      {
+        "model": "ae_denso",
+        "seed": 71,
+        "metric": "balanced_accuracy",
+        "macro_mean": 0.6907844501820352
+      },
+      {
+        "model": "ae_denso",
+        "seed": 71,
+        "metric": "mcc",
+        "macro_mean": 0.3963198362002061
+      },
+      {
+        "model": "ae_denso",
+        "seed": 71,
+        "metric": "f1",
+        "macro_mean": 0.4700374385147789
+      },
+      {
+        "model": "ae_denso",
+        "seed": 71,
+        "metric": "precision",
+        "macro_mean": 0.9267239403758322
+      },
+      {
+        "model": "ae_denso",
+        "seed": 71,
+        "metric": "false_positive_rate",
+        "macro_mean": 0.028957345683184515
+      },
+      {
+        "model": "ae_denso",
+        "seed": 101,
+        "metric": "auc_pr",
+        "macro_mean": 0.8625002666417441
+      },
+      {
+        "model": "ae_denso",
+        "seed": 101,
+        "metric": "auc_roc",
+        "macro_mean": 0.7746178459797501
+      },
+      {
+        "model": "ae_denso",
+        "seed": 101,
+        "metric": "sensitivity",
+        "macro_mean": 0.42501457568978357
+      },
+      {
+        "model": "ae_denso",
+        "seed": 101,
+        "metric": "specificity",
+        "macro_mean": 0.9595449921285873
+      },
+      {
+        "model": "ae_denso",
+        "seed": 101,
+        "metric": "balanced_accuracy",
+        "macro_mean": 0.6922797839091855
+      },
+      {
+        "model": "ae_denso",
+        "seed": 101,
+        "metric": "mcc",
+        "macro_mean": 0.39763336609519956
+      },
+      {
+        "model": "ae_denso",
+        "seed": 101,
+        "metric": "f1",
+        "macro_mean": 0.48802342163062795
+      },
+      {
+        "model": "ae_denso",
+        "seed": 101,
+        "metric": "precision",
+        "macro_mean": 0.9112996647843573
+      },
+      {
+        "model": "ae_denso",
+        "seed": 101,
+        "metric": "false_positive_rate",
+        "macro_mean": 0.04045500787141256
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 13,
+        "metric": "auc_pr",
+        "macro_mean": 0.8435029997580177
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 13,
+        "metric": "auc_roc",
+        "macro_mean": 0.7471667741791694
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 13,
+        "metric": "sensitivity",
+        "macro_mean": 0.3872903725370342
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 13,
+        "metric": "specificity",
+        "macro_mean": 0.9843251060398105
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 13,
+        "metric": "balanced_accuracy",
+        "macro_mean": 0.6858077392884223
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 13,
+        "metric": "mcc",
+        "macro_mean": 0.3693712726044875
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 13,
+        "metric": "f1",
+        "macro_mean": 0.43493499157595067
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 13,
+        "metric": "precision",
+        "macro_mean": 0.6101132173579565
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 13,
+        "metric": "false_positive_rate",
+        "macro_mean": 0.015674893960189513
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 29,
+        "metric": "auc_pr",
+        "macro_mean": 0.8375034528608664
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 29,
+        "metric": "auc_roc",
+        "macro_mean": 0.7400952819343664
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 29,
+        "metric": "sensitivity",
+        "macro_mean": 0.39880666425970157
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 29,
+        "metric": "specificity",
+        "macro_mean": 0.9681932909949519
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 29,
+        "metric": "balanced_accuracy",
+        "macro_mean": 0.6834999776273267
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 29,
+        "metric": "mcc",
+        "macro_mean": 0.3658229325730487
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 29,
+        "metric": "f1",
+        "macro_mean": 0.44725190139548093
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 29,
+        "metric": "precision",
+        "macro_mean": 0.7173583963733072
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 29,
+        "metric": "false_positive_rate",
+        "macro_mean": 0.031806709005048034
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 42,
+        "metric": "auc_pr",
+        "macro_mean": 0.8409618301937369
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 42,
+        "metric": "auc_roc",
+        "macro_mean": 0.7481236679782776
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 42,
+        "metric": "sensitivity",
+        "macro_mean": 0.39139204276402006
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 42,
+        "metric": "specificity",
+        "macro_mean": 0.9681377080147341
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 42,
+        "metric": "balanced_accuracy",
+        "macro_mean": 0.6797648753893769
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 42,
+        "metric": "mcc",
+        "macro_mean": 0.36117095244410813
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 42,
+        "metric": "f1",
+        "macro_mean": 0.43544397875670093
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 42,
+        "metric": "precision",
+        "macro_mean": 0.7402162666817503
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 42,
+        "metric": "false_positive_rate",
+        "macro_mean": 0.031862291985266016
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 71,
+        "metric": "auc_pr",
+        "macro_mean": 0.8405855077018405
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 71,
+        "metric": "auc_roc",
+        "macro_mean": 0.7396833308572804
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 71,
+        "metric": "sensitivity",
+        "macro_mean": 0.3845810794525044
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 71,
+        "metric": "specificity",
+        "macro_mean": 0.9911047027506655
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 71,
+        "metric": "balanced_accuracy",
+        "macro_mean": 0.687842891101585
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 71,
+        "metric": "mcc",
+        "macro_mean": 0.374327969745546
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 71,
+        "metric": "f1",
+        "macro_mean": 0.43322556639562826
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 71,
+        "metric": "precision",
+        "macro_mean": 0.6169002390781025
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 71,
+        "metric": "false_positive_rate",
+        "macro_mean": 0.008895297249334517
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 101,
+        "metric": "auc_pr",
+        "macro_mean": 0.8440395905696071
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 101,
+        "metric": "auc_roc",
+        "macro_mean": 0.7444939316539712
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 101,
+        "metric": "sensitivity",
+        "macro_mean": 0.38801844255776696
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 101,
+        "metric": "specificity",
+        "macro_mean": 0.9798418569512155
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 101,
+        "metric": "balanced_accuracy",
+        "macro_mean": 0.6839301497544913
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 101,
+        "metric": "mcc",
+        "macro_mean": 0.3669428233437276
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 101,
+        "metric": "f1",
+        "macro_mean": 0.4321353654072107
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 101,
+        "metric": "precision",
+        "macro_mean": 0.6092065355474142
+      },
+      {
+        "model": "ae_lstm",
+        "seed": 101,
+        "metric": "false_positive_rate",
+        "macro_mean": 0.020158143048784407
+      }
+    ]
+  },
+  "e2": {
+    "evidence_level": "E2_synthetic",
+    "axis": "a_det, fração da assinatura sintética nominal",
+    "axis_is_time": false,
+    "magnitude_steps": 101,
+    "persistence_width": 0.02,
+    "interval_method": "Wilson 95% at the window-trajectory level",
+    "interval_caveat": "As trajetórias são janelas dos dois ensaios F0 e podem manter autocorrelação intraensaio; os intervalos E2 são descritivos.",
+    "smd95_definition": "menor magnitude cujo limite inferior do IC95% Wilson atinge 0,95",
+    "signatures": [
+      {
+        "component_id": "contator_ac",
+        "component_name": "Contator AC",
+        "severity": 5,
+        "occurrence": 7,
+        "detection": 9,
+        "npr": 315,
+        "signal_columns": [
+          "ia"
+        ],
+        "formula": "ia += N(0, a_det * std(ia) * 0.30)",
+        "physical_hypothesis": "Chattering ou comutação deficiente introduz conteúdo transitório na corrente CA.",
+        "limitation": "Ruído gaussiano é proxy sintético e requer calibração em contator real."
+      },
+      {
+        "component_id": "igbt",
+        "component_name": "IGBT",
+        "severity": 5,
+        "occurrence": 6,
+        "detection": 3,
+        "npr": 90,
+        "signal_columns": [
+          "ia",
+          "ib",
+          "ic"
+        ],
+        "formula": "i_fase += a_det * std(i_fase) * [0.30 sen(5wt)+0.20 sen(7wt)+0.10 sen(11wt)+0.05 sen(13wt)]",
+        "physical_hypothesis": "Degradação de chaveamento eleva THD e harmônicos característicos nas correntes de fase.",
+        "limitation": "As amplitudes harmônicas são proxies fundamentados, não medições de envelhecimento térmico no GPVS."
+      },
+      {
+        "component_id": "fusivel_ac",
+        "component_name": "Fusível AC",
+        "severity": 5,
+        "occurrence": 3,
+        "detection": 2,
+        "npr": 30,
+        "signal_columns": [
+          "ia"
+        ],
+        "formula": "ia *= 1 - 0.12 * a_det",
+        "physical_hypothesis": "Perda parcial de uma fase reduz a corrente conduzida e aumenta o desbalanceamento entre fases.",
+        "limitation": "A perda parcial é proxy contínuo; não reproduz abertura abrupta nem a atuação completa da proteção."
+      }
+    ],
+    "summary": [
+      {
+        "model": "ae_denso",
+        "component": "contator_ac",
+        "npr": 315,
+        "smd95": 0.54,
+        "smd95_status": "reached",
+        "detection_at_max": 1.0,
+        "n_trajectories": 281,
+        "n_events": 281,
+        "indetectable_at_max_pct": 0.0,
+        "weibull_parametric_recommended": false
+      },
+      {
+        "model": "ae_denso",
+        "component": "fusivel_ac",
+        "npr": 30,
+        "smd95": 0.75,
+        "smd95_status": "reached",
+        "detection_at_max": 1.0,
+        "n_trajectories": 281,
+        "n_events": 281,
+        "indetectable_at_max_pct": 0.0,
+        "weibull_parametric_recommended": false
+      },
+      {
+        "model": "ae_denso",
+        "component": "igbt",
+        "npr": 90,
+        "smd95": 0.43,
+        "smd95_status": "reached",
+        "detection_at_max": 1.0,
+        "n_trajectories": 281,
+        "n_events": 281,
+        "indetectable_at_max_pct": 0.0,
+        "weibull_parametric_recommended": false
+      },
+      {
+        "model": "ae_lstm",
+        "component": "contator_ac",
+        "npr": 315,
+        "smd95": 0.78,
+        "smd95_status": "reached",
+        "detection_at_max": 1.0,
+        "n_trajectories": 281,
+        "n_events": 281,
+        "indetectable_at_max_pct": 0.0,
+        "weibull_parametric_recommended": false
+      },
+      {
+        "model": "ae_lstm",
+        "component": "fusivel_ac",
+        "npr": 30,
+        "smd95": NaN,
+        "smd95_status": "not_reached",
+        "detection_at_max": 0.7188612099644128,
+        "n_trajectories": 281,
+        "n_events": 196,
+        "indetectable_at_max_pct": 30.2491103202847,
+        "weibull_parametric_recommended": false
+      },
+      {
+        "model": "ae_lstm",
+        "component": "igbt",
+        "npr": 90,
+        "smd95": 0.4,
+        "smd95_status": "reached",
+        "detection_at_max": 1.0,
+        "n_trajectories": 281,
+        "n_events": 281,
+        "indetectable_at_max_pct": 0.0,
+        "weibull_parametric_recommended": false
+      }
+    ],
+    "weibull_role": "diagnóstico no papel de probabilidade; síntese paramétrica somente quando o teste formal quantizado é aceito",
+    "weibull_acceptance_scope": "A aceitação ou rejeição se refere somente ao ajuste Weibull; não classifica a qualidade dos detectores."
+  },
+  "limitations": [
+    "GPVS-Faults é evidência experimental de bancada, não validação de campo.",
+    "Janelas do mesmo ensaio permanecem temporalmente autocorrelacionadas.",
+    "As assinaturas E2 são proxies sintéticos orientados pela FMECA.",
+    "Os IC95% Wilson de E2 usam janelas-trajetórias e são descritivos diante da autocorrelação intraensaio.",
+    "Curvas em a_det não são vida útil, RUL ou confiabilidade física."
+  ]
+}
