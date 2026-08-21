@@ -253,22 +253,19 @@ def test_mapa_de_resultados_separa_detectabilidade_de_confiabilidade_fisica():
     assert "não repete valores" in texto or "não** repete valores" in texto
 
 
-def test_o_artefato_v2_de_confiabilidade_declara_que_nao_estima_do_dataset():
+def test_artefato_canonico_de_confiabilidade_declara_que_nao_estima_do_dataset():
     """A ressalva tem de viajar com o dado, não só com o texto.
 
     Se um dia o artefato perder essa declaração, o mapa passa a afirmar por
     conta própria — e nós voltamos a ter duas fontes para a mesma ressalva.
     """
-    artefato = RAIZ / "resultados/v2/confiabilidade/resultado.json"
-    if not artefato.exists():
-        pytest.skip("confiabilidade v2 ainda não publicada")
-
+    artefato = RAIZ / "resultados/confiabilidade/metodologia.json"
     dados = json.loads(artefato.read_text(encoding="utf-8"))
-    assert dados.get("status") == "bibliographic_sensitivity_not_dataset_estimate"
+    assert dados.get("status") == "bibliographic_component_sensitivity"
     assert dados.get("dataset_role") == (
         "detector_evaluation_only_not_physical_reliability"
     )
-    assert dados.get("model", {}).get("time_unit") == "year", (
+    assert dados.get("time_unit_primary") == "hour", (
         "o eixo da confiabilidade física é TEMPO; se virar magnitude, ela "
         "colidiu com a detectabilidade"
     )

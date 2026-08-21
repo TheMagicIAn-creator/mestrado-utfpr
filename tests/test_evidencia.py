@@ -25,9 +25,10 @@ def test_metricas_anomalia_decisao_nativa():
 
 def test_consolidar_marca_evidence_level_e1(monkeypatch):
     from src.ml import experimentos_artigos as E
+    from src.ml import graficos_experimentos as G
 
     monkeypatch.setattr(E, "_salvar_resultado", lambda exp, res: None)
-    monkeypatch.setattr(E, "_grafico_comparacao", lambda exp, res: [])
+    monkeypatch.setattr(G, "_grafico_comparacao", lambda exp, res: [])
 
     exp = E.REGISTRO["ibrahim"]
     modelos = {"AE-LSTM": {"auc": 0.80, "disponivel": True}}
