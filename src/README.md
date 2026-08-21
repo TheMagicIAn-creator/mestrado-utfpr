@@ -1,11 +1,11 @@
-# Arquitetura do `src/` — Al IAdo PV
+# Arquitetura do `src/` — ALIAdo
 
 Mapa rápido para não se perder. O pacote tem **4 áreas**. `core/` é a base;
 os módulos `conhecimento/ferramentas*` funcionam como adaptadores e podem acionar `ml/`;
-`webapp_v2/` e `orquestrador.py` compõem os fluxos no topo:
+`webapp/` e `orquestrador.py` compõem os fluxos no topo:
 
 ```
-                 webapp_v2/ + orquestrador.py
+                  webapp/ + orquestrador.py
                          │
                  conhecimento/ (RAG / agente)
                          │ ferramentas
@@ -16,8 +16,7 @@ core/  ◄──────────────── ml/ (pipeline e exper
 Regra de ouro: **`core/` é a fundação** (todos importam dela; ela não importa
 ninguém). `ml/` não depende do agente. A integração RAG→ML fica concentrada em
 na família `conhecimento/ferramentas*`; a interface não implementa regra científica.
-A V1 Streamlit (`src/interface/`) foi **removida** em 15/08/2026 — ver
-`docs/aplicacao_web_v2.md` para as duas capacidades que a V2 ainda não portou.
+A aplicação canônica é ASGI e inicia com `python -m src.webapp`.
 
 ---
 
@@ -136,16 +135,16 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 | `resultados_weibull.py` | Produz a síntese textual da detectabilidade E2 a partir dos artefatos Weibull versionados. |
 | `resultados_gpvs.py` | Formata o resumo E3 do GPVS-Faults sem ampliar a fachada geral de resultados. |
 
-## `webapp_v2/`, `interface/` legada + raiz do pacote
+## `webapp/` + raiz do pacote
 | Arquivo | O que faz |
 |---|---|
-| `webapp_v2/app.py` | Aplicação ASGI V2, API, arquivos estáticos e cabeçalhos de segurança. |
-| `webapp_v2/contracts.py` | Valida apenas resultados V2 e fornece contratos somente leitura. |
-| `webapp_v2/agent_adapter.py` | Liga o chat ao mesmo RAG, Gemini e ferramentas, com aquecimento explícito. |
-| `webapp_v2/launcher.py` | Entrada canônica e bloqueio da execução acidental via Streamlit. |
-| `webapp_v2/rendering.py` | Converte Markdown acadêmico em HTML sem aceitar HTML bruto do modelo. |
-| `webapp_v2/scientific_context.py` | Reconcilia respostas do agente com os contratos que alimentam as figuras. |
-| `webapp_v2/session_journal.py` | Grava e reindexa sessões V2 sem estado do Streamlit. |
+| `webapp/app.py` | Aplicação ASGI, SSE, APIs canônicas, arquivos estáticos e cabeçalhos de segurança. |
+| `webapp/contracts.py` | Valida E2, E3, confiabilidade e fontes sem recalcular métricas. |
+| `webapp/agent_adapter.py` | Liga o chat ao RAG, Gemini e ferramentas, com aquecimento em background. |
+| `webapp/launcher.py` | Entrada canônica `python -m src.webapp`. |
+| `webapp/rendering.py` | Converte Markdown acadêmico em HTML sem aceitar HTML bruto do modelo. |
+| `webapp/scientific_context.py` | Reconcilia respostas do agente com os contratos científicos vigentes. |
+| `webapp/session_journal.py` | Grava e reindexa sessões web sem bloquear a resposta HTTP. |
 | `base_runtime.py` | Restaura índices, escolhe embeddings e prepara BM25 sem depender da UI. |
 | `orquestrador.py` | Coordenação leve do backend na init (reprocessamento por sinal + indexação de PDFs novos). |
 
@@ -153,7 +152,7 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 
 ## Dois fluxos para entender o todo
 
-**1. Pergunta no chat** (`webapp_v2/agent_adapter` → `agente`/`ferramentas`):
+**1. Pergunta no chat** (`webapp/agent_adapter` → `agente`/`ferramentas`):
 `roteamento_ferramentas.decidir_acao`, reexportado pela fachada, decide se é
 caso de **ferramenta** (rodar/consultar ML) ou de **RAG**. Se RAG: o agente
 expande a query → combina ChromaDB semântico e

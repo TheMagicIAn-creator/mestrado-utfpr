@@ -1,10 +1,9 @@
-# Comandos — Al IAdo PV
+# Comandos — ALIAdo
 
 ## Aplicação
 ```powershell
-python -m src.webapp_v2     # aplicação canônica em http://127.0.0.1:8000
-uvicorn src.webapp_v2.app:app --reload  # desenvolvimento com recarga automática
-python main.py              # chat no terminal
+python -m src.webapp              # aplicação canônica em http://127.0.0.1:8000
+uvicorn src.webapp.app:app --reload  # desenvolvimento com recarga automática
 ```
 
 ## Verificação / diagnóstico
@@ -87,9 +86,8 @@ python scripts/avaliar_agente_100.py --com-memoria   # grava a avaliação na co
 ```
 
 ## Observações
-- No Windows, `python -m src.webapp_v2` inicia o Uvicorn; encerre com `Ctrl+C`.
-- `python app.py` é apenas um alias compatível. `streamlit run app.py` é
-  rejeitado para impedir que a interface V1 seja confundida com a V2.
+- No Windows, `python -m src.webapp` inicia o Uvicorn; encerre com `Ctrl+C`.
+- `python app.py` é apenas uma ponte ASGI compatível.
 - `KMP_DUPLICATE_LIB_OK=TRUE` é definido cedo (config/app/main) para evitar crash de OpenMP duplicado.
 - Etapas aparecem como **stale/pending** até serem recalculadas com o código atual (cria o manifesto).
 - O pipeline pesado roda no PC porque `dados/brutos/` não é publicado. Na

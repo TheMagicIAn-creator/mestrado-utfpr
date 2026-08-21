@@ -1,4 +1,4 @@
-# Al IAdo PV — Mestrado UTFPR
+# ALIAdo — Mestrado UTFPR
 
 Predictive failure analysis of AC-side components in grid-connected
 photovoltaic inverters using Machine Learning, with a
@@ -9,7 +9,7 @@ Defense scheduled for March 2027.
 
 ## Overview
 
-This repository hosts **Al IAdo PV**, an AI research assistant built
+This repository hosts **ALIAdo**, an AI research assistant built
 to support the master's dissertation. The system combines a
 knowledge agent (RAG over the scientific literature) with a
 Machine Learning pipeline for fault detection in PV inverters.
@@ -31,7 +31,7 @@ src/
 ├── core/            shared infrastructure (config, utils)
 ├── conhecimento/    knowledge agent — RAG pipeline
 ├── ml/              Machine Learning pipeline
-├── webapp_v2/       canonical Starlette V2 + semantic HTML/CSS/JavaScript
+├── webapp/          canonical Starlette + semantic HTML/CSS/JavaScript
 └── orquestrador.py  backend flow coordinator
 ```
 
@@ -39,8 +39,8 @@ src/
 - **conhecimento** — PDF indexing, semantic + BM25 RAG, fixed-role all-Gemini team (Pro/Flash/Flash-Lite),
   memory consolidation
 - **ml** — exploratory data analysis and fault classification
-- **webapp_v2** — read-only scientific contracts, interactive Plotly views and
-  an HTTP adapter for the ALIAdo agent
+- **webapp** — read-only E2, E3 and reliability contracts, academic figures
+  loaded on demand and an HTTP adapter for the ALIAdo agent
 - **orquestrador** — executes explicitly requested indexing and ML operations;
   it is not run when the dashboard opens
 
@@ -48,7 +48,7 @@ src/
 
 - Python 3.13
 - Starlette + Uvicorn — local or cloud ASGI application
-- Plotly — interactive scientific views backed by versioned data
+- Matplotlib — academic PNG 300 dpi and vector PDF figures loaded on demand
 - ChromaDB — local vector database restored from a portable cloud snapshot
 - sentence-transformers — multilingual embeddings
 - LLM provider — Google Gemini (Pro for chat, Flash for auditing, Flash-Lite for background)
@@ -57,15 +57,12 @@ src/
 ## How to run
 
 ```powershell
-python -m src.webapp_v2
+python -m src.webapp
 # development with reload:
-uvicorn src.webapp_v2.app:app --reload
+uvicorn src.webapp.app:app --reload
 ```
 
 Open `http://127.0.0.1:8000`. `python app.py` remains a compatibility alias.
-`streamlit run app.py` is intentionally rejected, so the legacy interface can
-never be confused with the canonical V2. The Streamlit modules remain frozen
-only for migration history.
 
 A single Google Gemini API key must be set in a local `.env` file —
 see `.env.example` for the template. The `.env` file is never
@@ -84,7 +81,7 @@ Models, scalers and local Obsidian state are not published.
 |-------|-----------------------|---------------|
 | 1     | Foundation            | Done          |
 | 2     | RAG agent             | Done          |
-| 3     | ASGI web application  | Done (V2)     |
+| 3     | ASGI web application  | Done          |
 | 4     | Automation            | Done          |
 | 5     | ML pipeline           | Implemented (E2 + E3 bench) |
 
@@ -101,7 +98,7 @@ magnitude, not physical RUL. Field validation is still not performed.
 - [`docs/evidence_levels.md`](docs/evidence_levels.md) — níveis de evidência E0–E3.
 - [`docs/reproducibilidade.md`](docs/reproducibilidade.md) — manifestos, estados, memória, recálculo.
 - [`docs/memoria_agentes.md`](docs/memoria_agentes.md) — aprendizado validado entre sessões e limites de persistência.
-- [`docs/aplicacao_web_v2.md`](docs/aplicacao_web_v2.md) — aplicação ASGI, contratos HTTP e execução local/nuvem.
+- [`docs/aplicacao_web.md`](docs/aplicacao_web.md) — aplicação ASGI, APIs e limites operacionais.
 - [`docs/comandos.md`](docs/comandos.md) — todos os comandos.
 
 ## Verificação rápida
@@ -109,7 +106,7 @@ magnitude, not physical RUL. Field validation is still not performed.
 ```powershell
 python scripts/verificar_ambiente.py    # diagnóstico (imports, chaves, datasets, ChromaDB, pipeline)
 python -m pytest                        # testes unitários
-python -m src.webapp_v2                  # interface em http://127.0.0.1:8000
+python -m src.webapp                     # interface em http://127.0.0.1:8000
 ```
 
 ## Author

@@ -1,4 +1,4 @@
-"""Registro e indexacao das conversas da aplicacao V2."""
+"""Registro e indexação das conversas da aplicação canônica."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from src.core.logs import get_logger
 from src.core.tempo import agora_local
 
 _SESSION_ID = re.compile(r"^[A-Za-z0-9_-]{8,80}$")
-_logger = get_logger("webapp_v2.session_journal")
+_logger = get_logger("webapp.session_journal")
 
 
 def _indexar(caminho: Path, modelo_embeddings) -> None:
@@ -52,17 +52,17 @@ class SessionJournal:
         agora = agora_local()
         self._pasta.mkdir(parents=True, exist_ok=True)
         caminho = self._pasta / (
-            f"{agora:%Y-%m-%d_%H-%M-%S}_{session_id[:8]}_sessao_web_v2.md"
+            f"{agora:%Y-%m-%d_%H-%M-%S}_{session_id[:8]}_sessao_web.md"
         )
         caminho.write_text(
             (
                 "---\n"
                 f"data: {agora:%Y-%m-%d}\n"
                 f"hora: {agora:%H:%M}\n"
-                "tipo: sessao-web-v2\n"
-                "tags: [al-iado-pv, sessao, web-v2, mestrado]\n"
+                "tipo: sessao-web\n"
+                "tags: [aliado, sessao, web, mestrado]\n"
                 "---\n\n"
-                f"# Sessao Web V2 - {agora:%d/%m/%Y %H:%M}\n\n"
+                f"# Sessão Web - {agora:%d/%m/%Y %H:%M}\n\n"
             ),
             encoding="utf-8",
         )
@@ -104,7 +104,7 @@ class SessionJournal:
         try:
             self._indexer(caminho, modelo_embeddings)
         except Exception as exc:
-            _logger.warning("sessao V2 salva, mas nao indexada: %s", exc)
+            _logger.warning("sessão salva, mas não indexada: %s", exc)
 
         self._persistir_na_nuvem(caminho, numero)
         try:
@@ -134,8 +134,8 @@ class SessionJournal:
             if persistencia_ativa():
                 persistir_arquivo(
                     caminho,
-                    mensagem=f"chore(sessao): atualiza sessao web V2 ({numero} interacoes)",
+                    mensagem=f"chore(sessao): atualiza sessão web ({numero} interações)",
                     alvo="sessao",
                 )
         except Exception as exc:
-            _logger.warning("sessao V2 nao persistida na nuvem: %s", exc)
+            _logger.warning("sessão não persistida na nuvem: %s", exc)

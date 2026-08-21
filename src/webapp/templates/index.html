@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ALIAdo, ambiente acadêmico para análise de inversores fotovoltaicos.">
+  <meta name="theme-color" content="#f7f8fa">
+  <title>ALIAdo</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script defer src="/static/app.js"></script>
+  <script async id="lucide-runtime" src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#workspace-main">Ir para o conteúdo</a>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+      <div class="brand-row">
+        <div class="brand-mark" aria-hidden="true">A</div>
+        <div class="brand-copy"><strong>ALIAdo</strong><span>Pesquisa UTFPR</span></div>
+        <button class="icon-button sidebar-close" id="sidebar-close" type="button" aria-label="Fechar menu" title="Fechar menu">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <button class="new-chat-button" id="new-chat" type="button">
+        <i data-lucide="square-pen" aria-hidden="true"></i><span>Nova conversa</span>
+      </button>
+
+      <nav class="primary-nav" aria-label="Áreas da pesquisa">
+        <button class="nav-item is-active" type="button" data-view="chat" aria-current="page">
+          <i data-lucide="message-square" aria-hidden="true"></i><span>Conversa</span>
+        </button>
+        <button class="nav-item" type="button" data-view="e3">
+          <i data-lucide="git-compare-arrows" aria-hidden="true"></i><span>Comparação E3</span>
+        </button>
+        <button class="nav-item" type="button" data-view="e2">
+          <i data-lucide="scan-search" aria-hidden="true"></i><span>FMECA E2</span>
+        </button>
+        <button class="nav-item" type="button" data-view="reliability">
+          <i data-lucide="activity" aria-hidden="true"></i><span>Confiabilidade</span>
+        </button>
+        <button class="nav-item" type="button" data-view="sources">
+          <i data-lucide="library" aria-hidden="true"></i><span>Fontes</span>
+        </button>
+      </nav>
+
+      <section class="history-region" aria-labelledby="history-heading">
+        <div class="sidebar-section-heading">
+          <span id="history-heading">Recentes</span>
+          <button class="icon-button" id="export-chat" type="button" aria-label="Exportar conversa" title="Exportar conversa">
+            <i data-lucide="download" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="history-list" id="history-list"></div>
+      </section>
+
+      <div class="sidebar-footer">
+        <div class="runtime-status" id="runtime-status" data-state="iniciando" role="status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="runtime-status-text">Inicializando</span>
+        </div>
+        <button class="icon-button" id="theme-toggle" type="button" aria-label="Alternar tema" title="Alternar tema">
+          <i data-lucide="moon" aria-hidden="true"></i>
+        </button>
+      </div>
+    </aside>
+
+    <button class="sidebar-scrim" id="sidebar-scrim" type="button" aria-label="Fechar menu"></button>
+
+    <div class="workspace">
+      <header class="mobile-header">
+        <button class="icon-button" id="sidebar-open" type="button" aria-label="Abrir menu" title="Abrir menu">
+          <i data-lucide="menu" aria-hidden="true"></i>
+        </button>
+        <div class="mobile-brand"><span class="brand-mark" aria-hidden="true">A</span><strong>ALIAdo</strong></div>
+        <button class="icon-button mobile-new-chat" type="button" aria-label="Nova conversa" title="Nova conversa">
+          <i data-lucide="square-pen" aria-hidden="true"></i>
+        </button>
+      </header>
+
+      <main id="workspace-main" tabindex="-1">
+        <section class="view chat-view is-active" id="view-chat" data-view-panel="chat" aria-labelledby="chat-title">
+          <header class="workspace-header chat-workspace-header">
+            <div>
+              <p class="section-kicker">Agente acadêmico</p>
+              <h1 id="chat-title">Conversa</h1>
+            </div>
+            <div class="header-actions">
+              <span class="provider-label"><span class="provider-dot" aria-hidden="true"></span>Gemini</span>
+              <button class="icon-button" id="clear-chat" type="button" aria-label="Limpar conversa" title="Limpar conversa">
+                <i data-lucide="trash-2" aria-hidden="true"></i>
+              </button>
+            </div>
+          </header>
+
+          <div class="conversation" id="conversation" aria-live="polite">
+            <div class="welcome-state" id="welcome-state">
+              <div class="welcome-mark" aria-hidden="true">A</div>
+              <h2>Boa pesquisa, Rodolfo.</h2>
+              <p>Em que parte da dissertação trabalhamos agora?</p>
+              <div class="prompt-grid" id="prompt-grid">
+                <button type="button" data-prompt="Compare o Autoencoder Denso com o AE-LSTM nos resultados E3.">
+                  <i data-lucide="git-compare-arrows" aria-hidden="true"></i>
+                  <span>Comparar Denso e AE-LSTM</span>
+                </button>
+                <button type="button" data-prompt="Interprete os limites de detectabilidade SMD95 da validação FMECA E2.">
+                  <i data-lucide="scan-search" aria-hidden="true"></i>
+                  <span>Interpretar SMD95</span>
+                </button>
+                <button type="button" data-prompt="Explique as curvas R(t), F(t), f(t) e h(t) dos componentes.">
+                  <i data-lucide="activity" aria-hidden="true"></i>
+                  <span>Analisar confiabilidade</span>
+                </button>
+                <button type="button" data-prompt="Prepare um resumo acadêmico dos resultados atuais para minha orientadora.">
+                  <i data-lucide="file-text" aria-hidden="true"></i>
+                  <span>Resumo para orientadora</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="composer-region">
+            <div class="stream-status" id="stream-status" role="status" aria-live="polite"></div>
+            <div class="attachment-list" id="attachment-list" aria-live="polite"></div>
+            <form class="chat-composer" id="chat-form">
+              <label class="icon-button attach-button" for="chat-files" aria-label="Anexar arquivos" title="Anexar arquivos">
+                <i data-lucide="paperclip" aria-hidden="true"></i>
+              </label>
+              <input id="chat-files" name="files" type="file" multiple hidden>
+              <textarea id="chat-input" name="message" rows="1" maxlength="12000" placeholder="Mensagem para o ALIAdo" aria-label="Mensagem" required></textarea>
+              <button class="send-button" id="send-button" type="submit" aria-label="Enviar mensagem" title="Enviar mensagem">
+                <i data-lucide="arrow-up" aria-hidden="true"></i>
+              </button>
+            </form>
+            <p class="composer-note">Respostas acadêmicas devem ser verificadas nas fontes citadas.</p>
+          </div>
+        </section>
+
+        <section class="view research-view" id="view-e3" data-view-panel="e3" aria-labelledby="e3-title" hidden>
+          <header class="workspace-header research-header">
+            <div><p class="section-kicker">Evidência experimental E3</p><h1 id="e3-title">Autoencoder Denso × AE-LSTM</h1></div>
+            <span class="evidence-badge">GPVS-Faults</span>
+          </header>
+          <div class="panel-loading" data-loading="e3" role="status"><span></span>Carregando resultados</div>
+          <div class="panel-content" id="e3-content"></div>
+        </section>
+
+        <section class="view research-view" id="view-e2" data-view-panel="e2" aria-labelledby="e2-title" hidden>
+          <header class="workspace-header research-header">
+            <div><p class="section-kicker">Validação sintética E2</p><h1 id="e2-title">Detectabilidade orientada pela FMECA</h1></div>
+            <span class="evidence-badge is-synthetic">Eixo a<sub>det</sub></span>
+          </header>
+          <div class="panel-loading" data-loading="e2" role="status"><span></span>Carregando resultados</div>
+          <div class="panel-content" id="e2-content"></div>
+        </section>
+
+        <section class="view research-view" id="view-reliability" data-view-panel="reliability" aria-labelledby="reliability-title" hidden>
+          <header class="workspace-header research-header">
+            <div><p class="section-kicker">Modelo físico bibliográfico</p><h1 id="reliability-title">Confiabilidade dos componentes</h1></div>
+            <span class="evidence-badge is-bibliographic">Tempo em horas e anos</span>
+          </header>
+          <div class="panel-loading" data-loading="reliability" role="status"><span></span>Carregando resultados</div>
+          <div class="panel-content" id="reliability-content"></div>
+        </section>
+
+        <section class="view research-view" id="view-sources" data-view-panel="sources" aria-labelledby="sources-title" hidden>
+          <header class="workspace-header research-header">
+            <div><p class="section-kicker">Rastreabilidade</p><h1 id="sources-title">Fontes e proveniência</h1></div>
+            <span class="evidence-badge is-source">SHA-256</span>
+          </header>
+          <div class="panel-loading" data-loading="sources" role="status"><span></span>Carregando fontes</div>
+          <div class="panel-content" id="sources-content"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <dialog class="image-dialog" id="image-dialog">
+    <div class="dialog-toolbar">
+      <div class="dialog-title-group"><strong id="dialog-title"></strong><span id="dialog-note"></span></div>
+      <div class="dialog-actions">
+        <button class="icon-button" id="zoom-out" type="button" aria-label="Reduzir" title="Reduzir"><i data-lucide="zoom-out" aria-hidden="true"></i></button>
+        <output id="zoom-level" aria-live="polite">100%</output>
+        <button class="icon-button" id="zoom-in" type="button" aria-label="Ampliar" title="Ampliar"><i data-lucide="zoom-in" aria-hidden="true"></i></button>
+        <a class="icon-button" id="dialog-pdf" href="#" target="_blank" rel="noreferrer" aria-label="Abrir PDF" title="Abrir PDF"><i data-lucide="file-down" aria-hidden="true"></i></a>
+        <button class="icon-button" id="dialog-close" type="button" aria-label="Fechar" title="Fechar"><i data-lucide="x" aria-hidden="true"></i></button>
+      </div>
+    </div>
+    <div class="dialog-canvas" id="dialog-canvas"><img id="dialog-image" alt=""></div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

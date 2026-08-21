@@ -613,7 +613,7 @@ provam desempenho industrial DE CAMPO: E3 de campo continua não realizada.
   responsiva sob demanda e download; a imagem só é renderizada inline quando
   Rodolfo pede explicitamente ("mostre os gráficos", "veja a curva ROC").
   Comportamento em src/ml/resultados.py (flag inline) e na Web V2
-  (src/webapp_v2/rendering.py + static/app.js).
+  (src/webapp/rendering.py + static/app.js).
 - Comparações de experimentos oferecem heatmap, pequenos múltiplos por pontos
   e barras horizontais sob comando. Contagens usam escala própria e cobertura
   percentual, para uma referência grande não achatar as diferenças entre modelos.

@@ -1,0 +1,433 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from threading import Event, Thread, Timer
+from time import monotonic
+from types import SimpleNamespace
+
+import pytest
+from starlette.testclient import TestClient
+
+from src.webapp.agent_adapter import (
+    MAX_ATTACHMENT_BYTES,
+    AgentAdapter,
+    _Componentes,
+    _historico_normalizado,
+    _validar_anexos,
+)
+from src.webapp.app import create_app
+from src.webapp.contracts import (
+    e2_contract,
+    e3_contract,
+    reliability_contract,
+    sources_contract,
+)
+from src.webapp.rendering import render_agent_markdown
+from src.webapp.scientific_context import scientific_context_for
+from src.webapp.session_journal import SessionJournal
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _sse_events(text: str) -> list[tuple[str, dict]]:
+    events = []
+    for block in text.replace("\r\n", "\n").split("\n\n"):
+        if not block.strip():
+            continue
+        event = "message"
+        data = []
+        for line in block.splitlines():
+            if line.startswith("event:"):
+                event = line.removeprefix("event:").strip()
+            elif line.startswith("data:"):
+                data.append(line.removeprefix("data:").strip())
+        if data:
+            events.append((event, json.loads("\n".join(data))))
+    return events
+
+
+@pytest.fixture()
+def calls():
+    return []
+
+
+@pytest.fixture()
+def client(calls):
+    def answer(message, history, attachments):
+        calls.append((message, history, attachments))
+        return {
+            "answer": f"Resposta **verificada**: {message}",
+            "images": [],
+            "route": "test-double",
+        }
+
+    with TestClient(
+        create_app(AgentAdapter(answerer=answer), warm_on_startup=False)
+    ) as test_client:
+        yield test_client
+
+
+def test_homepage_e_canonicamente_chat_first(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "<title>ALIAdo</title>" in response.text
+    assert 'id="view-chat"' in response.text
+    assert 'id="chat-form"' in response.text
+    assert "/static/app.js" in response.text
+    assert "plotly" not in response.text.casefold()
+    assert "webapp_v2" not in response.text.casefold()
+    assert "autoencoder v2" not in response.text.casefold()
+    assert response.headers["x-frame-options"] == "DENY"
+    assert "default-src 'self'" in response.headers["content-security-policy"]
+
+
+def test_e3_publica_apenas_denso_e_lstm_no_gpvs(client):
+    response = client.get("/api/results/e3")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["dataset"]["name"] == "GPVS-Faults"
+    assert set(data["models"]) == {"ae_denso", "ae_lstm"}
+    assert data["primary_metric"] == "auc_pr"
+    assert data["metrics"]["ae_denso"]["auc_pr"]["estimate"] == pytest.approx(
+        0.8607589231887786
+    )
+    assert data["metrics"]["ae_lstm"]["auc_pr"]["estimate"] == pytest.approx(
+        0.8409618301937369
+    )
+    assert len(data["trials"]) == 28
+    assert len(data["figures"]) == 4
+    assert all(item["url"].startswith("/artifacts/comparison/") for item in data["figures"])
+
+
+def test_e2_preserva_censura_e_separa_magnitude_de_tempo(client):
+    response = client.get("/api/results/e2")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["axis_is_time"] is False
+    assert data["magnitude_steps"] == 101
+    assert len(data["summary"]) == 6
+    fuse_lstm = next(
+        item
+        for item in data["summary"]
+        if item["model"] == "ae_lstm" and item["component"] == "fusivel_ac"
+    )
+    assert fuse_lstm["smd95"] is None
+    assert fuse_lstm["smd95_status"] == "not_reached"
+    assert fuse_lstm["detection_at_max"] == pytest.approx(0.7188612099644128)
+    assert all(item["weibull_parametric_recommended"] is False for item in data["summary"])
+
+
+def test_confiabilidade_publica_quatro_cenarios_fisicos_rastreaveis(client):
+    response = client.get("/api/reliability")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["dataset"] == "GPVS-Faults"
+    assert data["dataset_role"] == "detector_evaluation_only_not_physical_reliability"
+    assert data["physical_weibull"]["beta"] is None
+    assert data["physical_weibull"]["eta"] is None
+    assert len(data["scenarios"]) == 4
+    assert data["scenarios"][-1]["lambda_per_hour"] == pytest.approx(2.17e-6)
+    assert data["formulas"]["hazard"] == "h(t) = lambda"
+
+
+def test_fontes_expoem_dataset_pdf_e_manifestos(client):
+    response = client.get("/api/sources")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["dataset"]["doi"] == "10.17632/n76t439f65.1"
+    assert len(data["dataset"]["raw_files_sha256"]) == 16
+    assert data["bibliography"][0]["pdf_page"] == 35
+    assert len(data["manifests"]) == 2
+    assert len(data["separation_rules"]) == 4
+
+
+def test_status_e_barato_e_nao_carrega_contratos(monkeypatch, client):
+    import src.webapp.app as web_app
+
+    monkeypatch.setattr(
+        web_app,
+        "e3_contract",
+        lambda: (_ for _ in ()).throw(AssertionError("não deveria carregar E3")),
+    )
+    response = client.get("/api/status")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["application"] == "aliado-web"
+    assert data["api_version"] == 1
+    assert data["agent"]["state"] == "pronto"
+    assert data["agent"]["retrieval"] == [
+        "semantic",
+        "bm25",
+        "sessions",
+        "obsidian",
+    ]
+
+
+def test_versao_e_entrypoint_sao_canonicos(client):
+    response = client.get("/api/version")
+    assert response.json() == {
+        "application": "aliado-web",
+        "name": "ALIAdo",
+        "version": "3.0.0",
+        "api_version": 1,
+        "interface": "asgi",
+    }
+    launcher = (ROOT / "src/webapp/__main__.py").read_text(encoding="utf-8")
+    root_app = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert "src.webapp.launcher" in launcher
+    assert "from src.webapp.app import app" in root_app
+
+
+def test_chat_stream_emite_status_delta_e_done(client, calls):
+    history = [
+        {"role": "user" if index % 2 == 0 else "assistant", "content": str(index)}
+        for index in range(20)
+    ]
+    response = client.post(
+        "/api/chat/stream",
+        json={"message": "Interprete o AUC", "history": history},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    events = _sse_events(response.text)
+    names = [name for name, _payload in events]
+    assert names[:2] == ["status", "status"]
+    assert "delta" in names
+    assert names[-1] == "done"
+    done = events[-1][1]
+    assert done["route"] == "test-double"
+    assert "<strong>verificada</strong>" in done["answer_html"]
+    message, received_history, attachments = calls[-1]
+    assert message == "Interprete o AUC"
+    assert len(received_history) == 16
+    assert received_history[0]["content"] == "4"
+    assert attachments == []
+
+
+def test_saudacao_local_responde_antes_do_aquecimento(monkeypatch, tmp_path):
+    import src.conhecimento.base_runtime as base_runtime
+    import src.conhecimento.multiagente as multiagent
+
+    started = Event()
+    release = Event()
+
+    def slow_base(*, sincronizar_obsidian_local=True, embeddings_baixo_consumo=False):
+        assert sincronizar_obsidian_local is False
+        assert embeddings_baixo_consumo is True
+        started.set()
+        release.wait(timeout=3)
+        return SimpleNamespace(
+            perfil="perfil",
+            modelo_embeddings=object(),
+            literatura=object(),
+            sessoes=object(),
+            obsidian=object(),
+            indice_lexical=object(),
+            modo_consulta=True,
+        )
+
+    monkeypatch.setattr(base_runtime, "carregar_base_conhecimento", slow_base)
+    monkeypatch.setattr(
+        multiagent,
+        "criar_equipe_agentes",
+        lambda: SimpleNamespace(conversa=object(), auditor=object()),
+    )
+    adapter = AgentAdapter(session_journal=SessionJournal(pasta=tmp_path))
+    warm = adapter.warm_background()
+    assert warm is not None
+    assert started.wait(timeout=1)
+    safety_release = Timer(1.5, release.set)
+    safety_release.daemon = True
+    safety_release.start()
+
+    with TestClient(create_app(adapter, warm_on_startup=False)) as test_client:
+        start = monotonic()
+        response = test_client.post(
+            "/api/chat/stream",
+            json={"message": "oi", "history": [], "session_id": "sessao_rapida"},
+        )
+        duration = monotonic() - start
+
+    release.set()
+    warm.join(timeout=2)
+    done = _sse_events(response.text)[-1][1]
+    assert done["route"] == "local"
+    assert done["response_ms"] < 500
+    assert duration < 0.5
+
+
+def test_chat_multipart_sanitiza_nome_e_limita_anexos(client, calls):
+    response = client.post(
+        "/api/chat/stream",
+        data={"message": "Leia o anexo", "history": "[]"},
+        files=[("files", ("../evidencia.txt", b"conteudo", "text/plain"))],
+    )
+    assert response.status_code == 200
+    assert _sse_events(response.text)[-1][0] == "done"
+    assert calls[-1][2] == [("evidencia.txt", b"conteudo")]
+
+    excessive = client.post(
+        "/api/chat/stream",
+        data={"message": "Leia", "history": "[]"},
+        files=[
+            ("files", (f"{index}.txt", b"x", "text/plain"))
+            for index in range(5)
+        ],
+    )
+    assert excessive.status_code == 400
+    assert "No máximo 4" in excessive.json()["detail"]
+
+
+def test_limites_do_adaptador_sao_deterministicos():
+    history = [{"role": "user", "content": str(index)} for index in range(30)]
+    assert len(_historico_normalizado(history)) == 16
+    with pytest.raises(ValueError, match="15 MB"):
+        _validar_anexos([("grande.bin", b"x" * (MAX_ATTACHMENT_BYTES + 1))])
+    with pytest.raises(ValueError, match="No máximo 4"):
+        _validar_anexos([(f"{index}.txt", b"x") for index in range(5)])
+
+
+def test_agente_reutiliza_pipeline_rag_completo(monkeypatch):
+    import src.conhecimento.agente as agent
+    import src.conhecimento.ferramentas as tools
+
+    captured = {}
+    monkeypatch.setattr(tools, "decidir_acao", lambda _message, _llm: {"usar_ferramenta": False})
+
+    def fake_question(**kwargs):
+        captured.update(kwargs)
+        return "Resposta do RAG compartilhado"
+
+    monkeypatch.setattr(agent, "perguntar", fake_question)
+    components = _Componentes(
+        perfil="perfil",
+        modelo_embeddings=object(),
+        literatura=object(),
+        sessoes=object(),
+        obsidian=object(),
+        indice_lexical=object(),
+        llm=object(),
+        auditor=SimpleNamespace(),
+        modo_consulta=True,
+    )
+    adapter = AgentAdapter()
+    adapter._components = components
+    adapter._state = "pronto"
+
+    response = adapter.answer("Compare o Autoencoder Denso com o AE-LSTM.")
+
+    assert response["answer"] == "Resposta do RAG compartilhado"
+    assert response["scientific_contract"] == "canonical"
+    assert captured["modelo_embeddings"] is components.modelo_embeddings
+    assert captured["colecao"] is components.literatura
+    assert captured["colecao_sessoes"] is components.sessoes
+    assert captured["colecao_obsidian"] is components.obsidian
+    assert captured["indice_lexical"] is components.indice_lexical
+    assert captured["auditor"] is components.auditor
+    assert captured["streaming"] is False
+    assert "Dataset experimental único" in captured["contexto_autoritativo"]
+    assert "PCA" not in captured["contexto_autoritativo"]
+
+
+def test_manutencao_da_sessao_nao_bloqueia_resposta(monkeypatch, tmp_path):
+    import src.conhecimento.agente as agent
+
+    indexing_started = Event()
+    release_indexing = Event()
+    indexing_finished = Event()
+
+    def slow_index(_path, _model):
+        indexing_started.set()
+        release_indexing.wait(timeout=3)
+        indexing_finished.set()
+
+    monkeypatch.setattr(agent, "perguntar", lambda **_kwargs: "Resposta científica pronta")
+    adapter = AgentAdapter(session_journal=SessionJournal(pasta=tmp_path, indexer=slow_index))
+    adapter._components = _Componentes(
+        perfil="perfil",
+        modelo_embeddings=object(),
+        literatura=object(),
+        sessoes=object(),
+        obsidian=object(),
+        indice_lexical=object(),
+        llm=object(),
+        auditor=SimpleNamespace(),
+        modo_consulta=True,
+    )
+    adapter._state = "pronto"
+
+    start = monotonic()
+    response = adapter.answer(
+        "Compare o Autoencoder Denso com o AE-LSTM.",
+        session_id="sessao_manutencao",
+    )
+    duration = monotonic() - start
+
+    assert response["maintenance_scheduled"] is True
+    assert duration < 1.0
+    assert indexing_started.wait(timeout=1)
+    release_indexing.set()
+    assert indexing_finished.wait(timeout=1)
+
+
+def test_diario_canonico_persiste_e_reindexa_turnos(tmp_path):
+    indexed = []
+    journal = SessionJournal(
+        pasta=tmp_path,
+        indexer=lambda path, model: indexed.append((path, model)),
+    )
+    model = object()
+    first = journal.record("sessao_12345678", "Qual foi o AUC?", "AUC 0,861.", [], model)
+    second = journal.record("sessao_12345678", "E o LSTM?", "AUC 0,841.", [], model)
+
+    assert first is not None and second is not None
+    assert first["path"] == second["path"]
+    assert second["interaction"] == 2
+    path = Path(second["path"])
+    if not path.is_absolute():
+        path = ROOT / path
+    text = path.read_text(encoding="utf-8")
+    assert "# Sessão Web" in text
+    assert "tipo: sessao-web" in text
+    assert "V2" not in text
+    assert len(indexed) == 2
+
+
+def test_renderizacao_markdown_bloqueia_html_bruto():
+    rendered = render_agent_markdown("**seguro** <script>alert(1)</script>")
+    assert "<strong>seguro</strong>" in rendered
+    assert "<script>" not in rendered
+    assert "&lt;script&gt;" in rendered
+
+
+def test_contexto_cientifico_reconcilia_e2_e3_e_confiabilidade():
+    context = scientific_context_for("Explique resultados, SMD95 e taxa de falha")
+    assert context is not None
+    assert "0.860759" in context
+    assert "0.840962" in context
+    assert "não atingido até a_det=1" in context
+    assert "2.170e-06 h^-1" in context
+    assert "PCA" not in context
+
+
+def test_contratos_diretos_sao_coerentes_e_cacheaveis():
+    assert e3_contract()["dataset"]["name"] == "GPVS-Faults"
+    assert e2_contract()["axis_is_time"] is False
+    assert reliability_contract()["hours_per_year"] == 8760.0
+    assert sources_contract()["dataset"]["experiments"] == 16
+
+
+def test_pacote_web_nao_conserva_identificadores_legados():
+    package = ROOT / "src" / "webapp"
+    source = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in package.rglob("*")
+        if path.suffix in {".py", ".html", ".css", ".js"}
+    ).casefold()
+    assert "webapp_v2" not in source
+    assert "autoencoder_v2" not in source
+    assert "resultados/v2" not in source
+    assert "resultados\\v2" not in source
+    assert "plotly" not in source
