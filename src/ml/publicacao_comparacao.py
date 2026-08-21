@@ -155,6 +155,10 @@ def results_payload(
                 "diagnóstico no papel de probabilidade; síntese paramétrica "
                 "somente quando o teste formal quantizado é aceito"
             ),
+            "weibull_acceptance_scope": (
+                "A aceitação ou rejeição se refere somente ao ajuste Weibull; "
+                "não classifica a qualidade dos detectores."
+            ),
         },
         "limitations": [
             "GPVS-Faults é evidência experimental de bancada, não validação de campo.",
@@ -210,6 +214,9 @@ def _write_report(payload: dict, output: Path) -> Path:
             "Sobrevivência empírica, incidência acumulada e risco discreto vivem ",
             "no eixo de magnitude. O Weibull 2P é apenas diagnóstico formal e ",
             "nunca produz RUL, MTTF ou confiabilidade física.",
+            "",
+            "A não aceitação de um ajuste Weibull rejeita apenas a síntese ",
+            "paramétrica correspondente; não reprova nenhum dos detectores.",
             "",
             "Os IC95% Wilson de E2 tratam cada janela-trajetória como unidade ",
             "Bernoulli e são apresentados como descritivos, pois janelas do ",

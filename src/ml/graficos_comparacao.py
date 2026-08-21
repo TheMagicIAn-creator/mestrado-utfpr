@@ -402,7 +402,11 @@ def plot_e2_weibull_probability(
             fit = fits[
                 fits["component"].eq(component) & fits["model"].eq(model)
             ].iloc[0]
-            status = "aceito" if bool(fit["parametric_recommended"]) else "rejeitado"
+            status = (
+                "ajuste Weibull aceito"
+                if bool(fit["parametric_recommended"])
+                else "ajuste Weibull não aceito"
+            )
             ax.scatter(
                 block["log_magnitude"],
                 block["weibull_y"],
@@ -424,7 +428,10 @@ def plot_e2_weibull_probability(
     return _save_pair(
         fig,
         output,
-        "Pontos são posições empíricas; retas são diagnósticas. Ajuste rejeitado não gera síntese paramétrica.",
+        (
+            "Pontos são posições empíricas; retas são diagnósticas. A não "
+            "aceitação do ajuste Weibull não constitui reprovação do detector."
+        ),
     )
 
 
