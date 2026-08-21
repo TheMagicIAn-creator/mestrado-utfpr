@@ -321,23 +321,35 @@ def plot_e2_smd(summary: pd.DataFrame, output: Path) -> tuple[Path, Path]:
                     color=MODEL_COLORS[model],
                 )
             else:
+                numeric_value = float(value)
                 ax.scatter(
-                    [float(value)],
+                    [numeric_value],
                     [y[i] + offsets[model]],
                     color=MODEL_COLORS[model],
                     s=55,
                     label=MODEL_LABELS[model] if i == 0 else None,
                 )
+                ax.text(
+                    numeric_value + 0.015,
+                    y[i] + offsets[model],
+                    f"{numeric_value:.2f}",
+                    va="center",
+                    fontsize=8,
+                    color=MODEL_COLORS[model],
+                )
     ax.set_xlim(0, 1.2)
     ax.set_yticks(y, [COMPONENT_LABELS[item] for item in components])
     ax.invert_yaxis()
     ax.set_xlabel("SMD95 — menor magnitude com limite inferior do IC95% ≥ 95%")
-    ax.set_title("Magnitude mínima de detecção sustentada")
+    ax.set_title("Limite de detectabilidade SMD95 por componente")
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0))
     return _save_pair(
         fig,
         output,
-        "Marcadores à direita indicam que o alvo não foi atingido até a assinatura nominal a=1.",
+        (
+            "Marcadores à direita indicam alvo não atingido até a=1; "
+            "SMD95 não representa tempo nem vida útil."
+        ),
     )
 
 
