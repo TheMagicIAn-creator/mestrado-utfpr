@@ -1,4 +1,4 @@
-"""Adaptador do agente para HTTP, sem dependência de Streamlit."""
+"""Adaptador HTTP do agente ALIAdo."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from typing import Callable
 from src.core.config import RAIZ_PROJETO
 from src.core.logs import get_logger
 from src.core.seguranca import mascarar_segredos
-from src.webapp_v2.scientific_context import scientific_context_for
-from src.webapp_v2.session_journal import SessionJournal
+from src.webapp.scientific_context import scientific_context_for
+from src.webapp.session_journal import SessionJournal
 
 MAX_MESSAGE_CHARS = 12_000
 MAX_HISTORY_ITEMS = 16
@@ -85,9 +85,10 @@ class AgentAdapter:
         self._lock = threading.RLock()
         self._initialization_lock = threading.Lock()
         self._maintenance_lock = threading.Lock()
+        self._warm_thread: threading.Thread | None = None
         self._last_obsidian_sync: float | None = None
         self._components: _Componentes | None = None
-        self._state = "ready" if answerer is not None else "idle"
+        self._state = "pronto" if answerer is not None else "iniciando"
         self._error: str | None = None
 
     def status(self) -> dict:
@@ -99,7 +100,7 @@ class AgentAdapter:
                 "retrieval": ["semantic", "bm25", "sessions", "obsidian"],
                 "evidence_audit": True,
                 "detail": self._error,
-                "lazy_initialization": True,
+                "background_warmup": True,
             }
 
     def initialize(self) -> dict:
@@ -108,11 +109,36 @@ class AgentAdapter:
             self._initialize()
         return self.status()
 
+    def warm_background(self) -> threading.Thread | None:
+        """Inicia o runtime pesado sem atrasar a primeira resposta HTTP."""
+        if self._answerer is not None:
+            return None
+        with self._lock:
+            if self._components is not None:
+                return None
+            if self._warm_thread is not None and self._warm_thread.is_alive():
+                return self._warm_thread
+            self._state = "iniciando"
+
+            def warm() -> None:
+                try:
+                    self._initialize()
+                except AgenteIndisponivel:
+                    return
+
+            self._warm_thread = threading.Thread(
+                target=warm,
+                name="aliado-runtime-warmup",
+                daemon=True,
+            )
+            self._warm_thread.start()
+            return self._warm_thread
+
     def reset(self) -> None:
         with self._lock:
             self._components = None
             self._error = None
-            self._state = "ready" if self._answerer is not None else "idle"
+            self._state = "pronto" if self._answerer is not None else "iniciando"
 
     def _initialize(self) -> _Componentes:
         with self._lock:
@@ -125,7 +151,7 @@ class AgentAdapter:
             with self._lock:
                 if self._components is not None:
                     return self._components
-                self._state = "loading"
+                self._state = "iniciando"
                 self._error = None
             try:
                 from src.conhecimento.base_runtime import carregar_base_conhecimento
@@ -149,13 +175,13 @@ class AgentAdapter:
                 )
                 with self._lock:
                     self._components = componentes
-                    self._state = "ready"
+                    self._state = "pronto"
                     self._error = None
                 return componentes
             except Exception as exc:
                 erro = mascarar_segredos(str(exc))
                 with self._lock:
-                    self._state = "error"
+                    self._state = "degradado"
                     self._error = erro
                 raise AgenteIndisponivel(erro) from exc
 
@@ -176,15 +202,17 @@ class AgentAdapter:
             path = Path(RAIZ_PROJETO) / path
         try:
             relativo = path.resolve().relative_to(
-                (Path(RAIZ_PROJETO) / "resultados" / "v2").resolve()
+                (Path(RAIZ_PROJETO) / "resultados").resolve()
             )
         except (OSError, ValueError):
             return None
         partes = relativo.parts
-        if not partes or partes[0] not in {"autoencoder", "confiabilidade"}:
+        if not partes or partes[0] not in {"comparacao", "confiabilidade"}:
             return None
         return {
-            "url": "/artifacts/" + relativo.as_posix(),
+            "url": "/artifacts/" + (
+                "comparison/" if partes[0] == "comparacao" else "reliability/"
+            ) + Path(*partes[1:]).as_posix(),
             "caption": str(item.get("caption") or item.get("legenda") or path.stem),
         }
 
@@ -213,7 +241,7 @@ class AgentAdapter:
                 decisao_local = (
                     _decisao_rapida(mensagem) if contexto_cientifico else None
                 )
-                # Perguntas discursivas inequivocas sobre os contratos V2 nao
+                # Perguntas discursivas inequívocas sobre os contratos canônicos não
                 # precisam gastar uma chamada ao Gemini apenas para concluir
                 # que nenhuma ferramenta deve ser executada.
                 if decisao_local and not decisao_local.get("usar_ferramenta"):
@@ -253,7 +281,7 @@ class AgentAdapter:
                         "answer": resposta_ferramenta,
                         "images": imagens,
                         "route": "tool",
-                        "scientific_contract": "v2" if contexto_cientifico else None,
+                        "scientific_contract": "canonical" if contexto_cientifico else None,
                     }
             except AgenteIndisponivel:
                 raise
@@ -283,7 +311,7 @@ class AgentAdapter:
             "answer": resposta,
             "images": [],
             "route": "rag",
-            "scientific_contract": "v2" if contexto_cientifico else None,
+            "scientific_contract": "canonical" if contexto_cientifico else None,
         }
 
     def _postprocess_interaction(
@@ -359,7 +387,7 @@ class AgentAdapter:
         threading.Thread(
             target=self._postprocess_interaction,
             args=(mensagem, resposta, session_id, componentes),
-            name="aliado-v2-maintenance",
+            name="aliado-maintenance",
             daemon=True,
         ).start()
 
@@ -402,7 +430,7 @@ class AgentAdapter:
             erro = mascarar_segredos(str(exc))
             with self._lock:
                 self._error = erro
-                self._state = "error"
+                self._state = "degradado"
             raise AgenteIndisponivel(erro) from exc
 
         if isinstance(resposta, str):
@@ -422,6 +450,6 @@ class AgentAdapter:
             )
             resposta["maintenance_scheduled"] = True
         with self._lock:
-            self._state = "ready"
+            self._state = "pronto"
             self._error = None
         return resposta

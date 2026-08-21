@@ -1,9 +1,8 @@
-# Arquitetura — Al IAdo PV
+# Arquitetura — ALIAdo
 
-Pacote Python modular. Ponto de entrada canônico: `python -m src.webapp_v2`
+Pacote Python modular. Ponto de entrada canônico: `python -m src.webapp`
 (ASGI/Starlette), que abre primeiro o agente e mantém os resultados acadêmicos
-em vistas somente leitura. `app.py` é um alias ASGI e rejeita o executor
-Streamlit. Há também `main.py` (chat no terminal).
+em vistas somente leitura. `app.py` permanece como ponte ASGI compatível.
 
 ```
 src/
@@ -41,24 +40,24 @@ src/
 │   ├── experimentos_artigos.py experimentos de ML por artigo-base
 │   ├── exec_experimento_isolado.py roda experimento pesado em subprocesso
 │   └── resultados.py     leitura/resumo de artefatos
-├── webapp_v2/            aplicação web canônica V2
+├── webapp/               aplicação web canônica
 │   ├── app.py            rotas ASGI, estáticos e segurança HTTP
 │   ├── contracts.py      contratos científicos somente leitura
 │   ├── agent_adapter.py  fronteira HTTP do agente sob demanda
 │   ├── templates/        HTML semântico
-│   └── static/           CSS responsivo e visualizações Plotly
+│   └── static/           CSS responsivo e JavaScript progressivo
 └── orquestrador.py       coordena init + pipeline
 ```
 
 ## Fluxos
-- **Aplicação V2:** `webapp_v2` → Starlette → contratos JSON V2 → HTML/Plotly.
-  O agente é a vista inicial; as vistas científicas usam somente artefatos V2. Essa
+- **Aplicação:** `webapp` → Starlette → contratos JSON E2/E3/confiabilidade → HTML.
+  O agente é a vista inicial; as vistas científicas usam somente artefatos canônicos. Essa
   rota não importa ChromaDB, embeddings ou Torch e nunca inicia treinamento.
-- **Inicialização do agente:** `webapp_v2/agent_adapter` → `base_runtime` → restauração
+- **Inicialização do agente:** `webapp/agent_adapter` → `base_runtime` → restauração
   dos snapshots → encoder local/ONNX → ChromaDB + BM25 → Gemini.
 - **Reconciliação científica:** perguntas sobre resultados → `scientific_context`
   → os mesmos contratos JSON das figuras → prompt autoritativo do agente.
-- **Sessão V2:** resposta → `session_journal` → Markdown em `notas/sessoes/`
+- **Sessão:** resposta → `session_journal` → Markdown em `notas/sessoes/`
   → reindexação na memória sem dependência de Streamlit.
 - **Reprocessamento:** scripts e ferramentas acionam explicitamente o
   orquestrador; abrir a página é sempre uma operação somente leitura.
