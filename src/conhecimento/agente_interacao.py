@@ -758,7 +758,7 @@ def remover_bloco_fontes_llm(texto: str) -> str:
     """
     Remove qualquer secao terminal de 'Referencias', 'Bibliografia',
     '📚 Fontes' etc. que o LLM tenha gerado por conta propria. Evita o
-    duplo bloco quando o Streamlit anexa a lista oficial de citacoes.
+    duplo bloco quando a interface anexa a lista oficial de citacoes.
 
     Heuristica anti-falso-positivo: so corta se o cabecalho for SEGUIDO
     por uma lista (linha comecando com '-', '*', '1.', etc.) ou pelo

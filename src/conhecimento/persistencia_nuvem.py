@@ -3,7 +3,7 @@ persistencia_nuvem.py — Al IAdo PV
 
 Persistência transacional na nuvem via GitHub Contents API.
 
-O Streamlit Community Cloud tem sistema de arquivos EFÊMERO: gravações de runtime
+Hospedagens com sistema de arquivos EFÊMERO perdem gravações de runtime
 somem no próximo redeploy/reinício. Como o repositório Git já é a fonte de
 verdade da memória do agente (o deploy restaura o JSON versionado), o backend
 durável natural é o próprio GitHub — sem provisionar banco novo.
@@ -13,7 +13,7 @@ volta ao repositório via API. No próximo deploy, o app já traz o estado mais
 recente. É a peça que faz o aprendizado sobreviver a redeploys sem depender de
 `git commit` manual do PC.
 
-Ativação (master switch + credencial), configurados nos Secrets do Streamlit:
+Ativação (master switch + credencial), configurados como segredos da plataforma:
   AL_IADO_PERSISTIR_NUVEM = 1
   GITHUB_TOKEN            = <PAT com permissão de escrita em conteúdo>
 Opcionais:

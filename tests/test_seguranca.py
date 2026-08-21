@@ -188,7 +188,7 @@ def test_guarda_anti_injecao_existe_e_e_imperativa():
 def test_nenhum_sidecar_sha256_de_artefato_ignorado_esta_rastreado():
     """Um checksum versionado de um arquivo NÃO versionado quebra quem der pull.
 
-    Aconteceu de fato em 11/08/2026: `resultados/autoencoder/scaler.pkl` é
+    Um scaler científico local é
     ignorado (`.gitignore: *.pkl`), mas `scaler.pkl.sha256` estava rastreado.
     O `git pull` entregou ao pesquisador o hash gerado na máquina do outro
     agente sobre o pickle gerado na dele, e `carregar_pickle_com_sidecar`

@@ -89,17 +89,15 @@ def test_requirements_referenciados_existem():
             )
 
 
-def test_experimentos_do_claude_md_existem_no_registry():
-    """Experimentos listados no CLAUDE.md batem com o REGISTRO do código."""
-    codigo = (RAIZ / "src/ml/experimentos_artigos.py").read_text(encoding="utf-8")
-    bloco = re.search(r"REGISTRO[^=]*=\s*\{(.*?)\n\}", codigo, re.S)
-    assert bloco, "dict REGISTRO não encontrado"
-    chaves = set(re.findall(r'"(\w+)":\s*ExperimentoArtigo', bloco.group(1)))
-    assert chaves == {"ibrahim"}, (
-        f"registry divergente do documentado: {chaves}"
-    )
-    for cortado in ("francisti", "ghoneim", "sharma", "ahirwar", "stender"):
-        assert cortado not in chaves, f"experimento cortado voltou: {cortado}"
+def test_readme_src_nao_reintroduz_pipeline_aposentado():
+    for retired in (
+        "experimentos_artigos.py",
+        "classificador_pv.py",
+        "autoencoder_v2",
+        "macro_comparar.py",
+        "rul_weibull.py",
+    ):
+        assert retired not in README_SRC
 
 
 def test_obsidian_documentado_com_governanca_e_sem_status_bibliografico():
@@ -198,33 +196,12 @@ def test_glossario_desambigua_F0():
         assert marca in glossario, f"o verbete de F0 perdeu a marca {marca!r}"
 
 
-def test_nota_curada_do_gpvs_nao_contradiz_o_artefato():
-    """A nota afirmava que o LIMIAR era ajustado por ensaio; o artefato nega.
-
-    `validacao_gpvs_e3.json` registra `adaptation_per_experiment: false` —
-    pesos e limiar congelados, só a normalização de comissionamento é local.
-    Dizer o contrário faria a banca ler recalibração contra o dado julgado.
-    Pela regra do projeto, artefato prevalece sobre nota.
-    """
-    artefato = RAIZ / "resultados/gpvs/validacao_gpvs_e3.json"
-    nota = RAIZ / "notas/Cerebro/Resultados/Validação experimental GPVS-Faults.md"
-    if not artefato.exists() or not nota.exists():
-        pytest.skip("artefato ou nota do GPVS ausente")
-
+def test_contrato_gpvs_congela_selecao_antes_da_e3():
+    artefato = RAIZ / "resultados/comparacao/comparacao_autoencoders.json"
     dados = json.loads(artefato.read_text(encoding="utf-8"))
-    protocolo = json.dumps(dados.get("protocol", {}), ensure_ascii=False)
-    texto = nota.read_text(encoding="utf-8")
-
-    if '"adaptation_per_experiment": false' in protocolo.lower().replace(" ", "") \
-            or dados.get("protocol", {}).get("adaptation_per_experiment") is False:
-        assert "CONGELADOS" in texto or "congelado" in texto, (
-            "o artefato diz que pesos e limiar ficam congelados; a nota curada "
-            "precisa dizer o mesmo"
-        )
-        assert "scaler, AE e limiar são ajustados" not in texto, (
-            "a nota ainda afirma adaptação de limiar por ensaio, que o artefato "
-            "nega em adaptation_per_experiment"
-        )
+    protocolo = dados["protocol"]
+    assert protocolo["model_selection_uses_fault_data"] is False
+    assert "congelados" in protocolo["e3"]
 
 
 def test_mapa_de_resultados_separa_detectabilidade_de_confiabilidade_fisica():

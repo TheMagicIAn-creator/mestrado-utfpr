@@ -1,8 +1,5 @@
-# ML — pipeline CA (Autoencoder), classificação supervisionada e gráficos.
+# Comparacao Denso versus AE-LSTM e publicacao academica.
 -r requirements-core.txt
-torch
-xgboost
-lightgbm
-matplotlib
-plotly
-pyarrow
+matplotlib==3.10.9
+pyarrow==24.0.0
+torch==2.12.0

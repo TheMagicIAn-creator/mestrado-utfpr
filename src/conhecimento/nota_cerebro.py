@@ -78,7 +78,7 @@ def registrar_nota_cerebro(titulo: str, conteudo: str, tipo: str = "contexto",
     tipo     : conceito | decisao | resultado | contexto | hipotese | experimento.
     tags     : nós comuns da dissertação; inválidas são descartadas com aviso.
     nivel_evidencia : projeto | E1 | E2 | literatura.
-    fonte    : arquivo/artefato de origem (ex.: resultados/macro/...json).
+    fonte    : arquivo/artefato de origem (ex.: resultados/comparacao/...json).
 
     Retorna {"ok", "caminho", "tags", "descartadas", "mensagem"}.
     """

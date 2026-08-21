@@ -1,150 +1,101 @@
-# Metodologia de ML - detector canônico GPVS-Faults
+# Metodologia canônica de Machine Learning
 
-Este documento define a metodologia vigente da dissertação. Os valores
-numéricos citáveis devem ser lidos dos artefatos em `resultados/`; relatórios
-de auditorias anteriores registram decisões históricas e não substituem este
-contrato.
+## 1. Pergunta experimental
 
-## 1. Escopo e fonte de dados
+Comparar, sob o mesmo protocolo, um Autoencoder Denso e um AE-LSTM para
+detecção de anomalias em sinais elétricos do GPVS-Faults. A comparação separa
+evidência experimental E3, detectabilidade sintética E2 e confiabilidade física
+bibliográfica.
 
-O pipeline principal usa exclusivamente o **GPVS-Faults**, uma microrede
-fotovoltaica experimental conectada à rede (DOI
-`10.17632/n76t439f65.1`). Nenhuma amostra de Stender, PMSM, PV Farms,
-telemetria residencial ou Bearing DataCenter é concatenada, usada para ajuste
-ou incorporada às métricas canônicas.
+## 2. Dataset e features
 
-- `F0L` e `F0M`: operação saudável em IPPT e MPPT.
-- `F1L` a `F7M`: 14 ensaios com sete falhas experimentais.
-- **E2:** falhas sintéticas orientadas pela FMECA sobre o teste saudável F0.
-- **E3:** validação experimental pré/pós-falha nos 14 ensaios F1-F7.
+O único dataset ativo é o GPVS-Faults, DOI `10.17632/n76t439f65.1`:
 
-E3 significa bancada experimental, não campo. O detector indica desvio da
-normalidade; não prova automaticamente a causa física nem a prevalência
-industrial.
+- F0L/F0M: condição saudável;
+- F1L-F7M: 14 ensaios de falha em dois regimes;
+- 24 features: estatísticas CC, RMS/THD trifásicos, desbalanceamentos e
+  estatísticas de potência CA/CC.
 
-Pipeline: `features_gpvs -> autoencoder -> injecao_falhas -> validacao E2+E3
--> rul_weibull`.
+A taxa contratual é 10 kHz e cada janela tem 200 amostras, um ciclo nominal de
+50 Hz. A qualidade da coluna `Time` é validada e a divergência do manual fica
+registrada. Janelas não se sobrepõem.
 
-## 2. Amostragem, janelas e atributos
+## 3. Split saudável e normalização
 
-A taxa de amostragem é inferida da coluna `Time` de cada CSV. O valor observado
-é aproximadamente 10 kHz, embora o manual declare período de 9,9989 us. O
-processamento usa os dados observados e preserva a divergência como ressalva de
-qualidade.
+F0L e F0M são divididos separadamente em blocos temporais de 50% treino, 15%
+validação, 15% calibração e 20% teste. Duas janelas são purgadas em cada
+fronteira. Sequências AE-LSTM são formadas somente dentro de cada bloco.
 
-Cada janela contém 200 amostras, equivalentes a um ciclo nominal de 50 Hz, sem
-sobreposição. São extraídos 24 atributos de sensores primários:
+O baseline usa mediana e IQR. O IQR recebe piso proporcional ao treino para não
+amplificar feature quase constante. O `RobustScaler` é ajustado apenas no
+treino.
 
-- mediana e IQR de `Ipv`, `Vpv` e `Vdc`;
-- RMS e THD de corrente e tensão nas três fases;
-- desbalanceamento RMS de corrente e tensão;
-- média e desvio da potência CA;
-- mediana e IQR da potência CC.
+Nos ensaios F1-F7, a primeira metade pré-falha fornece normalização de
+comissionamento e a segunda metade pré-falha permanece para especificidade.
+Pesos, scaler e limiar não são reajustados.
 
-O contrato é implementado por `src/ml/gpvs_principal.py`; um teste compara a
-extração por janela com a implementação de referência em `src/ml/gpvs.py`.
+## 4. Modelos e treino
 
-## 3. Partições F0 e prevenção de vazamento
+- Denso: `24-16-8-16-24`.
+- AE-LSTM: sequência 8, oculto 32 e latente 8.
 
-`F0L` e `F0M` são particionados separadamente, preservando a ordem temporal, em
-quatro papéis: treino 50%, validação 15%, calibração 15% e teste 20%. Há purga
-de duas janelas nas fronteiras. Nenhuma janela é compartilhada entre papéis.
+Os dois recebem o mesmo orçamento de épocas, early stopping, sementes e
+pré-processamento compatível. A semente 42 é a execução de referência e cinco
+sementes medem estabilidade. O erro de reconstrução define o escore; cada
+modelo recebe seu próprio p99 empírico, calculado na calibração saudável pelo
+método `higher`.
 
-- **Treino:** ajusta normalização, scaler e pesos.
-- **Validação:** early stopping; não calibra o limiar.
-- **Calibração:** estima o MSE p99 operacional.
-- **Teste:** estima falsos positivos saudáveis sem participar do ajuste.
+Nenhum desempenho em F1-F7 participa da seleção de arquitetura, semente ou
+limiar.
 
-Os índices completos ficam no diagnóstico NPZ; `limiar.json` publica contagens
-e política do split sem inflar o artefato.
+## 5. E3 experimental
 
-## 4. Normalização de comissionamento
+Os modelos congelados avaliam todos os 14 ensaios. AUC-PR é a métrica
+principal, acompanhada por ROC-AUC, sensibilidade, especificidade, acurácia
+balanceada, MCC, F1 e falso positivo saudável. A unidade inferencial é o
+ensaio; IC95% macro usam bootstrap de 20.000 reamostragens dos ensaios.
 
-Variações de regime entre ensaios provocam deslocamento de nível. O contrato
-aplica, antes do `RobustScaler`, centralização pela mediana e escala pelo IQR.
-O IQR recebe piso igual a 10% do IQR global observado no treino F0, evitando
-amplificação de atributos quase constantes.
+Resultados negativos e heterogeneidade por falha permanecem publicados.
+E3 significa bancada, não validação de campo.
 
-Em F0, as estatísticas são ajustadas somente no treino. Em cada ensaio F1-F7,
-a primeira metade pré-falha fornece o baseline de comissionamento. A segunda
-metade pré-falha permanece isolada para estimar especificidade; todo o trecho
-pós-falha estima sensibilidade.
+## 6. E2 orientada pela FMECA
 
-Isso é uma normalização por ensaio, mas **não** é retreino do Autoencoder nem
-recalibração do limiar. Pesos, `RobustScaler`, método de escore e limiar ficam
-congelados.
+As assinaturas de Contator AC, IGBT e Fusível AC são aplicadas sobre todo o
+holdout saudável com janelas, magnitudes e sementes compartilhadas entre
+modelos. Para cada magnitude são reportadas detecção e IC95% de Wilson.
 
-## 5. Autoencoder e limiar
+SMD95 é a menor magnitude cujo limite inferior do IC95% alcança 95%. Quando
+isso não ocorre, o resultado é `não atingido`; não há extrapolação para forçar
+um valor.
 
-O modelo é um Autoencoder denso `24 -> 16 -> 8 -> 16 -> 24`, treinado somente
-com F0 saudável. O gargalo e a saída são lineares; validação temporal controla
-o early stopping. O método canônico de decisão é o MSE de reconstrução.
+O eixo `a_det` é magnitude adimensional da perturbação. Sobrevivência empírica,
+incidência acumulada e risco discreto descrevem o primeiro cruzamento do
+detector nesse eixo. Weibull 2P é um diagnóstico intervalar com censura à
+direita e critérios formais de aceitação. Parâmetros rejeitados não sustentam
+síntese.
 
-- `score_method = mse`.
-- `score_threshold = mse_p99` da calibração F0.
-- `mu + 3 sigma` e p95 são referências, não pontos de decisão.
-- O escore localizado permanece como ablação, nunca como limiar operacional.
+Nenhuma curva E2 representa tempo, vida útil, RUL ou taxa de falha física.
 
-O p99 é nominal e interpolado. A taxa de excedência observada deve ser
-reportada separadamente, com intervalo de Wilson descritivo por janela.
+## 7. Confiabilidade física
 
-## 6. Validação E2 orientada pela FMECA
+O GPVS não contém tempos de vida, exposição de frota nem censura por ativo. As
+curvas físicas são cenários bibliográficos separados, sob modelo exponencial:
 
-As assinaturas sintéticas de Contator CA, IGBT e Fusível CA são aplicadas a
-janelas não sobrepostas do teste F0. O limiar permanece congelado. Para cada
-severidade são publicados taxa de detecção, IC95% de Wilson e SMD95, a menor
-severidade cuja estimativa pontual alcança 95%.
+`R(t)=exp(-lambda*t)`, `F(t)=1-R(t)`, `f(t)=lambda*exp(-lambda*t)` e
+`h(t)=lambda`.
 
-E2 verifica detectabilidade das assinaturas modeladas; não é falha física
-observada nem desempenho de campo. Proxies, como ruído de sensor para o
-contator, exigem calibração física antes de qualquer afirmação industrial.
+Taxas derivadas de participações de chamados são identificadas como cenários;
+a taxa direta do fusível permanece sobreposta e rastreada até PDF, páginas e
+tabela. Não se ajusta Weibull físico sem dados apropriados.
 
-## 7. Validação E3 experimental
+## 8. Publicação
 
-O mesmo detector é aplicado aos 14 ensaios F1L-F7M. Por cenário são publicados
-AUC, sensibilidade pós-falha, especificidade no trecho pré-falha isolado,
-acurácia balanceada e atraso para cinco excedências consecutivas.
+Os resultados vigentes ficam apenas em:
 
-A unidade inferencial macro é o **ensaio**, não cada janela autocorrelacionada.
-Os IC95% macro usam 20.000 reamostragens dos 14 ensaios. ICs de Wilson por
-janela são apenas descritivos. Todos os cenários são publicados, inclusive os
-resultados negativos.
+- `resultados/comparacao/`;
+- `resultados/confiabilidade/`;
+- `resultados/manifestos/`.
 
-## 8. Weibull e confiabilidade
-
-A análise atual usa `a_det`, a primeira magnitude sintética que produz três
-excedências consecutivas na E2. A Weibull 2P descreve a distribuição de
-detectabilidade; seu eixo não é tempo.
-
-`F_D(a)` é probabilidade de detecção até a magnitude `a`; `S_D(a)` é não
-detecção; `h_D(a)` é intensidade de primeiro cruzamento por magnitude. Esses
-objetos não são probabilidade de falha, confiabilidade, taxa de falha, MTTF ou
-RUL físico. Tais inferências exigiriam várias unidades, exposição temporal,
-falhas e censuras observadas.
-
-As evidências visuais são publicadas separadamente: o papel de probabilidade
-(`weibull_distribuicao.png`) verifica linearidade; PDF/CDF empíricas e
-paramétricas ficam em `weibull_funcoes_distribuicao.png`; sobrevivência do
-detector e intensidade paramétrica ficam, respectivamente, em
-`weibull_confiabilidade.png` e `weibull_intensidade_deteccao.png`. Essa
-separação impede interpretar marcas amostrais como uma taxa física observada.
-
-## 9. Proveniência e publicação
-
-Cada etapa possui manifesto v2 com hash LF-normalizado do código, dependências
-científicas, entradas, parâmetros e saídas. O manifesto E3 inclui os 16 CSVs,
-modelo, scaler, limiar e normalização de baseline. Dados brutos, modelos e
-estado local do Obsidian não são versionados; JSON, CSV, Markdown e figuras
-acadêmicas verificáveis são publicados.
-
-Estados `ready`, `stale` e `pending` são calculados por `src/ml/proveniencia.py`.
-Uma alteração em código, entrada ou saída torna o estágio desatualizado até a
-regeneração e o novo manifesto.
-
-## 10. Leitura dos resultados
-
-O resultado deve sempre informar dataset, nível de evidência e unidade de
-análise. Alta especificidade com sensibilidade limitada significa detector
-conservador, não sucesso irrestrito. Diferenças por falha são achados, não
-cenários a serem omitidos. Métricas de experimentos legados permanecem
-consultáveis apenas como histórico e não podem ser combinadas ao GPVS.
+Cada figura tem dados-fonte tabulares, JSON metodológico, PNG 300 dpi e PDF
+vetorial. Manifestos v2 registram código, dependências, entradas, parâmetros,
+saídas e hashes. A leitura de resultados nunca recalcula o pipeline.

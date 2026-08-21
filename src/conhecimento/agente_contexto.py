@@ -300,7 +300,7 @@ def catalogo_literatura(colecao) -> str:
     if not vistos:
         return (
             "Não encontrei documentos indexados na base de conhecimento. "
-            "Verifique se o ChromaDB foi reconstruído (scripts/reconstruir_literatura.py)."
+            "Verifique a base com `python scripts/manter_base.py reconstruir-literatura`."
         )
 
     por_tema: dict[str, list[dict]] = {}
@@ -343,7 +343,7 @@ def preparar_prompt(
     """
     Prepara o prompt completo sem invocar o LLM.
     Retorna (prompt_str, citacoes_dict).
-    Usado pelo Streamlit para fazer streaming separado.
+    Usado pela camada HTTP para fazer streaming separado.
 
     `anexos` e a lista de dicts vinda de `leitor_anexos.ler_anexos(...)`: o texto
     extraido (PDF/CSV/Excel/Word/codigo/...) entra no prompt como bloco

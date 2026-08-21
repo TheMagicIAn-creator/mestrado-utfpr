@@ -127,6 +127,12 @@ def test_imports_internos_dos_scripts_resolvem(script: Path):
     )
 
 
-def test_a_varredura_esta_coberta():
+def test_as_entradas_canonicas_estao_cobertas():
     """Guarda contra o teste virar vazio se scripts/ for reorganizado."""
-    assert any(s.name == "varrer_calibracao.py" for s in SCRIPTS)
+    names = {script.name for script in SCRIPTS}
+    assert names == {
+        "auditar_resultados.py",
+        "avaliar_agente.py",
+        "manter_base.py",
+        "verificar_projeto.py",
+    }

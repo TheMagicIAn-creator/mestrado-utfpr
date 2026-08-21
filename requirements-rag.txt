@@ -1,16 +1,13 @@
-# RAG — agente de conhecimento (memória vetorial, LLM, PDFs, automação).
+# Agente, recuperacao hibrida e literatura.
 -r requirements-core.txt
-chromadb
-sentence-transformers
-onnxruntime
-tokenizers
-huggingface-hub
-langchain
-langchain-core
-langchain-google-genai
-google-genai
-pypdf
-pdfplumber
-watchdog
-schedule
-PyYAML
+chromadb==1.5.9
+google-genai==1.75.0
+huggingface-hub==1.15.0
+langchain-core==1.4.0
+onnxruntime==1.26.0
+pdfplumber==0.11.9
+pypdf==6.11.0
+sentence-transformers==5.5.0
+tokenizers==0.22.2
+tqdm==4.67.3
+truststore==0.10.4

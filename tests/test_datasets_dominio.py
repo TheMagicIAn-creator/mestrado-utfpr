@@ -1,44 +1,34 @@
-"""
-Sprint 3 — integração PV Farms + separação de domínio (critérios #13/#14/#15).
-
-- o perfil do agente conhece a regra: PV Farms (CC) NUNCA diagnostica CA;
-- 'quais os datasets', 'diferença entre paderborn e pv farms' → consultar_datasets;
-- a ferramenta separa explicitamente os domínios CC e CA.
-"""
+"""O GPVS-Faults é o único domínio experimental ativo."""
 
 from src.conhecimento.agente import PERFIL_COMPACTO
 from src.conhecimento.ferramentas import _decisao_rapida, consultar_datasets
 
 
-def test_perfil_tem_regra_separacao_dominio():
-    txt = " ".join(PERFIL_COMPACTO.lower().split())  # normaliza espaços/quebras
-    assert "pv farms" in txt and "paderborn" in txt
-    assert "separacao de dominio" in txt or "separação de domínio" in txt
-    assert "pv farms diagnostica falhas ca" in txt  # nunca diagnostica CA
+def test_agent_profile_declares_domain_separation():
+    text = " ".join(PERFIL_COMPACTO.lower().split())
+    assert "gpvs-faults é o único dataset ativo" in text
+    assert "separação de domínio" in text or "separacao de dominio" in text
+    assert "paderborn" in text and "pv farms" in text and "não fornecem amostras" in text
 
 
-def test_roteamento_consultar_datasets():
-    for p in (
+def test_dataset_questions_route_to_the_canonical_inventory():
+    for question in (
         "quais os datasets do projeto?",
-        "me explique o dataset de paderborn",
-        "qual a diferenca entre paderborn e pv farms?",
+        "me explique o dataset de Paderborn",
+        "qual a diferença entre Paderborn e PV Farms?",
+        "qual é o papel do GPVS?",
     ):
-        d = _decisao_rapida(p) or {}
-        assert d.get("ferramenta") == "consultar_datasets", p
-    # não confundir com rodar experimento
-    d = _decisao_rapida("rode o experimento do ghoneim") or {}
-    assert d.get("ferramenta") != "consultar_datasets"
+        decision = _decisao_rapida(question) or {}
+        assert decision.get("ferramenta") == "consultar_datasets", question
 
 
-def test_consultar_datasets_separa_dominio():
-    res = consultar_datasets()
-    assert res["resposta_pronta"] and res["ok"]
-    msg = res["mensagem"].lower()
-    assert "pv farms" in msg and "paderborn" in msg
-    assert "stender" in msg and "bearing dataset" in msg
-    assert "simulado" in msg and "gpvs-faults" in msg
-    assert "e3" in msg and "bancada" in msg
-    assert "ainda não e3" not in msg and "ainda nao e3" not in msg
-    assert "cc" in msg and "ca" in msg
-    assert "separação de domínio" in msg or "separacao de dominio" in msg
-    assert "weibull físico" in msg and "a_det" in msg
+def test_dataset_tool_exposes_active_and_inactive_roles():
+    response = consultar_datasets()
+    message = response["mensagem"].lower()
+    assert response["resposta_pronta"] and response["ok"]
+    assert "único conjunto de dados ativo" in message
+    assert "f0l/f0m" in message and "f1l-f7m" in message
+    assert "14 ensaios reais de bancada" in message
+    assert "paderborn" in message and "pmsm" in message and "pv farms" in message
+    assert "não fornecem amostras" in message
+    assert "weibull físico" in message and "rul" in message

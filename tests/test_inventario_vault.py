@@ -122,7 +122,7 @@ def test_indice_defasado_e_denunciado_na_resposta(vault):
                                    "liste todas as memórias consolidadas")
     assert "26" in r, "o total tem de vir do disco"
     assert "12 de 26" in r, "a defasagem tem de ser explicitada"
-    assert "reconstruir_cerebro_obsidian" in r, "e dizer como resolver"
+    assert "manter_base.py sincronizar-obsidian" in r, "e dizer como resolver"
     assert "⚠️" in r
 
 

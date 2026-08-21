@@ -29,7 +29,7 @@ _INTERVALO_TENTATIVA_S = 0.05
 #
 # Este é o limite honesto da arquitetura de arquivo local (SQLite FTS5 +
 # ChromaDB persistente). Ele é adequado ao uso real — pesquisador único, no PC
-# ou no Streamlit Cloud — e a alternativa (serviço dedicado em processo próprio)
+# ou em uma hospedagem ASGI — e a alternativa (serviço dedicado em processo próprio)
 # só se justifica sob uso multiusuário concorrente, que não é o caso. Ver
 # docs/arquitetura.md.
 TIMEOUT_PADRAO_S = float(os.getenv("AL_IADO_INDEX_LOCK_TIMEOUT_S", "180"))

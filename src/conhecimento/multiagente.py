@@ -239,7 +239,7 @@ status com_ressalvas ou insuficiente.
         pergunta: str,
         resposta: str,
         *,
-        origem: str = "chat_streamlit",
+        origem: str = "chat_web",
     ) -> ResultadoAprendizado:
         if not self.deve_avaliar_aprendizado(pergunta):
             return ResultadoAprendizado(avaliou=False)

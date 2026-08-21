@@ -65,10 +65,9 @@ deve lê-los sempre dos artefatos atuais do pipeline.
 ## Persistência
 
 No PC, o JSON está no repositório e pode ser versionado com Git. Esse é o modo
-durável e auditável. No Streamlit Community Cloud, o sistema de arquivos da
-instância é efêmero: itens aprendidos durante uma execução permanecem enquanto
-a instância vive, mas desapareceriam em um redeploy ou reinício. O conteúdo já
-commitado no JSON reaparece em toda implantação.
+durável e auditável. Em uma hospedagem ASGI com disco efêmero, itens aprendidos
+durante uma execução permanecem enquanto a instância vive, mas desapareceriam
+em um redeploy ou reinício. O conteúdo já commitado reaparece em toda implantação.
 
 ### Persistência transacional na nuvem (GitHub como backend)
 
@@ -115,6 +114,6 @@ Esse conteúdo nunca gera citação no rodapé. Literatura citável continua vin
 dos PDFs e números continuam vindo dos artefatos e manifestos vigentes. Uma
 sessão arquivada prova somente que algo foi dito naquele momento. No PC,
 qualquer arquivo novo ou alterado é percebido no próximo turno. Para atualizar
-o snapshot que alimenta o Streamlit Cloud, execute
-`python scripts/reconstruir_cerebro_obsidian.py`; uma raiz externa pode ser
+o snapshot portátil, execute
+`python scripts/manter_base.py sincronizar-obsidian`; uma raiz externa pode ser
 informada com `--vault` ou `AL_IADO_OBSIDIAN_VAULT_DIR`.

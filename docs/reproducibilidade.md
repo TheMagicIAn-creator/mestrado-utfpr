@@ -1,50 +1,62 @@
-# Reprodutibilidade — Al IAdo PV
+# Reprodutibilidade
 
-## Proveniência e estado das etapas
-Cada etapa do pipeline grava um **manifesto v2**
-(`resultados/manifestos/<etapa>.json`) com `code_sha256` normalizado para LF
-(`code_hash_mode = text_lf_utf8`), `code_dependencies`, `parameters`, hash dos
-artefatos upstream, `output_artifacts` e `git_commit`. O estado é de 3 valores
-(`estado_pipeline()`):
+## Manifestos v2
 
-- **ready** — artefatos presentes e manifesto compatível;
-- **stale** — artefatos existem, mas o código, os parâmetros ou um artefato
-  upstream mudaram;
-- **pending** — artefato ausente **ou sem manifesto** (não verificado).
+As publicações `comparacao` e `confiabilidade` possuem manifesto v2 em
+`resultados/manifestos/`. Cada manifesto registra:
 
-Um artefato **nunca** é tratado como válido só por existir. Nada é apagado
-automaticamente; recalcular é sob comando explícito (com confirmação em duas
-etapas para ações destrutivas).
-Manifestos v1 continuam legíveis, mas aparecem como **stale** até serem
-regenerados no schema v2.
+- hash SHA-256 do código com texto normalizado para LF;
+- dependências científicas por etapa;
+- parâmetros e sementes;
+- hashes das entradas;
+- hashes de todas as saídas publicadas;
+- commit Git e nível de evidência.
 
-## Portabilidade
-- Artefatos gravam **caminhos relativos** ao projeto (`to_project_relative_path`),
-  resolvidos para absoluto só na interface (`resolve_project_path`).
-- `KMP_DUPLICATE_LIB_OK=TRUE` é definido cedo (config/app/main) para evitar crash
-  de OpenMP duplicado no Windows.
+Manifestos v1 ainda podem ser lidos, mas são considerados `stale` quando não
+contêm metadado necessário ao contrato v2. Um arquivo não é válido apenas por
+existir.
+
+## Dados e partições
+
+`dataset_files()` exige exatamente `F0L.csv` a `F7M.csv` e rejeita arquivos CSV
+extras na pasta ativa. F0L/F0M são particionados em treino, validação,
+calibração e teste com purga. As janelas do AE-LSTM são construídas dentro de
+cada papel, sem cruzar fronteiras.
+
+A execução de referência usa semente 42; a estabilidade usa cinco sementes
+pré-definidas. Seleção de modelo não consulta os rótulos de falha E3.
+
+## Artefatos
+
+Somente tabelas-fonte, JSON metodológico, Markdown, PNG 300 dpi e PDF vetorial
+são versionados. Dados brutos, caches, pesos, scalers, logs e estado local do
+Obsidian ficam fora do Git. Os manifestos podem registrar seus hashes locais
+sem publicar os arquivos.
+
+## Regeneração e validação
+
+```powershell
+python -m src.ml.comparacao_autoencoders
+python -m src.ml.publicacao_confiabilidade
+python scripts/auditar_resultados.py
+python scripts/verificar_projeto.py
+```
+
+Depois, execute:
+
+```powershell
+python -m pytest -p no:cacheprovider -q -W ignore -m "not pesado"
+python -m pytest -p no:cacheprovider -q -W ignore tests/test_torch_smoke.py tests/test_modelos_autoencoder_canonicos.py
+python -m ruff check --select F821,F822,F823 src tests scripts
+```
+
+O CI repete a suíte não pesada, valida a seleção por marcadores e executa um job
+separado com Torch real em dados pequenos. O treino completo GPVS permanece
+local porque os dados brutos não são publicados.
 
 ## Memória
-- Memória de **produção** (`sessoes_pv`) é separada da de **avaliação**
-  (`avaliacoes_agente`). Os scripts de avaliação **não gravam memória por padrão**
-  (`--com-memoria` para opt-in) — avaliação não contamina produção.
 
-## Verificação local
-```powershell
-python scripts/verificar_ambiente.py    # imports, versões, chaves, datasets, ChromaDB, pipeline
-python scripts/verificar_datasets.py    # SHA-256 + linhas + classes dos datasets
-python -m pytest                        # suíte completa (contagem: pytest --collect-only -q)
-# O CI (.github/workflows/ci.yml) roda apenas o subconjunto LEVE de testes
-# (sem torch/chromadb/APIs); os demais rodam somente no ambiente local.
-```
-
-## Recalcular resultados (exige `dados/brutos/`)
-```powershell
-python src/ml/gpvs_principal.py
-python src/ml/autoencoder.py     # limiar.json (score operacional + referências) + manifesto
-python src/ml/injecao_falhas.py  # falhas FMECA (E2) + schema
-python src/ml/validacao_gpvs_principal.py  # E2 + E3, limiar congelado
-python src/ml/rul_weibull.py     # magnitude de detectabilidade, não tempo/RUL
-```
-Enquanto não recalculados com o código atual, as etapas aparecem **stale/pending**
-(comportamento correto).
+Produção (`sessoes_pv`), avaliação (`avaliacoes_agente`) e Obsidian
+(`obsidian_pv`) são coleções separadas. A avaliação offline não escreve memória.
+Snapshots portáteis preservam o corpus, o modelo de embeddings e o hash da
+fonte, sem transformar sessões em referências bibliográficas.

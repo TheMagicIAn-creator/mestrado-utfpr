@@ -3,7 +3,7 @@
 O diretório interno do ChromaDB não é um artefato adequado para Git: ele
 acumula segmentos, mistura coleções locais e depende da implementação do
 banco. Este módulo exporta somente ids, chunks, metadados e embeddings para
-JSONL comprimido, permitindo restauração determinística no Streamlit Cloud.
+JSONL comprimido, permitindo restauração determinística em implantação ASGI.
 O schema antigo da literatura continua aceito para preservar os snapshots.
 """
 

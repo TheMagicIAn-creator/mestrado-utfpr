@@ -29,6 +29,7 @@ uvicorn src.webapp.app:app --reload
 | `AL_IADO_HOST` | `127.0.0.1` | interface de rede |
 | `PORT` | `8000` | porta HTTP |
 | `AL_IADO_LOG_LEVEL` | `info` | nível de log do Uvicorn |
+| `AL_IADO_LOG_FILE` | desligado | habilita arquivo rotativo local |
 
 ## Contratos HTTP
 

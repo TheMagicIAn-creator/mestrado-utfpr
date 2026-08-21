@@ -1,92 +1,25 @@
-# Assinaturas FMECA — justificativa físico-elétrica
+# Assinaturas sintéticas da FMECA
 
-Este documento traduz as assinaturas de falha implementadas no código
-(`src/ml/injecao_falhas.py` — domínio do SINAL; `src/ml/protocolos_artigos.py`
-`ASSINATURAS_FMECA` — domínio das FEATURES) em prosa técnica citável na
-dissertação.
+Contrato operacional: `src/ml/assinaturas_fmeca.py`.
 
-> **Fonte única dos componentes/modos/índices: `docs/fmeca.md`.** Este arquivo
-> é a justificativa física; os números (S, O, D, NPR) vêm de lá.
+`a_det` é uma magnitude adimensional entre 0 e 1. Janelas, magnitudes e
+sementes são compartilhadas entre Denso e AE-LSTM para garantir comparação
+pareada.
 
-Os três componentes foram **selecionados entre os modos CA-elétricos
-observáveis nos sinais disponíveis** a partir da Tabela 3.3 do TCC. Software de
-controle e PCB têm mais tickets, mas não integram este recorte de monitoramento
-elétrico. NPR = S×O×D (índice da **FMECA**, não FMEA; D nunca é o NPR).
-Os índices S/O/D foram estipulados pelo pesquisador (Torres, 2024) e não
-reproduzem os RPN da tabela de criticidade de Cristaldi et al. (2017).
+| Componente | Colunas | Fórmula resumida |
+|---|---|---|
+| Contator AC | `ia` | `ia += N(0, a_det * std(ia) * 0,30)` |
+| IGBT | `ia`, `ib`, `ic` | soma harmônica ponderada em 5, 7, 11 e 13 vezes 50 Hz |
+| Fusível AC | `ia` | `ia *= 1 - 0,12 * a_det` |
 
-Nível de evidência: **E2 no pipeline principal** (injeção no sinal bruto) e
-**E1 nos experimentos por artigo** (injeção no espaço de features). Em ambos, as
-MAGNITUDES são plausíveis, não medidas em bancada — ver limitações ao final.
+As assinaturas atuam no sinal bruto e as 24 features são extraídas depois da
+injeção. A ordem evita perturbar diretamente atributos estatísticos sem uma
+hipótese de sinal.
 
-## 1. Contator AC — NPR=315 (S=5, O=7, D=9) — componente mais crítico
+O contator usa uma aproximação estocástica de chattering; o IGBT usa conteúdo
+harmônico; o fusível usa perda parcial de fase. Todas são hipóteses de
+degradação incipiente e exigem calibração física antes de aplicação industrial.
 
-**Física da falha.** O contator CA conecta/desconecta a saída do inversor à
-rede. Com o envelhecimento, os contatos sofrem erosão por arco elétrico,
-soldagem parcial e aumento da resistência de contato, produzindo comutação
-deficiente e *chattering* (abre/fecha intermitente). O efeito elétrico
-dominante é a injeção de transientes e conteúdo de alta frequência na corrente
-CA no instante da comutação deficiente.
-
-**Assinatura implementada.** Modelado como ruído no canal da fase A (proxy do
-transiente de comutação): no sinal bruto, `i_a += N(0, sev·σ·0,3)`; nas
-features, sobem desvio-padrão, largura de banda espectral, energia na banda de
-chaveamento, centroide espectral e THD da fase A.
-
-**Detecção.** O índice **D=9 da FMECA** refere-se à dificuldade de detecção EM
-CAMPO/manutenção — distinta da detectabilidade empírica do Autoencoder (ver a
-ressalva metodológica em `docs/fmeca.md`).
-
-## 2. IGBT — NPR=90 (S=5, O=6, D=3)
-
-**Física da falha.** O IGBT é o dispositivo de chaveamento da conversão CC→CA.
-Com o envelhecimento (lift-off de bond wire, aumento de Vce(sat), fadiga de
-solda por ciclagem térmica), a comutação torna-se imperfeita, elevando os
-harmônicos ímpares de baixa ordem (5º, 7º, 11º — característicos de conversores
-trifásicos de seis pulsos, ordens 6k±1) e o THD das correntes de linha.
-
-**Assinatura implementada.** Elevação dos harmônicos 5, 7, 11 e 13 das três
-correntes (`i_[abc]_harm_{5,7,11}`), do THD (`i_[abc]_thd`) e da energia média
-espectral. No sinal bruto soma-se conteúdo harmônico proporcional à severidade;
-nas features, desloca-se cada coluna em unidades do desvio-padrão do treino.
-
-**Por que é detectável por modelagem de normalidade.** O Autoencoder aprende a
-correlação saudável entre fundamental e harmônicos; harmônicos elevados com
-fundamental normal violam essa correlação e inflam o erro de reconstrução.
-
-## 3. Fusível AC — NPR=30 (S=5, O=3, D=2)
-
-**Física da falha.** O fusível CA protege o lado CA contra sobrecorrente. Um
-fusível degradado ou rompido causa perda parcial de uma fase, reduzindo a
-amplitude da corrente dessa fase. HIPÓTESE DE MODELAGEM (explícita no código):
-o controle do inversor redistribui corrente para as fases sãs para manter a
-potência entregue. A assinatura CENTRAL e independente do controle é a métrica
-de desbalanceamento subir; a compensação B/C depende da estratégia de controle.
-
-**Assinatura implementada.** Fase A enfraquece (RMS, pico a pico, desvio,
-energia da fundamental, potência — modo multiplicativo, redução de 15–35% ×
-severidade); fases B/C compensam parcialmente (modo aditivo); a feature
-`desbalanceamento_corrente` sobe com o maior peso da família.
-
-**Limitação honesta.** A hipótese NÃO cobre perda de linha em que as três fases
-caem juntas, nem carga severamente desbalanceada sem compensação. Em execuções
-anteriores (com o rótulo antigo de "desbalanceamento"), esta família apresentou
-o menor erro de reconstrução das três e chegou a não cruzar o limiar (SMD nula)
-— achado de limitação do detector a discutir, não a omitir.
-
-## Pesos de amostragem entre famílias
-
-`PESOS_FALHAS = {contator_ac: 0.40, igbt: 0.35, fusivel_ac: 0.25}` — segue a
-ordem de criticidade do NPR da FMECA (Contator AC 315 > IGBT 90 > Fusível AC
-30), cumprindo o critério de priorização por NPR.
-
-## Limitações gerais (para a seção de ameaças à validade)
-
-1. Magnitudes plausíveis, não calibradas em bancada (E1/E2, nunca E3).
-2. Uma família por janela — falhas simultâneas não são modeladas.
-3. O ruído gaussiano do Contator AC é um PROXY do transiente de comutação.
-4. A hipótese de compensação B/C do Fusível AC depende do controle.
-5. O índice D (detecção em campo) da FMECA não equivale à detectabilidade
-   empírica do Autoencoder — relação a discutir na dissertação.
-6. O dataset base (GPVS-Faults) é uma microrede PV experimental; a validação
-   E3 continua sendo de bancada e não testa generalização on-grid de campo.
+O limiar de cada modelo permanece congelado. SMD95 só é reportada quando o
+limite inferior do IC95% de detecção alcança 95%. Weibull 2P é opcional,
+diagnóstica e não substitui as funções empíricas.

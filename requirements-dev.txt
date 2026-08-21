@@ -1,21 +1,20 @@
-# Dependências de DESENVOLVIMENTO / TESTE — não necessárias em produção.
-# As deps completas (torch, chromadb, etc.) estão em
-# requirements.txt. Aqui ficam apenas as usadas pelos testes leves e lint.
+# CI leve e verificacao local sem Torch ou ChromaDB reais.
 pytest>=8
 ruff>=0.6
-# Stack científico leve usado pelos testes sem torch/chromadb:
+httpx
+markdown-it-py
+matplotlib
 numpy
 pandas
-scipy
-scikit-learn
-matplotlib
-pyarrow
-python-dotenv
-requests
+pdfplumber
 pypdf
+pyarrow
+python-docx
+python-dotenv
+python-multipart
+PyYAML
+requests
+scikit-learn
+scipy
 starlette
 uvicorn
-httpx
-plotly
-python-multipart
-markdown-it-py

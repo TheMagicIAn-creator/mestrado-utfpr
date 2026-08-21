@@ -29,6 +29,12 @@ LINESTYLES = {
     "derived_sensitivity": "-",
     "direct_bibliographic": "--",
 }
+LEGEND_LABELS = {
+    "contator_ac_derived": "Contator AC (derivada)",
+    "igbt_derived": "IGBT (derivada)",
+    "fusivel_ac_derived": "Fusível AC (derivada)",
+    "fusivel_ac_direct": "Fusível (direta, Tab. 3.4)",
+}
 
 
 def _save_pair(fig, base_path: Path, note: str) -> tuple[Path, Path]:
@@ -61,7 +67,7 @@ def plot_reliability_failure(curves: pd.DataFrame, output: Path) -> tuple[Path, 
         style = {
             "color": COLORS[scenario.scenario_id],
             "linestyle": LINESTYLES[scenario.evidence_type],
-            "label": scenario.plot_label,
+            "label": LEGEND_LABELS[scenario.scenario_id],
         }
         axes[0].plot(block["time_years"], block["reliability"], **style)
         axes[1].plot(
@@ -96,7 +102,7 @@ def plot_density_hazard(curves: pd.DataFrame, output: Path) -> tuple[Path, Path]
         style = {
             "color": COLORS[scenario.scenario_id],
             "linestyle": LINESTYLES[scenario.evidence_type],
-            "label": scenario.plot_label,
+            "label": LEGEND_LABELS[scenario.scenario_id],
         }
         axes[0].plot(block["time_years"], block["failure_density_per_year"], **style)
         axes[1].plot(block["time_years"], block["hazard_per_year"], **style)
@@ -132,7 +138,7 @@ def plot_density_hazard(curves: pd.DataFrame, output: Path) -> tuple[Path, Path]
 
 def plot_rates(scenarios: pd.DataFrame, output: Path) -> tuple[Path, Path]:
     frame = scenarios.sort_values("lambda_per_hour", ascending=True).reset_index(drop=True)
-    fig, ax = plt.subplots(figsize=(11, 5.8), layout="constrained")
+    fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
     y = np.arange(len(frame))
     for index, row in frame.iterrows():
         ax.scatter(

@@ -3,16 +3,9 @@ Scripts de `scripts/` chamam funções de `src/` com nomes de argumento válidos
 
 POR QUE ESTE TESTE EXISTE
 =========================
-Em 09/08/2026 o pesquisador rodou a rodada de recálculo e o
-`scripts/diagnostico_limiar.py` morreu na última linha, depois de todo o
-pipeline pesado ter rodado:
-
-    TypeError: split_temporal_com_purga() got an unexpected keyword argument
-    'purga'
-
-O parâmetro sempre se chamou `purge_janelas`. O erro não foi pego porque
-`scripts/` **não é exercitado pela suíte** — os módulos de `src/` têm testes, os
-scripts não, e um nome de argumento errado só aparece quando a linha executa.
+Um script pode morrer na última linha, depois de uma execução pesada, quando
+usa um nome de argumento inexistente. Como `scripts/` não é exercitado por
+completo na suíte, esta guarda valida estaticamente esse contrato.
 
 Esta guarda fecha a classe inteira do problema em vez do caso: percorre os
 scripts por AST, encontra as chamadas a funções importadas de `src/`, e confere
@@ -115,22 +108,23 @@ def test_palavras_chave_batem_com_a_assinatura(script):
     assert not problemas, "\n".join(problemas)
 
 
-def test_a_guarda_pega_o_erro_que_motivou_ela(tmp_path):
+def test_a_guarda_detecta_keyword_inexistente_em_api_canonica(tmp_path):
     """Contraprova: sem isto, o teste acima poderia estar sempre passando.
 
-    Reproduz literalmente a chamada que quebrou a rodada de 09/08.
+    A contraprova usa uma API canônica e confirma que a análise não passa
+    silenciosamente quando um script troca o nome de um parâmetro.
     """
     script = tmp_path / "regressao.py"
     script.write_text(
-        "from src.ml.split_temporal import split_temporal_com_purga\n"
-        "split_temporal_com_purga(100, purga=2)\n",
+        "from src.ml.modelos_autoencoder import sequences_from_flow\n"
+        "sequences_from_flow([], janela=8)\n",
         encoding="utf-8",
     )
     arvore = ast.parse(script.read_text(encoding="utf-8"))
     origem = _importados_de_src(arvore)
-    alvo = _resolver(origem["split_temporal_com_purga"], "split_temporal_com_purga")
-    assert alvo is not None, "o módulo de split deve importar sem dependência pesada"
+    alvo = _resolver(origem["sequences_from_flow"], "sequences_from_flow")
+    assert alvo is not None, "o contrato dos modelos deve importar sem treino"
 
     parametros = inspect.signature(alvo).parameters
-    assert "purga" not in parametros
-    assert "purge_janelas" in parametros
+    assert "janela" not in parametros
+    assert "length" in parametros

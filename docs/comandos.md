@@ -1,99 +1,71 @@
-# Comandos — ALIAdo
+# Comandos canônicos
+
+Execute os comandos a partir da raiz do repositório, com `.venv` ativo.
 
 ## Aplicação
-```powershell
-python -m src.webapp              # aplicação canônica em http://127.0.0.1:8000
-uvicorn src.webapp.app:app --reload  # desenvolvimento com recarga automática
-```
-
-## Verificação / diagnóstico
-```powershell
-python scripts/verificar_ambiente.py    # imports, versões, chaves, datasets, ChromaDB, pipeline
-python scripts/verificar_datasets.py    # presença + SHA-256 + linhas dos datasets
-python scripts/validar_gpvs.py          # validação E3 de bancada (16 CSVs GPVS; treino pesado)
-python scripts/validar_gpvs.py --somente-graficos  # recompõe figuras/manifesto sem retreino
-python scripts/auditar_resultados.py    # cruza contratos, outputs e hashes canônicos
-python -m pytest                        # bateria de testes unitários (rápida, com fixtures)
-python -m pytest -W ignore -q           # idem, sem warnings de limpeza de tmp
-```
-
-## Pipeline de ML (recalcular — exige `dados/brutos/` local)
-
-> ⚠️ **Rodar os módulos direto NÃO grava manifesto de proveniência.** Nenhum
-> bloco `__main__` das cinco etapas chama `registrar_manifesto`; a única chamada
-> real está dentro de `pipeline.executar_etapa`. Consequência: os artefatos são
-> regenerados, mas o manifesto continua apontando para os **anteriores**, e a
-> etapa aparece **stale logo depois de ser recalculada**. Foi esse ciclo que
-> levou, em 05/08, a manifestos reescritos à mão — as cinco etapas com
-> `created_at` dentro de 0,55 s, para uma execução que leva 8 minutos.
-> Ver `docs/auditoria_total_src.md` §2.
-
-**Caminho recomendado — pelo pipeline, que registra proveniência:**
 
 ```powershell
-python -m src.ml.exec_etapa_isolada features_gpvs
-python -m src.ml.exec_etapa_isolada autoencoder
-python -m src.ml.exec_etapa_isolada injecao_falhas
-python -m src.ml.exec_etapa_isolada validacao
-python -m src.ml.exec_etapa_isolada rul_weibull
+python -m src.webapp
+uvicorn src.webapp.app:app --reload
 ```
 
-**Execução direta dos módulos** — útil para depurar uma etapa, mas deixa o
-manifesto defasado; depois de usar, recalcule pelo caminho acima:
+O endereço padrão é `http://127.0.0.1:8000`. Se a porta estiver ocupada:
 
 ```powershell
-python src/ml/gpvs_principal.py     # extrai 24 features dos ensaios saudáveis F0
-python src/ml/autoencoder.py        # treina o AE; grava limiar.json (score operacional + referências)
-python src/ml/injecao_falhas.py     # injeta falhas FMECA (E2) + schema no report
-python src/ml/validacao_gpvs_principal.py  # validação E2 + E3, limiar congelado
-python src/ml/rul_weibull.py        # Weibull da magnitude de detectabilidade E2
+$env:PORT=8011
+python -m src.webapp
 ```
 
-**Forçar recálculo total** (ignora o estado `ready` de todas as etapas): pelo
-chat, peça *"recalcule tudo do zero"*. Frases como *"rode o pipeline de novo"* e
-*"retreine o autoencoder"* também forçam desde 06/08 — antes disso a etapa era
-**pulada em silêncio**, e a resposta imprimia a tabela de resultados logo abaixo
-de "já está pronto". Hoje, quando não recalcula, a resposta diz isso e carimba a
-data do artefato.
+## Pipeline científico
 
-## Experimentos por artigo
-Cada experimento tem o SEU protocolo de decisão (src/ml/protocolos_artigos.py);
-o runner abaixo é só o atalho de execução — não muda a metodologia nem os números.
+O pipeline tem apenas duas etapas. `comparacao` exige os 16 CSVs GPVS e Torch;
+`confiabilidade` usa os valores bibliográficos rastreados no repositório.
+
 ```powershell
-python scripts/rodar_experimentos.py              # lista o experimento Ibrahim
-python scripts/rodar_experimentos.py ibrahim      # roda AE-LSTM temporal (Ibrahim)
-python scripts/rodar_experimentos.py --todos      # hoje equivale a ibrahim
-python src/ml/classificador_pv.py       # benchmark supervisionado PV Farms (CC)
-python -c "from src.ml.classificador_pv_infer import treinar_e_salvar; treinar_e_salvar()"  # salva modelo/scaler/manifests/PNGs
+python -m src.ml.comparacao_autoencoders
+python -m src.ml.publicacao_confiabilidade
 ```
-Também pelo chat: "compare meu método com o AE-LSTM" ou "como estou frente ao Ibrahim?".
 
-## Literatura local e snapshot da nuvem
+Também podem ser chamadas pelo agente quando o pedido de recalcular for
+explícito. Consultar resultados nunca dispara treino silenciosamente.
+
+## Verificação
+
 ```powershell
-python scripts/reconstruir_literatura.py       # reconstrói o ChromaDB local a partir dos PDFs
-python scripts/exportar_indice_literatura.py   # gera artefatos/literatura_indexada.jsonl.gz
+python scripts/verificar_projeto.py
+python scripts/auditar_resultados.py
+python scripts/avaliar_agente.py
+python -m pytest -p no:cacheprovider -q -W ignore -m "not pesado"
+python -m pytest -p no:cacheprovider -q -W ignore tests/test_torch_smoke.py tests/test_modelos_autoencoder_canonicos.py
+python -m ruff check --select F821,F822,F823 src tests scripts
 ```
 
-O diretório `base_conhecimento/` é local, incremental e ignorado pelo Git. O
-snapshot gzip é portátil e versionável: quando a coleção está vazia, o runtime
-web o restaura automaticamente no primeiro turno do agente. A abertura do
-dashboard não carrega embeddings, não abre ChromaDB e não executa ML.
+`verificar_projeto.py --sem-resultados` valida apenas ambiente, árvore e GPVS.
 
-## Bateria determinística do agente (RAG/roteamento)
+## Manutenção da base
+
+Há uma única entrada administrativa, com subcomandos explícitos:
+
 ```powershell
-python scripts/avaliar_agente_100.py                 # 559 casos; por padrão não grava memória
-python scripts/avaliar_agente_100.py --com-memoria   # grava a avaliação na coleção separada de testes
+python scripts/manter_base.py reconstruir-literatura
+python scripts/manter_base.py exportar-literatura
+python scripts/manter_base.py reindexar-sessoes
+python scripts/manter_base.py sincronizar-obsidian
+python scripts/manter_base.py sincronizar-obsidian --vault C:\caminho\vault
+python scripts/manter_base.py verificar-autores
 ```
 
-## Observações
-- No Windows, `python -m src.webapp` inicia o Uvicorn; encerre com `Ctrl+C`.
-- `python app.py` é apenas uma ponte ASGI compatível.
-- `KMP_DUPLICATE_LIB_OK=TRUE` é definido cedo (config/app/main) para evitar crash de OpenMP duplicado.
-- Etapas aparecem como **stale/pending** até serem recalculadas com o código atual (cria o manifesto).
-- O pipeline pesado roda no PC porque `dados/brutos/` não é publicado. Na
-  nuvem, o app consulta os resultados versionados e não afirma ter retreinado modelos.
-- O progresso do ML vai para `logs/al_iado_pv.log`;
-  scripts rodados à mão reativam o eco automaticamente. Leia o log em UTF-8:
-  `Get-Content logs\al_iado_pv.log -Tail 20 -Encoding utf8` (sem `-Encoding utf8`
-  o PowerShell distorce acentos — o arquivo está correto). Emojis ficam só na
-  interface do chat; o log é texto limpo.
+Reconstrução e sincronização carregam embeddings e podem levar alguns minutos.
+Não existe monitor de pasta em segundo plano; manutenção da base é deliberada e
+observável.
+
+## Logs
+
+O console é o destino padrão. Para uma campanha que exija arquivo rotativo:
+
+```powershell
+$env:AL_IADO_LOG_FILE=1
+python -m src.webapp
+```
+
+O arquivo local `logs/al_iado_pv.log` permanece ignorado pelo Git.

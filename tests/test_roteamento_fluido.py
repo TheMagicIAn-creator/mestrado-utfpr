@@ -29,7 +29,7 @@ class LLMFalso:
 # ── 1. guardas críticas decidem ANTES do LLM (nem o consultam) ───────────────
 
 def test_declaracao_de_memoria_nao_chega_ao_llm():
-    llm = LLMFalso("rodar_pipeline_completo")
+    llm = LLMFalso("executar_pipeline_cientifico")
     d = fr.decidir_acao("Lembre-se: decidimos que a falha injetada no pipeline "
                         "é a do contator", llm)
     assert d["usar_ferramenta"] is False
@@ -68,9 +68,9 @@ def test_llm_pode_decidir_que_nao_usa_ferramenta():
 
 def test_frase_torta_e_roteada_pelo_llm_nao_por_palavra_chave():
     # sem gatilho literal de "rodar"; só o LLM entenderia
-    llm = LLMFalso("rodar_weibull")
+    llm = LLMFalso("gerar_confiabilidade")
     d = fr.decidir_acao("bora fechar a parte de confiabilidade agora?", llm)
-    assert d["ferramenta"] == "rodar_weibull"
+    assert d["ferramenta"] == "gerar_confiabilidade"
 
 
 def test_ferramenta_inexistente_do_llm_e_ignorada():
@@ -86,7 +86,7 @@ def test_cascata_assume_se_o_llm_quebra():
     llm = LLMFalso(quebrar=True)
     d = fr.decidir_acao("rode o pipeline completo", llm)
     assert d["usar_ferramenta"] is True
-    assert d["ferramenta"] == "rodar_pipeline_completo"
+    assert d["ferramenta"] == "executar_pipeline_cientifico"
 
 
 def test_sem_llm_ainda_funciona():
