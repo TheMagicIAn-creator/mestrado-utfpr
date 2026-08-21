@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "stage": "comparacao_autoencoders",
-  "created_at": "2026-08-20T23:17:43.700003-03:00",
-  "git_commit": "3f7cc9f6faed9927b4a6f5230e7f25dee00ca320",
+  "created_at": "2026-08-20T23:46:03.3358334-03:00",
+  "git_commit": "28e0085757473d56fd1179edd6c01974e307891e",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
@@ -15,7 +15,8 @@
     "statistics": "f9fdae6b1d958ee536ef09af2aaee5655eb4fdbed171da61dc2957c9d6fa2eeb",
     "fmeca_signatures": "b493a32d919d6877fdab4023e5e307db63618350580978b52cab9349fb564e46",
     "detectability": "6262b49cbad3612e4f7752718e6e1035725d595d33a8a450ab0ac5b519a9b3be",
-    "plots": "42df3e5626b70f92822347a36610ce8ff5c286ccadbe2e6697559b923766ea92"
+    "plots": "42df3e5626b70f92822347a36610ce8ff5c286ccadbe2e6697559b923766ea92",
+    "publication": "035a47a0d5e78c09362c8f3038811f6621ac8c0b2825479c888c55887fb7add2"
   },
   "parameters": {
     "dataset": "GPVS-Faults",
@@ -109,7 +110,7 @@
     "resultados/comparacao/e2_weibull_ajustes.csv": "c2163f4ffa7574a9531601ce5a9e770ff02079991d9095dc4cc6b362da646f73",
     "resultados/comparacao/e2_weibull_pontos.csv": "cd20d20e13583ae52af6d8583a3a6e49fb1eef629f28d035ed7956bacf9ca4c9",
     "resultados/comparacao/e2_resumo.csv": "8005c3a0ee21f973e03c2b164c6576cec430d38aa25429a3c3664151fe164350",
-    "resultados/comparacao/comparacao_autoencoders.json": "48826dbde45689b35dbb4fe86eb32456982adde685a3c5fc660f172793e65401",
+    "resultados/comparacao/comparacao_autoencoders.json": "7ba7121cc3dde2b12d035baee20dd9e4e6bedc9169c636e304cf75df9690185b",
     "resultados/comparacao/relatorio_comparacao.md": "e52f354b856d065d1d0c56a2092e270fafe845836162e126e9b3ba2906048ae3",
     "resultados/comparacao/e3_metricas_macro.png": "aff6e035e6e7293024378f285a0937003d3cdfc0479a5b8a3e7fb44f642662b5",
     "resultados/comparacao/e3_metricas_macro.pdf": "2f7910adb41e190308769f0b73dcaf1b5b2367cc8702cf3c4c501f8b57ba0464",
