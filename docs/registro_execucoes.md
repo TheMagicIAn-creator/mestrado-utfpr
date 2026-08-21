@@ -16,6 +16,7 @@ o commit. Nunca editar linhas antigas — este arquivo é só-acréscimo.
 | 2026-07-07 | — | — | RESET: artefatos zerados para reexecução com semente determinística do Weibull, estilo gráfico único e comparação com a literatura | — | Próxima execução completa do pipeline + experimentos gera os artefatos vigentes. Registrar aqui ao rodar. |
 | 2026-08-09 | 0.8577 | melhor 125; parada 145 | Consolidação do GPVS-Faults como único dataset canônico, com quatro papéis F0, E2 FMECA e E3 real | base `a4aa42c`; manifestos v2 deste PR | VIGENTE. 1.423 janelas F0, 24 features, FP saudável no teste 1,42%. Weibull descreve `a_det`, não tempo. |
 | 2026-08-13 | 0.4405 | até 250 com early stopping; 3 arquiteturas x 5 seeds | Reconstrução V2 com perda balanceada por quatro famílias físicas e seleção sem falhas | merge `63e89a5`; hashes em `resultados/v2/autoencoder/` | VIGENTE. Arquitetura 24-16-8-16-24, seed canônica 42, FP saudável 1,07%. |
+| 2026-08-20 | p99 próprio por modelo | orçamento comum, seed 42 + 5 sementes de estabilidade | Comparação canônica AE Denso × AE-LSTM no GPVS-Faults | merge `a3b5ad6`; manifesto `comparacao_autoencoders` | VIGENTE. Substitui todas as execuções anteriores; E3 real e E2 FMECA são publicadas juntas, sem PCA. |
 
 ## Validações externas
 
@@ -24,12 +25,18 @@ o commit. Nunca editar linhas antigas — este arquivo é só-acréscimo.
 | 2026-08-09 | GPVS-Faults v1 | AE estrito F0 + AE adaptativo local (5 sementes) + PCA | E3 de bancada | `b0dbe7c` + hashes no manifesto | 14 ensaios de falha; transferência F0 invalidada por deslocamento; métricas vigentes em `resultados/gpvs/validacao_gpvs_e3.json`. |
 | 2026-08-09 | GPVS-Faults canônico v2 | Um AE treinado em F0; pesos/limiar congelados; baseline de comissionamento pré-falha | E3 de bancada | base `a4aa42c`; manifesto `validacao_gpvs_e3` v2 | VIGENTE. AUC 0,773 [0,691; 0,853], sensibilidade 0,406 [0,211; 0,615], especificidade 0,974 [0,946; 0,992]. A linha v1 acima está substituída. |
 | 2026-08-13 | GPVS-Faults, detector denso V2 | Seleção 3 arquiteturas x 5 seeds em F0; comparação congelada com PCA nos mesmos 14 ensaios | E3 de bancada | merge `63e89a5` | VIGENTE. AE: AUC 0,778 [0,695; 0,859], sensibilidade 0,455 [0,268; 0,645], especificidade 0,953 [0,916; 0,978]. PCA teve AUC/especificidade maiores; AE teve sensibilidade maior. |
+| 2026-08-20 | GPVS-Faults canônico | AE Denso e AE-LSTM com partições, orçamento e sementes comuns; sem seleção por falhas | E3 de bancada + E2 FMECA | merge `a3b5ad6`; manifesto `comparacao_autoencoders` | VIGENTE. AUC-PR é primária; IC95% por ensaio; SMD95 não atingido permanece censurado. Substitui as três linhas anteriores. |
 
 ## Análises bibliográficas de confiabilidade
 
 | Data | Escopo | Modelo | Natureza da evidência | Artefatos | Observações |
 |---|---|---|---|---|---|
 | 2026-08-13 | Inversores fotovoltaicos sob cinco cenários publicados | Exponencial, taxa constante | Sensibilidade bibliográfica; não estimada pelo GPVS | `resultados/v2/confiabilidade/` | Unidades normalizadas, divergência dimensional do TCC preservada, Weibull físico bloqueado por ausência de dados de vida. |
+| 2026-08-15 | Contator AC, IGBT e Fusível AC | Exponencial, taxa constante | Sensibilidade bibliográfica direta/derivada; não estimada pelo GPVS | `resultados/confiabilidade/` | VIGENTE. Quatro cenários rastreados; taxa direta do fusível separada das taxas derivadas; Weibull físico bloqueado. |
+
+As ocorrências de “VIGENTE” em linhas anteriores a 20/08/2026 registram o estado
+na data da execução. A precedência atual é dada pelas últimas linhas e pelos
+dois manifestos canônicos.
 
 ## Divergências conhecidas e resolvidas
 

@@ -12,7 +12,7 @@ python scripts/verificar_ambiente.py    # imports, versões, chaves, datasets, C
 python scripts/verificar_datasets.py    # presença + SHA-256 + linhas dos datasets
 python scripts/validar_gpvs.py          # validação E3 de bancada (16 CSVs GPVS; treino pesado)
 python scripts/validar_gpvs.py --somente-graficos  # recompõe figuras/manifesto sem retreino
-python scripts/verificar_resultados_fmeca.py  # cruza JSON, CSV, PNG e critérios metodológicos
+python scripts/auditar_resultados.py    # cruza contratos, outputs e hashes canônicos
 python -m pytest                        # bateria de testes unitários (rápida, com fixtures)
 python -m pytest -W ignore -q           # idem, sem warnings de limpeza de tmp
 ```

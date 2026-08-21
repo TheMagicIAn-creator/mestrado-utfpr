@@ -16,11 +16,10 @@ O dano real não é o CI vermelho. É o hábito: uma cadeia de proveniência que
 acusa divergência a cada rerun ensina o leitor a ignorar o alarme — justamente
 o alarme que precisa ser levado a sério quando um artefato muda de verdade.
 
-Além disso, a regra "que hash usar para qual arquivo" existia em QUATRO cópias:
-`proveniencia`, `verificar_resultados_fmeca`, `auditar_artefatos_resultados` e
-`test_gpvs_resultados`. Cópia de regra deriva — quando a fonte passou a hashear
-JSON sem os campos de data, as três cópias continuaram nos bytes e acusaram
-divergência inexistente. Agora todas delegam a `funcao_de_hash_para`.
+Além disso, a regra "que hash usar para qual arquivo" chegou a existir em
+quatro cópias. Cópia de regra deriva: quando a fonte passou a hashear JSON sem
+campos de data, os verificadores antigos continuaram nos bytes e acusaram
+divergência inexistente. O auditor canônico delega a `funcao_de_hash_para`.
 """
 
 from __future__ import annotations
@@ -129,9 +128,7 @@ def test_binario_cientifico_nunca_vai_pelo_caminho_textual():
 # ── a regra não pode ser copiada de novo ───────────────────────────────────
 
 CONSUMIDORES = (
-    "scripts/verificar_resultados_fmeca.py",
-    "scripts/auditar_artefatos_resultados.py",
-    "tests/test_gpvs_resultados.py",
+    "scripts/auditar_resultados.py",
 )
 
 

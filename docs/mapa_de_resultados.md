@@ -1,149 +1,89 @@
-# Mapa de resultados — qual artefato sustenta qual afirmação
+# Mapa canônico de resultados
 
-**Para quê:** a dissertação está entrando em redação. Este arquivo responde a uma
-pergunta só, para cada número que o texto vai citar: **de onde ele sai, e o que
-exatamente ele mede.**
+Este documento indica qual artefato sustenta cada afirmação da dissertação.
+Este mapa não repete valores: eles devem ser lidos dos arquivos vigentes.
 
-Ele **não** repete valores. Métrica citada de documento envelhece em silêncio; a
-regra do projeto é ler sempre o artefato vigente. Aqui só há endereço, grandeza
-e nível de evidência.
+## Regra central
 
----
+Há três famílias publicadas e elas não podem ser misturadas:
 
-## ⚠️ A colisão mais cara do repositório
+| Família | Pasta | Grandeza | Evidência |
+|---|---|---|---|
+| Comparação experimental | `resultados/comparacao/` | desempenho do AE Denso e do AE-LSTM nos ensaios GPVS | E3 de bancada |
+| Detectabilidade sintética | `resultados/comparacao/` | resposta do detector em função de `a_det` | E2 FMECA |
+| Confiabilidade física | `resultados/confiabilidade/` | `R(t)`, `F(t)`, `f(t)` e `h(t)` no tempo | sensibilidade bibliográfica |
 
-Existem **duas** famílias de curva chamadas "confiabilidade", "falha" e "taxa de
-falha". Elas medem coisas diferentes, em eixos diferentes, com hipóteses
-diferentes. Trocá-las numa banca é o erro mais caro possível aqui.
+`a_det` é a fração da assinatura nominal injetada, uma magnitude adimensional
+de perturbação. `S_D(a)` representa a probabilidade de o detector ainda não ter
+detectado e `h_D(a)` a intensidade discreta do primeiro cruzamento. Nenhuma das
+duas é tempo, vida útil, RUL, MTTF ou taxa de falha física. Já `R(t)` e `h(t)`
+usam tempo em horas, com conversão explícita para anos.
 
-| | **Detectabilidade** | **Confiabilidade física** |
-|---|---|---|
-| Onde | `resultados/autoencoder/weibull_*`<br>`resultados/macro/weibull/<modelo>/` | `resultados/v2/confiabilidade/` |
-| Eixo | `a` — **fração da assinatura nominal injetada**, em [0; 1] | `t` — **anos** |
-| Curva "confiabilidade" | `S_D(a)` = P(o detector **ainda não detectou**) | `R(t)` = P(o componente **ainda não falhou**) |
-| Curva "taxa de falha" | `h_D(a)` = intensidade de **primeiro cruzamento** do limiar | `h(t) = λ` = taxa de falha do componente |
-| Modelo | Weibull 2P com censura intervalar na grade | Exponencial, `λ` constante por cenário |
-| Origem do número | **medido** — varredura sobre o GPVS | **bibliográfico** — taxas publicadas |
-| Nível | **E2** (injeção FMECA no sinal) | sensibilidade bibliográfica, `status: bibliographic_sensitivity_not_dataset_estimate` |
-| O que **não** é | não é vida do componente, não é RUL em tempo | não é estimativa do GPVS |
-
-**A frase segura para o texto:** *o GPVS-Faults sustenta a detectabilidade; a
-confiabilidade física entra como sensibilidade bibliográfica, e as duas nunca
-compartilham eixo.* O próprio artefato v2 declara
-`dataset_role: detector_evaluation_only_not_physical_reliability` — a ressalva
-já viaja com o dado, e o texto precisa honrá-la.
-
----
-
-## Onde ler cada afirmação
-
-### Detecção em falha REAL — a evidência mais forte que existe hoje
-
-| Afirmação | Artefato | Nível |
-|---|---|---|
-| O detector separa ensaio saudável de ensaio com falha real | `resultados/gpvs/validacao_gpvs_e3.json` → `macro_summary` | **E3 de bancada** |
-| Desempenho ensaio a ensaio (F1–F7, duas condições) | mesmo arquivo → `scenario_results` | E3 de bancada |
-| O que essa evidência **não** cobre | mesmo arquivo → `limitations` | — |
-
-Unidade de reamostragem é o **ensaio**, não a janela. Janelas vizinhas não são
-réplicas independentes, e o intervalo publicado já respeita isso.
-
-**E3 de bancada não é E3 de campo.** Pesos e limiar congelados sobre falha
-experimental real é o teto do que este trabalho demonstra. Desempenho industrial
-em campo continua não realizado, e o texto deve dizer isso com todas as letras.
-
-### Detecção em falha SINTÉTICA fundamentada na FMECA
-
-| Afirmação | Artefato | Nível |
-|---|---|---|
-| A partir de que magnitude cada falha da FMECA é detectada | `resultados/macro/comparacao_tabela.md` (AUC, SMD@FPR=10%) | **E2** |
-| Comparação com a literatura — AE denso × AE-LSTM (Ibrahim, 2022) | `resultados/macro/comparacao_resultado.json` | E2 |
-| As quatro curvas de detectabilidade, **por modelo** | `resultados/macro/weibull/detectabilidade_por_modelo.{json,csv,md}` + `<modelo>/weibull_*.png` | E2 |
-| As mesmas curvas para o detector do pipeline | `resultados/autoencoder/weibull_results.json` + `weibull_*.png` | E2 |
-
-Os dois lados da comparação passam pelo **mesmo** holdout, a **mesma** injeção e
-as **mesmas** realizações de ruído. O que difere é a arquitetura e o limiar — e
-o limiar difere **de propósito**: escores de detectores distintos não são
-comparáveis em escala. Fonte única da regra: `macro_comum.calibrar_limiar`.
-
-### Matrizes de confusão
-
-| Onde | O que é |
-|---|---|
-| `resultados/autoencoder/validacao_matriz.png` | validação do detector do pipeline |
-| `resultados/autoencoder/validacao_matrizes_severidades.png` | uma matriz por severidade injetada |
-| `resultados/v2/autoencoder/matrizes_confusao.png` | experimento v2 |
-| `resultados/classificacao_pv/matriz_confusao.png` | PV Farms, lado CC, E1 |
-
-**A comparação macro não tem matriz de confusão, e isso é decisão, não falta.**
-Sob prevalência rara a matriz no limiar calibrado é enganosa: com FP alvo de 1%,
-quase toda a massa cai na diagonal do negativo e a figura sugere um desempenho
-que a AUC não confirma. É por isso que o comparativo ranqueia por **AUC** e
-**SMD@FPR=10%**, que independem do limiar. Registrado em `macro_comum.py` e
-`macro_comparar.py`.
-
-### Criticidade e priorização
+## E3 experimental
 
 | Afirmação | Fonte |
 |---|---|
-| Quais componentes, com que S/O/D_campo e NPR | `docs/fmeca.md` — **fonte única** |
-| O que `D_campo`, `POD_mon`, `D_mon` e `D_proj` significam | `docs/nomenclatura_deteccao.md` |
-| O NPR projetado pelo monitoramento | tabela **separada**, de `retroalimentacao_fmeca.py` |
+| Métricas macro com IC95% | `e3_metricas_macro.csv` |
+| Métricas dos 14 ensaios F1L-F7M | `e3_metricas_por_ensaio.csv` |
+| Comparação gráfica dos modelos | `e3_metricas_macro.{png,pdf}` e `e3_resultados_por_ensaio.{png,pdf}` |
+| Curvas ROC e precisão-revocação | `e3_curvas_discriminacao.{png,pdf}` |
+| Matrizes de confusão | `e3_matrizes_confusao.{csv,png,pdf}` |
+| Estabilidade em cinco sementes | `e3_estabilidade_sementes.csv` |
+| Diferenças pareadas | `e3_diferencas_pareadas.csv` |
 
-A FMECA oficial de `docs/fmeca.md` **não muda** com o resultado do detector. O
-NPR projetado é uma leitura adicional, em tabela própria.
+AUC-PR é a métrica principal. O bootstrap usa o ensaio como unidade de
+reamostragem; janelas vizinhas não são tratadas como réplicas independentes.
+Os dois modelos usam o mesmo pré-processamento e os mesmos ensaios, mas cada um
+mantém seu próprio limiar p99.
 
-### Classificação supervisionada (eixo complementar)
+## E2 FMECA
 
-`resultados/classificacao_pv/metricas.json` — PV Farms, falhas do lado **CC**.
-Não é o método da dissertação e não entra na mesma tabela que o pipeline CA.
+| Afirmação | Fonte |
+|---|---|
+| Detecção por modelo, componente e magnitude | `e2_deteccao_por_magnitude.csv` |
+| Menor magnitude com detecção conservadora de 95% | `e2_resumo.csv` e `e2_smd95.{png,pdf}` |
+| Primeiro cruzamento observado | `e2_primeiro_cruzamento.csv` |
+| Sobrevivência, incidência e risco discretos | `e2_funcoes_empiricas.{csv,png,pdf}` |
+| Pontos e diagnóstico Weibull | `e2_weibull_pontos.csv`, `e2_weibull_ajustes.csv` e `e2_diagnostico_weibull.{png,pdf}` |
 
----
+Quando o limite inferior do IC95% não alcança 95%, SMD95 é publicado como
+“não atingido”. Weibull 2P é apenas diagnóstico e só pode ser resumida quando o
+critério formal de aceitação estiver satisfeito; a leitura principal permanece
+empírica.
 
-## O que ainda não é defensável, e por quê
+## Confiabilidade física
 
-Escrito aqui para não ser descoberto na banca.
+| Afirmação | Fonte |
+|---|---|
+| Taxas diretas e derivadas, origem e ressalvas | `cenarios.csv` e `metodologia.json` |
+| Curvas horárias e anuais | `curvas.csv` |
+| Confiabilidade e probabilidade acumulada | `confiabilidade_probabilidade_falha.{png,pdf}` |
+| Densidade e taxa de falha | `densidade_taxa_falha.{png,pdf}` |
+| Comparação das taxas | `taxas_componentes.{png,pdf}` |
 
-1. **O ajuste Weibull 2P vem sendo rejeitado.** O teste de aderência quantizada
-   marca `resumo_parametrico_recomendado = False`. Os parâmetros β e η existem
-   no artefato, mas **não** têm direito de aparecer como resumo. A leitura
-   defensável é a curva empírica de Kaplan-Meier. O código já desenha a
-   paramétrica tracejada e rotulada "exploratória" — o texto tem de acompanhar.
+O modelo físico publicado é exponencial: `R(t)=exp(-lambda*t)`,
+`F(t)=1-R(t)`, `f(t)=lambda*exp(-lambda*t)` e `h(t)=lambda`. As taxas de
+Contator AC e IGBT são cenários derivados, não medições. A taxa direta do
+fusível permanece separada. O GPVS não estima essas taxas e não autoriza
+parâmetros Weibull físicos.
 
-2. **`a_det` não é tempo.** Chamava-se TTF até 08/08/2026, nome que prometia
-   hora onde há fração de assinatura. Qualquer conversão para RUL em tempo
-   precisa de uma hipótese de taxa de degradação que este trabalho não mediu.
+## Proveniência e precedência
 
-3. **Escopo CA × features CC.** Oito das 24 features do vetor E3 são do lado CC
-   (`Ipv`, `Vpv`, `Vdc`, `p_dc`), e a dissertação declara foco no lado CA. É
-   justificável — o GPVS tem falhas de origem CC — mas a justificativa precisa
-   estar escrita no Capítulo 3. Registrado como decisão pendente em
-   `docs/handoff/`.
+- `resultados/manifestos/comparacao_autoencoders.json` protege a comparação.
+- `resultados/manifestos/confiabilidade_componentes.json` protege a confiabilidade.
+- Cada manifesto registra código, entradas, parâmetros, outputs e hashes.
+- Os arquivos consolidados `comparacao_autoencoders.json` e `metodologia.json`
+  carregam os contratos metodológicos usados pelo agente e pela interface.
+- Notas e sessões registram contexto, mas não sobrepõem um artefato publicado.
 
-4. **Amostra pequena e grade discreta.** Os valores de E2 são consistentes, não
-   precisos. Um SMD de 0,50 significa "falhou em 0,30, passou em 0,50" — a grade
-   de severidade não tem resolução para afirmar mais.
+## Verificação e regeneração
 
----
-
-## Regra de precedência, quando dois artefatos discordarem
-
-1. Artefato vigente com manifesto em `resultados/manifestos/` **prevalece**.
-2. Entre dois artefatos vigentes, prevalece o de **maior nível de evidência**
-   para a afirmação em causa — e E3 de bancada só vale para detecção em falha
-   real, nunca para detectabilidade sintética.
-3. Nota curada do Obsidian **não** sobrepõe artefato. Sessão arquivada registra
-   o que foi dito, não prova fato.
-4. `CLAUDE.md` e este mapa dizem **onde ler**, nunca **quanto deu**.
-
-## Como recalcular
-
-```bash
-python -m src.ml.exec_etapa_isolada features_gpvs
-python -m src.ml.exec_etapa_isolada autoencoder
-python -m src.ml.macro_comparar            # AUC e SMD, proposto × Ibrahim
-python -m src.ml.macro_weibull             # as quatro curvas, por modelo
+```powershell
+python scripts/auditar_resultados.py
+python -m src.ml.comparacao_autoencoders
+python scripts/gerar_confiabilidade.py
 ```
 
-Tudo isso exige `dados/brutos/gpvs/`, que fica fora do Git. Na nuvem o agente lê
-os artefatos versionados e **nunca** afirma que treinou.
+As duas regenerações exigem o ambiente científico local; a comparação também
+exige os 16 CSVs GPVS ignorados pelo Git. A aplicação web apenas consulta os
+artefatos publicados.

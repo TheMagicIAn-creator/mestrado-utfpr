@@ -33,7 +33,6 @@ from src.ml.bracos_modelo import (
     BracoModelo,
     identificar,
     por_id,
-    preparar_pastas,
     resumo_markdown,
 )
 
@@ -185,9 +184,13 @@ def test_o_resumo_explica_a_separacao_ao_pesquisador():
     assert "só são geradas quando pedidas" in texto
 
 
-def test_pastas_reais_sao_criadas_sob_resultados():
-    caminhos = preparar_pastas()
+def test_pastas_sao_criadas_no_destino_configurado(tmp_path, monkeypatch):
+    import src.ml.bracos_modelo as bm
+
+    monkeypatch.setattr(bm, "PASTA_MODELOS", tmp_path / "modelos")
+    monkeypatch.setattr(bm, "PASTA_COMPARACAO", tmp_path / "comparacao")
+    caminhos = bm.preparar_pastas()
     assert set(caminhos) == {"ae_denso", "ae_lstm", "comparacao"}
     for caminho in caminhos.values():
         assert caminho.is_dir()
-        assert caminho.is_relative_to(RAIZ / "resultados")
+        assert caminho.is_relative_to(tmp_path)

@@ -47,16 +47,15 @@ jobs:
           python -m pytest --collect-only -q -m "not pesado" > /tmp/ci-tests.txt
           cat /tmp/ci-tests.txt
           for alvo in \
-            tests/test_escore_anomalia.py \
-            tests/test_limiar.py \
-            tests/test_smd.py \
             tests/test_ae_lstm_temporal.py \
-            tests/test_comparacao_macro.py \
+            tests/test_dados_gpvs_canonico.py \
+            tests/test_detectabilidade_canonica.py \
+            tests/test_modelos_autoencoder_canonicos.py \
+            tests/test_publicacao_comparacao.py \
             tests/test_proveniencia.py \
-            tests/test_autoencoder_v2.py \
-            tests/test_autoencoder_v2_resultados.py \
-            tests/test_confiabilidade_fisica_v2.py \
-            tests/test_confiabilidade_fisica_resultados.py \
+            tests/test_confiabilidade_componentes.py \
+            tests/test_artefatos_protegidos.py \
+            tests/test_auditar_resultados.py \
             tests/test_webapp.py \
             tests/test_recuperacao_hibrida.py \
             tests/test_chamadas_dos_scripts.py
@@ -121,4 +120,4 @@ jobs:
       - name: Contrato do Autoencoder e do escore (torch real, dados de brinquedo)
         run: |
           python -m pytest -p no:cacheprovider -q -W ignore \
-            tests/test_torch_smoke.py tests/test_autoencoder_v2.py -m "not pesado"
+            tests/test_torch_smoke.py tests/test_modelos_autoencoder_canonicos.py -m "not pesado"

@@ -19,10 +19,10 @@ Os 16 CSVs locais totalizam 493.425.214 bytes (aproximadamente 493 MB em base de
 
 ## Protocolo canônico
 
-F0L/F0M alimentam um único Autoencoder. O teste saudável F0 também recebe
-injeções sintéticas orientadas pela FMECA, produzindo evidência E2. O mesmo
-modelo, scaler, escore e limiar avaliam F1L-F7M, produzindo evidência E3 de
-bancada.
+F0L/F0M alimentam o Autoencoder Denso e o AE-LSTM sob o mesmo protocolo. O
+teste saudável F0 também recebe injeções sintéticas orientadas pela FMECA,
+produzindo evidência E2. Cada modelo preserva seu próprio scaler, escore e
+limiar p99, todos congelados antes de avaliar F1L-F7M na E3 de bancada.
 
 Cada ensaio de falha usa a primeira metade pré-falha para normalização de
 comissionamento e reserva a segunda metade pré-falha para especificidade. Não
@@ -36,29 +36,21 @@ dos CSVs e registra ambos os valores; não presume que o manual esteja correto.
 
 ## Resultados vigentes
 
-O detector canônico obteve, nos 14 ensaios E3:
-
-| Métrica macro por ensaio | Estimativa | IC95% bootstrap |
-|---|---:|---:|
-| AUC | 0,773 | 0,691-0,853 |
-| Sensibilidade | 0,406 | 0,211-0,615 |
-| Especificidade | 0,974 | 0,946-0,992 |
-| Acurácia balanceada | 0,690 | 0,596-0,791 |
-
-F1, F2 e F5 são mais detectáveis. F4, F6 e parte de F3/F7 permanecem limites
-publicados, não resultados descartados. O teste saudável F0 apresentou 1,42%
-de excedência no limiar nominal p99.
+Os resultados dos dois modelos nos 14 ensaios E3 estão em
+`resultados/comparacao/e3_metricas_macro.csv` e
+`e3_metricas_por_ensaio.csv`. AUC-PR é a métrica principal e os IC95% usam o
+ensaio como unidade de bootstrap. Limites de desempenho por ensaio permanecem
+publicados; nenhum cenário é descartado para melhorar a média.
 
 ## Fontes fora do resultado principal
 
 Stender, PMSM, PV Farms, telemetria residencial e Bearing DataCenter permanecem
-como referências, auditorias ou experimentos legados. Seus dados e métricas não
-são fundidos ao GPVS. Relatórios datados anteriores podem descrevê-los como
-candidatos ou eixos; isso é histórico, não o protocolo canônico vigente.
+somente como referências ou auditorias históricas. Seus dados e métricas não
+são fundidos ao GPVS nem possuem resultados ativos no repositório.
 
 ## Limite para Weibull físico
 
 O GPVS contém ensaios pré/pós-falha, não tempos de vida de unidades
 independentes. Portanto não sustenta confiabilidade temporal, MTTF, taxa de
-falha ou RUL de campo. A Weibull publicada descreve magnitude de
-detectabilidade E2 (`a_det`), não tempo.
+falha ou RUL de campo. O diagnóstico Weibull da E2 descreve magnitude de
+detectabilidade (`a_det`), não tempo, e não substitui as curvas empíricas.

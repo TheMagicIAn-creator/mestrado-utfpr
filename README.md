@@ -105,6 +105,7 @@ magnitude, not physical RUL. Field validation is still not performed.
 
 ```powershell
 python scripts/verificar_ambiente.py    # diagnóstico (imports, chaves, datasets, ChromaDB, pipeline)
+python scripts/auditar_resultados.py    # contratos canônicos, outputs e hashes
 python -m pytest                        # testes unitários
 python -m src.webapp                     # interface em http://127.0.0.1:8000
 ```
