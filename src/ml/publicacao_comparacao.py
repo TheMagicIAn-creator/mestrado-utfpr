@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -32,24 +33,35 @@ ROOT = Path(RAIZ_PROJETO)
 RESULTS_DIR = ROOT / "resultados" / "comparacao"
 
 
-def _json_default(value):
+def _json_safe(value):
+    """Converte o contrato para tipos compatíveis com JSON estrito."""
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, np.ndarray):
+        return _json_safe(value.tolist())
     if isinstance(value, np.integer):
         return int(value)
-    if isinstance(value, np.floating):
-        return None if not np.isfinite(value) else float(value)
-    if isinstance(value, np.ndarray):
-        return value.tolist()
+    if isinstance(value, (float, np.floating)):
+        numeric = float(value)
+        return numeric if math.isfinite(numeric) else None
     if isinstance(value, Path):
         return value.as_posix()
     if isinstance(value, np.bool_):
         return bool(value)
-    raise TypeError(f"Tipo não serializável: {type(value).__name__}")
+    return value
 
 
 def _write_json(path: Path, payload: dict | list) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, default=_json_default)
+        json.dumps(
+            _json_safe(payload),
+            ensure_ascii=False,
+            indent=2,
+            allow_nan=False,
+        )
         + "\n",
         encoding="utf-8",
     )
@@ -322,6 +334,7 @@ def save_results(
             "fmeca_signatures": Path(__file__).with_name("assinaturas_fmeca.py"),
             "detectability": Path(__file__).with_name("detectabilidade.py"),
             "plots": Path(__file__).with_name("graficos_comparacao.py"),
+            "publication": Path(__file__),
         },
         evidence_level="E2+E3_bench",
     )

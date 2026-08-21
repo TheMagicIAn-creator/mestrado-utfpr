@@ -24,6 +24,10 @@ def _json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _reject_non_finite(value: str):
+    raise ValueError(f"Constante JSON não finita: {value}")
+
+
 @pytest.mark.integracao
 def test_contrato_publicado_e_canonico():
     payload = _json(RESULTS / "comparacao_autoencoders.json")
@@ -41,6 +45,35 @@ def test_contrato_publicado_e_canonico():
     assert "descritivos" in payload["e2"]["interval_caveat"]
     assert {item["stability_seeds"][0] for item in payload["models"].values()} == {13}
     assert all(item["stability_seeds"] == SEEDS for item in payload["models"].values())
+
+
+@pytest.mark.integracao
+def test_contrato_publicado_e_json_estrito():
+    payload = json.loads(
+        (RESULTS / "comparacao_autoencoders.json").read_text(encoding="utf-8"),
+        parse_constant=_reject_non_finite,
+    )
+    fuse_lstm = next(
+        item
+        for item in payload["e2"]["summary"]
+        if item["model"] == "ae_lstm" and item["component"] == "fusivel_ac"
+    )
+    assert fuse_lstm["smd95_status"] == "not_reached"
+    assert fuse_lstm["smd95"] is None
+
+
+def test_publicador_converte_nao_finitos_para_null(tmp_path):
+    from src.ml.publicacao_comparacao import _write_json
+
+    path = _write_json(
+        tmp_path / "contrato.json",
+        {"nan": float("nan"), "infinito": float("inf")},
+    )
+    payload = json.loads(
+        path.read_text(encoding="utf-8"),
+        parse_constant=_reject_non_finite,
+    )
+    assert payload == {"nan": None, "infinito": None}
 
 
 @pytest.mark.integracao
@@ -89,6 +122,7 @@ def test_manifesto_reconcilia_os_30_outputs():
         "fmeca_signatures": "assinaturas_fmeca.py",
         "detectability": "detectabilidade.py",
         "plots": "graficos_comparacao.py",
+        "publication": "publicacao_comparacao.py",
     }
     for key, filename in dependencies.items():
         path = ROOT / "src" / "ml" / filename
