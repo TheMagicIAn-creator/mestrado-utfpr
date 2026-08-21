@@ -13,6 +13,7 @@ dados/
 # ========================
 # MODELOS TREINADOS
 # ========================
+/artefatos/modelos/
 resultados/modelos_salvos/
 *.pkl
 *.pkl.sha256

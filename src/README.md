@@ -75,6 +75,16 @@ coordenadas por `pipeline.py` e rastreadas por `proveniencia.py`.
 
 | Arquivo | O que faz |
 |---|---|
+| `dados_gpvs.py` | Contrato único dos 16 ensaios, 24 features, split temporal, normalização e holdout GPVS-Faults; não publica resultado autônomo. |
+| `modelos_autoencoder.py` | Implementações PyTorch do Denso 24-16-8-16-24 e do AE-LSTM temporal L=8, hidden=32 e latent=8. |
+| `treino_comparacao.py` | Treina ambos sob o mesmo orçamento, calibra p99 próprio e persiste pesos/scalers locais ignorados. |
+| `estatistica_comparacao.py` | Métricas binárias, IC Wilson e bootstrap no nível do ensaio para o comparativo. |
+| `assinaturas_fmeca.py` | Contratos e injeções E2 compartilhadas de Contator AC, IGBT e Fusível AC no eixo adimensional `a_det`. |
+| `detectabilidade.py` | Primeiro cruzamento, funções empíricas e Weibull 2P apenas diagnóstico, com censura e teste formal na grade de magnitude. |
+| `avaliacao_comparativa.py` | Executa E3 nos 14 ensaios reais e E2 no holdout F0 com janelas, sementes e magnitudes pareadas. |
+| `graficos_comparacao.py` | Figuras acadêmicas da comparação E2/E3 em PNG 300 dpi e PDF vetorial. |
+| `publicacao_comparacao.py` | Grava dados-fonte, relatório, contrato JSON, figuras e manifesto v2 com hashes. |
+| `comparacao_autoencoders.py` | Entrada canônica e orquestrador enxuto da comparação Denso versus AE-LSTM. |
 | `gpvs_principal.py` | Etapa 1: contrato canônico de 24 features, split F0 e normalização de baseline GPVS. |
 | `features_ca.py` | Extrator Stender preservado para experimentos históricos; não integra o pipeline canônico GPVS. |
 | `autoencoder.py` | Etapa 2: Autoencoder de normalidade + limiar operacional (p99). |

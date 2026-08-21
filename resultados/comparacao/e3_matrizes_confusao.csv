@@ -1,0 +1,3 @@
+model,tn,fp,fn,tp,unit
+ae_denso,2275,73,2694,1990,window_descriptive_only
+ae_lstm,2271,77,2800,1884,window_descriptive_only
