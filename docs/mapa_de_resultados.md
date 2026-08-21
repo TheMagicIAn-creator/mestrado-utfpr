@@ -81,7 +81,7 @@ parâmetros Weibull físicos.
 ```powershell
 python scripts/auditar_resultados.py
 python -m src.ml.comparacao_autoencoders
-python scripts/gerar_confiabilidade.py
+python -m src.ml.publicacao_confiabilidade
 ```
 
 As duas regenerações exigem o ambiente científico local; a comparação também

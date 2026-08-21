@@ -1,946 +1,270 @@
-"""
-resultados.py - Al IAdo PV
-Leitura e resumo dos artefatos do pipeline de Machine Learning.
-
-As respostas de resultados agora saem por prompt, no chat. Este modulo
-centraliza os JSONs, tabelas e graficos para evitar dashboards paralelos.
-"""
+"""Leitura acadêmica dos contratos científicos publicados."""
 
 from __future__ import annotations
 
-import csv
 import json
-import re
 from pathlib import Path
 
 from src.core.config import RAIZ_PROJETO
-from src.core.formatacao import fmt_num
 from src.core.tempo import agora_local
-from src.core.texto import normalizar_sem_acentos as _normalizar
-from src.ml.resultados_gpvs import resumir_gpvs
-
-PASTA_AE = RAIZ_PROJETO / "resultados" / "autoencoder"
-PASTA_EXPERIMENTOS = RAIZ_PROJETO / "resultados" / "experimentos"
-PASTA_GPVS = RAIZ_PROJETO / "resultados" / "gpvs"
+from src.core.texto import normalizar_sem_acentos
 
 
-def _json(path: Path) -> dict | None:
-    if not path.exists():
-        return None
-    return json.loads(path.read_text(encoding="utf-8"))
+ROOT = Path(RAIZ_PROJETO)
+COMPARISON_DIR = ROOT / "resultados" / "comparacao"
+RELIABILITY_DIR = ROOT / "resultados" / "confiabilidade"
+COMPARISON_JSON = COMPARISON_DIR / "comparacao_autoencoders.json"
+RELIABILITY_JSON = RELIABILITY_DIR / "metodologia.json"
 
-
-def _fmt(valor, casas: int = 3) -> str:
-    """Formatação canônica — delega a src.core.formatacao (política única)."""
-    if isinstance(valor, str):
-        return valor  # rótulos passam intactos (compatibilidade)
-    return fmt_num(valor, casas)
-
-
-def _fmt_excedencia(info: dict | None, fallback_pct=None) -> str:
-    if not isinstance(info, dict):
-        return f"{_fmt(fallback_pct, 2)}%" if fallback_pct is not None else "-"
-    count = info.get("count")
-    n = info.get("n")
-    taxa = info.get("rate_pct")
-    low = info.get("ci95_low_pct")
-    high = info.get("ci95_high_pct")
-    if count is None or n is None or taxa is None:
-        return f"{_fmt(fallback_pct, 2)}%" if fallback_pct is not None else "-"
-    return (
-        f"{count}/{n} = {_fmt(taxa, 2)}% "
-        f"[{_fmt(low, 2)}; {_fmt(high, 2)}]"
-    )
-
-
-def _excedencia_calibracao_publicada(bloco: str, prefixo: str) -> dict | None:
-    caminho = PASTA_AE / "calibracao_autoencoder.csv"
-    if not caminho.exists():
-        return None
-    try:
-        with caminho.open("r", encoding="utf-8", newline="") as arquivo:
-            linha = next(
-                (r for r in csv.DictReader(arquivo) if r.get("bloco") == bloco),
-                None,
-            )
-        if not linha or not linha.get(f"{prefixo}_n"):
-            return None
-        return {
-            "count": int(float(linha[f"{prefixo}_count"])),
-            "n": int(float(linha[f"{prefixo}_n"])),
-            "rate_pct": float(linha[f"{prefixo}_rate_pct"]),
-            "ci95_low_pct": float(linha[f"{prefixo}_ci95_low_pct"]),
-            "ci95_high_pct": float(linha[f"{prefixo}_ci95_high_pct"]),
-        }
-    except (OSError, StopIteration, TypeError, ValueError, KeyError):
-        return None
-
-
-_EXPERIMENTOS_ALIASES = {
-    "ibrahim": "ibrahim",
+MODEL_LABELS = {"ae_denso": "Autoencoder Denso", "ae_lstm": "AE-LSTM"}
+COMPONENT_LABELS = {
+    "contator_ac": "Contator AC",
+    "igbt": "IGBT",
+    "fusivel_ac": "Fusível AC",
 }
-_EXPERIMENTOS_ANOMALIA = {"ibrahim"}
 
 
-def _slug_modelo(nome: str) -> str:
-    texto = _normalizar(nome)
-    return re.sub(r"[^a-z0-9]+", "_", texto).strip("_") or "modelo"
+def _json(path: Path) -> dict:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return value if isinstance(value, dict) else {}
 
 
-def _quer_resultado_experimentos(txt: str) -> bool:
-    if any(autor in txt for autor in _EXPERIMENTOS_ALIASES):
-        return True
-    if any(t in txt for t in (
-        "experimento", "experimentos", "artigo", "artigos", "benchmark",
-        "comparacao", "comparar", "ppo",
-        "experiment", "experiments", "paper", "papers", "comparison", "compare",
-        "experimento", "experimentos", "articulo", "articulos", "comparacion",
-        "comparar", "experience", "expérience", "article", "articles",
-        "comparaison", "comparer",
-    )):
-        return True
-    if any(t in txt for t in ("modelo", "modelos", "model", "models", "modele", "modeles", "modèle", "modèles")):
-        return any(t in txt for t in (
-            "anomalia", "anomalias", "detectaram", "detectou", "melhor",
-            "confiavel", "robusto", "matriz", "metricas", "grafico", "graficos",
-            "anomaly", "anomalies", "detected", "best", "matrix",
-            "reliable", "robust", "metrics", "chart", "charts", "plot", "plots",
-            "anomalia", "anomalias", "detectadas", "mejor", "confiable", "robusto", "matriz",
-            "metricas", "grafico", "graficos",
-            "anomalie", "anomalies", "detectees", "détectées", "meilleur", "fiable", "robuste",
-            "matrice", "metriques", "métriques", "graphique", "graphiques",
-        ))
-    return False
-
-
-def _experimentos_pedidos(pergunta: str = "") -> list[str]:
-    txt = _normalizar(pergunta)
-    encontrados = []
-    for nome, key in _EXPERIMENTOS_ALIASES.items():
-        pos = txt.find(nome)
-        if pos >= 0:
-            encontrados.append((pos, key))
-    pedidos = [key for _, key in sorted(encontrados)]
-    if pedidos:
-        return pedidos
-    if any(t in txt for t in ("anomalia", "anomalias", "anomaly", "anomalies", "anomalie")):
-        return ["ibrahim"]
-    return []
-
-
-def _arquivos_experimentos(pergunta: str = "") -> list[Path]:
-    arquivos = sorted(PASTA_EXPERIMENTOS.glob("*/resultado.json"))
-    pedidos_lista = _experimentos_pedidos(pergunta)
-    pedidos = set(pedidos_lista)
-    if pedidos:
-        por_nome = {arq.parent.name: arq for arq in arquivos}
-        arquivos = [por_nome[key] for key in pedidos_lista if key in por_nome]
-    return arquivos
-
-
-def _pede_matriz(txt: str) -> bool:
-    return any(t in txt for t in ("matriz", "matrizes", "confusao", "matrix", "confusion", "matrice"))
-
-
-def _pede_graficos_modelo(txt: str) -> bool:
-    return any(t in txt for t in (
-        "grafico", "graficos", "grafica", "graficas", "metricas", "metrica",
-        "plot", "plots", "chart", "charts", "figure", "figures",
-        "imagen", "imagenes", "figura", "figuras",
-        "graphique", "graphiques", "metriques", "métriques",
-    ))
-
-
-def _variante_comparacao_metricas(txt: str) -> tuple[str, str]:
-    if any(t in txt for t in ("pontos", "dot plot", "dotplot", "lollipop", "dispersao")):
-        return "comparacao_metricas_pontos.png", "comparacao por pontos"
-    if any(t in txt for t in (
-        "barras", "barra horizontal", "bar chart", "bar plot",
-        "grafico de colunas", "gráfico de colunas",
-    )):
-        return "comparacao_metricas_barras.png", "comparacao em barras horizontais"
-    return "comparacao_metricas.png", "comparacao de metricas"
-
-
-def _pede_anomalias(txt: str) -> bool:
-    return any(t in txt for t in (
-        "anomalias detectadas", "detectaram", "detectou",
-        "detected anomalies", "detected", "detectadas", "detecto",
-        "anomalies detectees", "anomalies détectées", "detectees", "détectées",
-    ))
-
-
-def _pede_melhor(txt: str) -> bool:
-    return any(t in txt for t in (
-        "melhor", "best", "mejor", "meilleur",
-        "mais confiavel", "confiavel", "more reliable", "reliable",
-        "mas confiable", "confiable", "plus fiable", "fiable",
-        "robusto", "robust", "robuste",
-    ))
-
-
-def _pede_origem_dados(txt: str) -> bool:
-    return any(t in txt for t in (
-        "origem", "dados usados", "dataset local", "datasets locais",
-        "recalculos", "recalculado", "recalculados", "recalculei",
-        "replicacao", "replicacoes", "replicado", "replicados",
-        "metodologia dos artigos", "somente os artefatos", "artefatos recalculados",
-        "repositorio", "local", "proveniencia", "proveniência",
-        "origin", "local dataset", "local datasets", "replication",
-        "replications", "recalculated", "repository", "provenance",
-    ))
-
-
-def _contem_termo(txt: str, termo: str) -> bool:
-    if len(termo) <= 3 or " " in termo:
-        return bool(re.search(rf"\b{re.escape(termo)}\b", txt))
-    return termo in txt
-
-
-def _modelo_citado(txt: str, modelo: str) -> bool:
-    nome = _normalizar(modelo)
-    slug = _slug_modelo(modelo).replace("_", " ")
-    aliases = {nome, slug}
-    mapa = {
-        "isolation forest": ("isolation forest", "iforest"),
-        "ppo": ("ppo", "rl"),
-        "random forest": ("random forest", "rf", "bosque aleatorio", "foret aleatoire", "forêt aléatoire"),
-        "z-score": ("z-score", "z score", "zscore"),
-        "ae-lstm": ("ae-lstm", "ae lstm", "autoencoder lstm"),
-        "hibrido": ("hibrido", "voto"),
-        "svm": ("svm",),
-        "knn": ("knn",),
-        "ann": ("ann", "mlp"),
-        "rnn": ("rnn",),
-        "cnn": ("cnn",),
-        "adaboost": ("adaboost",),
-        "naive bayes": ("naive bayes", "bayes"),
-        "regressao logistica": ("regressao logistica", "logistica"),
-    }
-    for chave, valores in mapa.items():
-        if chave in nome or chave in slug:
-            aliases.update(valores)
-    return any(alias and alias in txt for alias in aliases)
-
-
-def _modelos_citados(txt: str, modelos: dict) -> set[str]:
-    return {modelo for modelo in modelos if _modelo_citado(txt, modelo)}
-
-
-def _focos(pergunta: str) -> set[str]:
-    txt = _normalizar(pergunta)
-    focos = set()
-    quer_experimentos = _quer_resultado_experimentos(txt)
-    quer_gpvs = any(t in txt for t in (
-        "gpvs", "validacao externa", "bancada externa", "microrede",
-        "microgrid", "e3",
-    ))
-
-    if any(t in txt for t in ("autoencoder", "limiar", "baseline", "reconstrucao")):
-        focos.add("autoencoder")
-    if any(t in txt for t in (
-        "injecao", "falha", "falhas", "smd", "severidade",
-        "injection", "fault", "failure", "severity",
-        "inyeccion", "falla", "fallas", "severidad",
-        "injection", "defaillance", "defaillances", "severite", "sévérité",
-    )):
-        focos.add("injecao")
-    if any(t in txt for t in ("validacao", "auc", "f1", "recall", "precision", "roc", "matriz")) and (
-        not quer_experimentos or "validacao" in txt or "autoencoder" in txt
-    ):
-        if not quer_gpvs or any(t in txt for t in ("sintetic", "fmeca", "e2")):
-            focos.add("validacao")
-        focos.add("gpvs")
-    if any(t in txt for t in (
-        "weibull", "rul", "mttf", "b10", "beta", "eta", "confiabilidade",
-        "reliability", "remaining useful life", "confiabilidad", "fiabilite",
-    )):
-        focos.add("weibull")
-    if quer_gpvs:
-        focos.add("gpvs")
-    if quer_experimentos:
-        focos.add("experimentos")
-    return focos
+def _fmt(value, digits: int = 3) -> str:
+    if not isinstance(value, (int, float)):
+        return "não disponível"
+    return f"{float(value):.{digits}f}".replace(".", ",")
 
 
 def _quer_imagens(pergunta: str) -> bool:
-    txt = _normalizar(pergunta)
-    return any(_contem_termo(txt, t) for t in (
-        "grafico", "graficos", "imagem", "imagens", "figura", "figuras",
-        "curva", "curvas", "plot", "plots", "roc", "matriz", "matrizes",
-        "heatmap", "visual", "visualiza", "mostre", "mostra", "mostrar",
-        "cade", "exibe", "exibir", "veja", "ver",
-        "chart", "charts", "image", "images", "figure", "figures",
-        "curve", "curves", "matrix", "show", "display", "see",
-        "grafico", "graficos", "imagen", "imagenes", "figura", "curva",
-        "matriz", "muestra", "mostrar", "ver",
-        "graphique", "graphiques", "image", "images", "figure", "courbe",
-        "matrice", "montre", "affiche", "voir",
-    ))
-
-
-def _add_img(
-    imagens: list[dict],
-    nome: str | Path,
-    legenda: str,
-    pasta: Path = PASTA_AE,
-    grupo: str | None = None,
-    ordem: int = 0,
-    tipo: str = "grafico",
-    ordem_grupo: int = 0,
-) -> None:
-    path = nome if isinstance(nome, Path) else pasta / nome
-    if path.exists():
-        resolvido = str(path.resolve())
-        if not any(img["path"] == resolvido for img in imagens):
-            imagens.append({
-                "path": resolvido,
-                "caption": legenda,
-                "group": grupo or "Resultados",
-                "group_order": ordem_grupo,
-                "order": ordem,
-                "kind": tipo,
-            })
-
-
-def _add_grafico_modelo(
-    imagens: list[dict],
-    pasta: Path,
-    modelo: str,
-    dados_modelo: dict,
-    chave: str,
-    legenda: str,
-    grupo: str,
-    ordem: int,
-    ordem_grupo: int,
-) -> None:
-    caminho = dados_modelo.get(chave)
-    tipo = "matriz" if chave == "grafico_matriz_confusao" else "modelo"
-    if caminho:
-        _add_img(
-            imagens,
-            Path(caminho),
-            legenda,
-            grupo=grupo,
-            ordem=ordem,
-            tipo=tipo,
-            ordem_grupo=ordem_grupo,
+    text = normalizar_sem_acentos(pergunta).lower()
+    return any(
+        term in text
+        for term in (
+            "grafico",
+            "graficos",
+            "figura",
+            "figuras",
+            "imagem",
+            "imagens",
+            "mostre",
+            "veja",
+            "exiba",
+            "visualize",
         )
-        return
-
-    sufixo = "metricas" if chave == "grafico_metricas" else "matriz_confusao"
-    _add_img(
-        imagens,
-        pasta / f"modelo_{_slug_modelo(modelo)}_{sufixo}.png",
-        legenda,
-        grupo=grupo,
-        ordem=ordem,
-        tipo=tipo,
-        ordem_grupo=ordem_grupo,
     )
 
 
-def imagens_relevantes(pergunta: str = "") -> list[dict]:
-    txt = _normalizar(pergunta)
-    focos = _focos(pergunta)
-    if not focos:
-        focos = {
-            "autoencoder", "injecao", "validacao", "weibull", "gpvs",
-        }
-
-    imagens = []
-    if "autoencoder" in focos:
-        caminho_qualidade = RAIZ_PROJETO / "resultados" / "qualidade" / "features_gpvs_qualidade.png"
-        _add_img(imagens, caminho_qualidade, "GPVS F0 - qualidade das features saudáveis", grupo="Qualidade dos dados", ordem=5, ordem_grupo=5)
-        _add_img(imagens, "curva_treino.png", "Autoencoder - convergência treino/validação", grupo="Autoencoder", ordem=10, ordem_grupo=10)
-        _add_img(imagens, "distribuicao_erro.png", "Autoencoder - distribuicao MSE e ECDF", grupo="Autoencoder", ordem=20, ordem_grupo=10)
-        _add_img(imagens, "erro_temporal.png", "Autoencoder - erro MSE temporal por split", grupo="Autoencoder", ordem=30, ordem_grupo=10)
-        _add_img(imagens, "diagnostico_escore.png", "Autoencoder - ablação do escore por severidade", grupo="Autoencoder", ordem=40, ordem_grupo=10)
-    if "injecao" in focos:
-        _add_img(imagens, "injecao_falhas_resultados.png", "Falhas sinteticas - erro por severidade", grupo="Injecao de falhas", ordem=10, tipo="comparacao", ordem_grupo=20)
-        _add_img(imagens, "injecao_falhas_comparacao.png", "Falhas sinteticas - taxa de deteccao e IC95%", grupo="Injecao de falhas", ordem=20, tipo="comparacao", ordem_grupo=20)
-    if "validacao" in focos:
-        _add_img(imagens, "validacao_roc.png", "Validacao - curvas ROC", grupo="Validacao", ordem=10, tipo="comparacao", ordem_grupo=30)
-        _add_img(imagens, "validacao_pr.png", "Validacao - curvas Precision-Recall", grupo="Validacao", ordem=15, tipo="comparacao", ordem_grupo=30)
-        _add_img(imagens, "validacao_matriz.png", "Validacao - matrizes de confusao", grupo="Validacao", ordem=20, tipo="matriz", ordem_grupo=30)
-        _add_img(imagens, "validacao_matrizes_severidades.png", "Validacao - matrizes por falha e severidade", grupo="Validacao", ordem=25, tipo="comparacao", ordem_grupo=30)
-        _add_img(imagens, "validacao_metricas.png", "Validacao - heatmap de metricas", grupo="Validacao", ordem=30, tipo="comparacao", ordem_grupo=30)
-    if "weibull" in focos:
-        _add_img(imagens, "weibull_ttf.png", "Weibull - primeiro cruzamento do detector", grupo="Weibull / detectabilidade E2", ordem=10, ordem_grupo=40)
-        _add_img(imagens, "weibull_confiabilidade.png", "Weibull - curva de nao deteccao", grupo="Weibull / detectabilidade E2", ordem=20, ordem_grupo=40)
-        _add_img(imagens, "weibull_intensidade_deteccao.png", "Weibull - intensidade de primeiro cruzamento (nao taxa de falha fisica)", grupo="Weibull / detectabilidade E2", ordem=30, ordem_grupo=40)
-        _add_img(imagens, "weibull_funcoes_distribuicao.png", "Weibull - densidade e distribuicao acumulada", grupo="Weibull / detectabilidade E2", ordem=40, ordem_grupo=40)
-        _add_img(imagens, "weibull_distribuicao.png", "Weibull - papel de probabilidade e diagnostico de linearidade", grupo="Weibull / detectabilidade E2", ordem=50, ordem_grupo=40)
-        _add_img(imagens, "weibull_rul.png", "Weibull - margem residual de magnitude", grupo="Weibull / detectabilidade E2", ordem=60, ordem_grupo=40)
-        _add_img(imagens, "weibull_sensibilidade_grade.png", "Detectabilidade - sensibilidade a resolucao da grade", grupo="Weibull / detectabilidade E2", ordem=70, ordem_grupo=40)
-        _add_img(imagens, "weibull_modos_operacao.png", "Detectabilidade - estratificacao GPVS F0L e F0M", grupo="Weibull / detectabilidade E2", ordem=80, ordem_grupo=40)
-    if "gpvs" in focos:
-        _add_img(
-            imagens, "gpvs_macro_comparacao.png",
-            "GPVS E3 - desempenho macro do detector canônico",
-            pasta=PASTA_GPVS, grupo="GPVS-Faults (E3 de bancada)",
-            ordem=10, tipo="comparacao", ordem_grupo=50,
-        )
-        _add_img(
-            imagens, "gpvs_transferencia_estrita.png",
-            "GPVS E3 - estabilidade pré-falha e sensibilidade pós-falha",
-            pasta=PASTA_GPVS, grupo="GPVS-Faults (E3 de bancada)",
-            ordem=20, tipo="comparacao", ordem_grupo=50,
-        )
-        _add_img(
-            imagens, "gpvs_metricas_por_cenario.png",
-            "GPVS E3 - métricas por cenário experimental",
-            pasta=PASTA_GPVS, grupo="GPVS-Faults (E3 de bancada)",
-            ordem=30, tipo="comparacao", ordem_grupo=50,
-        )
-        _add_img(
-            imagens, "gpvs_series_temporais.png",
-            "GPVS E3 - séries temporais do detector canônico",
-            pasta=PASTA_GPVS, grupo="GPVS-Faults (E3 de bancada)",
-            ordem=40, tipo="comparacao", ordem_grupo=50,
-        )
-    if "experimentos" in focos:
-        pede_matriz = _pede_matriz(txt)
-        pede_graficos = _pede_graficos_modelo(txt)
-        somente_matriz = pede_matriz and not pede_graficos
-        melhor_apenas = _pede_melhor(txt)
-        pede_anomalias = _pede_anomalias(txt)
-        pedido_comparativo = any(t in txt for t in (
-            "comparar", "compare", "comparacao", "comparison",
-            "comparacion", "comparaison", "versus", " vs ",
-        ))
-        pede_individuais = (not pedido_comparativo) or any(t in txt for t in (
-            "resultado individual", "resultados individuais",
-            "grafico de cada modelo", "gráfico de cada modelo",
-            "graficos por modelo", "gráficos por modelo",
-            "todos os graficos", "todos os gráficos", "graficos e matrizes",
-        ))
-
-        for idx_exp, resultado in enumerate(_arquivos_experimentos(pergunta)):
-            pasta = resultado.parent
-            nome = pasta.name
-            dados = _json(resultado) or {}
-            modelos = dados.get("modelos", {})
-            melhor = dados.get("melhor_modelo")
-            modelos_pedidos = _modelos_citados(txt, modelos)
-            grupo = dados.get("referencia") or f"Experimento {nome}"
-
-            if not somente_matriz:
-                arquivo_comparacao, rotulo_comparacao = _variante_comparacao_metricas(txt)
-                caminho_comparacao = pasta / arquivo_comparacao
-                if not caminho_comparacao.exists():
-                    caminho_comparacao = pasta / "comparacao_metricas.png"
-                _add_img(
-                    imagens,
-                    caminho_comparacao,
-                    f"{grupo} - {rotulo_comparacao}",
-                    grupo=grupo,
-                    ordem=0,
-                    tipo="comparacao",
-                    ordem_grupo=100 + idx_exp,
-                )
-                if pede_anomalias or nome in _EXPERIMENTOS_ANOMALIA:
-                    _add_img(
-                        imagens,
-                        pasta / "anomalias_detectadas.png",
-                        f"{grupo} - anomalias detectadas",
-                        grupo=grupo,
-                        ordem=1,
-                        tipo="comparacao",
-                        ordem_grupo=100 + idx_exp,
-                    )
-
-            for idx_modelo, (modelo, dados_modelo) in enumerate(modelos.items()):
-                if not dados_modelo.get("disponivel", True):
-                    continue
-                if melhor_apenas and melhor and modelo != melhor:
-                    continue
-                if modelos_pedidos and modelo not in modelos_pedidos:
-                    continue
-                if not somente_matriz and pede_individuais:
-                    _add_grafico_modelo(
-                        imagens,
-                        pasta,
-                        modelo,
-                        dados_modelo,
-                        "grafico_metricas",
-                        f"{grupo} - resultado individual ({modelo})",
-                        grupo,
-                        100 + idx_modelo * 2,
-                        100 + idx_exp,
-                    )
-                if pede_matriz:
-                    _add_grafico_modelo(
-                        imagens,
-                        pasta,
-                        modelo,
-                        dados_modelo,
-                        "grafico_matriz_confusao",
-                        f"{grupo} - matriz de confusao ({modelo})",
-                        grupo,
-                        101 + idx_modelo * 2,
-                        100 + idx_exp,
-                    )
-    return sorted(
-        imagens,
-        key=lambda img: (
-            int(img.get("group_order", 0) or 0),
-            int(img.get("order", 0) or 0),
-            str(img.get("caption", "")),
-        ),
-    )
+def _focus(pergunta: str) -> set[str]:
+    text = normalizar_sem_acentos(pergunta).lower()
+    selected: set[str] = set()
+    if any(term in text for term in ("e3", "auc", "roc", "lstm", "denso", "experimental")):
+        selected.add("e3")
+    if any(term in text for term in ("e2", "fmeca", "smd", "detectabilidade", "weibull")):
+        selected.add("e2")
+    if any(
+        term in text
+        for term in ("confiabilidade", "taxa de falha", "h(t)", "r(t)", "f(t)", "fisica")
+    ):
+        selected.add("reliability")
+    return selected or {"e3", "e2", "reliability"}
 
 
-def _resumo_autoencoder() -> str | None:
-    d = _json(PASTA_AE / "limiar.json")
-    if not d:
-        return None
-    metodo = d.get("score_method") or d.get("metodo_escore") or "mse"
-    percentil = d.get("threshold_effective_percentile", d.get("percentil_limiar"))
-    if percentil is not None:
-        ponto_operacao = f"{metodo} / percentil efetivo {_fmt(percentil, 1)}"
-    else:
-        ponto_operacao = str(metodo)
-    fp_score = (d.get("fp_score_operacional") or {}).get("teste")
-    fp_mse = (d.get("fp_mse_p99") or {}).get("teste")
-    fp_mse_sem_comp = _excedencia_calibracao_publicada(
-        "teste_isolado", "mse_sem_compartilhamento"
-    )
-    n_calibracao = d.get("n_janelas_calibracao")
-    resolucao = (
-        100.0 / float(n_calibracao)
-        if isinstance(n_calibracao, (int, float)) and n_calibracao
-        else None
-    )
-    return (
-        "## Autoencoder - modelo de normalidade\n\n"
-        "| Métrica | Valor |\n"
-        "|---|---:|\n"
-        f"| Escore operacional | {ponto_operacao} |\n"
-        f"| Limiar operacional | {_fmt(d.get('score_threshold', d.get('limiar')), 4)} |\n"
-        f"| Referência MSE p99 | {_fmt(d.get('mse_p99', d.get('limiar_p99')), 4)} |\n"
-        f"| Média baseline | {_fmt(d.get('mu'), 4)} |\n"
-        f"| Desvio baseline | {_fmt(d.get('sigma'), 4)} |\n"
-        f"| Janelas de treino | {d.get('n_janelas_treino', '-')} |\n"
-        f"| Janelas de validação | {d.get('n_janelas_validacao', '-')} |\n"
-        f"| Janelas de calibração | {d.get('n_janelas_calibracao', '-')} |\n"
-        f"| Janelas de teste | {d.get('n_janelas_teste', '-')} |\n"
-        f"| FP teste - escore operacional | {_fmt_excedencia(fp_score, d.get('fp_test_pct', d.get('fp_val_pct')))} |\n"
-        f"| FP teste - referência MSE p99 | {_fmt_excedencia(fp_mse)} |\n"
-        f"| FP teste - MSE sem compartilhamento de amostras | {_fmt_excedencia(fp_mse_sem_comp)} |\n"
-        f"| Resolução empírica da cauda na calibração | 1/{n_calibracao} = {_fmt(resolucao, 2)}% |\n"
-        f"| Épocas treinadas | {d.get('epochs_treinadas', '-')} |\n\n"
-        "Leitura rápida: o detector usa o escore operacional registrado em "
-        "`limiar.json`; os gráficos principais de reconstrução permanecem na "
-        "escala MSE e são acompanhados por `calibracao_autoencoder.md`. O p99 "
-        "é nominal e interpolado. As janelas GPVS são contíguas e não "
-        "sobrepostas, mas isso não prova independência temporal."
-    )
-
-
-def _resumo_injecao() -> str | None:
-    d = _json(PASTA_AE / "injecao_falhas_report.json")
-    if not d:
-        return None
-
-    linhas = [
-        "## Injeção de falhas sintéticas\n",
-        f"Limiar: **{_fmt(d.get('limiar'), 4)}**. "
-        f"Baseline: **{_fmt(d.get('baseline_mean'), 4)} ± {_fmt(d.get('baseline_std'), 4)}**.\n",
-        "| Falha | NPR | SMD95 | Taxa (IC95%) | n | Erro mediano |\n",
-        "|---|---:|---:|---:|---:|---:|\n",
-    ]
-    nao_detectadas = []
-    for fid, falha in d.get("falhas", {}).items():
-        smd = d.get("smd", {}).get(fid)
-        erro = taxa_txt = n_txt = "-"
-        smd_txt = "⚠️ alvo não atingido"
-        if smd is not None:
-            res = falha.get("resultados", {}).get(str(smd), {})
-            erro = _fmt(res.get("erro_mediano", res.get("erro")), 4)
-            taxa_txt = (
-                f"{_fmt(res.get('taxa_deteccao'), 3)} "
-                f"[{_fmt(res.get('taxa_ci_low'), 3)}; {_fmt(res.get('taxa_ci_high'), 3)}]"
-            )
-            n_txt = str(res.get("n", "-"))
-            smd_txt = str(smd)
-        else:
-            resultados_sev = falha.get("resultados", {})
-            if resultados_sev:
-                sev_max = max(resultados_sev, key=lambda s: float(s))
-                pico = resultados_sev[sev_max]
-                nao_detectadas.append(
-                    f"- **{falha.get('nome', fid)}**: taxa máxima de detecção "
-                    f"{_fmt(pico.get('taxa_deteccao'), 3)} na severidade {sev_max}; "
-                    "o alvo probabilístico de 95% não foi atingido."
-                )
-        linhas.append(
-            f"| {falha.get('nome', fid)} | {falha.get('npr') or '-'} | "
-            f"{smd_txt} | {taxa_txt} | {n_txt} | {erro} |\n"
-        )
-    linhas.append(
-        "\nLeitura rápida: SMD95 é a menor severidade cuja taxa pontual de detecção "
-        "atinge 95%; o intervalo de Wilson mostra a incerteza dessa estimativa."
-    )
-    if nao_detectadas:
-        linhas.append(
-            "\n\n⚠️ **Falha(s) sem SMD nesta execução** (achado relevante, "
-            "não omitir na dissertação):\n" + "\n".join(nao_detectadas)
-        )
-    return "".join(linhas)
-
-
-def _nome_falha(chave: str) -> str:
-    base = re.sub(r"_sev.*$", "", chave)
-    nomes = {
-        "contator_ac": "Contator AC",
-        "igbt": "IGBT",
-        "fusivel_ac": "Fusível AC",
+def _metric_rows(payload: dict) -> dict[tuple[str, str], dict]:
+    rows = payload.get("e3", {}).get("macro", [])
+    return {
+        (row.get("model"), row.get("metric")): row
+        for row in rows
+        if isinstance(row, dict)
     }
-    return nomes.get(base, base)
 
 
-def _sev(chave: str) -> str:
-    match = re.search(r"sev([0-9.]+)", chave)
-    return match.group(1) if match else "-"
-
-
-def _resumo_validacao() -> str | None:
-    d = _json(PASTA_AE / "validacao_report.json")
-    if not d:
-        return None
-
-    itens = []
-    ordem_falhas = {"Contator AC": 0, "IGBT": 1, "Fusível AC": 2}
-    for chave, res in d.items():
-        if chave.startswith("__"):
-            continue
-        item = dict(res)
-        item["chave"] = chave
-        item["falha"] = _nome_falha(chave)
-        itens.append(item)
-    itens.sort(key=lambda item: (
-        ordem_falhas.get(item["falha"], 99), float(_sev(item["chave"])),
-    ))
-
-    linhas = [
-        "## Validação sintética interna E2\n\n",
-        "| Falha | Sev. | AUC-ROC (IC95%) | Recall (IC95%) | FNR | Especificidade | n/classe |\n",
-        "|---|---:|---:|---:|---:|---:|---:|\n",
+def _e3_summary(payload: dict) -> str:
+    rows = _metric_rows(payload)
+    if not rows:
+        return "## Evidência E3\n\nResultado experimental não publicado."
+    lines = [
+        "## Evidência E3: 14 ensaios reais GPVS-Faults",
+        "",
+        "| Modelo | AUC-PR (IC95%) | ROC-AUC | Sensibilidade | Especificidade | MCC | F1 |",
+        "|---|---:|---:|---:|---:|---:|---:|",
     ]
-    cego = []
-    for res in itens:
-        falha = res["falha"]
-        rec = res.get("recall")
-        if isinstance(rec, (int, float)) and rec < 0.1:
-            cego.append(f"{falha} (sev. {_sev(res['chave'])})")
-        linhas.append(
-            f"| {falha} | {_sev(res['chave'])} | {_fmt(res.get('auc_roc'))} "
-            f"[{_fmt(res.get('auc_roc_ci_low'))}; {_fmt(res.get('auc_roc_ci_high'))}] | "
-            f"{_fmt(rec)} [{_fmt(res.get('recall_ci_low'))}; {_fmt(res.get('recall_ci_high'))}] | "
-            f"{_fmt(res.get('fnr'))} | {_fmt(res.get('specificity'))} | "
-            f"{res.get('n_pos', '-')} |\n"
+    for model_id in MODEL_LABELS:
+        auc = rows.get((model_id, "auc_pr"), {})
+        values = [
+            rows.get((model_id, metric), {}).get("estimate")
+            for metric in ("auc_roc", "sensitivity", "specificity", "mcc", "f1")
+        ]
+        interval = (
+            f"{_fmt(auc.get('estimate'))} "
+            f"({_fmt(auc.get('ci95_low'))}-{_fmt(auc.get('ci95_high'))})"
         )
-    leitura = [
-        "\n**Leitura honesta:** a AUC mede a separação por *ranking* (independe "
-        "do limiar). No PONTO DE OPERAÇÃO (limiar operacional congelado), o recall pode "
-        "ser bem menor que a AUC sugere."
-    ]
-    if cego:
-        leitura.append(
-            f" Atenção ao baixo recall em **{', '.join(cego)}**: o limiar "
-            "conservador perde a maior parte dessas falhas."
+        lines.append(
+            f"| {MODEL_LABELS[model_id]} | {interval} | "
+            + " | ".join(_fmt(value) for value in values)
+            + " |"
         )
-    leitura.append(
-        " As linhas mostram todas as severidades, sem escolher apenas a melhor "
-        "AUC. O holdout usa blocos intercalados de F0L/F0M, com purga; a avaliação "
-        "retém janelas não sobrepostas, sem presumir "
-        "independência temporal. A falha continua sintética: não é desempenho "
-        "industrial."
-    )
-    linhas.append("".join(leitura))
-    return "".join(linhas)
 
-
-def _resumo_weibull() -> str | None:
-    from src.ml.resultados_weibull import resumo_weibull
-
-    return resumo_weibull()
-
-
-
-def _resumo_experimentos(pergunta: str = "") -> str | None:
-    arquivos = _arquivos_experimentos(pergunta)
-    if not arquivos:
-        return None
-
-    txt = _normalizar(pergunta)
-    metricas = ("accuracy", "precision", "recall", "f1", "auc", "specificity")
-    linhas = ["## Experimentos por artigo\n\n"]
-
-    linhas_modelos = []
-    destaques_melhor = []
-    origens = []
-    evidencias = []
-    for arq in arquivos:
-        d = _json(arq)
-        if not d:
-            continue
-        exp = d.get("referencia") or d.get("experimento") or arq.parent.name
-        origem = d.get("origem_dados") or {}
-        if origem.get("descricao"):
-            origens.append((exp, origem["descricao"]))
-        if d.get("evidence_level") or d.get("evidence_note"):
-            evidencias.append((exp, d.get("evidence_level"), d.get("evidence_note")))
-        if _pede_melhor(txt) and d.get("melhor_modelo"):
-            destaques_melhor.append(
-                f"- **{exp}**: {d.get('melhor_modelo')} "
-                f"({_fmt(d.get('metrica_principal'))}={_fmt(d.get('melhor_valor'))})"
-            )
-        modelos = d.get("modelos", {})
-        modelos_pedidos = _modelos_citados(txt, modelos)
-        for modelo, m in modelos.items():
-            if modelos_pedidos and modelo not in modelos_pedidos:
-                continue
-            if not m.get("disponivel", True):
-                motivo = m.get("motivo", "indisponivel")
-                linhas_modelos.append({
-                    "anomalias": None,
-                    "exp": exp,
-                    "modelo": modelo,
-                    "dados": m,
-                    "linha": f"| {exp} | {modelo} ({motivo}) | - | - | - | - | - | - | - |\n",
-                })
-                continue
-            valores = [_fmt(m.get(chave)) if m.get(chave) is not None else "-" for chave in metricas]
-            anomalias = m.get("anomalias_detectadas", "-")
-            linhas_modelos.append({
-                "anomalias": anomalias if isinstance(anomalias, int) else None,
-                "exp": exp,
-                "modelo": modelo,
-                "dados": m,
-                "linha": (
-                    f"| {exp} | {modelo} | {valores[0]} | {valores[1]} | {valores[2]} | "
-                    f"{valores[3]} | {valores[4]} | {valores[5]} | {anomalias} |\n"
-                ),
-            })
-
-    metrica_pedida = next(
+    paired = next(
         (
-            met
-            for met in ("auc", "f1", "recall", "precision", "accuracy", "specificity")
-            if re.search(rf"\b{re.escape(met)}\b", txt)
+            row
+            for row in payload.get("e3", {}).get("paired_differences", [])
+            if row.get("metric") == "auc_pr"
         ),
-        None,
+        {},
     )
-    if _pede_anomalias(txt) and not metrica_pedida:
-        linhas_modelos.sort(
-            key=lambda item: item["anomalias"] if item["anomalias"] is not None else -1,
-            reverse=True,
-        )
-    if _pede_anomalias(txt) and metrica_pedida:
-        ordenados = sorted(
-            linhas_modelos,
-            key=lambda item: (
-                item["dados"].get(metrica_pedida)
-                if isinstance(item["dados"].get(metrica_pedida), (int, float))
-                else -1
-            ),
-            reverse=True,
-        )
-        linhas.extend([
-            f"| Rank | Experimento | Modelo | {metrica_pedida.upper()} | Detectadas | Reais | Taxa marcada | Recall |\n",
-            "|---:|---|---|---:|---:|---:|---:|---:|\n",
-        ])
-        for rank, item in enumerate(ordenados, 1):
-            dados_modelo = item["dados"]
-            linhas.append(
-                f"| {rank} | {item['exp']} | {item['modelo']} | "
-                f"{_fmt(dados_modelo.get(metrica_pedida))} | "
-                f"{_fmt(dados_modelo.get('anomalias_detectadas'), 0)} | "
-                f"{_fmt(dados_modelo.get('anomalias_reais'), 0)} | "
-                f"{_fmt(dados_modelo.get('taxa_anomalias_detectadas'))} | "
-                f"{_fmt(dados_modelo.get('recall'))} |\n"
-            )
-    elif _pede_anomalias(txt):
-        linhas.extend([
-            "| Experimento | Modelo | Detectadas | Reais | Taxa marcada | Recall |\n",
-            "|---|---|---:|---:|---:|---:|\n",
-        ])
-        for item in linhas_modelos:
-            dados_modelo = item["dados"]
-            linhas.append(
-                f"| {item['exp']} | {item['modelo']} | "
-                f"{_fmt(dados_modelo.get('anomalias_detectadas'), 0)} | "
-                f"{_fmt(dados_modelo.get('anomalias_reais'), 0)} | "
-                f"{_fmt(dados_modelo.get('taxa_anomalias_detectadas'))} | "
-                f"{_fmt(dados_modelo.get('recall'))} |\n"
-            )
-    elif metrica_pedida:
-        ordenados = sorted(
-            linhas_modelos,
-            key=lambda item: (
-                item["dados"].get(metrica_pedida)
-                if isinstance(item["dados"].get(metrica_pedida), (int, float))
-                else -1
-            ),
-            reverse=True,
-        )
-        linhas.extend([
-            f"| Rank | Experimento | Modelo | {metrica_pedida.upper()} |\n",
-            "|---:|---|---|---:|\n",
-        ])
-        for rank, item in enumerate(ordenados, 1):
-            linhas.append(
-                f"| {rank} | {item['exp']} | {item['modelo']} | "
-                f"{_fmt(item['dados'].get(metrica_pedida))} |\n"
-            )
-    else:
-        linhas.extend([
-            "| Experimento | Modelo | Accuracy | Precision | Recall | F1 | AUC | Specificity | Anomalias detectadas |\n",
-            "|---|---|---:|---:|---:|---:|---:|---:|---:|\n",
-        ])
-        linhas.extend(item["linha"] for item in linhas_modelos)
-
-    if _pede_anomalias(txt):
-        candidatos = [item for item in linhas_modelos if item["anomalias"] is not None]
-        if candidatos:
-            topo = max(candidatos, key=lambda item: item["anomalias"])
-            linhas.append(
-                f"\nDestaque: quem mais marcou anomalias foi **{topo['modelo']}** "
-                f"em **{topo['exp']}**, com **{topo['anomalias']}** detecções no ponto de operação.\n"
-            )
-            linhas.append(
-                "Essa contagem depende do limiar e não define, sozinha, o melhor "
-                "modelo: avalie junto AUC, recall, falsos positivos e o protocolo.\n"
-            )
-    if destaques_melhor:
-        linhas.append("\nMelhor modelo pelo criterio salvo:\n" + "\n".join(destaques_melhor) + "\n")
-    if origens:
-        vistos = set()
-        linhas.append("\nOrigem dos dados usados nestes resultados:\n")
-        for exp, descricao in origens:
-            chave = (exp, descricao)
-            if chave in vistos:
-                continue
-            vistos.add(chave)
-            linhas.append(f"- **{exp}**: {descricao}\n")
-
-    if _pede_origem_dados(txt):
-        linhas.append("\nSeparacao entre artigo e recalculo local:\n")
-        linhas.append(
-            "- **Metodologia do artigo-base**: o comparativo vigente usa o "
-            "AE-LSTM temporal de Ibrahim como concorrente do AE denso proposto. "
-            "Isso e inspiracao metodologica, nao copia de metricas publicadas.\n"
-        )
-        linhas.append(
-            "- **Recalculado no repositorio**: metricas, matrizes de confusao, "
-            "graficos e contagens de anomalias sao gerados a partir dos artefatos "
-            "locais em `resultados/experimentos/<autor>/resultado.json`.\n"
-        )
-        linhas.append(
-            "- **Dados locais**: Ibrahim usa features locais do Paderborn extraidas de "
-            "`dados/brutos/Inverter_Data_Set.csv`; como esse dataset e saudavel, "
-            "o ground truth de anomalia vem de falhas sinteticas orientadas pela "
-            "FMECA.\n"
-        )
-        linhas.append(
-            "- **Nao e validacao industrial**: esses experimentos sao E1 "
-            "(benchmark exploratorio). Eles ajudam a comparar abordagens, mas "
-            "nao substituem validacao externa em bancada/campo.\n"
-        )
-    elif evidencias:
-        vistos_ev = set()
-        linhas.append("\nNivel de evidencia:\n")
-        for exp, nivel, nota in evidencias:
-            chave = (exp, nivel, nota)
-            if chave in vistos_ev:
-                continue
-            vistos_ev.add(chave)
-            linhas.append(f"- **{exp}**: {nivel or '-'} - {nota or 'sem nota'}\n")
-
-    linhas.append(
-        "\nLeitura rapida: AUC alto mede separacao por score. Para operacao real, "
-        "olhe junto F1/accuracy e a coluna de anomalias detectadas; AUC ou recall "
-        "alto com poucas ou zero anomalias detectadas indica que o modelo pode "
-        "estar ranqueando bem, mas operando conservador demais no ponto escolhido."
+    lines.extend(
+        [
+            "",
+            "AUC-PR é a métrica principal. A diferença pareada Denso menos AE-LSTM foi "
+            f"{_fmt(paired.get('difference_dense_minus_lstm'))} "
+            f"(IC95% {_fmt(paired.get('ci95_low'))}-{_fmt(paired.get('ci95_high'))}).",
+            "Os intervalos usam o ensaio como unidade de bootstrap; pesos, scaler e "
+            "limiares permaneceram congelados nos 14 ensaios de falha.",
+        ]
     )
-    return "".join(linhas)
+    return "\n".join(lines)
+
+
+def _e2_summary(payload: dict) -> str:
+    rows = payload.get("e2", {}).get("summary", [])
+    if not rows:
+        return "## Evidência E2\n\nResultado sintético FMECA não publicado."
+    lines = [
+        "## Evidência E2: detectabilidade orientada pela FMECA",
+        "",
+        "| Modelo | Componente | NPR | SMD95 | Detecção em a_det=1 |",
+        "|---|---|---:|---:|---:|",
+    ]
+    for row in rows:
+        reached = row.get("smd95_status") == "reached"
+        smd = _fmt(row.get("smd95"), 2) if reached else "não atingido"
+        detection = row.get("detection_at_max")
+        detection_text = (
+            f"{100 * float(detection):.1f}%".replace(".", ",")
+            if isinstance(detection, (int, float))
+            else "não disponível"
+        )
+        lines.append(
+            f"| {MODEL_LABELS.get(row.get('model'), row.get('model'))} | "
+            f"{COMPONENT_LABELS.get(row.get('component'), row.get('component'))} | "
+            f"{row.get('npr', '-')} | {smd} | {detection_text} |"
+        )
+    lines.extend(
+        [
+            "",
+            "SMD95 é a menor magnitude cujo limite inferior do IC95% Wilson alcança "
+            "95%. O eixo `a_det` é magnitude de perturbação, não tempo.",
+            "Os ajustes Weibull 2P desta execução não foram recomendados para síntese "
+            "paramétrica. Isso rejeita o ajuste, não os detectores.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _reliability_summary(payload: dict) -> str:
+    scenarios = payload.get("scenarios", [])
+    if not scenarios:
+        return "## Confiabilidade física\n\nCenários bibliográficos não publicados."
+    lines = [
+        "## Confiabilidade física: cenários bibliográficos",
+        "",
+        "| Componente/cenário | Origem | λ (falha/h) | 1/λ (anos) |",
+        "|---|---|---:|---:|",
+    ]
+    for row in scenarios:
+        origin = "direta" if row.get("evidence_type") == "direct_bibliographic" else "derivada"
+        lines.append(
+            f"| {row.get('plot_label', row.get('component_name'))} | {origin} | "
+            f"{float(row['lambda_per_hour']):.2e} | {_fmt(row.get('reciprocal_time_years'), 2)} |"
+        )
+    lines.extend(
+        [
+            "",
+            "Modelo exponencial: `R(t)=exp(-λt)`, `F(t)=1-R(t)`, "
+            "`f(t)=λexp(-λt)` e `h(t)=λ`.",
+            "As três taxas derivadas são análises de sensibilidade baseadas nas "
+            "participações de chamados; não são medições por componente. A taxa direta "
+            "existe somente para o fusível. O GPVS-Faults não estima vida física, "
+            "Weibull físico ou RUL.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _images(focus: set[str], *, inline: bool) -> list[dict]:
+    candidates = {
+        "e3": (
+            (COMPARISON_DIR / "e3_metricas_macro.png", "Métricas macro E3"),
+            (COMPARISON_DIR / "e3_curvas_discriminacao.png", "Curvas ROC e precisão-revocação E3"),
+            (COMPARISON_DIR / "e3_matrizes_confusao.png", "Matrizes de confusão E3"),
+        ),
+        "e2": (
+            (COMPARISON_DIR / "e2_deteccao_por_magnitude.png", "Detectabilidade E2 por magnitude"),
+            (COMPARISON_DIR / "e2_funcoes_empiricas.png", "Funções empíricas de detectabilidade"),
+            (COMPARISON_DIR / "e2_diagnostico_weibull.png", "Diagnóstico Weibull no papel de probabilidade"),
+        ),
+        "reliability": (
+            (RELIABILITY_DIR / "confiabilidade_probabilidade_falha.png", "Confiabilidade e probabilidade de falha"),
+            (RELIABILITY_DIR / "densidade_taxa_falha.png", "Densidade e taxa de falha"),
+            (RELIABILITY_DIR / "taxas_componentes.png", "Taxas bibliográficas por componente"),
+        ),
+    }
+    images = []
+    for section in ("e3", "e2", "reliability"):
+        if section not in focus:
+            continue
+        for path, caption in candidates[section]:
+            if path.is_file():
+                images.append({"path": str(path), "caption": caption, "inline": inline})
+    return images
 
 
 def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> dict:
-    focos = _focos(pergunta)
-    if not focos:
-        focos = {
-            "autoencoder", "injecao", "validacao", "weibull", "gpvs",
-        }
+    focus = _focus(pergunta)
+    comparison = _json(COMPARISON_JSON)
+    reliability = _json(RELIABILITY_JSON)
+    sections = []
+    if "e3" in focus:
+        sections.append(_e3_summary(comparison))
+    if "e2" in focus:
+        sections.append(_e2_summary(comparison))
+    if "reliability" in focus:
+        sections.append(_reliability_summary(reliability))
 
-    secoes = []
-    if "autoencoder" in focos:
-        secoes.append(_resumo_autoencoder())
-    if "injecao" in focos:
-        secoes.append(_resumo_injecao())
-    if "validacao" in focos:
-        secoes.append(_resumo_validacao())
-    if "weibull" in focos:
-        secoes.append(_resumo_weibull())
-    if "gpvs" in focos:
-        secoes.append(resumir_gpvs(PASTA_GPVS))
-    if "experimentos" in focos:
-        secoes.append(_resumo_experimentos(pergunta))
-
-    secoes = [s for s in secoes if s]
-    if not secoes:
-        return {
-            "ok": True,
-            "etapa": "Consulta de resultados",
-            "mensagem": (
-                "Ainda não encontrei artefatos de resultado para essa solicitação. "
-                "Peça para rodar a etapa correspondente do pipeline."
-            ),
-            "imagens": [],
-            "resposta_pronta": True,
-        }
-
-    # Gráficos sempre ficam disponíveis em antevisão sob demanda + download,
-    # mas só são renderizados inline quando o pedido exige vê-los no chat.
-    imagens = imagens_relevantes(pergunta) if incluir_imagens else []
-    mostrar_inline = _quer_imagens(pergunta)
-    for img in imagens:
-        img["inline"] = mostrar_inline
-
-    mensagem = (
-        "Aqui está o que já existe nos artefatos do pipeline.\n\n"
-        + "\n\n".join(secoes)
-    )
-    if imagens:
-        if mostrar_inline:
-            mensagem += "\n\nGráficos relevantes logo abaixo."
-        else:
-            mensagem += (
-                f"\n\n{len(imagens)} gráfico(s) disponível(is) logo abaixo. "
-                "Use **Visualizar** para abrir uma antevisão responsiva sem baixar, "
-                'ou peça "mostre os gráficos" para inseri-los na conversa.'
-            )
-
+    inline = _quer_imagens(pergunta)
+    images = _images(focus, inline=inline) if incluir_imagens else []
+    message = "\n\n".join(sections)
+    if images:
+        message += (
+            "\n\nAs figuras selecionadas estão disponíveis abaixo."
+            if inline
+            else f"\n\n{len(images)} figura(s) acadêmica(s) disponível(is) para visualização."
+        )
     return {
         "ok": True,
-        "etapa": "Consulta de resultados",
-        "mensagem": mensagem,
-        "imagens": imagens,
+        "etapa": "Resultados científicos",
+        "mensagem": message,
+        "imagens": images,
         "resposta_pronta": False,
     }
 
 
 def salvar_resumo_resultados_ml() -> Path:
-    """Grava uma nota versionável dos resultados, sem depender do agente."""
-    saida = RAIZ_PROJETO / "notas" / "memorias" / "resultados-fase5-ml.md"
-    resumo = resumir_resultados("", incluir_imagens=False)["mensagem"]
-    conteudo = (
-        "# Resultados da Fase 5 - Pipeline de ML\n\n"
+    """Grava uma nota indexável a partir dos contratos canônicos."""
+
+    output = ROOT / "notas" / "memorias" / "resultados-canonicos-ml.md"
+    summary = resumir_resultados("", incluir_imagens=False)["mensagem"]
+    content = (
+        "# Resultados canônicos de ML e confiabilidade\n\n"
         f"> Gerado em {agora_local().strftime('%d/%m/%Y %H:%M %Z')}\n\n"
-        f"{resumo}\n"
+        f"{summary}\n"
     )
-    saida.parent.mkdir(parents=True, exist_ok=True)
-    saida.write_text(conteudo, encoding="utf-8")
-    return saida
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(content, encoding="utf-8", newline="\n")
+    return output
+
+
+__all__ = ["_quer_imagens", "resumir_resultados", "salvar_resumo_resultados_ml"]

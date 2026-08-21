@@ -1,8 +1,8 @@
 """
 logs.py — Al IAdo PV / Sprint 4 (robustez)
 
-Logging estruturado com arquivo rotativo em logs/al_iado_pv.log. Substitui
-exceções silenciosas por registros rastreáveis (módulo, operação, exceção).
+Logging estruturado no console. Um arquivo rotativo pode ser habilitado por
+``AL_IADO_LOG_FILE=1`` quando uma execução precisar de persistência local.
 
 Uso:
     from src.core.logs import get_logger
@@ -16,6 +16,7 @@ O arquivo de log NÃO é versionado (ver .gitignore).
 from __future__ import annotations
 
 import logging
+import os
 import re
 import sys
 from logging.handlers import RotatingFileHandler
@@ -57,22 +58,47 @@ class _FormatadorSemEmoji(logging.Formatter):
         return limpar_simbolos(super().format(record))
 
 
-def configurar_logging(nivel: int = logging.INFO) -> None:
-    """Configura o handler rotativo uma única vez (idempotente)."""
+def _arquivo_solicitado() -> bool:
+    return os.getenv("AL_IADO_LOG_FILE", "").strip().lower() in {
+        "1",
+        "true",
+        "sim",
+        "yes",
+    }
+
+
+def configurar_logging(
+    nivel: int = logging.INFO,
+    *,
+    arquivo: bool | None = None,
+) -> None:
+    """Configura console e, somente quando solicitado, arquivo rotativo."""
     global _configurado, _erro_configuracao
-    if _configurado:
-        return
     try:
-        PASTA_LOGS.mkdir(parents=True, exist_ok=True)
-        handler = RotatingFileHandler(
-            ARQUIVO_LOG, maxBytes=2_000_000, backupCount=3, encoding="utf-8"
-        )
-        handler.setFormatter(_FormatadorSemEmoji(
-            "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
-        ))
         root = logging.getLogger(_RAIZ_LOGGER)
         root.setLevel(nivel)
-        if not any(isinstance(h, RotatingFileHandler) for h in root.handlers):
+        if not any(
+            isinstance(handler, logging.StreamHandler)
+            and not isinstance(handler, RotatingFileHandler)
+            for handler in root.handlers
+        ):
+            console = logging.StreamHandler()
+            console.setLevel(nivel)
+            console.setFormatter(_FormatadorSemEmoji("%(levelname)s | %(name)s | %(message)s"))
+            root.addHandler(console)
+        usar_arquivo = _arquivo_solicitado() if arquivo is None else arquivo
+        if usar_arquivo and not any(
+            isinstance(handler, RotatingFileHandler) for handler in root.handlers
+        ):
+            PASTA_LOGS.mkdir(parents=True, exist_ok=True)
+            handler = RotatingFileHandler(
+                ARQUIVO_LOG, maxBytes=2_000_000, backupCount=3, encoding="utf-8"
+            )
+            handler.setFormatter(
+                _FormatadorSemEmoji(
+                    "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+                )
+            )
             root.addHandler(handler)
         root.propagate = False
     except Exception as exc:
@@ -109,11 +135,7 @@ def habilitar_console(nivel: int = logging.INFO) -> None:
     """
     Espelha os logs também no TERMINAL (formato curto, sem timestamp).
 
-    Os módulos de ML logam em arquivo por padrão (terminal silencioso no app).
-    Scripts executados manualmente (``python src/ml/autoencoder.py``) chamam
-    isto no bloco ``__main__`` para o pesquisador continuar vendo o progresso.
-    Também garante stdout/stderr em UTF-8 (Windows cp1252 quebra com acentos
-    e emojis em prints/help). Idempotente.
+    Garante stdout/stderr em UTF-8 e eleva o nível do console. Idempotente.
     """
     try:
         from src.core.utils import configurar_saida_utf8
@@ -123,15 +145,10 @@ def habilitar_console(nivel: int = logging.INFO) -> None:
         logging.getLogger(_RAIZ_LOGGER).debug(
             "não foi possível reconfigurar stdout/stderr: %s", exc
         )
-    configurar_logging()
+    configurar_logging(nivel)
     root = logging.getLogger(_RAIZ_LOGGER)
-    ja_tem = any(
-        isinstance(h, logging.StreamHandler)
-        and not isinstance(h, RotatingFileHandler)
-        for h in root.handlers
-    )
-    if not ja_tem:
-        console = logging.StreamHandler()
-        console.setLevel(nivel)
-        console.setFormatter(_FormatadorSemEmoji("%(message)s"))
-        root.addHandler(console)
+    for handler in root.handlers:
+        if isinstance(handler, logging.StreamHandler) and not isinstance(
+            handler, RotatingFileHandler
+        ):
+            handler.setLevel(nivel)

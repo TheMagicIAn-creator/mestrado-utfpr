@@ -113,7 +113,8 @@ def test_comentador_recebe_inventario_visual_e_proibe_descricao_inventada():
     assert "inventario autoritativo" in prompt_norm
     assert "Proposto - comparacao por pontos" in prompt
     assert "Ibrahim - anomalias detectadas" in prompt
-    assert "Nenhum dos dois mostra distribuicao de scores" in prompt_norm
+    assert "Nao descreva elementos visuais ausentes" in prompt_norm
+    assert "distribuicoes de scores" in prompt_norm
 
 
 def test_corretor_remove_descricao_visual_incompativel_com_as_legendas():

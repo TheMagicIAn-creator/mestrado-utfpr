@@ -12,8 +12,8 @@ Autor: Rodolfo Torres (UTFPR)
 import os
 
 # ── Windows / OpenMP ────────────────────────────────────────────────────────
-# Vários pacotes nativos (torch, numpy/MKL, onnxruntime do ChromaDB e as libs
-# do Orange3) embarcam o PRÓPRIO runtime OpenMP. Quando dois deles inicializam
+# Vários pacotes nativos (torch, numpy/MKL e onnxruntime do ChromaDB) embarcam
+# o PRÓPRIO runtime OpenMP. Quando dois deles inicializam
 # no mesmo processo, o OpenMP ABORTA (access violation → segfault/EXIT 139),
 # de forma INTERMITENTE conforme a ordem de carga — o que derrubava o app no
 # startup às vezes. Permitir a coexistência dos runtimes evita o crash. Definido
@@ -149,13 +149,10 @@ ARQUIVO_PERFIL     = RAIZ_PROJETO / "CLAUDE.md"
 # CONSTANTES DO AGENTE (RAG)
 # ============================================================
 
-# Marcador de build — atualizado a cada deploy relevante. Aparece na barra
-# lateral do app para confirmar QUAL versão do código está no ar (resolve a
-# ambiguidade de redeploy no Streamlit Cloud: se o marcador aqui não bate com
-# o exibido, o app está rodando código antigo e precisa de Reboot).
+# Marcador opcional para distinguir uma implantação específica.
 MARCADOR_BUILD         = os.getenv(
     "AL_IADO_BUILD_LABEL",
-    "2026-08-05 · auditoria geral de src · comparação acadêmica unificada",
+    "canônico · GPVS Denso versus AE-LSTM",
 )
 
 MODELO_EMBEDDINGS      = "paraphrase-multilingual-MiniLM-L12-v2"
@@ -171,14 +168,6 @@ N_RESULTADOS           = 25
 TAMANHO_CHUNK          = 500
 SOBREPOSICAO           = 50
 TAMANHO_LOTE           = 500   # limite de upsert do ChromaDB
-
-
-# ============================================================
-# CONSTANTES DO MACHINE LEARNING
-# ============================================================
-
-TAXA_AMOSTRAGEM = 10_000   # Hz — dataset de inversor (Paderborn)
-SEMENTE_ALEATORIA = 42     # random_state — reprodutibilidade
 
 
 # ============================================================

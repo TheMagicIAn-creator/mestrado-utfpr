@@ -3,7 +3,7 @@ consolidar_memoria.py — Al IAdo PV
 Consolida sessões em memória estruturada e acionável.
 
 Gatilhos:
-  - Sexta-feira semanal (agendado no watcher.py)
+  - Periodicamente, por operacao explicita de manutencao
   - Sessão com mais de LIMITE_INTERACOES interações
   - Sessões acumuladas há mais de DIAS_ACUMULACAO dias
   - Manual: python -m src.conhecimento.consolidar_memoria

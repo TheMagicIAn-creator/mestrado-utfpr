@@ -21,8 +21,7 @@ from src.core.formatacao import (
 
 RAIZ = Path(__file__).resolve().parent.parent
 MODULOS_PLOT = [
-    "autoencoder", "classificador_pv_infer", "experimentos_artigos",
-    "injecao_falhas", "rul_weibull", "validacao",
+    "graficos_comparacao", "graficos_confiabilidade",
 ]
 
 

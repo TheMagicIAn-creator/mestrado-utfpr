@@ -38,7 +38,8 @@ src/
 - **core** — central configuration and shared utilities
 - **conhecimento** — PDF indexing, semantic + BM25 RAG, fixed-role all-Gemini team (Pro/Flash/Flash-Lite),
   memory consolidation
-- **ml** — exploratory data analysis and fault classification
+- **ml** — canonical GPVS ingestion, Denso versus AE-LSTM comparison,
+  FMECA-guided detectability and bibliographic physical reliability
 - **webapp** — read-only E2, E3 and reliability contracts, academic figures
   loaded on demand and an HTTP adapter for the ALIAdo agent
 - **orquestrador** — executes explicitly requested indexing and ML operations;
@@ -52,7 +53,7 @@ src/
 - ChromaDB — local vector database restored from a portable cloud snapshot
 - sentence-transformers — multilingual embeddings
 - LLM provider — Google Gemini (Pro for chat, Flash for auditing, Flash-Lite for background)
-- scikit-learn, XGBoost, LightGBM — Machine Learning
+- PyTorch + scikit-learn — Denso and AE-LSTM anomaly detectors
 
 ## How to run
 
@@ -62,7 +63,8 @@ python -m src.webapp
 uvicorn src.webapp.app:app --reload
 ```
 
-Open `http://127.0.0.1:8000`. `python app.py` remains a compatibility alias.
+Open `http://127.0.0.1:8000`. Root `app.py` is the ASGI bridge used by hosts
+that import `app:app`.
 
 A single Google Gemini API key must be set in a local `.env` file —
 see `.env.example` for the template. The `.env` file is never
@@ -85,17 +87,20 @@ Models, scalers and local Obsidian state are not published.
 | 4     | Automation            | Done          |
 | 5     | ML pipeline           | Implemented (E2 + E3 bench) |
 
-Phase 5 status: the five-stage pipeline uses GPVS-Faults as its single
-canonical dataset. F0L/F0M train and calibrate the Autoencoder; FMECA-guided
-synthetic injection on the F0 holdout provides E2 evidence, and F1L-F7M provide
-E3 experimental bench validation. Weibull describes synthetic detectability
-magnitude, not physical RUL. Field validation is still not performed.
+Phase 5 status: the two-stage scientific pipeline uses GPVS-Faults as its
+single canonical dataset. F0L/F0M train, validate, calibrate and test the Denso
+and AE-LSTM detectors; FMECA-guided synthetic injection on the F0 holdout
+provides E2 evidence, and F1L-F7M provide E3 experimental bench validation.
+Detectability magnitude is not physical RUL. Temporal reliability curves are
+separate bibliographic sensitivity scenarios. Field validation is still absent.
 
 ## Documentação técnica
 
 - [`docs/metodologia_ml.md`](docs/metodologia_ml.md) — decisões metodológicas e de integridade.
 - [`docs/datasets.md`](docs/datasets.md) — contrato único GPVS-Faults, qualidade e limites.
 - [`docs/evidence_levels.md`](docs/evidence_levels.md) — níveis de evidência E0–E3.
+- [`docs/confiabilidade_fisica.md`](docs/confiabilidade_fisica.md) — curvas temporais, taxas e rastreabilidade bibliográfica.
+- [`docs/mapa_de_resultados.md`](docs/mapa_de_resultados.md) — figuras, tabelas e contratos publicados.
 - [`docs/reproducibilidade.md`](docs/reproducibilidade.md) — manifestos, estados, memória, recálculo.
 - [`docs/memoria_agentes.md`](docs/memoria_agentes.md) — aprendizado validado entre sessões e limites de persistência.
 - [`docs/aplicacao_web.md`](docs/aplicacao_web.md) — aplicação ASGI, APIs e limites operacionais.
@@ -104,10 +109,10 @@ magnitude, not physical RUL. Field validation is still not performed.
 ## Verificação rápida
 
 ```powershell
-python scripts/verificar_ambiente.py    # diagnóstico (imports, chaves, datasets, ChromaDB, pipeline)
+python scripts/verificar_projeto.py     # ambiente, GPVS, árvore e contratos publicados
 python scripts/auditar_resultados.py    # contratos canônicos, outputs e hashes
-python -m pytest                        # testes unitários
-python -m src.webapp                     # interface em http://127.0.0.1:8000
+python -m pytest -m "not pesado"        # testes unitários e de integração leves
+python -m src.webapp                    # interface em http://127.0.0.1:8000
 ```
 
 ## Author

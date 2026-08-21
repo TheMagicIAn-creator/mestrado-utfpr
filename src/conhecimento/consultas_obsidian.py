@@ -309,7 +309,7 @@ def responder_inventario_vault(colecao, pergunta: str) -> str | None:
             f"(marcadas com ⚠️ acima): elas existem no vault, mas eu não consigo "
             "recuperá-las por conteúdo. O índice portátil da nuvem só é "
             "regenerado sob demanda — para incluí-las, rode no PC "
-            "`python scripts/reconstruir_cerebro_obsidian.py` e commite "
+            "`python scripts/manter_base.py sincronizar-obsidian` e commite "
             "`artefatos/obsidian_indexado.jsonl.gz`."
         )
     partes.append(

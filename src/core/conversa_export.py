@@ -6,7 +6,7 @@ Exportação do histórico da conversa do chat para um arquivo .txt baixável.
 Lógica PURA (stdlib apenas): detecção da intenção e montagem do transcrito
 completo. A entrega do arquivo em si é responsabilidade da interface — hoje a
 Web (`src/webapp/`). Manter a lógica aqui a torna testável sem carregar
-a UI, e foi o que permitiu a V1 Streamlit ser removida sem tocar nela.
+a UI, permitindo que qualquer frontend reutilize a mesma exportação.
 
 Motivação: sem isto, um pedido como "gere um .txt do histórico" ia ao LLM, que
 NÃO tem como criar arquivos — então ele apenas *afirmava* ter gerado (alucinação)

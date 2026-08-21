@@ -113,7 +113,7 @@ class MemoriaPersistente:
             _logger.warning("memória salva, mas espelho Obsidian falhou: %s", exc)
 
     def _persistir_nuvem(self) -> None:
-        """Commita o JSON de volta ao GitHub quando na nuvem (Streamlit Cloud).
+        """Commita o JSON de volta ao GitHub em implantação efêmera.
 
         Best-effort e desligado por padrao: so faz algo com o master switch
         AL_IADO_PERSISTIR_NUVEM e um token presentes. Falha aqui nunca invalida

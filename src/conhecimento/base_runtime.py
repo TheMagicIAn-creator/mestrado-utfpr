@@ -3,7 +3,7 @@
 O runtime web consulta resultados cientificos ja versionados e inicializa o
 RAG somente no primeiro turno. Este modulo concentra a restauracao dos indices
 portateis, a escolha do backend de embeddings e a preparacao do BM25 sem
-importar Streamlit ou disparar treinamento automaticamente.
+importar o frontend ou disparar treinamento automaticamente.
 """
 
 from __future__ import annotations

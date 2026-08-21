@@ -9,10 +9,10 @@ from src.conhecimento import ferramentas as F
 
 def test_limpeza_pede_confirmacao_sem_token():
     res = F.limpar_resultados_ml(
-        pergunta="apague os resultados a partir do autoencoder"
+        pergunta="apague os resultados da comparação"
     )
     msg = res["mensagem"]
-    assert "CONFIRMAR LIMPEZA AUTOENCODER" in msg
+    assert "CONFIRMAR LIMPEZA COMPARACAO" in msg
     assert "irrevers" in msg.lower()
     # é pedido de confirmação, NÃO execução
     assert "resultados apagados" not in msg.lower()
@@ -28,6 +28,6 @@ def test_limpeza_executa_somente_com_token(monkeypatch):
     monkeypatch.setattr(F, "limpar_artefatos", fake_limpar)
     monkeypatch.setattr(F, "artefatos_a_partir", lambda etapa: [])
 
-    res = F.limpar_resultados_ml(pergunta="CONFIRMAR LIMPEZA AUTOENCODER")
-    assert chamadas.get("etapa") == "autoencoder"  # a remoção foi acionada
+    res = F.limpar_resultados_ml(pergunta="CONFIRMAR LIMPEZA COMPARACAO")
+    assert chamadas.get("etapa") == "comparacao"
     assert res["ok"]

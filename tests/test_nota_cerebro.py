@@ -10,7 +10,7 @@ def test_cria_nota_com_frontmatter_e_tags_validas(tmp_path):
     r = registrar_nota_cerebro(
         titulo="Resultado da comparação", conteudo="O método proposto venceu.",
         tipo="resultado", tags=["comparacao-literatura", "igbt"],
-        nivel_evidencia="E2", fonte="resultados/macro/comparacao.json",
+        nivel_evidencia="E2", fonte="resultados/comparacao/comparacao_autoencoders.json",
         pasta_base=tmp_path,
     )
     assert r["ok"]
@@ -20,7 +20,7 @@ def test_cria_nota_com_frontmatter_e_tags_validas(tmp_path):
     assert "comparacao-literatura" in txt and "igbt" in txt
     assert "cerebro" in txt                      # tag estrutural sempre presente
     assert "[[00 - Painel do cerebro]]" in txt   # conectada ao hub
-    assert "resultados/macro/comparacao.json" in txt
+    assert "resultados/comparacao/comparacao_autoencoders.json" in txt
 
 
 def test_descarta_tag_fora_da_taxonomia(tmp_path):

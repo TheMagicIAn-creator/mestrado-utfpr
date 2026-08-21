@@ -9,7 +9,7 @@ Motivação: sem isto, o grafo do Obsidian era uma estrela — todo nó auto-ger
 apontava só para o hub, sem nenhuma aresta entre si. Não havia "fluxo lógico"
 navegável entre uma decisão e as sessões/decisões relacionadas.
 
-Lógica pura (sem I/O, sem Streamlit): sobreposição lexical simples entre o
+Lógica pura (sem I/O ou dependência de interface): sobreposição lexical entre o
 texto de origem e o conteúdo de cada item de memória validada ATIVO. Conservador
 de propósito — exige um mínimo de termos em comum para não linkar por acaso.
 

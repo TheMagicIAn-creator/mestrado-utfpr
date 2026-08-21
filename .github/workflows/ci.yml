@@ -2,7 +2,7 @@ name: CI
 
 # CI leve: lint, smoke de import, testes unitarios sem dependencias pesadas
 # (sem torch/chromadb) e varredura de segredos. Nao treina modelos nem roda o
-# pipeline pesado; isso e feito localmente (ver docs/comandos.md).
+# pipeline GPVS completo; isso e feito localmente (ver docs/comandos.md).
 
 on:
   push:
@@ -40,17 +40,18 @@ jobs:
 
       - name: Smoke de import (modulos leves)
         run: |
-          python -c "import src.core.config, src.core.utils, src.conhecimento.indice_lexical, src.conhecimento.memoria_persistente, src.conhecimento.multiagente, src.ml.split_temporal, src.ml.proveniencia; print('import OK')"
+          python -c "import src.core.config, src.core.utils, src.conhecimento.indice_lexical, src.conhecimento.memoria_persistente, src.conhecimento.multiagente, src.ml.dados_gpvs, src.ml.detectabilidade, src.ml.pipeline, src.ml.proveniencia, src.ml.resultados; print('import OK')"
 
       - name: Conferir selecao do CI por marcadores
         run: |
           python -m pytest --collect-only -q -m "not pesado" > /tmp/ci-tests.txt
           cat /tmp/ci-tests.txt
           for alvo in \
-            tests/test_ae_lstm_temporal.py \
             tests/test_dados_gpvs_canonico.py \
             tests/test_detectabilidade_canonica.py \
             tests/test_publicacao_comparacao.py \
+            tests/test_pipeline_canonico.py \
+            tests/test_resultados_canonicos.py \
             tests/test_proveniencia.py \
             tests/test_confiabilidade_componentes.py \
             tests/test_artefatos_protegidos.py \
@@ -72,10 +73,8 @@ jobs:
       # F821 undefined name / F822 undefined em __all__ / F823 uso antes da
       # atribuicao local. Nao sao questao de estilo -- sao NameError em runtime.
       #
-      # Existe porque avaliar_classificador_pv chamava Path() sem importar
-      # pathlib e foi para o main: o teste da ferramenta so checava o
-      # ROTEAMENTO, nunca executava a funcao, e o lint geral abaixo e
-      # `continue-on-error` com `|| true`, entao nunca reprovou nada.
+      # Mantem erros de nome em runtime fora do main mesmo quando o lint geral
+      # permanece informativo.
       - name: Nomes indefinidos (bloqueante)
         run: ruff check --select F821,F822,F823 src tests scripts
 
@@ -85,13 +84,8 @@ jobs:
 
   # ==========================================================================
   # Job separado porque instala torch (~200 MB) e nao deve atrasar o feedback
-  # rapido do job leve. NAO treina modelo nem le dataset bruto: constroi uma
-  # rede de 12 features e 6 janelas e roda 12 epocas -- segundos de CPU.
-  #
-  # Existe porque o CI leve nunca instalou torch, e por isso NENHUM teste jamais
-  # instanciou o Autoencoder. Quebrar a construcao da rede, o forward, o loop de
-  # treino ou o ciclo salvar/carregar passava verde e so aparecia numa execucao
-  # local de 8 minutos -- onde o custo de descobrir e maximo.
+  # rapido do job leve. NAO treina o pipeline nem le dataset bruto: instancia
+  # as duas arquiteturas canonicas em dados artificiais pequenos.
   #
   # Deliberadamente NAO usa mock de torch: mockar torch testaria o mock.
   # ==========================================================================
@@ -116,7 +110,7 @@ jobs:
           pip install -r requirements-dev.txt
           pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-      - name: Contrato do Autoencoder e do escore (torch real, dados de brinquedo)
+      - name: Contrato Denso e AE-LSTM (torch real, dados de brinquedo)
         run: |
           python -m pytest -p no:cacheprovider -q -W ignore \
             tests/test_torch_smoke.py tests/test_modelos_autoencoder_canonicos.py -m "not pesado"

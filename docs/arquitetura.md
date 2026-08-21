@@ -1,153 +1,66 @@
-# Arquitetura — ALIAdo
+# Arquitetura canônica
 
-Pacote Python modular. Ponto de entrada canônico: `python -m src.webapp`
-(ASGI/Starlette), que abre primeiro o agente e mantém os resultados acadêmicos
-em vistas somente leitura. `app.py` permanece como ponte ASGI compatível.
+O ALIAdo é uma aplicação ASGI e um pipeline científico independente. A página
+abre sem carregar Torch, ChromaDB ou embeddings; esses recursos são aquecidos
+em segundo plano apenas para o chat.
 
-```
+```text
 src/
-├── core/                 infraestrutura compartilhada
-│   ├── config.py         caminhos, constantes, KMP_DUPLICATE_LIB_OK
-│   ├── utils.py          UTF-8 seguro, caminhos relativos
-│   └── logs.py           logging estruturado (logs/al_iado_pv.log)
-├── conhecimento/         cérebro do agente (RAG + ferramentas)
-│   ├── agente.py         expansão, busca híbrida, RRF, reranking e prompt
-│   ├── ferramentas.py    tool calling (specs + roteador + execução)
-│   ├── provedores.py     adaptador leve do SDK Gemini e papéis por nível
-│   ├── multiagente.py    coordenação: Gemini Pro conversa, Gemini Flash audita
-│   ├── memoria_persistente.py memória validada entre sessões
-│   ├── obsidian.py       vault completo, busca híbrida e espelho da memória
-│   ├── indexador.py      indexa PDFs/tabelas no ChromaDB
-│   ├── indice_lexical.py índice BM25 em SQLite FTS5
-│   ├── indice_portatil.py exporta/importa snapshot gzip do índice
-│   ├── leitor_anexos.py  leitura de anexos (PDF/CSV/Office/imagem)
-│   └── web_search.py     busca leve + níveis de confiança A-D
-├── ml/                   pipeline e experimentos de ML
-│   ├── pipeline.py       registry das etapas + estado ready/stale/pending
-│   ├── proveniencia.py   manifesto + hash + detecção de stale
-│   ├── split_temporal.py blocos intercalados com purga (anti-vazamento)
-│   ├── dados_avaliacao.py banco E1 comum para comparações locais
-│   ├── estatistica.py    ICs, bootstrap e métricas metodológicas
-│   ├── exec_etapa_isolada.py executa etapa pesada em subprocesso
-│   ├── gpvs_principal.py contrato de features, split e baseline GPVS
-│   ├── autoencoder.py    modelo de normalidade (limiar p99)
-│   ├── injecao_falhas.py falhas sintéticas FMECA (schema E2) + SMD_95
-│   ├── validacao.py      validação interna E2 (holdout, ROC+PR, ICs)
-│   ├── validacao_gpvs_principal.py validação E2+E3 e manifesto específico
-│   ├── rul_weibull.py    Weibull de detectabilidade (eixo a_det, não tempo)
-│   ├── relatorio_weibull.py  montagem do artefato de Weibull
-│   ├── classificador_pv.py classificação supervisionada PV Farms (CC)
-│   ├── experimentos_artigos.py experimentos de ML por artigo-base
-│   ├── exec_experimento_isolado.py roda experimento pesado em subprocesso
-│   └── resultados.py     leitura/resumo de artefatos
-├── webapp/               aplicação web canônica
-│   ├── app.py            rotas ASGI, estáticos e segurança HTTP
-│   ├── contracts.py      contratos científicos somente leitura
-│   ├── agent_adapter.py  fronteira HTTP do agente sob demanda
-│   ├── templates/        HTML semântico
-│   └── static/           CSS responsivo e JavaScript progressivo
-└── orquestrador.py       coordena init + pipeline
+|-- core/                 configuração, segurança, tempo, logs e formatação
+|-- conhecimento/         Gemini, RAG híbrido, memória, Obsidian e ferramentas
+|-- ml/                   GPVS, Denso/AE-LSTM, E2, E3 e confiabilidade física
+|-- webapp/               Starlette, contratos HTTP e frontend responsivo
+`-- orquestrador.py       coordenação explícita das operações
+
+scripts/
+|-- auditar_resultados.py valida manifestos, arquivos e hashes
+|-- avaliar_agente.py     avalia roteamento e salvaguardas científicas
+|-- manter_base.py        mantém literatura, sessões e Obsidian
+`-- verificar_projeto.py  verifica ambiente, GPVS, árvore e publicação
 ```
 
-## Fluxos
-- **Aplicação:** `webapp` → Starlette → contratos JSON E2/E3/confiabilidade → HTML.
-  O agente é a vista inicial; as vistas científicas usam somente artefatos canônicos. Essa
-  rota não importa ChromaDB, embeddings ou Torch e nunca inicia treinamento.
-- **Inicialização do agente:** `webapp/agent_adapter` → `base_runtime` → restauração
-  dos snapshots → encoder local/ONNX → ChromaDB + BM25 → Gemini.
-- **Reconciliação científica:** perguntas sobre resultados → `scientific_context`
-  → os mesmos contratos JSON das figuras → prompt autoritativo do agente.
-- **Sessão:** resposta → `session_journal` → Markdown em `notas/sessoes/`
-  → reindexação na memória sem dependência de Streamlit.
-- **Reprocessamento:** scripts e ferramentas acionam explicitamente o
-  orquestrador; abrir a página é sempre uma operação somente leitura.
-- **RAG:** pergunta → expansão local → embeddings + BM25 → fusão RRF →
-  reranking → memória classificada do Obsidian → auditoria compacta do Gemini Flash → prompt
-  com memória validada → síntese final do Gemini.
-- **Memória:** o auditor (Gemini Flash) só avalia turnos com correção, preferência ou decisão
-  explícita. Itens aprovados são gravados atomicamente em JSON, com evidência,
-  proveniência e status, e espelhados como Markdown; o Gemini recebe apenas os
-  itens pertinentes.
-- **Obsidian:** todo Markdown útil sob a raiz configurada do vault entra na
-  coleção independente `obsidian_pv`. O indexador classifica notas curadas,
-  sessões atuais/arquivadas, memórias consolidadas, conceitos, experimentos e
-  notas de leitura. Diretórios técnicos, templates, segredos aparentes e notas
-  explicitamente privadas ficam de fora. O bloco recuperado é contexto interno
-  e nunca compõe o rodapé de fontes científicas; uma resposta antiga registra o
-  que foi dito, não o que continua correto. O snapshot
-  `artefatos/obsidian_indexado.jsonl.gz` leva esse histórico à nuvem.
-- **Ferramentas (chat):** `decidir_acao` roteia para pipeline ML, experimentos,
-  catálogo de literatura, `consultar_datasets`, `comparar_abordagens_ml`, etc.
-- **Pipeline ML:** `features_gpvs → autoencoder → injecao_falhas → validacao →
-  rul_weibull`, cada etapa com manifesto de proveniência.
-- **Validação GPVS:** `validacao_gpvs_principal.py` combina E2 sintética no
-  holdout F0 e E3 experimental F1-F7 sem misturar outros datasets.
+## Fluxo web
 
-## Execução local e nuvem
-- **PC:** possui `dados/brutos/`, treina os modelos, regenera os experimentos e
-  publica apenas os artefatos científicos verificáveis.
-- **Deploy ASGI:** restaura `artefatos/literatura_indexada.jsonl.gz` em um
-  ChromaDB efêmero e consulta os JSONs, CSVs e PNGs versionados em `resultados/`.
-  Sem os datasets brutos, não tenta representar uma execução de treino como
-  concluída na nuvem. Para manter a memória dentro do limite do serviço, usa a
-  variante ONNX quantizada do mesmo MiniLM do índice, carrega a sessão apenas
-  na primeira busca e libera o tokenizer antes da inferência. Os modelos Gemini
-  usam adaptadores diretos dos SDKs oficiais; as integrações LangChain, que
-  carregavam PyTorch indiretamente, não entram no processo web.
-- `AL_IADO_CHROMADB_DIR` permite redirecionar o ChromaDB sem alterar o código;
-  `AL_IADO_INDICE_LITERATURA` permite apontar para outro snapshot portátil,
-  `AL_IADO_INDICE_LEXICAL` redireciona o SQLite FTS5,
-  `AL_IADO_MEMORIA_VALIDADA` redireciona a memória estruturada,
-  `AL_IADO_OBSIDIAN_VAULT_DIR` aponta para a raiz pesquisável do vault e
-  `AL_IADO_OBSIDIAN_DIR` aponta para sua subpasta curada;
-  `AL_IADO_INDICE_OBSIDIAN` redireciona seu snapshot portátil. O arquivo
-  versionado é durável entre deploys; gravações feitas dentro do Community
-  Cloud duram somente até o próximo reinício/redeploy. Já
-  `AL_IADO_DATASET_GPVS` aponta para a pasta que contém `F0L.csv` a `F7M.csv`.
-  `AL_IADO_EMBEDDINGS_BACKEND` aceita `auto`, `onnx` ou
-  `sentence-transformers`; `AL_IADO_ONNX_THREADS` limita threads do backend
-  leve. Em `auto`, ausência do dataset ativa ONNX. `AL_IADO_HOST`, `PORT` e
-  `AL_IADO_LOG_LEVEL` configuram o servidor. Modelos, tamanho de saída e
-  orçamentos do RAG são ajustáveis por `AL_IADO_GEMINI_MODEL`,
-  `AL_IADO_GEMINI_MODEL_AUDITOR`, `AL_IADO_GEMINI_MODEL_FUNDO`, `AL_IADO_GEMINI_MAX_OUTPUT_TOKENS` e
-  `AL_IADO_RAG_*`. Datas de interface usam `AL_IADO_TIMEZONE`
-  (`America/Sao_Paulo` por padrão).
+1. `src.webapp` entrega HTML/CSS/JavaScript imediatamente.
+2. `/api/status` informa `iniciando`, `pronto` ou `degradado` sem inicializar o
+   agente.
+3. `agent_adapter` aquece índice lexical, ChromaDB, embeddings e papéis Gemini
+   em thread de fundo.
+4. Saudações são respondidas localmente; perguntas acadêmicas usam eventos SSE
+   `status`, `delta`, `done` e `error`.
+5. Painéis E2, E3 e Confiabilidade carregam contratos somente quando abertos.
 
-## Isolamento de cargas pesadas (subprocesso)
-Experimentos por artigo que carregam bibliotecas pesadas (`torch`)
-rodam em **subprocesso** via
-`exec_experimento_isolado.executar_experimento_isolado(key)`. Um segfault,
-conflito de OpenMP ou estouro de memória derruba apenas o filho — o servidor
-ASGI segue de pé e recebe uma mensagem de falha legível. O progresso é
-lido do stdout do filho e encaminhado ao vivo; o resultado volta por um JSON
-temporário. Degradação honesta: se o subprocesso não puder ser lançado, cai
-para execução in-process. Variáveis: `AL_IADO_SEM_ISOLAMENTO=1` força
-in-process (debug/CI); `AL_IADO_EXP_CHILD=1` é o marcador interno do filho.
+As figuras são PNG acadêmico de 300 dpi e PDF vetorial. O frontend não recalcula
+métrica, limiar ou ajuste estatístico.
 
-## Escopo de ML
+## Fluxo científico
 
-O resultado canônico usa somente o **GPVS-Faults**: F0L/F0M ajustam o detector,
-o holdout F0 recebe a validação sintética FMECA E2 e F1L-F7M fornecem validação
-experimental E3. Stender, PMSM, PV Farms e outros conjuntos permanecem como
-literatura ou experimentos legados e não alimentam esse pipeline.
+`dados_gpvs.py` é o único contrato de ingestão. Ele valida os 16 ensaios,
+extrai 24 features e cria blocos saudáveis disjuntos. `treino_comparacao.py`
+treina Denso e AE-LSTM com o mesmo protocolo. `avaliacao_comparativa.py` produz
+E3 real e E2 sintética. `publicacao_comparacao.py` grava tabelas, figuras e
+manifesto.
 
-## Instalação modular
-```powershell
-pip install -r requirements.txt              # ambiente completo (pins exatos)
-# ou por grupo:
-pip install -r requirements-ui.txt -r requirements-rag.txt -r requirements-ml.txt
-pip install -r requirements-dev.txt              # testes/lint
-```
+`confiabilidade_componentes.py` mantém as equações e os cenários bibliográficos;
+`publicacao_confiabilidade.py` publica curvas temporais separadas dos resultados
+do detector.
 
-## Padronização visual (tabelas e gráficos)
-- `src/core/formatacao.py` — fonte única de formatação numérica e de
-  tabelas Markdown do chat (política de casas decimais por tipo de valor,
-  p-valores em convenção acadêmica, construtor de tabela com alinhamento
-  uniforme). Todo número exibido ao usuário passa pelos `fmt_*`.
-- `src/ml/estilo_graficos.py` — fonte única de estilo matplotlib:
-  `aplicar_estilo()` fixa DPI (150), bbox, fontes e grade via rcParams;
-  `TAM` define os tamanhos canônicos (unico 12x5, quadrado 7x6,
-  painel_3 15x5, painel_6 15x8) e os helpers `tam_barras_h/v` e
-  `tam_matriz` cobrem gráficos que crescem com N. Nenhum módulo de plot
-  pode fixar figsize numérico ou dpi próprio — o teste
-  `tests/test_formatacao_estilo.py` trava a regressão.
+`pipeline.py` registra somente `comparacao` e `confiabilidade` e determina
+`ready`, `stale` ou `pending` a partir dos manifestos v2.
+
+## Armazenamento
+
+- `dados/brutos/gpvs/`: único dataset ativo, local e ignorado.
+- `dados/processados/`: cache local de features, ignorado.
+- `artefatos/modelos/{ae_denso,ae_lstm}`: pesos e scalers locais, ignorados.
+- `resultados/comparacao/`: publicação E2/E3 versionável.
+- `resultados/confiabilidade/`: cenários físicos versionáveis.
+- `resultados/manifestos/`: proveniência e hashes.
+- `base_conhecimento/`: ChromaDB local, ignorado.
+- `artefatos/*indexado*`: snapshots portáteis do RAG.
+
+## Dependências
+
+Os grupos `core`, `rag`, `ui` e `ml` contêm apenas dependências diretas. A
+aplicação não usa bibliotecas de dashboard ou gráficos interativos no bundle
+inicial. `requirements.txt` instala o ambiente completo.

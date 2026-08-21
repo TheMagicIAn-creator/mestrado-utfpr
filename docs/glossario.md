@@ -1,171 +1,75 @@
-# Glossário canônico — Al IAdo PV
+# Glossário canônico
 
-Ponto único de definição dos termos usados em CLAUDE.md, docs/, código e
-dissertação. Em caso de conflito entre documentos, vale a definição daqui.
+## Símbolos que colidem
 
-## ⚠️ Símbolos que colidem — leia antes de escrever
+| Termo | Significado |
+|---|---|
+| `F0 = 50 Hz` | frequência fundamental nominal (`GRID_FREQUENCY_HZ`) |
+| `F0L`, `F0M` | ensaios saudáveis do GPVS-Faults |
+| `F1L`-`F7M` | 14 ensaios experimentais de falha |
 
-O projeto já pagou caro por um símbolo com dois sentidos (o `D`, resolvido em
-`D_campo` × `POD_mon`). **`F0` é o segundo caso, e ele é real:**
+Use sempre a unidade ao escrever a frequência e o sufixo L/M ao escrever o
+ensaio. Os nomes F0L/F0M vêm do dataset e não devem ser reinterpretados.
 
-| escrita | significa | onde vive |
-|---|---|---|
-| **`F0`, `F0_MIN`, `F0_MAX`** | **frequência fundamental**, em Hz | `src/ml/features_ca.py`; `src/ml/gpvs_principal.py` (`F0 = GRID_FREQUENCY_HZ`); `tests/test_faixa_f0.py` |
-| **`F0L`, `F0M`**, "ensaios F0", "teste F0", "partições F0" | **condição SAUDÁVEL** do GPVS-Faults (IPPT e MPPT) — ausência de falha | `docs/datasets.md`, `docs/metodologia_ml.md`, `src/ml/gpvs*.py`, `resultados/gpvs/` |
+## FMECA
 
-Os dois convivem no mesmo módulo: em `gpvs_principal.py`, `F0` é a frequência
-da rede e `JANELA = FS/F0`, enquanto os arquivos `F0L.csv`/`F0M.csv` são os
-ensaios sem falha. **Não é erro — é homonímia herdada de duas fontes.**
+- **FMEA:** análise de modos e efeitos de falha.
+- **FMECA:** FMEA com análise de criticidade.
+- **NPR:** `S x O x D_campo`.
+- **D_campo:** dificuldade de detectar no processo de manutenção, conforme a
+  escala do TCC. Não é uma métrica do Autoencoder.
+- **Contator AC, IGBT e Fusível AC:** componentes do recorte canônico.
 
-Regra de escrita, para não repetir o problema do `D`:
+## Detectores
 
-- ao falar de frequência, escreva **"frequência fundamental"** ou `F0` **com a
-  unidade colada** (`F0 = 50 Hz`);
-- ao falar da condição de ensaio, escreva **`F0L`/`F0M`** ou **"ensaio
-  saudável F0"** — nunca `F0` sozinho;
-- em texto de dissertação, prefira **"condição sem falha"** a "F0".
+- **Autoencoder Denso:** arquitetura `24-16-8-16-24`.
+- **AE-LSTM:** modelo temporal com sequência 8, oculto 32 e latente 8.
+- **Erro de reconstrução:** distância entre entrada e reconstrução.
+- **Limiar p99:** percentil empírico próprio de cada modelo na calibração
+  saudável, calculado antes de avaliar falhas.
+- **Falso positivo saudável:** excedência do limiar no teste F0 isolado.
 
-Os símbolos NÃO foram renomeados no código de propósito: `F0` como frequência
-é convenção universal em eletrotécnica, e `F0L`/`F0M` são os nomes dos arquivos
-publicados por Bakdi et al. (2020). Renomear qualquer um dos dois quebraria a
-correspondência com a fonte externa. A separação é de escrita, não de símbolo.
+## Evidência E2
 
-## Confiabilidade e manutenção
+- **`a_det`:** magnitude adimensional da assinatura sintética, no intervalo
+  avaliado de 0 a 1. Não é tempo nem a severidade S da FMECA.
+- **SMD95:** menor `a_det` cujo limite inferior do IC95% de detecção alcança
+  95%; caso contrário, `não atingido`.
+- **Primeiro cruzamento:** menor magnitude em que uma trajetória satisfaz a
+  persistência do detector.
+- **`S_D(a)`:** sobrevivência empírica da não detecção no eixo de magnitude.
+- **`h_D(a)`:** risco discreto de primeiro cruzamento por magnitude.
+- **Weibull 2P E2:** diagnóstico intervalar com censura; só pode ser resumido
+  quando os critérios formais são aceitos.
 
-- **RCM** (Reliability Centred Maintenance): metodologia que orienta o plano
-  de manutenção pela criticidade funcional dos componentes. Base do TCC de
-  Torres (2024) e da seleção de falhas da dissertação.
-- **FMEA / FMECA**: análise de modos e efeitos de falha; a variante FMECA
-  adiciona a análise de criticidade (NPR). O FMECA de referência do projeto
-  é o do CEAMAZON (Torres, 2024, Apêndice E).
-- **NPR** (Número de Prioridade de Risco): S × O × D — índice da **FMECA**
-  (nunca da FMEA; D isolado NUNCA é o NPR). FMECA aplicada do TCC (Apêndice E):
-  inversor 210, subsistema CA 150. FMECA consolidada da dissertação
-  (docs/fmeca.md, fonte única): Contator AC 315, IGBT 90, Fusível AC 30.
-- **S / O / D_campo**: Severidade (**1–5**), Ocorrência (1–10) e dificuldade de
-  **detecção em campo** (1–10; maior = pior). Apesar do nome "Detecção", a Tab. 4.8 do TCC
-  define o índice em **percentual de NÃO detectar** (D=1 → 0–5%; D=10 →
-  86–100%) — ele cresce com o fracasso em detectar. O subscrito `campo` separa
-  esse índice **julgado** da detectabilidade **medida** do detector proposto.
-  Nunca escrever `D` sozinho. Fonte única: `docs/nomenclatura_deteccao.md`.
-- **POD_mon(s)**: probabilidade de detecção pelo **monitoramento proposto** na
-  severidade `s`, medida sob E2 no limiar operacional congelado (0–1, maior =
-  melhor). Raiz consagrada: curva POD do **MIL-HDBK-1823A** (ensaios não
-  destrutivos). O subscrito é obrigatório — em sistemas de potência, `POD` nu é
-  *Power Oscillation Damping*. É o mesmo número que o `recall` da validação,
-  lido como propriedade do método de inspeção.
-- **D_mon**: o índice da mesma Tab. 4.8 obtido de `1 − POD_mon(s_ref)`. Não é
-  índice rival do D_campo: é o mesmo índice, **medido** em vez de julgado, para
-  outro meio de detecção. `D_proj = min(D_campo, D_mon)` — o monitoramento é
-  adicional ao que já existe, logo nunca piora o índice.
-- **NPR projetado**: `S × O × D_proj`, sob evidência **E2**. Análise de
-  sensibilidade; a FMECA oficial continua sendo `docs/fmeca.md`.
-- **Weibull (2 parâmetros)**: distribuição de vida com forma **beta** (β>1 →
-  desgaste progressivo; β≈1 → falhas aleatórias; β<1 → mortalidade infantil)
-  e escala **eta** (vida característica, 63,2% de falhas acumuladas).
-- **a_det — magnitude de detecção**: o eixo do Weibull do projeto. Numa
-  trajetória, `a_inj` cresce de 0 a 1 sobre a MESMA janela saudável, e `a_det`
-  é a magnitude em que o escore fica acima do limiar por `PERSISTENCIA_
-  CRUZAMENTO` avaliações seguidas. Mesma unidade de `a_inj` e da SMD, o que
-  permite ler Weibull e injeção na mesma régua. Fonte única:
-  `src/ml/rul_weibull.py`, bloco "O EIXO NÃO É TEMPO".
-  **Substituiu o nome TTF em 08/08/2026**: o eixo nunca foi tempo, e "TTF"/
-  "passo de degradação" prometiam hora onde há fração de assinatura. As chaves
-  `ttf_*` sobrevivem nos artefatos como alias, já apontando para a unidade nova.
-- **MTTF / B10**: média e décimo percentil da distribuição ajustada. Os nomes
-  são os da Weibull, mas **no projeto saem em fração da assinatura nominal**,
-  não em horas. `B10 = 0,12` lê-se: em 10% das trajetórias a falha já é
-  detectada com 12% da assinatura nominal.
-- **Indetectabilidade no teto × censura genuína**: censura à direita é
-  acompanhamento interrompido — o evento viria depois. **Indetectabilidade no
-  teto** é a grade de magnitude varrida INTEIRA, até `a_inj = 1,0`, sem o
-  detector confirmar: não há "depois" dentro do experimento. No desenho atual
-  toda não detecção é do segundo tipo; tratá-la como censura no MLE pressupõe
-  que a falha real possa ter assinatura maior que a nominal — hipótese
-  declarada no campo `desfechos` do artefato, não suposição tácita.
-- **Bootstrap de aderência quantizado**: teste paramétrico que simula a Weibull
-  ajustada, reaplica a quantização da grade de `a_det` e compara a discrepância
-  observada com a distribuição bootstrap. `p <= 0,05` rejeita a Weibull 2P para
-  síntese. O `R²pp` do papel Weibull é apenas diagnóstico visual, não substitui
-  esse teste. Na execução canônica global, `p=0,004` para os três componentes.
-- **RUL** (Remaining Useful Life): vida útil remanescente. No eixo `a_det` a
-  grandeza calculada é a **margem de magnitude até detectar** —
-  `E[a_det − a | a_det > a]` —, não vida em tempo; o nome RUL é mantido porque
-  é o da literatura de prognóstico. O projeto distingue **RUL restrita KM**
-  (não paramétrica, limitada ao horizonte observado) de **RUL Weibull**
-  (paramétrica e extrapolativa, com ressalva explícita sob alta censura).
+Essas grandezas descrevem detectabilidade. Não representam confiabilidade
+física, MTTF, RUL ou taxa de falha temporal.
 
-## Detecção de anomalias
+## Evidência E3
 
-- **Modelagem de normalidade**: treinar o modelo SÓ com operação saudável e
-  tratar desvios de reconstrução como anomalia — abordagem central da
-  dissertação (não requer dados rotulados de falha).
-- **Erro de reconstrução**: distância entre a janela de entrada e a saída do
-  Autoencoder; é a referência MSE do pipeline.
-- **Escore operacional**: estatística usada para decidir anomalia
-  (`score_method`). Na execução vigente é o MSE médio de reconstrução; o escore
-  localizado top-k permanece como ablação diagnóstica.
-- **Limiar operacional**: `score_threshold` do escore operacional, congelado
-  ANTES de ver qualquer falha. Na execução vigente, `score_threshold` e
-  `mse_p99` representam o mesmo p99; μ+3σ é apenas referência comparativa.
-- **SMD** (Severidade Mínima Detectável): menor severidade injetada em que o
-  erro médio cruza o limiar. `SMD nula` = falha não detectada em nenhuma
-  severidade testada (achado de limitação, não erro de execução). É o análogo
-  do **a₉₀** do MIL-HDBK-1823A — o menor defeito detectado com 90% de
-  probabilidade em ensaios não destrutivos.
-- **a_inj — magnitude da assinatura injetada**: fator adimensional em
-  [0,05; 1,0] que escala a amplitude da perturbação injetada no sinal saudável
-  (grade do pipeline: 7 níveis). **NÃO é o S da FMECA** — são grandezas
-  distintas que até 07/08/2026 dividiam o nome "severidade", distinguidas só
-  pela caixa da letra. O nome vem do tamanho de defeito `a` da curva POD(a) do
-  MIL-HDBK-1823A; com ele a SMD é `a_inj,95`, análogo do a₉₀. Fonte única:
-  `docs/auditoria_total_src.md` §1.
-- **Injeção sintética orientada pela FMECA**: perturbação apenas das
-  grandezas que a física de cada modo de falha afeta (ver
-  docs/assinaturas_fmeca.md) — fornece ground truth para validar o detector.
-- **Split em blocos intercalados com purga**: a série é dividida em 14 blocos
-  contíguos, distribuídos alternadamente entre treino/calibração/teste
-  (`T E V T T E T V E T T V E T`), com **purga** de 2 janelas em toda
-  fronteira onde o destino muda — janelas com 50% de sobreposição nunca cruzam
-  conjuntos. Substituiu, em 09/08/2026, os **três blocos contíguos**, que
-  fatiavam a rampa de rotação do conjunto Stender em três faixas de velocidade e
-  deixavam a calibração num regime só (IQR da frequência fundamental de
-  1,46 Hz contra 83 Hz do
-  treino), tornando o limiar congelado inaplicável ao teste. Consequência para
-  a redação: o teste **não é "o futuro"**, é generalização entre regimes. Fonte
-  única: `src/ml/split_temporal.py`; detalhamento em `docs/metodologia_ml.md` §5.
-  O split contíguo (`split_temporal_com_purga`) segue disponível e é o que o
-  protocolo E1 por artigo usa.
-- **Amostra E2 independente**: o split 50/20/30 deixa 60 janelas no teste;
-  removida a sobreposição de 50%, restam 32 trajetórias independentes para
-  injeção, validação e `a_det`. Não são replicações de campo e não elevam E2 a E3.
-- **Protocolo por artigo**: o experimento executável vigente usa a regra de
-  decisão do Ibrahim/AE-LSTM (p99 do erro em calibração temporal, congelado
-  antes do teste). F1 depende do ponto de operação; AUC é a métrica comparável.
-- **Degradação honesta**: modelo cuja dependência não está instalada aparece
-  como "requer <lib>" em vez de sumir silenciosamente do resultado.
+- **E3 de bancada:** avaliação dos modelos congelados em F1L-F7M.
+- **AUC-PR:** métrica principal da comparação.
+- **Bootstrap por ensaio:** reamostragem cuja unidade independente é o ensaio,
+  não cada janela autocorrelacionada.
+- **E4:** validação de campo; ainda ausente.
 
-## Níveis de evidência (ver docs/evidence_levels.md)
+## Confiabilidade física
 
-- **E0** hipótese · **E1** benchmark exploratório · **E2** validação
-  sintética orientada pela FMECA · **E3** validação experimental externa
-  (realizada no GPVS-Faults em bancada; campo ainda não realizado). Nenhum
-  resultado E1/E2 nem E3 de bancada é prova de desempenho industrial de campo.
+- **`R(t)`:** probabilidade de sobrevivência até o tempo t.
+- **`F(t)`:** probabilidade acumulada de falha.
+- **`f(t)`:** densidade temporal de falha.
+- **`h(t)`:** taxa instantânea de falha.
+- **Cenário derivado:** taxa calculada a partir de taxa global e participação de
+  chamados; não é medição do componente.
+- **Taxa direta:** valor transcrito de uma fonte bibliográfica identificada.
 
-## Sistema/agente (RAG)
+O contrato atual usa modelo exponencial de taxa constante. O GPVS-Faults não
+estima essas funções.
 
-- **RAG** (Retrieval-Augmented Generation): recuperar trechos relevantes da
-  base indexada e injetá-los no prompt antes da geração da resposta.
-- **Camadas 1–3**: expansão de query (local, por regras) → busca híbrida
-  (semântica + keyword) → reranking (local, heurístico). Nenhuma chamada de
-  LLM ocorre nas camadas; o LLM só gera a resposta final.
-- **Chunk**: fragmento de texto indexado. Literatura: ~1800 chars com
-  sobreposição de 200; sessões/memórias: 500/50.
-- **PERFIL_COMPACTO**: identidade do agente injetada no prompt (hardcoded em
-  agente.py). O CLAUDE.md completo NÃO entra no prompt (>6000 chars).
-- **Modo revisão bibliográfica**: pergunta classificada como revisão amplia
-  o orçamento de busca (mais termos e mais chunks finais).
-- **Manifesto de proveniência**: JSON por etapa do pipeline com parâmetros,
-  hashes e commit — base dos estados ready/stale/pending.
-- **ready / stale / pending**: etapa atualizada / desatualizada em relação às
-  dependências / nunca executada.
+## Agente
+
+- **RAG:** recuperação de literatura antes da síntese.
+- **Busca híbrida:** combinação lexical e vetorial.
+- **Manifesto v2:** parâmetros, entradas, código, dependências, saídas e hashes.
+- **`ready` / `stale` / `pending`:** publicação compatível / desatualizada /
+  ainda não produzida.

@@ -1,4 +1,4 @@
-"""Exportação do histórico de conversa (lógica pura, sem Streamlit)."""
+"""Exportação do histórico de conversa sem dependência da interface."""
 
 from __future__ import annotations
 

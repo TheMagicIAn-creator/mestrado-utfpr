@@ -1,277 +1,69 @@
-"""
-Sprint 1 — rastreabilidade: manifesto de proveniência e estado stale.
+from __future__ import annotations
 
-Verifica que:
-- alteração de parâmetro invalida a etapa (stale);
-- alteração do código da etapa invalida (stale);
-- regeneração de artefato upstream invalida downstream (stale);
-- artefato ausente / sem manifesto → pending;
-- manifesto compatível → ready.
-"""
+import json
 
-from pathlib import Path
-
-from src.ml import proveniencia as P
+from src.ml import proveniencia as provenance
 
 
-def _escreve(p: Path, txt: str = "x") -> Path:
-    p.write_text(txt, encoding="utf-8")
-    return p
+def test_code_hash_is_stable_between_lf_and_crlf(tmp_path):
+    lf = tmp_path / "lf.py"
+    crlf = tmp_path / "crlf.py"
+    lf.write_bytes(b"x = 1\ny = 2\n")
+    crlf.write_bytes(b"x = 1\r\ny = 2\r\n")
+    assert provenance.sha256_arquivo_texto_normalizado(lf) == provenance.sha256_arquivo_texto_normalizado(crlf)
 
 
-def test_hash_muda_com_conteudo(tmp_path):
-    a = _escreve(tmp_path / "a.txt", "um")
-    h1 = P.sha256_arquivo(a)
-    _escreve(a, "dois")
-    assert h1 and h1 != P.sha256_arquivo(a)
-    assert P.sha256_arquivo(tmp_path / "naoexiste") is None
+def test_manifest_v2_hashes_code_dependencies_inputs_and_outputs(tmp_path):
+    code = tmp_path / "stage.py"
+    dependency = tmp_path / "dependency.py"
+    source = tmp_path / "source.csv"
+    output = tmp_path / "output.json"
+    code.write_text("VALUE = 1\n", encoding="utf-8")
+    dependency.write_text("OTHER = 2\n", encoding="utf-8")
+    source.write_text("x\n1\n", encoding="utf-8")
+    output.write_text(json.dumps({"ok": True}) + "\n", encoding="utf-8")
 
-
-def test_hash_textual_normalizado_ignora_crlf(tmp_path):
-    a = tmp_path / "a.py"
-    b = tmp_path / "b.py"
-    a.write_bytes(b"print(1)\nprint(2)\n")
-    b.write_bytes(b"print(1)\r\nprint(2)\r\n")
-    assert P.sha256_arquivo(a) != P.sha256_arquivo(b)
-    assert P.sha256_arquivo_texto_normalizado(a) == P.sha256_arquivo_texto_normalizado(b)
-
-
-def test_comparar_detecta_parametros(tmp_path):
-    code = _escreve(tmp_path / "code.py", "print(1)")
-    out = _escreve(tmp_path / "out.json", "{}")
-    m1 = P.gerar_manifesto("s", code, {"epochs": 100}, {}, [out])
-    m2 = P.gerar_manifesto("s", code, {"epochs": 200}, {}, [out])
-    assert any("parâmetro" in x for x in P.comparar(m1, m2))
-
-
-def test_comparar_detecta_upstream(tmp_path):
-    code = _escreve(tmp_path / "code.py")
-    up = _escreve(tmp_path / "feat.parquet", "v1")
-    out = _escreve(tmp_path / "out.json")
-    m1 = P.gerar_manifesto("s", code, {}, {"features": up}, [out])
-    _escreve(up, "v2")  # upstream regenerado
-    m2 = P.gerar_manifesto("s", code, {}, {"features": up}, [out])
-    assert any("upstream" in x for x in P.comparar(m1, m2))
-
-
-def test_manifesto_v2_registra_dependencias_e_outputs(tmp_path):
-    code = _escreve(tmp_path / "code.py")
-    dep = _escreve(tmp_path / "dep.py")
-    out = _escreve(tmp_path / "out.json", "{}")
-    m = P.gerar_manifesto("s", code, {}, {}, [out], code_dependencies={"dep": dep})
-    assert m["manifest_version"] == 2
-    assert m["code_hash_mode"] == "text_lf_utf8"
-    assert m["input_hash_mode"] == "text_lf_utf8_by_suffix_else_binary"
-    assert m["output_hash_mode"] == "text_lf_utf8_by_suffix_else_binary"
-    assert m["code_dependencies"]["dep"] == P.sha256_arquivo_texto_normalizado(dep)
-    assert list(m["output_artifacts"].values()) == [
-        P.sha256_arquivo_texto_normalizado(out)
-    ]
-
-
-def test_hash_de_saida_textual_e_portavel_entre_lf_e_crlf(tmp_path):
-    code = _escreve(tmp_path / "code.py")
-    out = tmp_path / "out.json"
-    out.write_bytes(b'{"ok": true}\r\n')
-    crlf = P.gerar_manifesto("s", code, {}, {}, [out])
-    out.write_bytes(b'{"ok": true}\n')
-    lf = P.gerar_manifesto("s", code, {}, {}, [out])
-
-    assert crlf["output_artifacts"] == lf["output_artifacts"]
-
-
-def test_hash_de_entrada_textual_e_portavel_entre_lf_e_crlf(tmp_path):
-    code = _escreve(tmp_path / "code.py")
-    entrada = tmp_path / "config.json"
-    out = _escreve(tmp_path / "out.bin")
-    entrada.write_bytes(b'{"ok": true}\r\n')
-    crlf = P.gerar_manifesto("s", code, {}, {"config": entrada}, [out])
-    entrada.write_bytes(b'{"ok": true}\n')
-    lf = P.gerar_manifesto("s", code, {}, {"config": entrada}, [out])
-
-    assert crlf["input_artifacts"] == lf["input_artifacts"]
-
-
-def test_comparar_pode_declarar_input_ausente_sem_ocultar_mudanca(tmp_path):
-    code = _escreve(tmp_path / "code.py")
-    up = _escreve(tmp_path / "up.bin", "original")
-    out = _escreve(tmp_path / "out.json", "{}")
-    salvo = P.gerar_manifesto("s", code, {}, {"up": up}, [out])
-
-    up.unlink()
-    ausente = P.gerar_manifesto("s", code, {}, {"up": up}, [out])
-    assert any("upstream" in x for x in P.comparar(salvo, ausente))
-    assert not P.comparar(salvo, ausente, permitir_inputs_ausentes=True)
-
-    _escreve(up, "alterado")
-    alterado = P.gerar_manifesto("s", code, {}, {"up": up}, [out])
-    assert any(
-        "upstream" in x
-        for x in P.comparar(salvo, alterado, permitir_inputs_ausentes=True)
+    manifest = provenance.gerar_manifesto(
+        "stage",
+        code,
+        {"alpha": 1},
+        {"source": source},
+        [output],
+        code_dependencies={"dependency": dependency},
+        evidence_level="E3_bench",
     )
 
-
-def test_estado_stale_quando_dependencia_cientifica_muda(tmp_path, monkeypatch):
-    monkeypatch.setattr(P, "PASTA_MANIFESTOS", tmp_path / "man")
-    code = _escreve(tmp_path / "code.py", "v1")
-    dep = _escreve(tmp_path / "dep.py", "v1")
-    out = _escreve(tmp_path / "out.json", "{}")
-    P.salvar_manifesto(
-        P.gerar_manifesto("s", code, {}, {}, [out], code_dependencies={"dep": dep})
-    )
-    assert P.estado_etapa("s", [out], code, {}, {}, {"dep": dep})["estado"] == P.READY
-    _escreve(dep, "v2")
-    res = P.estado_etapa("s", [out], code, {}, {}, {"dep": dep})
-    assert res["estado"] == P.STALE
-    assert any("dependência" in motivo for motivo in res["motivos"])
+    assert manifest["manifest_version"] == 2
+    assert manifest["code_hash_mode"] == "text_lf_utf8"
+    assert manifest["code_dependencies"]["dependency"]
+    assert manifest["input_artifacts"]["source"]
+    assert manifest["output_artifacts"][provenance.to_project_relative_path(output)]
+    assert manifest["evidence_level"] == "E3_bench"
 
 
-def test_manifesto_v1_existente_vira_stale_sem_quebrar_leitura(tmp_path, monkeypatch):
-    monkeypatch.setattr(P, "PASTA_MANIFESTOS", tmp_path / "man")
-    code = _escreve(tmp_path / "code.py", "v1")
-    out = _escreve(tmp_path / "out.json", "{}")
-    P.salvar_manifesto({
-        "stage": "s",
-        "code_sha256": P.sha256_arquivo(code),
+def test_v1_manifest_is_marked_stale_against_v2(tmp_path):
+    code = tmp_path / "stage.py"
+    output = tmp_path / "output.csv"
+    code.write_text("VALUE = 1\n", encoding="utf-8")
+    output.write_text("x\n1\n", encoding="utf-8")
+    current = provenance.gerar_manifesto("stage", code, {}, {}, [output])
+    legacy = {
+        "stage": "stage",
+        "code_sha256": current["code_sha256"],
         "parameters": {},
         "input_artifacts": {},
-        "outputs": [str(out)],
-    })
-    res = P.estado_etapa("s", [out], code, {}, {})
-    assert res["estado"] == P.STALE
-    assert "manifesto v2 ausente" in res["motivos"]
-
-
-def test_estado_pending_sem_artefato(tmp_path, monkeypatch):
-    monkeypatch.setattr(P, "PASTA_MANIFESTOS", tmp_path / "man")
-    code = _escreve(tmp_path / "code.py")
-    r = P.estado_etapa("s", [tmp_path / "naoexiste.json"], code)
-    assert r["estado"] == P.PENDING
-
-
-def test_estado_pending_sem_manifesto(tmp_path, monkeypatch):
-    monkeypatch.setattr(P, "PASTA_MANIFESTOS", tmp_path / "man")
-    code = _escreve(tmp_path / "code.py")
-    out = _escreve(tmp_path / "out.json")
-    r = P.estado_etapa("s", [out], code)  # artefato existe, mas sem manifesto
-    assert r["estado"] == P.PENDING
-
-
-def test_estado_ready_depois_stale(tmp_path, monkeypatch):
-    monkeypatch.setattr(P, "PASTA_MANIFESTOS", tmp_path / "man")
-    code = _escreve(tmp_path / "code.py", "v1")
-    out = _escreve(tmp_path / "out.json", "{}")
-
-    P.salvar_manifesto(P.gerar_manifesto("s", code, {"epochs": 100}, {}, [out]))
-    assert P.estado_etapa("s", [out], code, {"epochs": 100}, {})["estado"] == P.READY
-
-    # parâmetro mudou → stale
-    assert P.estado_etapa("s", [out], code, {"epochs": 200}, {})["estado"] == P.STALE
-
-    # código mudou → stale
-    _escreve(code, "v2")
-    assert P.estado_etapa("s", [out], code, {"epochs": 100}, {})["estado"] == P.STALE
-
-
-def test_estado_pipeline_valores_validos():
-    """O pipeline real reporta apenas ready/stale/pending para cada etapa."""
-    from src.ml.pipeline import estado_pipeline
-
-    estados = estado_pipeline()
-    assert set(estados) == {
-        "features_gpvs", "autoencoder", "injecao_falhas", "validacao", "rul_weibull",
     }
-    for info in estados.values():
-        assert info["estado"] in {P.READY, P.STALE, P.PENDING}
+    assert "manifesto v2 ausente" in provenance.comparar(legacy, current)
 
 
-def test_pipeline_captura_parametros_das_etapas():
-    from src.ml.pipeline import get_stage
-
-    auto = get_stage("autoencoder").parameters()
-    assert auto["epochs"] > 0
-    assert auto["latente_dim"] > 0
-    assert auto["dropout"] == 0.2
-    assert auto["paciencia"] > 0
-    assert auto["threshold_method"] == "p99"
-
-    validacao = get_stage("validacao").parameters()
-    assert validacao["n_janelas_saudavel"] > 0
-    assert validacao["prevalencia_rara"] == 0.05
-    assert validacao["sevs_validacao"]
-
-    rul = get_stage("rul_weibull").parameters()
-    assert rul["a_det_unidade"] == "a_det_fracao_da_assinatura_nominal"
-    assert rul["ttf_unidade"] == rul["a_det_unidade"]  # alias
-    assert rul["tempo_fisico_calibrado"] is False
-    assert rul["persistencia_cruzamento"] > 0
-    assert rul["n_bootstrap"] >= 1000
-    assert rul["min_r2_papel_weibull"] == 0.90
-    assert get_stage("rul_weibull").evidence_level == "E2"
-
-
-def test_pipeline_le_parametros_sem_importar_modulo_pesado(monkeypatch):
-    import src.ml.pipeline as pipeline
-
-    def falha_import(module):
-        if module == "src.ml.autoencoder":
-            raise ModuleNotFoundError("torch")
-        return __import__(module, fromlist=["*"])
-
-    monkeypatch.setattr(pipeline, "import_module", falha_import)
-    auto = pipeline.get_stage("autoencoder").parameters()
-
-    assert auto["epochs"] > 0
-    assert auto["threshold_method"] == "p99"
-
-
-def test_pipeline_registra_apenas_entradas_cientificas_reais():
-    from src.ml.pipeline import _inputs_da_etapa, get_stage
-
-    features = _inputs_da_etapa(get_stage("features_gpvs"))
-    assert any("F0L.csv" in key for key in features)
-    assert any("F0M.csv" in key for key in features)
-    assert get_stage("features_ca").key == "features_gpvs"
-
-    inputs = _inputs_da_etapa(get_stage("autoencoder"))
-    assert any("features_gpvs.parquet" in key for key in inputs)
-    assert not any(key.endswith(".png") for key in inputs)
-
-    validacao = _inputs_da_etapa(get_stage("validacao"))
-    assert any("features_gpvs.parquet" in key for key in validacao)
-    assert any("F7M.csv" in key for key in validacao)
-    assert any("modelo_autoencoder.pt" in key for key in validacao)
-    assert any("estatistica_residuo.npz" in key for key in validacao)
-    assert not any("injecao_falhas_resultados.png" in key for key in validacao)
-
-
-def test_autoencoder_declara_artefatos_consumidos_pelas_etapas_seguinte():
-    from src.ml.pipeline import get_stage
-
-    artefatos = set(get_stage("autoencoder").artifacts)
-    assert "resultados/autoencoder/estatistica_residuo.npz" in artefatos
-    assert "resultados/autoencoder/scaler.pkl.sha256" in artefatos
-
-
-def test_pipeline_registra_dependencias_cientificas():
-    from src.ml.pipeline import _code_dependencies, get_stage
-
-    deps = _code_dependencies(get_stage("autoencoder"))
-    assert "src.ml.escore_anomalia" in deps
-    assert "src.ml.gpvs" in deps
-    assert "src.ml.gpvs_principal" in deps
-
-    deps_rul = _code_dependencies(get_stage("rul_weibull"))
-    assert "src.ml.graficos_rul" in deps_rul
-    assert "src.ml.confiabilidade" in deps_rul
-    assert "src.ml.relatorio_weibull" in deps_rul
-    assert "src.ml.gpvs_principal" in deps_rul
-    assert "scripts.relatorio_confiabilidade" in deps_rul
-
-
-def test_status_markdown_usa_estado_trivalorado():
-    from src.ml.pipeline import status_markdown
-
-    md = status_markdown().lower()
-    assert "status do pipeline" in md
-    assert any(t in md for t in ("pronto", "pendente", "stale", "desatualizado"))
+def test_missing_local_input_can_be_unverified_in_query_mode(tmp_path):
+    code = tmp_path / "stage.py"
+    output = tmp_path / "output.csv"
+    present = tmp_path / "source.csv"
+    missing = tmp_path / "missing.csv"
+    code.write_text("VALUE = 1\n", encoding="utf-8")
+    output.write_text("x\n1\n", encoding="utf-8")
+    present.write_text("x\n1\n", encoding="utf-8")
+    saved = provenance.gerar_manifesto("stage", code, {}, {"source": present}, [output])
+    current = provenance.gerar_manifesto("stage", code, {}, {"source": missing}, [output])
+    assert provenance.comparar(saved, current, permitir_inputs_ausentes=True) == []

@@ -90,7 +90,7 @@ def plot_e3_metric_summary(summary: pd.DataFrame, output: Path) -> tuple[Path, P
         "f1": "F1",
     }
     frame = summary[summary["metric"].isin(order)].copy()
-    fig, ax = plt.subplots(figsize=(12, 7), layout="constrained")
+    fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
     y = np.arange(len(order), dtype=float)
     offsets = {"ae_denso": -0.15, "ae_lstm": 0.15}
     for model in ("ae_denso", "ae_lstm"):
@@ -227,7 +227,9 @@ def plot_e3_scenarios(scenarios: pd.DataFrame, output: Path) -> tuple[Path, Path
 
     reference = scenarios[scenarios["is_reference"]].copy()
     experiments = [f"F{i}{mode}" for i in range(1, 8) for mode in "LM"]
-    fig, axes = plt.subplots(1, 2, figsize=(14, 8), layout="constrained", sharey=True)
+    fig, axes = plt.subplots(
+        1, 2, figsize=TAM["painel_4"], layout="constrained", sharey=True
+    )
     for ax, metric, title in (
         (axes[0], "auc_pr", "AUC-PR por ensaio"),
         (axes[1], "sensitivity", "Sensibilidade no limiar p99"),
@@ -296,7 +298,7 @@ def plot_e2_detection_curves(curves: pd.DataFrame, output: Path) -> tuple[Path, 
 def plot_e2_smd(summary: pd.DataFrame, output: Path) -> tuple[Path, Path]:
     """Compara o SMD95 sem converter ausência de cruzamento em número."""
 
-    fig, ax = plt.subplots(figsize=(11, 5.5), layout="constrained")
+    fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
     components = ["contator_ac", "igbt", "fusivel_ac"]
     y = np.arange(len(components), dtype=float)
     offsets = {"ae_denso": -0.14, "ae_lstm": 0.14}
