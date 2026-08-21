@@ -1444,7 +1444,7 @@
         "model": "ae_lstm",
         "component": "fusivel_ac",
         "npr": 30,
-        "smd95": NaN,
+        "smd95": null,
         "smd95_status": "not_reached",
         "detection_at_max": 0.7188612099644128,
         "n_trajectories": 281,
