@@ -223,7 +223,10 @@ def _write_report(payload: dict, output: Path) -> Path:
             "mesmo ensaio podem permanecer autocorrelacionadas.",
         ]
     )
-    output.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    output.write_text(
+        "\n".join(line.rstrip() for line in lines) + "\n",
+        encoding="utf-8",
+    )
     return output
 
 

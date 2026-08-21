@@ -66,4 +66,3 @@ def test_weibull_diagnostic_rejects_insufficient_events_without_rul_semantics():
     assert result["axis"] == "a_det"
     assert result["axis_is_time"] is False
     assert not {"rul", "mttf", "b10"}.intersection(result)
-

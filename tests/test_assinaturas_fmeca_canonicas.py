@@ -69,4 +69,3 @@ def test_igbt_adds_harmonics_to_each_current_phase():
     result = inject_igbt(window, 0.7)
     for column in ("ia", "ib", "ic"):
         assert not np.array_equal(result[column].to_numpy(), window[column].to_numpy())
-

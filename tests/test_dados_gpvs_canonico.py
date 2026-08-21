@@ -83,4 +83,3 @@ def test_local_gpvs_dataset_has_exactly_the_16_expected_trials():
     files = dataset_files(DATASET_DIR)
     assert tuple(files) == ALL_EXPERIMENTS
     assert all(path.stat().st_size > 1_000_000 for path in files.values())
-

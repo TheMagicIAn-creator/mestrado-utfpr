@@ -66,4 +66,3 @@ def test_real_torch_training_scoring_and_serialization(tmp_path):
     torch.save({"dense": dense.state_dict(), "lstm": lstm.state_dict()}, checkpoint)
     restored = torch.load(checkpoint, weights_only=True)
     assert set(restored) == {"dense", "lstm"}
-
