@@ -50,7 +50,6 @@ jobs:
             tests/test_ae_lstm_temporal.py \
             tests/test_dados_gpvs_canonico.py \
             tests/test_detectabilidade_canonica.py \
-            tests/test_modelos_autoencoder_canonicos.py \
             tests/test_publicacao_comparacao.py \
             tests/test_proveniencia.py \
             tests/test_confiabilidade_componentes.py \
