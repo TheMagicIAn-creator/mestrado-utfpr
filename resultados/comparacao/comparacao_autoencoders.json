@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "created_at": "2026-08-20T23:01:31.302675-03:00",
+  "created_at": "2026-08-20T23:17:32.657451-03:00",
   "title": "Autoencoder Denso versus AE-LSTM no GPVS-Faults",
   "dataset": {
     "dataset": "GPVS-Faults",
