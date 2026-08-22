@@ -90,8 +90,9 @@ cenário bibliográfico separado e não deriva taxas de falha do GPVS.
 ## `webapp/`
 
 `python -m src.webapp` inicia a aplicação ASGI. `contracts.py` valida os
-resultados sem recalcular; `agent_adapter.py` preserva Gemini, RAG híbrido,
-memória e auditoria; os painéis E2, E3 e confiabilidade carregam sob demanda.
+resultados sem recalcular; `chart_data.py` prepara séries visuais compactas;
+`agent_adapter.py` preserva Gemini, RAG híbrido, memória e auditoria; os
+painéis E2, E3 e confiabilidade carregam sob demanda.
 
 ## Fluxos
 

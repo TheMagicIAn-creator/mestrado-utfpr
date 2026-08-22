@@ -18,6 +18,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse, StreamingResponse
 from starlette.routing import Mount, Route
@@ -377,7 +378,10 @@ def create_app(
     app = Starlette(
         debug=False,
         routes=routes,
-        middleware=[Middleware(SecurityHeadersMiddleware)],
+        middleware=[
+            Middleware(SecurityHeadersMiddleware),
+            Middleware(GZipMiddleware, minimum_size=1000),
+        ],
         lifespan=lifespan,
     )
     app.state.agent_adapter = adapter

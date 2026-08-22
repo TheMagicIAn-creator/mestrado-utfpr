@@ -74,10 +74,14 @@ def plot_reliability_failure(curves: pd.DataFrame, output: Path) -> tuple[Path, 
             block["time_years"], block["cumulative_failure_probability"], **style
         )
     for ax, title, ylabel in (
-        (axes[0], "Confiabilidade", "R(t) - probabilidade de operação sem falha"),
+        (
+            axes[0],
+            "Curva de confiabilidade R(t)",
+            "R(t) - probabilidade de operação sem falha",
+        ),
         (
             axes[1],
-            "Probabilidade acumulada de falha",
+            "Curva da probabilidade acumulada de falha F(t)",
             "F(t) - probabilidade de falha",
         ),
     ):
@@ -114,10 +118,15 @@ def plot_density_hazard(curves: pd.DataFrame, output: Path) -> tuple[Path, Path]
         (
             axes[0],
             positive_density,
-            "Densidade de probabilidade de falha",
+            "Curva da densidade de probabilidade de falha f(t)",
             "f(t) (ano⁻¹)",
         ),
-        (axes[1], positive_hazard, "Taxa de falha constante", "h(t) (ano⁻¹)"),
+        (
+            axes[1],
+            positive_hazard,
+            "Curva da taxa de falha h(t)",
+            "h(t) (ano⁻¹)",
+        ),
     ):
         lower = 10 ** np.floor(np.log10(values.min()))
         upper = 10 ** np.ceil(np.log10(values.max()))
@@ -151,7 +160,7 @@ def plot_rates(scenarios: pd.DataFrame, output: Path) -> tuple[Path, Path]:
     ax.set_xscale("log")
     ax.set_yticks(y, frame["plot_label"])
     ax.set_xlabel(r"Taxa de falha, $\lambda$ (falhas h$^{-1}$; escala logarítmica)")
-    ax.set_title("Taxas usadas nos cenários de sensibilidade por componente")
+    ax.set_title("Comparação das taxas de falha λ por componente")
     ax.legend(
         handles=[
             Line2D(

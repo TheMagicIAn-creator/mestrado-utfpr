@@ -19,15 +19,36 @@ def test_primeira_tela_e_chat_utilizavel_sem_dashboard_bloqueante():
     assert "/vendor/plotly" not in HTML
 
 
-def test_navegacao_cientifica_cobre_as_quatro_areas_canonicas():
-    assert 'data-view="e3"' in HTML
-    assert 'data-view="e2"' in HTML
-    assert 'data-view="reliability"' in HTML
+def test_navegacao_cientifica_unifica_resultados_e_biblioteca():
+    assert 'data-view="results"' in HTML
     assert 'data-view="sources"' in HTML
+    assert 'data-result-tab="e3"' in HTML
+    assert 'data-result-tab="e2"' in HTML
+    assert 'data-result-tab="reliability"' in HTML
+    assert "Comparação dos modelos" in HTML
+    assert "Detectabilidade FMECA" in HTML
+    assert "Confiabilidade física" in HTML
     assert "/api/results/e3" in JS
     assert "/api/results/e2" in JS
     assert "/api/reliability" in JS
     assert "/api/sources" in JS
+
+
+def test_resultados_usam_graficos_interativos_sob_demanda():
+    charts = (ROOT / "src/webapp/static/results-charts.js").read_text(encoding="utf-8")
+    assert '/static/vendor/d3/d3.min.js' in JS
+    assert '/static/results-charts.js' in JS
+    assert "ensureResultsCharts" in JS
+    assert "ResizeObserver" in charts
+    assert "chart-confidence-band" in charts
+    assert "e3_discrimination_series" not in charts
+    for title in (
+        "Curva de confiabilidade R(t)",
+        "Curva da probabilidade acumulada de falha F(t)",
+        "Curva da densidade de probabilidade de falha f(t)",
+        "Curva da taxa de falha h(t)",
+    ):
+        assert title in JS
 
 
 def test_figuras_sao_sob_demanda_com_zoom_pdf_e_lazy_loading():

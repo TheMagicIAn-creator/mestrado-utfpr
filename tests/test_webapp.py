@@ -91,6 +91,7 @@ def test_e3_publica_apenas_denso_e_lstm_no_gpvs(client):
     response = client.get("/api/results/e3")
     assert response.status_code == 200
     data = response.json()
+    assert data["contract_version"] == 2
     assert data["dataset"]["name"] == "GPVS-Faults"
     assert set(data["models"]) == {"ae_denso", "ae_lstm"}
     assert data["primary_metric"] == "auc_pr"
@@ -101,6 +102,13 @@ def test_e3_publica_apenas_denso_e_lstm_no_gpvs(client):
         0.8409618301937369
     )
     assert len(data["trials"]) == 28
+    assert len(data["confusion_matrices"]) == 2
+    assert set(data["discrimination"]["models"]) == {"ae_denso", "ae_lstm"}
+    assert all(
+        len(model["roc"]) <= 201
+        and len(model["precision_recall"]) <= 201
+        for model in data["discrimination"]["models"].values()
+    )
     assert len(data["figures"]) == 4
     assert all(item["url"].startswith("/artifacts/comparison/") for item in data["figures"])
 
@@ -109,9 +117,12 @@ def test_e2_preserva_censura_e_separa_magnitude_de_tempo(client):
     response = client.get("/api/results/e2")
     assert response.status_code == 200
     data = response.json()
+    assert data["contract_version"] == 2
     assert data["axis_is_time"] is False
     assert data["magnitude_steps"] == 101
     assert len(data["summary"]) == 6
+    assert len(data["detection_series"]) == 606
+    assert len(data["empirical_series"]) == 606
     fuse_lstm = next(
         item
         for item in data["summary"]
@@ -127,13 +138,29 @@ def test_confiabilidade_publica_quatro_cenarios_fisicos_rastreaveis(client):
     response = client.get("/api/reliability")
     assert response.status_code == 200
     data = response.json()
+    assert data["contract_version"] == 2
     assert data["dataset"] == "GPVS-Faults"
     assert data["dataset_role"] == "detector_evaluation_only_not_physical_reliability"
     assert data["physical_weibull"]["beta"] is None
     assert data["physical_weibull"]["eta"] is None
     assert len(data["scenarios"]) == 4
+    assert len(data["curve_series"]) == 4
+    assert all(len(series["points"]) <= 121 for series in data["curve_series"])
+    assert data["failure_rate_distribution"]["status"] == "not_estimable"
+    assert data["failure_rate_distribution"]["chart_available"] is False
+    assert "histogram" not in data["failure_rate_distribution"]
     assert data["scenarios"][-1]["lambda_per_hour"] == pytest.approx(2.17e-6)
     assert data["formulas"]["hazard"] == "h(t) = lambda"
+
+
+def test_contratos_cientificos_grandes_sao_comprimidos(client):
+    response = client.get(
+        "/api/results/e2",
+        headers={"Accept-Encoding": "gzip"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-encoding"] == "gzip"
+    assert response.json()["contract_version"] == 2
 
 
 def test_fontes_expoem_dataset_pdf_e_manifestos(client):
@@ -177,7 +204,7 @@ def test_versao_e_entrypoint_sao_canonicos(client):
     assert response.json() == {
         "application": "aliado-web",
         "name": "ALIAdo",
-        "version": "3.1.0",
+        "version": "3.2.0",
         "api_version": 1,
         "interface": "asgi",
     }

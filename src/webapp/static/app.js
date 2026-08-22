@@ -8,13 +8,15 @@ const API = {
   render: "/api/render",
 };
 
-const VIEW_NAMES = new Set(["chat", "e3", "e2", "reliability", "sources"]);
+const VIEW_NAMES = new Set(["chat", "results", "sources"]);
+const RESULT_TABS = new Set(["e3", "e2", "reliability"]);
 const STORAGE_KEY = "aliado:sessions:canonical";
 const THEME_KEY = "aliado:theme";
 const MAX_SESSIONS = 12;
 
 const state = {
   currentView: "chat",
+  resultTab: "e3",
   sessions: [],
   currentSessionId: null,
   files: [],
@@ -28,6 +30,7 @@ const state = {
     greeting: greetingForHour(new Date().getHours()),
     timezone: "America/Sao_Paulo",
   },
+  chartLoader: null,
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -188,7 +191,34 @@ function closeSidebar() {
   document.body.classList.remove("sidebar-open");
 }
 
-function activateView(view, updateHash = true) {
+function activateResultTab(tab, updateHash = true) {
+  if (!RESULT_TABS.has(tab)) tab = "e3";
+  state.resultTab = tab;
+  $$('[data-result-panel]').forEach((panel) => {
+    panel.hidden = panel.dataset.resultPanel !== tab;
+  });
+  $$('[data-result-tab]').forEach((button) => {
+    const active = button.dataset.resultTab === tab;
+    button.setAttribute("aria-selected", String(active));
+    button.classList.toggle("is-active", active);
+  });
+  if (updateHash && location.hash !== `#results/${tab}`) {
+    history.replaceState(null, "", `#results/${tab}`);
+  }
+  loadPanel(tab);
+}
+
+function activateView(route, updateHash = true) {
+  const normalized = String(route || "chat").replace(/^#/, "");
+  let view = normalized;
+  if (RESULT_TABS.has(normalized)) {
+    state.resultTab = normalized;
+    view = "results";
+  } else if (normalized.startsWith("results/")) {
+    const requestedTab = normalized.split("/")[1];
+    state.resultTab = RESULT_TABS.has(requestedTab) ? requestedTab : "e3";
+    view = "results";
+  }
   if (!VIEW_NAMES.has(view)) view = "chat";
   state.currentView = view;
   $$('[data-view-panel]').forEach((panel) => {
@@ -202,10 +232,41 @@ function activateView(view, updateHash = true) {
     if (active) item.setAttribute("aria-current", "page");
     else item.removeAttribute("aria-current");
   });
-  if (updateHash && location.hash !== `#${view}`) history.replaceState(null, "", `#${view}`);
-  if (view !== "chat") loadPanel(view);
+  if (view === "results") {
+    activateResultTab(state.resultTab, updateHash);
+  } else {
+    if (updateHash && location.hash !== `#${view}`) history.replaceState(null, "", `#${view}`);
+    if (view !== "chat") loadPanel(view);
+  }
   closeSidebar();
   $("#workspace-main").focus({ preventScroll: true });
+}
+
+function loadScript(url) {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${url}"]`);
+    if (existing?.dataset.loaded === "true") {
+      resolve();
+      return;
+    }
+    const script = existing || document.createElement("script");
+    script.src = url;
+    script.defer = true;
+    script.addEventListener("load", () => {
+      script.dataset.loaded = "true";
+      resolve();
+    }, { once: true });
+    script.addEventListener("error", () => reject(new Error(`Recurso indisponível: ${url}`)), { once: true });
+    if (!existing) document.head.appendChild(script);
+  });
+}
+
+function ensureResultsCharts() {
+  if (!state.chartLoader) {
+    state.chartLoader = loadScript("/static/vendor/d3/d3.min.js?v=3.2.0")
+      .then(() => loadScript("/static/results-charts.js?v=3.2.0"));
+  }
+  return state.chartLoader;
 }
 
 function renderUserMessage(message) {
@@ -579,6 +640,32 @@ function metricRow(label, dense, lstm) {
   return `<tr><td>${escapeHtml(label)}</td><td class="numeric">${fmt(dense.estimate)}<br><small>IC95% ${ci(dense)}</small></td><td class="numeric">${fmt(lstm.estimate)}<br><small>IC95% ${ci(lstm)}</small></td></tr>`;
 }
 
+function publicationDetails(data, description) {
+  return `
+    <details class="publication-details">
+      <summary><span>Publicação e dados-fonte</span><i data-lucide="chevron-down" aria-hidden="true"></i></summary>
+      <div class="publication-content">
+        <p>${escapeHtml(description)}</p>
+        ${figureCards(data.figures)}
+        ${downloadRows(data.tables)}
+      </div>
+    </details>`;
+}
+
+function confusionMatrices(items) {
+  return `<div class="confusion-grid">${items.map((item) => `
+    <figure class="confusion-figure">
+      <figcaption>${escapeHtml(item.model_name)} <small>contagens por janela</small></figcaption>
+      <div class="confusion-axis-label">Predição</div>
+      <div class="confusion-matrix" role="img" aria-label="Matriz de confusão de ${escapeHtml(item.model_name)}: ${item.tn} verdadeiros negativos, ${item.fp} falsos positivos, ${item.fn} falsos negativos e ${item.tp} verdadeiros positivos">
+        <span class="matrix-corner"></span><span>Normal</span><span>Falha</span>
+        <strong>Normal</strong><div><b>${item.tn.toLocaleString("pt-BR")}</b><small>VN</small></div><div><b>${item.fp.toLocaleString("pt-BR")}</b><small>FP</small></div>
+        <strong>Falha</strong><div><b>${item.fn.toLocaleString("pt-BR")}</b><small>FN</small></div><div><b>${item.tp.toLocaleString("pt-BR")}</b><small>VP</small></div>
+      </div>
+      <div class="confusion-actual-label">Classe real</div>
+    </figure>`).join("")}</div>`;
+}
+
 function renderE3(data) {
   const dense = data.metrics.ae_denso;
   const lstm = data.metrics.ae_lstm;
@@ -594,53 +681,76 @@ function renderE3(data) {
   ];
   return `
     <section class="summary-band">
-      <h2>Comparação congelada nos 14 ensaios de falha</h2>
-      <p>A semente 42 foi pré-fixada; seleção, escalonamento e limiares não acessaram F1L–F7M. AUC-PR é a métrica primária.</p>
+      <h2>Comparação experimental E3</h2>
+      <p>Autoencoder Denso e AE-LSTM foram congelados antes dos 14 ensaios F1L–F7M. AUC-PR é a métrica principal e os IC95% usam o ensaio como unidade.</p>
       <div class="boundary-note"><i data-lucide="info"></i><span>${escapeHtml(data.dataset.fault_boundary.caveat)}</span></div>
     </section>
-    <section class="metric-strip" aria-label="Síntese E3">
+    <section class="metric-strip compact" aria-label="Síntese E3">
       <div class="metric-item is-blue"><span>AUC-PR Denso</span><strong>${fmt(dense.auc_pr.estimate)}</strong><small>IC95% ${ci(dense.auc_pr)}</small></div>
       <div class="metric-item is-amber"><span>AUC-PR AE-LSTM</span><strong>${fmt(lstm.auc_pr.estimate)}</strong><small>IC95% ${ci(lstm.auc_pr)}</small></div>
       <div class="metric-item is-accent"><span>Diferença pareada</span><strong>${fmt(diff.difference_dense_minus_lstm)}</strong><small>IC95% ${fmt(diff.ci95_low)}–${fmt(diff.ci95_high)}</small></div>
-      <div class="metric-item is-rose"><span>Ensaios independentes</span><strong>14</strong><small>Bootstrap pareado por ensaio</small></div>
     </section>
     <section class="section-band">
-      <div class="section-heading"><div><h2>Métricas macro</h2><p>Estimativas na semente de referência, com IC95% por 20.000 reamostragens.</p></div><div class="model-key"><span><i></i>Denso</span><span><i></i>AE-LSTM</span></div></div>
-      <div class="table-wrap"><table class="data-table"><thead><tr><th>Métrica</th><th class="numeric">Autoencoder Denso</th><th class="numeric">AE-LSTM</th></tr></thead><tbody>${rows.map((row) => metricRow(...row)).join("")}</tbody></table></div>
+      <div class="section-heading"><div><h2>Desempenho macro com IC95%</h2><p>Estimativas da semente pré-fixada 42, com 20.000 reamostragens no nível do ensaio.</p></div></div>
+      <div class="academic-chart" data-chart="e3-metrics" aria-label="Comparação das métricas macro dos dois autoencoders"></div>
     </section>
     <section class="section-band">
-      <div class="section-heading"><div><h2>Arquiteturas e ponto operacional</h2><p>Mesmo pré-processamento, orçamento de treino e conjunto de sementes.</p></div></div>
+      <div class="section-heading"><div><h2>AUC-PR por ensaio</h2><p>Heterogeneidade das condições L e M, sem retreino ou recalibração.</p></div></div>
+      <div class="academic-chart" data-chart="e3-trials" aria-label="AUC-PR por ensaio para os dois autoencoders"></div>
+    </section>
+    <section class="section-band">
+      <div class="section-heading"><div><h2>Curvas de discriminação</h2><p>Curvas agregadas por janela são descritivas; as estimativas acadêmicas permanecem macro por ensaio.</p></div></div>
+      <div class="chart-pair">
+        <article><h3>Curva ROC</h3><div class="academic-chart" data-chart="e3-roc" aria-label="Curva ROC agregada dos dois autoencoders"></div></article>
+        <article><h3>Curva precisão-revocação</h3><div class="academic-chart" data-chart="e3-pr" aria-label="Curva precisão-revocação agregada dos dois autoencoders"></div></article>
+      </div>
+    </section>
+    <section class="section-band">
+      <div class="section-heading"><div><h2>Matrizes de confusão</h2><p>Contagens agregadas por janela no ponto operacional; uso estritamente descritivo devido à autocorrelação intraensaio.</p></div></div>
+      ${confusionMatrices(data.confusion_matrices)}
+    </section>
+    <details class="method-details">
+      <summary>Arquiteturas, limiares e tabela completa</summary>
       <div class="table-wrap"><table class="data-table"><thead><tr><th>Modelo</th><th>Arquitetura</th><th class="numeric">Parâmetros</th><th class="numeric">Limiar p99</th><th class="numeric">FP saudável</th></tr></thead><tbody>
-        ${Object.entries(data.models).map(([id, model]) => `<tr><td>${escapeHtml(model.name)}</td><td>${escapeHtml(model.architecture)}</td><td class="numeric">${Number(model.n_parameters).toLocaleString("pt-BR")}</td><td class="numeric">${fmt(model.score_threshold, 4)}</td><td class="numeric">${pct(model.healthy_test_false_positive_rate, 2)}</td></tr>`).join("")}
+        ${Object.entries(data.models).map(([_id, model]) => `<tr><td>${escapeHtml(model.name)}</td><td>${escapeHtml(model.architecture)}</td><td class="numeric">${Number(model.n_parameters).toLocaleString("pt-BR")}</td><td class="numeric">${fmt(model.score_threshold, 4)}</td><td class="numeric">${pct(model.healthy_test_false_positive_rate, 2)}</td></tr>`).join("")}
       </tbody></table></div>
-    </section>
-    <section class="section-band"><div class="section-heading"><div><h2>Figuras acadêmicas</h2><p>PNG 300 dpi e PDF vetorial.</p></div></div>${figureCards(data.figures)}</section>
-    <section class="section-band"><div class="section-heading"><div><h2>Dados-fonte</h2><p>Tabelas usadas na publicação das figuras.</p></div></div>${downloadRows(data.tables)}</section>`;
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>Métrica</th><th class="numeric">Autoencoder Denso</th><th class="numeric">AE-LSTM</th></tr></thead><tbody>${rows.map((row) => metricRow(...row)).join("")}</tbody></table></div>
+    </details>
+    ${publicationDetails(data, "Figuras em PNG 300 dpi, PDF vetorial e tabelas que sustentam esta apresentação.")}`;
 }
 
 function renderE2(data) {
   return `
     <section class="summary-band">
-      <h2>Primeiro cruzamento persistente no eixo de magnitude</h2>
+      <h2>Detectabilidade sintética orientada pela FMECA</h2>
       <p>${escapeHtml(data.smd95_definition)}. As mesmas janelas, severidades e perturbações foram compartilhadas pelos dois modelos.</p>
       <div class="boundary-note"><i data-lucide="triangle-alert"></i><span>O eixo a<sub>det</sub> é adimensional e não representa tempo, vida útil ou RUL. ${escapeHtml(data.interval_caveat)}</span></div>
     </section>
     <section class="section-band">
-      <div class="section-heading"><div><h2>Limites de detectabilidade SMD95</h2><p>“Não atingido” permanece censurado no limite a<sub>det</sub>=1.</p></div><div class="model-key"><span><i></i>Denso</span><span><i></i>AE-LSTM</span></div></div>
+      <div class="section-heading"><div><h2>Probabilidade de detecção por magnitude</h2><p>Curvas e IC95% por assinatura de Contator AC, IGBT e Fusível AC.</p></div></div>
+      <div class="academic-chart facet-chart" data-chart="e2-detection" aria-label="Probabilidade de detecção por magnitude para cada assinatura FMECA"></div>
+    </section>
+    <section class="section-band">
+      <div class="section-heading"><div><h2>Limite de detectabilidade SMD95</h2><p>Menor magnitude cujo limite inferior do IC95% alcança 95%; ausências permanecem censuradas em a<sub>det</sub>=1.</p></div></div>
+      <div class="academic-chart" data-chart="e2-smd95" aria-label="Comparação dos limites SMD95"></div>
       <div class="table-wrap"><table class="data-table"><thead><tr><th>Modelo</th><th>Componente</th><th class="numeric">SMD95</th><th class="numeric">NPR</th><th class="numeric">Detecção em a=1</th><th class="numeric">Sem cruzamento</th></tr></thead><tbody>
         ${data.summary.map((item) => `<tr><td>${escapeHtml(item.model_name)}</td><td>${escapeHtml(item.component_name)}</td><td class="numeric"><span class="status-text ${item.smd95_status === "not_reached" ? "not-reached" : ""}">${item.smd95 === null ? "Não atingido" : fmt(item.smd95, 2)}</span></td><td class="numeric">${item.npr}</td><td class="numeric">${pct(item.detection_at_max, 1)}</td><td class="numeric">${fmt(item.indetectable_at_max_pct, 1)}%</td></tr>`).join("")}
       </tbody></table></div>
     </section>
     <section class="section-band">
-      <div class="section-heading"><div><h2>Assinaturas FMECA</h2><p>Proxies sintéticos aplicados ao holdout saudável completo.</p></div></div>
+      <div class="section-heading"><div><h2>Funções empíricas de primeiro cruzamento</h2><p>Sobrevivência, incidência acumulada e risco discreto, todos definidos no eixo a<sub>det</sub>.</p></div></div>
+      <div class="empirical-function-grid">
+        <article><h3>Sobrevivência empírica</h3><p>Trajetórias ainda sem cruzamento.</p><div class="academic-chart facet-chart" data-chart="e2-survival"></div></article>
+        <article><h3>Incidência acumulada</h3><p>Trajetórias que já cruzaram o limiar.</p><div class="academic-chart facet-chart" data-chart="e2-cumulative"></div></article>
+        <article><h3>Risco discreto</h3><p>Primeiros cruzamentos entre trajetórias sob risco.</p><div class="academic-chart facet-chart" data-chart="e2-hazard"></div></article>
+      </div>
+    </section>
+    <details class="method-details">
+      <summary>Assinaturas FMECA e limites metodológicos</summary>
       <div class="signature-grid">${data.signatures.map((item) => `<article class="signature-item"><h3>${escapeHtml(item.component_name)} · NPR ${item.npr}</h3><p>${escapeHtml(item.physical_hypothesis)}</p><p>${escapeHtml(item.limitation)}</p><code>${escapeHtml(item.formula)}</code></article>`).join("")}</div>
-    </section>
-    <section class="section-band">
-      <div class="section-heading"><div><h2>Figuras acadêmicas</h2><p>Funções empíricas e diagnóstico paramétrico mantidos em papéis distintos.</p></div></div>
-      ${figureCards(data.figures)}
       <div class="boundary-note"><i data-lucide="badge-alert"></i><span>${escapeHtml(data.weibull_acceptance_scope)}</span></div>
-    </section>
-    <section class="section-band"><div class="section-heading"><div><h2>Dados-fonte</h2><p>Pontos, curvas e diagnósticos usados nas figuras.</p></div></div>${downloadRows(data.tables)}</section>`;
+    </details>
+    ${publicationDetails(data, "Pontos empíricos, diagnóstico Weibull secundário e dados-fonte usados nas figuras acadêmicas.")}`;
 }
 
 function evidenceLabel(type) {
@@ -648,29 +758,47 @@ function evidenceLabel(type) {
 }
 
 function renderReliability(data) {
+  const distribution = data.failure_rate_distribution;
   return `
     <section class="summary-band">
-      <h2>Modelo exponencial com taxa de risco constante</h2>
+      <h2>Confiabilidade física bibliográfica</h2>
       <p>As taxas são bibliográficas ou derivadas do TCC. O GPVS-Faults avalia os detectores e não fornece tempos de vida por ativo.</p>
       <div class="boundary-note"><i data-lucide="shield-alert"></i><span>Weibull físico não estimável: ${escapeHtml(data.physical_weibull.reason)}.</span></div>
     </section>
     <section class="section-band">
-      <div class="section-heading"><div><h2>Funções físicas</h2><p>Tempo primário em horas, com conversão explícita por 8.760 h/ano.</p></div></div>
+      <div class="section-heading"><div><h2>Funções do modelo exponencial</h2><p>Tempo primário em horas, com conversão explícita por 8.760 h/ano.</p></div></div>
       <div class="formula-strip">
-        <div class="formula-item"><span>Confiabilidade</span><code>R(t) = e<sup>−λt</sup></code></div>
-        <div class="formula-item"><span>Falha acumulada</span><code>F(t) = 1 − e<sup>−λt</sup></code></div>
-        <div class="formula-item"><span>Densidade</span><code>f(t) = λe<sup>−λt</sup></code></div>
-        <div class="formula-item"><span>Risco</span><code>h(t) = λ</code></div>
+        <div class="formula-item"><span>Confiabilidade</span><div>\\(R(t)=e^{-\\lambda t}\\)</div></div>
+        <div class="formula-item"><span>Falha acumulada</span><div>\\(F(t)=1-e^{-\\lambda t}\\)</div></div>
+        <div class="formula-item"><span>Densidade</span><div>\\(f(t)=\\lambda e^{-\\lambda t}\\)</div></div>
+        <div class="formula-item"><span>Taxa de falha</span><div>\\(h(t)=\\lambda\\)</div></div>
       </div>
     </section>
     <section class="section-band">
-      <div class="section-heading"><div><h2>Cenários rastreáveis</h2><p>Taxas derivadas permanecem rotuladas separadamente da transcrição direta do fusível.</p></div></div>
+      <div class="section-heading"><div><h2>Curvas físicas dos componentes</h2><p>Quatro cenários rastreáveis; linhas contínuas são derivadas e a linha tracejada é bibliográfica direta.</p></div></div>
+      <div class="scenario-legend">${data.scenarios.map((item, index) => `<span data-series-index="${index}"><i></i>${escapeHtml(item.plot_label)}</span>`).join("")}</div>
+      <div class="reliability-chart-grid">
+        <article><h3>Curva de confiabilidade R(t)</h3><p>Probabilidade de operação sem falha.</p><div class="academic-chart" data-chart="reliability-r"></div></article>
+        <article><h3>Curva da probabilidade acumulada de falha F(t)</h3><p>Probabilidade de falha até o tempo t.</p><div class="academic-chart" data-chart="reliability-f"></div></article>
+        <article><h3>Curva da densidade de probabilidade de falha f(t)</h3><p>Densidade anual sob o modelo exponencial.</p><div class="academic-chart" data-chart="reliability-density"></div></article>
+        <article><h3>Curva da taxa de falha h(t)</h3><p>Risco constante por ano em cada cenário.</p><div class="academic-chart" data-chart="reliability-hazard"></div></article>
+      </div>
+    </section>
+    <section class="section-band">
+      <div class="section-heading"><div><h2>Taxas utilizadas nos cenários</h2><p>Comparação em escala logarítmica, sem tratar valores derivados como medições.</p></div></div>
+      <div class="academic-chart" data-chart="reliability-rates"></div>
+    </section>
+    <section class="distribution-unavailable" aria-labelledby="distribution-title">
+      <div><i data-lucide="circle-off" aria-hidden="true"></i></div>
+      <div><h2 id="distribution-title">Distribuição estatística de λ indisponível</h2><p>${escapeHtml(distribution.reason)}</p><p><strong>Para estimar uma normal com histograma:</strong> ${distribution.required_data.map(escapeHtml).join("; ")}.</p></div>
+    </section>
+    <details class="method-details">
+      <summary>Cenários, taxas e localização bibliográfica</summary>
       <div class="table-wrap"><table class="data-table"><thead><tr><th>Componente</th><th>Natureza</th><th class="numeric">λ (h⁻¹)</th><th class="numeric">λ (ano⁻¹)</th><th class="numeric">1/λ (anos)</th><th>Origem</th></tr></thead><tbody>
         ${data.scenarios.map((item) => `<tr><td>${escapeHtml(item.component_name)}</td><td>${evidenceLabel(item.evidence_type)}</td><td class="numeric">${sci(item.lambda_per_hour)}</td><td class="numeric">${fmt(item.lambda_per_year, 5)}</td><td class="numeric">${fmt(item.reciprocal_time_years, 2)}</td><td>${escapeHtml(item.source_table)}<br><small>PDF ${item.pdf_page}, impressa ${item.printed_page}</small></td></tr>`).join("")}
       </tbody></table></div>
-    </section>
-    <section class="section-band"><div class="section-heading"><div><h2>Figuras acadêmicas</h2><p>Curvas temporais e comparação das taxas de componente.</p></div></div>${figureCards(data.figures)}</section>
-    <section class="section-band"><div class="section-heading"><div><h2>Dados-fonte</h2><p>Metodologia, cenários e curvas publicadas.</p></div></div>${downloadRows(data.tables)}</section>`;
+    </details>
+    ${publicationDetails(data, "Curvas temporais, taxas rastreáveis, metodologia e relatório acadêmico.")}`;
 }
 
 function renderSources(data) {
@@ -711,6 +839,11 @@ async function loadPanel(view, force = false) {
     const data = await response.json();
     state.cache[view] = data;
     content.innerHTML = RENDERERS[view](data);
+    typesetMath(content);
+    if (RESULT_TABS.has(view)) {
+      await ensureResultsCharts();
+      window.ALIAdoCharts.render(view, data);
+    }
     loading.hidden = true;
     icons();
   } catch (error) {
@@ -744,6 +877,7 @@ function applyTheme(theme) {
   localStorage.setItem(THEME_KEY, theme);
   const button = $("#theme-toggle");
   button.innerHTML = theme === "dark" ? '<i data-lucide="sun"></i>' : '<i data-lucide="moon"></i>';
+  window.ALIAdoCharts?.rerenderAll();
   icons();
 }
 
@@ -816,6 +950,9 @@ function bindEvents() {
   document.addEventListener("click", async (event) => {
     const nav = event.target.closest("[data-view]");
     if (nav) activateView(nav.dataset.view);
+
+    const resultTab = event.target.closest("[data-result-tab]");
+    if (resultTab) activateResultTab(resultTab.dataset.resultTab);
 
     const prompt = event.target.closest("[data-prompt]");
     if (prompt) sendMessage(prompt.dataset.prompt);

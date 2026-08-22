@@ -13,6 +13,12 @@ from statistics import fmean
 from src.core.config import RAIZ_PROJETO
 from src.core.tempo import agora_local
 from src.ml.proveniencia import funcao_de_hash_para, sha256_arquivo
+from src.webapp.chart_data import (
+    e2_detection_series,
+    e2_empirical_series,
+    e3_discrimination_series,
+    reliability_curve_series,
+)
 
 ROOT = Path(RAIZ_PROJETO)
 COMPARISON = ROOT / "resultados" / "comparacao"
@@ -175,6 +181,13 @@ def _reference_trials() -> list[dict]:
                 "specificity": float(row["specificity"]),
                 "balanced_accuracy": float(row["balanced_accuracy"]),
                 "mcc": float(row["mcc"]),
+                "f1": float(row["f1"]),
+                "precision": float(row["precision"]),
+                "false_positive_rate": float(row["false_positive_rate"]),
+                "tn": int(row["tn"]),
+                "fp": int(row["fp"]),
+                "fn": int(row["fn"]),
+                "tp": int(row["tp"]),
             }
         )
     if len(output) != 28:
@@ -182,6 +195,21 @@ def _reference_trials() -> list[dict]:
             f"Esperados 14 ensaios x 2 modelos na semente 42; recebidos {len(output)}"
         )
     return output
+
+
+def _confusion_matrices(trials: list[dict]) -> list[dict]:
+    grouped: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"tn": 0, "fp": 0, "fn": 0, "tp": 0}
+    )
+    names = {}
+    for item in trials:
+        names[item["model"]] = item["model_name"]
+        for key in ("tn", "fp", "fn", "tp"):
+            grouped[item["model"]][key] += int(item[key])
+    return [
+        {"model": model, "model_name": names[model], **counts}
+        for model, counts in sorted(grouped.items())
+    ]
 
 
 def _stability_summary(payload: dict) -> list[dict]:
@@ -205,8 +233,9 @@ def _stability_summary(payload: dict) -> list[dict]:
 @lru_cache(maxsize=8)
 def _e3_contract_cached(signature_value) -> dict:
     payload = _comparison_payload((signature_value[0],))
+    trials = _reference_trials()
     contract = {
-        "contract_version": 1,
+        "contract_version": 2,
         "evidence_level": payload["e3"]["evidence_level"],
         "dataset": {
             "name": payload["dataset"]["dataset"],
@@ -221,7 +250,11 @@ def _e3_contract_cached(signature_value) -> dict:
         "metrics": _metric_map(payload),
         "paired_differences": payload["e3"]["paired_differences"],
         "stability": _stability_summary(payload),
-        "trials": _reference_trials(),
+        "trials": trials,
+        "confusion_matrices": _confusion_matrices(trials),
+        "discrimination": e3_discrimination_series(
+            COMPARISON / "e3_escores_referencia.csv"
+        ),
         "confusion_matrix_unit": payload["e3"]["confusion_matrix_unit"],
         "limitations": payload["limitations"],
         "figures": [
@@ -265,6 +298,7 @@ def e3_contract() -> dict:
     paths = (
         COMPARISON_JSON,
         COMPARISON / "e3_metricas_por_ensaio.csv",
+        COMPARISON / "e3_escores_referencia.csv",
         COMPARISON / "e3_metricas_macro.png",
         COMPARISON / "e3_curvas_discriminacao.png",
         COMPARISON / "e3_matrizes_confusao.png",
@@ -291,7 +325,7 @@ def _e2_contract_cached(signature_value) -> dict:
             }
         )
     contract = {
-        "contract_version": 1,
+        "contract_version": 2,
         "evidence_level": payload["e2"]["evidence_level"],
         "axis": payload["e2"]["axis"],
         "axis_is_time": payload["e2"]["axis_is_time"],
@@ -302,6 +336,14 @@ def _e2_contract_cached(signature_value) -> dict:
         "smd95_definition": payload["e2"]["smd95_definition"],
         "signatures": payload["e2"]["signatures"],
         "summary": summary,
+        "detection_series": e2_detection_series(
+            COMPARISON / "e2_deteccao_por_magnitude.csv", model_names
+        ),
+        "empirical_series": e2_empirical_series(
+            COMPARISON / "e2_funcoes_empiricas.csv",
+            model_names,
+            component_names,
+        ),
         "weibull_role": payload["e2"]["weibull_role"],
         "weibull_acceptance_scope": payload["e2"]["weibull_acceptance_scope"],
         "figures": [
@@ -353,6 +395,8 @@ def e2_contract() -> dict:
     paths = (
         COMPARISON_JSON,
         COMPARISON / "e2_resumo.csv",
+        COMPARISON / "e2_deteccao_por_magnitude.csv",
+        COMPARISON / "e2_funcoes_empiricas.csv",
         COMPARISON / "e2_deteccao_por_magnitude.png",
         COMPARISON / "e2_smd95.png",
         COMPARISON / "e2_funcoes_empiricas.png",
@@ -364,8 +408,11 @@ def e2_contract() -> dict:
 @lru_cache(maxsize=8)
 def _reliability_contract_cached(signature_value) -> dict:
     payload = _reliability_payload((signature_value[0],))
+    scenario_names = {
+        item["scenario_id"]: item["plot_label"] for item in payload["scenarios"]
+    }
     contract = {
-        "contract_version": 1,
+        "contract_version": 2,
         "status": payload["status"],
         "dataset": payload["experimental_dataset"],
         "dataset_role": payload["dataset_role"],
@@ -374,6 +421,25 @@ def _reliability_contract_cached(signature_value) -> dict:
         "formulas": payload["formulas"],
         "physical_weibull": payload["physical_weibull"],
         "scenarios": payload["scenarios"],
+        "curve_series": reliability_curve_series(
+            RELIABILITY / "curvas.csv", scenario_names
+        ),
+        "failure_rate_distribution": {
+            "status": "not_estimable",
+            "chart_available": False,
+            "requested_model": "normal_histogram",
+            "reason": (
+                "Os quatro valores atuais misturam tres cenarios derivados e uma "
+                "taxa bibliografica direta; eles nao constituem amostra homogenea "
+                "para estimar distribuicao normal."
+            ),
+            "required_data": [
+                "taxas observadas de uma populacao homogenea de componentes",
+                "exposicao ou tempo de observacao por unidade",
+                "criterio de censura e mesma definicao de falha",
+                "tamanho amostral suficiente para avaliar a aderencia",
+            ],
+        },
         "source": payload["source"],
         "figures": [
             _figure(
@@ -409,6 +475,7 @@ def _reliability_contract_cached(signature_value) -> dict:
 def reliability_contract() -> dict:
     paths = (
         RELIABILITY_JSON,
+        RELIABILITY / "curvas.csv",
         RELIABILITY / "confiabilidade_probabilidade_falha.png",
         RELIABILITY / "densidade_taxa_falha.png",
         RELIABILITY / "taxas_componentes.png",
