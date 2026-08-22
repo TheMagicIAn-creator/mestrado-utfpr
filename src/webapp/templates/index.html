@@ -7,7 +7,10 @@
   <meta name="theme-color" content="#f7f8fa">
   <title>ALIAdo</title>
   <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/vendor/katex/katex.min.css">
   <link rel="stylesheet" href="/static/styles.css">
+  <script defer src="/static/vendor/katex/katex.min.js"></script>
+  <script defer src="/static/vendor/katex/auto-render.min.js"></script>
   <script defer src="/static/app.js"></script>
   <script async id="lucide-runtime" src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
 </head>
@@ -98,7 +101,7 @@
           <div class="conversation" id="conversation" aria-live="polite">
             <div class="welcome-state" id="welcome-state">
               <div class="welcome-mark" aria-hidden="true">A</div>
-              <h2>Boa pesquisa, Rodolfo.</h2>
+              <h2 id="welcome-title">Olá, Rodolfo.</h2>
               <p>Em que parte da dissertação trabalhamos agora?</p>
               <div class="prompt-grid" id="prompt-grid">
                 <button type="button" data-prompt="Compare o Autoencoder Denso com o AE-LSTM nos resultados E3.">

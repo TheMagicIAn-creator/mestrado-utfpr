@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 from threading import Event, Thread, Timer
 from time import monotonic
@@ -76,6 +77,9 @@ def test_homepage_e_canonicamente_chat_first(client):
     assert 'id="view-chat"' in response.text
     assert 'id="chat-form"' in response.text
     assert "/static/app.js" in response.text
+    assert "/static/vendor/katex/katex.min.css" in response.text
+    assert "/static/vendor/katex/katex.min.js" in response.text
+    assert "/static/vendor/katex/auto-render.min.js" in response.text
     assert "plotly" not in response.text.casefold()
     assert "webapp_v2" not in response.text.casefold()
     assert "autoencoder v2" not in response.text.casefold()
@@ -163,6 +167,9 @@ def test_status_e_barato_e_nao_carrega_contratos(monkeypatch, client):
         "sessions",
         "obsidian",
     ]
+    assert data["identity"]["display_name"] == "Rodolfo"
+    assert data["identity"]["timezone"] == "America/Sao_Paulo"
+    assert data["identity"]["greeting"] in {"Bom dia", "Boa tarde", "Boa noite"}
 
 
 def test_versao_e_entrypoint_sao_canonicos(client):
@@ -170,7 +177,7 @@ def test_versao_e_entrypoint_sao_canonicos(client):
     assert response.json() == {
         "application": "aliado-web",
         "name": "ALIAdo",
-        "version": "3.0.0",
+        "version": "3.1.0",
         "api_version": 1,
         "interface": "asgi",
     }
@@ -256,6 +263,33 @@ def test_saudacao_local_responde_antes_do_aquecimento(monkeypatch, tmp_path):
     assert done["route"] == "local"
     assert done["response_ms"] < 500
     assert duration < 0.5
+
+
+def test_pergunta_social_usa_horario_nome_e_historico_sem_rag(monkeypatch):
+    import src.conhecimento.agente_interacao as interaction
+
+    monkeypatch.setenv("AL_IADO_USER_NAME", "Rodolfo Torres")
+    monkeypatch.setattr(
+        interaction,
+        "agora_local",
+        lambda: datetime.fromisoformat("2026-08-22T08:30:00-03:00"),
+    )
+
+    first = interaction.resposta_interacao_simples("Tudo bem?")
+    continued = interaction.resposta_interacao_simples(
+        "tudo bem?",
+        [{"role": "assistant", "content": "Resposta anterior"}],
+    )
+    technical = interaction.resposta_interacao_simples(
+        "Tudo bem com o autoencoder?"
+    )
+
+    assert first == (
+        "Bom dia, Rodolfo Torres! Tudo bem por aqui. "
+        "Em que parte da pesquisa trabalhamos hoje?"
+    )
+    assert continued == "Tudo bem por aqui, Rodolfo Torres. E com você?"
+    assert technical is None
 
 
 def test_chat_multipart_sanitiza_nome_e_limita_anexos(client, calls):
@@ -400,6 +434,48 @@ def test_renderizacao_markdown_bloqueia_html_bruto():
     assert "<strong>seguro</strong>" in rendered
     assert "<script>" not in rendered
     assert "&lt;script&gt;" in rendered
+
+
+def test_renderizacao_em_lote_preserva_latex_e_nao_confia_em_html(client):
+    response = client.post(
+        "/api/render",
+        json={
+            "messages": [
+                {
+                    "id": "equacao",
+                    "content": (
+                        r"**Confiabilidade:** \(R(t)=e^{-\lambda t}\) "
+                        r"<img src=x onerror=alert(1)>"
+                    ),
+                },
+                {"id": "codigo", "content": r"`\(nao renderizar\)`"},
+            ]
+        },
+    )
+
+    assert response.status_code == 200
+    rendered = {item["id"]: item["html"] for item in response.json()["messages"]}
+    assert "<strong>Confiabilidade:</strong>" in rendered["equacao"]
+    assert r"\(R(t)=e^{-\lambda t}\)" in rendered["equacao"]
+    assert "<img" not in rendered["equacao"]
+    assert "&lt;img" in rendered["equacao"]
+    assert r"<code>\(nao renderizar\)</code>" in rendered["codigo"]
+
+
+def test_renderizacao_em_lote_rejeita_formato_e_volume_invalidos(client):
+    invalid = client.post("/api/render", json={"messages": "texto"})
+    excessive = client.post(
+        "/api/render",
+        json={
+            "messages": [
+                {"id": str(index), "content": "x"} for index in range(101)
+            ]
+        },
+    )
+
+    assert invalid.status_code == 400
+    assert excessive.status_code == 400
+    assert "No máximo 100" in excessive.json()["detail"]
 
 
 def test_contexto_cientifico_reconcilia_e2_e3_e_confiabilidade():

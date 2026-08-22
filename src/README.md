@@ -18,6 +18,7 @@ webapp/ -> conhecimento/ -> ml/
 | `config.py` | Caminhos e configuração por ambiente. |
 | `conversa_export.py` | Exportação do histórico. |
 | `formatacao.py` | Formatação acadêmica compartilhada. |
+| `identidade.py` | Nome configurável do pesquisador na interface. |
 | `importacao.py` | Importações tardias sem ciclos. |
 | `logs.py` | Logging do projeto. |
 | `seguranca.py` | Máscara de segredos e validações de entrada. |

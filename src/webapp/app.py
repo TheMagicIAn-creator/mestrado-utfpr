@@ -24,6 +24,8 @@ from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from src.core.logs import get_logger
+from src.core.identidade import nome_pesquisador
+from src.core.tempo import fuso_projeto, saudacao_periodo
 from src.webapp import API_VERSION, APP_ID, APP_NAME, APP_VERSION
 from src.webapp.agent_adapter import (
     MAX_ATTACHMENT_BYTES,
@@ -44,7 +46,7 @@ from src.webapp.contracts import (
     sources_contract,
     warm_contracts_background,
 )
-from src.webapp.rendering import render_agent_markdown
+from src.webapp.rendering import render_agent_markdown, render_agent_messages
 
 WEB_ROOT = Path(__file__).resolve().parent
 STATIC_ROOT = WEB_ROOT / "static"
@@ -119,6 +121,21 @@ async def version_api(_request: Request) -> JSONResponse:
             "interface": "asgi",
         }
     )
+
+
+async def render_api(request: Request) -> JSONResponse:
+    """Renderiza historico Markdown sem confiar em HTML persistido no cliente."""
+    try:
+        payload = await request.json()
+        if not isinstance(payload, dict):
+            raise ValueError("O corpo JSON deve ser um objeto")
+        rendered = render_agent_messages(payload.get("messages", []))
+    except (ValueError, json.JSONDecodeError) as exc:
+        return JSONResponse(
+            {"error": "invalid_request", "detail": str(exc)},
+            status_code=400,
+        )
+    return JSONResponse({"messages": rendered})
 
 
 async def _chat_payload(
@@ -224,6 +241,11 @@ def create_app(
                 "uptime_ms": round((perf_counter() - started_at) * 1000, 1),
                 "agent": agent,
                 "contracts": contracts,
+                "identity": {
+                    "display_name": nome_pesquisador(),
+                    "greeting": saudacao_periodo(),
+                    "timezone": getattr(fuso_projeto(), "key", str(fuso_projeto())),
+                },
             }
         )
 
@@ -322,6 +344,7 @@ def create_app(
     routes = [
         Route("/", homepage, methods=["GET"]),
         Route("/api/chat/stream", chat_stream_api, methods=["POST"]),
+        Route("/api/render", render_api, methods=["POST"]),
         Route("/api/status", status_api, methods=["GET"]),
         Route("/api/health", status_api, methods=["GET"]),
         Route("/api/results/e2", e2_api, methods=["GET"]),
