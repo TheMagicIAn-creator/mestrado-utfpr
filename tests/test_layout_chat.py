@@ -49,6 +49,18 @@ def test_chat_usa_streaming_cancelamento_retentativa_e_exportacao():
     assert "data-retry-index" in JS
     assert "exportConversation" in JS
     assert "URL.createObjectURL" in JS
+    assert 'render: "/api/render"' in JS
+    assert "hydrateAssistantMessages" in JS
+
+
+def test_matematica_e_local_e_aplicada_sem_interferir_em_codigo():
+    assert "/static/vendor/katex/katex.min.css" in HTML
+    assert "/static/vendor/katex/katex.min.js" in HTML
+    assert "/static/vendor/katex/auto-render.min.js" in HTML
+    assert "window.renderMathInElement" in JS
+    assert '"pre", "code"' in JS
+    assert "typesetMath(pendingContent)" in JS
+    assert ".message-content .katex-display" in CSS
 
 
 def test_layout_tem_dimensoes_estaveis_e_compositor_sem_sobreposicao():

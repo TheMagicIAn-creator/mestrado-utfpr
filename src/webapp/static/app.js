@@ -5,6 +5,7 @@ const API = {
   e2: "/api/results/e2",
   reliability: "/api/reliability",
   sources: "/api/sources",
+  render: "/api/render",
 };
 
 const VIEW_NAMES = new Set(["chat", "e3", "e2", "reliability", "sources"]);
@@ -22,10 +23,21 @@ const state = {
   figures: new Map(),
   zoom: 1,
   toastTimer: null,
+  identity: {
+    displayName: "Rodolfo",
+    greeting: greetingForHour(new Date().getHours()),
+    timezone: "America/Sao_Paulo",
+  },
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+function greetingForHour(hour) {
+  if (hour >= 5 && hour < 12) return "Bom dia";
+  if (hour >= 12 && hour < 18) return "Boa tarde";
+  return "Boa noite";
+}
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -38,6 +50,31 @@ function escapeHtml(value) {
 
 function icons() {
   if (window.lucide) window.lucide.createIcons({ attrs: { "aria-hidden": "true" } });
+}
+
+function typesetMath(container) {
+  if (!container || typeof window.renderMathInElement !== "function") return;
+  try {
+    window.renderMathInElement(container, {
+      delimiters: [
+        { left: "$$", right: "$$", display: true },
+        { left: "\\(", right: "\\)", display: false },
+        { left: "\\[", right: "\\]", display: true },
+        { left: "$", right: "$", display: false },
+      ],
+      ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code", "option"],
+      throwOnError: false,
+      strict: "warn",
+    });
+  } catch (_error) {
+    // Mantem o LaTeX legivel quando a biblioteca nao consegue interpretar uma expressao.
+  }
+}
+
+function updateWelcomeIdentity() {
+  const title = $("#welcome-title");
+  if (!title) return;
+  title.textContent = `${state.identity.greeting}, ${state.identity.displayName}.`;
 }
 
 function fmt(value, digits = 3) {
@@ -216,8 +253,47 @@ function renderAssistantMessage(message, index) {
     </div>`;
   const content = $(".message-content", article);
   content.textContent = message.content;
-  appendCitations(content, message.citations);
+  content.dataset.messageIndex = String(index);
   return article;
+}
+
+async function hydrateAssistantMessages(session) {
+  if (!session) return;
+  const sessionIdAtStart = session.id;
+  const messages = session.messages
+    .map((message, index) => ({ message, index }))
+    .filter(({ message }) => message.role === "assistant")
+    .map(({ message, index }) => ({ id: String(index), content: message.content }));
+  if (!messages.length) return;
+
+  const applyCitationsFallback = () => {
+    messages.forEach(({ id }) => {
+      const node = $(`.message-content[data-message-index="${id}"]`);
+      const message = session.messages[Number(id)];
+      if (node && !$(".citation-list", node)) appendCitations(node, message?.citations);
+    });
+  };
+
+  try {
+    const response = await fetch(API.render, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ messages }),
+    });
+    if (!response.ok) throw new Error(`Falha HTTP ${response.status}`);
+    const payload = await response.json();
+    if (state.currentSessionId !== sessionIdAtStart) return;
+    payload.messages.forEach((rendered) => {
+      const node = $(`.message-content[data-message-index="${rendered.id}"]`);
+      const message = session.messages[Number(rendered.id)];
+      if (!node || !message) return;
+      node.innerHTML = rendered.html;
+      appendCitations(node, message.citations);
+      typesetMath(node);
+    });
+  } catch (_error) {
+    if (state.currentSessionId === sessionIdAtStart) applyCitationsFallback();
+  }
 }
 
 function renderConversation() {
@@ -235,7 +311,9 @@ function renderConversation() {
       );
     });
   }
+  updateWelcomeIdentity();
   icons();
+  void hydrateAssistantMessages(session);
   scrollConversation(false);
 }
 
@@ -247,7 +325,7 @@ function buildWelcomeState() {
   welcome.id = "welcome-state";
   welcome.innerHTML = `
     <div class="welcome-mark" aria-hidden="true">A</div>
-    <h2>Boa pesquisa, Rodolfo.</h2>
+    <h2 id="welcome-title">${escapeHtml(state.identity.greeting)}, ${escapeHtml(state.identity.displayName)}.</h2>
     <p>Em que parte da dissertação trabalhamos agora?</p>
     <div class="prompt-grid" id="prompt-grid">
       <button type="button" data-prompt="Compare o Autoencoder Denso com o AE-LSTM nos resultados E3."><i data-lucide="git-compare-arrows"></i><span>Comparar Denso e AE-LSTM</span></button>
@@ -403,6 +481,7 @@ async function sendMessage(rawMessage) {
         pendingContent.classList.remove("streaming");
         pendingContent.innerHTML = payload.answer_html || escapeHtml(complete);
         appendCitations(pendingContent, payload.citations);
+        typesetMath(pendingContent);
         pendingMeta.textContent = `${fmt(payload.response_ms, 0)} ms · ${payload.route || "agente"}`;
         const index = session.messages.length;
         const actions = document.createElement("div");
@@ -673,6 +752,14 @@ async function pollStatus() {
   try {
     const response = await fetch("/api/status", { headers: { Accept: "application/json" } });
     const payload = await response.json();
+    if (payload.identity) {
+      state.identity = {
+        displayName: payload.identity.display_name || state.identity.displayName,
+        greeting: payload.identity.greeting || state.identity.greeting,
+        timezone: payload.identity.timezone || state.identity.timezone,
+      };
+      updateWelcomeIdentity();
+    }
     const node = $("#runtime-status");
     node.dataset.state = payload.state;
     $("#runtime-status-text").textContent = {

@@ -10,6 +10,7 @@ from time import monotonic
 from typing import Callable
 
 from src.core.config import RAIZ_PROJETO
+from src.core.identidade import nome_pesquisador
 from src.core.logs import get_logger
 from src.core.seguranca import mascarar_segredos
 from src.webapp.scientific_context import scientific_context_for
@@ -187,7 +188,7 @@ class AgentAdapter:
 
     @staticmethod
     def _contexto(historico: list[dict[str, str]]) -> str:
-        nomes = {"user": "Rodolfo", "assistant": "ALIAdo PV"}
+        nomes = {"user": nome_pesquisador(), "assistant": "ALIAdo"}
         return "\n\n".join(
             f"{nomes[item['role']]}: {item['content']}" for item in historico[-8:]
         )
@@ -410,7 +411,7 @@ class AgentAdapter:
         if self._answerer is None and not anexos:
             from src.conhecimento.agente_interacao import resposta_interacao_simples
 
-            resposta_simples = resposta_interacao_simples(mensagem)
+            resposta_simples = resposta_interacao_simples(mensagem, historico)
             if resposta_simples:
                 return {
                     "answer": resposta_simples,

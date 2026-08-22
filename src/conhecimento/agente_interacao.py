@@ -11,6 +11,8 @@ from src.conhecimento.agente import (
     os,
     re,
 )
+from src.core.identidade import nome_pesquisador
+from src.core.tempo import saudacao_periodo
 
 def _normalizar_texto(texto: str) -> str:
     import re
@@ -73,25 +75,17 @@ def pedido_sem_literatura(pergunta: str) -> bool:
 
 def _saudacao_pelo_horario() -> str:
     """Retorna 'Bom dia', 'Boa tarde' ou 'Boa noite' conforme a hora atual."""
-    hora = agora_local().hour
-    if 5 <= hora < 12:
-        return "Bom dia"
-    if 12 <= hora < 18:
-        return "Boa tarde"
-    return "Boa noite"
+    return saudacao_periodo(agora_local())
 
 
-def resposta_interacao_simples(pergunta: str) -> str | None:
+def resposta_interacao_simples(pergunta: str, historico=None) -> str | None:
     """
     Responde localmente a mensagens puramente conversacionais sem acionar RAG/LLM.
     Cobre cumprimentos, despedidas, agradecimentos, reações casuais e correções
     de horário — tudo o que não justifica busca na literatura.
 
-    Guards (em ordem):
-      1. Se contém '?' → tem pergunta → não intercepta.
-      2. Se contém palavra interrogativa (que, qual, onde, cade, quando...) → não intercepta.
-      3. Se contém termo técnico do mestrado → não intercepta.
-      4. Se tem mais de 14 palavras → não intercepta.
+    Perguntas sociais curtas sao reconhecidas antes dos guards interrogativos.
+    Mensagens tecnicas ou longas continuam seguindo para ferramentas/RAG.
     """
     pergunta_original = pergunta or ""
     txt = _normalizar_texto(pergunta_original).strip()
@@ -100,8 +94,24 @@ def resposta_interacao_simples(pergunta: str) -> str | None:
     if not termos:
         return None
 
-    # Guard 1: ponto de interrogação no texto original → é pergunta de verdade.
-    if "?" in pergunta_original:
+    perguntas_sociais = {
+        "tudo bem",
+        "tudo certo",
+        "como vai",
+        "como esta",
+        "oi tudo bem",
+        "ola tudo bem",
+        "opa tudo bem",
+        "bom dia",
+        "boa tarde",
+        "boa noite",
+        "tudo bem aliado",
+        "como voce esta",
+    }
+    eh_pergunta_social = txt in perguntas_sociais
+
+    # Perguntas sociais como "tudo bem?" nao justificam inicializar RAG/LLM.
+    if "?" in pergunta_original and not eh_pergunta_social:
         return None
 
     # Guard 2: palavras interrogativas → é pergunta mesmo sem '?'.
@@ -114,7 +124,7 @@ def resposta_interacao_simples(pergunta: str) -> str | None:
         "quoi", "quel", "quels", "quelle", "quelles", "ou", "quand",
         "comment", "pourquoi", "peux", "pouvez",
     }
-    if any(t in PALAVRAS_INTERROGATIVAS for t in termos):
+    if any(t in PALAVRAS_INTERROGATIVAS for t in termos) and not eh_pergunta_social:
         return None
 
     # Guard 3: termos técnicos → RAG/ferramentas resolvem.
@@ -151,9 +161,6 @@ def resposta_interacao_simples(pergunta: str) -> str | None:
 
     saudacao_h = _saudacao_pelo_horario()
 
-    palavras_bomdia = {"bom dia", "bomdia"}
-    palavras_boatarde = {"boa tarde", "boatarde"}
-    palavras_boanoite = {"boa noite", "boanoite"}
     saudacoes_genericas = {
         "oi", "ola", "opa", "salve", "eai", "eae", "hey", "alo",
         "olá", "fala", "fala ai", "fala cara", "tudo bem", "tudo certo",
@@ -178,10 +185,15 @@ def resposta_interacao_simples(pergunta: str) -> str | None:
     tem_bomdia = "bom dia" in txt or "bomdia" in txt
     tem_boatarde = "boa tarde" in txt or "boatarde" in txt
     tem_boanoite = "boa noite" in txt or "boanoite" in txt
-    tem_saudacao_gen = any(t in saudacoes_genericas for t in termos)
-    tem_agradecimento = any(t in agradecimentos for t in termos)
-    tem_despedida = any(t in despedidas for t in termos) or txt.startswith("ate ")
-    tem_reacao = any(t in reacoes_curtas for t in termos)
+    def contem_frase(frases: set[str]) -> bool:
+        return any(txt == frase or txt.startswith(f"{frase} ") for frase in frases)
+
+    tem_saudacao_gen = contem_frase(saudacoes_genericas)
+    tem_agradecimento = contem_frase(agradecimentos)
+    tem_despedida = contem_frase(despedidas) or txt.startswith("ate ")
+    tem_reacao = contem_frase(reacoes_curtas)
+    nome = nome_pesquisador()
+    conversa_em_andamento = bool(historico)
 
     # ── Correção de horário (ex.: "Tá de noite cara kkk") ─────
     fala_de_noite = "de noite" in txt or "ta noite" in txt or "esta noite" in txt
@@ -189,51 +201,52 @@ def resposta_interacao_simples(pergunta: str) -> str | None:
     fala_de_dia = "de dia" in txt or "ta dia" in txt or "esta dia" in txt
     if fala_de_noite or fala_de_tarde or fala_de_dia:
         return (
-            f"Boa correção! 😅 Eu estava no automático — me perdoe. "
-            f"**{saudacao_h}**, Rodolfo. Como posso te ajudar agora?"
+            f"Boa correção. Eu estava no automático. "
+            f"**{saudacao_h}**, {nome}. Como seguimos?"
         )
 
     # ── Cumprimentos específicos por período ──────────────────
     if tem_bomdia:
         if saudacao_h == "Bom dia":
-            return f"Bom dia, Rodolfo! ☀️ Pronto para mais um dia de pesquisa?"
+            return f"Bom dia, {nome}! Como seguimos com a pesquisa?"
         return (
-            f"Saudação anotada, mas aqui já é **{saudacao_h.lower()}** 🌙. "
-            f"De qualquer forma, estou por aqui pronto para o que precisar."
+            f"Saudação anotada, mas aqui já é **{saudacao_h.lower()}**. "
+            "De todo modo, estou por aqui."
         )
     if tem_boatarde:
         if saudacao_h == "Boa tarde":
-            return f"Boa tarde, Rodolfo! 📚 Em que posso ajudar a destravar o trabalho hoje?"
+            return f"Boa tarde, {nome}! Em que parte da pesquisa trabalhamos agora?"
         return f"Aqui na verdade é **{saudacao_h.lower()}**, mas estou à disposição."
     if tem_boanoite:
         if saudacao_h == "Boa noite":
-            return (
-                f"Boa noite, Rodolfo! 🌙 Estou por aqui — pode pedir para rodar "
-                f"o pipeline, interpretar resultados ou pensar junto na dissertação."
-            )
+            return f"Boa noite, {nome}! Estou por aqui. Como seguimos?"
         return f"Aqui ainda é **{saudacao_h.lower()}**, mas seja bem-vindo!"
 
     # ── Saudações genéricas ───────────────────────────────────
     if tem_saudacao_gen:
+        if conversa_em_andamento:
+            if txt in {"tudo bem", "tudo certo", "como vai", "como esta", "como voce esta"}:
+                return f"Tudo bem por aqui, {nome}. E com você?"
+            return f"Oi, {nome}. Como seguimos?"
         return (
-            f"{saudacao_h}, Rodolfo! 👋 Pode me pedir para rodar etapas do "
-            f"pipeline, interpretar resultados ou pensar junto sobre a dissertação."
+            f"{saudacao_h}, {nome}! Tudo bem por aqui. "
+            "Em que parte da pesquisa trabalhamos hoje?"
         )
 
     # ── Despedidas ────────────────────────────────────────────
     if tem_despedida:
         return (
-            f"Até mais, Rodolfo! 👋 Quando voltar, é só puxar o assunto onde paramos. "
-            f"Boa pesquisa!"
+            f"Até mais, {nome}! Quando voltar, retomamos de onde paramos. "
+            "Boa pesquisa."
         )
 
     # ── Agradecimentos ────────────────────────────────────────
     if tem_agradecimento:
-        return "Disponha! 🤝 Seguimos lapidando o mestrado com calma e rigor."
+        return "Disponha. Seguimos lapidando o mestrado com calma e rigor."
 
     # ── Reações curtas ────────────────────────────────────────
     if tem_reacao and len(termos) <= 5:
-        return "Show. 🙂 Quando quiser continuar, é só mandar a próxima pergunta."
+        return "Perfeito. Quando quiser continuar, é só mandar a próxima pergunta."
 
     return None
 
