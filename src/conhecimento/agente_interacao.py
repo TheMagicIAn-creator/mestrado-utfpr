@@ -746,9 +746,11 @@ def _chave_citacao(meta: dict, doc: str) -> str:
     arquivo = str(meta.get("arquivo") or meta.get("citacao") or "fonte")
     p_ini = str(meta.get("pagina_inicio") or "")
     p_fim = str(meta.get("pagina_fim") or p_ini)
-    sha = str(meta.get("chunk_sha1") or "").strip()
+    sha = str(meta.get("chunk_sha256") or meta.get("chunk_sha1") or "").strip()
     if not sha:
-        sha = hashlib.sha1(str(doc or "").encode("utf-8", errors="ignore")).hexdigest()
+        sha = hashlib.sha256(
+            str(doc or "").encode("utf-8", errors="ignore")
+        ).hexdigest()
     return f"{arquivo}|{p_ini}|{p_fim}|{sha[:16]}"
 
 

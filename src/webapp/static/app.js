@@ -10,9 +10,11 @@ const API = {
 
 const VIEW_NAMES = new Set(["chat", "results", "library"]);
 const RESULT_TABS = new Set(["e3", "e2", "reliability"]);
+const PANEL_NAMES = new Set([...RESULT_TABS, "library"]);
 const STORAGE_KEY = "aliado:sessions:canonical";
 const THEME_KEY = "aliado:theme";
 const MAX_SESSIONS = 12;
+let fallbackSessionSequence = 0;
 
 const state = {
   currentView: "chat",
@@ -22,7 +24,7 @@ const state = {
   files: [],
   attachmentPolicy: "conversation",
   controller: null,
-  cache: {},
+  cache: new Map(),
   figures: new Map(),
   zoom: 1,
   toastTimer: null,
@@ -65,8 +67,8 @@ function typesetMath(container) {
     window.renderMathInElement(container, {
       delimiters: [
         { left: "$$", right: "$$", display: true },
-        { left: "\\(", right: "\\)", display: false },
-        { left: "\\[", right: "\\]", display: true },
+        { left: String.raw`\(`, right: String.raw`\)`, display: false },
+        { left: String.raw`\[`, right: String.raw`\]`, display: true },
         { left: "$", right: "$", display: false },
       ],
       ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code", "option"],
@@ -128,14 +130,16 @@ function toast(message) {
 
 function sessionId() {
   if (window.crypto?.randomUUID) return `sessao_${crypto.randomUUID().replaceAll("-", "")}`;
-  return `sessao_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  fallbackSessionSequence += 1;
+  return `sessao_${Date.now()}_${fallbackSessionSequence}`;
 }
 
 function loadSessions() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
     state.sessions = Array.isArray(parsed) ? parsed.slice(0, MAX_SESSIONS) : [];
-  } catch (_error) {
+  } catch (error) {
+    console.warn("Historico local invalido; iniciando uma nova sessao.", error);
     state.sessions = [];
   }
   if (state.sessions.length) {
@@ -356,7 +360,8 @@ async function hydrateAssistantMessages(session) {
       appendCitations(node, message.citations);
       typesetMath(node);
     });
-  } catch (_error) {
+  } catch (error) {
+    console.warn("Nao foi possivel restaurar a renderizacao enriquecida.", error);
     if (state.currentSessionId === sessionIdAtStart) applyCitationsFallback();
   }
 }
@@ -365,7 +370,7 @@ function renderConversation() {
   const conversation = $("#conversation");
   const session = currentSession();
   conversation.innerHTML = "";
-  if (!session || !session.messages.length) {
+  if (!session?.messages.length) {
     conversation.appendChild($("#welcome-state-template") || buildWelcomeState());
   } else {
     session.messages.forEach((message, index) => {
@@ -487,7 +492,7 @@ function previousHistory(session) {
 async function apiJson(url, options = {}) {
   const response = await fetch(url, {
     ...options,
-    headers: { Accept: "application/json", ...(options.headers || {}) },
+    headers: { Accept: "application/json", ...options.headers },
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -522,7 +527,7 @@ async function trackLibraryJob(initialJob) {
   } else {
     toast(`A fonte não foi indexada: ${job.message}`);
   }
-  state.cache.library = null;
+  state.cache.delete("library");
   if (state.currentView === "library") await loadPanel("library", true);
 }
 
@@ -734,7 +739,11 @@ function publicationDetails(data, description) {
 }
 
 function confusionMatrices(items) {
-  return `<div class="confusion-grid">${items.map((item) => `
+  return `<div class="confusion-grid">${items.map(confusionFigure).join("")}</div>`;
+}
+
+function confusionFigure(item) {
+  return `
     <figure class="confusion-figure">
       <figcaption>${escapeHtml(item.model_name)} <small>contagens por janela</small></figcaption>
       <div class="confusion-axis-label">Predição</div>
@@ -744,7 +753,7 @@ function confusionMatrices(items) {
         <strong>Falha</strong><div><b>${item.fn.toLocaleString("pt-BR")}</b><small>FN</small></div><div><b>${item.tp.toLocaleString("pt-BR")}</b><small>VP</small></div>
       </div>
       <div class="confusion-actual-label">Classe real</div>
-    </figure>`).join("")}</div>`;
+    </figure>`;
 }
 
 function renderE3(data) {
@@ -840,7 +849,7 @@ function evidenceLabel(type) {
 
 function renderReliability(data) {
   const distribution = data.failure_rate_distribution;
-  return `
+  return String.raw`
     <section class="summary-band">
       <h2>Confiabilidade física bibliográfica</h2>
       <p>As taxas são bibliográficas ou derivadas do TCC. O GPVS-Faults avalia os detectores e não fornece tempos de vida por ativo.</p>
@@ -849,10 +858,10 @@ function renderReliability(data) {
     <section class="section-band">
       <div class="section-heading"><div><h2>Funções do modelo exponencial</h2><p>Tempo primário em horas, com conversão explícita por 8.760 h/ano.</p></div></div>
       <div class="formula-strip">
-        <div class="formula-item"><span>Confiabilidade</span><div>\\(R(t)=e^{-\\lambda t}\\)</div></div>
-        <div class="formula-item"><span>Falha acumulada</span><div>\\(F(t)=1-e^{-\\lambda t}\\)</div></div>
-        <div class="formula-item"><span>Densidade</span><div>\\(f(t)=\\lambda e^{-\\lambda t}\\)</div></div>
-        <div class="formula-item"><span>Taxa de falha</span><div>\\(h(t)=\\lambda\\)</div></div>
+        <div class="formula-item"><span>Confiabilidade</span><div>\(R(t)=e^{-\lambda t}\)</div></div>
+        <div class="formula-item"><span>Falha acumulada</span><div>\(F(t)=1-e^{-\lambda t}\)</div></div>
+        <div class="formula-item"><span>Densidade</span><div>\(f(t)=\lambda e^{-\lambda t}\)</div></div>
+        <div class="formula-item"><span>Taxa de falha</span><div>\(h(t)=\lambda\)</div></div>
       </div>
     </section>
     <section class="section-band">
@@ -1011,13 +1020,19 @@ function openLibraryEdit(sourceId) {
   $("#library-edit-dialog").showModal();
 }
 
-const RENDERERS = { e3: renderE3, e2: renderE2, reliability: renderReliability, library: renderLibrary };
+const RENDERERS = new Map([
+  ["e3", renderE3],
+  ["e2", renderE2],
+  ["reliability", renderReliability],
+  ["library", renderLibrary],
+]);
 
 async function loadPanel(view, force = false) {
+  if (!PANEL_NAMES.has(view)) return;
   const content = $(`#${view}-content`);
   const loading = $(`[data-loading="${view}"]`);
   if (!content || !loading) return;
-  if (state.cache[view] && !force) return;
+  if (state.cache.has(view) && !force) return;
   loading.hidden = false;
   content.innerHTML = "";
   try {
@@ -1027,8 +1042,8 @@ async function loadPanel(view, force = false) {
       throw new Error(payload.detail || `Falha HTTP ${response.status}`);
     }
     const data = await response.json();
-    state.cache[view] = data;
-    content.innerHTML = RENDERERS[view](data);
+    state.cache.set(view, data);
+    content.innerHTML = RENDERERS.get(view)(data);
     if (view === "library") {
       $("#library-add").hidden = !data.writable;
       renderLibraryDocuments();
@@ -1097,7 +1112,8 @@ async function pollStatus() {
       degradado: "Modo degradado",
     }[payload.state] || "Verificando";
     delay = payload.state === "pronto" ? 15000 : 4000;
-  } catch (_error) {
+  } catch (error) {
+    console.warn("Status do runtime indisponivel.", error);
     $("#runtime-status").dataset.state = "degradado";
     $("#runtime-status-text").textContent = "Sem conexão";
   }
@@ -1106,7 +1122,7 @@ async function pollStatus() {
 
 function exportConversation() {
   const session = currentSession();
-  if (!session || !session.messages.length) {
+  if (!session?.messages.length) {
     toast("A conversa ainda está vazia.");
     return;
   }
@@ -1141,68 +1157,73 @@ function retryMessage(index) {
   if (prompt) sendMessage(prompt);
 }
 
+async function reindexLibrarySource(sourceId) {
+  try {
+    const payload = await apiJson(
+      `/api/library/${encodeURIComponent(sourceId)}/reindex`,
+      { method: "POST" },
+    );
+    void trackLibraryJob(payload.job);
+    toast("Reindexação colocada na fila local.");
+  } catch (error) {
+    toast(error.message);
+  }
+}
+
+async function copyMessage(index) {
+  const message = currentSession()?.messages[Number(index)];
+  if (!message) return;
+  await navigator.clipboard.writeText(message.content);
+  toast("Resposta copiada.");
+}
+
+async function handleDocumentClick(event) {
+  const nav = event.target.closest("[data-view]");
+  if (nav) activateView(nav.dataset.view);
+
+  const resultTab = event.target.closest("[data-result-tab]");
+  if (resultTab) activateResultTab(resultTab.dataset.resultTab);
+
+  const prompt = event.target.closest("[data-prompt]");
+  if (prompt) sendMessage(prompt.dataset.prompt);
+
+  const historyItem = event.target.closest("[data-session-id]");
+  if (historyItem) {
+    state.currentSessionId = historyItem.dataset.sessionId;
+    activateView("chat");
+    renderConversation();
+  }
+
+  const removeFile = event.target.closest("[data-remove-file]");
+  if (removeFile) {
+    state.files.splice(Number(removeFile.dataset.removeFile), 1);
+    renderAttachments();
+  }
+
+  const figure = event.target.closest("[data-open-figure]");
+  if (figure) openFigure(figure.dataset.openFigure);
+
+  const reload = event.target.closest("[data-reload-panel]");
+  if (reload) loadPanel(reload.dataset.reloadPanel, true);
+
+  const editSource = event.target.closest("[data-edit-source]");
+  if (editSource) openLibraryEdit(editSource.dataset.editSource);
+
+  const reindexSource = event.target.closest("[data-reindex-source]");
+  if (reindexSource) await reindexLibrarySource(reindexSource.dataset.reindexSource);
+
+  const closeDialog = event.target.closest("[data-close-dialog]");
+  if (closeDialog) $(`#${closeDialog.dataset.closeDialog}`).close();
+
+  const copy = event.target.closest("[data-copy-index]");
+  if (copy) await copyMessage(copy.dataset.copyIndex);
+
+  const retry = event.target.closest("[data-retry-index]");
+  if (retry) retryMessage(retry.dataset.retryIndex);
+}
+
 function bindEvents() {
-  document.addEventListener("click", async (event) => {
-    const nav = event.target.closest("[data-view]");
-    if (nav) activateView(nav.dataset.view);
-
-    const resultTab = event.target.closest("[data-result-tab]");
-    if (resultTab) activateResultTab(resultTab.dataset.resultTab);
-
-    const prompt = event.target.closest("[data-prompt]");
-    if (prompt) sendMessage(prompt.dataset.prompt);
-
-    const historyItem = event.target.closest("[data-session-id]");
-    if (historyItem) {
-      state.currentSessionId = historyItem.dataset.sessionId;
-      activateView("chat");
-      renderConversation();
-    }
-
-    const removeFile = event.target.closest("[data-remove-file]");
-    if (removeFile) {
-      state.files.splice(Number(removeFile.dataset.removeFile), 1);
-      renderAttachments();
-    }
-
-    const figure = event.target.closest("[data-open-figure]");
-    if (figure) openFigure(figure.dataset.openFigure);
-
-    const reload = event.target.closest("[data-reload-panel]");
-    if (reload) loadPanel(reload.dataset.reloadPanel, true);
-
-    const editSource = event.target.closest("[data-edit-source]");
-    if (editSource) openLibraryEdit(editSource.dataset.editSource);
-
-    const reindexSource = event.target.closest("[data-reindex-source]");
-    if (reindexSource) {
-      try {
-        const payload = await apiJson(
-          `/api/library/${encodeURIComponent(reindexSource.dataset.reindexSource)}/reindex`,
-          { method: "POST" },
-        );
-        void trackLibraryJob(payload.job);
-        toast("Reindexação colocada na fila local.");
-      } catch (error) {
-        toast(error.message);
-      }
-    }
-
-    const closeDialog = event.target.closest("[data-close-dialog]");
-    if (closeDialog) $(`#${closeDialog.dataset.closeDialog}`).close();
-
-    const copy = event.target.closest("[data-copy-index]");
-    if (copy) {
-      const message = currentSession()?.messages[Number(copy.dataset.copyIndex)];
-      if (message) {
-        await navigator.clipboard.writeText(message.content);
-        toast("Resposta copiada.");
-      }
-    }
-
-    const retry = event.target.closest("[data-retry-index]");
-    if (retry) retryMessage(retry.dataset.retryIndex);
-  });
+  document.addEventListener("click", handleDocumentClick);
 
   $("#chat-form").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -1315,7 +1336,7 @@ function bindEvents() {
         }),
       });
       $("#library-edit-dialog").close();
-      state.cache.library = null;
+      state.cache.delete("library");
       await loadPanel("library", true);
       toast("Metadados salvos; reindexe a fonte para atualizar a busca.");
     } catch (error) {
