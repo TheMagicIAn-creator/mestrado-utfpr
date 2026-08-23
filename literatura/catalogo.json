@@ -1,0 +1,973 @@
+{
+  "schema_version": 1,
+  "catalog_id": "aliado-literatura",
+  "source_index": {
+    "schema_version": 1,
+    "hash_corpus_sha256": "0ef91e96379c546c7bee42434a935e86d3711a3a31500476245274518c6612b0",
+    "generated_at_utc": "2026-08-09T04:56:18.454113+00:00",
+    "declared_chunks": 12556
+  },
+  "summary": {
+    "documents": 44,
+    "indexed_chunks": 12556,
+    "portable_index_records": 12557,
+    "categories": {
+      "confiabilidade": 6,
+      "inversores-pv": 11,
+      "manutencao": 4,
+      "ml-preditivo": 16,
+      "sinais-eletricos": 7
+    },
+    "languages": {
+      "en": 32,
+      "pt": 12
+    },
+    "metadata_warnings": 3
+  },
+  "documents": [
+    {
+      "source_id": "42c2b546236692059a51597679998e869dbdf19f87a8e93aac6a61d28e2c1777",
+      "sha256": "42c2b546236692059a51597679998e869dbdf19f87a8e93aac6a61d28e2c1777",
+      "file_name": "patil_a-reliability-and-risk-assessment-of-solar-photovoltaic-pane_2024.pdf",
+      "relative_path": "inversores-pv/patil_a-reliability-and-risk-assessment-of-solar-photovoltaic-pane_2024.pdf",
+      "title": "A Reliability and Risk Assessment of Solar Photovoltaic Panels Using a Failure Mode and Effects Analysis Approach: A Case Study",
+      "authors": [
+        "Rajkumar Bhimgonda Patil",
+        "Arun Khalkar",
+        "Sameer Al-Dahidi",
+        "Rita S. Pimpalkar",
+        "Sheetal Bhandari",
+        "Michael Pecht"
+      ],
+      "year": 2024,
+      "year_status": "informado",
+      "category": "inversores-pv",
+      "language": "en",
+      "chunk_count": 79,
+      "size_bytes": 5199780,
+      "citation": "Rajkumar Bhimgonda Patil et al. (2024) — A Reliability and Risk Assessment of Solar Photovoltaic Panels Using a Failure Mode and Effects Analysis Approach: A Case Study",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "5225fd5ee823c8221020e922fa3c45258f63b0f6239e7c69a4e7c51ca202532e",
+      "sha256": "5225fd5ee823c8221020e922fa3c45258f63b0f6239e7c69a4e7c51ca202532e",
+      "file_name": "karim_a-review-on-risk-and-reliability-analysis-in-photovoltaic-po_2025.pdf",
+      "relative_path": "inversores-pv/karim_a-review-on-risk-and-reliability-analysis-in-photovoltaic-po_2025.pdf",
+      "title": "A Review on Risk and Reliability Analysis in Photovoltaic Power Generation",
+      "authors": [
+        "Ahmad Zaki Abdul Karim",
+        "Mohamad Shaiful Osman",
+        "Mohd. Khairil Rahmat"
+      ],
+      "year": 2025,
+      "year_status": "informado",
+      "category": "inversores-pv",
+      "language": "en",
+      "chunk_count": 61,
+      "size_bytes": 1758977,
+      "citation": "Ahmad Zaki Abdul Karim et al. (2025) — A Review on Risk and Reliability Analysis in Photovoltaic Power Generation",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "f74ae8ecaeaea68d3bd1aaec8f5ae08fa2bb364f57a955631aae6fc00f40fa9e",
+      "sha256": "f74ae8ecaeaea68d3bd1aaec8f5ae08fa2bb364f57a955631aae6fc00f40fa9e",
+      "file_name": "cristaldi_a-root-cause-analysis-and-a-risk-evaluation-of-pv-balance-of_2017.pdf",
+      "relative_path": "inversores-pv/cristaldi_a-root-cause-analysis-and-a-risk-evaluation-of-pv-balance-of_2017.pdf",
+      "title": "A Root Cause Analysis And A Risk Evaluation Of Pv Balance Of",
+      "authors": [
+        "Cristaldi"
+      ],
+      "year": 2017,
+      "year_status": "informado",
+      "category": "inversores-pv",
+      "language": "en",
+      "chunk_count": 28,
+      "size_bytes": 880048,
+      "citation": "Cristaldi (2017) — A Root Cause Analysis And A Risk Evaluation Of Pv Balance Of",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": [
+        "caractere_substituto_na_extracao_pdf"
+      ]
+    },
+    {
+      "source_id": "1015ffe7722b9b1c3fe7939a6555704345f2ccfd4c439bc820031262e349e028",
+      "sha256": "1015ffe7722b9b1c3fe7939a6555704345f2ccfd4c439bc820031262e349e028",
+      "file_name": "sharma_a-self-tuning-reinforcement-learning-driven-isolation-forest_2026.pdf",
+      "relative_path": "ml-preditivo/sharma_a-self-tuning-reinforcement-learning-driven-isolation-forest_2026.pdf",
+      "title": "A Self Tuning Reinforcement Learning Driven Isolation Forest",
+      "authors": [
+        "Sharma"
+      ],
+      "year": 2026,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "en",
+      "chunk_count": 55,
+      "size_bytes": 2389368,
+      "citation": "Sharma (2026) — A Self Tuning Reinforcement Learning Driven Isolation Forest",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "083a4b442f2bbbe067a1a4d6240f42666ca3cc401e766eedb141480f60d7992c",
+      "sha256": "083a4b442f2bbbe067a1a4d6240f42666ca3cc401e766eedb141480f60d7992c",
+      "file_name": "risi_advancing-solar-pv-component-inspection-early-defect-detecti_2023.pdf",
+      "relative_path": "ml-preditivo/risi_advancing-solar-pv-component-inspection-early-defect-detecti_2023.pdf",
+      "title": "Advancing Solar PV Component Inspection: Early Defect Detection with UAV Based Thermal Imaging and Machine Learning",
+      "authors": [
+        "Risi"
+      ],
+      "year": 2023,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "en",
+      "chunk_count": 10,
+      "size_bytes": 359065,
+      "citation": "Risi (2023) — Advancing Solar PV Component Inspection: Early Defect Detection with UAV Based Thermal Imaging and Machine Learning",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "187dbfff6d19859a170f4f985834fd635e162221e569111e800783ff186485cf",
+      "sha256": "187dbfff6d19859a170f4f985834fd635e162221e569111e800783ff186485cf",
+      "file_name": "puc-rio_analise-da-confiabilidade-em-sistemas-de-potencia_2003.pdf",
+      "relative_path": "ml-preditivo/puc-rio_analise-da-confiabilidade-em-sistemas-de-potencia_2003.pdf",
+      "title": "Analise Da Confiabilidade Em Sistemas De Potencia",
+      "authors": [
+        "Puc Rio"
+      ],
+      "year": 2003,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "pt",
+      "chunk_count": 17,
+      "size_bytes": 142788,
+      "citation": "Puc Rio (2003) — Analise Da Confiabilidade Em Sistemas De Potencia",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "7d8ae20b261ae647d8ad26d3d9df5f5f0b72f4ffe5eb510c07362218e8632b76",
+      "sha256": "7d8ae20b261ae647d8ad26d3d9df5f5f0b72f4ffe5eb510c07362218e8632b76",
+      "file_name": "xavier_analise-de-confiabilidade-em-sistemas-de-potencia_2005.pdf",
+      "relative_path": "ml-preditivo/xavier_analise-de-confiabilidade-em-sistemas-de-potencia_2005.pdf",
+      "title": "Analise De Confiabilidade Em Sistemas De Potencia",
+      "authors": [
+        "Xavier"
+      ],
+      "year": 2005,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "pt",
+      "chunk_count": 20,
+      "size_bytes": 145430,
+      "citation": "Xavier (2005) — Analise De Confiabilidade Em Sistemas De Potencia",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "48442c0ccd004a8541bd2289fcc7d1f9f2c5ac05a87d38022d0a847df31522c0",
+      "sha256": "48442c0ccd004a8541bd2289fcc7d1f9f2c5ac05a87d38022d0a847df31522c0",
+      "file_name": "muqauwim_analysis-of-optimal-maintenance-interval-on-id-fan-using-rel_2020.pdf",
+      "relative_path": "manutencao/muqauwim_analysis-of-optimal-maintenance-interval-on-id-fan-using-rel_2020.pdf",
+      "title": "Analysis of Optimal Maintenance Interval on ID Fan Using Reliability Centered Maintenance",
+      "authors": [
+        "Muqauwim"
+      ],
+      "year": 2020,
+      "year_status": "informado",
+      "category": "manutencao",
+      "language": "en",
+      "chunk_count": 19,
+      "size_bytes": 564528,
+      "citation": "Muqauwim (2020) — Analysis of Optimal Maintenance Interval on ID Fan Using Reliability Centered Maintenance",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
+      "sha256": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
+      "file_name": "torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+      "relative_path": "inversores-pv/torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+      "title": "Aplicacao Da Metodologia Reliability Centred Maintenance A S",
+      "authors": [
+        "Torres"
+      ],
+      "year": 2024,
+      "year_status": "informado",
+      "category": "inversores-pv",
+      "language": "en",
+      "chunk_count": 137,
+      "size_bytes": 4827599,
+      "citation": "Torres (2024) — Aplicacao Da Metodologia Reliability Centred Maintenance A S",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "372e28882e14db2548b887e3aeb6ab2764e83cc95c17b6a63c7048049d513f51",
+      "sha256": "372e28882e14db2548b887e3aeb6ab2764e83cc95c17b6a63c7048049d513f51",
+      "file_name": "meyberg_aplicacao-de-metodos-probabilisticos-para-avaliacao-da-confiabilidade-de-funcoes-transmissao_2013.pdf",
+      "relative_path": "confiabilidade/meyberg_aplicacao-de-metodos-probabilisticos-para-avaliacao-da-confiabilidade-de-funcoes-transmissao_2013.pdf",
+      "title": "Aplicacao De Metodos Probabilisticos Para Avaliacao Da Confiabilidade De Funcoes Transmissao",
+      "authors": [
+        "Meyberg"
+      ],
+      "year": 2013,
+      "year_status": "informado",
+      "category": "confiabilidade",
+      "language": "pt",
+      "chunk_count": 211,
+      "size_bytes": 3514882,
+      "citation": "Meyberg (2013) — Aplicacao De Metodos Probabilisticos Para Avaliacao Da Confiabilidade De Funcoes Transmissao",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "6a70bfbbd3fe5a8f338b79a4823202f2226c7a2be4516e48dae202e803f4f295",
+      "sha256": "6a70bfbbd3fe5a8f338b79a4823202f2226c7a2be4516e48dae202e803f4f295",
+      "file_name": "sakurada_as-tecnicas-de-analise-do-modos-de-falhas-e-seus-efeitos-e-a_1998.pdf",
+      "relative_path": "manutencao/sakurada_as-tecnicas-de-analise-do-modos-de-falhas-e-seus-efeitos-e-a_1998.pdf",
+      "title": "As Tecnicas De Analise Do Modos De Falhas E Seus Efeitos E A",
+      "authors": [
+        "Sakurada"
+      ],
+      "year": 1998,
+      "year_status": "informado",
+      "category": "manutencao",
+      "language": "pt",
+      "chunk_count": 50,
+      "size_bytes": 264118,
+      "citation": "Sakurada (1998) — As Tecnicas De Analise Do Modos De Falhas E Seus Efeitos E A",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "a3d789466ed85951c186e306f5fb20167b1c6ff0693116fc167e69d3a9704758",
+      "sha256": "a3d789466ed85951c186e306f5fb20167b1c6ff0693116fc167e69d3a9704758",
+      "file_name": "silva_avaliacao-da-confiabilidade-em-sistemas-eletricos-com-base-n_2008.pdf",
+      "relative_path": "ml-preditivo/silva_avaliacao-da-confiabilidade-em-sistemas-eletricos-com-base-n_2008.pdf",
+      "title": "Avaliacao Da Confiabilidade Em Sistemas Eletricos Com Base N",
+      "authors": [
+        "Silva"
+      ],
+      "year": 2008,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "pt",
+      "chunk_count": 88,
+      "size_bytes": 5830428,
+      "citation": "Silva (2008) — Avaliacao Da Confiabilidade Em Sistemas Eletricos Com Base N",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "0b880e8ba19c82785964415bc35406cf538ae74f0c590e022ed068124fc35d9e",
+      "sha256": "0b880e8ba19c82785964415bc35406cf538ae74f0c590e022ed068124fc35d9e",
+      "file_name": "stewart_calculo-volume-i_2013.pdf",
+      "relative_path": "ml-preditivo/stewart_calculo-volume-i_2013.pdf",
+      "title": "Calculo Volume I",
+      "authors": [
+        "James Stewart"
+      ],
+      "year": 2013,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "pt",
+      "chunk_count": 1521,
+      "size_bytes": 8096308,
+      "citation": "James Stewart (2013) — Calculo Volume I",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "039650129aab79f8ea018ed6b840e5e94c74b0ade160744b75e309588bbd1f43",
+      "sha256": "039650129aab79f8ea018ed6b840e5e94c74b0ade160744b75e309588bbd1f43",
+      "file_name": "stender_data-set-description-three-phase-igbt-two-level-inverter-for_2020.pdf",
+      "relative_path": "inversores-pv/stender_data-set-description-three-phase-igbt-two-level-inverter-for_2020.pdf",
+      "title": "Data Set Description Three Phase Igbt Two Level Inverter For",
+      "authors": [
+        "Stender"
+      ],
+      "year": 2020,
+      "year_status": "informado",
+      "category": "inversores-pv",
+      "language": "en",
+      "chunk_count": 9,
+      "size_bytes": 1098192,
+      "citation": "Stender (2020) — Data Set Description Three Phase Igbt Two Level Inverter For",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "c3dd03756822fe9dc8c2310e53dc0145f5b9434a734e0f663010796450105aa5",
+      "sha256": "c3dd03756822fe9dc8c2310e53dc0145f5b9434a734e0f663010796450105aa5",
+      "file_name": "pahwa_design-and-estimation-of-reliability-of-an-off-grid-solar-ph_2017.pdf",
+      "relative_path": "inversores-pv/pahwa_design-and-estimation-of-reliability-of-an-off-grid-solar-ph_2017.pdf",
+      "title": "Design And Estimation Of Reliability Of An Off Grid Solar Ph",
+      "authors": [
+        "Pahwa"
+      ],
+      "year": 2017,
+      "year_status": "informado",
+      "category": "inversores-pv",
+      "language": "en",
+      "chunk_count": 18,
+      "size_bytes": 2133537,
+      "citation": "Pahwa (2017) — Design And Estimation Of Reliability Of An Off Grid Solar Ph",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "d88ced9cb1df6c8eca03f3a510129a46e8d884c1aa1035fb3b4f48a233e82484",
+      "sha256": "d88ced9cb1df6c8eca03f3a510129a46e8d884c1aa1035fb3b4f48a233e82484",
+      "file_name": "gonzalez_digital-image-processing_2008.pdf",
+      "relative_path": "ml-preditivo/gonzalez_digital-image-processing_2008.pdf",
+      "title": "Digital Image Processing",
+      "authors": [
+        "Gonzalez"
+      ],
+      "year": 2008,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "en",
+      "chunk_count": 1737,
+      "size_bytes": 18808831,
+      "citation": "Gonzalez (2008) — Digital Image Processing",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "37c7acefe7cc295bfd6cd57619ec37312bd83972e1d2fcb5b250fe49b69f1634",
+      "sha256": "37c7acefe7cc295bfd6cd57619ec37312bd83972e1d2fcb5b250fe49b69f1634",
+      "file_name": "diniz_digital-signal-processing-system-analysis-and-design_2021.pdf",
+      "relative_path": "sinais-eletricos/diniz_digital-signal-processing-system-analysis-and-design_2021.pdf",
+      "title": "Digital Signal Processing System Analysis and Design, Second Edition",
+      "authors": [
+        "Paulo S. R. Diniz",
+        "Eduardo A. B. da Silva",
+        "Sergio L. Netto"
+      ],
+      "year": 2021,
+      "year_status": "informado",
+      "category": "sinais-eletricos",
+      "language": "en",
+      "chunk_count": 120,
+      "size_bytes": 823129,
+      "citation": "Paulo S. R. Diniz et al. (2021) — Digital Signal Processing System Analysis and Design, Second Edition",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "0fecf389e20ea685f7ba54cd9bc9d9b5412924dad3d8e9d5faefb86aa7a70a94",
+      "sha256": "0fecf389e20ea685f7ba54cd9bc9d9b5412924dad3d8e9d5faefb86aa7a70a94",
+      "file_name": "tekalp_digital-video-processing_2015.pdf",
+      "relative_path": "ml-preditivo/tekalp_digital-video-processing_2015.pdf",
+      "title": "Digital Video Processing",
+      "authors": [
+        "A. Murat Tekalp"
+      ],
+      "year": 2015,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "en",
+      "chunk_count": 199,
+      "size_bytes": 1736468,
+      "citation": "A. Murat Tekalp (2015) — Digital Video Processing",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "e6cf84a90c2626a885bae28696b9ad5fa9f12ffc4a43e55939afb79046e9e3ee",
+      "sha256": "e6cf84a90c2626a885bae28696b9ad5fa9f12ffc4a43e55939afb79046e9e3ee",
+      "file_name": "oppenheim_discrete-time-signal-processing_2014.pdf",
+      "relative_path": "sinais-eletricos/oppenheim_discrete-time-signal-processing_2014.pdf",
+      "title": "Discrete Time Signal Processing",
+      "authors": [
+        "Oppenheim"
+      ],
+      "year": 2014,
+      "year_status": "informado",
+      "category": "sinais-eletricos",
+      "language": "en",
+      "chunk_count": 1656,
+      "size_bytes": 9586893,
+      "citation": "Oppenheim (2014) — Discrete Time Signal Processing",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "b1066e3ab87fa2bfa51763125e474feff3df374add3ff1ac555550c744c65968",
+      "sha256": "b1066e3ab87fa2bfa51763125e474feff3df374add3ff1ac555550c744c65968",
+      "file_name": "moura_engenharia-de-sistemas-de-potencia-transmissao-de-energia-el_2019.pdf",
+      "relative_path": "sinais-eletricos/moura_engenharia-de-sistemas-de-potencia-transmissao-de-energia-el_2019.pdf",
+      "title": "Engenharia De Sistemas De Potencia Transmissao De Energia El",
+      "authors": [
+        "Moura"
+      ],
+      "year": 2019,
+      "year_status": "informado",
+      "category": "sinais-eletricos",
+      "language": "pt",
+      "chunk_count": 363,
+      "size_bytes": 9230102,
+      "citation": "Moura (2019) — Engenharia De Sistemas De Potencia Transmissao De Energia El",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": [
+        "caractere_substituto_na_extracao_pdf"
+      ]
+    },
+    {
+      "source_id": "09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f",
+      "sha256": "09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f",
+      "file_name": "ahirwar_enhanced-anomaly-detection-in-solar-power-plants-using-hybri_2025.pdf",
+      "relative_path": "ml-preditivo/ahirwar_enhanced-anomaly-detection-in-solar-power-plants-using-hybri_2025.pdf",
+      "title": "Enhanced Anomaly Detection in Solar Power Plants Using Hybrid Machine Learning Techniques",
+      "authors": [
+        "Ahirwar"
+      ],
+      "year": 2025,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "en",
+      "chunk_count": 20,
+      "size_bytes": 804127,
+      "citation": "Ahirwar (2025) — Enhanced Anomaly Detection in Solar Power Plants Using Hybrid Machine Learning Techniques",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "ed428fa4c4732b747ab89201509a5af72012c01eb48ea62176e715f722c0c817",
+      "sha256": "ed428fa4c4732b747ab89201509a5af72012c01eb48ea62176e715f722c0c817",
+      "file_name": "frontin_equipamentos-de-alta-tensao-prospeccao-e-hierarquizacao_2013.pdf",
+      "relative_path": "sinais-eletricos/frontin_equipamentos-de-alta-tensao-prospeccao-e-hierarquizacao_2013.pdf",
+      "title": "Equipamentos De Alta Tensao Prospeccao E Hierarquizacao",
+      "authors": [
+        "Frontin"
+      ],
+      "year": 2013,
+      "year_status": "informado",
+      "category": "sinais-eletricos",
+      "language": "pt",
+      "chunk_count": 1642,
+      "size_bytes": 31724864,
+      "citation": "Frontin (2013) — Equipamentos De Alta Tensao Prospeccao E Hierarquizacao",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "c016ac3f5a08924fe27e8afb52e7f4678b7a8f07d1927e5bc22729ee7afe2b74",
+      "sha256": "c016ac3f5a08924fe27e8afb52e7f4678b7a8f07d1927e5bc22729ee7afe2b74",
+      "file_name": "dhople_estimation-of-photovoltaic-system-reliability-and-performanc_2012.pdf",
+      "relative_path": "inversores-pv/dhople_estimation-of-photovoltaic-system-reliability-and-performanc_2012.pdf",
+      "title": "Estimation of Photovoltaic System Reliability and Performance Metrics",
+      "authors": [
+        "Dhople"
+      ],
+      "year": 2012,
+      "year_status": "informado",
+      "category": "inversores-pv",
+      "language": "en",
+      "chunk_count": 31,
+      "size_bytes": 953758,
+      "citation": "Dhople (2012) — Estimation of Photovoltaic System Reliability and Performance Metrics",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "c139a5ffb6fde847e16da3ebfd6e4a8a6491050399f8d25aec27bd32072659ed",
+      "sha256": "c139a5ffb6fde847e16da3ebfd6e4a8a6491050399f8d25aec27bd32072659ed",
+      "file_name": "ghoneim_fault-detection-algorithms-for-achieving-service-continuity-_2021.pdf",
+      "relative_path": "ml-preditivo/ghoneim_fault-detection-algorithms-for-achieving-service-continuity-_2021.pdf",
+      "title": "Fault Detection Algorithms for Achieving Service Continuity in Photovoltaic Farms",
+      "authors": [
+        "Sherif S. M. Ghoneim"
+      ],
+      "year": 2021,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "en",
+      "chunk_count": 26,
+      "size_bytes": 1334391,
+      "citation": "Sherif S. M. Ghoneim (2021) — Fault Detection Algorithms for Achieving Service Continuity in Photovoltaic Farms",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "9982adc452e12332d35799505477626f9c203f9dd9c74e664c31c3af224a37bd",
+      "sha256": "9982adc452e12332d35799505477626f9c203f9dd9c74e664c31c3af224a37bd",
+      "file_name": "carpinetti_gestao-da-qualidade-cap-6_2016.pdf",
+      "relative_path": "manutencao/carpinetti_gestao-da-qualidade-cap-6_2016.pdf",
+      "title": "Gestao Da Qualidade Cap 6",
+      "authors": [
+        "Carpinetti"
+      ],
+      "year": 2016,
+      "year_status": "informado",
+      "category": "manutencao",
+      "language": "pt",
+      "chunk_count": 20,
+      "size_bytes": 695633,
+      "citation": "Carpinetti (2016) — Gestao Da Qualidade Cap 6",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "7452f61d82ea955686f4e7539b84695bfc84113900c6b6f6772f70e5240b04de",
+      "sha256": "7452f61d82ea955686f4e7539b84695bfc84113900c6b6f6772f70e5240b04de",
+      "file_name": "monteiro_identifying-critical-failures-in-pv-systems-based-on-pv-inve_2024.pdf",
+      "relative_path": "inversores-pv/monteiro_identifying-critical-failures-in-pv-systems-based-on-pv-inve_2024.pdf",
+      "title": "Identifying Critical Failures in PV Systems Based on PV Inverters’ Monitoring Unit: A Techno-Economic Analysis",
+      "authors": [
+        "Filipe Monteiro",
+        "Eduardo Sarquis",
+        "Paulo Branco"
+      ],
+      "year": 2024,
+      "year_status": "informado",
+      "category": "inversores-pv",
+      "language": "en",
+      "chunk_count": 62,
+      "size_bytes": 2193568,
+      "citation": "Filipe Monteiro et al. (2024) — Identifying Critical Failures in PV Systems Based on PV Inverters’ Monitoring Unit: A Techno-Economic Analysis",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "4e386f03464e92f454301422c37cc9a4a42234ddf1cfd91fffcfdbde04bdd7da",
+      "sha256": "4e386f03464e92f454301422c37cc9a4a42234ddf1cfd91fffcfdbde04bdd7da",
+      "file_name": "marangis_intelligent-maintenance-approaches-for-improving-photovoltai_2025.pdf",
+      "relative_path": "ml-preditivo/marangis_intelligent-maintenance-approaches-for-improving-photovoltai_2025.pdf",
+      "title": "Intelligent Maintenance Approaches for Improving Photovoltaic System Performance and Reliability",
+      "authors": [
+        "Demetris Marangis"
+      ],
+      "year": 2025,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "en",
+      "chunk_count": 97,
+      "size_bytes": 1613350,
+      "citation": "Demetris Marangis (2025) — Intelligent Maintenance Approaches for Improving Photovoltaic System Performance and Reliability",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "79043b9e8b862818766d355dbd0dff8e87698fc0ab713dec1a3d3970c48d79cd",
+      "sha256": "79043b9e8b862818766d355dbd0dff8e87698fc0ab713dec1a3d3970c48d79cd",
+      "file_name": "grewal_kalman-filtering-theory-and-practice-using-matlab_2001.pdf",
+      "relative_path": "ml-preditivo/grewal_kalman-filtering-theory-and-practice-using-matlab_2001.pdf",
+      "title": "Kalman Filtering Theory And Practice Using Matlab",
+      "authors": [
+        "Grewal"
+      ],
+      "year": 2001,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "en",
+      "chunk_count": 1829,
+      "size_bytes": 3458551,
+      "citation": "Grewal (2001) — Kalman Filtering Theory And Practice Using Matlab",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "4c71efa5e69bb94d998b0b8fddf6feef200ff4ee5db2569747657dec841f910f",
+      "sha256": "4c71efa5e69bb94d998b0b8fddf6feef200ff4ee5db2569747657dec841f910f",
+      "file_name": "narayanan_machine-learning-based-explainable-fault-detection-of-vacuum_2023.pdf",
+      "relative_path": "ml-preditivo/narayanan_machine-learning-based-explainable-fault-detection-of-vacuum_2023.pdf",
+      "title": "Machine Learning Based Explainable Fault Detection of Vacuum Pumps in PV Solar Cell Manufacturing",
+      "authors": [
+        "Narayanan"
+      ],
+      "year": 2023,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "en",
+      "chunk_count": 18,
+      "size_bytes": 1172312,
+      "citation": "Narayanan (2023) — Machine Learning Based Explainable Fault Detection of Vacuum Pumps in PV Solar Cell Manufacturing",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "a60ce084f28879d4fd6096d0a9d52a177fa7b992ca8b40963c1936f1d53cd364",
+      "sha256": "a60ce084f28879d4fd6096d0a9d52a177fa7b992ca8b40963c1936f1d53cd364",
+      "file_name": "ibrahim_machine-learning-schemes-for-anomaly-detection-in-solar-powe_2022.pdf",
+      "relative_path": "ml-preditivo/ibrahim_machine-learning-schemes-for-anomaly-detection-in-solar-powe_2022.pdf",
+      "title": "Machine Learning Schemes for Anomaly Detection in Solar Power Plants",
+      "authors": [
+        "Mariam Ibrahim",
+        "Ahmad Alsheikh",
+        "Feras M. Awaysheh",
+        "Mohammad Dahman Alshehri"
+      ],
+      "year": 2022,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "en",
+      "chunk_count": 37,
+      "size_bytes": 2382284,
+      "citation": "Mariam Ibrahim et al. (2022) — Machine Learning Schemes for Anomaly Detection in Solar Power Plants",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "2d40ae51b2935b8eb21d5421daf04e4f25a133204ee8bdfc40f0d6684dcadca6",
+      "sha256": "2d40ae51b2935b8eb21d5421daf04e4f25a133204ee8bdfc40f0d6684dcadca6",
+      "file_name": "lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_2001.pdf",
+      "relative_path": "confiabilidade/lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade_2001.pdf",
+      "title": "Manual de Confiabilidade, Mantenabilidade e Disponibilidade",
+      "authors": [
+        "João Ricardo Barusso Lafraia"
+      ],
+      "year": 2001,
+      "year_status": "informado",
+      "category": "confiabilidade",
+      "language": "pt",
+      "chunk_count": 10,
+      "size_bytes": 4506059,
+      "citation": "João Ricardo Barusso Lafraia (2001) — Manual de Confiabilidade, Mantenabilidade e Disponibilidade",
+      "metadata_origin": "curadoria",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "8a5015512ba5d81c99c0e9b9513f19aa84e2273b0d3bdd160634b5e940e174ae",
+      "sha256": "8a5015512ba5d81c99c0e9b9513f19aa84e2273b0d3bdd160634b5e940e174ae",
+      "file_name": "lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade-capitulo-7-confiabilidade-de-sistemas_2001.pdf",
+      "relative_path": "manutencao/lafraia_manual-de-confiabilidade-mantenabilidade-e-disponibilidade-capitulo-7-confiabilidade-de-sistemas_2001.pdf",
+      "title": "Manual de Confiabilidade, Mantenabilidade e Disponibilidade — Capítulo 7: Confiabilidade de Sistemas",
+      "authors": [
+        "João Ricardo Barusso Lafraia"
+      ],
+      "year": 2001,
+      "year_status": "informado",
+      "category": "manutencao",
+      "language": "pt",
+      "chunk_count": 18,
+      "size_bytes": 5622067,
+      "citation": "João Ricardo Barusso Lafraia (2001) — Manual de Confiabilidade, Mantenabilidade e Disponibilidade — Capítulo 7: Confiabilidade de Sistemas",
+      "metadata_origin": "curadoria",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b",
+      "sha256": "2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b",
+      "file_name": "administration_nasa-reliability-centered-maintenance-guide-for-facilities-a_2008.pdf",
+      "relative_path": "confiabilidade/administration_nasa-reliability-centered-maintenance-guide-for-facilities-a_2008.pdf",
+      "title": "Nasa Reliability Centered Maintenance Guide For Facilities A",
+      "authors": [
+        "Administration"
+      ],
+      "year": 2008,
+      "year_status": "informado",
+      "category": "confiabilidade",
+      "language": "en",
+      "chunk_count": 675,
+      "size_bytes": 4443946,
+      "citation": "Administration (2008) — Nasa Reliability Centered Maintenance Guide For Facilities A",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "73be38c42a6045e4b972da72c2f05e02376050a02f9d5d3a9a4e47d0743b3706",
+      "sha256": "73be38c42a6045e4b972da72c2f05e02376050a02f9d5d3a9a4e47d0743b3706",
+      "file_name": "nketiah_parameter-estimation-of-the-weibull-distribution-comparison-of-ls-and-mle_2021.pdf",
+      "relative_path": "confiabilidade/nketiah_parameter-estimation-of-the-weibull-distribution-comparison-of-ls-and-mle_2021.pdf",
+      "title": "Parameter Estimation Of The Weibull Distribution Comparison Of Ls And Mle",
+      "authors": [
+        "Nketiah"
+      ],
+      "year": 2021,
+      "year_status": "informado",
+      "category": "confiabilidade",
+      "language": "en",
+      "chunk_count": 26,
+      "size_bytes": 729703,
+      "citation": "Nketiah (2021) — Parameter Estimation Of The Weibull Distribution Comparison Of Ls And Mle",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "c3f5fc33a80ebd85a19b9047ecc2ea99e2c0970a2a672ece9d7d9375a6476ec8",
+      "sha256": "c3f5fc33a80ebd85a19b9047ecc2ea99e2c0970a2a672ece9d7d9375a6476ec8",
+      "file_name": "grewal_power-electronics-chapter-8_2002.pdf",
+      "relative_path": "sinais-eletricos/grewal_power-electronics-chapter-8_2002.pdf",
+      "title": "Power Electronics Chapter 8",
+      "authors": [
+        "Grewal"
+      ],
+      "year": 2002,
+      "year_status": "informado",
+      "category": "sinais-eletricos",
+      "language": "en",
+      "chunk_count": 80,
+      "size_bytes": 500326,
+      "citation": "Grewal (2002) — Power Electronics Chapter 8",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "b7119c332bbe36e04401bc8b7ca6faafe4151f3c3bbb7a21b371930416a23c33",
+      "sha256": "b7119c332bbe36e04401bc8b7ca6faafe4151f3c3bbb7a21b371930416a23c33",
+      "file_name": "virkkunen_practical-experiences-in-pod-determination-for-airframe-et-inspection_2016.pdf",
+      "relative_path": "confiabilidade/virkkunen_practical-experiences-in-pod-determination-for-airframe-et-inspection_2016.pdf",
+      "title": "Practical Experiences In Pod Determination For Airframe Et Inspection",
+      "authors": [
+        "Iikka Virkkunen"
+      ],
+      "year": 2016,
+      "year_status": "informado",
+      "category": "confiabilidade",
+      "language": "en",
+      "chunk_count": 14,
+      "size_bytes": 1597315,
+      "citation": "Iikka Virkkunen (2016) — Practical Experiences In Pod Determination For Airframe Et Inspection",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "da7ee753d2c2d7d2369b99903b4eaf4eb8476dcc6f3762c5973d81687e0b1ffb",
+      "sha256": "da7ee753d2c2d7d2369b99903b4eaf4eb8476dcc6f3762c5973d81687e0b1ffb",
+      "file_name": "francisti_predictive-modeling-and-anomaly-detection-in-solar-pv-invert_2025.pdf",
+      "relative_path": "ml-preditivo/francisti_predictive-modeling-and-anomaly-detection-in-solar-pv-invert_2025.pdf",
+      "title": "Predictive modeling and anomaly detection in solar PV inverters using machine learning",
+      "authors": [
+        "Jan Francisti"
+      ],
+      "year": 2025,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "en",
+      "chunk_count": 50,
+      "size_bytes": 2492409,
+      "citation": "Jan Francisti (2025) — Predictive modeling and anomaly detection in solar PV inverters using machine learning",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "3253acaaad7611cb82bf9e186762dfce82687d6ec41f5ada22c552ee83955fe6",
+      "sha256": "3253acaaad7611cb82bf9e186762dfce82687d6ec41f5ada22c552ee83955fe6",
+      "file_name": "joshi_reliability-estimation-for-components-of-photovoltaic-system_1996.pdf",
+      "relative_path": "inversores-pv/joshi_reliability-estimation-for-components-of-photovoltaic-system_1996.pdf",
+      "title": "Reliability Estimation For Components Of Photovoltaic System",
+      "authors": [
+        "Joshi"
+      ],
+      "year": 1996,
+      "year_status": "informado",
+      "category": "inversores-pv",
+      "language": "en",
+      "chunk_count": 26,
+      "size_bytes": 701442,
+      "citation": "Joshi (1996) — Reliability Estimation For Components Of Photovoltaic System",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "ceaa21c1b1b06a71923ef4103ac3813b660817952c97a23b248d54dc8e60be3a",
+      "sha256": "ceaa21c1b1b06a71923ef4103ac3813b660817952c97a23b248d54dc8e60be3a",
+      "file_name": "shuttleworth_reliability-prediction-of-pv-inverters-based-on-mil-hdbk-217_2015.pdf",
+      "relative_path": "inversores-pv/shuttleworth_reliability-prediction-of-pv-inverters-based-on-mil-hdbk-217_2015.pdf",
+      "title": "Reliability Prediction Of Pv Inverters Based On Mil Hdbk 217",
+      "authors": [
+        "Shuttleworth"
+      ],
+      "year": 2015,
+      "year_status": "informado",
+      "category": "inversores-pv",
+      "language": "en",
+      "chunk_count": 20,
+      "size_bytes": 2203328,
+      "citation": "Shuttleworth (2015) — Reliability Prediction Of Pv Inverters Based On Mil Hdbk 217",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": [
+        "caractere_substituto_na_extracao_pdf"
+      ]
+    },
+    {
+      "source_id": "7f0f995923429b7ab69d017ccc88f13d7978da41b7ab3a2603362806195b2959",
+      "sha256": "7f0f995923429b7ab69d017ccc88f13d7978da41b7ab3a2603362806195b2959",
+      "file_name": "hu_remaining-useful-life-prediction-based-on-a-joint-model-with-degradation-failure-association-structures_2023.pdf",
+      "relative_path": "ml-preditivo/hu_remaining-useful-life-prediction-based-on-a-joint-model-with-degradation-failure-association-structures_2023.pdf",
+      "title": "Remaining Useful Life Prediction Based On A Joint Model With Degradation Failure Association Structures",
+      "authors": [
+        "Hu"
+      ],
+      "year": 2023,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "en",
+      "chunk_count": 37,
+      "size_bytes": 773298,
+      "citation": "Hu (2023) — Remaining Useful Life Prediction Based On A Joint Model With Degradation Failure Association Structures",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "496421da88472526ac962740f3562857a1953003bcfa139a1c8aa8fe87ec1fff",
+      "sha256": "496421da88472526ac962740f3562857a1953003bcfa139a1c8aa8fe87ec1fff",
+      "file_name": "voss_service-service-architecture-yield-monitoring-optimization-a_2009.pdf",
+      "relative_path": "inversores-pv/voss_service-service-architecture-yield-monitoring-optimization-a_2009.pdf",
+      "title": "Service Service Architecture Yield Monitoring Optimization A",
+      "authors": [
+        "Voss"
+      ],
+      "year": 2009,
+      "year_status": "informado",
+      "category": "inversores-pv",
+      "language": "en",
+      "chunk_count": 24,
+      "size_bytes": 489005,
+      "citation": "Voss (2009) — Service Service Architecture Yield Monitoring Optimization A",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "16c755c2489cd2f3c0d2795aadd8cb231b9186d63b557d77cbf78d3184c593c9",
+      "sha256": "16c755c2489cd2f3c0d2795aadd8cb231b9186d63b557d77cbf78d3184c593c9",
+      "file_name": "eletrica_subestacoes-de-energia-definicoes-conceitos-e-aplicacoes_0000.pdf",
+      "relative_path": "sinais-eletricos/eletrica_subestacoes-de-energia-definicoes-conceitos-e-aplicacoes_0000.pdf",
+      "title": "Subestações de Energia: Definições, Conceitos e Aplicações",
+      "authors": [
+        "Aprender Elétrica"
+      ],
+      "year": null,
+      "year_status": "nao_declarado_na_fonte",
+      "category": "sinais-eletricos",
+      "language": "pt",
+      "chunk_count": 168,
+      "size_bytes": 8342245,
+      "citation": "Aprender Elétrica (s.d.) — Subestações de Energia: Definições, Conceitos e Aplicações",
+      "metadata_origin": "curadoria",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "5fe228d2f9407383d5a41f2dc5aa1366cb48301266066a9ecf43ea36443bde40",
+      "sha256": "5fe228d2f9407383d5a41f2dc5aa1366cb48301266066a9ecf43ea36443bde40",
+      "file_name": "smith_the-scientist-and-engineer-s-guide-to-digital-signal-process_1999.pdf",
+      "relative_path": "sinais-eletricos/smith_the-scientist-and-engineer-s-guide-to-digital-signal-process_1999.pdf",
+      "title": "The Scientist and Engineer's Guide to Digital Signal Processing",
+      "authors": [
+        "Steven W. Smith"
+      ],
+      "year": 1999,
+      "year_status": "informado",
+      "category": "sinais-eletricos",
+      "language": "en",
+      "chunk_count": 1214,
+      "size_bytes": 12759999,
+      "citation": "Steven W. Smith (1999) — The Scientist and Engineer's Guide to Digital Signal Processing",
+      "metadata_origin": "pdf_interno",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    },
+    {
+      "source_id": "006f3edcff170336618057370ffb915c575edeab78c3d5842b2c701710e7d211",
+      "sha256": "006f3edcff170336618057370ffb915c575edeab78c3d5842b2c701710e7d211",
+      "file_name": "lien_unlocking-weibull-analysis_2013.pdf",
+      "relative_path": "confiabilidade/lien_unlocking-weibull-analysis_2013.pdf",
+      "title": "Unlocking Weibull Analysis",
+      "authors": [
+        "Lien"
+      ],
+      "year": 2013,
+      "year_status": "informado",
+      "category": "confiabilidade",
+      "language": "en",
+      "chunk_count": 14,
+      "size_bytes": 1872535,
+      "citation": "Lien (2013) — Unlocking Weibull Analysis",
+      "metadata_origin": "indice_portatil",
+      "metadata_edited": false,
+      "index_status": "indexed",
+      "extraction_warnings": []
+    }
+  ]
+}

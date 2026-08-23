@@ -21,7 +21,7 @@ def test_primeira_tela_e_chat_utilizavel_sem_dashboard_bloqueante():
 
 def test_navegacao_cientifica_unifica_resultados_e_biblioteca():
     assert 'data-view="results"' in HTML
-    assert 'data-view="sources"' in HTML
+    assert 'data-view="library"' in HTML
     assert 'data-result-tab="e3"' in HTML
     assert 'data-result-tab="e2"' in HTML
     assert 'data-result-tab="reliability"' in HTML
@@ -31,7 +31,7 @@ def test_navegacao_cientifica_unifica_resultados_e_biblioteca():
     assert "/api/results/e3" in JS
     assert "/api/results/e2" in JS
     assert "/api/reliability" in JS
-    assert "/api/sources" in JS
+    assert "/api/library" in JS
 
 
 def test_resultados_usam_graficos_interativos_sob_demanda():

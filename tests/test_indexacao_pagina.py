@@ -132,6 +132,25 @@ def test_indexar_pdf_unico_grava_pagina(pdf_tres_paginas, tmp_path):
     assert pagina_por_marca.get(2) == 2
     assert pagina_por_marca.get(3) == 3
 
+    reindexado = indexar_pdf_unico(
+        pdf_tres_paginas,
+        _FakeEmbeddings(),
+        pasta_chroma,
+        forcar=True,
+        metadados_override={
+            "autor": "Autora Curada",
+            "titulo": "Titulo Curado",
+            "ano": "2026",
+            "citacao": "Autora Curada (2026) - Titulo Curado",
+            "idioma": "pt",
+            "pasta": "confiabilidade",
+        },
+    )
+    assert reindexado["sucesso"] is True
+    atualizado = col.get(include=["metadatas"])["metadatas"]
+    assert {meta["titulo"] for meta in atualizado} == {"Titulo Curado"}
+    assert {meta["autor"] for meta in atualizado} == {"Autora Curada"}
+
 
 def test_formatar_intervalo_paginas_se_disponivel():
     """O formatador de páginas vive em agente.py (que puxa torch); roda local,

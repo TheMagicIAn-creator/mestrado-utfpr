@@ -6,9 +6,11 @@ import asyncio
 import json
 import os
 import re
+from ipaddress import ip_address
 from contextlib import asynccontextmanager
 from pathlib import Path
 from time import perf_counter
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
@@ -48,6 +50,19 @@ from src.webapp.contracts import (
     warm_contracts_background,
 )
 from src.webapp.rendering import render_agent_markdown, render_agent_messages
+from src.webapp.library_service import (
+    LibraryDuplicateError,
+    LibraryError,
+    LibraryNotFoundError,
+    LibraryService,
+    MAX_LIBRARY_PDF_BYTES,
+    library_is_read_only,
+)
+from src.conhecimento.catalogo_bibliografico import (
+    CATEGORIAS,
+    IDIOMAS,
+    CatalogoBibliograficoInvalido,
+)
 
 WEB_ROOT = Path(__file__).resolve().parent
 STATIC_ROOT = WEB_ROOT / "static"
@@ -208,12 +223,58 @@ def _citations(text: str) -> list[dict[str, str]]:
     return citations
 
 
+def _loopback_host(value: str | None) -> bool:
+    host = str(value or "").strip().casefold().strip("[]")
+    if host == "localhost":
+        return True
+    try:
+        return ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _library_write_access(request: Request) -> tuple[bool, str | None]:
+    read_only, reason = library_is_read_only()
+    if read_only:
+        return False, reason
+
+    url_host = request.url.hostname
+    if not _loopback_host(url_host):
+        return False, "A biblioteca so pode ser alterada em localhost."
+
+    client_host = request.client.host if request.client else ""
+    if not _loopback_host(client_host) and client_host != "testclient":
+        return False, "A conexao de escrita nao se originou do computador local."
+
+    origin = request.headers.get("origin")
+    if origin:
+        try:
+            parsed = urlsplit(origin)
+            origin_port = parsed.port or (
+                443 if parsed.scheme == "https" else 80
+            )
+        except ValueError:
+            return False, "A origem da requisicao e invalida."
+        request_port = request.url.port or (
+            443 if request.url.scheme == "https" else 80
+        )
+        if (
+            parsed.scheme != request.url.scheme
+            or parsed.hostname != request.url.hostname
+            or origin_port != request_port
+        ):
+            return False, "A origem da requisicao nao corresponde ao ALIAdo local."
+    return True, None
+
+
 def create_app(
     agent_adapter: AgentAdapter | None = None,
     *,
     warm_on_startup: bool = True,
+    library_service: LibraryService | None = None,
 ) -> Starlette:
     adapter = agent_adapter or AgentAdapter()
+    library = library_service or LibraryService()
     started_at = perf_counter()
 
     @asynccontextmanager
@@ -222,6 +283,7 @@ def create_app(
             adapter.warm_background()
             warm_contracts_background()
         yield
+        library.close()
 
     async def status_api(_request: Request) -> JSONResponse:
         agent = adapter.status()
@@ -342,6 +404,137 @@ def create_app(
             },
         )
 
+    async def library_api(request: Request) -> JSONResponse:
+        try:
+            catalog, provenance = await asyncio.gather(
+                run_in_threadpool(library.catalog),
+                run_in_threadpool(sources_contract),
+            )
+        except (CatalogoBibliograficoInvalido, ContratoWebInvalido) as exc:
+            return JSONResponse(
+                {"error": "library_unavailable", "detail": str(exc)},
+                status_code=503,
+            )
+        writable, reason = _library_write_access(request)
+        return JSONResponse(
+            {
+                **catalog,
+                "writable": writable,
+                "write_policy": {
+                    "scope": "local_loopback_only",
+                    "git_automation": False,
+                    "reason": reason,
+                },
+                "categories": list(CATEGORIAS),
+                "languages": list(IDIOMAS),
+                "provenance": provenance,
+            }
+        )
+
+    def write_denied(request: Request) -> JSONResponse | None:
+        allowed, reason = _library_write_access(request)
+        if allowed:
+            return None
+        return JSONResponse(
+            {"error": "library_read_only", "detail": reason}, status_code=403
+        )
+
+    async def library_add_api(request: Request) -> JSONResponse:
+        denied = write_denied(request)
+        if denied:
+            return denied
+        try:
+            form = await request.form()
+            upload = form.get("file")
+            if not isinstance(upload, UploadFile):
+                raise LibraryError("Selecione um arquivo PDF.")
+            try:
+                data = await upload.read(MAX_LIBRARY_PDF_BYTES + 1)
+                metadata = {
+                    key: form.get(key)
+                    for key in (
+                        "title",
+                        "authors",
+                        "year",
+                        "category",
+                        "language",
+                    )
+                    if form.get(key) not in {None, ""}
+                }
+                job = await run_in_threadpool(
+                    library.queue_pdf,
+                    upload.filename or "fonte.pdf",
+                    data,
+                    metadata,
+                )
+            finally:
+                await upload.close()
+            return JSONResponse({"job": job}, status_code=202)
+        except LibraryDuplicateError as exc:
+            return JSONResponse(
+                {
+                    "error": "duplicate_pdf",
+                    "detail": str(exc),
+                    "document": exc.document,
+                },
+                status_code=409,
+            )
+        except (LibraryError, ValueError) as exc:
+            return JSONResponse(
+                {"error": "invalid_library_pdf", "detail": str(exc)},
+                status_code=400,
+            )
+
+    async def library_patch_api(request: Request) -> JSONResponse:
+        denied = write_denied(request)
+        if denied:
+            return denied
+        try:
+            patch = await request.json()
+            if not isinstance(patch, dict):
+                raise LibraryError("O corpo JSON deve ser um objeto.")
+            document = await run_in_threadpool(
+                library.update_document,
+                request.path_params["source_id"],
+                patch,
+            )
+            return JSONResponse({"document": document})
+        except LibraryNotFoundError as exc:
+            return JSONResponse(
+                {"error": "source_not_found", "detail": str(exc)},
+                status_code=404,
+            )
+        except (LibraryError, CatalogoBibliograficoInvalido, ValueError) as exc:
+            return JSONResponse(
+                {"error": "invalid_metadata", "detail": str(exc)},
+                status_code=400,
+            )
+
+    async def library_reindex_api(request: Request) -> JSONResponse:
+        denied = write_denied(request)
+        if denied:
+            return denied
+        try:
+            job = await run_in_threadpool(
+                library.queue_reindex, request.path_params["source_id"]
+            )
+            return JSONResponse({"job": job}, status_code=202)
+        except LibraryNotFoundError as exc:
+            return JSONResponse(
+                {"error": "source_not_found", "detail": str(exc)},
+                status_code=404,
+            )
+
+    async def library_job_api(request: Request) -> JSONResponse:
+        try:
+            job = library.get_job(request.path_params["job_id"])
+            return JSONResponse({"job": job})
+        except LibraryNotFoundError as exc:
+            return JSONResponse(
+                {"error": "job_not_found", "detail": str(exc)},
+                status_code=404,
+            )
+
     routes = [
         Route("/", homepage, methods=["GET"]),
         Route("/api/chat/stream", chat_stream_api, methods=["POST"]),
@@ -351,6 +544,19 @@ def create_app(
         Route("/api/results/e2", e2_api, methods=["GET"]),
         Route("/api/results/e3", e3_api, methods=["GET"]),
         Route("/api/reliability", reliability_api, methods=["GET"]),
+        Route("/api/library", library_api, methods=["GET"]),
+        Route("/api/library", library_add_api, methods=["POST"]),
+        Route(
+            "/api/library/{source_id}", library_patch_api, methods=["PATCH"]
+        ),
+        Route(
+            "/api/library/{source_id}/reindex",
+            library_reindex_api,
+            methods=["POST"],
+        ),
+        Route(
+            "/api/library/jobs/{job_id}", library_job_api, methods=["GET"]
+        ),
         Route("/api/sources", sources_api, methods=["GET"]),
         Route("/api/version", version_api, methods=["GET"]),
         Mount("/static", app=StaticFiles(directory=STATIC_ROOT), name="static"),
@@ -374,6 +580,11 @@ def create_app(
             app=StaticFiles(directory=LITERATURE),
             name="sources-literature",
         ),
+        Mount(
+            "/library-files",
+            app=StaticFiles(directory=library.literature_root),
+            name="library-files",
+        ),
     ]
     app = Starlette(
         debug=False,
@@ -385,6 +596,7 @@ def create_app(
         lifespan=lifespan,
     )
     app.state.agent_adapter = adapter
+    app.state.library_service = library
     return app
 
 

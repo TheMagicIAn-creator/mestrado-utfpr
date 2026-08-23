@@ -7,11 +7,11 @@
   <meta name="theme-color" content="#f7f8fa">
   <title>ALIAdo</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="/static/vendor/katex/katex.min.css?v=3.2.0">
-  <link rel="stylesheet" href="/static/styles.css?v=3.2.0">
-  <script defer src="/static/vendor/katex/katex.min.js?v=3.2.0"></script>
-  <script defer src="/static/vendor/katex/auto-render.min.js?v=3.2.0"></script>
-  <script defer src="/static/app.js?v=3.2.0"></script>
+  <link rel="stylesheet" href="/static/vendor/katex/katex.min.css?v=3.3.0">
+  <link rel="stylesheet" href="/static/styles.css?v=3.3.0">
+  <script defer src="/static/vendor/katex/katex.min.js?v=3.3.0"></script>
+  <script defer src="/static/vendor/katex/auto-render.min.js?v=3.3.0"></script>
+  <script defer src="/static/app.js?v=3.3.0"></script>
   <script async id="lucide-runtime" src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -38,7 +38,7 @@
         <button class="nav-item" type="button" data-view="results">
           <i data-lucide="chart-no-axes-combined" aria-hidden="true"></i><span>Resultados</span>
         </button>
-        <button class="nav-item" type="button" data-view="sources">
+        <button class="nav-item" type="button" data-view="library">
           <i data-lucide="library" aria-hidden="true"></i><span>Biblioteca</span>
         </button>
       </nav>
@@ -121,6 +121,13 @@
           <div class="composer-region">
             <div class="stream-status" id="stream-status" role="status" aria-live="polite"></div>
             <div class="attachment-list" id="attachment-list" aria-live="polite"></div>
+            <fieldset class="attachment-policy" id="attachment-policy" hidden>
+              <legend>Destino dos PDFs anexados</legend>
+              <div class="segmented-choice">
+                <label><input type="radio" name="attachment-policy" value="conversation" checked><span>Somente nesta conversa</span></label>
+                <label><input type="radio" name="attachment-policy" value="library"><span>Adicionar à biblioteca</span></label>
+              </div>
+            </fieldset>
             <form class="chat-composer" id="chat-form">
               <label class="icon-button attach-button" for="chat-files" aria-label="Anexar arquivos" title="Anexar arquivos">
                 <i data-lucide="paperclip" aria-hidden="true"></i>
@@ -159,13 +166,13 @@
           </section>
         </section>
 
-        <section class="view research-view" id="view-sources" data-view-panel="sources" aria-labelledby="sources-title" hidden>
+        <section class="view research-view" id="view-library" data-view-panel="library" aria-labelledby="library-title" hidden>
           <header class="workspace-header research-header">
-            <div><p class="section-kicker">Rastreabilidade</p><h1 id="sources-title">Fontes e proveniência</h1></div>
-            <span class="evidence-badge is-source">SHA-256</span>
+            <div><p class="section-kicker">Corpus rastreável</p><h1 id="library-title">Biblioteca acadêmica</h1></div>
+            <button class="header-action" id="library-add" type="button" aria-label="Adicionar fonte" title="Adicionar fonte" hidden><i data-lucide="file-plus-2" aria-hidden="true"></i><span>Adicionar fonte</span></button>
           </header>
-          <div class="panel-loading" data-loading="sources" role="status"><span></span>Carregando fontes</div>
-          <div class="panel-content" id="sources-content"></div>
+          <div class="panel-loading" data-loading="library" role="status"><span></span>Carregando biblioteca</div>
+          <div class="panel-content" id="library-content"></div>
         </section>
       </main>
     </div>
@@ -183,6 +190,43 @@
       </div>
     </div>
     <div class="dialog-canvas" id="dialog-canvas"><img id="dialog-image" alt=""></div>
+  </dialog>
+
+  <dialog class="library-dialog" id="library-add-dialog">
+    <form id="library-add-form">
+      <header class="form-dialog-header">
+        <div><p class="section-kicker">Indexação local</p><h2>Adicionar fonte</h2></div>
+        <button class="icon-button" type="button" data-close-dialog="library-add-dialog" aria-label="Fechar" title="Fechar"><i data-lucide="x" aria-hidden="true"></i></button>
+      </header>
+      <div class="form-dialog-body">
+        <label class="form-field form-field-wide"><span>Arquivo PDF</span><input name="file" type="file" accept="application/pdf,.pdf" required></label>
+        <label class="form-field form-field-wide"><span>Título</span><input name="title" type="text" maxlength="500" placeholder="Detectar do PDF"></label>
+        <label class="form-field form-field-wide"><span>Autores</span><input name="authors" type="text" maxlength="1000" placeholder="Separe autores por ponto e vírgula"></label>
+        <label class="form-field"><span>Ano</span><input name="year" type="number" min="1800" max="2099" placeholder="Detectar"></label>
+        <label class="form-field"><span>Categoria</span><select name="category"><option value="">Classificar automaticamente</option><option value="confiabilidade">Confiabilidade</option><option value="inversores-pv">Inversores PV</option><option value="manutencao">Manutenção</option><option value="ml-preditivo">ML preditivo</option><option value="sinais-eletricos">Sinais elétricos</option></select></label>
+        <label class="form-field"><span>Idioma</span><select name="language"><option value="">Detectar automaticamente</option><option value="pt">Português</option><option value="en">Inglês</option><option value="es">Espanhol</option><option value="fr">Francês</option></select></label>
+      </div>
+      <footer class="form-dialog-actions"><button class="secondary-button" type="button" data-close-dialog="library-add-dialog">Cancelar</button><button class="primary-button" type="submit"><i data-lucide="database" aria-hidden="true"></i><span>Adicionar e indexar</span></button></footer>
+    </form>
+  </dialog>
+
+  <dialog class="library-dialog" id="library-edit-dialog">
+    <form id="library-edit-form">
+      <input name="source_id" type="hidden">
+      <header class="form-dialog-header">
+        <div><p class="section-kicker">Metadados curatoriais</p><h2>Editar fonte</h2></div>
+        <button class="icon-button" type="button" data-close-dialog="library-edit-dialog" aria-label="Fechar" title="Fechar"><i data-lucide="x" aria-hidden="true"></i></button>
+      </header>
+      <div class="form-dialog-body">
+        <label class="form-field form-field-wide"><span>Título</span><input name="title" type="text" maxlength="500" required></label>
+        <label class="form-field form-field-wide"><span>Autores</span><input name="authors" type="text" maxlength="1000" required></label>
+        <label class="form-field"><span>Ano</span><input name="year" type="number" min="1800" max="2099"></label>
+        <label class="form-field"><span>Categoria</span><select name="category" required><option value="confiabilidade">Confiabilidade</option><option value="inversores-pv">Inversores PV</option><option value="manutencao">Manutenção</option><option value="ml-preditivo">ML preditivo</option><option value="sinais-eletricos">Sinais elétricos</option></select></label>
+        <label class="form-field"><span>Idioma</span><select name="language" required><option value="pt">Português</option><option value="en">Inglês</option><option value="es">Espanhol</option><option value="fr">Francês</option><option value="desconhecido">Não identificado</option></select></label>
+      </div>
+      <p class="form-dialog-note">Metadados editados ficam pendentes de reindexação para atualizar a busca.</p>
+      <footer class="form-dialog-actions"><button class="secondary-button" type="button" data-close-dialog="library-edit-dialog">Cancelar</button><button class="primary-button" type="submit"><i data-lucide="save" aria-hidden="true"></i><span>Salvar metadados</span></button></footer>
+    </form>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>

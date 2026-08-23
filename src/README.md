@@ -36,6 +36,7 @@ webapp/ -> conhecimento/ -> ml/
 | `agente_recuperacao.py` | Recuperação híbrida e reranking. |
 | `atalhos.py` | Respostas determinísticas anteriores ao RAG. |
 | `base_runtime.py` | Inicialização progressiva do conhecimento. |
+| `catalogo_bibliografico.py` | Catálogo versionado, identidade SHA-256 e metadados das fontes. |
 | `consolidar_memoria.py` | Consolidação de sessões. |
 | `consultas_obsidian.py` | Consultas ao vault. |
 | `embeddings.py` | Backend de embeddings. |

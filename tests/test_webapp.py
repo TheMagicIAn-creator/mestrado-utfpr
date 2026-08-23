@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from io import BytesIO
 from datetime import datetime
 from pathlib import Path
 from threading import Event, Thread, Timer
@@ -8,8 +9,10 @@ from time import monotonic
 from types import SimpleNamespace
 
 import pytest
+from pypdf import PdfWriter
 from starlette.testclient import TestClient
 
+from src.conhecimento.catalogo_bibliografico import salvar_catalogo
 from src.webapp.agent_adapter import (
     MAX_ATTACHMENT_BYTES,
     AgentAdapter,
@@ -25,6 +28,7 @@ from src.webapp.contracts import (
     sources_contract,
 )
 from src.webapp.rendering import render_agent_markdown
+from src.webapp.library_service import LibraryService
 from src.webapp.scientific_context import scientific_context_for
 from src.webapp.session_journal import SessionJournal
 
@@ -174,6 +178,140 @@ def test_fontes_expoem_dataset_pdf_e_manifestos(client):
     assert len(data["separation_rules"]) == 4
 
 
+def test_biblioteca_expoe_todos_os_pdfs_e_trechos_sem_contar_manifesto(client):
+    response = client.get("/api/library")
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["summary"]["documents"] == 44
+    assert data["summary"]["indexed_chunks"] == 12556
+    assert data["summary"]["portable_index_records"] == 12557
+    assert len(data["documents"]) == 44
+    assert all(item["url"].startswith("/library-files/") for item in data["documents"])
+    assert data["write_policy"]["git_automation"] is False
+
+
+def _web_library(tmp_path):
+    root = tmp_path / "literatura"
+    root.mkdir(parents=True)
+    catalog = root / "catalogo.json"
+    salvar_catalogo(
+        catalog,
+        {
+            "schema_version": 1,
+            "catalog_id": "web-test",
+            "source_index": {},
+            "summary": {
+                "documents": 0,
+                "indexed_chunks": 0,
+                "portable_index_records": 0,
+                "categories": {},
+                "languages": {},
+                "metadata_warnings": 0,
+            },
+            "documents": [],
+        },
+    )
+    return LibraryService(
+        catalog_path=catalog,
+        literature_root=root,
+        chroma_path=tmp_path / "chroma",
+        snapshot_path=tmp_path / "snapshot.jsonl.gz",
+        staging_root=tmp_path / "staging",
+        start_jobs=False,
+        model_factory=lambda: object(),
+        indexer=lambda *_args, **_kwargs: {"sucesso": True, "n_chunks": 1},
+        snapshot_exporter=lambda: {
+            "schema_version": 1,
+            "n_chunks": 1,
+            "hash_corpus_sha256": "c" * 64,
+            "gerado_em_utc": "2026-08-22T00:00:00+00:00",
+        },
+    )
+
+
+def _web_pdf():
+    writer = PdfWriter()
+    writer.add_blank_page(width=200, height=200)
+    stream = BytesIO()
+    writer.write(stream)
+    return stream.getvalue()
+
+
+def test_biblioteca_permite_escrita_apenas_em_loopback(tmp_path):
+    library = _web_library(tmp_path)
+    app = create_app(
+        AgentAdapter(answerer=lambda *_args: {"answer": "ok"}),
+        warm_on_startup=False,
+        library_service=library,
+    )
+    with TestClient(app, base_url="http://127.0.0.1") as local:
+        assert local.get("/api/library").json()["writable"] is True
+        response = local.post(
+            "/api/library",
+            data={
+                "title": "Fonte local",
+                "authors": "Rodolfo Torres",
+                "year": "2026",
+                "category": "confiabilidade",
+                "language": "pt",
+            },
+            files={"file": ("fonte.pdf", _web_pdf(), "application/pdf")},
+        )
+        assert response.status_code == 202
+        job_id = response.json()["job"]["job_id"]
+        assert local.get(f"/api/library/jobs/{job_id}").json()["job"]["state"] == "queued"
+
+
+def test_biblioteca_bloqueia_host_publico_origem_cruzada_e_nuvem(monkeypatch, tmp_path):
+    public_library = _web_library(tmp_path / "public")
+    public_app = create_app(
+        AgentAdapter(answerer=lambda *_args: {"answer": "ok"}),
+        warm_on_startup=False,
+        library_service=public_library,
+    )
+    with TestClient(public_app, base_url="https://example.com") as public:
+        denied = public.post(
+            "/api/library",
+            files={"file": ("fonte.pdf", _web_pdf(), "application/pdf")},
+        )
+        assert denied.status_code == 403
+
+    origin_library = _web_library(tmp_path / "origin")
+    origin_app = create_app(
+        AgentAdapter(answerer=lambda *_args: {"answer": "ok"}),
+        warm_on_startup=False,
+        library_service=origin_library,
+    )
+    with TestClient(origin_app, base_url="http://127.0.0.1") as local:
+        denied = local.post(
+            "/api/library",
+            headers={"Origin": "https://example.com"},
+            files={"file": ("fonte.pdf", _web_pdf(), "application/pdf")},
+        )
+        assert denied.status_code == 403
+        malformed = local.post(
+            "/api/library",
+            headers={"Origin": "http://127.0.0.1:porta-invalida"},
+            files={"file": ("fonte.pdf", _web_pdf(), "application/pdf")},
+        )
+        assert malformed.status_code == 403
+
+    monkeypatch.setenv("AL_IADO_DEPLOYMENT_MODE", "cloud")
+    cloud_library = _web_library(tmp_path / "cloud")
+    cloud_app = create_app(
+        AgentAdapter(answerer=lambda *_args: {"answer": "ok"}),
+        warm_on_startup=False,
+        library_service=cloud_library,
+    )
+    with TestClient(cloud_app, base_url="http://127.0.0.1") as cloud:
+        assert cloud.get("/api/library").json()["writable"] is False
+        assert cloud.post(
+            "/api/library",
+            files={"file": ("fonte.pdf", _web_pdf(), "application/pdf")},
+        ).status_code == 403
+
+
 def test_status_e_barato_e_nao_carrega_contratos(monkeypatch, client):
     import src.webapp.app as web_app
 
@@ -204,7 +342,7 @@ def test_versao_e_entrypoint_sao_canonicos(client):
     assert response.json() == {
         "application": "aliado-web",
         "name": "ALIAdo",
-        "version": "3.2.0",
+        "version": "3.3.0",
         "api_version": 1,
         "interface": "asgi",
     }
