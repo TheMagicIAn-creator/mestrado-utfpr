@@ -509,18 +509,34 @@ def remover_itens_duplicados(
 # INDEXAÇÃO DE LITERATURA
 # ============================================================
 
-def indexar_pdf_unico(caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path) -> dict:
+def indexar_pdf_unico(
+    caminho_pdf: Path,
+    modelo_embeddings,
+    pasta_chromadb: Path,
+    *,
+    forcar: bool = False,
+    metadados_override: dict | None = None,
+) -> dict:
     """Indexa um PDF sob lock compartilhado por todos os processos."""
     from src.conhecimento.index_lock import lock_indexacao
 
     with lock_indexacao():
         return _indexar_pdf_unico_sem_lock(
-            caminho_pdf, modelo_embeddings, pasta_chromadb
+            caminho_pdf,
+            modelo_embeddings,
+            pasta_chromadb,
+            forcar=forcar,
+            metadados_override=metadados_override,
         )
 
 
 def _indexar_pdf_unico_sem_lock(
-    caminho_pdf: Path, modelo_embeddings, pasta_chromadb: Path
+    caminho_pdf: Path,
+    modelo_embeddings,
+    pasta_chromadb: Path,
+    *,
+    forcar: bool = False,
+    metadados_override: dict | None = None,
 ) -> dict:
     """
     Indexa um único PDF no ChromaDB com proteção contra duplicidade.
@@ -553,7 +569,7 @@ def _indexar_pdf_unico_sem_lock(
             metadata={"hnsw:space": "cosine"},
         )
 
-        if documento_ja_indexado(colecao, arquivo_hash):
+        if not forcar and documento_ja_indexado(colecao, arquivo_hash):
             resultado["sucesso"] = True
             resultado["pulou"] = True
             resultado["motivo"] = "PDF já indexado pelo mesmo hash SHA256."
@@ -601,18 +617,12 @@ def _indexar_pdf_unico_sem_lock(
 
         chunks = [it[0] for it in itens]
 
-        removidos = remover_documento_antigo(
-            colecao,
-            nome_arquivo=caminho_pdf.name,
-            arquivo_hash=arquivo_hash,
-        )
-
-        if removidos:
-            print(f"  Removidos {removidos} chunks antigos de {caminho_pdf.name}")
-
+        # A parte cara e falivel ocorre antes da troca. Assim, uma falha de
+        # inferencia nao apaga os chunks ainda validos do documento.
         embeddings = modelo_embeddings.encode(chunks).tolist()
 
-        nome_pasta = caminho_pdf.parent.name
+        override = dict(metadados_override or {})
+        nome_pasta = str(override.get("pasta") or caminho_pdf.parent.name)
         ids = [f"{arquivo_hash}__chunk_{j:05d}" for j in range(len(chunks))]
 
         metadados = [
@@ -627,14 +637,26 @@ def _indexar_pdf_unico_sem_lock(
                 "pagina_rotulo": rotulos_paginas.get(int(itens[j][1]), ""),
                 "trecho": trecho_auditavel(chunks[j]),
                 "chunk_sha1": hashlib.sha1(chunks[j].encode("utf-8", errors="ignore")).hexdigest(),
-                "autor": info_arquivo.get("autor", ""),
-                "titulo": info_arquivo.get("titulo", ""),
-                "ano": info_arquivo.get("ano", ""),
-                "citacao": info_arquivo.get("citacao", caminho_pdf.name),
-                "idioma": idioma,
+                "autor": str(override.get("autor") or info_arquivo.get("autor", "")),
+                "titulo": str(override.get("titulo") or info_arquivo.get("titulo", "")),
+                "ano": str(override.get("ano") or info_arquivo.get("ano", "")),
+                "citacao": str(
+                    override.get("citacao")
+                    or info_arquivo.get("citacao", caminho_pdf.name)
+                ),
+                "idioma": str(override.get("idioma") or idioma),
             }
             for j in range(len(itens))
         ]
+
+        removidos = remover_documento_antigo(
+            colecao,
+            nome_arquivo=caminho_pdf.name,
+            arquivo_hash=arquivo_hash,
+        )
+
+        if removidos:
+            print(f"  Removidos {removidos} chunks antigos de {caminho_pdf.name}")
 
         upsert_em_lotes(
             colecao=colecao,

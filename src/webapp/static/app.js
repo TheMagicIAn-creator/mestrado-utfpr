@@ -4,11 +4,11 @@ const API = {
   e3: "/api/results/e3",
   e2: "/api/results/e2",
   reliability: "/api/reliability",
-  sources: "/api/sources",
+  library: "/api/library",
   render: "/api/render",
 };
 
-const VIEW_NAMES = new Set(["chat", "results", "sources"]);
+const VIEW_NAMES = new Set(["chat", "results", "library"]);
 const RESULT_TABS = new Set(["e3", "e2", "reliability"]);
 const STORAGE_KEY = "aliado:sessions:canonical";
 const THEME_KEY = "aliado:theme";
@@ -20,6 +20,7 @@ const state = {
   sessions: [],
   currentSessionId: null,
   files: [],
+  attachmentPolicy: "conversation",
   controller: null,
   cache: {},
   figures: new Map(),
@@ -31,6 +32,9 @@ const state = {
     timezone: "America/Sao_Paulo",
   },
   chartLoader: null,
+  libraryData: null,
+  libraryFilters: { query: "", category: "", language: "" },
+  libraryJobs: new Map(),
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -263,8 +267,8 @@ function loadScript(url) {
 
 function ensureResultsCharts() {
   if (!state.chartLoader) {
-    state.chartLoader = loadScript("/static/vendor/d3/d3.min.js?v=3.2.0")
-      .then(() => loadScript("/static/results-charts.js?v=3.2.0"));
+    state.chartLoader = loadScript("/static/vendor/d3/d3.min.js?v=3.3.0")
+      .then(() => loadScript("/static/results-charts.js?v=3.3.0"));
   }
   return state.chartLoader;
 }
@@ -480,6 +484,76 @@ function previousHistory(session) {
   }));
 }
 
+async function apiJson(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: { Accept: "application/json", ...(options.headers || {}) },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload.detail || `Falha HTTP ${response.status}`);
+    error.code = payload.error;
+    error.payload = payload;
+    throw error;
+  }
+  return payload;
+}
+
+const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+async function trackLibraryJob(initialJob) {
+  let job = initialJob;
+  state.libraryJobs.set(job.job_id, job);
+  renderLibraryJobs();
+  while (["queued", "running"].includes(job.state)) {
+    await wait(1200);
+    try {
+      const payload = await apiJson(`/api/library/jobs/${encodeURIComponent(job.job_id)}`);
+      job = payload.job;
+      state.libraryJobs.set(job.job_id, job);
+      renderLibraryJobs();
+    } catch (error) {
+      toast(error.message);
+      return;
+    }
+  }
+  if (job.state === "completed") {
+    toast(job.warnings?.length ? "Fonte indexada com ressalva no snapshot." : "Fonte adicionada à biblioteca.");
+  } else {
+    toast(`A fonte não foi indexada: ${job.message}`);
+  }
+  state.cache.library = null;
+  if (state.currentView === "library") await loadPanel("library", true);
+}
+
+async function queuePdfFile(file, metadata = {}) {
+  const form = new FormData();
+  form.append("file", file, file.name);
+  Object.entries(metadata).forEach(([key, value]) => {
+    if (value !== "" && value != null) form.append(key, value);
+  });
+  const payload = await apiJson(API.library, { method: "POST", body: form });
+  void trackLibraryJob(payload.job);
+  return payload.job;
+}
+
+async function queueAttachedPdfs() {
+  const pdfs = state.files.filter((file) => file.name.toLocaleLowerCase().endsWith(".pdf"));
+  if (!pdfs.length || state.attachmentPolicy !== "library") return;
+  updateStreamStatus(`Adicionando ${pdfs.length} PDF${pdfs.length > 1 ? "s" : ""} à biblioteca`);
+  for (const file of pdfs) {
+    try {
+      await queuePdfFile(file);
+    } catch (error) {
+      if (error.code === "duplicate_pdf") {
+        toast(`${file.name} já está na biblioteca.`);
+      } else {
+        toast(`Não foi possível catalogar ${file.name}: ${error.message}`);
+      }
+    }
+  }
+}
+
 async function sendMessage(rawMessage) {
   if (state.controller) return;
   const input = $("#chat-input");
@@ -507,6 +581,8 @@ async function sendMessage(rawMessage) {
   state.controller = controller;
   setStreaming(true);
   updateStreamStatus("Preparando contexto");
+
+  await queueAttachedPdfs();
 
   let body;
   let headers = {};
@@ -578,6 +654,9 @@ async function sendMessage(rawMessage) {
   } finally {
     state.controller = null;
     state.files = [];
+    state.attachmentPolicy = "conversation";
+    const defaultPolicy = $('input[name="attachment-policy"][value="conversation"]');
+    if (defaultPolicy) defaultPolicy.checked = true;
     renderAttachments();
     setStreaming(false);
     input.focus();
@@ -586,6 +665,7 @@ async function sendMessage(rawMessage) {
 
 function renderAttachments() {
   const list = $("#attachment-list");
+  const policy = $("#attachment-policy");
   list.innerHTML = "";
   state.files.forEach((file, index) => {
     const chip = document.createElement("div");
@@ -594,6 +674,7 @@ function renderAttachments() {
     $("span", chip).textContent = file.name;
     list.appendChild(chip);
   });
+  policy.hidden = !state.files.some((file) => file.name.toLocaleLowerCase().endsWith(".pdf"));
   icons();
 }
 
@@ -801,27 +882,136 @@ function renderReliability(data) {
     ${publicationDetails(data, "Curvas temporais, taxas rastreáveis, metodologia e relatório acadêmico.")}`;
 }
 
-function renderSources(data) {
-  const datasetHashes = Object.values(data.dataset.raw_files_sha256);
-  return `
-    <section class="summary-band">
-      <h2>Dataset experimental único</h2>
-      <p><a href="${escapeHtml(data.dataset.url)}" target="_blank" rel="noreferrer">${escapeHtml(data.dataset.name)}</a> · ${data.dataset.experiments} ensaios · DOI ${escapeHtml(data.dataset.doi)}</p>
-      <div class="boundary-note"><i data-lucide="fingerprint"></i><span>16 arquivos brutos verificados por SHA-256; primeiro hash ${escapeHtml(datasetHashes[0])}.</span></div>
-    </section>
-    <section class="section-band">
-      <div class="section-heading"><div><h2>Regras de separação</h2><p>Limites que governam a interpretação dos resultados.</p></div></div>
-      <div class="rule-list">${data.separation_rules.map((rule) => `<div class="rule-row"><span>${escapeHtml(rule)}</span><i data-lucide="check-circle-2" aria-hidden="true"></i></div>`).join("")}</div>
-    </section>
-    <section class="section-band">
-      <div class="section-heading"><div><h2>Fonte de confiabilidade</h2><p>Localização bibliográfica explícita.</p></div></div>
-      <div class="source-list">${data.bibliography.map((source) => `<div class="source-row"><div><strong>${escapeHtml(source.title)}</strong><small>${escapeHtml(source.sha256)} · PDF ${source.pdf_page}, página impressa ${source.printed_page}</small></div><a class="download-link" href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i><span>Abrir PDF</span></a></div>`).join("")}</div>
-    </section>
-    <section class="section-band"><div class="section-heading"><div><h2>Manifestos</h2><p>Proveniência normalizada e hashes dos outputs.</p></div></div>${downloadRows(data.manifests)}</section>
-    <section class="section-band"><div class="section-heading"><div><h2>Relatórios</h2><p>Sínteses metodológicas versionadas.</p></div></div>${downloadRows(data.reports)}</section>`;
+const CATEGORY_LABELS = {
+  "confiabilidade": "Confiabilidade",
+  "inversores-pv": "Inversores PV",
+  "manutencao": "Manutenção",
+  "ml-preditivo": "ML preditivo",
+  "sinais-eletricos": "Sinais elétricos",
+};
+
+const LANGUAGE_LABELS = {
+  pt: "Português",
+  en: "Inglês",
+  es: "Espanhol",
+  fr: "Francês",
+  desconhecido: "Não identificado",
+};
+
+const INDEX_LABELS = {
+  indexed: "Indexada",
+  indexing: "Indexando",
+  metadata_stale: "Metadados pendentes",
+  indexed_snapshot_stale: "Snapshot pendente",
+  index_failed: "Falha no índice",
+  not_indexed: "Não indexada",
+};
+
+function normalizeSearch(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
 }
 
-const RENDERERS = { e3: renderE3, e2: renderE2, reliability: renderReliability, sources: renderSources };
+function renderLibrary(data) {
+  state.libraryData = data;
+  const provenance = data.provenance;
+  const writeNote = data.writable
+    ? "Alterações permanecem locais até revisão em PR."
+    : (data.write_policy.reason || "Biblioteca disponível somente para leitura.");
+  return `
+    <section class="metric-strip library-metrics" aria-label="Resumo da biblioteca">
+      <div class="metric-item"><span>Documentos</span><strong>${data.summary.documents}</strong><small>PDFs por SHA-256</small></div>
+      <div class="metric-item"><span>Trechos indexados</span><strong>${Number(data.summary.indexed_chunks).toLocaleString("pt-BR")}</strong><small>manifesto excluído da contagem</small></div>
+      <div class="metric-item"><span>Categorias</span><strong>${Object.keys(data.summary.categories).length}</strong><small>corpus acadêmico</small></div>
+      <div class="metric-item"><span>Alertas</span><strong>${data.summary.metadata_warnings}</strong><small>extração, sem alterar PDFs</small></div>
+    </section>
+    <section class="library-control-band">
+      <div class="library-toolbar">
+        <label class="library-search"><span class="sr-only">Pesquisar biblioteca</span><i data-lucide="search" aria-hidden="true"></i><input id="library-query" type="search" value="${escapeHtml(state.libraryFilters.query)}" placeholder="Título, autor, ano ou arquivo"></label>
+        <label><span class="sr-only">Filtrar por categoria</span><select id="library-category"><option value="">Todas as categorias</option>${data.categories.map((value) => `<option value="${value}"${state.libraryFilters.category === value ? " selected" : ""}>${CATEGORY_LABELS[value] || escapeHtml(value)}</option>`).join("")}</select></label>
+        <label><span class="sr-only">Filtrar por idioma</span><select id="library-language"><option value="">Todos os idiomas</option>${data.languages.map((value) => `<option value="${value}"${state.libraryFilters.language === value ? " selected" : ""}>${LANGUAGE_LABELS[value] || escapeHtml(value)}</option>`).join("")}</select></label>
+        <output id="library-result-count" aria-live="polite"></output>
+      </div>
+      <p class="library-policy"><i data-lucide="shield-check" aria-hidden="true"></i><span>${escapeHtml(writeNote)}</span></p>
+      <div class="library-jobs" id="library-jobs" aria-live="polite"></div>
+      <div class="library-list" id="library-list"></div>
+    </section>
+    <details class="method-details library-provenance">
+      <summary>Proveniência científica e regras de separação</summary>
+      <div class="provenance-body">
+        <h3>Dataset experimental único</h3>
+        <p><a href="${escapeHtml(provenance.dataset.url)}" target="_blank" rel="noreferrer">${escapeHtml(provenance.dataset.name)}</a> · ${provenance.dataset.experiments} ensaios · DOI ${escapeHtml(provenance.dataset.doi)}</p>
+        <div class="rule-list">${provenance.separation_rules.map((rule) => `<div class="rule-row"><span>${escapeHtml(rule)}</span><i data-lucide="check-circle-2" aria-hidden="true"></i></div>`).join("")}</div>
+        <h3>Manifestos e relatórios</h3>
+        ${downloadRows([...provenance.manifests, ...provenance.reports])}
+      </div>
+    </details>`;
+}
+
+function renderLibraryDocuments() {
+  const container = $("#library-list");
+  if (!container || !state.libraryData) return;
+  const query = normalizeSearch(state.libraryFilters.query);
+  const documents = state.libraryData.documents.filter((document) => {
+    const searchable = normalizeSearch([
+      document.title,
+      document.authors.join(" "),
+      document.year || "s.d.",
+      document.file_name,
+    ].join(" "));
+    return (!query || searchable.includes(query))
+      && (!state.libraryFilters.category || document.category === state.libraryFilters.category)
+      && (!state.libraryFilters.language || document.language === state.libraryFilters.language);
+  });
+  $("#library-result-count").textContent = `${documents.length} de ${state.libraryData.documents.length}`;
+  if (!documents.length) {
+    container.innerHTML = '<div class="empty-library"><i data-lucide="search-x" aria-hidden="true"></i><p>Nenhuma fonte corresponde aos filtros.</p></div>';
+    icons();
+    return;
+  }
+  container.innerHTML = documents.map((document) => {
+    const authors = document.authors.join("; ");
+    const warnings = document.extraction_warnings?.length
+      ? `<span class="metadata-warning" title="${escapeHtml(document.extraction_warnings.join("; "))}"><i data-lucide="triangle-alert" aria-hidden="true"></i><span>Revisar extração</span></span>`
+      : "";
+    const writeActions = state.libraryData.writable ? `
+      <button class="icon-button" type="button" data-edit-source="${document.source_id}" aria-label="Editar metadados" title="Editar metadados"><i data-lucide="pencil" aria-hidden="true"></i></button>
+      <button class="icon-button" type="button" data-reindex-source="${document.source_id}" aria-label="Reindexar fonte" title="Reindexar fonte"><i data-lucide="refresh-cw" aria-hidden="true"></i></button>` : "";
+    return `<article class="library-row" data-source-id="${document.source_id}">
+      <div class="library-document-main">
+        <h2>${escapeHtml(document.title)}</h2>
+        <p>${escapeHtml(authors)} · ${document.year || "s.d."}</p>
+        <div class="library-document-meta"><span>${CATEGORY_LABELS[document.category] || escapeHtml(document.category)}</span><span>${LANGUAGE_LABELS[document.language] || escapeHtml(document.language)}</span><span>${Number(document.chunk_count).toLocaleString("pt-BR")} trechos</span><span data-index-status="${escapeHtml(document.index_status)}">${INDEX_LABELS[document.index_status] || escapeHtml(document.index_status)}</span>${warnings}</div>
+      </div>
+      <div class="library-row-actions">${writeActions}<a class="icon-button" href="${escapeHtml(document.url)}" target="_blank" rel="noreferrer" aria-label="Abrir PDF" title="Abrir PDF"><i data-lucide="external-link" aria-hidden="true"></i></a></div>
+    </article>`;
+  }).join("");
+  icons();
+}
+
+function renderLibraryJobs() {
+  const container = $("#library-jobs");
+  if (!container) return;
+  const jobs = [...state.libraryJobs.values()].slice(-4).reverse();
+  container.innerHTML = jobs.map((job) => {
+    const progress = Math.max(0, Math.min(100, Number(job.progress) || 0));
+    return `<div class="library-job" data-job-state="${escapeHtml(job.state)}"><div><strong>${job.kind === "add" ? "Nova fonte" : "Reindexação"}</strong><span>${escapeHtml(job.message)}</span></div><div class="job-progress" role="progressbar" aria-label="Progresso da indexação" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><span style="width:${progress}%"></span></div></div>`;
+  }).join("");
+}
+
+function openLibraryEdit(sourceId) {
+  const document = state.libraryData?.documents.find((item) => item.source_id === sourceId);
+  if (!document) return;
+  const form = $("#library-edit-form");
+  form.elements.source_id.value = document.source_id;
+  form.elements.title.value = document.title;
+  form.elements.authors.value = document.authors.join("; ");
+  form.elements.year.value = document.year || "";
+  form.elements.category.value = document.category;
+  form.elements.language.value = document.language;
+  $("#library-edit-dialog").showModal();
+}
+
+const RENDERERS = { e3: renderE3, e2: renderE2, reliability: renderReliability, library: renderLibrary };
 
 async function loadPanel(view, force = false) {
   const content = $(`#${view}-content`);
@@ -839,6 +1029,11 @@ async function loadPanel(view, force = false) {
     const data = await response.json();
     state.cache[view] = data;
     content.innerHTML = RENDERERS[view](data);
+    if (view === "library") {
+      $("#library-add").hidden = !data.writable;
+      renderLibraryDocuments();
+      renderLibraryJobs();
+    }
     typesetMath(content);
     if (RESULT_TABS.has(view)) {
       await ensureResultsCharts();
@@ -976,6 +1171,26 @@ function bindEvents() {
     const reload = event.target.closest("[data-reload-panel]");
     if (reload) loadPanel(reload.dataset.reloadPanel, true);
 
+    const editSource = event.target.closest("[data-edit-source]");
+    if (editSource) openLibraryEdit(editSource.dataset.editSource);
+
+    const reindexSource = event.target.closest("[data-reindex-source]");
+    if (reindexSource) {
+      try {
+        const payload = await apiJson(
+          `/api/library/${encodeURIComponent(reindexSource.dataset.reindexSource)}/reindex`,
+          { method: "POST" },
+        );
+        void trackLibraryJob(payload.job);
+        toast("Reindexação colocada na fila local.");
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+
+    const closeDialog = event.target.closest("[data-close-dialog]");
+    if (closeDialog) $(`#${closeDialog.dataset.closeDialog}`).close();
+
     const copy = event.target.closest("[data-copy-index]");
     if (copy) {
       const message = currentSession()?.messages[Number(copy.dataset.copyIndex)];
@@ -1008,11 +1223,34 @@ function bindEvents() {
     renderAttachments();
     event.target.value = "";
   });
+  $$('input[name="attachment-policy"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      if (input.checked) state.attachmentPolicy = input.value;
+    });
+  });
+
+  document.addEventListener("input", (event) => {
+    if (event.target.id === "library-query") {
+      state.libraryFilters.query = event.target.value;
+      renderLibraryDocuments();
+    }
+  });
+  document.addEventListener("change", (event) => {
+    if (event.target.id === "library-category") {
+      state.libraryFilters.category = event.target.value;
+      renderLibraryDocuments();
+    }
+    if (event.target.id === "library-language") {
+      state.libraryFilters.language = event.target.value;
+      renderLibraryDocuments();
+    }
+  });
 
   $("#new-chat").addEventListener("click", () => createSession());
   $(".mobile-new-chat").addEventListener("click", () => createSession());
   $("#clear-chat").addEventListener("click", () => createSession());
   $("#export-chat").addEventListener("click", exportConversation);
+  $("#library-add").addEventListener("click", () => $("#library-add-dialog").showModal());
   $("#sidebar-open").addEventListener("click", () => document.body.classList.add("sidebar-open"));
   $("#sidebar-close").addEventListener("click", closeSidebar);
   $("#sidebar-scrim").addEventListener("click", closeSidebar);
@@ -1026,6 +1264,65 @@ function bindEvents() {
   $("#zoom-out").addEventListener("click", () => { state.zoom -= 0.2; updateZoom(); });
   $("#image-dialog").addEventListener("click", (event) => {
     if (event.target === $("#image-dialog")) $("#image-dialog").close();
+  });
+
+  $("#library-add-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    const file = values.get("file");
+    if (!(file instanceof File) || !file.size) {
+      toast("Selecione um PDF.");
+      return;
+    }
+    const submit = $('button[type="submit"]', form);
+    submit.disabled = true;
+    try {
+      await queuePdfFile(file, {
+        title: values.get("title"),
+        authors: values.get("authors"),
+        year: values.get("year"),
+        category: values.get("category"),
+        language: values.get("language"),
+      });
+      form.reset();
+      $("#library-add-dialog").close();
+      toast("Fonte recebida; indexação em andamento.");
+    } catch (error) {
+      toast(error.code === "duplicate_pdf" ? "Este PDF já está na biblioteca." : error.message);
+    } finally {
+      submit.disabled = false;
+    }
+  });
+
+  $("#library-edit-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    const sourceId = values.get("source_id");
+    const submit = $('button[type="submit"]', form);
+    submit.disabled = true;
+    try {
+      await apiJson(`/api/library/${encodeURIComponent(sourceId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: values.get("title"),
+          authors: values.get("authors"),
+          year: values.get("year") || null,
+          category: values.get("category"),
+          language: values.get("language"),
+        }),
+      });
+      $("#library-edit-dialog").close();
+      state.cache.library = null;
+      await loadPanel("library", true);
+      toast("Metadados salvos; reindexe a fonte para atualizar a busca.");
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      submit.disabled = false;
+    }
   });
 
   window.addEventListener("hashchange", () => activateView(location.hash.slice(1), false));

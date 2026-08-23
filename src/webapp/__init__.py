@@ -2,5 +2,5 @@
 
 APP_ID = "aliado-web"
 APP_NAME = "ALIAdo"
-APP_VERSION = "3.2.0"
+APP_VERSION = "3.3.0"
 API_VERSION = 1
