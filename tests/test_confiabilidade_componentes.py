@@ -20,6 +20,7 @@ from src.ml.confiabilidade_componentes import (
     reliability,
     scenario_table,
 )
+from src.ml.graficos_confiabilidade import generate_all
 from src.ml.proveniencia import funcao_de_hash_para
 
 
@@ -115,6 +116,18 @@ def test_published_vector_and_raster_figures_are_valid_files():
     for stem in stems:
         assert (output / f"{stem}.pdf").read_bytes().startswith(b"%PDF-")
         assert (output / f"{stem}.png").read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_all_reliability_figures_are_generated_from_canonical_tables(tmp_path):
+    paths = generate_all(
+        tmp_path,
+        curves=component_curves(horizon_years=2, n_points=9),
+        scenarios=scenario_table(),
+    )
+
+    assert len(paths) == 10
+    assert {path.suffix for path in paths} == {".pdf", ".png"}
+    assert all(path.is_file() and path.stat().st_size > 0 for path in paths)
 
 
 @pytest.mark.parametrize("bad_time", [-1.0, np.nan, np.inf])
