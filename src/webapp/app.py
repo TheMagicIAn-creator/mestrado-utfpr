@@ -43,7 +43,6 @@ from src.webapp.contracts import (
     RELIABILITY,
     ContratoWebInvalido,
     contracts_status,
-    e2_contract,
     e3_contract,
     reliability_contract,
     sources_contract,
@@ -113,10 +112,6 @@ async def _contract_response(loader) -> JSONResponse:
 
 async def e3_api(_request: Request) -> JSONResponse:
     return await _contract_response(e3_contract)
-
-
-async def e2_api(_request: Request) -> JSONResponse:
-    return await _contract_response(e2_contract)
 
 
 async def reliability_api(_request: Request) -> JSONResponse:
@@ -334,7 +329,7 @@ def create_app(
                 {
                     "request_id": request_id,
                     "phase": "recebido",
-                    "message": "Preparando contexto",
+                    "message": "Preparando resposta",
                 },
             )
             try:
@@ -343,27 +338,50 @@ def create_app(
                     {
                         "request_id": request_id,
                         "phase": "consultando",
-                        "message": (
-                            "Respondendo localmente"
-                            if not attachments and len(str(message)) < 80
-                            else "Consultando base acadêmica"
-                        ),
+                        "message": "Consultando contexto acadêmico",
                     },
                 )
-                response = await run_in_threadpool(
-                    adapter.answer,
-                    message,
-                    history,
-                    attachments,
-                    session_id,
+                chunks: asyncio.Queue[str] = asyncio.Queue()
+                loop = asyncio.get_running_loop()
+
+                def publish_chunk(text: str) -> None:
+                    if text:
+                        loop.call_soon_threadsafe(chunks.put_nowait, text)
+
+                answer_task = asyncio.create_task(
+                    run_in_threadpool(
+                        adapter.answer,
+                        message,
+                        history,
+                        attachments,
+                        session_id,
+                        on_chunk=publish_chunk,
+                    )
                 )
-                answer = str(response["answer"])
-                for chunk in _text_chunks(answer):
+                streamed = False
+                while not answer_task.done() or not chunks.empty():
                     if await request.is_disconnected():
                         _LOGGER.info("chat cancelado request_id=%s", request_id)
+                        answer_task.cancel()
                         return
+                    try:
+                        chunk = await asyncio.wait_for(chunks.get(), timeout=0.1)
+                    except TimeoutError:
+                        continue
+                    streamed = True
                     yield _sse("delta", {"request_id": request_id, "text": chunk})
-                    await asyncio.sleep(0.008)
+
+                response = await answer_task
+                answer = str(response["answer"])
+                if not streamed:
+                    for chunk in _text_chunks(answer):
+                        if await request.is_disconnected():
+                            _LOGGER.info("chat cancelado request_id=%s", request_id)
+                            return
+                        yield _sse(
+                            "delta", {"request_id": request_id, "text": chunk}
+                        )
+                        await asyncio.sleep(0.008)
                 elapsed_ms = round((perf_counter() - started) * 1000, 1)
                 done = {
                     **response,
@@ -545,7 +563,6 @@ def create_app(
         Route("/api/render", render_api, methods=["POST"]),
         Route("/api/status", status_api, methods=["GET"]),
         Route("/api/health", status_api, methods=["GET"]),
-        Route("/api/results/e2", e2_api, methods=["GET"]),
         Route("/api/results/e3", e3_api, methods=["GET"]),
         Route("/api/reliability", reliability_api, methods=["GET"]),
         Route("/api/library", library_api, methods=["GET"]),

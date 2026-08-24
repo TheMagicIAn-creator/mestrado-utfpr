@@ -109,46 +109,6 @@ def e3_discrimination_series(path: Path, maximum_points: int = 201) -> dict:
     }
 
 
-def e2_detection_series(path: Path, model_names: dict[str, str]) -> list[dict]:
-    return [
-        {
-            "model": row["model"],
-            "model_name": model_names[row["model"]],
-            "component": row["component"],
-            "component_name": row["component_name"],
-            "npr": int(row["npr"]),
-            "magnitude": float(row["magnitude"]),
-            "detection_probability": float(row["detection_probability"]),
-            "ci95_low": float(row["ci95_low"]),
-            "ci95_high": float(row["ci95_high"]),
-            "n_trajectories": int(row["n_trajectories"]),
-        }
-        for row in _rows(path)
-    ]
-
-
-def e2_empirical_series(
-    path: Path,
-    model_names: dict[str, str],
-    component_names: dict[str, str],
-) -> list[dict]:
-    return [
-        {
-            "model": row["model"],
-            "model_name": model_names[row["model"]],
-            "component": row["component"],
-            "component_name": component_names[row["component"]],
-            "magnitude": float(row["magnitude"]),
-            "at_risk": int(row["at_risk"]),
-            "events": int(row["events"]),
-            "survival": float(row["survival"]),
-            "cumulative_detection": float(row["cumulative_detection"]),
-            "discrete_hazard": float(row["discrete_hazard"]),
-        }
-        for row in _rows(path)
-    ]
-
-
 def reliability_curve_series(
     path: Path,
     scenario_names: dict[str, str],
@@ -188,8 +148,6 @@ def reliability_curve_series(
 
 
 __all__ = [
-    "e2_detection_series",
-    "e2_empirical_series",
     "e3_discrimination_series",
     "reliability_curve_series",
 ]

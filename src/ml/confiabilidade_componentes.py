@@ -2,7 +2,7 @@
 
 O GPVS-Faults não contém tempos de vida. Este módulo implementa somente
 cenários de sensibilidade exponenciais rastreáveis ao TCC de Torres (2024),
-sem estimar parâmetros físicos a partir do detector E2 ou da validação E3.
+sem estimar parâmetros físicos a partir dos detectores ou da validação E3.
 """
 
 from __future__ import annotations
@@ -61,6 +61,55 @@ class ReliabilityScenario:
             "time_unit_primary": "hour",
             "hours_per_year": HOURS_PER_YEAR,
         }
+
+
+@dataclass(frozen=True)
+class FmecaComponent:
+    component_id: str
+    component_name: str
+    function: str
+    severity: int
+    occurrence: int
+    field_detection: int
+
+    @property
+    def npr(self) -> int:
+        return self.severity * self.occurrence * self.field_detection
+
+    def as_record(self) -> dict:
+        return {
+            **asdict(self),
+            "npr": self.npr,
+            "detection_meaning": "dificuldade de detecção no processo de manutenção",
+        }
+
+
+FMECA_COMPONENTS = (
+    FmecaComponent(
+        component_id="contator_ac",
+        component_name="Contator AC",
+        function="Conectar a saída CA do inversor à rede",
+        severity=5,
+        occurrence=7,
+        field_detection=9,
+    ),
+    FmecaComponent(
+        component_id="igbt",
+        component_name="IGBT",
+        function="Realizar o chaveamento da conversão CC-CA",
+        severity=5,
+        occurrence=6,
+        field_detection=3,
+    ),
+    FmecaComponent(
+        component_id="fusivel_ac",
+        component_name="Fusível AC",
+        function="Proteger o lado CA contra sobrecorrente",
+        severity=5,
+        occurrence=3,
+        field_detection=2,
+    ),
+)
 
 
 SCENARIOS = (
@@ -137,7 +186,7 @@ SCENARIOS = (
         ticket_share=None,
         caveat=(
             "Taxa transcrita para o subcomponente genérico fusível, adaptada de "
-            "Colli (2015); não foi medida no GPVS-Faults."
+            "Colli (2015); não representa uma medição de campo desta pesquisa."
         ),
     ),
 )
@@ -231,10 +280,9 @@ def component_curves(
 
 def methodology() -> dict:
     return {
-        "schema_version": 2,
+        "schema_version": 4,
         "status": "bibliographic_component_sensitivity",
-        "experimental_dataset": "GPVS-Faults",
-        "dataset_role": "detector_evaluation_only_not_physical_reliability",
+        "evidence_scope": "bibliographic_reliability_only",
         "time_unit_primary": "hour",
         "hours_per_year": HOURS_PER_YEAR,
         "formulas": {
@@ -243,12 +291,24 @@ def methodology() -> dict:
             "failure_density": "f(t) = lambda*exp(-lambda*t)",
             "hazard": "h(t) = lambda",
         },
+        "fmeca": {
+            "formula": "NPR = S * O * D_campo",
+            "source_pdf": SOURCE_PDF,
+            "pdf_page": 35,
+            "printed_page": 34,
+            "source_table": "Tabela 3.3",
+            "components": [component.as_record() for component in FMECA_COMPONENTS],
+            "boundary": (
+                "D_campo mede dificuldade de detecção na manutenção e não é uma "
+                "métrica dos Autoencoders."
+            ),
+        },
         "physical_weibull": {
-            "status": "not_estimable_from_current_dataset",
+            "status": "not_estimable_from_available_evidence",
             "beta": None,
             "eta": None,
             "reason": (
-                "Ausência de tempos de vida, exposição e censura por ativo no GPVS-Faults"
+                "Ausência de tempos individuais de falha, exposição e censura por ativo"
             ),
         },
         "scenarios": [scenario.as_record() for scenario in SCENARIOS],
@@ -256,6 +316,8 @@ def methodology() -> dict:
 
 
 __all__ = [
+    "FMECA_COMPONENTS",
+    "FmecaComponent",
     "HOURS_PER_YEAR",
     "INVERTER_RATE_PER_HOUR",
     "ReliabilityScenario",

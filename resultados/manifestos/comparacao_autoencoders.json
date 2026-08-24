@@ -1,22 +1,20 @@
 {
   "manifest_version": 2,
   "stage": "comparacao_autoencoders",
-  "created_at": "2026-08-21T02:26:44.314955-03:00",
-  "git_commit": "903b4fd8f9ef712c2a9f6b7e68d9c533178e517e",
+  "created_at": "2026-08-23T23:40:21.458508-03:00",
+  "git_commit": "de5dbf4a3c4799c6f3743c8534fd713f152325d3",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
-  "code_sha256": "cc67530b59a769eeafa5e0e2778762a327fecf143ebef5d1d0dbaaf1e0eacf7f",
+  "code_sha256": "c771f6c0c746434ac860dee09e25d356c69321342805c2617f09e9ee94287f49",
   "code_dependencies": {
     "dataset": "c7382e02df1002a9781fd2e0029977c588aa6cb570e616892c2ec08627c06b6e",
     "models": "6231e0edee2154f7329bfee67eaf6e5436d77cd01ebab816355e537e5e5b6974",
     "training": "1e931807beb29d6b55278d178e4dbda047b3300162b684dfc682c48622ce899d",
-    "evaluation": "b16cd5c1ea020cd758f295fb5f64ba089bfe6bad01bbca1d45f5376cb2444531",
+    "evaluation": "ddb8c18316e10b926846bee7bb5d0fa34cace81eff2043f54d8147522fc0a6c7",
     "statistics": "f9fdae6b1d958ee536ef09af2aaee5655eb4fdbed171da61dc2957c9d6fa2eeb",
-    "fmeca_signatures": "b493a32d919d6877fdab4023e5e307db63618350580978b52cab9349fb564e46",
-    "detectability": "6262b49cbad3612e4f7752718e6e1035725d595d33a8a450ab0ac5b519a9b3be",
-    "plots": "515af08abf2ec9a93c619b230a6e2953b5f8c3e0eba3d5ca08dae30733fec4d2",
-    "publication": "035a47a0d5e78c09362c8f3038811f6621ac8c0b2825479c888c55887fb7add2"
+    "plots": "136efcad2b1d61f058a03f332036fa00f143911a434a968894baed3788b4eaf1",
+    "publication": "18295e01c2e5ca23a3f88c1687b993b5e7cb0b771dc4e55de4c8a81de8251025"
   },
   "parameters": {
     "dataset": "GPVS-Faults",
@@ -33,8 +31,6 @@
       101
     ],
     "threshold_percentile": 99.0,
-    "e2_steps": 101,
-    "e2_persistence_magnitude": 0.02,
     "bootstrap_resamples": 20000
   },
   "input_artifacts": {
@@ -72,12 +68,6 @@
     "resultados/comparacao/e3_matrizes_confusao.csv",
     "resultados/comparacao/e3_estabilidade_sementes.csv",
     "resultados/comparacao/e3_diferencas_pareadas.csv",
-    "resultados/comparacao/e2_deteccao_por_magnitude.csv",
-    "resultados/comparacao/e2_primeiro_cruzamento.csv",
-    "resultados/comparacao/e2_funcoes_empiricas.csv",
-    "resultados/comparacao/e2_weibull_ajustes.csv",
-    "resultados/comparacao/e2_weibull_pontos.csv",
-    "resultados/comparacao/e2_resumo.csv",
     "resultados/comparacao/comparacao_autoencoders.json",
     "resultados/comparacao/relatorio_comparacao.md",
     "resultados/comparacao/e3_metricas_macro.png",
@@ -87,15 +77,7 @@
     "resultados/comparacao/e3_matrizes_confusao.png",
     "resultados/comparacao/e3_matrizes_confusao.pdf",
     "resultados/comparacao/e3_resultados_por_ensaio.png",
-    "resultados/comparacao/e3_resultados_por_ensaio.pdf",
-    "resultados/comparacao/e2_deteccao_por_magnitude.png",
-    "resultados/comparacao/e2_deteccao_por_magnitude.pdf",
-    "resultados/comparacao/e2_smd95.png",
-    "resultados/comparacao/e2_smd95.pdf",
-    "resultados/comparacao/e2_funcoes_empiricas.png",
-    "resultados/comparacao/e2_funcoes_empiricas.pdf",
-    "resultados/comparacao/e2_diagnostico_weibull.png",
-    "resultados/comparacao/e2_diagnostico_weibull.pdf"
+    "resultados/comparacao/e3_resultados_por_ensaio.pdf"
   ],
   "output_artifacts": {
     "resultados/comparacao/e3_metricas_por_ensaio.csv": "33d1468815f042fbb2e6152445553da1c2283beb045cdf167c9311be3f9a1a12",
@@ -104,30 +86,16 @@
     "resultados/comparacao/e3_matrizes_confusao.csv": "a13169c4fa1c59aee9315bf32086719952b213224ce4953808e8c595c8c9c554",
     "resultados/comparacao/e3_estabilidade_sementes.csv": "17f6938b433a1fcaa98dc04d5b80404042b7e12270650738e03404841f7c1cf3",
     "resultados/comparacao/e3_diferencas_pareadas.csv": "62d8fe04abe5eed09e61c3af9f4e0796323b5f6ee3ebc2a0f7697837168a8831",
-    "resultados/comparacao/e2_deteccao_por_magnitude.csv": "ea046c231b32211cfb2cce3cc26e111481ed4b875b0f5f0c9817a344020ada57",
-    "resultados/comparacao/e2_primeiro_cruzamento.csv": "a80c2d69e1f1ba3eba740dda3c678648827fdb747be79a84217172700c155475",
-    "resultados/comparacao/e2_funcoes_empiricas.csv": "efe1f4906c1febb1b19dc1ea8628713e6e1a0dd0f1cf8ca2193cc58824e61db8",
-    "resultados/comparacao/e2_weibull_ajustes.csv": "c2163f4ffa7574a9531601ce5a9e770ff02079991d9095dc4cc6b362da646f73",
-    "resultados/comparacao/e2_weibull_pontos.csv": "cd20d20e13583ae52af6d8583a3a6e49fb1eef629f28d035ed7956bacf9ca4c9",
-    "resultados/comparacao/e2_resumo.csv": "8005c3a0ee21f973e03c2b164c6576cec430d38aa25429a3c3664151fe164350",
-    "resultados/comparacao/comparacao_autoencoders.json": "7ba7121cc3dde2b12d035baee20dd9e4e6bedc9169c636e304cf75df9690185b",
-    "resultados/comparacao/relatorio_comparacao.md": "e52f354b856d065d1d0c56a2092e270fafe845836162e126e9b3ba2906048ae3",
-    "resultados/comparacao/e3_metricas_macro.png": "96ff3fab2fe8de08a381fb88deb0a321db520c95d32c0570fb382108ad4e70f4",
-    "resultados/comparacao/e3_metricas_macro.pdf": "996eb2b3ad5654a00e3c20b12700463945618e99975d5f0f8b61efaf1aaf8511",
-    "resultados/comparacao/e3_curvas_discriminacao.png": "096d447cc00f4d15a78c1092dbb9853b76f88ff0d7a65321abc27d171fef236b",
+    "resultados/comparacao/comparacao_autoencoders.json": "2cb5dd2ff3fee8764d5b783eae7d6b55103c995de9b2b8271cc4e2d5b7dc2a95",
+    "resultados/comparacao/relatorio_comparacao.md": "f27124929e6602e9f55aec0971a1260b17f250664a1d8047d297eb3166413be5",
+    "resultados/comparacao/e3_metricas_macro.png": "9d31dad6a81ec7516024ff2495d6aeb212146eef88be35a82e54b6327efb7ebb",
+    "resultados/comparacao/e3_metricas_macro.pdf": "156e96bcd8edfe43d034a142d82b170884a8b5b863f1860a531f94c0b1a6643c",
+    "resultados/comparacao/e3_curvas_discriminacao.png": "8f797338db314ef778d575fda36f37a4ccf881d28d69f339e9d257f56b27f3f0",
     "resultados/comparacao/e3_curvas_discriminacao.pdf": "381c2a613b75c11f68a7e469dbc8ec541b8918e80027ec76e5d69ca327d2ea2f",
-    "resultados/comparacao/e3_matrizes_confusao.png": "c295853174d4d1b3b3f8b4844790c8f0c85796ed9aa1b229c3eee182f81a521c",
+    "resultados/comparacao/e3_matrizes_confusao.png": "efd035265b6e410060dd413d3f10bc993e9ffc886ad2488b8144d399ebc4846b",
     "resultados/comparacao/e3_matrizes_confusao.pdf": "f20ab2cbc9d5e760092d3fe33651438b84cd649073340e184021121d436158a9",
-    "resultados/comparacao/e3_resultados_por_ensaio.png": "91f24462b250f229da4af91f88d584c9690354098fe48c94b821fbad76b0abb1",
-    "resultados/comparacao/e3_resultados_por_ensaio.pdf": "9cdbe2c6be5d6d8f264530bd805b4fea87969f38c81446fe840423bf920e45a4",
-    "resultados/comparacao/e2_deteccao_por_magnitude.png": "c5b8cae5343c3273512151d02bbdff5b3ee39d96f56292aa28ca86aaf5adf8f3",
-    "resultados/comparacao/e2_deteccao_por_magnitude.pdf": "6ea8d202187c559d16ed9ddcc25ef7704627edf756e078537df1e43a8dff41c9",
-    "resultados/comparacao/e2_smd95.png": "7681c6ffc49a62c4b2eec75a72890ce579518a89621a63ff1a194b6e10f175ae",
-    "resultados/comparacao/e2_smd95.pdf": "e63b203608ebb9975adb79dbfb97cac33b11d6af73fcce2aca7ffb06fe419f8a",
-    "resultados/comparacao/e2_funcoes_empiricas.png": "ebe87af1f748a291b1c5f12670b7305458803ba79c895cf559cd5351dd96e662",
-    "resultados/comparacao/e2_funcoes_empiricas.pdf": "84fb7b612ab1160acbc36dd4b64228208f37c062cc6c6882e8fb600419a750db",
-    "resultados/comparacao/e2_diagnostico_weibull.png": "a9441474b06d6e8312b20c2b56605ba8d8d7bbf56c9a6b24b04cd584e3076f8b",
-    "resultados/comparacao/e2_diagnostico_weibull.pdf": "edfba872ad502efe8d808737640e1a40622200aba2087ca13464c32dc6147f4e"
+    "resultados/comparacao/e3_resultados_por_ensaio.png": "1637c4737ca104f73bcf84d80d296e75b133195b94e67680483087595dad96dd",
+    "resultados/comparacao/e3_resultados_por_ensaio.pdf": "db184574644f9d647033420a54fef458d5eb478690c502cff175f0222b6eda55"
   },
-  "evidence_level": "E2+E3_bench"
+  "evidence_level": "E3_bench"
 }

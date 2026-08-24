@@ -1,19 +1,16 @@
-"""Publicação rastreável dos resultados canônicos E2 e E3."""
+"""Publicação rastreável da comparação Denso versus AE-LSTM."""
 
 from __future__ import annotations
 
 import json
 import math
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from src.core.config import RAIZ_PROJETO
 from src.core.tempo import agora_local
-from src.ml.assinaturas_fmeca import SIGNATURES
-from src.ml.avaliacao_comparativa import E2_PERSISTENCE_MAGNITUDE
 from src.ml.dados_gpvs import FEATURE_COLUMNS, PreparedData, dataset_files
 from src.ml.estatistica_comparacao import BOOTSTRAP_RESAMPLES
 from src.ml.graficos_comparacao import generate_all
@@ -79,10 +76,8 @@ def results_payload(
     prepared: PreparedData,
     runs: dict[str, list[ModelRun]],
     e3: dict[str, pd.DataFrame],
-    e2: dict[str, Any],
     *,
     seeds: tuple[int, ...],
-    e2_steps: int,
 ) -> dict:
     model_contract = {}
     for model_id in MODEL_IDS:
@@ -115,7 +110,7 @@ def results_payload(
     return {
         "schema_version": 2,
         "created_at": agora_local().isoformat(),
-        "title": "Autoencoder Denso versus AE-LSTM no GPVS-Faults",
+        "title": "Comparação entre Autoencoder Denso e AE-LSTM",
         "dataset": dataset_manifest,
         "protocol": {
             "healthy_roles_nominal": prepared.split["nominal_fractions"],
@@ -128,10 +123,6 @@ def results_payload(
             "e3": (
                 "14 ensaios reais de bancada; pesos, scaler e limiares congelados; "
                 "bootstrap no nível do ensaio"
-            ),
-            "e2": (
-                "janelas F0 compartilhadas, mesmas perturbações e mesma grade "
-                "de magnitude para ambos os modelos"
             ),
         },
         "models": model_contract,
@@ -147,40 +138,10 @@ def results_payload(
             "paired_differences": e3["paired"].to_dict(orient="records"),
             "stability": e3["stability"].to_dict(orient="records"),
         },
-        "e2": {
-            "evidence_level": "E2_synthetic",
-            "axis": "a_det, fração da assinatura sintética nominal",
-            "axis_is_time": False,
-            "magnitude_steps": int(e2_steps),
-            "persistence_width": E2_PERSISTENCE_MAGNITUDE,
-            "interval_method": "Wilson 95% at the window-trajectory level",
-            "interval_caveat": (
-                "As trajetórias são janelas dos dois ensaios F0 e podem manter "
-                "autocorrelação intraensaio; os intervalos E2 são descritivos."
-            ),
-            "smd95_definition": (
-                "menor magnitude cujo limite inferior do IC95% Wilson atinge 0,95"
-            ),
-            "signatures": [signature.as_dict() for signature in SIGNATURES],
-            "summary": e2["summary"].to_dict(orient="records"),
-            "weibull_role": (
-                "diagnóstico no papel de probabilidade; síntese paramétrica "
-                "somente quando o teste formal quantizado é aceito"
-            ),
-            "weibull_acceptance_scope": (
-                "A aceitação ou rejeição se refere somente ao ajuste Weibull; "
-                "não classifica a qualidade dos detectores."
-            ),
-        },
         "limitations": [
             "GPVS-Faults é evidência experimental de bancada, não validação de campo.",
             "Janelas do mesmo ensaio permanecem temporalmente autocorrelacionadas.",
-            "As assinaturas E2 são proxies sintéticos orientados pela FMECA.",
-            (
-                "Os IC95% Wilson de E2 usam janelas-trajetórias e são "
-                "descritivos diante da autocorrelação intraensaio."
-            ),
-            "Curvas em a_det não são vida útil, RUL ou confiabilidade física.",
+            "As métricas publicadas descrevem os modelos, não o dataset isoladamente.",
         ],
     }
 
@@ -215,24 +176,6 @@ def _write_report(payload: dict, output: Path) -> Path:
             "",
             "A fronteira de falha é nominalmente 50% do registro porque os CSVs ",
             "não contêm canal instrumentado de disparo.",
-            "",
-            "## Detectabilidade E2",
-            "",
-            "Contator AC, IGBT e Fusível AC usam as mesmas janelas, magnitudes e ",
-            "realizações nos dois detectores. SMD95 exige limite inferior Wilson ",
-            "de 95%; quando a condição não ocorre até a_det=1, registra-se ",
-            "`não atingido`.",
-            "",
-            "Sobrevivência empírica, incidência acumulada e risco discreto vivem ",
-            "no eixo de magnitude. O Weibull 2P é apenas diagnóstico formal e ",
-            "nunca produz RUL, MTTF ou confiabilidade física.",
-            "",
-            "A não aceitação de um ajuste Weibull rejeita apenas a síntese ",
-            "paramétrica correspondente; não reprova nenhum dos detectores.",
-            "",
-            "Os IC95% Wilson de E2 tratam cada janela-trajetória como unidade ",
-            "Bernoulli e são apresentados como descritivos, pois janelas do ",
-            "mesmo ensaio podem permanecer autocorrelacionadas.",
         ]
     )
     output.write_text(
@@ -247,10 +190,8 @@ def save_results(
     prepared: PreparedData,
     runs: dict[str, list[ModelRun]],
     e3: dict[str, pd.DataFrame],
-    e2: dict[str, Any],
     *,
     seeds: tuple[int, ...] = STABILITY_SEEDS,
-    e2_steps: int,
 ) -> dict:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     outputs: list[Path] = []
@@ -261,12 +202,6 @@ def save_results(
         "e3_matrizes_confusao.csv": e3["confusion"],
         "e3_estabilidade_sementes.csv": e3["stability"],
         "e3_diferencas_pareadas.csv": e3["paired"],
-        "e2_deteccao_por_magnitude.csv": e2["curves"],
-        "e2_primeiro_cruzamento.csv": e2["crossings"],
-        "e2_funcoes_empiricas.csv": e2["empirical"],
-        "e2_weibull_ajustes.csv": e2["fits"],
-        "e2_weibull_pontos.csv": e2["probability_points"],
-        "e2_resumo.csv": e2["summary"],
     }
     for name, frame in tables.items():
         outputs.append(_write_csv(RESULTS_DIR / name, frame))
@@ -276,9 +211,7 @@ def save_results(
         prepared,
         runs,
         e3,
-        e2,
         seeds=seeds,
-        e2_steps=e2_steps,
     )
     outputs.append(_write_json(RESULTS_DIR / "comparacao_autoencoders.json", payload))
     outputs.append(_write_report(payload, RESULTS_DIR / "relatorio_comparacao.md"))
@@ -289,11 +222,6 @@ def save_results(
             e3_scores=e3["scores"],
             e3_confusion=e3["confusion"],
             e3_scenarios=e3["scenarios"],
-            e2_curves=e2["curves"],
-            e2_summary=e2["summary"],
-            e2_empirical=e2["empirical"],
-            e2_probability_points=e2["probability_points"],
-            e2_fits=e2["fits"],
         )
     )
 
@@ -319,8 +247,6 @@ def save_results(
             "reference_seed": REFERENCE_SEED,
             "stability_seeds": list(seeds),
             "threshold_percentile": THRESHOLD_PERCENTILE,
-            "e2_steps": int(e2_steps),
-            "e2_persistence_magnitude": E2_PERSISTENCE_MAGNITUDE,
             "bootstrap_resamples": BOOTSTRAP_RESAMPLES,
         },
         inputs,
@@ -331,12 +257,10 @@ def save_results(
             "training": Path(__file__).with_name("treino_comparacao.py"),
             "evaluation": Path(__file__).with_name("avaliacao_comparativa.py"),
             "statistics": Path(__file__).with_name("estatistica_comparacao.py"),
-            "fmeca_signatures": Path(__file__).with_name("assinaturas_fmeca.py"),
-            "detectability": Path(__file__).with_name("detectabilidade.py"),
             "plots": Path(__file__).with_name("graficos_comparacao.py"),
             "publication": Path(__file__),
         },
-        evidence_level="E2+E3_bench",
+        evidence_level="E3_bench",
     )
     manifest_path = salvar_manifesto(manifest)
     return {"outputs": outputs, "manifest": manifest_path, "payload": payload}

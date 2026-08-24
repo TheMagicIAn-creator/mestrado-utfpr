@@ -80,7 +80,7 @@ def _quer_comparar_abordagens(pergunta: str) -> bool:
     text = _text(pergunta)
     return "compar" in text and any(
         term in text
-        for term in ("abordagem", "metodo", "denso", "lstm", "e2", "e3")
+        for term in ("abordagem", "metodo", "denso", "lstm", "e3")
     )
 
 

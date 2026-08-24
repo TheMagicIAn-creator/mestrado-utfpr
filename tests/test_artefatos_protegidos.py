@@ -50,4 +50,4 @@ def test_auditoria_canonica_aprova_publicacao():
     relatorio = auditar_publicacao(RAIZ)
     assert relatorio["ok"], "\n".join(relatorio["errors"])
     assert relatorio["manifests"] == 2
-    assert relatorio["artifacts"] == 40
+    assert relatorio["artifacts"] == 30

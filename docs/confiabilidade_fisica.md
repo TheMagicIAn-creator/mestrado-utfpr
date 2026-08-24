@@ -13,6 +13,7 @@ Adota-se um cenário exponencial de taxa constante:
 - `h(t) = lambda`.
 
 O tempo primário é hora; a visualização converte por `1 ano = 8.760 horas`.
+As quatro funções são publicadas em figuras separadas e eixos lineares.
 
 ## Cenários
 
@@ -32,5 +33,5 @@ página impressa, tabelas, valor original, conversão, fórmula, tipo direto ou
 derivado e ressalva. `cenarios.csv` e `curvas.csv` são os dados-fonte das
 figuras.
 
-Não se produzem beta, eta, Weibull físico, curva de banheira ou RUL sem vidas,
-censura e exposição adequadas por ativo.
+Não se produzem beta, eta, Weibull físico, distribuição normal, curva de
+banheira ou RUL sem vidas individuais, censura e exposição adequadas por ativo.

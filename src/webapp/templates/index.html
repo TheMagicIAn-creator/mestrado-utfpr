@@ -7,11 +7,11 @@
   <meta name="theme-color" content="#f7f8fa">
   <title>ALIAdo</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="/static/vendor/katex/katex.min.css?v=3.3.0">
-  <link rel="stylesheet" href="/static/styles.css?v=3.3.0">
-  <script defer src="/static/vendor/katex/katex.min.js?v=3.3.0"></script>
-  <script defer src="/static/vendor/katex/auto-render.min.js?v=3.3.0"></script>
-  <script defer src="/static/app.js?v=3.3.0"></script>
+  <link rel="stylesheet" href="/static/vendor/katex/katex.min.css?v=3.5.0">
+  <link rel="stylesheet" href="/static/styles.css?v=3.5.0">
+  <script defer src="/static/vendor/katex/katex.min.js?v=3.5.0"></script>
+  <script defer src="/static/vendor/katex/auto-render.min.js?v=3.5.0"></script>
+  <script defer src="/static/app.js?v=3.5.0"></script>
   <script async id="lucide-runtime" src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -36,12 +36,18 @@
           <i data-lucide="message-square" aria-hidden="true"></i><span>Conversa</span>
         </button>
         <button class="nav-item" type="button" data-view="results">
-          <i data-lucide="chart-no-axes-combined" aria-hidden="true"></i><span>Resultados</span>
+          <i data-lucide="chart-no-axes-combined" aria-hidden="true"></i><span>Análises</span>
         </button>
         <button class="nav-item" type="button" data-view="library">
           <i data-lucide="library" aria-hidden="true"></i><span>Biblioteca</span>
         </button>
       </nav>
+
+      <section class="research-scope" aria-label="Escopo acadêmico ativo">
+        <span>Escopo acadêmico</span>
+        <strong>Confiabilidade e manutenção</strong>
+        <small>Comparação Denso × AE-LSTM</small>
+      </section>
 
       <section class="history-region" aria-labelledby="history-heading">
         <div class="sidebar-section-heading">
@@ -98,21 +104,21 @@
               <h2 id="welcome-title">Olá, Rodolfo.</h2>
               <p>Em que parte da dissertação trabalhamos agora?</p>
               <div class="prompt-grid" id="prompt-grid">
-                <button type="button" data-prompt="Compare o Autoencoder Denso com o AE-LSTM nos resultados E3.">
+                <button type="button" data-prompt="Compare o Autoencoder Denso com o AE-LSTM, destacando as métricas acadêmicas e suas limitações.">
                   <i data-lucide="git-compare-arrows" aria-hidden="true"></i>
                   <span>Comparar Denso e AE-LSTM</span>
                 </button>
-                <button type="button" data-prompt="Interprete os limites de detectabilidade SMD95 da validação FMECA E2.">
-                  <i data-lucide="scan-search" aria-hidden="true"></i>
-                  <span>Interpretar SMD95</span>
-                </button>
-                <button type="button" data-prompt="Explique as curvas R(t), F(t), f(t) e h(t) dos componentes.">
+                <button type="button" data-prompt="Explique as curvas R(t), F(t), f(t) e h(t) dos componentes com base nas taxas bibliográficas.">
                   <i data-lucide="activity" aria-hidden="true"></i>
                   <span>Analisar confiabilidade</span>
                 </button>
-                <button type="button" data-prompt="Prepare um resumo acadêmico dos resultados atuais para minha orientadora.">
+                <button type="button" data-prompt="Relacione Contator AC, IGBT e Fusível AC às prioridades de manutenção e à FMECA com base na literatura indexada.">
+                  <i data-lucide="wrench" aria-hidden="true"></i>
+                  <span>Planejar manutenção</span>
+                </button>
+                <button type="button" data-prompt="Prepare um panorama acadêmico da comparação dos modelos e da confiabilidade física para minha orientadora.">
                   <i data-lucide="file-text" aria-hidden="true"></i>
-                  <span>Resumo para orientadora</span>
+                  <span>Panorama da dissertação</span>
                 </button>
               </div>
             </div>
@@ -144,25 +150,20 @@
 
         <section class="view research-view" id="view-results" data-view-panel="results" aria-labelledby="results-title" hidden>
           <header class="workspace-header research-header">
-            <div><p class="section-kicker">Evidências canônicas</p><h1 id="results-title">Resultados científicos</h1></div>
-            <span class="evidence-badge">GPVS-Faults e literatura</span>
+            <div><p class="section-kicker">Evidências canônicas</p><h1 id="results-title">Confiabilidade e manutenção</h1></div>
+            <span class="evidence-badge">Literatura rastreável</span>
           </header>
           <div class="result-tabs" role="tablist" aria-label="Áreas de resultados">
-            <button type="button" role="tab" aria-selected="true" aria-controls="result-panel-e3" data-result-tab="e3">Comparação dos modelos</button>
-            <button type="button" role="tab" aria-selected="false" aria-controls="result-panel-e2" data-result-tab="e2">Detectabilidade FMECA</button>
-            <button type="button" role="tab" aria-selected="false" aria-controls="result-panel-reliability" data-result-tab="reliability">Confiabilidade física</button>
+            <button type="button" role="tab" aria-selected="true" aria-controls="result-panel-reliability" data-result-tab="reliability">Confiabilidade e manutenção</button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="result-panel-e3" data-result-tab="e3">Denso × AE-LSTM</button>
           </div>
-          <section class="result-tab-panel" id="result-panel-e3" data-result-panel="e3" role="tabpanel">
-            <div class="panel-loading" data-loading="e3" role="status"><span></span>Carregando comparação</div>
-            <div class="panel-content" id="e3-content"></div>
-          </section>
-          <section class="result-tab-panel" id="result-panel-e2" data-result-panel="e2" role="tabpanel" hidden>
-            <div class="panel-loading" data-loading="e2" role="status"><span></span>Carregando detectabilidade</div>
-            <div class="panel-content" id="e2-content"></div>
-          </section>
-          <section class="result-tab-panel" id="result-panel-reliability" data-result-panel="reliability" role="tabpanel" hidden>
+          <section class="result-tab-panel" id="result-panel-reliability" data-result-panel="reliability" role="tabpanel">
             <div class="panel-loading" data-loading="reliability" role="status"><span></span>Carregando confiabilidade</div>
             <div class="panel-content" id="reliability-content"></div>
+          </section>
+          <section class="result-tab-panel" id="result-panel-e3" data-result-panel="e3" role="tabpanel" hidden>
+            <div class="panel-loading" data-loading="e3" role="status"><span></span>Carregando comparação</div>
+            <div class="panel-content" id="e3-content"></div>
           </section>
         </section>
 

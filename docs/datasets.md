@@ -19,10 +19,10 @@ Os 16 CSVs locais totalizam 493.425.214 bytes (aproximadamente 493 MB em base de
 
 ## Protocolo canônico
 
-F0L/F0M alimentam o Autoencoder Denso e o AE-LSTM sob o mesmo protocolo. O
-teste saudável F0 também recebe injeções sintéticas orientadas pela FMECA,
-produzindo evidência E2. Cada modelo preserva seu próprio scaler, escore e
-limiar p99, todos congelados antes de avaliar F1L-F7M na E3 de bancada.
+F0L/F0M alimentam o Autoencoder Denso e o AE-LSTM sob o mesmo protocolo. Cada
+modelo preserva seu próprio scaler, escore e limiar p99, todos congelados antes
+de avaliar F1L-F7M na E3 de bancada. Não há publicação autônoma de métricas do
+dataset: toda métrica experimental compara os dois modelos.
 
 Cada ensaio de falha usa a primeira metade pré-falha para normalização de
 comissionamento e reserva a segunda metade pré-falha para especificidade. Não
@@ -52,5 +52,5 @@ são fundidos ao GPVS nem possuem resultados ativos no repositório.
 
 O GPVS contém ensaios pré/pós-falha, não tempos de vida de unidades
 independentes. Portanto não sustenta confiabilidade temporal, MTTF, taxa de
-falha ou RUL de campo. O diagnóstico Weibull da E2 descreve magnitude de
-detectabilidade (`a_det`), não tempo, e não substitui as curvas empíricas.
+falha, distribuição de vidas ou RUL de campo. As curvas físicas vêm somente de
+taxas bibliográficas rastreadas e não são ajustadas ao dataset experimental.

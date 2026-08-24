@@ -93,7 +93,7 @@ def consultar_comparacao_autoencoders(progresso=None, pergunta: str = "") -> dic
 
     if progresso:
         progresso("Lendo a comparação Denso versus AE-LSTM...")
-    return resumir_resultados(f"{pergunta} e3 e2 denso lstm")
+    return resumir_resultados(f"{pergunta} e3 denso lstm")
 
 
 def consultar_datasets(progresso=None, pergunta: str = "") -> dict:
@@ -112,7 +112,6 @@ def consultar_datasets(progresso=None, pergunta: str = "") -> dict:
 - Ensaios encontrados: {present}/{len(ALL_EXPERIMENTS)}
 - F0L/F0M: treino, validação, calibração e teste saudável em blocos temporais disjuntos.
 - F1L-F7M: avaliação E3 nos 14 ensaios reais de bancada, sem retreino ou recalibração.
-- E2: assinaturas sintéticas FMECA aplicadas ao holdout saudável compartilhado.
 
 Paderborn, PMSM, PV Farms e telemetria residencial não fornecem amostras,
 features, métricas ou modelos à publicação vigente. Permanecem apenas como
@@ -131,7 +130,7 @@ estima confiabilidade física, RUL ou Weibull físico.
 
 
 def comparar_abordagens_ml(progresso=None, pergunta: str = "") -> dict:
-    """Delimita os dois modelos e os três domínios de evidência publicados."""
+    """Delimita os dois modelos e a confiabilidade bibliográfica publicada."""
 
     message = """## Abordagens mantidas
 
@@ -139,12 +138,12 @@ def comparar_abordagens_ml(progresso=None, pergunta: str = "") -> dict:
 |---|---|---|---|
 | GPVS saudável | Autoencoder Denso e AE-LSTM | ajuste do detector | aprendizagem não supervisionada da normalidade |
 | GPVS F1L-F7M | os mesmos modelos congelados | E3 de bancada | discriminação experimental por ensaio |
-| Holdout F0 + FMECA | assinaturas compartilhadas | E2 sintética | detectabilidade no eixo de magnitude `a_det` |
 | Literatura de confiabilidade | modelo exponencial | cenário bibliográfico | `R(t)`, `F(t)`, `f(t)` e `h(t)` no tempo físico |
 
 O Autoencoder Denso e o AE-LSTM usam as mesmas 24 features, partições, sementes
-e orçamento de treino. AUC-PR é a métrica E3 principal. Nenhuma curva E2 é
-rotulada como vida útil, e os cenários físicos não são inferidos do GPVS.
+e orçamento de treino. AUC-PR é a métrica E3 principal. Os cenários físicos
+usam somente taxas bibliográficas diretas ou derivadas e não são inferidos da
+base experimental.
 """
     return {
         "ok": True,

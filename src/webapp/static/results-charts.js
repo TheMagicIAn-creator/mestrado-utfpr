@@ -107,30 +107,6 @@
     redraw();
   }
 
-  function installFacets(container, definitions, facets, drawFacet) {
-    if (!container) return;
-    container.innerHTML = "";
-    const active = new Set(definitions.map((definition) => definition.id));
-    const grid = document.createElement("div");
-    grid.className = "chart-facet-grid";
-    const plots = facets.map((facet) => {
-      const article = document.createElement("article");
-      article.className = "chart-facet";
-      const title = document.createElement("h4");
-      title.textContent = facet.title;
-      const plot = document.createElement("div");
-      plot.className = "chart-canvas";
-      article.append(title, plot);
-      grid.appendChild(article);
-      return { facet, plot };
-    });
-    const redraw = () => plots.forEach(({ facet, plot }) => drawFacet(plot, facet, active, definitions));
-    createLegend(container, definitions, active, redraw);
-    container.appendChild(grid);
-    register(container, redraw);
-    redraw();
-  }
-
   function scaffold(plot, height, title, description, margins = {}) {
     plot.innerHTML = "";
     const width = Math.max(300, Math.floor(plot.clientWidth || 640));
@@ -247,11 +223,11 @@
   function trialChart(container, data) {
     installChart(container, modelDefinitions, (plot, active, definitions) => {
       const experiments = [...new Set(data.trials.map((item) => item.experiment))];
-      const frame = scaffold(plot, 350, "AUC-PR por ensaio", "Resultados nos 14 ensaios GPVS-Faults para os dois autoencoders.", { left: 70 });
+      const frame = scaffold(plot, 350, "AUC-PR por ensaio", "Comparação pareada dos 14 ensaios para os dois autoencoders.", { left: 70 });
       const x = d3.scalePoint().domain(experiments).range([0, frame.innerWidth]).padding(0.35);
       const y = d3.scaleLinear().domain([0, 1]).range([frame.innerHeight, 0]);
       const step = Math.max(1, Math.ceil(experiments.length / (frame.width < 430 ? 7 : 14)));
-      axes(frame, x, y, "Ensaio GPVS-Faults", "AUC-PR", {
+      axes(frame, x, y, "Ensaio experimental", "AUC-PR", {
         xAxis: d3.axisBottom(x).tickValues(experiments.filter((_item, index) => index % step === 0)),
         yAxis: d3.axisLeft(y).ticks(5).tickFormat(d3.format(".0%")),
       });
@@ -349,99 +325,6 @@
     });
   }
 
-  function detectionFacet(plot, facet, active, definitions) {
-    const frame = scaffold(plot, 270, `Probabilidade de detecção de ${facet.title}`, "Curvas de detecção e intervalos de confiança no eixo de magnitude.", { left: 62 });
-    const x = d3.scaleLinear().domain([0, 1]).range([0, frame.innerWidth]);
-    const y = d3.scaleLinear().domain([0, 1]).range([frame.innerHeight, 0]);
-    axes(frame, x, y, "Magnitude sintética a_det", "Probabilidade de detecção", {
-      xAxis: d3.axisBottom(x).ticks(frame.width < 430 ? 4 : 6),
-      yAxis: d3.axisLeft(y).ticks(5).tickFormat(d3.format(".0%")),
-    });
-    frame.chart.append("line").attr("class", "chart-reference")
-      .attr("x1", 0).attr("x2", frame.innerWidth).attr("y1", y(0.95)).attr("y2", y(0.95));
-    definitions.filter((definition) => active.has(definition.id)).forEach((definition) => {
-      const values = facet.values.filter((item) => item.model === definition.id).sort((a, b) => a.magnitude - b.magnitude);
-      const color = cssColor(definition.color);
-      frame.chart.append("path").datum(values)
-        .attr("class", "chart-confidence-band").attr("fill", color)
-        .attr("d", d3.area().x((item) => x(item.magnitude)).y0((item) => y(item.ci95_low)).y1((item) => y(item.ci95_high)));
-      frame.chart.append("path").datum(values)
-        .attr("class", "chart-series-line").attr("fill", "none").attr("stroke", color)
-        .attr("stroke-dasharray", definition.dash)
-        .attr("d", d3.line().x((item) => x(item.magnitude)).y((item) => y(item.detection_probability)));
-    });
-  }
-
-  function e2DetectionChart(container, data) {
-    const components = [...new Set(data.detection_series.map((item) => item.component))];
-    const facets = components.map((component) => ({
-      id: component,
-      title: data.detection_series.find((item) => item.component === component).component_name,
-      values: data.detection_series.filter((item) => item.component === component),
-    }));
-    installFacets(container, modelDefinitions, facets, detectionFacet);
-  }
-
-  function smd95Chart(container, data) {
-    installChart(container, modelDefinitions, (plot, active, definitions) => {
-      const components = [...new Set(data.summary.map((item) => item.component_name))];
-      const values = data.summary.filter((item) => active.has(item.model));
-      const frame = scaffold(plot, 285, "Limite de detectabilidade SMD95", "Menor magnitude persistente com limite inferior do IC95% de pelo menos 95%.", { left: 112 });
-      const x = d3.scaleLinear().domain([0, 1]).range([0, frame.innerWidth]);
-      const y = d3.scaleBand().domain(components).range([0, frame.innerHeight]).padding(0.3);
-      axes(frame, x, y, "Magnitude sintética a_det", "Componente", {
-        yAxis: d3.axisLeft(y),
-      });
-      const tooltip = makeTooltip(plot);
-      values.forEach((item) => {
-        const definition = definitionFor(definitions, item.model);
-        const offset = item.model === "ae_denso" ? -y.bandwidth() * 0.18 : y.bandwidth() * 0.18;
-        const cy = y(item.component_name) + y.bandwidth() / 2 + offset;
-        const xValue = item.smd95 === null ? 1 : item.smd95;
-        frame.chart.append("path")
-          .attr("class", `chart-mark ${item.smd95 === null ? "is-censored" : ""}`)
-          .attr("d", d3.symbol().type(item.smd95 === null ? d3.symbolCross : definition.symbol).size(88)())
-          .attr("transform", `translate(${x(xValue)},${cy})`)
-          .attr("fill", cssColor(definition.color)).attr("tabindex", 0)
-          .on("pointerenter focus", (event) => showTooltip(tooltip, event, plot, [
-            `<strong>${definition.name}</strong>`,
-            `${item.component_name}: ${item.smd95 === null ? "não atingido até a_det=1" : number(item.smd95, 2)}`,
-            `Detecção em a_det=1: ${percent(item.detection_at_max)}`,
-          ]))
-          .on("pointerleave blur", () => hideTooltip(tooltip));
-      });
-    });
-  }
-
-  function empiricalFacet(plot, facet, active, definitions, key, yLabel) {
-    const valuesAll = facet.values.map((item) => item[key]);
-    const yMax = key === "discrete_hazard" ? Math.max(0.05, d3.max(valuesAll)) : 1;
-    const frame = scaffold(plot, 250, `${facet.title}: ${yLabel}`, "Função empírica de primeiro cruzamento no eixo a_det.", { left: 62 });
-    const x = d3.scaleLinear().domain([0, 1]).range([0, frame.innerWidth]);
-    const y = d3.scaleLinear().domain([0, yMax]).nice().range([frame.innerHeight, 0]);
-    axes(frame, x, y, "Magnitude sintética a_det", yLabel, {
-      yAxis: d3.axisLeft(y).ticks(5).tickFormat(key === "discrete_hazard" ? d3.format(".2f") : d3.format(".0%")),
-    });
-    definitions.filter((definition) => active.has(definition.id)).forEach((definition) => {
-      const values = facet.values.filter((item) => item.model === definition.id).sort((a, b) => a.magnitude - b.magnitude);
-      frame.chart.append("path").datum(values)
-        .attr("class", "chart-series-line").attr("fill", "none")
-        .attr("stroke", cssColor(definition.color)).attr("stroke-dasharray", definition.dash)
-        .attr("d", d3.line().curve(d3.curveStepAfter).x((item) => x(item.magnitude)).y((item) => y(item[key])));
-    });
-  }
-
-  function e2EmpiricalChart(container, data, key, yLabel) {
-    const components = [...new Set(data.empirical_series.map((item) => item.component))];
-    const facets = components.map((component) => ({
-      title: data.empirical_series.find((item) => item.component === component).component_name,
-      values: data.empirical_series.filter((item) => item.component === component),
-    }));
-    installFacets(container, modelDefinitions, facets, (plot, facet, active, definitions) => {
-      empiricalFacet(plot, facet, active, definitions, key, yLabel);
-    });
-  }
-
   function scenarioDefinitions(data) {
     return data.curve_series.map((series, index) => ({
       id: series.scenario_id,
@@ -451,23 +334,22 @@
     }));
   }
 
-  function reliabilityLineChart(container, data, key, yLabel, logarithmic = false) {
+  function reliabilityLineChart(container, data, key, title, yLabel) {
     const definitions = scenarioDefinitions(data);
     installChart(container, definitions, (plot, active, defs) => {
       const series = data.curve_series.filter((item) => active.has(item.scenario_id));
       const points = series.flatMap((item) => item.points);
       const xDomain = d3.extent(points, (item) => item.time_years);
-      const yValues = points.map((item) => item[key]).filter((value) => value > 0 || !logarithmic);
-      const yDomain = logarithmic
-        ? [10 ** Math.floor(Math.log10(d3.min(yValues))), 10 ** Math.ceil(Math.log10(d3.max(yValues)))]
-        : key === "reliability" || key === "cumulative_failure_probability"
-          ? [0, 1]
-          : d3.extent(yValues);
-      const frame = scaffold(plot, 320, yLabel, "Cenários exponenciais de confiabilidade física em tempo de operação.", { left: 72 });
+      const yValues = points.map((item) => item[key]);
+      const isProbability = key === "reliability" || key === "cumulative_failure_probability";
+      const yDomain = isProbability ? [0, 1] : [0, d3.max(yValues) * 1.08];
+      const frame = scaffold(plot, 320, title, "Cenários exponenciais de confiabilidade física em tempo de operação.", { left: 78 });
       const x = d3.scaleLinear().domain(xDomain).range([0, frame.innerWidth]);
-      const y = (logarithmic ? d3.scaleLog() : d3.scaleLinear()).domain(yDomain).nice().range([frame.innerHeight, 0]);
+      const y = d3.scaleLinear().domain(yDomain).nice().range([frame.innerHeight, 0]);
       axes(frame, x, y, "Tempo de operação (anos)", yLabel, {
-        yAxis: logarithmic ? d3.axisLeft(y).ticks(5, ".1e") : d3.axisLeft(y).ticks(5).tickFormat(d3.format(".0%")),
+        yAxis: isProbability
+          ? d3.axisLeft(y).ticks(5).tickFormat(d3.format(".0%"))
+          : d3.axisLeft(y).ticks(5).tickFormat(d3.format(".2e")),
       });
       const tooltip = makeTooltip(plot);
       const guide = frame.chart.append("line").attr("class", "chart-hover-guide").style("display", "none");
@@ -493,7 +375,7 @@
             markers.append("circle").attr("class", "chart-hover-marker")
               .attr("cx", x(point.time_years)).attr("cy", y(point[key])).attr("r", 4)
               .attr("fill", cssColor(definition.color));
-            lines.push(`${item.scenario_name}: ${logarithmic ? scientific(point[key]) : percent(point[key])}`);
+            lines.push(`${item.scenario_name}: ${isProbability ? percent(point[key]) : scientific(point[key])}`);
           });
           showTooltip(tooltip, event, plot, lines);
         })
@@ -509,11 +391,11 @@
     const definitions = scenarioDefinitions(data);
     installChart(container, definitions, (plot, active, defs) => {
       const values = data.scenarios.filter((item) => active.has(item.scenario_id));
-      const extent = d3.extent(values, (item) => item.lambda_per_hour);
-      const frame = scaffold(plot, 300, "Taxas de falha utilizadas", "Comparação logarítmica das taxas bibliográficas e derivadas.", { left: 214 });
-      const x = d3.scaleLog().domain([extent[0] / 1.5, extent[1] * 1.5]).range([0, frame.innerWidth]);
+      const maximum = d3.max(values, (item) => item.lambda_per_hour);
+      const frame = scaffold(plot, 300, "Comparação das taxas de falha por componente", "Taxas bibliográficas e derivadas em escala linear.", { left: 214 });
+      const x = d3.scaleLinear().domain([0, maximum * 1.08]).nice().range([0, frame.innerWidth]);
       const y = d3.scaleBand().domain(values.map((item) => item.plot_label)).range([0, frame.innerHeight]).padding(0.38);
-      axes(frame, x, y, "Taxa de falha λ (h⁻¹, escala logarítmica)", "Cenário", {
+      axes(frame, x, y, "Taxa de falha λ (h⁻¹)", "Cenário", {
         xAxis: d3.axisBottom(x).ticks(5, ".1e"),
         yAxis: d3.axisLeft(y),
       });
@@ -542,26 +424,17 @@
     discriminationChart(document.querySelector('[data-chart="e3-pr"]'), data.discrimination, "pr");
   }
 
-  function renderE2(data) {
-    e2DetectionChart(document.querySelector('[data-chart="e2-detection"]'), data);
-    smd95Chart(document.querySelector('[data-chart="e2-smd95"]'), data);
-    e2EmpiricalChart(document.querySelector('[data-chart="e2-survival"]'), data, "survival", "Sobrevivência");
-    e2EmpiricalChart(document.querySelector('[data-chart="e2-cumulative"]'), data, "cumulative_detection", "Incidência acumulada");
-    e2EmpiricalChart(document.querySelector('[data-chart="e2-hazard"]'), data, "discrete_hazard", "Risco discreto");
-  }
-
   function renderReliability(data) {
-    reliabilityLineChart(document.querySelector('[data-chart="reliability-r"]'), data, "reliability", "R(t)");
-    reliabilityLineChart(document.querySelector('[data-chart="reliability-f"]'), data, "cumulative_failure_probability", "F(t)");
-    reliabilityLineChart(document.querySelector('[data-chart="reliability-density"]'), data, "failure_density_per_year", "f(t) (ano⁻¹)", true);
-    reliabilityLineChart(document.querySelector('[data-chart="reliability-hazard"]'), data, "hazard_per_year", "h(t) (ano⁻¹)", true);
+    reliabilityLineChart(document.querySelector('[data-chart="reliability-r"]'), data, "reliability", "Curva de confiabilidade R(t)", "R(t)");
+    reliabilityLineChart(document.querySelector('[data-chart="reliability-f"]'), data, "cumulative_failure_probability", "Curva da probabilidade acumulada de falha F(t)", "F(t)");
+    reliabilityLineChart(document.querySelector('[data-chart="reliability-density"]'), data, "failure_density_per_year", "Curva da densidade de probabilidade de falha f(t)", "f(t) (ano⁻¹)");
+    reliabilityLineChart(document.querySelector('[data-chart="reliability-hazard"]'), data, "hazard_per_year", "Curva da taxa de falha h(t)", "h(t) (ano⁻¹)");
     reliabilityRatesChart(document.querySelector('[data-chart="reliability-rates"]'), data);
   }
 
   window.ALIAdoCharts = {
     render(view, data) {
       if (view === "e3") renderE3(data);
-      if (view === "e2") renderE2(data);
       if (view === "reliability") renderReliability(data);
     },
     rerenderAll() {

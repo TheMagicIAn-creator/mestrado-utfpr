@@ -52,8 +52,8 @@ def test_reliability_runner_does_not_depend_on_gpvs(monkeypatch):
 def test_published_state_uses_manifest_output_inventory():
     state = pipeline.estado_resultados_publicados()
     assert set(state) == {"comparacao", "confiabilidade"}
-    assert state["comparacao"]["esperados"] == 31
-    assert state["confiabilidade"]["esperados"] == 11
+    assert state["comparacao"]["esperados"] == 17
+    assert state["confiabilidade"]["esperados"] == 15
     assert all(item["disponivel"] for item in state.values())
 
 

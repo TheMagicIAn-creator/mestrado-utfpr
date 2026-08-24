@@ -39,8 +39,7 @@ uvicorn src.webapp.app:app --reload
 | `/api/chat/stream` | POST | eventos SSE `status`, `delta`, `done` e `error` |
 | `/api/status` | GET | estado barato do agente e dos contratos |
 | `/api/health` | GET | alias operacional de status |
-| `/api/results/e3` | GET | comparação GPVS Denso × AE-LSTM |
-| `/api/results/e2` | GET | detectabilidade FMECA no eixo `a_det` |
+| `/api/results/e3` | GET | comparação Denso × AE-LSTM na base experimental |
 | `/api/reliability` | GET | confiabilidade física bibliográfica |
 | `/api/sources` | GET | dataset, PDFs, relatórios e manifestos |
 | `/api/version` | GET | identidade da aplicação e versão da API |
@@ -54,8 +53,7 @@ de download e hash.
 
 - GPVS-Faults é o único dataset experimental ativo.
 - E3 compara apenas Autoencoder Denso e AE-LSTM nos ensaios F1L–F7M.
-- E2 usa magnitude sintética adimensional; `a_det` não é tempo.
-- Weibull E2 é diagnóstico de detectabilidade, não modelo de vida útil.
+- FMECA orienta criticidade e manutenção; não gera uma curva sintética ativa.
 - Confiabilidade física usa taxas bibliográficas ou cenários derivados.
 - Weibull físico não é estimado sem vidas, exposição e censura por ativo.
 

@@ -22,7 +22,6 @@ from src.webapp.agent_adapter import (
 )
 from src.webapp.app import create_app
 from src.webapp.contracts import (
-    e2_contract,
     e3_contract,
     reliability_contract,
     sources_contract,
@@ -117,25 +116,8 @@ def test_e3_publica_apenas_denso_e_lstm_no_gpvs(client):
     assert all(item["url"].startswith("/artifacts/comparison/") for item in data["figures"])
 
 
-def test_e2_preserva_censura_e_separa_magnitude_de_tempo(client):
-    response = client.get("/api/results/e2")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["contract_version"] == 2
-    assert data["axis_is_time"] is False
-    assert data["magnitude_steps"] == 101
-    assert len(data["summary"]) == 6
-    assert len(data["detection_series"]) == 606
-    assert len(data["empirical_series"]) == 606
-    fuse_lstm = next(
-        item
-        for item in data["summary"]
-        if item["model"] == "ae_lstm" and item["component"] == "fusivel_ac"
-    )
-    assert fuse_lstm["smd95"] is None
-    assert fuse_lstm["smd95_status"] == "not_reached"
-    assert fuse_lstm["detection_at_max"] == pytest.approx(0.7188612099644128)
-    assert all(item["weibull_parametric_recommended"] is False for item in data["summary"])
+def test_endpoint_sintetico_e2_nao_e_mais_publicado(client):
+    assert client.get("/api/results/e2").status_code == 404
 
 
 def test_confiabilidade_publica_quatro_cenarios_fisicos_rastreaveis(client):
@@ -143,23 +125,31 @@ def test_confiabilidade_publica_quatro_cenarios_fisicos_rastreaveis(client):
     assert response.status_code == 200
     data = response.json()
     assert data["contract_version"] == 2
-    assert data["dataset"] == "GPVS-Faults"
-    assert data["dataset_role"] == "detector_evaluation_only_not_physical_reliability"
+    assert data["evidence_scope"] == "bibliographic_reliability_only"
+    assert "dataset" not in data
     assert data["physical_weibull"]["beta"] is None
     assert data["physical_weibull"]["eta"] is None
+    assert [item["npr"] for item in data["fmeca"]["components"]] == [315, 90, 30]
+    assert data["fmeca"]["boundary"].startswith("D_campo")
     assert len(data["scenarios"]) == 4
     assert len(data["curve_series"]) == 4
     assert all(len(series["points"]) <= 121 for series in data["curve_series"])
     assert data["failure_rate_distribution"]["status"] == "not_estimable"
     assert data["failure_rate_distribution"]["chart_available"] is False
     assert "histogram" not in data["failure_rate_distribution"]
+    assert [figure["title"] for figure in data["figures"][:4]] == [
+        "Curva de confiabilidade R(t)",
+        "Curva da probabilidade acumulada de falha F(t)",
+        "Curva da densidade de probabilidade de falha f(t)",
+        "Curva da taxa de falha h(t)",
+    ]
     assert data["scenarios"][-1]["lambda_per_hour"] == pytest.approx(2.17e-6)
     assert data["formulas"]["hazard"] == "h(t) = lambda"
 
 
 def test_contratos_cientificos_grandes_sao_comprimidos(client):
     response = client.get(
-        "/api/results/e2",
+        "/api/results/e3",
         headers={"Accept-Encoding": "gzip"},
     )
     assert response.status_code == 200
@@ -175,7 +165,7 @@ def test_fontes_expoem_dataset_pdf_e_manifestos(client):
     assert len(data["dataset"]["raw_files_sha256"]) == 16
     assert data["bibliography"][0]["pdf_page"] == 35
     assert len(data["manifests"]) == 2
-    assert len(data["separation_rules"]) == 4
+    assert len(data["separation_rules"]) == 3
 
 
 def test_biblioteca_expoe_todos_os_pdfs_e_trechos_sem_contar_manifesto(client):
@@ -342,7 +332,7 @@ def test_versao_e_entrypoint_sao_canonicos(client):
     assert response.json() == {
         "application": "aliado-web",
         "name": "ALIAdo",
-        "version": "3.3.0",
+        "version": "3.5.0",
         "api_version": 1,
         "interface": "asgi",
     }
@@ -530,6 +520,46 @@ def test_agente_reutiliza_pipeline_rag_completo(monkeypatch):
     assert "PCA" not in captured["contexto_autoritativo"]
 
 
+def test_agente_encaminha_chunks_reais_do_llm(monkeypatch):
+    import src.conhecimento.agente as agent
+    import src.conhecimento.ferramentas as tools
+
+    captured = {}
+    chunks = []
+    monkeypatch.setattr(tools, "decidir_acao", lambda _message, _llm: {"usar_ferramenta": False})
+
+    def fake_question(**kwargs):
+        captured.update(kwargs)
+        kwargs["on_chunk"]("Primeiro ")
+        kwargs["on_chunk"]("fragmento.")
+        return "Primeiro fragmento."
+
+    monkeypatch.setattr(agent, "perguntar", fake_question)
+    adapter = AgentAdapter()
+    adapter._components = _Componentes(
+        perfil="perfil",
+        modelo_embeddings=object(),
+        literatura=object(),
+        sessoes=object(),
+        obsidian=object(),
+        indice_lexical=object(),
+        llm=object(),
+        auditor=SimpleNamespace(),
+        modo_consulta=True,
+    )
+    adapter._state = "pronto"
+
+    response = adapter.answer(
+        "Explique a confiabilidade.",
+        on_chunk=chunks.append,
+    )
+
+    assert response["answer"] == "Primeiro fragmento."
+    assert chunks == ["Primeiro ", "fragmento."]
+    assert captured["streaming"] is True
+    assert captured["on_chunk"] is not None
+
+
 def test_manutencao_da_sessao_nao_bloqueia_resposta(monkeypatch, tmp_path):
     import src.conhecimento.agente as agent
 
@@ -643,19 +673,21 @@ def test_renderizacao_em_lote_rejeita_formato_e_volume_invalidos(client):
     assert "No máximo 100" in excessive.json()["detail"]
 
 
-def test_contexto_cientifico_reconcilia_e2_e3_e_confiabilidade():
-    context = scientific_context_for("Explique resultados, SMD95 e taxa de falha")
+def test_contexto_cientifico_reconcilia_comparacao_e_confiabilidade():
+    context = scientific_context_for(
+        "Compare o autoencoder denso com o AE-LSTM e explique a taxa de falha"
+    )
     assert context is not None
     assert "0.860759" in context
     assert "0.840962" in context
-    assert "não atingido até a_det=1" in context
     assert "2.170e-06 h^-1" in context
+    assert "SMD95" not in context
+    assert "a_det" not in context
     assert "PCA" not in context
 
 
 def test_contratos_diretos_sao_coerentes_e_cacheaveis():
     assert e3_contract()["dataset"]["name"] == "GPVS-Faults"
-    assert e2_contract()["axis_is_time"] is False
     assert reliability_contract()["hours_per_year"] == 8760.0
     assert sources_contract()["dataset"]["experiments"] == 16
 

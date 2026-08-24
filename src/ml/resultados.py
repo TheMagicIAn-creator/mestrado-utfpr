@@ -17,13 +17,6 @@ COMPARISON_JSON = COMPARISON_DIR / "comparacao_autoencoders.json"
 RELIABILITY_JSON = RELIABILITY_DIR / "metodologia.json"
 
 MODEL_LABELS = {"ae_denso": "Autoencoder Denso", "ae_lstm": "AE-LSTM"}
-COMPONENT_LABELS = {
-    "contator_ac": "Contator AC",
-    "igbt": "IGBT",
-    "fusivel_ac": "Fusível AC",
-}
-
-
 def _json(path: Path) -> dict:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -62,14 +55,22 @@ def _focus(pergunta: str) -> set[str]:
     selected: set[str] = set()
     if any(term in text for term in ("e3", "auc", "roc", "lstm", "denso", "experimental")):
         selected.add("e3")
-    if any(term in text for term in ("e2", "fmeca", "smd", "detectabilidade", "weibull")):
-        selected.add("e2")
     if any(
         term in text
-        for term in ("confiabilidade", "taxa de falha", "h(t)", "r(t)", "f(t)", "fisica")
+        for term in (
+            "confiabilidade",
+            "taxa de falha",
+            "h(t)",
+            "r(t)",
+            "f(t)",
+            "fisica",
+            "fmeca",
+            "manutencao",
+            "manutenção",
+        )
     ):
         selected.add("reliability")
-    return selected or {"e3", "e2", "reliability"}
+    return selected or {"e3", "reliability"}
 
 
 def _metric_rows(payload: dict) -> dict[tuple[str, str], dict]:
@@ -86,7 +87,7 @@ def _e3_summary(payload: dict) -> str:
     if not rows:
         return "## Evidência E3\n\nResultado experimental não publicado."
     lines = [
-        "## Evidência E3: 14 ensaios reais GPVS-Faults",
+        "## Comparação Denso versus AE-LSTM: 14 ensaios experimentais",
         "",
         "| Modelo | AUC-PR (IC95%) | ROC-AUC | Sensibilidade | Especificidade | MCC | F1 |",
         "|---|---:|---:|---:|---:|---:|---:|",
@@ -128,42 +129,6 @@ def _e3_summary(payload: dict) -> str:
     return "\n".join(lines)
 
 
-def _e2_summary(payload: dict) -> str:
-    rows = payload.get("e2", {}).get("summary", [])
-    if not rows:
-        return "## Evidência E2\n\nResultado sintético FMECA não publicado."
-    lines = [
-        "## Evidência E2: detectabilidade orientada pela FMECA",
-        "",
-        "| Modelo | Componente | NPR | SMD95 | Detecção em a_det=1 |",
-        "|---|---|---:|---:|---:|",
-    ]
-    for row in rows:
-        reached = row.get("smd95_status") == "reached"
-        smd = _fmt(row.get("smd95"), 2) if reached else "não atingido"
-        detection = row.get("detection_at_max")
-        detection_text = (
-            f"{100 * float(detection):.1f}%".replace(".", ",")
-            if isinstance(detection, (int, float))
-            else "não disponível"
-        )
-        lines.append(
-            f"| {MODEL_LABELS.get(row.get('model'), row.get('model'))} | "
-            f"{COMPONENT_LABELS.get(row.get('component'), row.get('component'))} | "
-            f"{row.get('npr', '-')} | {smd} | {detection_text} |"
-        )
-    lines.extend(
-        [
-            "",
-            "SMD95 é a menor magnitude cujo limite inferior do IC95% Wilson alcança "
-            "95%. O eixo `a_det` é magnitude de perturbação, não tempo.",
-            "Os ajustes Weibull 2P desta execução não foram recomendados para síntese "
-            "paramétrica. Isso rejeita o ajuste, não os detectores.",
-        ]
-    )
-    return "\n".join(lines)
-
-
 def _reliability_summary(payload: dict) -> str:
     scenarios = payload.get("scenarios", [])
     if not scenarios:
@@ -187,8 +152,8 @@ def _reliability_summary(payload: dict) -> str:
             "`f(t)=λexp(-λt)` e `h(t)=λ`.",
             "As três taxas derivadas são análises de sensibilidade baseadas nas "
             "participações de chamados; não são medições por componente. A taxa direta "
-            "existe somente para o fusível. O GPVS-Faults não estima vida física, "
-            "Weibull físico ou RUL.",
+            "existe somente para o fusível. Sem tempos individuais de falha e censura, "
+            "não se estimam distribuição normal, Weibull físico ou RUL.",
         ]
     )
     return "\n".join(lines)
@@ -201,19 +166,16 @@ def _images(focus: set[str], *, inline: bool) -> list[dict]:
             (COMPARISON_DIR / "e3_curvas_discriminacao.png", "Curvas ROC e precisão-revocação E3"),
             (COMPARISON_DIR / "e3_matrizes_confusao.png", "Matrizes de confusão E3"),
         ),
-        "e2": (
-            (COMPARISON_DIR / "e2_deteccao_por_magnitude.png", "Detectabilidade E2 por magnitude"),
-            (COMPARISON_DIR / "e2_funcoes_empiricas.png", "Funções empíricas de detectabilidade"),
-            (COMPARISON_DIR / "e2_diagnostico_weibull.png", "Diagnóstico Weibull no papel de probabilidade"),
-        ),
         "reliability": (
-            (RELIABILITY_DIR / "confiabilidade_probabilidade_falha.png", "Confiabilidade e probabilidade de falha"),
-            (RELIABILITY_DIR / "densidade_taxa_falha.png", "Densidade e taxa de falha"),
+            (RELIABILITY_DIR / "curva_confiabilidade.png", "Curva de confiabilidade R(t)"),
+            (RELIABILITY_DIR / "curva_probabilidade_falha.png", "Probabilidade acumulada de falha F(t)"),
+            (RELIABILITY_DIR / "curva_densidade_falha.png", "Densidade de probabilidade de falha f(t)"),
+            (RELIABILITY_DIR / "curva_taxa_falha.png", "Taxa de falha h(t)"),
             (RELIABILITY_DIR / "taxas_componentes.png", "Taxas bibliográficas por componente"),
         ),
     }
     images = []
-    for section in ("e3", "e2", "reliability"):
+    for section in ("e3", "reliability"):
         if section not in focus:
             continue
         for path, caption in candidates[section]:
@@ -229,8 +191,6 @@ def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> d
     sections = []
     if "e3" in focus:
         sections.append(_e3_summary(comparison))
-    if "e2" in focus:
-        sections.append(_e2_summary(comparison))
     if "reliability" in focus:
         sections.append(_reliability_summary(reliability))
 

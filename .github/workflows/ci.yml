@@ -40,7 +40,7 @@ jobs:
 
       - name: Smoke de import (modulos leves)
         run: |
-          python -c "import src.core.config, src.core.utils, src.conhecimento.indice_lexical, src.conhecimento.memoria_persistente, src.conhecimento.multiagente, src.ml.dados_gpvs, src.ml.detectabilidade, src.ml.pipeline, src.ml.proveniencia, src.ml.resultados; print('import OK')"
+          python -c "import src.core.config, src.core.utils, src.conhecimento.indice_lexical, src.conhecimento.memoria_persistente, src.conhecimento.multiagente, src.ml.dados_gpvs, src.ml.pipeline, src.ml.proveniencia, src.ml.resultados; print('import OK')"
 
       - name: Conferir selecao do CI por marcadores
         run: |
@@ -48,7 +48,6 @@ jobs:
           cat /tmp/ci-tests.txt
           for alvo in \
             tests/test_dados_gpvs_canonico.py \
-            tests/test_detectabilidade_canonica.py \
             tests/test_publicacao_comparacao.py \
             tests/test_pipeline_canonico.py \
             tests/test_resultados_canonicos.py \

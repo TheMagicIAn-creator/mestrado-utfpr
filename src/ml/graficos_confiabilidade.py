@@ -61,87 +61,82 @@ def _iter_curves(curves: pd.DataFrame):
         yield scenario, curves[curves["scenario_id"].eq(scenario.scenario_id)]
 
 
-def plot_reliability_failure(curves: pd.DataFrame, output: Path) -> tuple[Path, Path]:
-    fig, axes = plt.subplots(1, 2, figsize=TAM["painel_2"], layout="constrained")
+def _plot_time_function(
+    curves: pd.DataFrame,
+    output: Path,
+    *,
+    column: str,
+    title: str,
+    ylabel: str,
+    note: str,
+    probability: bool = False,
+) -> tuple[Path, Path]:
+    fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
     for scenario, block in _iter_curves(curves):
         style = {
             "color": COLORS[scenario.scenario_id],
             "linestyle": LINESTYLES[scenario.evidence_type],
             "label": LEGEND_LABELS[scenario.scenario_id],
         }
-        axes[0].plot(block["time_years"], block["reliability"], **style)
-        axes[1].plot(
-            block["time_years"], block["cumulative_failure_probability"], **style
-        )
-    for ax, title, ylabel in (
-        (
-            axes[0],
-            "Curva de confiabilidade R(t)",
-            "R(t) - probabilidade de operação sem falha",
-        ),
-        (
-            axes[1],
-            "Curva da probabilidade acumulada de falha F(t)",
-            "F(t) - probabilidade de falha",
-        ),
-    ):
-        ax.set_xlim(0, float(curves["time_years"].max()))
+        ax.plot(block["time_years"], block[column], **style)
+    ax.set_xlim(0, float(curves["time_years"].max()))
+    if probability:
         ax.set_ylim(0, 1.01)
         ax.yaxis.set_major_formatter(PercentFormatter(1.0))
-        ax.set_xlabel("Tempo de operação (anos)")
-        ax.set_ylabel(ylabel)
-        ax.set_title(title)
-    axes[0].legend(loc="upper right", fontsize=8)
-    fig.suptitle("Confiabilidade física por componente sob cenários exponenciais")
-    return _save_pair(
-        fig,
+    else:
+        maximum = float(curves[column].max())
+        ax.set_ylim(0, maximum * 1.08 if maximum > 0 else 1.0)
+        ax.ticklabel_format(axis="y", style="sci", scilimits=(-2, 2), useMathText=True)
+    ax.set_xlabel("Tempo de operação (anos)")
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    ax.legend(loc="best", fontsize=8)
+    return _save_pair(fig, output, note)
+
+
+def plot_reliability(curves: pd.DataFrame, output: Path) -> tuple[Path, Path]:
+    return _plot_time_function(
+        curves,
         output,
-        "Taxas bibliográficas direta/derivadas; o GPVS-Faults não fornece tempos de vida.",
+        column="reliability",
+        title="Curva de confiabilidade R(t)",
+        ylabel="R(t) - probabilidade de operação sem falha",
+        note=r"Modelo exponencial: $R(t)=e^{-\lambda t}$. Eixos lineares; taxas bibliográficas direta/derivadas.",
+        probability=True,
     )
 
 
-def plot_density_hazard(curves: pd.DataFrame, output: Path) -> tuple[Path, Path]:
-    fig, axes = plt.subplots(1, 2, figsize=TAM["painel_2"], layout="constrained")
-    for scenario, block in _iter_curves(curves):
-        style = {
-            "color": COLORS[scenario.scenario_id],
-            "linestyle": LINESTYLES[scenario.evidence_type],
-            "label": LEGEND_LABELS[scenario.scenario_id],
-        }
-        axes[0].plot(block["time_years"], block["failure_density_per_year"], **style)
-        axes[1].plot(block["time_years"], block["hazard_per_year"], **style)
-    positive_density = curves.loc[
-        curves["failure_density_per_year"].gt(0), "failure_density_per_year"
-    ]
-    positive_hazard = curves.loc[curves["hazard_per_year"].gt(0), "hazard_per_year"]
-    for ax, values, title, ylabel in (
-        (
-            axes[0],
-            positive_density,
-            "Curva da densidade de probabilidade de falha f(t)",
-            "f(t) (ano⁻¹)",
-        ),
-        (
-            axes[1],
-            positive_hazard,
-            "Curva da taxa de falha h(t)",
-            "h(t) (ano⁻¹)",
-        ),
-    ):
-        lower = 10 ** np.floor(np.log10(values.min()))
-        upper = 10 ** np.ceil(np.log10(values.max()))
-        ax.set_yscale("log")
-        ax.set_ylim(lower, upper)
-        ax.set_xlim(0, float(curves["time_years"].max()))
-        ax.set_xlabel("Tempo de operação (anos)")
-        ax.set_ylabel(ylabel)
-        ax.set_title(title)
-    axes[0].legend(loc="upper right", fontsize=8)
-    fig.suptitle("Densidade f(t) e taxa de falha h(t): funções físicas distintas")
-    return _save_pair(
-        fig,
+def plot_cumulative_failure(curves: pd.DataFrame, output: Path) -> tuple[Path, Path]:
+    return _plot_time_function(
+        curves,
         output,
-        r"Escalas ajustadas aos dados. No modelo exponencial $h(t)=\lambda$ e não há curva de banheira.",
+        column="cumulative_failure_probability",
+        title="Curva da probabilidade acumulada de falha F(t)",
+        ylabel="F(t) - probabilidade acumulada de falha",
+        note=r"Modelo exponencial: $F(t)=1-e^{-\lambda t}$. Eixos lineares; não representa incidência observada de campo.",
+        probability=True,
+    )
+
+
+def plot_failure_density(curves: pd.DataFrame, output: Path) -> tuple[Path, Path]:
+    return _plot_time_function(
+        curves,
+        output,
+        column="failure_density_per_year",
+        title="Curva da densidade de probabilidade de falha f(t)",
+        ylabel="f(t) (ano⁻¹)",
+        note=r"Modelo exponencial: $f(t)=\lambda e^{-\lambda t}$. Escala linear; não é uma distribuição normal ajustada.",
+    )
+
+
+def plot_hazard(curves: pd.DataFrame, output: Path) -> tuple[Path, Path]:
+    return _plot_time_function(
+        curves,
+        output,
+        column="hazard_per_year",
+        title="Curva da taxa de falha h(t)",
+        ylabel="h(t) (ano⁻¹)",
+        note=r"Modelo exponencial: $h(t)=\lambda$. Escala linear e taxa constante; não há curva de banheira estimável.",
     )
 
 
@@ -157,9 +152,10 @@ def plot_rates(scenarios: pd.DataFrame, output: Path) -> tuple[Path, Path]:
             marker="D" if row["evidence_type"] == "direct_bibliographic" else "o",
             s=62,
         )
-    ax.set_xscale("log")
+    ax.set_xlim(0, float(frame["lambda_per_hour"].max()) * 1.08)
+    ax.ticklabel_format(axis="x", style="sci", scilimits=(-2, 2), useMathText=True)
     ax.set_yticks(y, frame["plot_label"])
-    ax.set_xlabel(r"Taxa de falha, $\lambda$ (falhas h$^{-1}$; escala logarítmica)")
+    ax.set_xlabel(r"Taxa de falha, $\lambda$ (falhas h$^{-1}$)")
     ax.set_title("Comparação das taxas de falha λ por componente")
     ax.legend(
         handles=[
@@ -188,10 +184,10 @@ def generate_all(
     output_dir = Path(output_dir)
     paths: list[Path] = []
     for pair in (
-        plot_reliability_failure(
-            curves, output_dir / "confiabilidade_probabilidade_falha"
-        ),
-        plot_density_hazard(curves, output_dir / "densidade_taxa_falha"),
+        plot_reliability(curves, output_dir / "curva_confiabilidade"),
+        plot_cumulative_failure(curves, output_dir / "curva_probabilidade_falha"),
+        plot_failure_density(curves, output_dir / "curva_densidade_falha"),
+        plot_hazard(curves, output_dir / "curva_taxa_falha"),
         plot_rates(scenarios, output_dir / "taxas_componentes"),
     ):
         paths.extend(pair)
@@ -200,7 +196,9 @@ def generate_all(
 
 __all__ = [
     "generate_all",
-    "plot_density_hazard",
+    "plot_cumulative_failure",
+    "plot_failure_density",
+    "plot_hazard",
     "plot_rates",
-    "plot_reliability_failure",
+    "plot_reliability",
 ]

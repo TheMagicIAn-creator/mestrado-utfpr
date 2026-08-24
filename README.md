@@ -39,8 +39,8 @@ src/
 - **conhecimento** — PDF indexing, semantic + BM25 RAG, fixed-role all-Gemini team (Pro/Flash/Flash-Lite),
   memory consolidation
 - **ml** — canonical GPVS ingestion, Denso versus AE-LSTM comparison,
-  FMECA-guided detectability and bibliographic physical reliability
-- **webapp** — read-only E2, E3 and reliability contracts, academic figures
+  FMECA maintenance context and bibliographic physical reliability
+- **webapp** — read-only model-comparison and reliability contracts, academic figures
   loaded on demand and an HTTP adapter for the ALIAdo agent
 - **orquestrador** — executes explicitly requested indexing and ML operations;
   it is not run when the dashboard opens
@@ -85,14 +85,14 @@ Models, scalers and local Obsidian state are not published.
 | 2     | RAG agent             | Done          |
 | 3     | ASGI web application  | Done          |
 | 4     | Automation            | Done          |
-| 5     | ML pipeline           | Implemented (E2 + E3 bench) |
+| 5     | ML pipeline           | Implemented (E3 bench + bibliographic reliability) |
 
-Phase 5 status: the two-stage scientific pipeline uses GPVS-Faults as its
-single canonical dataset. F0L/F0M train, validate, calibrate and test the Denso
-and AE-LSTM detectors; FMECA-guided synthetic injection on the F0 holdout
-provides E2 evidence, and F1L-F7M provide E3 experimental bench validation.
-Detectability magnitude is not physical RUL. Temporal reliability curves are
-separate bibliographic sensitivity scenarios. Field validation is still absent.
+Phase 5 status: the two-stage scientific pipeline uses GPVS-Faults only as the
+experimental base for comparing the Denso and AE-LSTM detectors. F0L/F0M train,
+validate, calibrate and test the models; F1L-F7M provide E3 experimental bench
+validation. FMECA supports maintenance prioritization, while temporal
+reliability curves are independent bibliographic sensitivity scenarios. Field
+validation is still absent.
 
 ## Documentação técnica
 

@@ -222,6 +222,7 @@ class AgentAdapter:
         mensagem: str,
         historico: list[dict[str, str]],
         anexos_bytes: list[tuple[str, bytes]],
+        on_chunk: Callable[[str], None] | None = None,
     ) -> dict:
         componentes = self._initialize()
         contexto_cientifico = scientific_context_for(mensagem)
@@ -299,7 +300,7 @@ class AgentAdapter:
             colecao=componentes.literatura,
             llm=componentes.llm,
             historico=historico,
-            streaming=False,
+            streaming=on_chunk is not None,
             colecao_sessoes=componentes.sessoes,
             nome_provedor="Google Gemini",
             anexos=anexos,
@@ -307,6 +308,7 @@ class AgentAdapter:
             indice_lexical=componentes.indice_lexical,
             auditor=componentes.auditor,
             contexto_autoritativo=contexto_cientifico,
+            on_chunk=on_chunk,
         )
         return {
             "answer": resposta,
@@ -398,6 +400,7 @@ class AgentAdapter:
         history=None,
         attachments=None,
         session_id: str | None = None,
+        on_chunk: Callable[[str], None] | None = None,
     ) -> dict:
         mensagem = str(message or "").strip()
         if not mensagem:
@@ -424,7 +427,12 @@ class AgentAdapter:
             if self._answerer is not None:
                 resposta = self._answerer(mensagem, historico, anexos)
             else:
-                resposta = self._answer_real(mensagem, historico, anexos)
+                resposta = self._answer_real(
+                    mensagem,
+                    historico,
+                    anexos,
+                    on_chunk=on_chunk,
+                )
         except (ValueError, AgenteIndisponivel):
             raise
         except Exception as exc:

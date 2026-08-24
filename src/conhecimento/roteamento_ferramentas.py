@@ -32,10 +32,9 @@ _ETAPA_ORDEM = (
     ("autoencoder", "executar_comparacao_autoencoders"),
     ("denso", "executar_comparacao_autoencoders"),
     ("lstm", "executar_comparacao_autoencoders"),
-    ("e2", "executar_comparacao_autoencoders"),
     ("e3", "executar_comparacao_autoencoders"),
-    ("fmeca", "executar_comparacao_autoencoders"),
-    ("weibull", "executar_comparacao_autoencoders"),
+    ("fmeca", "gerar_confiabilidade"),
+    ("weibull", "gerar_confiabilidade"),
 )
 
 
@@ -104,7 +103,6 @@ def _asks_results(text: str) -> bool:
             "grafico",
             "figura",
             "auc",
-            "smd",
             "matriz",
             "curva",
             "taxa de falha",
