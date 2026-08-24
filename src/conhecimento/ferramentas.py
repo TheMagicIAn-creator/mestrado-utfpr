@@ -42,7 +42,7 @@ ESPEC_FERRAMENTAS = [
         "name": "executar_comparacao_autoencoders",
         "description": (
             "Treina e avalia Autoencoder Denso e AE-LSTM no GPVS-Faults, "
-            "publicando E3 real e E2 FMECA. Use somente em pedido explícito "
+            "publicando a comparação experimental E3. Use somente em pedido explícito "
             "de executar, recalcular ou retreinar."
         ),
     },
@@ -63,7 +63,7 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "consultar_resultados",
         "description": (
-            "Consulta as métricas, tabelas e figuras canônicas E3, E2 e de "
+            "Consulta as métricas, tabelas e figuras canônicas E3 e de "
             "confiabilidade sem recalcular."
         ),
     },
@@ -71,7 +71,7 @@ ESPEC_FERRAMENTAS = [
         "name": "consultar_comparacao_autoencoders",
         "description": (
             "Compara o Autoencoder Denso e o AE-LSTM nos contratos publicados, "
-            "incluindo AUC-PR e SMD95. Nunca treina."
+            "incluindo AUC-PR e seus IC95%. Nunca treina."
         ),
     },
     {
@@ -102,12 +102,12 @@ ESPEC_FERRAMENTAS = [
     },
     {
         "name": "consultar_datasets",
-        "description": "Explica o GPVS-Faults, único dataset ativo, e seus papéis E2/E3.",
+        "description": "Explica o GPVS-Faults, único dataset ativo, e seu papel na E3.",
     },
     {
         "name": "comparar_abordagens_ml",
         "description": (
-            "Delimita Denso, AE-LSTM, evidência E2/E3 e confiabilidade física."
+            "Delimita Denso, AE-LSTM, evidência E3 e confiabilidade física."
         ),
     },
 ]
@@ -166,7 +166,7 @@ def _run_stage(stage: str, progresso=None, pergunta: str = "") -> dict:
             "resposta_pronta": True,
         }
     summary = resumir_resultados(
-        "e2 e3 denso lstm" if stage == "comparacao" else "confiabilidade"
+        "e3 denso lstm" if stage == "comparacao" else "confiabilidade"
     )
     return {
         "ok": True,
@@ -210,7 +210,7 @@ def _selected_stage(question: str) -> str | None:
     text = normalizar_sem_acentos(question).lower()
     if any(term in text for term in ("confiabilidade", "taxa de falha", "r(t)", "h(t)")):
         return "confiabilidade"
-    if any(term in text for term in ("comparacao", "autoencoder", "denso", "lstm", "e2", "e3")):
+    if any(term in text for term in ("comparacao", "autoencoder", "denso", "lstm", "e3")):
         return "comparacao"
     return None
 

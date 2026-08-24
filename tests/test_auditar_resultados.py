@@ -21,4 +21,4 @@ def test_auditor_executa_fora_da_raiz(tmp_path):
 
     assert processo.returncode == 0, processo.stdout + processo.stderr
     assert "APROVADO" in processo.stdout
-    assert "40 artefatos" in processo.stdout
+    assert "30 artefatos" in processo.stdout

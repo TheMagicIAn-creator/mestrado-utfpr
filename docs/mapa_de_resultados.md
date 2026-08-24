@@ -1,25 +1,19 @@
 # Mapa canônico de resultados
 
-Este documento indica qual artefato sustenta cada afirmação da dissertação.
-Este mapa não repete valores: eles devem ser lidos dos arquivos vigentes.
+Há somente duas famílias publicadas. Elas respondem a perguntas diferentes e
+não podem ser combinadas estatisticamente.
+O mapa não repete valores numéricos: cada resultado deve ser lido do artefato
+vigente indicado na tabela.
 
-## Regra central
-
-Há três famílias publicadas e elas não podem ser misturadas:
-
-| Família | Pasta | Grandeza | Evidência |
+| Família | Pasta | Pergunta | Evidência |
 |---|---|---|---|
-| Comparação experimental | `resultados/comparacao/` | desempenho do AE Denso e do AE-LSTM nos ensaios GPVS | E3 de bancada |
-| Detectabilidade sintética | `resultados/comparacao/` | resposta do detector em função de `a_det` | E2 FMECA |
-| Confiabilidade física | `resultados/confiabilidade/` | `R(t)`, `F(t)`, `f(t)` e `h(t)` no tempo | sensibilidade bibliográfica |
+| Comparação dos modelos | `resultados/comparacao/` | Autoencoder Denso ou AE-LSTM detecta melhor os ensaios avaliados? | E3 de bancada |
+| Confiabilidade e manutenção | `resultados/confiabilidade/` | Como evoluem `R(t)`, `F(t)`, `f(t)` e `h(t)` nos cenários bibliográficos? | sensibilidade bibliográfica |
 
-`a_det` é a fração da assinatura nominal injetada, uma magnitude adimensional
-de perturbação. `S_D(a)` representa a probabilidade de o detector ainda não ter
-detectado e `h_D(a)` a intensidade discreta do primeiro cruzamento. Nenhuma das
-duas é tempo, vida útil, RUL, MTTF ou taxa de falha física. Já `R(t)` e `h(t)`
-usam tempo em horas, com conversão explícita para anos.
+O nome GPVS-Faults identifica a proveniência da base experimental. Não existe
+uma família autônoma de “resultados GPVS”.
 
-## E3 experimental
+## Comparação Denso versus AE-LSTM
 
 | Afirmação | Fonte |
 |---|---|
@@ -32,58 +26,37 @@ usam tempo em horas, com conversão explícita para anos.
 | Diferenças pareadas | `e3_diferencas_pareadas.csv` |
 
 AUC-PR é a métrica principal. O bootstrap usa o ensaio como unidade de
-reamostragem; janelas vizinhas não são tratadas como réplicas independentes.
-Os dois modelos usam o mesmo pré-processamento e os mesmos ensaios, mas cada um
-mantém seu próprio limiar p99.
+reamostragem. Cada modelo mantém seu próprio limiar p99, aprendido antes dos
+ensaios de falha.
 
-## E2 FMECA
-
-| Afirmação | Fonte |
-|---|---|
-| Detecção por modelo, componente e magnitude | `e2_deteccao_por_magnitude.csv` |
-| Menor magnitude com detecção conservadora de 95% | `e2_resumo.csv` e `e2_smd95.{png,pdf}` |
-| Primeiro cruzamento observado | `e2_primeiro_cruzamento.csv` |
-| Sobrevivência, incidência e risco discretos | `e2_funcoes_empiricas.{csv,png,pdf}` |
-| Pontos e diagnóstico Weibull | `e2_weibull_pontos.csv`, `e2_weibull_ajustes.csv` e `e2_diagnostico_weibull.{png,pdf}` |
-
-Quando o limite inferior do IC95% não alcança 95%, SMD95 é publicado como
-“não atingido”. Weibull 2P é apenas diagnóstico e só pode ser resumida quando o
-critério formal de aceitação estiver satisfeito; a leitura principal permanece
-empírica.
-
-## Confiabilidade física
+## Confiabilidade e manutenção
 
 | Afirmação | Fonte |
 |---|---|
-| Taxas diretas e derivadas, origem e ressalvas | `cenarios.csv` e `metodologia.json` |
-| Curvas horárias e anuais | `curvas.csv` |
-| Confiabilidade e probabilidade acumulada | `confiabilidade_probabilidade_falha.{png,pdf}` |
-| Densidade e taxa de falha | `densidade_taxa_falha.{png,pdf}` |
+| Taxas, origem, fórmulas e ressalvas | `cenarios.csv` e `metodologia.json` |
+| Séries horárias e anuais | `curvas.csv` |
+| Curva de confiabilidade `R(t)` | `curva_confiabilidade.{png,pdf}` |
+| Curva da probabilidade acumulada de falha `F(t)` | `curva_probabilidade_falha.{png,pdf}` |
+| Densidade de probabilidade de falha `f(t)` | `curva_densidade_falha.{png,pdf}` |
+| Taxa de falha `h(t)` | `curva_taxa_falha.{png,pdf}` |
 | Comparação das taxas | `taxas_componentes.{png,pdf}` |
 
-O modelo físico publicado é exponencial: `R(t)=exp(-lambda*t)`,
-`F(t)=1-R(t)`, `f(t)=lambda*exp(-lambda*t)` e `h(t)=lambda`. As taxas de
-Contator AC e IGBT são cenários derivados, não medições. A taxa direta do
-fusível permanece separada. O GPVS não estima essas taxas e não autoriza
-parâmetros Weibull físicos.
+O modelo publicado é exponencial, usa tempo em horas com conversão para anos e
+mantém eixos lineares:
+`R(t)=exp(-lambda*t)`, `F(t)=1-R(t)`, `f(t)=lambda*exp(-lambda*t)` e
+`h(t)=lambda`. As taxas derivadas são cenários, não medições. Sem uma amostra
+de tempos individuais de falha e censura, não há base para histograma normal,
+Weibull físico, curva de banheira ou RUL.
 
-## Proveniência e precedência
+## Proveniência
 
 - `resultados/manifestos/comparacao_autoencoders.json` protege a comparação.
 - `resultados/manifestos/confiabilidade_componentes.json` protege a confiabilidade.
-- Cada manifesto registra código, entradas, parâmetros, outputs e hashes.
-- Os arquivos consolidados `comparacao_autoencoders.json` e `metodologia.json`
-  carregam os contratos metodológicos usados pelo agente e pela interface.
-- Notas e sessões registram contexto, mas não sobrepõem um artefato publicado.
-
-## Verificação e regeneração
+- Os manifestos registram código, entradas, parâmetros, saídas e hashes.
+- A aplicação apenas lê os contratos; nunca recalcula ao abrir um painel.
 
 ```powershell
 python scripts/auditar_resultados.py
 python -m src.ml.comparacao_autoencoders
 python -m src.ml.publicacao_confiabilidade
 ```
-
-As duas regenerações exigem o ambiente científico local; a comparação também
-exige os 16 CSVs GPVS ignorados pelo Git. A aplicação web apenas consulta os
-artefatos publicados.

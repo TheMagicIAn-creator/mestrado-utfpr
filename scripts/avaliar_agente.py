@@ -51,9 +51,9 @@ def evaluate_scientific_contract() -> list[Check]:
     text = resumir_resultados("resumo completo", incluir_imagens=False)["mensagem"]
     requirements = {
         "models": ("Autoencoder Denso" in text and "AE-LSTM" in text),
-        "e3_unit": "14 ensaios reais" in text,
-        "e2_axis": "não tempo" in text,
-        "smd95": "SMD95" in text,
+        "e3_unit": "14 ensaios experimentais" in text,
+        "active_scope": "detectabilidade sintética" not in text,
+        "reliability_functions": all(term in text for term in ("R(t)", "F(t)", "f(t)", "h(t)")),
         "physical_separation": "não são medições" in text,
     }
     return [Check(name, passed, "presente", "presente" if passed else "ausente") for name, passed in requirements.items()]

@@ -8,6 +8,7 @@ import pytest
 
 from src.core.config import RAIZ_PROJETO
 from src.ml.confiabilidade_componentes import (
+    FMECA_COMPONENTS,
     HOURS_PER_YEAR,
     INVERTER_RATE_PER_HOUR,
     SCENARIOS,
@@ -19,6 +20,7 @@ from src.ml.confiabilidade_componentes import (
     reliability,
     scenario_table,
 )
+from src.ml.graficos_confiabilidade import generate_all
 from src.ml.proveniencia import funcao_de_hash_para
 
 
@@ -74,12 +76,17 @@ def test_curves_publish_hours_years_density_and_hazard():
 
 def test_no_physical_weibull_is_fabricated():
     contract = methodology()
+    assert contract["schema_version"] == 4
+    assert [item.npr for item in FMECA_COMPONENTS] == [315, 90, 30]
+    assert contract["fmeca"]["formula"] == "NPR = S * O * D_campo"
     assert contract["physical_weibull"] == {
-        "status": "not_estimable_from_current_dataset",
+        "status": "not_estimable_from_available_evidence",
         "beta": None,
         "eta": None,
-        "reason": "Ausência de tempos de vida, exposição e censura por ativo no GPVS-Faults",
+        "reason": "Ausência de tempos individuais de falha, exposição e censura por ativo",
     }
+    assert contract["evidence_scope"] == "bibliographic_reliability_only"
+    assert "experimental_dataset" not in contract
     assert "beta" not in scenario_table().columns
     assert "eta" not in scenario_table().columns
 
@@ -89,7 +96,7 @@ def test_published_reliability_manifest_reconciles_all_outputs():
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["manifest_version"] == 2
     assert manifest["evidence_level"] == "bibliographic_sensitivity"
-    assert len(manifest["outputs"]) == 10
+    assert len(manifest["outputs"]) == 14
     assert set(manifest["outputs"]) == set(manifest["output_artifacts"])
     for relative_path, expected_hash in manifest["output_artifacts"].items():
         path = ROOT / relative_path
@@ -100,13 +107,27 @@ def test_published_reliability_manifest_reconciles_all_outputs():
 def test_published_vector_and_raster_figures_are_valid_files():
     output = ROOT / "resultados" / "confiabilidade"
     stems = {
-        "confiabilidade_probabilidade_falha",
-        "densidade_taxa_falha",
+        "curva_confiabilidade",
+        "curva_probabilidade_falha",
+        "curva_densidade_falha",
+        "curva_taxa_falha",
         "taxas_componentes",
     }
     for stem in stems:
         assert (output / f"{stem}.pdf").read_bytes().startswith(b"%PDF-")
         assert (output / f"{stem}.png").read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_all_reliability_figures_are_generated_from_canonical_tables(tmp_path):
+    paths = generate_all(
+        tmp_path,
+        curves=component_curves(horizon_years=2, n_points=9),
+        scenarios=scenario_table(),
+    )
+
+    assert len(paths) == 10
+    assert {path.suffix for path in paths} == {".pdf", ".png"}
+    assert all(path.is_file() and path.stat().st_size > 0 for path in paths)
 
 
 @pytest.mark.parametrize("bad_time", [-1.0, np.nan, np.inf])

@@ -204,25 +204,15 @@ def test_contrato_gpvs_congela_selecao_antes_da_e3():
     assert "congelados" in protocolo["e3"]
 
 
-def test_mapa_de_resultados_separa_detectabilidade_de_confiabilidade_fisica():
-    """Duas famílias de curva compartilham os mesmos três nomes.
-
-    `S_D(a)`/`h_D(a)` (detectabilidade, eixo = magnitude da assinatura, E2,
-    medida no GPVS) e `R(t)`/`h(t)` (confiabilidade física, eixo = anos,
-    bibliográfica). Ambas se chamam "confiabilidade", "falha" e "taxa de
-    falha" — e o pesquisador pediu as duas famílias pelo mesmo nome.
-
-    Confundi-las é o erro mais caro possível na banca: uma diz quando o
-    DETECTOR enxerga, a outra quando o COMPONENTE quebra. O mapa é o árbitro,
-    e tem de nomear a diferença explicitamente.
-    """
+def test_mapa_de_resultados_publica_somente_comparacao_e_confiabilidade():
     mapa = RAIZ / "docs/mapa_de_resultados.md"
     assert mapa.exists(), "docs/mapa_de_resultados.md sumiu"
     texto = mapa.read_text(encoding="utf-8")
 
-    for marca in ("S_D(a)", "h_D(a)", "R(t)", "primeiro cruzamento"):
+    for marca in ("Autoencoder Denso", "AE-LSTM", "R(t)", "F(t)", "f(t)", "h(t)"):
         assert marca in texto, f"o mapa perdeu a marca {marca!r}"
-    assert "fração da assinatura nominal injetada" in texto
+    assert "S_D(a)" not in texto
+    assert "a_det" not in texto
     assert "anos" in texto
 
     # O mapa não pode virar tabela de métricas: valor citado em documento
@@ -239,10 +229,8 @@ def test_artefato_canonico_de_confiabilidade_declara_que_nao_estima_do_dataset()
     artefato = RAIZ / "resultados/confiabilidade/metodologia.json"
     dados = json.loads(artefato.read_text(encoding="utf-8"))
     assert dados.get("status") == "bibliographic_component_sensitivity"
-    assert dados.get("dataset_role") == (
-        "detector_evaluation_only_not_physical_reliability"
-    )
+    assert dados.get("evidence_scope") == "bibliographic_reliability_only"
     assert dados.get("time_unit_primary") == "hour", (
         "o eixo da confiabilidade física é TEMPO; se virar magnitude, ela "
-        "colidiu com a detectabilidade"
+        "deixou de representar tempo de operação"
     )

@@ -1,4 +1,4 @@
-"""Orquestra a comparação canônica Denso versus AE-LSTM no GPVS-Faults."""
+"""Orquestra a comparação canônica entre Autoencoder Denso e AE-LSTM."""
 
 from __future__ import annotations
 
@@ -7,11 +7,7 @@ import json
 import logging
 
 from src.core.tempo import agora_local
-from src.ml.avaliacao_comparativa import (
-    E2_MAGNITUDE_STEPS,
-    evaluate_e2,
-    evaluate_e3,
-)
+from src.ml.avaliacao_comparativa import evaluate_e3
 from src.ml.dados_gpvs import load_or_extract_features, prepare_healthy_data
 from src.ml.publicacao_comparacao import RESULTS_DIR, save_results
 from src.ml.treino_comparacao import REFERENCE_SEED, STABILITY_SEEDS, train_models
@@ -24,9 +20,8 @@ def run(
     *,
     force_features: bool = False,
     seeds: tuple[int, ...] = STABILITY_SEEDS,
-    e2_steps: int = E2_MAGNITUDE_STEPS,
 ) -> dict:
-    """Executa treino saudável, E3 real, E2 sintética e publicação rastreável."""
+    """Executa treino saudável, validação E3 e publicação rastreável."""
 
     normalized_seeds = tuple(int(seed) for seed in seeds)
     if REFERENCE_SEED not in normalized_seeds:
@@ -41,17 +36,13 @@ def run(
     runs = train_models(prepared, seeds=normalized_seeds)
     LOGGER.info("Executando E3 nos 14 ensaios reais com modelos congelados")
     e3 = evaluate_e3(prepared, runs, faults)
-    LOGGER.info("Executando E2 em %s níveis de magnitude", int(e2_steps))
-    e2 = evaluate_e2(prepared, runs, n_steps=int(e2_steps))
     LOGGER.info("Publicando dados-fonte, figuras e manifesto v2")
     saved = save_results(
         dataset_manifest,
         prepared,
         runs,
         e3,
-        e2,
         seeds=normalized_seeds,
-        e2_steps=int(e2_steps),
     )
     return {
         "ok": True,
@@ -65,10 +56,9 @@ def run(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Compara Autoencoder Denso e AE-LSTM no GPVS-Faults"
+        description="Compara Autoencoder Denso e AE-LSTM na base experimental"
     )
     parser.add_argument("--force-features", action="store_true")
-    parser.add_argument("--e2-steps", type=int, default=E2_MAGNITUDE_STEPS)
     parser.add_argument(
         "--seeds",
         type=int,
@@ -81,7 +71,6 @@ def main() -> None:
     result = run(
         force_features=args.force_features,
         seeds=tuple(args.seeds),
-        e2_steps=args.e2_steps,
     )
     print(json.dumps({key: value for key, value in result.items() if key != "payload"}, indent=2))
 

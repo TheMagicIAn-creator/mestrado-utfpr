@@ -45,7 +45,7 @@ limiar p99 na calibração saudável. Pesos, scaler e limiar ficam congelados na
 avaliação E3; a normalização de comissionamento pré-falha, quando aplicável, é
 idêntica entre modelos.
 
-## Três famílias que nunca devem ser confundidas
+## Duas famílias que nunca devem ser confundidas
 
 ### E3: evidência experimental
 
@@ -53,23 +53,6 @@ Avalia Denso e AE-LSTM nos 14 ensaios de falha reais. AUC-PR é a métrica
 principal; ROC-AUC, sensibilidade, especificidade, acurácia balanceada, MCC,
 F1 e falso positivo saudável são complementares. Intervalos são calculados por
 bootstrap no nível do ensaio. Consulte `resultados/comparacao/`.
-
-### E2: detectabilidade sintética orientada pela FMECA
-
-Aplica assinaturas de Contator AC, IGBT e Fusível AC sobre todo o holdout
-saudável, compartilhando janelas, magnitudes e sementes entre modelos. O eixo
-`a_det` é a fração da assinatura nominal injetada, não tempo. SMD95 é a menor
-magnitude cuja detecção atinge o critério com intervalo de confiança; quando o
-critério não é alcançado, informe "não atingido".
-
-Sobrevivência empírica, incidência acumulada e risco discreto nesse eixo medem
-o comportamento do detector. Um ajuste Weibull 2P, quando aceito pelos critérios
-registrados, é apenas diagnóstico de detectabilidade. Nunca o chame de vida
-útil, RUL, confiabilidade física ou taxa de falha temporal.
-
-As assinaturas sintéticas vêm da FMECA consolidada em `docs/fmeca.md` e seu
-contrato operacional em `docs/assinaturas_fmeca.md`. A validação E2 não altera
-NPR, severidade, ocorrência ou detectabilidade da FMECA oficial.
 
 ### Confiabilidade física bibliográfica
 
@@ -88,13 +71,19 @@ são cenários, não medições. A taxa direta do fusível e sua localização
 bibliográfica devem permanecer distinguíveis. Não invente beta, eta, curva de
 banheira ou RUL físico para Contator AC e IGBT.
 
+### FMECA e manutenção
+
+A FMECA consolidada em `docs/fmeca.md` prioriza Contator AC, IGBT e Fusível AC
+por S, O, D_campo e NPR. Ela orienta a discussão de manutenção e a leitura dos
+cenários bibliográficos. Não produz injeções sintéticas, não altera o limiar dos
+modelos e não deve ser apresentada como uma terceira família de resultados.
+
 ## Evidência e linguagem
 
 Use os níveis definidos em `docs/evidence_levels.md`:
 
 - E0: hipótese ou proposta ainda não testada;
 - E1: demonstração computacional preliminar;
-- E2: validação sintética controlada;
 - E3: validação experimental de bancada;
 - E4: validação de campo, ainda ausente neste projeto.
 
@@ -146,7 +135,6 @@ APIs canônicas:
 
 - `/api/chat/stream`;
 - `/api/status`;
-- `/api/results/e2`;
 - `/api/results/e3`;
 - `/api/reliability`;
 - `/api/sources`.

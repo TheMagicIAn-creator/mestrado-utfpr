@@ -3,9 +3,9 @@
 ## 1. Pergunta experimental
 
 Comparar, sob o mesmo protocolo, um Autoencoder Denso e um AE-LSTM para
-detecção de anomalias em sinais elétricos do GPVS-Faults. A comparação separa
-evidência experimental E3, detectabilidade sintética E2 e confiabilidade física
-bibliográfica.
+detecção de anomalias em sinais elétricos do GPVS-Faults. O dataset é a base
+experimental interna da comparação, não uma família autônoma de resultados.
+A confiabilidade física bibliográfica permanece metodologicamente separada.
 
 ## 2. Dataset e features
 
@@ -58,23 +58,13 @@ ensaio; IC95% macro usam bootstrap de 20.000 reamostragens dos ensaios.
 Resultados negativos e heterogeneidade por falha permanecem publicados.
 E3 significa bancada, não validação de campo.
 
-## 6. E2 orientada pela FMECA
+## 6. FMECA e manutenção
 
-As assinaturas de Contator AC, IGBT e Fusível AC são aplicadas sobre todo o
-holdout saudável com janelas, magnitudes e sementes compartilhadas entre
-modelos. Para cada magnitude são reportadas detecção e IC95% de Wilson.
-
-SMD95 é a menor magnitude cujo limite inferior do IC95% alcança 95%. Quando
-isso não ocorre, o resultado é `não atingido`; não há extrapolação para forçar
-um valor.
-
-O eixo `a_det` é magnitude adimensional da perturbação. Sobrevivência empírica,
-incidência acumulada e risco discreto descrevem o primeiro cruzamento do
-detector nesse eixo. Weibull 2P é um diagnóstico intervalar com censura à
-direita e critérios formais de aceitação. Parâmetros rejeitados não sustentam
-síntese.
-
-Nenhuma curva E2 representa tempo, vida útil, RUL ou taxa de falha física.
+A FMECA consolidada preserva funções, modos de falha, índices S, O, D e NPR de
+Contator AC, IGBT e Fusível AC. Ela serve para priorizar a discussão de
+manutenção e interpretar os cenários bibliográficos; não injeta falhas no
+holdout, não recalcula o NPR a partir do detector e não cria uma terceira
+família de resultados.
 
 ## 7. Confiabilidade física
 
@@ -86,7 +76,9 @@ curvas físicas são cenários bibliográficos separados, sob modelo exponencial
 
 Taxas derivadas de participações de chamados são identificadas como cenários;
 a taxa direta do fusível permanece sobreposta e rastreada até PDF, páginas e
-tabela. Não se ajusta Weibull físico sem dados apropriados.
+tabela. As quatro funções são exibidas em eixos lineares. Não se ajusta
+Weibull, normal, curva de banheira ou RUL sem tempos individuais, exposição e
+censura.
 
 ## 8. Publicação
 

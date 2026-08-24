@@ -58,7 +58,7 @@ class PipelineStage:
 STAGES: dict[str, PipelineStage] = {
     "comparacao": PipelineStage(
         key="comparacao",
-        label="Comparação Denso versus AE-LSTM (E2 + E3)",
+        label="Comparação Denso versus AE-LSTM (E3)",
         manifest_name="comparacao_autoencoders",
         runner_module="src.ml.comparacao_autoencoders",
         runner_function="run",
@@ -153,8 +153,6 @@ def estado_resultados_publicados() -> dict[str, dict]:
 
 
 def _comparison_manifest(outputs: list[Path]) -> dict:
-    from src.ml.assinaturas_fmeca import SIGNATURES  # noqa: F401
-    from src.ml.avaliacao_comparativa import E2_PERSISTENCE_MAGNITUDE
     from src.ml.estatistica_comparacao import BOOTSTRAP_RESAMPLES
     from src.ml.publicacao_comparacao import RESULTS_DIR
     from src.ml.treino_comparacao import (
@@ -186,8 +184,6 @@ def _comparison_manifest(outputs: list[Path]) -> dict:
         "reference_seed": REFERENCE_SEED,
         "stability_seeds": list(STABILITY_SEEDS),
         "threshold_percentile": THRESHOLD_PERCENTILE,
-        "e2_steps": 101,
-        "e2_persistence_magnitude": E2_PERSISTENCE_MAGNITUDE,
         "bootstrap_resamples": BOOTSTRAP_RESAMPLES,
     }
     return gerar_manifesto(
@@ -202,12 +198,10 @@ def _comparison_manifest(outputs: list[Path]) -> dict:
             "training": source / "treino_comparacao.py",
             "evaluation": source / "avaliacao_comparativa.py",
             "statistics": source / "estatistica_comparacao.py",
-            "fmeca_signatures": source / "assinaturas_fmeca.py",
-            "detectability": source / "detectabilidade.py",
             "plots": source / "graficos_comparacao.py",
             "publication": source / "publicacao_comparacao.py",
         },
-        evidence_level="E2+E3_bench",
+        evidence_level="E3_bench",
     )
 
 

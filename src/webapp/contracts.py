@@ -14,8 +14,6 @@ from src.core.config import RAIZ_PROJETO
 from src.core.tempo import agora_local
 from src.ml.proveniencia import funcao_de_hash_para, sha256_arquivo
 from src.webapp.chart_data import (
-    e2_detection_series,
-    e2_empirical_series,
     e3_discrimination_series,
     reliability_curve_series,
 )
@@ -100,8 +98,8 @@ def _comparison_payload(_signature_value) -> dict:
 @lru_cache(maxsize=8)
 def _reliability_payload(_signature_value) -> dict:
     payload = _json(RELIABILITY_JSON)
-    if payload.get("dataset_role") != "detector_evaluation_only_not_physical_reliability":
-        raise ContratoWebInvalido("O papel do GPVS na confiabilidade física está ambíguo")
+    if payload.get("evidence_scope") != "bibliographic_reliability_only":
+        raise ContratoWebInvalido("O escopo bibliográfico da confiabilidade está ambíguo")
     return payload
 
 
@@ -261,7 +259,7 @@ def _e3_contract_cached(signature_value) -> dict:
             _figure(
                 "comparison",
                 "e3_metricas_macro",
-                "Desempenho macro nos ensaios GPVS-Faults",
+                "Desempenho macro dos dois autoencoders",
                 "Estimativas macro e IC95% por bootstrap no nível do ensaio.",
             ),
             _figure(
@@ -308,104 +306,6 @@ def e3_contract() -> dict:
 
 
 @lru_cache(maxsize=8)
-def _e2_contract_cached(signature_value) -> dict:
-    payload = _comparison_payload((signature_value[0],))
-    model_names = {key: value["name"] for key, value in payload["models"].items()}
-    component_names = {
-        item["component_id"]: item["component_name"]
-        for item in payload["e2"]["signatures"]
-    }
-    summary = []
-    for item in payload["e2"]["summary"]:
-        summary.append(
-            {
-                **item,
-                "model_name": model_names[item["model"]],
-                "component_name": component_names[item["component"]],
-            }
-        )
-    contract = {
-        "contract_version": 2,
-        "evidence_level": payload["e2"]["evidence_level"],
-        "axis": payload["e2"]["axis"],
-        "axis_is_time": payload["e2"]["axis_is_time"],
-        "magnitude_steps": payload["e2"]["magnitude_steps"],
-        "persistence_width": payload["e2"]["persistence_width"],
-        "interval_method": payload["e2"]["interval_method"],
-        "interval_caveat": payload["e2"]["interval_caveat"],
-        "smd95_definition": payload["e2"]["smd95_definition"],
-        "signatures": payload["e2"]["signatures"],
-        "summary": summary,
-        "detection_series": e2_detection_series(
-            COMPARISON / "e2_deteccao_por_magnitude.csv", model_names
-        ),
-        "empirical_series": e2_empirical_series(
-            COMPARISON / "e2_funcoes_empiricas.csv",
-            model_names,
-            component_names,
-        ),
-        "weibull_role": payload["e2"]["weibull_role"],
-        "weibull_acceptance_scope": payload["e2"]["weibull_acceptance_scope"],
-        "figures": [
-            _figure(
-                "comparison",
-                "e2_deteccao_por_magnitude",
-                "Probabilidade de detecção por magnitude sintética",
-                "Curvas compartilhadas para os dois modelos e três assinaturas FMECA.",
-            ),
-            _figure(
-                "comparison",
-                "e2_smd95",
-                "Limite de detectabilidade SMD95",
-                "Menor magnitude cujo limite inferior do IC95% atinge 95%.",
-            ),
-            _figure(
-                "comparison",
-                "e2_funcoes_empiricas",
-                "Funções empíricas de primeiro cruzamento",
-                "Sobrevivência, incidência acumulada e risco discreto no eixo a_det.",
-            ),
-            _figure(
-                "comparison",
-                "e2_diagnostico_weibull",
-                "Diagnóstico Weibull no papel de probabilidade",
-                "Os ajustes são diagnósticos e não foram aceitos para síntese paramétrica.",
-            ),
-        ],
-        "tables": [
-            _artifact("comparison", "e2_resumo.csv", "Resumo SMD95"),
-            _artifact(
-                "comparison",
-                "e2_deteccao_por_magnitude.csv",
-                "Detecção por magnitude",
-            ),
-            _artifact("comparison", "e2_funcoes_empiricas.csv", "Funções empíricas"),
-            _artifact("comparison", "e2_weibull_pontos.csv", "Pontos Weibull"),
-            _artifact("comparison", "e2_weibull_ajustes.csv", "Diagnóstico dos ajustes"),
-        ],
-        "limitations": [
-            item for item in payload["limitations"] if "E2" in item or "a_det" in item
-        ],
-    }
-    _set_contract_status("pronto")
-    return contract
-
-
-def e2_contract() -> dict:
-    paths = (
-        COMPARISON_JSON,
-        COMPARISON / "e2_resumo.csv",
-        COMPARISON / "e2_deteccao_por_magnitude.csv",
-        COMPARISON / "e2_funcoes_empiricas.csv",
-        COMPARISON / "e2_deteccao_por_magnitude.png",
-        COMPARISON / "e2_smd95.png",
-        COMPARISON / "e2_funcoes_empiricas.png",
-        COMPARISON / "e2_diagnostico_weibull.png",
-    )
-    return _e2_contract_cached(_signature(paths))
-
-
-@lru_cache(maxsize=8)
 def _reliability_contract_cached(signature_value) -> dict:
     payload = _reliability_payload((signature_value[0],))
     scenario_names = {
@@ -414,11 +314,11 @@ def _reliability_contract_cached(signature_value) -> dict:
     contract = {
         "contract_version": 2,
         "status": payload["status"],
-        "dataset": payload["experimental_dataset"],
-        "dataset_role": payload["dataset_role"],
+        "evidence_scope": payload["evidence_scope"],
         "time_unit_primary": payload["time_unit_primary"],
         "hours_per_year": payload["hours_per_year"],
         "formulas": payload["formulas"],
+        "fmeca": payload["fmeca"],
         "physical_weibull": payload["physical_weibull"],
         "scenarios": payload["scenarios"],
         "curve_series": reliability_curve_series(
@@ -444,15 +344,27 @@ def _reliability_contract_cached(signature_value) -> dict:
         "figures": [
             _figure(
                 "reliability",
-                "confiabilidade_probabilidade_falha",
-                "Confiabilidade e probabilidade acumulada de falha",
-                "Cenários exponenciais bibliográficos em eixo temporal explícito.",
+                "curva_confiabilidade",
+                "Curva de confiabilidade R(t)",
+                "Probabilidade de operação sem falha em cenários exponenciais.",
             ),
             _figure(
                 "reliability",
-                "densidade_taxa_falha",
-                "Densidade de falha e função de risco",
-                "f(t) varia com o tempo; h(t) permanece constante no modelo exponencial.",
+                "curva_probabilidade_falha",
+                "Curva da probabilidade acumulada de falha F(t)",
+                "Probabilidade acumulada de falha em eixo temporal linear.",
+            ),
+            _figure(
+                "reliability",
+                "curva_densidade_falha",
+                "Curva da densidade de probabilidade de falha f(t)",
+                "Densidade exponencial em ano⁻¹; não é um ajuste normal.",
+            ),
+            _figure(
+                "reliability",
+                "curva_taxa_falha",
+                "Curva da taxa de falha h(t)",
+                "Taxa constante no modelo exponencial, em ano⁻¹.",
             ),
             _figure(
                 "reliability",
@@ -476,8 +388,10 @@ def reliability_contract() -> dict:
     paths = (
         RELIABILITY_JSON,
         RELIABILITY / "curvas.csv",
-        RELIABILITY / "confiabilidade_probabilidade_falha.png",
-        RELIABILITY / "densidade_taxa_falha.png",
+        RELIABILITY / "curva_confiabilidade.png",
+        RELIABILITY / "curva_probabilidade_falha.png",
+        RELIABILITY / "curva_densidade_falha.png",
+        RELIABILITY / "curva_taxa_falha.png",
         RELIABILITY / "taxas_componentes.png",
     )
     return _reliability_contract_cached(_signature(paths))
@@ -532,9 +446,8 @@ def _sources_contract_cached(signature_value) -> dict:
         ],
         "separation_rules": [
             "GPVS-Faults sustenta a avaliação dos detectores, não taxas físicas de falha.",
-            "E2 usa magnitude sintética adimensional; seu eixo não representa tempo.",
-            "Weibull E2 é diagnóstico de detectabilidade e não modelo de vida útil.",
             "Taxas derivadas são cenários de sensibilidade, não medições de componente.",
+            "Distribuições normal e Weibull exigem tempos individuais de falha e censura.",
         ],
     }
     _set_contract_status("pronto")
@@ -556,7 +469,6 @@ def warm_contracts() -> dict:
     _set_contract_status("iniciando")
     try:
         e3_contract()
-        e2_contract()
         reliability_contract()
         sources_contract()
     except ContratoWebInvalido as exc:
@@ -581,7 +493,6 @@ __all__ = [
     "RELIABILITY",
     "ContratoWebInvalido",
     "contracts_status",
-    "e2_contract",
     "e3_contract",
     "reliability_contract",
     "sources_contract",

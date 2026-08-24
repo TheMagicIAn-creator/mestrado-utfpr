@@ -17,21 +17,21 @@ def test_primeira_tela_e_chat_utilizavel_sem_dashboard_bloqueante():
     assert 'id="send-button"' in HTML
     assert "loading-state" not in HTML
     assert "/vendor/plotly" not in HTML
+    assert 'savedTheme || "light"' in JS
 
 
 def test_navegacao_cientifica_unifica_resultados_e_biblioteca():
     assert 'data-view="results"' in HTML
     assert 'data-view="library"' in HTML
     assert 'data-result-tab="e3"' in HTML
-    assert 'data-result-tab="e2"' in HTML
     assert 'data-result-tab="reliability"' in HTML
-    assert "Comparação dos modelos" in HTML
-    assert "Detectabilidade FMECA" in HTML
-    assert "Confiabilidade física" in HTML
+    assert "Denso × AE-LSTM" in HTML
+    assert "Confiabilidade e manutenção" in HTML
     assert "/api/results/e3" in JS
-    assert "/api/results/e2" in JS
+    assert "/api/results/e2" not in JS
     assert "/api/reliability" in JS
     assert "/api/library" in JS
+    assert "Priorização FMECA dos componentes CA" in JS
 
 
 def test_resultados_usam_graficos_interativos_sob_demanda():
@@ -40,7 +40,7 @@ def test_resultados_usam_graficos_interativos_sob_demanda():
     assert '/static/results-charts.js' in JS
     assert "ensureResultsCharts" in JS
     assert "ResizeObserver" in charts
-    assert "chart-confidence-band" in charts
+    assert "scaleLog" not in charts
     assert "e3_discrimination_series" not in charts
     for title in (
         "Curva de confiabilidade R(t)",

@@ -4,7 +4,6 @@
 |---|---|---|
 | E0 | hipótese ou proposta não testada | ideias futuras e calibração física pendente |
 | E1 | demonstração computacional preliminar | testes unitários e dados artificiais pequenos |
-| E2 | validação sintética controlada | assinaturas FMECA no holdout saudável GPVS |
 | E3 | validação experimental de bancada | F1L-F7M do GPVS-Faults |
 | E4 | validação de campo | não realizada |
 

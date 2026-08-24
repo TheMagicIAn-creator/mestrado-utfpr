@@ -37,9 +37,10 @@ def _report() -> str:
 
 ## Escopo
 
-As curvas são cenários bibliográficos de sensibilidade. O GPVS-Faults avalia os
-detectores Denso e AE-LSTM, mas não contém tempos de vida, exposição de frota ou
-censura por ativo e, portanto, não estima confiabilidade física.
+As curvas são cenários bibliográficos de sensibilidade, independentes da base
+experimental usada na comparação dos detectores. As fontes disponíveis não
+fornecem uma amostra de tempos individuais de falha, exposição de frota e
+censura por ativo.
 
 ## Taxas
 
@@ -52,11 +53,18 @@ Os percentuais são participações de chamados, não frações demonstradas da 
 de falha do inversor. Por isso, as três alocações são rotuladas como derivadas.
 A ausência de taxas diretas equivalentes para Contator AC e IGBT é preservada.
 
+## Priorização FMECA
+
+O NPR permanece independente do detector: Contator AC 315, IGBT 90 e Fusível
+AC 30. Adota-se NPR=S x O x D_campo; D_campo é a dificuldade de detecção no
+processo de manutenção e não uma métrica dos Autoencoders.
+
 ## Modelo
 
 Adota-se o cenário exponencial de taxa constante: R(t)=exp(-lambda*t),
 F(t)=1-R(t), f(t)=lambda*exp(-lambda*t) e h(t)=lambda. A conversão usa
-1 ano=8.760 horas. Não são estimados beta, eta, curva de banheira ou RUL físico.
+1 ano=8.760 horas. As figuras usam escalas lineares. Não são estimados beta,
+eta, distribuição normal, curva de banheira ou RUL físico.
 """
 
 

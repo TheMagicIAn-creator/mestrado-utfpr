@@ -107,9 +107,10 @@ def auditar_publicacao(root: Path | str = RAIZ_PROJETO) -> dict:
         errors.append("a comparação deve conter somente AE Denso e AE-LSTM")
 
     reliability = _read_json(results / "confiabilidade" / "metodologia.json")
-    expected_role = "detector_evaluation_only_not_physical_reliability"
-    if reliability.get("dataset_role") != expected_role:
-        errors.append("o papel do GPVS na confiabilidade física está ambíguo")
+    if reliability.get("evidence_scope") != "bibliographic_reliability_only":
+        errors.append("a confiabilidade não declara escopo exclusivamente bibliográfico")
+    if "dataset_role" in reliability or "experimental_dataset" in reliability:
+        errors.append("a confiabilidade física ainda depende de metadados experimentais")
     physical_weibull = reliability.get("physical_weibull", {})
     if physical_weibull.get("beta") is not None or physical_weibull.get("eta") is not None:
         errors.append("a publicação fabricou parâmetros Weibull físicos")

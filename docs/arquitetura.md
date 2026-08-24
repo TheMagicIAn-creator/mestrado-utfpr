@@ -8,7 +8,7 @@ em segundo plano apenas para o chat.
 src/
 |-- core/                 configuração, segurança, tempo, logs e formatação
 |-- conhecimento/         Gemini, RAG híbrido, memória, Obsidian e ferramentas
-|-- ml/                   GPVS, Denso/AE-LSTM, E2, E3 e confiabilidade física
+|-- ml/                   GPVS, Denso/AE-LSTM E3 e confiabilidade física
 |-- webapp/               Starlette, contratos HTTP e frontend responsivo
 `-- orquestrador.py       coordenação explícita das operações
 
@@ -28,7 +28,7 @@ scripts/
    em thread de fundo.
 4. Saudações são respondidas localmente; perguntas acadêmicas usam eventos SSE
    `status`, `delta`, `done` e `error`.
-5. Painéis E2, E3 e Confiabilidade carregam contratos somente quando abertos.
+5. Painéis de Comparação e Confiabilidade carregam contratos somente quando abertos.
 
 As figuras são PNG acadêmico de 300 dpi e PDF vetorial. O frontend não recalcula
 métrica, limiar ou ajuste estatístico.
@@ -38,7 +38,7 @@ métrica, limiar ou ajuste estatístico.
 `dados_gpvs.py` é o único contrato de ingestão. Ele valida os 16 ensaios,
 extrai 24 features e cria blocos saudáveis disjuntos. `treino_comparacao.py`
 treina Denso e AE-LSTM com o mesmo protocolo. `avaliacao_comparativa.py` produz
-E3 real e E2 sintética. `publicacao_comparacao.py` grava tabelas, figuras e
+a comparação E3 de bancada. `publicacao_comparacao.py` grava tabelas, figuras e
 manifesto.
 
 `confiabilidade_componentes.py` mantém as equações e os cenários bibliográficos;
@@ -53,7 +53,7 @@ do detector.
 - `dados/brutos/gpvs/`: único dataset ativo, local e ignorado.
 - `dados/processados/`: cache local de features, ignorado.
 - `artefatos/modelos/{ae_denso,ae_lstm}`: pesos e scalers locais, ignorados.
-- `resultados/comparacao/`: publicação E2/E3 versionável.
+- `resultados/comparacao/`: comparação Denso versus AE-LSTM versionável.
 - `resultados/confiabilidade/`: cenários físicos versionáveis.
 - `resultados/manifestos/`: proveniência e hashes.
 - `base_conhecimento/`: ChromaDB local, ignorado.

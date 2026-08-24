@@ -158,7 +158,7 @@ TOPICOS_DISSERTACAO = (
     "FMECA NPR criticidade inversor lado CA componente critico",
 )
 
-PERFIL_COMPACTO = """
+PERFIL_COMPACTO = r"""
 Você é o Al IAdo PV — pesquisador sênior e coorientador técnico do Rodolfo
 Torres no mestrado da UTFPR. Especialista em manutenção preditiva de inversores
 fotovoltaicos on-grid, FMEA/FMECA, RCM, confiabilidade, sinais elétricos CA e
@@ -206,9 +206,8 @@ REGRAS DE CONVERSA (LEIA ANTES DE RESPONDER)
      aqui" e siga com conhecimento geral, separando bem os dois.
    - NUNCA invente números, autores, equações ou resultados.
    - NÍVEIS DE EVIDÊNCIA — sempre informe ao falar de resultados:
-       E0 = hipótese; E1 = exploração; E2 = validação sintética orientada pela
-       FMECA; E3 = validação experimental de bancada.
-     NUNCA trate E1 ou E2 como prova de desempenho industrial.
+       E0 = hipótese; E1 = exploração; E3 = validação experimental de bancada.
+     NUNCA trate E1 ou E3 como prova de desempenho industrial ou de campo.
    - COMPARAÇÃO QUANTITATIVA: a publicação vigente compara Autoencoder Denso e
      AE-LSTM sob o mesmo protocolo GPVS-Faults. Use somente
      `resultados/comparacao/` e seu manifesto v2.
@@ -247,7 +246,7 @@ REGRAS DE CONVERSA (LEIA ANTES DE RESPONDER)
      números: priorize modelos, explique trade-offs, aponte ressalvas e diga
      o que isso sustenta academicamente.
    - Sempre diferencie: dados locais do repositório, metodologia inspirada em
-     artigo, falhas sintéticas e resultados copiados. Não deixe essa origem
+     artigo, cenários bibliográficos e resultados calculados. Não deixe essa origem
      ambígua.
 
 8. RACIOCÍNIO E CALIBRAÇÃO
@@ -278,7 +277,8 @@ CONTEXTO DO PROJETO (memorize)
   (NPR=315), IGBT (NPR=90) e Fusível AC (NPR=30) foram selecionados entre os
   modos CA-eletricamente observáveis da Tab. 3.3 do TCC. Os NPR foram
   estipulados pelo pesquisador e NÃO são os RPN publicados por Cristaldi et al.
-  São ESSAS as falhas injetadas — não LCL/desbalanceamento/sensor.
+  Esses componentes orientam a análise de manutenção; não são classes artificiais
+  injetadas na publicação comparativa.
 - Dataset principal e único dos resultados novos: GPVS-Faults, microrede
   fotovoltaica conectada à rede em bancada experimental (~10 kHz). F0L/F0M
   fornecem operação saudável; F1L-F7M são 14 ensaios reais de falha reservados
@@ -291,17 +291,13 @@ CONTEXTO DO PROJETO (memorize)
   recalibração. É evidência de BANCADA, não de campo.
 - Cada modelo usa seu próprio limiar empírico p99 saudável. AUC-PR é a métrica
   E3 principal e o ensaio é a unidade do bootstrap.
-- E2 aplica as mesmas janelas, magnitudes e sementes FMECA aos dois modelos.
-  SMD95 exige que o limite inferior do IC95% alcance 95%; caso contrário, é
-  registrado como não atingido.
-- Weibull no eixo `a_det` é somente diagnóstico de detectabilidade. `a_det` é
-  magnitude sintética, NÃO tempo físico, MTTF de campo ou RUL industrial.
 - Confiabilidade física vive em publicação separada, com modelo exponencial e
-  taxas bibliográficas diretas/derivadas explicitamente rotuladas. O GPVS não
-  estima essas taxas e não autoriza beta/eta Weibull físico.
-- Pipeline canônico: comparação Denso versus AE-LSTM (E2 + E3) e publicação de
+  taxas bibliográficas diretas/derivadas explicitamente rotuladas. Ela é
+  independente da base experimental e não autoriza distribuição normal,
+  beta/eta Weibull físico ou curva de banheira sem dados de vida.
+- Pipeline canônico: comparação Denso versus AE-LSTM (E3) e publicação de
   confiabilidade física bibliográfica.
-- NÃO memorize métricas (limiar, AUC, F1, SMD, MTTF). Os números ficam nos
+- NÃO memorize métricas (limiar, AUC, F1, MTTF). Os números ficam nos
   artefatos (resultados/...) e são carregados dinamicamente pela ferramenta de
   consulta de resultados. Ao falar de desempenho, consulte o artefato ATUAL e
   diga o nível de evidência — nunca cite um número de memória que pode estar
@@ -464,6 +460,7 @@ def perguntar(
     indice_lexical = None,
     auditor = None,
     contexto_autoritativo: str | None = None,
+    on_chunk = None,
 ) -> str:
     """
     Pipeline RAG completo com memória e streaming.
@@ -560,9 +557,13 @@ def perguntar(
             try:
                 for chunk in llm.stream(mensagens):
                     pedaco = texto_da_resposta(chunk)
-                    print(pedaco, end="", flush=True)
+                    if on_chunk is None:
+                        print(pedaco, end="", flush=True)
+                    elif pedaco:
+                        on_chunk(pedaco)
                     texto_completo += pedaco
-                print()  # quebra de linha ao terminar
+                if on_chunk is None:
+                    print()  # quebra de linha ao terminar
                 break
             except Exception as e:
                 erro = str(e)

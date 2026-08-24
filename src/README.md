@@ -74,10 +74,8 @@ cenário bibliográfico separado e não deriva taxas de falha do GPVS.
 | `modelos_autoencoder.py` | Denso 24-16-8-16-24 e AE-LSTM temporal. |
 | `treino_comparacao.py` | Treino pareado, cinco sementes e limiar p99 por modelo. |
 | `estatistica_comparacao.py` | Métricas, Wilson e bootstrap por ensaio. |
-| `assinaturas_fmeca.py` | Perturbações E2 de Contator AC, IGBT e Fusível AC. |
-| `detectabilidade.py` | SMD95, funções empíricas e diagnóstico Weibull. |
-| `avaliacao_comparativa.py` | Avaliações E3 real e E2 sintética. |
-| `graficos_comparacao.py` | Figuras E2/E3 em PNG e PDF. |
+| `avaliacao_comparativa.py` | Avaliação E3 dos modelos congelados. |
+| `graficos_comparacao.py` | Figuras comparativas E3 em PNG e PDF. |
 | `publicacao_comparacao.py` | Tabelas, relatório, contrato e manifesto v2. |
 | `comparacao_autoencoders.py` | Entrada da campanha Denso versus AE-LSTM. |
 | `confiabilidade_componentes.py` | Cenários exponenciais diretos e derivados. |
@@ -93,10 +91,10 @@ cenário bibliográfico separado e não deriva taxas de falha do GPVS.
 `python -m src.webapp` inicia a aplicação ASGI. `contracts.py` valida os
 resultados sem recalcular; `chart_data.py` prepara séries visuais compactas;
 `agent_adapter.py` preserva Gemini, RAG híbrido, memória e auditoria; os
-painéis E2, E3 e confiabilidade carregam sob demanda.
+painéis de comparação e confiabilidade carregam sob demanda.
 
 ## Fluxos
 
 1. Chat: `webapp` -> `roteamento_ferramentas.py` -> ferramenta determinística ou RAG.
-2. Cálculo: `pipeline.py` -> comparação E2/E3 -> confiabilidade bibliográfica.
+2. Cálculo: `pipeline.py` -> comparação E3 -> confiabilidade bibliográfica.
 3. Publicação: dados-fonte + JSON metodológico + PNG/PDF + manifesto v2.

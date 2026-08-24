@@ -23,7 +23,7 @@ def test_explicit_execution_routes_to_the_two_real_publications():
 def test_result_queries_never_trigger_training():
     assert _tool("compare o Denso e o AE-LSTM nos resultados") == "consultar_comparacao_autoencoders"
     assert _tool("mostre os gráficos ROC e as matrizes") == "consultar_resultados"
-    assert _tool("qual foi o SMD95 do fusível?") == "consultar_resultados"
+    assert _tool("qual foi o SMD95 do fusível?") is None
 
 
 def test_dataset_catalog_and_memory_have_dedicated_routes():

@@ -1,7 +1,0 @@
-model,component,npr,smd95,smd95_status,detection_at_max,n_trajectories,n_events,indetectable_at_max_pct,weibull_parametric_recommended
-ae_denso,contator_ac,315,0.54,reached,1.0,281,281,0.0,False
-ae_denso,fusivel_ac,30,0.75,reached,1.0,281,281,0.0,False
-ae_denso,igbt,90,0.43,reached,1.0,281,281,0.0,False
-ae_lstm,contator_ac,315,0.78,reached,1.0,281,281,0.0,False
-ae_lstm,fusivel_ac,30,,not_reached,0.7188612099644128,281,196,30.2491103202847,False
-ae_lstm,igbt,90,0.4,reached,1.0,281,281,0.0,False
