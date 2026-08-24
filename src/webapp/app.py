@@ -100,7 +100,7 @@ def _contract_error(exc: Exception) -> JSONResponse:
     )
 
 
-async def homepage(_request: Request) -> FileResponse:
+def homepage(_request: Request) -> FileResponse:
     return FileResponse(INDEX_HTML, media_type="text/html")
 
 
@@ -127,7 +127,7 @@ async def sources_api(_request: Request) -> JSONResponse:
     return await _contract_response(sources_contract)
 
 
-async def version_api(_request: Request) -> JSONResponse:
+def version_api(_request: Request) -> JSONResponse:
     return JSONResponse(
         {
             "application": APP_ID,
@@ -146,7 +146,7 @@ async def render_api(request: Request) -> JSONResponse:
         if not isinstance(payload, dict):
             raise ValueError("O corpo JSON deve ser um objeto")
         rendered = render_agent_messages(payload.get("messages", []))
-    except (ValueError, json.JSONDecodeError) as exc:
+    except ValueError as exc:
         return JSONResponse(
             {"error": "invalid_request", "detail": str(exc)},
             status_code=400,
@@ -233,6 +233,28 @@ def _loopback_host(value: str | None) -> bool:
         return False
 
 
+def _same_origin(request: Request) -> tuple[bool, str | None]:
+    origin = request.headers.get("origin")
+    if not origin:
+        return True, None
+    try:
+        parsed = urlsplit(origin)
+        origin_port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    except ValueError:
+        return False, "A origem da requisicao e invalida."
+    request_port = request.url.port or (
+        443 if request.url.scheme == "https" else 80
+    )
+    matches = (
+        parsed.scheme == request.url.scheme
+        and parsed.hostname == request.url.hostname
+        and origin_port == request_port
+    )
+    if not matches:
+        return False, "A origem da requisicao nao corresponde ao ALIAdo local."
+    return True, None
+
+
 def _library_write_access(request: Request) -> tuple[bool, str | None]:
     read_only, reason = library_is_read_only()
     if read_only:
@@ -246,25 +268,7 @@ def _library_write_access(request: Request) -> tuple[bool, str | None]:
     if not _loopback_host(client_host) and client_host != "testclient":
         return False, "A conexao de escrita nao se originou do computador local."
 
-    origin = request.headers.get("origin")
-    if origin:
-        try:
-            parsed = urlsplit(origin)
-            origin_port = parsed.port or (
-                443 if parsed.scheme == "https" else 80
-            )
-        except ValueError:
-            return False, "A origem da requisicao e invalida."
-        request_port = request.url.port or (
-            443 if request.url.scheme == "https" else 80
-        )
-        if (
-            parsed.scheme != request.url.scheme
-            or parsed.hostname != request.url.hostname
-            or origin_port != request_port
-        ):
-            return False, "A origem da requisicao nao corresponde ao ALIAdo local."
-    return True, None
+    return _same_origin(request)
 
 
 def create_app(
@@ -285,7 +289,7 @@ def create_app(
         yield
         library.close()
 
-    async def status_api(_request: Request) -> JSONResponse:
+    def status_api(_request: Request) -> JSONResponse:
         agent = adapter.status()
         contracts = contracts_status()
         states = {agent["state"], contracts["state"]}
@@ -315,7 +319,7 @@ def create_app(
     async def chat_stream_api(request: Request):
         try:
             message, history, attachments, session_id = await _chat_payload(request)
-        except (ValueError, json.JSONDecodeError) as exc:
+        except ValueError as exc:
             return JSONResponse(
                 {"error": "invalid_request", "detail": str(exc)},
                 status_code=400,
@@ -376,7 +380,7 @@ def create_app(
                     elapsed_ms,
                     response.get("route", "unknown"),
                 )
-            except (ValueError, json.JSONDecodeError) as exc:
+            except ValueError as exc:
                 yield _sse(
                     "error",
                     {
@@ -479,7 +483,7 @@ def create_app(
                 },
                 status_code=409,
             )
-        except (LibraryError, ValueError) as exc:
+        except ValueError as exc:
             return JSONResponse(
                 {"error": "invalid_library_pdf", "detail": str(exc)},
                 status_code=400,
@@ -504,7 +508,7 @@ def create_app(
                 {"error": "source_not_found", "detail": str(exc)},
                 status_code=404,
             )
-        except (LibraryError, CatalogoBibliograficoInvalido, ValueError) as exc:
+        except ValueError as exc:
             return JSONResponse(
                 {"error": "invalid_metadata", "detail": str(exc)},
                 status_code=400,
@@ -525,7 +529,7 @@ def create_app(
                 status_code=404,
             )
 
-    async def library_job_api(request: Request) -> JSONResponse:
+    def library_job_api(request: Request) -> JSONResponse:
         try:
             job = library.get_job(request.path_params["job_id"])
             return JSONResponse({"job": job})

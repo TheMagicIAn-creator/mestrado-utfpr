@@ -18,6 +18,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from pypdf import PdfReader
 
@@ -35,6 +36,17 @@ CATEGORIAS = (
 IDIOMAS = ("pt", "en", "es", "fr", "desconhecido")
 _SOURCE_ID = re.compile(r"^[0-9a-f]{64}$")
 _LOCK = threading.RLock()
+_UNKNOWN_AUTHOR = "Autor desconhecido"
+_EDITABLE_FIELDS = {"title", "authors", "year", "category", "language"}
+_INTERNAL_FIELDS = {
+    "relative_path",
+    "file_name",
+    "chunk_count",
+    "size_bytes",
+    "index_status",
+    "extraction_warnings",
+    "metadata_origin",
+}
 _METADADO_PDF_INVALIDO = (
     "acrobat",
     "microsoft word",
@@ -73,20 +85,21 @@ def _autores(valor) -> list[str]:
         candidatos = valor
     else:
         texto = limpar_metadado(valor, limite=1000)
-        candidatos = re.split(r"\s*;\s*", texto) if texto else []
+        candidatos = texto.split(";") if texto else []
     autores = []
     for item in candidatos:
         autor = limpar_metadado(item, limite=200)
         if autor and autor not in autores:
             autores.append(autor)
-    return autores or ["Autor desconhecido"]
+    return autores or [_UNKNOWN_AUTHOR]
 
 
 def _autores_pdf(valor) -> list[str]:
     texto = limpar_metadado(valor, limite=1000)
     if not texto:
-        return ["Autor desconhecido"]
-    return _autores(re.split(r"\s*(?:;|,|\band\b|&)\s*", texto, flags=re.IGNORECASE))
+        return [_UNKNOWN_AUTHOR]
+    normalizado = re.sub(r"\band\b", ";", texto, flags=re.IGNORECASE)
+    return _autores(normalizado.replace(",", ";").replace("&", ";"))
 
 
 def _metadados_pdf(caminho: Path) -> tuple[str, str, list[str]]:
@@ -102,11 +115,14 @@ def _metadados_pdf(caminho: Path) -> tuple[str, str, list[str]]:
 
 def _titulo_pdf_plausivel(titulo: str) -> bool:
     texto = titulo.casefold()
+    esquema = urlsplit(titulo).scheme.casefold()
+    sufixo = texto.rsplit(maxsplit=1)[-1] if texto else ""
     return bool(
         len(titulo) >= 12
-        and not texto.startswith(("http://", "https://"))
+        and esquema not in {"http", "https"}
         and not any(marcador in texto for marcador in _METADADO_PDF_INVALIDO)
-        and not re.search(r"(?:_[a-z]|\s+n\d+)$", texto)
+        and not re.search(r"_[a-z]$", texto)
+        and not re.fullmatch(r"n\d+", sufixo)
         and re.search(r"[a-zA-ZÀ-ÿ]{4}", titulo)
     )
 
@@ -151,6 +167,35 @@ def _ler_curadoria(caminho: Path | None) -> dict[str, dict]:
     return documentos if isinstance(documentos, dict) else {}
 
 
+def _registro_indice(linha: str, numero: int) -> dict:
+    try:
+        return json.loads(linha)
+    except json.JSONDecodeError as exc:
+        raise CatalogoBibliograficoInvalido(
+            f"Indice portatil invalido na linha {numero}: {exc}"
+        ) from exc
+
+
+def _acumular_documento_indice(documentos: dict[str, dict], registro: dict) -> None:
+    if registro.get("tipo") not in {"chunk_indice_portatil", "chunk_literatura"}:
+        return
+    metadata = registro.get("metadata") or {}
+    source_id = str(metadata.get("arquivo_hash") or "").lower()
+    if not _SOURCE_ID.fullmatch(source_id):
+        return
+    item = documentos.setdefault(
+        source_id,
+        {
+            "metadata": metadata,
+            "chunk_count": 0,
+            "replacement_character": False,
+        },
+    )
+    item["chunk_count"] += 1
+    if "\ufffd" in json.dumps(metadata, ensure_ascii=False):
+        item["replacement_character"] = True
+
+
 def _ler_indice(caminho: Path | None) -> tuple[dict, dict[str, dict]]:
     manifesto: dict = {}
     documentos: dict[str, dict] = {}
@@ -159,32 +204,11 @@ def _ler_indice(caminho: Path | None) -> tuple[dict, dict[str, dict]]:
 
     with gzip.open(caminho, "rt", encoding="utf-8") as arquivo:
         for numero, linha in enumerate(arquivo, 1):
-            try:
-                registro = json.loads(linha)
-            except json.JSONDecodeError as exc:
-                raise CatalogoBibliograficoInvalido(
-                    f"Indice portatil invalido na linha {numero}: {exc}"
-                ) from exc
+            registro = _registro_indice(linha, numero)
             if numero == 1 and registro.get("tipo", "").startswith("manifesto_"):
                 manifesto = registro
                 continue
-            if registro.get("tipo") not in {"chunk_indice_portatil", "chunk_literatura"}:
-                continue
-            metadata = registro.get("metadata") or {}
-            source_id = str(metadata.get("arquivo_hash") or "").lower()
-            if not _SOURCE_ID.fullmatch(source_id):
-                continue
-            item = documentos.setdefault(
-                source_id,
-                {
-                    "metadata": metadata,
-                    "chunk_count": 0,
-                    "replacement_character": False,
-                },
-            )
-            item["chunk_count"] += 1
-            if "\ufffd" in json.dumps(metadata, ensure_ascii=False):
-                item["replacement_character"] = True
+            _acumular_documento_indice(documentos, registro)
     return manifesto, documentos
 
 
@@ -199,6 +223,145 @@ def _resumo(documentos: list[dict], *, index_records: int) -> dict:
         "languages": dict(sorted(idiomas.items())),
         "metadata_warnings": sum(bool(item.get("extraction_warnings")) for item in documentos),
     }
+
+
+def _origem_metadado(revisao: dict, metadata: dict) -> str:
+    if revisao:
+        return "curadoria"
+    if metadata:
+        return "indice_portatil"
+    return "nome_arquivo"
+
+
+def _titulo_catalogo(
+    pdf: Path,
+    metadata: dict,
+    fallback: dict,
+    revisao: dict,
+    titulo_pdf: str,
+) -> tuple[str, bool, str]:
+    titulo_base = limpar_metadado(
+        metadata.get("titulo") or fallback.get("titulo") or pdf.stem
+    )
+    titulo = limpar_metadado(revisao.get("titulo") or titulo_base)
+    origem = _origem_metadado(revisao, metadata)
+    relacionado = _titulos_relacionados(titulo_base, titulo_pdf)
+    usar_interno = (
+        not revisao
+        and _titulo_pdf_plausivel(titulo_pdf)
+        and relacionado
+        and len(titulo_pdf) >= len(titulo_base) + 3
+    )
+    if usar_interno:
+        return titulo_pdf, relacionado, "pdf_interno"
+    return titulo, relacionado, origem
+
+
+def _autores_catalogo(
+    metadata: dict,
+    fallback: dict,
+    revisao: dict,
+    autor_pdf: str,
+    relacionado: bool,
+    origem: str,
+) -> tuple[list[str], str]:
+    autores_base = revisao.get("autor") or metadata.get("autor") or fallback.get("autor")
+    autores = _autores(autores_base)
+    if revisao or not autor_pdf or not relacionado:
+        return autores, origem
+    candidatos = _autores_pdf(autor_pdf)
+    if candidatos == [_UNKNOWN_AUTHOR]:
+        return autores, origem
+    return candidatos, "pdf_interno"
+
+
+def _ano_catalogo(metadata: dict, fallback: dict, revisao: dict) -> tuple[int | None, str]:
+    ano, status = _ano(
+        revisao.get("ano") or metadata.get("ano") or fallback.get("ano")
+    )
+    if revisao.get("ano_confirmado_ausente"):
+        return None, "nao_declarado_na_fonte"
+    return ano, status
+
+
+def _categoria_catalogo(pdf: Path, metadata: dict) -> str:
+    categoria = limpar_metadado(metadata.get("pasta") or pdf.parent.name, limite=80)
+    if categoria in CATEGORIAS:
+        return categoria
+    if pdf.parent.name in CATEGORIAS:
+        return pdf.parent.name
+    return "ml-preditivo"
+
+
+def _idioma_catalogo(metadata: dict) -> str:
+    idioma = limpar_metadado(metadata.get("idioma") or "desconhecido", limite=20).lower()
+    return idioma if idioma in IDIOMAS else "desconhecido"
+
+
+def _alertas_catalogo(indice: dict, alertas_pdf: list[str]) -> list[str]:
+    alertas = list(alertas_pdf)
+    if indice.get("replacement_character"):
+        alertas.append("caractere_substituto_na_extracao_pdf")
+    if int(indice.get("chunk_count", 0)) == 0:
+        alertas.append("ausente_do_indice_portatil")
+    return alertas
+
+
+def _restaurar_metadados_editados(item: dict, anterior: dict | None) -> None:
+    if not anterior or not anterior.get("metadata_edited"):
+        return
+    campos = (
+        "title", "authors", "year", "year_status", "category", "language",
+        "citation", "relative_path",
+    )
+    for campo in campos:
+        if campo in anterior:
+            item[campo] = anterior[campo]
+    item["metadata_edited"] = True
+    item["updated_at"] = anterior.get("updated_at")
+    item["index_status"] = anterior.get("index_status", "metadata_stale")
+
+
+def _documento_catalogo(
+    pdf: Path,
+    raiz: Path,
+    source_id: str,
+    indice: dict,
+    revisao: dict,
+    anterior: dict | None,
+) -> dict:
+    metadata = indice.get("metadata", {})
+    fallback = parsear_nome_arquivo(pdf.name)
+    titulo_pdf, autor_pdf, alertas_pdf = _metadados_pdf(pdf)
+    titulo, relacionado, origem = _titulo_catalogo(
+        pdf, metadata, fallback, revisao, titulo_pdf
+    )
+    autores, origem = _autores_catalogo(
+        metadata, fallback, revisao, autor_pdf, relacionado, origem
+    )
+    ano, ano_status = _ano_catalogo(metadata, fallback, revisao)
+    chunks = int(indice.get("chunk_count", 0))
+    item = {
+        "source_id": source_id,
+        "sha256": source_id,
+        "file_name": pdf.name,
+        "relative_path": pdf.relative_to(raiz).as_posix(),
+        "title": titulo,
+        "authors": autores,
+        "year": ano,
+        "year_status": ano_status,
+        "category": _categoria_catalogo(pdf, metadata),
+        "language": _idioma_catalogo(metadata),
+        "chunk_count": chunks,
+        "size_bytes": pdf.stat().st_size,
+        "citation": _citacao(autores, ano, titulo),
+        "metadata_origin": origem,
+        "metadata_edited": False,
+        "index_status": "indexed" if chunks else "not_indexed",
+        "extraction_warnings": _alertas_catalogo(indice, alertas_pdf),
+    }
+    _restaurar_metadados_editados(item, anterior)
+    return item
 
 
 def construir_catalogo(
@@ -227,81 +390,18 @@ def construir_catalogo(
                 f"PDF duplicado por hash: {hashes_vistos[source_id]} e {pdf}"
             )
         hashes_vistos[source_id] = pdf
-        relativo = pdf.relative_to(raiz).as_posix()
         indice = indexados.get(source_id, {})
-        metadata = indice.get("metadata", {})
-        fallback = parsear_nome_arquivo(pdf.name)
         revisao = revisados.get(source_id, {})
-        titulo_pdf, autor_pdf, alertas_pdf = _metadados_pdf(pdf)
-
-        titulo_base = limpar_metadado(
-            metadata.get("titulo") or fallback.get("titulo") or pdf.stem
+        documentos.append(
+            _documento_catalogo(
+                pdf,
+                raiz,
+                source_id,
+                indice,
+                revisao,
+                anteriores.get(source_id),
+            )
         )
-        titulo = limpar_metadado(revisao.get("titulo") or titulo_base)
-        metadata_origin = "curadoria" if revisao else (
-            "indice_portatil" if metadata else "nome_arquivo"
-        )
-        relacionado = _titulos_relacionados(titulo_base, titulo_pdf)
-        if (
-            not revisao
-            and _titulo_pdf_plausivel(titulo_pdf)
-            and relacionado
-            and len(titulo_pdf) >= len(titulo_base) + 3
-        ):
-            titulo = titulo_pdf
-            metadata_origin = "pdf_interno"
-
-        autores_base = revisao.get("autor") or metadata.get("autor") or fallback.get("autor")
-        autores = _autores(autores_base)
-        if not revisao and autor_pdf and relacionado:
-            candidatos = _autores_pdf(autor_pdf)
-            if candidatos != ["Autor desconhecido"]:
-                autores = candidatos
-                metadata_origin = "pdf_interno"
-        ano, ano_status = _ano(revisao.get("ano") or metadata.get("ano") or fallback.get("ano"))
-        if revisao.get("ano_confirmado_ausente"):
-            ano = None
-            ano_status = "nao_declarado_na_fonte"
-        categoria = limpar_metadado(metadata.get("pasta") or pdf.parent.name, limite=80)
-        if categoria not in CATEGORIAS:
-            categoria = pdf.parent.name if pdf.parent.name in CATEGORIAS else "ml-preditivo"
-        idioma = limpar_metadado(metadata.get("idioma") or "desconhecido", limite=20).lower()
-        if idioma not in IDIOMAS:
-            idioma = "desconhecido"
-        alertas = list(alertas_pdf)
-        if indice.get("replacement_character"):
-            alertas.append("caractere_substituto_na_extracao_pdf")
-        if int(indice.get("chunk_count", 0)) == 0:
-            alertas.append("ausente_do_indice_portatil")
-
-        item = {
-            "source_id": source_id,
-            "sha256": source_id,
-            "file_name": pdf.name,
-            "relative_path": relativo,
-            "title": titulo,
-            "authors": autores,
-            "year": ano,
-            "year_status": ano_status,
-            "category": categoria,
-            "language": idioma,
-            "chunk_count": int(indice.get("chunk_count", 0)),
-            "size_bytes": pdf.stat().st_size,
-            "citation": _citacao(autores, ano, titulo),
-            "metadata_origin": metadata_origin,
-            "metadata_edited": False,
-            "index_status": "indexed" if indice.get("chunk_count") else "not_indexed",
-            "extraction_warnings": alertas,
-        }
-        anterior = anteriores.get(source_id)
-        if anterior and anterior.get("metadata_edited"):
-            for campo in ("title", "authors", "year", "year_status", "category", "language", "citation", "relative_path"):
-                if campo in anterior:
-                    item[campo] = anterior[campo]
-            item["metadata_edited"] = True
-            item["updated_at"] = anterior.get("updated_at")
-            item["index_status"] = anterior.get("index_status", "metadata_stale")
-        documentos.append(item)
 
     documentos.sort(key=lambda item: (item["title"].casefold(), item["source_id"]))
     index_chunks = int(manifesto.get("n_chunks", 0) or 0)
@@ -341,17 +441,53 @@ def carregar_catalogo(caminho: Path) -> dict:
     return validar_catalogo(payload)
 
 
+def _caminho_catalogo(caminho: Path) -> Path:
+    resolvido = Path(caminho).resolve()
+    if resolvido.name != "catalogo.json":
+        raise CatalogoBibliograficoInvalido(
+            "O catalogo deve usar o nome fixo catalogo.json"
+        )
+    return resolvido
+
+
 def salvar_catalogo(caminho: Path, payload: dict) -> None:
     validar_catalogo(payload)
-    caminho = Path(caminho)
+    caminho = _caminho_catalogo(caminho)
     caminho.parent.mkdir(parents=True, exist_ok=True)
-    temporario = caminho.with_name(caminho.name + ".tmp")
+    temporario = caminho.parent / ".catalogo.json.tmp"
     with _LOCK:
-        temporario.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
-        os.replace(temporario, caminho)
+        try:
+            temporario.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            os.replace(temporario, caminho)
+        finally:
+            temporario.unlink(missing_ok=True)
+
+
+def _aplicar_metadados_editaveis(item: dict, patch: dict) -> None:
+    if "title" in patch:
+        titulo = limpar_metadado(patch["title"])
+        if not titulo:
+            raise CatalogoBibliograficoInvalido("Titulo nao pode ser vazio")
+        item["title"] = titulo
+    if "authors" in patch:
+        item["authors"] = _autores(patch["authors"])
+    if "year" in patch:
+        ano, status = _ano(patch["year"])
+        item["year"] = ano
+        item["year_status"] = status
+    if "category" in patch:
+        categoria = limpar_metadado(patch["category"], limite=80)
+        if categoria not in CATEGORIAS:
+            raise CatalogoBibliograficoInvalido("Categoria invalida")
+        item["category"] = categoria
+    if "language" in patch:
+        idioma = limpar_metadado(patch["language"], limite=20).lower()
+        if idioma not in IDIOMAS:
+            raise CatalogoBibliograficoInvalido("Idioma invalido")
+        item["language"] = idioma
 
 
 class CatalogoStore:
@@ -382,12 +518,7 @@ class CatalogoStore:
         return dict(self._find(self.load(), source_id))
 
     def update(self, source_id: str, patch: dict, *, internal: bool = False) -> dict:
-        permitidos = {"title", "authors", "year", "category", "language"}
-        if internal:
-            permitidos |= {
-                "relative_path", "file_name", "chunk_count", "size_bytes",
-                "index_status", "extraction_warnings", "metadata_origin",
-            }
+        permitidos = _EDITABLE_FIELDS | (_INTERNAL_FIELDS if internal else set())
         desconhecidos = set(patch) - permitidos
         if desconhecidos:
             raise CatalogoBibliograficoInvalido(
@@ -396,28 +527,8 @@ class CatalogoStore:
         with self._lock:
             payload = self.load()
             item = self._find(payload, source_id)
-            if "title" in patch:
-                titulo = limpar_metadado(patch["title"])
-                if not titulo:
-                    raise CatalogoBibliograficoInvalido("Titulo nao pode ser vazio")
-                item["title"] = titulo
-            if "authors" in patch:
-                item["authors"] = _autores(patch["authors"])
-            if "year" in patch:
-                ano, status = _ano(patch["year"])
-                item["year"] = ano
-                item["year_status"] = status
-            if "category" in patch:
-                categoria = limpar_metadado(patch["category"], limite=80)
-                if categoria not in CATEGORIAS:
-                    raise CatalogoBibliograficoInvalido("Categoria invalida")
-                item["category"] = categoria
-            if "language" in patch:
-                idioma = limpar_metadado(patch["language"], limite=20).lower()
-                if idioma not in IDIOMAS:
-                    raise CatalogoBibliograficoInvalido("Idioma invalido")
-                item["language"] = idioma
-            for campo in permitidos - {"title", "authors", "year", "category", "language"}:
+            _aplicar_metadados_editaveis(item, patch)
+            for campo in permitidos - _EDITABLE_FIELDS:
                 if campo in patch:
                     item[campo] = patch[campo]
             item["citation"] = _citacao(item["authors"], item.get("year"), item["title"])

@@ -4,9 +4,11 @@ import gzip
 import json
 from pathlib import Path
 
+import pytest
 from pypdf import PdfWriter
 
 from src.conhecimento.catalogo_bibliografico import (
+    CatalogoBibliograficoInvalido,
     CatalogoStore,
     carregar_catalogo,
     construir_catalogo,
@@ -158,3 +160,16 @@ def test_store_edita_metadados_e_marca_indice_como_stale(tmp_path):
     assert updated["title"] == "Titulo revisado"
     assert updated["metadata_edited"] is True
     assert updated["index_status"] == "metadata_stale"
+
+
+def test_catalogo_recusa_destino_com_nome_controlado(tmp_path):
+    payload = {
+        "schema_version": 1,
+        "catalog_id": "test",
+        "source_index": {},
+        "summary": {"documents": 0, "indexed_chunks": 0},
+        "documents": [],
+    }
+
+    with pytest.raises(CatalogoBibliograficoInvalido, match="nome fixo"):
+        salvar_catalogo(tmp_path / "../../catalogo-injetado.json", payload)

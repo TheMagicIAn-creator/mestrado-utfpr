@@ -30,6 +30,8 @@ from src.core.utils import parsear_nome_arquivo
 MAX_LIBRARY_PDF_BYTES = 15 * 1024 * 1024
 _ACTIVE_STATES = {"queued", "running"}
 _TRUE_VALUES = {"1", "true", "yes", "sim", "on"}
+_UNKNOWN_AUTHOR = "Autor desconhecido"
+_SOURCE_NOT_FOUND = "Fonte nao encontrada."
 
 
 class LibraryError(ValueError):
@@ -68,13 +70,13 @@ def _authors(value) -> list[str]:
     if isinstance(value, list):
         values = value
     else:
-        values = re.split(r"\s*;\s*", limpar_metadado(value, limite=1200))
+        values = limpar_metadado(value, limite=1200).split(";")
     result = []
     for value in values:
         author = limpar_metadado(value, limite=220)
         if author and author not in result:
             result.append(author)
-    return result or ["Autor desconhecido"]
+    return result or [_UNKNOWN_AUTHOR]
 
 
 def _year(value) -> tuple[int | None, str]:
@@ -101,6 +103,52 @@ def _safe_path(root: Path, relative: str) -> Path:
     if not candidate.is_relative_to(root):
         raise LibraryError("Caminho da fonte fora da biblioteca.")
     return candidate
+
+
+def _pdf_metadata(staging: Path) -> tuple[str, str, str, list[str]]:
+    try:
+        reader = PdfReader(str(staging))
+        internal = reader.metadata or {}
+        title = limpar_metadado(internal.get("/Title"), limite=800)
+        author = limpar_metadado(internal.get("/Author"), limite=800)
+        text = "\n".join(
+            page.extract_text() or "" for page in reader.pages[:3]
+        ).strip()
+        return title, author, text, []
+    except Exception:
+        return "", "", "", ["metadado_pdf_interno_ilegivel"]
+
+
+def _upload_authors(requested, internal: str, fallback) -> list[str]:
+    if requested:
+        return _authors(requested)
+    if not internal:
+        return _authors(fallback)
+    normalized = re.sub(r"\band\b", ";", internal, flags=re.IGNORECASE)
+    return _authors(normalized.replace(",", ";").replace("&", ";"))
+
+
+def _upload_category(requested, filename: str, text: str) -> str:
+    category = limpar_metadado(requested, limite=80)
+    if category and category not in CATEGORIAS:
+        raise LibraryError("Categoria bibliografica invalida.")
+    if category:
+        return category
+    from src.conhecimento.processador_pdf import classificar_tema
+
+    return classificar_tema(filename, text)
+
+
+def _upload_language(requested, text: str) -> str:
+    language = limpar_metadado(requested, limite=20).casefold()
+    if language and language not in IDIOMAS:
+        raise LibraryError("Idioma bibliografico invalido.")
+    if language:
+        return language
+    from src.conhecimento.indexador import detectar_idioma_texto
+
+    detected = detectar_idioma_texto(text) if text else "desconhecido"
+    return detected if detected in IDIOMAS else "desconhecido"
 
 
 class LibraryService:
@@ -267,7 +315,7 @@ class LibraryService:
         try:
             self.store.get(source_id)
         except KeyError as exc:
-            raise LibraryNotFoundError("Fonte nao encontrada.") from exc
+            raise LibraryNotFoundError(_SOURCE_NOT_FOUND) from exc
         with self._lock:
             active = self._active_by_source.get(source_id)
             if active and self._jobs[active]["state"] in _ACTIVE_STATES:
@@ -324,20 +372,7 @@ class LibraryService:
     def _metadata_for_upload(self, job: dict, staging: Path) -> dict:
         requested = dict(job.get("_metadata") or {})
         fallback = parsear_nome_arquivo(job["_original_name"])
-        internal_title = ""
-        internal_author = ""
-        text = ""
-        warnings: list[str] = []
-        try:
-            reader = PdfReader(str(staging))
-            internal = reader.metadata or {}
-            internal_title = limpar_metadado(internal.get("/Title"), limite=800)
-            internal_author = limpar_metadado(internal.get("/Author"), limite=800)
-            text = "\n".join(
-                page.extract_text() or "" for page in reader.pages[:3]
-            ).strip()
-        except Exception:
-            warnings.append("metadado_pdf_interno_ilegivel")
+        internal_title, internal_author, text, warnings = _pdf_metadata(staging)
 
         title = limpar_metadado(requested.get("title"), limite=800)
         if not title and _safe_title(internal_title):
@@ -345,32 +380,14 @@ class LibraryService:
         if not title:
             title = limpar_metadado(fallback.get("titulo") or Path(job["_original_name"]).stem)
 
-        requested_authors = requested.get("authors")
-        if requested_authors:
-            authors = _authors(requested_authors)
-        elif internal_author:
-            authors = _authors(re.sub(r"\s*(?:,|\band\b|&)\s*", ";", internal_author))
-        else:
-            authors = _authors(fallback.get("autor"))
-
+        authors = _upload_authors(
+            requested.get("authors"), internal_author, fallback.get("autor")
+        )
         year, year_status = _year(requested.get("year") or fallback.get("ano"))
-        category = limpar_metadado(requested.get("category"), limite=80)
-        if category and category not in CATEGORIAS:
-            raise LibraryError("Categoria bibliografica invalida.")
-        if not category:
-            from src.conhecimento.processador_pdf import classificar_tema
-
-            category = classificar_tema(job["_original_name"], text)
-
-        language = limpar_metadado(requested.get("language"), limite=20).casefold()
-        if language and language not in IDIOMAS:
-            raise LibraryError("Idioma bibliografico invalido.")
-        if not language:
-            from src.conhecimento.indexador import detectar_idioma_texto
-
-            language = detectar_idioma_texto(text) if text else "desconhecido"
-            if language not in IDIOMAS:
-                language = "desconhecido"
+        category = _upload_category(
+            requested.get("category"), job["_original_name"], text
+        )
+        language = _upload_language(requested.get("language"), text)
 
         return {
             "title": title,
@@ -453,7 +470,7 @@ class LibraryService:
         try:
             item = self.store.get(source_id)
         except KeyError as exc:
-            raise LibraryNotFoundError("Fonte nao encontrada.") from exc
+            raise LibraryNotFoundError(_SOURCE_NOT_FOUND) from exc
         path = _safe_path(self.literature_root, item["relative_path"])
         if not path.is_file() or sha256_arquivo(path) != source_id:
             raise LibraryError("O PDF local nao corresponde ao SHA-256 catalogado.")
@@ -564,7 +581,7 @@ class LibraryService:
             None,
         )
         if current is None:
-            raise LibraryNotFoundError("Fonte nao encontrada.")
+            raise LibraryNotFoundError(_SOURCE_NOT_FOUND)
 
         allowed = {"title", "authors", "year", "category", "language"}
         unknown = set(patch) - allowed

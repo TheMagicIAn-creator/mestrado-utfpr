@@ -236,14 +236,14 @@ def normalizar_texto_pdf(texto: str) -> str:
 
     # Une palavras quebradas por hifenização no fim da linha:
     # confiabili-\ndade -> confiabilidade
-    texto = re.sub(r"(\w)-\s*\n\s*(\w)", r"\1\2", texto)
+    texto = re.sub(r"(\w)-[ \t]*\n[ \t]*(\w)", r"\1\2", texto)
 
     # Normaliza quebras excessivas de linha.
     texto = re.sub(r"[ \t]+", " ", texto)
     texto = re.sub(r"\n{3,}", "\n\n", texto)
 
     # Remove espaços antes de pontuação comum.
-    texto = re.sub(r"\s+([,.;:!?])", r"\1", texto)
+    texto = re.sub(r"[ \t]+([,.;:!?])", r"\1", texto)
 
     return texto.strip()
 
@@ -464,7 +464,9 @@ def remover_chunks_duplicados(chunks: list[str]) -> list[str]:
         if not normalizado:
             continue
 
-        chave = hashlib.sha1(normalizado.lower().encode("utf-8", errors="ignore")).hexdigest()
+        chave = hashlib.sha256(
+            normalizado.lower().encode("utf-8", errors="ignore")
+        ).hexdigest()
 
         if chave in vistos:
             continue
@@ -492,7 +494,7 @@ def remover_itens_duplicados(
         if not normalizado:
             continue
 
-        chave = hashlib.sha1(
+        chave = hashlib.sha256(
             normalizado.lower().encode("utf-8", errors="ignore")
         ).hexdigest()
 
@@ -636,7 +638,9 @@ def _indexar_pdf_unico_sem_lock(
                 "pagina_fim": int(itens[j][2]),
                 "pagina_rotulo": rotulos_paginas.get(int(itens[j][1]), ""),
                 "trecho": trecho_auditavel(chunks[j]),
-                "chunk_sha1": hashlib.sha1(chunks[j].encode("utf-8", errors="ignore")).hexdigest(),
+                "chunk_sha256": hashlib.sha256(
+                    chunks[j].encode("utf-8", errors="ignore")
+                ).hexdigest(),
                 "autor": str(override.get("autor") or info_arquivo.get("autor", "")),
                 "titulo": str(override.get("titulo") or info_arquivo.get("titulo", "")),
                 "ano": str(override.get("ano") or info_arquivo.get("ano", "")),

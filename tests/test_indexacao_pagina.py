@@ -118,7 +118,7 @@ def test_indexar_pdf_unico_grava_pagina(pdf_tres_paginas, tmp_path):
         assert "pagina_inicio" in meta and "pagina_fim" in meta
         assert "pagina_rotulo" in meta
         assert meta.get("trecho")
-        assert len(str(meta.get("chunk_sha1", ""))) == 40
+        assert len(str(meta.get("chunk_sha256", ""))) == 64
         assert int(meta["pagina_inicio"]) >= 1
         assert int(meta["pagina_fim"]) >= int(meta["pagina_inicio"])
 
