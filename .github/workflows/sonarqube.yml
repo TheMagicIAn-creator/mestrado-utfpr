@@ -40,6 +40,8 @@ jobs:
             --cov=src --cov=scripts --cov-report=xml:coverage.xml --cov-report=term
 
       - name: Analisar e aguardar quality gate
-        uses: SonarSource/sonarqube-scan-action@v7
+        uses: SonarSource/sonarqube-scan-action@v8
+        with:
+          skipSignatureVerification: false
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
