@@ -9,7 +9,13 @@ from src.conhecimento.provedores import (
     ProviderGateway,
     ProviderRegistry,
 )
-from src.conhecimento.provedores.base import ProviderError
+from src.conhecimento.provedores.base import (
+    ProviderError,
+    ProviderNotConfiguredError,
+    classify_provider_exception,
+    normalized_messages,
+)
+from src.conhecimento.provedores.gateway import build_default_gateway
 
 
 class FakeProvider:
@@ -27,6 +33,10 @@ class FakeProvider:
     def stream(self, request, *, model_id):
         yield LLMStreamChunk("o", self.name, model_id, request.task_type)
         yield LLMStreamChunk("k", self.name, model_id, request.task_type)
+
+
+class UnconfiguredProvider(FakeProvider):
+    configured = False
 
 
 def _request(multimodal=False):
@@ -95,3 +105,76 @@ def test_registry_status_nao_expoe_chaves():
     payload = registry.status()
     assert payload["providers"]["fake"] == {"configured": True}
     assert "api_key" not in str(payload).lower()
+
+
+def test_gateway_oferece_registro_publico_e_rejeita_provedor_sem_chave():
+    gateway = ProviderGateway()
+    gateway.register_provider("fake", UnconfiguredProvider())
+    gateway.register_model(ModelRegistration("fake", "luna", "modelo"))
+    with pytest.raises(ProviderNotConfiguredError):
+        gateway.execute(_request(), provider="fake", model_alias="luna")
+
+
+def test_registry_rejeita_identidades_invalidas_e_modelo_desabilitado():
+    registry = ProviderRegistry()
+    with pytest.raises(ValueError):
+        registry.register_provider("", FakeProvider())
+    with pytest.raises(ValueError):
+        registry.register_model(ModelRegistration("ausente", "luna", "modelo"))
+    with pytest.raises(ProviderError):
+        registry.provider("ausente")
+    registry.register_provider("fake", FakeProvider())
+    with pytest.raises(ProviderError):
+        registry.model("fake", "ausente")
+    registry.register_model(
+        ModelRegistration("fake", "desligado", None, status=ModelStatus.DISABLED)
+    )
+    with pytest.raises(ProviderError):
+        registry.model("fake", "desligado")
+
+
+def test_contexto_e_papeis_sao_normalizados_sem_sdk():
+    class SystemMessage:
+        def __init__(self, content):
+            self.content = content
+
+    class AIMessage:
+        def __init__(self, content):
+            self.content = content
+
+    request = LLMRequest(
+        task_type="scientific_reasoning",
+        context={"evidencia": "E3"},
+        messages=[SystemMessage("regra"), AIMessage("resposta")],
+    )
+    normalized = normalized_messages(request)
+    assert normalized[0]["role"] == "developer"
+    assert '"evidencia": "E3"' in normalized[0]["content"]
+    assert [item["role"] for item in normalized[1:]] == ["developer", "assistant"]
+
+
+@pytest.mark.parametrize(
+    ("message", "transient", "unavailable"),
+    [
+        ("429 rate limit", True, False),
+        ("503 unavailable", True, False),
+        ("404 model not found", False, True),
+        ("erro permanente", False, False),
+    ],
+)
+def test_erros_de_provedor_sao_classificados(message, transient, unavailable):
+    error = classify_provider_exception(RuntimeError(message), "fake")
+    assert error.transient is transient
+    assert error.unavailable is unavailable
+
+
+def test_gateway_padrao_mapeia_aliases_sem_expor_chaves(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "valor-local-nao-versionado")
+    monkeypatch.setenv("AL_IADO_OPENAI_MODEL_LUNA", "modelo-luna")
+    monkeypatch.setenv("AL_IADO_GEMINI_MODEL_FLASH", "modelo-flash")
+    status = build_default_gateway().status()
+    aliases = {(item["provider"], item["alias"]): item for item in status["models"]}
+    assert aliases[("openai", "luna")]["model_id"] == "modelo-luna"
+    assert aliases[("openai", "terra")]["status"] == "disabled"
+    assert aliases[("google", "flash")]["model_id"] == "modelo-flash"
+    assert "valor-local" not in str(status)

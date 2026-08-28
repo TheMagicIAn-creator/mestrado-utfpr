@@ -80,7 +80,19 @@ def classify_provider_exception(exc: Exception, provider: str) -> ProviderError:
     text = str(exc).lower()
     transient = status in {408, 409, 429} or (status is not None and status >= 500)
     transient = transient or any(
-        token in text for token in ("timeout", "timed out", "temporar", "unavailable", "high demand")
+        token in text
+        for token in (
+            "429",
+            "500",
+            "502",
+            "503",
+            "504",
+            "timeout",
+            "timed out",
+            "temporar",
+            "unavailable",
+            "high demand",
+        )
     )
     unavailable = status in {401, 403, 404} or any(
         token in text for token in ("not configured", "not found", "no longer available")
