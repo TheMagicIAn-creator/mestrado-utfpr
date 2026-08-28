@@ -13,3 +13,10 @@ If the command reports that the file contains a secret, **do not read the file**
 2. Advise them to rotate the leaked credential at its source of truth and remove it from the file.
 3. Do not proceed with the original request until the secret has been removed.
 <!-- sonar:end:codex-secrets-on-read -->
+
+## Projeto ALIAdo — especificação ativa
+
+Antes de alterar arquitetura LLM, pipeline ML, FMECA, confiabilidade,
+resultados ou documentação científica, leia:
+
+`docs/exec-plans/active/ALIADO_ALINHAMENTO_ARQUITETURA_METODOLOGIA.md`
