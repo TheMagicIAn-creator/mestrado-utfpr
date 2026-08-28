@@ -80,6 +80,13 @@ class LLMResult:
     usage: LLMUsage | None = None
     attempts: int = 1
     route_reason: str | None = None
+    request_id: str | None = None
+    fallback_kind: str | None = None
+    escalation_used: bool = False
+    validation_status: str | None = None
+    validation_conflict: bool = False
+    reviewer_provider: str | None = None
+    reviewer_model: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.content, str):
@@ -94,6 +101,9 @@ class LLMStreamChunk:
     provider: str
     model: str
     task_type: str
+    request_id: str | None = None
+    fallback_used: bool = False
+    route_reason: str | None = None
 
 
 __all__ = [

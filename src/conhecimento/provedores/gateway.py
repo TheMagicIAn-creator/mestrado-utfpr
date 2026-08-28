@@ -39,7 +39,7 @@ class ProviderGateway:
         model_alias: str,
         allow_experimental: bool = False,
     ) -> LLMResult:
-        capabilities = {"multimodal"} if request.multimodal else {"text"}
+        capabilities = self.required_capabilities(request)
         registration = self.registry.model(
             provider,
             model_alias,
@@ -64,7 +64,7 @@ class ProviderGateway:
         model_alias: str,
         allow_experimental: bool = False,
     ) -> Iterator[LLMStreamChunk]:
-        capabilities = {"multimodal"} if request.multimodal else {"text"}
+        capabilities = self.required_capabilities(request)
         registration = self.registry.model(
             provider,
             model_alias,
@@ -76,6 +76,15 @@ class ProviderGateway:
 
     def status(self) -> dict:
         return self.registry.status()
+
+    @staticmethod
+    def required_capabilities(request: LLMRequest) -> set[str]:
+        capabilities = {"text"}
+        if request.multimodal:
+            capabilities.add("multimodal")
+        if request.structured_output:
+            capabilities.add("structured_output")
+        return capabilities
 
 
 def _model_id(*names: str, default: str | None = None) -> str | None:
