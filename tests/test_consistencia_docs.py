@@ -16,7 +16,7 @@ import pytest
 RAIZ = Path(__file__).resolve().parent.parent
 CLAUDE = (RAIZ / "CLAUDE.md").read_text(encoding="utf-8")
 ENV_EXAMPLE = (RAIZ / ".env.example").read_text(encoding="utf-8")
-PROVEDORES = (RAIZ / "src/conhecimento/provedores.py").read_text(encoding="utf-8")
+PROVEDORES = (RAIZ / "src/conhecimento/provedores/gemini.py").read_text(encoding="utf-8")
 INDEXADOR = (RAIZ / "src/conhecimento/indexador.py").read_text(encoding="utf-8")
 README_SRC = (RAIZ / "src/README.md").read_text(encoding="utf-8")
 
