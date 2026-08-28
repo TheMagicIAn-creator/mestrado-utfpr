@@ -38,6 +38,7 @@ webapp/ -> conhecimento/ -> ml/
 | `base_runtime.py` | Inicialização progressiva do conhecimento. |
 | `catalogo_bibliografico.py` | Catálogo versionado, identidade SHA-256 e metadados das fontes. |
 | `consolidar_memoria.py` | Consolidação de sessões. |
+| `contratos_llm.py` | Contratos neutros de pedido, resultado, uso e streaming de LLM. |
 | `consultas_obsidian.py` | Consultas ao vault. |
 | `embeddings.py` | Backend de embeddings. |
 | `ferramentas.py` | Especificação e despacho das ferramentas. |
@@ -54,7 +55,7 @@ webapp/ -> conhecimento/ -> ml/
 | `obsidian.py` | Integração com o vault. |
 | `persistencia_nuvem.py` | Persistência permitida em ambiente remoto. |
 | `processador_pdf.py` | Ingestão bibliográfica. |
-| `provedores.py` | Adaptadores Gemini. |
+| `provedores/` | Gateway, registry e adapters OpenAI/Gemini com fachada compatível. |
 | `resultados_ml.py` | Indexação do resumo científico. |
 | `retrieval_metrics.py` | Métricas do RAG. |
 | `roteamento_ferramentas.py` | Decisão e comentário de ferramentas. |

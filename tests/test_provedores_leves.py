@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import src.conhecimento.provedores as pv
+import src.conhecimento.provedores.gemini as gemini_provider
 from src.conhecimento.provedores import GeminiLeve
 
 
@@ -123,7 +124,7 @@ def test_gemini_cai_para_fallback_quando_modelo_indisponivel():
 
 def test_gemini_retenta_em_503_e_depois_cai_para_fallback(monkeypatch):
     """503 (alta demanda) retenta o mesmo modelo e, esgotando, cai p/ fallback."""
-    monkeypatch.setattr(pv, "_dormir", lambda s: None)  # sem esperar de verdade
+    monkeypatch.setattr(gemini_provider, "_dormir", lambda s: None)
     tentativas = []
 
     class Models:
@@ -145,7 +146,7 @@ def test_gemini_retenta_em_503_e_depois_cai_para_fallback(monkeypatch):
 
 def test_gemini_503_transitorio_que_se_resolve_no_retry(monkeypatch):
     """Se o 503 passar (spike temporário), o retry no MESMO modelo resolve."""
-    monkeypatch.setattr(pv, "_dormir", lambda s: None)
+    monkeypatch.setattr(gemini_provider, "_dormir", lambda s: None)
     estado = {"n": 0}
 
     class Models:
@@ -195,7 +196,7 @@ def test_conversa_e_auditor_tem_modelo_alternativo_de_verdade(monkeypatch):
 def test_503_persistente_no_flash_escapa_para_flash_lite(monkeypatch):
     """Cenário real do usuário: 503 no gemini-flash-latest deve cair para o
     gemini-flash-lite-latest e responder, em vez de estourar erro."""
-    monkeypatch.setattr(pv, "_dormir", lambda s: None)
+    monkeypatch.setattr(gemini_provider, "_dormir", lambda s: None)
     usados = []
 
     class Models:

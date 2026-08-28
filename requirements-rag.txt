@@ -5,6 +5,7 @@ google-genai==1.75.0
 huggingface-hub==1.15.0
 langchain-core==1.4.0
 onnxruntime==1.26.0
+openai==3.5.0
 pdfplumber==0.11.9
 pypdf==6.11.0
 sentence-transformers==5.5.0

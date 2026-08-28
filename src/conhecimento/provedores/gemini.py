@@ -25,11 +25,20 @@ indisponível (404/aposentado), cai automaticamente para MODELO_GEMINI_FALLBACK
 Autor: Rodolfo Torres (UTFPR)
 """
 
-import os
 import json
+import os
 import time
 from dataclasses import dataclass
+from typing import Iterator
+
 from dotenv import load_dotenv
+
+from src.conhecimento.contratos_llm import (
+    LLMRequest,
+    LLMResult,
+    LLMStreamChunk,
+)
+from src.conhecimento.provedores.base import ProviderNotConfiguredError
 
 load_dotenv()
 
@@ -312,6 +321,7 @@ class GeminiLeve:
             return conteudo
 
         import base64
+
         from google.genai import types
 
         partes = []
@@ -532,3 +542,72 @@ def selecionar_provedor() -> tuple:
                 print("  Tente outro provedor.")
         else:
             print(f"  ⚠️  Opção inválida. Digite {opcoes[0]} ou {opcoes[-1]}.")
+
+
+class GeminiProvider:
+    """Adapter Google Gemini para o contrato comum do Gateway."""
+
+    name = "google"
+
+    def __init__(self, api_key: str | None = None, *, client=None):
+        self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
+        self._client = client
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.api_key or self._client is not None)
+
+    def _llm(self, request: LLMRequest, model_id: str) -> GeminiLeve:
+        if not self.configured:
+            raise ProviderNotConfiguredError(self.name)
+        return GeminiLeve(
+            api_key=self.api_key or "client-injected",
+            model=model_id,
+            client=self._client,
+            temperature=request.temperature if request.temperature is not None else 0.2,
+            max_output_tokens=request.max_output_tokens or 8192,
+            fallbacks=(),
+            thinking_level=request.reasoning_level,
+        )
+
+    def generate(self, request: LLMRequest, *, model_id: str) -> LLMResult:
+        llm = self._llm(request, model_id)
+        if request.structured_output:
+            structured = llm.invoke_json(
+                request.messages,
+                max_tokens=request.max_output_tokens or 8192,
+            )
+            content = json.dumps(structured, ensure_ascii=False)
+        else:
+            structured = None
+            content = texto_da_resposta(llm.invoke(request.messages))
+        return LLMResult(
+            content=content,
+            provider=self.name,
+            model=model_id,
+            task_type=request.task_type,
+            structured_data=structured,
+        )
+
+    def stream(
+        self, request: LLMRequest, *, model_id: str
+    ) -> Iterator[LLMStreamChunk]:
+        if request.structured_output:
+            result = self.generate(request, model_id=model_id)
+            yield LLMStreamChunk(
+                content=result.content,
+                provider=self.name,
+                model=model_id,
+                task_type=request.task_type,
+            )
+            return
+        llm = self._llm(request, model_id)
+        for item in llm.stream(request.messages):
+            content = texto_da_resposta(item)
+            if content:
+                yield LLMStreamChunk(
+                    content=content,
+                    provider=self.name,
+                    model=model_id,
+                    task_type=request.task_type,
+                )
