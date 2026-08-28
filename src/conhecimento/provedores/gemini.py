@@ -38,7 +38,10 @@ from src.conhecimento.contratos_llm import (
     LLMResult,
     LLMStreamChunk,
 )
-from src.conhecimento.provedores.base import ProviderNotConfiguredError
+from src.conhecimento.provedores.base import (
+    ProviderNotConfiguredError,
+    classify_provider_exception,
+)
 
 load_dotenv()
 
@@ -217,13 +220,15 @@ class GeminiLeve:
     def __init__(self, api_key: str, model: str, temperature: float = 0.45,
                  max_output_tokens: int = 8192, client=None,
                  fallbacks: tuple[str, ...] = (),
-                 thinking_level: str | None = None) -> None:
+                 thinking_level: str | None = None,
+                 managed_resilience: bool = True) -> None:
         self.api_key = api_key
         self.model = model
         self.temperature = float(temperature)
         self.max_output_tokens = max(256, int(max_output_tokens))
         self._client = client
         self.fallbacks = tuple(f for f in fallbacks if f)
+        self.managed_resilience = bool(managed_resilience)
         niveis = {"minimal", "low", "medium", "high"}
         if thinking_level is not None and thinking_level not in niveis:
             raise ValueError(f"thinking_level invalido: {thinking_level}")
@@ -238,6 +243,8 @@ class GeminiLeve:
 
     def _candidatos(self) -> list[str]:
         """Modelos a tentar, em ordem, sem repetição."""
+        if not self.managed_resilience:
+            return [self.model]
         vistos: set[str] = set()
         ordem = []
         for m in (self.model, *self.fallbacks, MODELO_GEMINI_FALLBACK):
@@ -268,9 +275,10 @@ class GeminiLeve:
         Retorna a resposta (não-stream) ou um gerador de itens (stream).
         """
         erro_final = None
+        max_retentativas = _MAX_RETENTATIVAS if self.managed_resilience else 0
         for modelo in self._candidatos():
             config_modelo = self._config_para_modelo(modelo, config)
-            for tentativa in range(1, _MAX_RETENTATIVAS + 2):
+            for tentativa in range(1, max_retentativas + 2):
                 try:
                     cliente = self._obter_client()
                     if stream:
@@ -298,7 +306,7 @@ class GeminiLeve:
                         break  # modelo aposentado → próximo candidato, sem retry
                     if _erro_transitorio(exc):
                         erro_final = exc
-                        if tentativa <= _MAX_RETENTATIVAS:
+                        if tentativa <= max_retentativas:
                             _dormir(_BACKOFF_BASE_S * tentativa)
                             continue  # retenta o MESMO modelo
                         break  # esgotou retries → próximo candidato
@@ -568,46 +576,57 @@ class GeminiProvider:
             max_output_tokens=request.max_output_tokens or 8192,
             fallbacks=(),
             thinking_level=request.reasoning_level,
+            managed_resilience=False,
         )
 
     def generate(self, request: LLMRequest, *, model_id: str) -> LLMResult:
-        llm = self._llm(request, model_id)
-        if request.structured_output:
-            structured = llm.invoke_json(
-                request.messages,
-                max_tokens=request.max_output_tokens or 8192,
+        try:
+            llm = self._llm(request, model_id)
+            if request.structured_output:
+                structured = llm.invoke_json(
+                    request.messages,
+                    max_tokens=request.max_output_tokens or 8192,
+                )
+                content = json.dumps(structured, ensure_ascii=False)
+            else:
+                structured = None
+                content = texto_da_resposta(llm.invoke(request.messages))
+            return LLMResult(
+                content=content,
+                provider=self.name,
+                model=llm.model,
+                task_type=request.task_type,
+                structured_data=structured,
             )
-            content = json.dumps(structured, ensure_ascii=False)
-        else:
-            structured = None
-            content = texto_da_resposta(llm.invoke(request.messages))
-        return LLMResult(
-            content=content,
-            provider=self.name,
-            model=model_id,
-            task_type=request.task_type,
-            structured_data=structured,
-        )
+        except (ProviderNotConfiguredError, ValueError):
+            raise
+        except Exception as exc:
+            raise classify_provider_exception(exc, self.name) from exc
 
     def stream(
         self, request: LLMRequest, *, model_id: str
     ) -> Iterator[LLMStreamChunk]:
-        if request.structured_output:
-            result = self.generate(request, model_id=model_id)
-            yield LLMStreamChunk(
-                content=result.content,
-                provider=self.name,
-                model=model_id,
-                task_type=request.task_type,
-            )
-            return
-        llm = self._llm(request, model_id)
-        for item in llm.stream(request.messages):
-            content = texto_da_resposta(item)
-            if content:
+        try:
+            if request.structured_output:
+                result = self.generate(request, model_id=model_id)
                 yield LLMStreamChunk(
-                    content=content,
+                    content=result.content,
                     provider=self.name,
-                    model=model_id,
+                    model=result.model,
                     task_type=request.task_type,
                 )
+                return
+            llm = self._llm(request, model_id)
+            for item in llm.stream(request.messages):
+                content = texto_da_resposta(item)
+                if content:
+                    yield LLMStreamChunk(
+                        content=content,
+                        provider=self.name,
+                        model=llm.model,
+                        task_type=request.task_type,
+                    )
+        except (ProviderNotConfiguredError, ValueError):
+            raise
+        except Exception as exc:
+            raise classify_provider_exception(exc, self.name) from exc

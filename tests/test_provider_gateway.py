@@ -98,6 +98,21 @@ def test_capacidade_multimodal_e_obrigatoria():
         )
 
 
+def test_capacidade_de_saida_estruturada_e_obrigatoria():
+    registry = ProviderRegistry()
+    registry.register_provider("fake", FakeProvider())
+    registry.register_model(ModelRegistration("fake", "texto", "modelo"))
+    request = LLMRequest(
+        task_type="scientific_reasoning",
+        messages=[{"role": "user", "content": "teste"}],
+        structured_output={"type": "object"},
+    )
+    with pytest.raises(ProviderError):
+        ProviderGateway(registry).execute(
+            request, provider="fake", model_alias="texto"
+        )
+
+
 def test_registry_status_nao_expoe_chaves():
     registry = ProviderRegistry()
     registry.register_provider("fake", FakeProvider())

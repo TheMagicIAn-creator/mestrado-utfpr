@@ -39,6 +39,7 @@ webapp/ -> conhecimento/ -> ml/
 | `catalogo_bibliografico.py` | Catálogo versionado, identidade SHA-256 e metadados das fontes. |
 | `consolidar_memoria.py` | Consolidação de sessões. |
 | `contratos_llm.py` | Contratos neutros de pedido, resultado, uso e streaming de LLM. |
+| `roteador_llm.py` | Política explícita de seleção, retry, fallback, escalonamento e validação cruzada. |
 | `consultas_obsidian.py` | Consultas ao vault. |
 | `embeddings.py` | Backend de embeddings. |
 | `ferramentas.py` | Especificação e despacho das ferramentas. |
