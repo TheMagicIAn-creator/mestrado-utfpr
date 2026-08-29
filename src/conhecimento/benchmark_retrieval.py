@@ -18,6 +18,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Iterable
 
+from src.conhecimento.indice_portatil import (
+    TIPOS_CHUNK_COMPATIVEIS,
+    ler_manifesto,
+    validar_registro,
+)
 from src.conhecimento.retrieval_metrics import metricas_por_evidencias
 
 GOLD_SCHEMA_VERSION = 1
@@ -154,18 +159,21 @@ def validar_gold_set(dados: dict, *, validar_campanha: bool = True) -> None:
 def carregar_snapshot(caminho: str | Path) -> tuple[dict, dict[str, dict]]:
     registros: dict[str, dict] = {}
     arquivo_snapshot = resolver_caminho_no_projeto(caminho, deve_existir=True)
+    manifesto = ler_manifesto(arquivo_snapshot)
+    schema_version = int(manifesto["schema_version"])
     with gzip.open(arquivo_snapshot, "rt", encoding="utf-8") as arquivo:
-        try:
-            manifesto = json.loads(next(arquivo))
-        except StopIteration as exc:
-            raise ValueError("Snapshot portátil vazio.") from exc
-        if manifesto.get("tipo") != "manifesto_indice_portatil":
-            raise ValueError("Manifesto do snapshot portátil ausente.")
-        for linha in arquivo:
+        next(arquivo)
+        for numero_linha, linha in enumerate(arquivo, 2):
             registro = json.loads(linha)
-            if registro.get("tipo") != "chunk_indice_portatil":
+            if registro.get("tipo") not in TIPOS_CHUNK_COMPATIVEIS:
                 continue
-            chunk_id = str(registro.get("id", ""))
+            validar_registro(
+                registro,
+                schema_version,
+                numero_linha=numero_linha,
+                estrategia_texto=manifesto.get("retrieval_text_strategy"),
+            )
+            chunk_id = str(registro.get("chunk_id") or registro.get("id") or "")
             if not chunk_id or chunk_id in registros:
                 raise ValueError(f"Chunk ausente ou duplicado no snapshot: {chunk_id!r}.")
             registros[chunk_id] = registro
@@ -184,7 +192,12 @@ def _validar_chunk_gold(
     if registro is None:
         raise ValueError(f"Chunk do gold set não existe: {chunk_id}.")
     metadata = registro.get("metadata", {})
-    if metadata.get("arquivo_hash") != documento:
+    hash_documento = str(
+        metadata.get("arquivo_sha256")
+        or metadata.get("arquivo_hash")
+        or str(registro.get("document_id") or "").removeprefix("doc:")
+    )
+    if hash_documento != documento:
         raise ValueError(f"Hash documental divergente em {chunk_id}.")
     if metadata.get("arquivo") != arquivo:
         raise ValueError(f"Arquivo divergente em {chunk_id}.")
@@ -377,6 +390,9 @@ def executar_benchmark(
     relogio: Callable[[], float] = time.perf_counter,
     warmup: bool = True,
     git_revision: str | None = None,
+    benchmark_id: str = "evidence-rag-baseline-v1",
+    stage: str = "R0-R1",
+    variant: str = "baseline_current",
 ) -> dict:
     from src.conhecimento.embeddings import REPOSITORIO_MODELO, REVISAO_MODELO
 
@@ -459,9 +475,9 @@ def executar_benchmark(
 
     return {
         "schema_version": BENCHMARK_SCHEMA_VERSION,
-        "benchmark_id": "evidence-rag-baseline-v1",
-        "stage": "R0-R1",
-        "variant": "baseline_current",
+        "benchmark_id": benchmark_id,
+        "stage": stage,
+        "variant": variant,
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "git_revision": git_revision,
         "gold_set": {
@@ -473,6 +489,9 @@ def executar_benchmark(
         "corpus": {
             "snapshot_schema_version": int(manifesto_snapshot.get("schema_version", 0)),
             "hash_sha256": manifesto_snapshot.get("hash_corpus_sha256"),
+            "snapshot_content_hash_sha256": manifesto_snapshot.get(
+                "hash_conteudo_retrieval_sha256"
+            ),
             "n_documents": int(manifesto_snapshot.get("n_documentos", 0)),
             "n_chunks": int(manifesto_snapshot.get("n_chunks", 0)),
             "collection_count": int(colecao.count()),
@@ -496,7 +515,12 @@ def executar_benchmark(
             "max_chunks_per_source": 2,
             "ks": list(ks_ordenados),
             "warmup_ms": round(warmup_ms, 3),
-            "raw_text_separated_from_retrieval_text": False,
+            "raw_text_separated_from_retrieval_text": int(
+                manifesto_snapshot.get("schema_version", 0)
+            ) >= 2,
+            "retrieval_text_strategy": manifesto_snapshot.get(
+                "retrieval_text_strategy", "legacy_documento"
+            ),
             "evidence_package": False,
             "evidence_guard": False,
         },
@@ -543,6 +567,13 @@ def executar_baseline_local(
         colecao,
         versao=_versao_indice_lexical(colecao, modo_consulta=True),
     )
+    identificacao = {}
+    if int(manifesto.get("schema_version", 0)) >= 2:
+        identificacao = {
+            "benchmark_id": "evidence-rag-r2-schema-v2",
+            "stage": "R2",
+            "variant": "jsonl_schema_v2_identity",
+        }
     return executar_benchmark(
         gold_set,
         modelo_embeddings=modelo,
@@ -550,7 +581,72 @@ def executar_baseline_local(
         indice_lexical=indice_lexical,
         manifesto_snapshot=manifesto,
         git_revision=git_revision,
+        **identificacao,
     )
+
+
+METRICAS_RETRIEVAL_COMPARAVEIS = (
+    "recall@5",
+    "recall@8",
+    "precision@5",
+    "precision@8",
+    "hit_rate@5",
+    "hit_rate@8",
+    "mrr@5",
+    "mrr@8",
+    "ndcg@5",
+    "ndcg@8",
+    "strict_chunk_recall@5",
+    "strict_chunk_recall@8",
+    "document_recall@5",
+    "document_recall@8",
+    "context_chars_mean_at_max_k",
+)
+
+
+def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
+    """Compara R2 com R0–R1 sem misturar latência com qualidade científica."""
+    resumo_base = baseline["summary"]
+    resumo_candidato = candidato["summary"]
+    deltas = {
+        metrica: round(
+            float(resumo_candidato[metrica]) - float(resumo_base[metrica]),
+            9,
+        )
+        for metrica in METRICAS_RETRIEVAL_COMPARAVEIS
+    }
+    campos_ranking = (
+        "fusion",
+        "rrf_constant",
+        "reranker",
+        "source_diversification",
+        "n_pool",
+        "n_results",
+        "n_results_review",
+        "max_chunks_per_source",
+        "ks",
+    )
+    ranking_inalterado = all(
+        baseline["retrieval"].get(campo) == candidato["retrieval"].get(campo)
+        for campo in campos_ranking
+    )
+    corpus_inalterado = all(
+        baseline["corpus"].get(campo) == candidato["corpus"].get(campo)
+        for campo in ("hash_sha256", "n_documents", "n_chunks", "collection_count")
+    )
+    return {
+        "baseline_benchmark_id": baseline.get("benchmark_id"),
+        "candidate_benchmark_id": candidato.get("benchmark_id"),
+        "corpus_identity_preserved": corpus_inalterado,
+        "ranking_contract_preserved": ranking_inalterado,
+        "scientific_metrics_identical": all(valor == 0.0 for valor in deltas.values()),
+        "metric_deltas": deltas,
+        "latency_ms": {
+            "baseline_mean": resumo_base["latency_ms_mean"],
+            "candidate_mean": resumo_candidato["latency_ms_mean"],
+            "informational_only": True,
+        },
+    }
 
 
 def relatorio_markdown(resultado: dict) -> str:
@@ -566,17 +662,52 @@ def relatorio_markdown(resultado: dict) -> str:
     categorias = Counter(item["category"] for item in resultado["queries"])
     abstencoes = resumo["n_future_abstention_queries"]
     rotulo_abstencao = "reservada" if abstencoes == 1 else "reservadas"
+    schema_v2 = int(corpus["snapshot_schema_version"]) >= 2
+    titulo_relatorio = (
+        "# Evidence RAG — JSONL schema v2 R2"
+        if schema_v2
+        else "# Evidence RAG — baseline R0–R1"
+    )
+    estado_relatorio = (
+        "> Estado: contrato JSONL v2 medido sem contextualização; gold set provisório e pendente de revisão do pesquisador em R6."
+        if schema_v2
+        else "> Estado: baseline vigente medido; gold set provisório e pendente de revisão do pesquisador em R6."
+    )
+    descricao_snapshot = (
+        "campos `raw_text` e `retrieval_text` separados, ainda idênticos em R2, "
+        "com embeddings preservados por chunk."
+        if schema_v2
+        else "texto bruto no campo `documento` e embeddings armazenados por chunk."
+    )
+    estado_contrato = (
+        "- O schema v2 separa os contratos de texto sem acrescentar contexto; "
+        "`retrieval_text` permanece idêntico a `raw_text` nesta etapa."
+        if schema_v2
+        else "- O schema v1 ainda não separa `raw_text` de `retrieval_text` e não registra contexto do chunk."
+    )
+    limitacao_snapshot = (
+        "- O schema v2 registra estratégia e hash de conteúdo, mas tamanho e overlap "
+        "do snapshot legado permanecem desconhecidos; nenhum valor foi inferido."
+        if schema_v2
+        else "- O snapshot v1 não registra tamanho/overlap de chunk nem proveniência do texto contextual."
+    )
+    hash_conteudo = corpus.get("snapshot_content_hash_sha256")
     linhas = [
-        "# Evidence RAG — baseline R0–R1",
+        titulo_relatorio,
         "",
-        "> Estado: baseline vigente medido; gold set provisório e pendente de revisão do pesquisador em R6.",
+        estado_relatorio,
         "",
-        "## Auditoria R0",
+        "## Auditoria R2" if schema_v2 else "## Auditoria R0",
         "",
         f"- Corpus: {corpus['n_documents']} PDFs e {corpus['n_chunks']} chunks.",
         f"- Snapshot portátil: schema v{corpus['snapshot_schema_version']}; "
-        "texto bruto no campo `documento` e embeddings armazenados por chunk.",
+        + descricao_snapshot,
         f"- Hash SHA-256 do corpus: `{corpus['hash_sha256']}`.",
+        *(
+            [f"- Hash de texto/embedding do snapshot: `{hash_conteudo}`."]
+            if hash_conteudo
+            else []
+        ),
         f"- Índice semântico: {retrieval['semantic_index']} com `{retrieval['embedding_model']}` "
         f"na revisão `{retrieval['embedding_revision']}`.",
         f"- Backend de indexação: {retrieval['index_embedding_backend']}; "
@@ -584,7 +715,7 @@ def relatorio_markdown(resultado: dict) -> str:
         f"- Índice lexical: {retrieval['lexical_index']} (disponível: {str(retrieval['lexical_available']).lower()}).",
         "- Fusão: Reciprocal Rank Fusion com constante 60; reranking e diversificação locais vigentes.",
         "- IDs: SHA-256 documental mais índice ordinal do chunk; páginas preservadas nos metadados.",
-        "- O schema v1 ainda não separa `raw_text` de `retrieval_text` e não registra contexto do chunk.",
+        estado_contrato,
         "- O caminho atual não possui Evidence Package nem Evidence Guard determinístico.",
         "- Nenhum parâmetro de ranking foi modificado nesta etapa.",
         "",
@@ -596,7 +727,7 @@ def relatorio_markdown(resultado: dict) -> str:
         "- Todas as evidências provisórias foram validadas contra arquivo, hash, página e chunk do snapshot.",
         "- O conjunto não é verdade final: a promoção R6 permanece bloqueada até revisão humana do pesquisador.",
         "",
-        "## Métricas baseline",
+        "## Métricas de retrieval",
         "",
         "| Métrica | k=5 | k=8 |",
         "|---|---:|---:|",
@@ -630,7 +761,7 @@ def relatorio_markdown(resultado: dict) -> str:
         "## Limitações e próximo gate",
         "",
         "- Métricas de retrieval não medem fidelidade da resposta gerada.",
-        "- O snapshot v1 não registra tamanho/overlap de chunk nem proveniência do texto contextual.",
+        limitacao_snapshot,
         "- A expansão vigente possui regras temáticas manuais e ainda associa Paderborn a Stender; "
         "não existe regra ou fonte bibliográfica direta para os 16 ensaios GPVS-Faults.",
         "- A recuperação não aplica filtro de página e ainda não valida citações após a geração.",

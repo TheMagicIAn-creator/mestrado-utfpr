@@ -61,6 +61,15 @@ def exportar_literatura() -> int:
     return 0
 
 
+def migrar_snapshot_v2() -> int:
+    from src.conhecimento.indice_portatil import migrar_snapshot_v2 as migrar
+    from src.core.config import ARQUIVO_INDICE_LITERATURA
+
+    resultado = migrar(ARQUIVO_INDICE_LITERATURA)
+    print(json.dumps(resultado, ensure_ascii=False, indent=2))
+    return 0
+
+
 def reindexar_sessoes() -> int:
     from src.conhecimento.embeddings import criar_modelo_embeddings
     from src.conhecimento.indexador import indexar_sessao
@@ -100,6 +109,8 @@ def sincronizar_obsidian(vault: Path | None = None) -> int:
     from src.conhecimento.obsidian import (
         contar_notas_indexadas,
         hash_corpus_obsidian,
+    )
+    from src.conhecimento.obsidian import (
         sincronizar_obsidian as sincronizar,
     )
     from src.core.config import (
@@ -127,6 +138,7 @@ def sincronizar_obsidian(vault: Path | None = None) -> int:
         modelo_embeddings=MODELO_EMBEDDINGS,
         hash_corpus=hash_corpus_obsidian(raiz),
         n_documentos=contar_notas_indexadas(colecao),
+        schema_version=1,
     )
     print(json.dumps({"estado": estado, "snapshot": manifesto}, ensure_ascii=False, indent=2))
     return int(bool(estado.get("erros")))
@@ -176,6 +188,10 @@ def construir_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="comando", required=True)
     sub.add_parser("reconstruir-literatura", help="recria a colecao e o snapshot")
     sub.add_parser("exportar-literatura", help="atualiza somente o snapshot portatil")
+    sub.add_parser(
+        "migrar-snapshot-v2",
+        help="migra atomicamente o snapshot de literatura vigente para o schema v2",
+    )
     sub.add_parser("reindexar-sessoes", help="reindexa sessoes e memorias Markdown")
     obsidian = sub.add_parser("sincronizar-obsidian", help="sincroniza o vault e seu snapshot")
     obsidian.add_argument("--vault", type=Path)
@@ -189,6 +205,8 @@ def main(argv: list[str] | None = None) -> int:
         return reconstruir_literatura()
     if args.comando == "exportar-literatura":
         return exportar_literatura()
+    if args.comando == "migrar-snapshot-v2":
+        return migrar_snapshot_v2()
     if args.comando == "reindexar-sessoes":
         return reindexar_sessoes()
     if args.comando == "sincronizar-obsidian":
