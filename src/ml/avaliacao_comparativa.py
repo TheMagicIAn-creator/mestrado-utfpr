@@ -60,9 +60,9 @@ def evaluate_e3(
         for model_id in MODEL_IDS:
             for run in runs[model_id]:
                 all_scores = (
-                    score_dense(run.model, scaled)
+                    score_dense(run.model, scaled, top_k=run.score_top_k)
                     if model_id == "ae_denso"
-                    else score_lstm(run.model, sequences)
+                    else score_lstm(run.model, sequences, top_k=run.score_top_k)
                 )
                 selected_scores = all_scores[evaluation_indices]
                 metrics = binary_metrics(y_true, selected_scores, run.threshold)
@@ -82,6 +82,13 @@ def evaluate_e3(
                         "n_post_fault_test": len(post_test),
                         "fault_boundary_method": "nominal_mid_record",
                         "score_threshold": run.threshold,
+                        "score_top_k": run.score_top_k,
+                        "threshold_requested_percentile": (
+                            run.threshold_calibration.requested_percentile
+                        ),
+                        "threshold_effective_percentile": (
+                            run.threshold_calibration.effective_percentile
+                        ),
                         **metrics,
                     }
                 )
@@ -111,7 +118,7 @@ def evaluate_e3(
     for model_id in MODEL_IDS:
         block = reference[reference["model"].eq(model_id)]
         for metric in METRIC_NAMES:
-            estimate, low, high = bootstrap_mean(
+            estimate, low, high, n_valid = bootstrap_mean(
                 block[metric].to_numpy(dtype=float),
                 seed=BOOTSTRAP_SEED + sum(map(ord, model_id + metric)),
             )
@@ -124,6 +131,7 @@ def evaluate_e3(
                     "ci95_low": low,
                     "ci95_high": high,
                     "n_experiments": len(block),
+                    "n_valid_experiments": n_valid,
                     "bootstrap_resamples": BOOTSTRAP_RESAMPLES,
                     "bootstrap_unit": "experiment",
                 }
@@ -133,12 +141,15 @@ def evaluate_e3(
     stability_rows = []
     for (model_id, seed), block in scenarios.groupby(["model", "seed"]):
         for metric in METRIC_NAMES:
+            finite = block[metric].to_numpy(dtype=float)
+            finite = finite[np.isfinite(finite)]
             stability_rows.append(
                 {
                     "model": model_id,
                     "seed": int(seed),
                     "metric": metric,
-                    "macro_mean": float(block[metric].mean()),
+                    "macro_mean": float(finite.mean()) if len(finite) else float("nan"),
+                    "n_valid_experiments": int(len(finite)),
                 }
             )
     stability = pd.DataFrame(stability_rows)
@@ -147,7 +158,7 @@ def evaluate_e3(
     for metric in METRIC_NAMES:
         pivot = reference.pivot(index="experiment", columns="model", values=metric)
         differences = pivot["ae_denso"].to_numpy() - pivot["ae_lstm"].to_numpy()
-        estimate, low, high = bootstrap_mean(
+        estimate, low, high, n_valid = bootstrap_mean(
             differences,
             seed=BOOTSTRAP_SEED + 50_000 + sum(map(ord, metric)),
         )
@@ -158,6 +169,7 @@ def evaluate_e3(
                 "ci95_low": low,
                 "ci95_high": high,
                 "n_paired_experiments": len(pivot),
+                "n_valid_paired_experiments": n_valid,
                 "bootstrap_unit": "paired_experiment",
             }
         )
@@ -166,6 +178,9 @@ def evaluate_e3(
     confusion_rows = []
     for model_id in MODEL_IDS:
         block = scores[scores["model"].eq(model_id)]
+        reference_run = next(
+            run for run in runs[model_id] if run.seed == REFERENCE_SEED
+        )
         prediction = block["score"] > block["score_threshold"]
         tn, fp, fn, tp = confusion_matrix(
             block["y_true"], prediction, labels=(0, 1)
@@ -177,7 +192,18 @@ def evaluate_e3(
                 "fp": int(fp),
                 "fn": int(fn),
                 "tp": int(tp),
+                "tn_rate_actual_healthy": float(tn / max(tn + fp, 1)),
+                "fp_rate_actual_healthy": float(fp / max(tn + fp, 1)),
+                "fn_rate_actual_fault": float(fn / max(fn + tp, 1)),
+                "tp_rate_actual_fault": float(tp / max(fn + tp, 1)),
                 "unit": "window_descriptive_only",
+                "normalization": "within_actual_class",
+                "threshold_requested_percentile": (
+                    reference_run.threshold_calibration.requested_percentile
+                ),
+                "threshold_effective_percentile": (
+                    reference_run.threshold_calibration.effective_percentile
+                ),
             }
         )
         for metric in ("auc_roc", "auc_pr"):

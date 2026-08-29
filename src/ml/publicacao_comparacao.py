@@ -21,7 +21,6 @@ from src.ml.treino_comparacao import (
     MODEL_ROOT,
     REFERENCE_SEED,
     STABILITY_SEEDS,
-    THRESHOLD_PERCENTILE,
     ModelRun,
 )
 
@@ -92,10 +91,11 @@ def results_payload(
                 else "AE-LSTM temporal: L=8, hidden=32, latent=8"
             ),
             "n_parameters": reference.n_parameters,
-            "score_method": "mean_squared_reconstruction_error",
-            "threshold_method": "empirical_p99_higher",
-            "score_threshold": reference.threshold,
-            "threshold_effective_percentile": THRESHOLD_PERCENTILE,
+            "score_method": "mean_of_top_k_feature_squared_reconstruction_errors",
+            "score_top_k": reference.score_top_k,
+            "score_dimension": "feature",
+            "lstm_scored_time_step": "last" if model_id == "ae_lstm" else None,
+            **reference.threshold_calibration.as_dict(),
             "healthy_test_false_positive_rate": float(
                 np.mean(reference.healthy_test_scores > reference.threshold)
             ),
@@ -128,7 +128,9 @@ def results_payload(
         "models": model_contract,
         "e3": {
             "evidence_level": "E3_bench",
-            "primary_metric": "auc_pr",
+            "primary_metrics": ["recall", "f1", "precision"],
+            "complementary_metrics": ["auc_roc", "auc_pr"],
+            "accuracy_role": "auxiliary_only",
             "confusion_matrix_unit": "window_descriptive_only",
             "fault_boundary_method": "nominal_mid_record",
             "fault_boundary_caveat": (
@@ -137,6 +139,7 @@ def results_payload(
             "macro": e3["macro"].to_dict(orient="records"),
             "paired_differences": e3["paired"].to_dict(orient="records"),
             "stability": e3["stability"].to_dict(orient="records"),
+            "confusion_matrices": e3["confusion"].to_dict(orient="records"),
         },
         "limitations": [
             "GPVS-Faults é evidência experimental de bancada, não validação de campo.",
@@ -148,7 +151,18 @@ def results_payload(
 
 def _write_report(payload: dict, output: Path) -> Path:
     macro = pd.DataFrame(payload["e3"]["macro"])
-    primary = macro[macro["metric"].eq("auc_pr")].set_index("model")
+    indexed = macro.set_index(["model", "metric"])
+    confusion = pd.DataFrame(payload["e3"]["confusion_matrices"]).set_index("model")
+
+    def formatted(model_id: str, metric: str) -> str:
+        row = indexed.loc[(model_id, metric)]
+        if not math.isfinite(float(row["estimate"])):
+            return "N/A"
+        return (
+            f"{row['estimate']:.3f} "
+            f"(IC95% {row['ci95_low']:.3f}-{row['ci95_high']:.3f})"
+        )
+
     lines = [
         "# Comparação canônica: Autoencoder Denso versus AE-LSTM",
         "",
@@ -160,15 +174,60 @@ def _write_report(payload: dict, output: Path) -> Path:
         "",
         "## Resultado experimental E3",
         "",
+        "| Modelo | Recall | F1 | Precision | ROC-AUC | PR-AUC |",
+        "|---|---:|---:|---:|---:|---:|",
     ]
     for model_id in MODEL_IDS:
-        row = primary.loc[model_id]
         lines.append(
-            f"- **{MODEL_NAMES[model_id]}:** AUC-PR macro "
-            f"{row['estimate']:.3f} (IC95% {row['ci95_low']:.3f}-{row['ci95_high']:.3f})."
+            f"| {MODEL_NAMES[model_id]} | {formatted(model_id, 'recall')} | "
+            f"{formatted(model_id, 'f1')} | {formatted(model_id, 'precision')} | "
+            f"{formatted(model_id, 'auc_roc')} | {formatted(model_id, 'auc_pr')} |"
         )
+    precision_valid = {
+        model_id: indexed.loc[(model_id, "precision")]
+        for model_id in MODEL_IDS
+    }
     lines.extend(
         [
+            "",
+            "Recall, F1 e Precision formam a camada principal. ROC-AUC e PR-AUC "
+            "são medidas complementares de discriminação. Precision é N/A quando "
+            "a execução não produz nenhum alarme positivo.",
+            "",
+            "Precision teve valor finito em "
+            f"{int(precision_valid['ae_denso']['n_valid_experiments'])}/14 ensaios "
+            "do Autoencoder Denso e "
+            f"{int(precision_valid['ae_lstm']['n_valid_experiments'])}/14 do AE-LSTM.",
+            "",
+            "## Matrizes de confusão agregadas",
+            "",
+            "| Modelo | TP | FP | TN | FN |",
+            "|---|---:|---:|---:|---:|",
+            *(
+                f"| {MODEL_NAMES[model_id]} | {int(confusion.loc[model_id, 'tp'])} | "
+                f"{int(confusion.loc[model_id, 'fp'])} | "
+                f"{int(confusion.loc[model_id, 'tn'])} | "
+                f"{int(confusion.loc[model_id, 'fn'])} |"
+                for model_id in MODEL_IDS
+            ),
+            "",
+            "As contagens são agregadas por janela e têm uso descritivo devido à "
+            "autocorrelação dentro de cada ensaio.",
+            "",
+            "## Ponto operacional",
+            "",
+            "| Modelo | Top-k | Limiar | Percentil solicitado | Percentil efetivo | Ordem | Resolução | FP no teste saudável |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|",
+            *(
+                f"| {model['name']} | {model['score_top_k']} | "
+                f"{model['score_threshold']:.6f} | "
+                f"p{model['threshold_requested_percentile']:.1f} | "
+                f"p{model['threshold_effective_percentile']:.3f} | "
+                f"{model['threshold_selected_rank']}/{model['calibration_n']} | "
+                f"{model['threshold_percentile_resolution']:.3f} p.p. | "
+                f"{model['healthy_test_false_positive_rate']:.3%} |"
+                for model in payload["models"].values()
+            ),
             "",
             "A unidade inferencial do intervalo é o ensaio, não a janela. A ",
             "semente 42 é pré-fixada; cinco sementes descrevem estabilidade sem ",
@@ -176,6 +235,11 @@ def _write_report(payload: dict, output: Path) -> Path:
             "",
             "A fronteira de falha é nominalmente 50% do registro porque os CSVs ",
             "não contêm canal instrumentado de disparo.",
+            "",
+            "O escore é a média dos cinco maiores erros quadráticos por feature. "
+            "Cada modelo calibra seu próprio limiar no bloco saudável de calibração "
+            "usando p99,9 solicitado; o contrato registra o order statistic e o "
+            "percentil empírico efetivamente alcançável.",
         ]
     )
     output.write_text(
@@ -194,6 +258,18 @@ def save_results(
     seeds: tuple[int, ...] = STABILITY_SEEDS,
 ) -> dict:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    reference_configurations = {
+        (
+            run.threshold_calibration.requested_percentile,
+            run.score_top_k,
+        )
+        for model_id in MODEL_IDS
+        for run in runs[model_id]
+        if run.seed == REFERENCE_SEED
+    }
+    if len(reference_configurations) != 1:
+        raise ValueError("Os modelos de referência devem usar o mesmo percentil e top-k")
+    threshold_percentile, score_top_k = reference_configurations.pop()
     outputs: list[Path] = []
     tables = {
         "e3_metricas_por_ensaio.csv": e3["scenarios"],
@@ -246,7 +322,8 @@ def save_results(
             "models": list(MODEL_IDS),
             "reference_seed": REFERENCE_SEED,
             "stability_seeds": list(seeds),
-            "threshold_percentile": THRESHOLD_PERCENTILE,
+            "threshold_percentile": threshold_percentile,
+            "score_top_k": score_top_k,
             "bootstrap_resamples": BOOTSTRAP_RESAMPLES,
         },
         inputs,

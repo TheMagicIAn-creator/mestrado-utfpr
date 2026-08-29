@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import threading
 from collections import defaultdict
 from functools import lru_cache
@@ -35,6 +36,13 @@ _CONTRACT_STATUS = {
     "detail": None,
     "updated_at": None,
 }
+
+
+def _nullable_float(value) -> float | None:
+    if value in (None, "", "N/A"):
+        return None
+    parsed = float(value)
+    return parsed if math.isfinite(parsed) else None
 
 
 class ContratoWebInvalido(RuntimeError):
@@ -149,10 +157,13 @@ def _metric_map(payload: dict) -> dict:
     metrics: dict[str, dict[str, dict]] = defaultdict(dict)
     for item in payload["e3"]["macro"]:
         metrics[item["model"]][item["metric"]] = {
-            "estimate": float(item["estimate"]),
-            "ci95_low": float(item["ci95_low"]),
-            "ci95_high": float(item["ci95_high"]),
+            "estimate": _nullable_float(item["estimate"]),
+            "ci95_low": _nullable_float(item["ci95_low"]),
+            "ci95_high": _nullable_float(item["ci95_high"]),
             "n_experiments": int(item["n_experiments"]),
+            "n_valid_experiments": int(
+                item.get("n_valid_experiments", item["n_experiments"])
+            ),
             "bootstrap_resamples": int(item["bootstrap_resamples"]),
             "bootstrap_unit": item["bootstrap_unit"],
         }
@@ -173,15 +184,16 @@ def _reference_trials() -> list[dict]:
                 "fault_type": row["fault_type"],
                 "mode": row["mode"],
                 "mode_name": row["mode_name"],
-                "auc_pr": float(row["auc_pr"]),
-                "auc_roc": float(row["auc_roc"]),
-                "sensitivity": float(row["sensitivity"]),
-                "specificity": float(row["specificity"]),
-                "balanced_accuracy": float(row["balanced_accuracy"]),
-                "mcc": float(row["mcc"]),
-                "f1": float(row["f1"]),
-                "precision": float(row["precision"]),
-                "false_positive_rate": float(row["false_positive_rate"]),
+                "auc_pr": _nullable_float(row["auc_pr"]),
+                "auc_roc": _nullable_float(row["auc_roc"]),
+                "recall": _nullable_float(row["recall"]),
+                "sensitivity": _nullable_float(row["sensitivity"]),
+                "specificity": _nullable_float(row["specificity"]),
+                "balanced_accuracy": _nullable_float(row["balanced_accuracy"]),
+                "mcc": _nullable_float(row["mcc"]),
+                "f1": _nullable_float(row["f1"]),
+                "precision": _nullable_float(row["precision"]),
+                "false_positive_rate": _nullable_float(row["false_positive_rate"]),
                 "tn": int(row["tn"]),
                 "fp": int(row["fp"]),
                 "fn": int(row["fn"]),
@@ -211,20 +223,23 @@ def _confusion_matrices(trials: list[dict]) -> list[dict]:
 
 
 def _stability_summary(payload: dict) -> list[dict]:
-    grouped: dict[str, list[float]] = defaultdict(list)
+    grouped: dict[tuple[str, str], list[float]] = defaultdict(list)
     for item in payload["e3"]["stability"]:
-        if item["metric"] == "auc_pr":
-            grouped[item["model"]].append(float(item["macro_mean"]))
+        if item["metric"] not in {"recall", "f1", "precision"}:
+            continue
+        value = _nullable_float(item["macro_mean"])
+        if value is not None:
+            grouped[(item["model"], item["metric"])].append(value)
     return [
         {
             "model": model,
-            "metric": "auc_pr",
+            "metric": metric,
             "n_seeds": len(values),
             "mean": fmean(values),
             "minimum": min(values),
             "maximum": max(values),
         }
-        for model, values in grouped.items()
+        for (model, metric), values in sorted(grouped.items())
     ]
 
 
@@ -233,7 +248,7 @@ def _e3_contract_cached(signature_value) -> dict:
     payload = _comparison_payload((signature_value[0],))
     trials = _reference_trials()
     contract = {
-        "contract_version": 2,
+        "contract_version": 3,
         "evidence_level": payload["e3"]["evidence_level"],
         "dataset": {
             "name": payload["dataset"]["dataset"],
@@ -242,7 +257,8 @@ def _e3_contract_cached(signature_value) -> dict:
             "fault_boundary": payload["dataset"]["fault_boundary"],
         },
         "generated_at": payload["created_at"],
-        "primary_metric": payload["e3"]["primary_metric"],
+        "primary_metrics": payload["e3"]["primary_metrics"],
+        "complementary_metrics": payload["e3"]["complementary_metrics"],
         "models": payload["models"],
         "protocol": payload["protocol"],
         "metrics": _metric_map(payload),
@@ -266,7 +282,7 @@ def _e3_contract_cached(signature_value) -> dict:
                 "comparison",
                 "e3_curvas_discriminacao",
                 "Curvas de discriminação dos autoencoders",
-                "AUC-PR é a métrica primária; ROC-AUC é apresentada como complemento.",
+                "ROC-AUC e PR-AUC são medidas complementares de discriminação.",
             ),
             _figure(
                 "comparison",

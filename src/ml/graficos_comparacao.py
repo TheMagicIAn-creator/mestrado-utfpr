@@ -17,7 +17,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter
 from sklearn.metrics import (
-    average_precision_score,
+    auc,
     precision_recall_curve,
     roc_auc_score,
     roc_curve,
@@ -62,25 +62,23 @@ def _save_pair(fig, base_path: Path, note: str) -> tuple[Path, Path]:
 
 
 def plot_e3_metric_summary(summary: pd.DataFrame, output: Path) -> tuple[Path, Path]:
-    """Estimativas macro por ensaio e IC95%, com AUC-PR em primeiro plano."""
+    """Estimativas macro por ensaio conforme a hierarquia do pesquisador."""
 
     order = [
-        "auc_pr",
-        "auc_roc",
-        "sensitivity",
-        "specificity",
-        "balanced_accuracy",
-        "mcc",
+        "recall",
         "f1",
+        "precision",
+        "auc_roc",
+        "auc_pr",
+        "false_positive_rate",
     ]
     labels = {
-        "auc_pr": "AUC-PR",
-        "auc_roc": "AUC-ROC",
-        "sensitivity": "Sensibilidade",
-        "specificity": "Especificidade",
-        "balanced_accuracy": "Acurácia balanceada",
-        "mcc": "MCC",
+        "recall": "Recall",
         "f1": "F1",
+        "precision": "Precision",
+        "auc_roc": "ROC-AUC (complementar)",
+        "auc_pr": "PR-AUC (complementar)",
+        "false_positive_rate": "Taxa de falso positivo",
     }
     frame = summary[summary["metric"].isin(order)].copy()
     fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
@@ -101,8 +99,7 @@ def plot_e3_metric_summary(summary: pd.DataFrame, output: Path) -> tuple[Path, P
             markersize=6,
             label=MODEL_LABELS[model],
         )
-    lower_limit = min(-0.05, float(frame["ci95_low"].min()) - 0.03)
-    ax.set_xlim(max(-1.0, lower_limit), 1.05)
+    ax.set_xlim(0.0, 1.05)
     ax.set_yticks(y, [labels[item] for item in order])
     ax.invert_yaxis()
     ax.set_xlabel("Estimativa macro por ensaio (IC95%)")
@@ -112,7 +109,7 @@ def plot_e3_metric_summary(summary: pd.DataFrame, output: Path) -> tuple[Path, P
     return _save_pair(
         fig,
         output,
-        "Ensaios F1L-F7M; bootstrap no nível do ensaio. AUC-PR é a métrica primária.",
+        "Recall, F1 e Precision são principais; AUCs são complementares. Bootstrap no nível do ensaio.",
     )
 
 
@@ -129,7 +126,7 @@ def plot_e3_discrimination_curves(
         fpr, tpr, _ = roc_curve(y_true, values)
         precision, recall, _ = precision_recall_curve(y_true, values)
         auc_roc_pooled = float(roc_auc_score(y_true, values))
-        auc_pr_pooled = float(average_precision_score(y_true, values))
+        auc_pr_pooled = float(auc(recall, precision))
         auc_roc_macro = float(block["auc_roc_macro"].iloc[0])
         auc_pr_macro = float(block["auc_pr_macro"].iloc[0])
         axes[0].plot(
@@ -146,7 +143,7 @@ def plot_e3_discrimination_curves(
             precision,
             color=MODEL_COLORS[model],
             label=(
-                f"{MODEL_LABELS[model]} · AP agregada={auc_pr_pooled:.3f}"
+                f"{MODEL_LABELS[model]} · PR-AUC agregada={auc_pr_pooled:.3f}"
                 f" · macro={auc_pr_macro:.3f}"
             ),
         )
@@ -167,7 +164,9 @@ def plot_e3_discrimination_curves(
         ax.xaxis.set_major_formatter(PercentFormatter(1.0))
         ax.yaxis.set_major_formatter(PercentFormatter(1.0))
         ax.legend(loc="best", fontsize=8)
-    fig.suptitle("Discriminação pré-falha versus pós-falha — execução de referência")
+    fig.suptitle(
+        "Curvas complementares de discriminação pré-falha versus pós-falha"
+    )
     return _save_pair(
         fig,
         output,
@@ -207,7 +206,12 @@ def plot_e3_confusion_matrices(
                     fontsize=10,
                 )
     fig.colorbar(image, ax=axes, label="Proporção dentro da classe real", shrink=0.8)
-    fig.suptitle("Classificação no limiar p99 congelado — validação E3")
+    requested = f"{float(confusion['threshold_requested_percentile'].iloc[0]):g}".replace(
+        ".", ","
+    )
+    fig.suptitle(
+        f"Matrizes de confusão no limiar saudável p{requested} — validação E3"
+    )
     return _save_pair(
         fig,
         output,
@@ -216,7 +220,7 @@ def plot_e3_confusion_matrices(
 
 
 def plot_e3_scenarios(scenarios: pd.DataFrame, output: Path) -> tuple[Path, Path]:
-    """AUC-PR e sensibilidade por ensaio, preservando resultados negativos."""
+    """Recall e F1 por ensaio, preservando resultados negativos."""
 
     reference = scenarios[scenarios["is_reference"]].copy()
     experiments = [f"F{i}{mode}" for i in range(1, 8) for mode in "LM"]
@@ -224,8 +228,8 @@ def plot_e3_scenarios(scenarios: pd.DataFrame, output: Path) -> tuple[Path, Path
         1, 2, figsize=TAM["painel_4"], layout="constrained", sharey=True
     )
     for ax, metric, title in (
-        (axes[0], "auc_pr", "AUC-PR por ensaio"),
-        (axes[1], "sensitivity", "Sensibilidade no limiar p99"),
+        (axes[0], "recall", "Recall por ensaio no limiar calibrado"),
+        (axes[1], "f1", "F1 por ensaio no limiar calibrado"),
     ):
         matrix = (
             reference.pivot(index="experiment", columns="model", values=metric)

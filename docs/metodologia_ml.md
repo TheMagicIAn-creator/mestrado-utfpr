@@ -41,19 +41,23 @@ Pesos, scaler e limiar não são reajustados.
 
 Os dois recebem o mesmo orçamento de épocas, early stopping, sementes e
 pré-processamento compatível. A semente 42 é a execução de referência e cinco
-sementes medem estabilidade. O erro de reconstrução define o escore; cada
-modelo recebe seu próprio p99 empírico, calculado na calibração saudável pelo
-método `higher`.
+sementes medem estabilidade. O escore é a média dos cinco maiores erros
+quadráticos por feature; no AE-LSTM, somente o último passo temporal recebe o
+top-k. Cada modelo recebe seu próprio p99,9 solicitado, calculado na calibração
+saudável pelo método `higher`. A saída registra o order statistic selecionado,
+o percentil empírico efetivo, o tamanho da calibração e sua resolução.
 
 Nenhum desempenho em F1-F7 participa da seleção de arquitetura, semente ou
 limiar.
 
 ## 5. E3 experimental
 
-Os modelos congelados avaliam todos os 14 ensaios. AUC-PR é a métrica
-principal, acompanhada por ROC-AUC, sensibilidade, especificidade, acurácia
-balanceada, MCC, F1 e falso positivo saudável. A unidade inferencial é o
-ensaio; IC95% macro usam bootstrap de 20.000 reamostragens dos ensaios.
+Os modelos congelados avaliam todos os 14 ensaios. Recall, F1 e Precision são
+as métricas principais. ROC-AUC e PR-AUC são complementares; especificidade,
+acurácia balanceada, MCC e falso positivo saudável permanecem auxiliares. Se
+nenhum positivo for previsto, Precision é `N/A`, e não zero. A unidade
+inferencial é o ensaio; IC95% macro usam bootstrap de 20.000 reamostragens dos
+ensaios com valor finito para a métrica.
 
 Resultados negativos e heterogeneidade por falha permanecem publicados.
 E3 significa bancada, não validação de campo.

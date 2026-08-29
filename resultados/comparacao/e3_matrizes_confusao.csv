@@ -1,3 +1,3 @@
-model,tn,fp,fn,tp,unit
-ae_denso,2275,73,2694,1990,window_descriptive_only
-ae_lstm,2271,77,2800,1884,window_descriptive_only
+model,tn,fp,fn,tp,tn_rate_actual_healthy,fp_rate_actual_healthy,fn_rate_actual_fault,tp_rate_actual_fault,unit,normalization,threshold_requested_percentile,threshold_effective_percentile
+ae_denso,2328,20,2835,1849,0.9914821124361158,0.008517887563884156,0.6052519214346712,0.3947480785653288,window_descriptive_only,within_actual_class,99.9,100.0
+ae_lstm,2310,38,2823,1861,0.9838160136286201,0.016183986371379896,0.6026900085397097,0.39730999146029033,window_descriptive_only,within_actual_class,99.9,100.0

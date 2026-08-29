@@ -20,7 +20,8 @@ Os 16 CSVs locais totalizam 493.425.214 bytes (aproximadamente 493 MB em base de
 ## Protocolo canônico
 
 F0L/F0M alimentam o Autoencoder Denso e o AE-LSTM sob o mesmo protocolo. Cada
-modelo preserva seu próprio scaler, escore e limiar p99, todos congelados antes
+modelo preserva seu próprio scaler, escore top-k (`k=5`) e limiar p99,9
+solicitado, todos congelados antes
 de avaliar F1L-F7M na E3 de bancada. Não há publicação autônoma de métricas do
 dataset: toda métrica experimental compara os dois modelos.
 
@@ -38,8 +39,9 @@ dos CSVs e registra ambos os valores; não presume que o manual esteja correto.
 
 Os resultados dos dois modelos nos 14 ensaios E3 estão em
 `resultados/comparacao/e3_metricas_macro.csv` e
-`e3_metricas_por_ensaio.csv`. AUC-PR é a métrica principal e os IC95% usam o
-ensaio como unidade de bootstrap. Limites de desempenho por ensaio permanecem
+`e3_metricas_por_ensaio.csv`. Recall, F1 e Precision são as métricas principais;
+ROC-AUC e PR-AUC são complementares. Os IC95% usam o ensaio como unidade de
+bootstrap. Limites de desempenho por ensaio permanecem
 publicados; nenhum cenário é descartado para melhorar a média.
 
 ## Fontes fora do resultado principal

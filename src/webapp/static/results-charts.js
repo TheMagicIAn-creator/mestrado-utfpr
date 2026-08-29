@@ -167,13 +167,12 @@
 
   function metricChart(container, data) {
     const labels = {
-      auc_pr: "AUC-PR",
-      auc_roc: "AUC-ROC",
-      sensitivity: "Sensibilidade",
-      specificity: "Especificidade",
-      balanced_accuracy: "Acurácia balanceada",
-      mcc: "MCC",
+      recall: "Recall",
       f1: "F1",
+      precision: "Precision",
+      auc_roc: "ROC-AUC (complementar)",
+      auc_pr: "PR-AUC (complementar)",
+      false_positive_rate: "Taxa de falso positivo",
     };
     const order = Object.keys(labels);
     installChart(container, modelDefinitions, (plot, active, definitions) => {
@@ -181,7 +180,9 @@
       definitions.filter((item) => active.has(item.id)).forEach((definition) => {
         order.forEach((metric) => {
           const item = data.metrics[definition.id][metric];
-          values.push({ model: definition.id, metric, ...item });
+          if (item.estimate !== null && item.ci95_low !== null && item.ci95_high !== null) {
+            values.push({ model: definition.id, metric, ...item });
+          }
         });
       });
       const limits = d3.extent(values.flatMap((item) => [item.ci95_low, item.ci95_high]));
@@ -223,11 +224,11 @@
   function trialChart(container, data) {
     installChart(container, modelDefinitions, (plot, active, definitions) => {
       const experiments = [...new Set(data.trials.map((item) => item.experiment))];
-      const frame = scaffold(plot, 350, "AUC-PR por ensaio", "Comparação pareada dos 14 ensaios para os dois autoencoders.", { left: 70 });
+      const frame = scaffold(plot, 350, "Recall por ensaio", "Comparação pareada dos 14 ensaios para os dois autoencoders.", { left: 70 });
       const x = d3.scalePoint().domain(experiments).range([0, frame.innerWidth]).padding(0.35);
       const y = d3.scaleLinear().domain([0, 1]).range([frame.innerHeight, 0]);
       const step = Math.max(1, Math.ceil(experiments.length / (frame.width < 430 ? 7 : 14)));
-      axes(frame, x, y, "Ensaio experimental", "AUC-PR", {
+      axes(frame, x, y, "Ensaio experimental", "Recall", {
         xAxis: d3.axisBottom(x).tickValues(experiments.filter((_item, index) => index % step === 0)),
         yAxis: d3.axisLeft(y).ticks(5).tickFormat(d3.format(".0%")),
       });
@@ -240,16 +241,16 @@
           .attr("class", "chart-series-line")
           .attr("fill", "none").attr("stroke", color)
           .attr("stroke-dasharray", definition.dash)
-          .attr("d", d3.line().x((item) => x(item.experiment)).y((item) => y(item.auc_pr)));
+          .attr("d", d3.line().x((item) => x(item.experiment)).y((item) => y(item.recall)));
         frame.chart.selectAll(`.trial-${definition.id}`)
           .data(values).join("circle")
           .attr("class", "chart-mark")
-          .attr("cx", (item) => x(item.experiment)).attr("cy", (item) => y(item.auc_pr))
+          .attr("cx", (item) => x(item.experiment)).attr("cy", (item) => y(item.recall))
           .attr("r", 4).attr("fill", color).attr("tabindex", 0)
           .on("pointerenter focus", (event, item) => showTooltip(tooltip, event, plot, [
             `<strong>${definition.name}</strong>`,
             `${item.experiment} · ${item.mode_name}`,
-            `AUC-PR: ${number(item.auc_pr)}`,
+            `Recall: ${number(item.recall)}`,
           ]))
           .on("pointerleave blur", () => hideTooltip(tooltip));
       });

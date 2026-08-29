@@ -75,7 +75,7 @@ cenário bibliográfico separado e não deriva taxas de falha do GPVS.
 |---|---|
 | `dados_gpvs.py` | 16 ensaios, 24 features, split, normalização e holdout. |
 | `modelos_autoencoder.py` | Denso 24-16-8-16-24 e AE-LSTM temporal. |
-| `treino_comparacao.py` | Treino pareado, cinco sementes e limiar p99 por modelo. |
+| `treino_comparacao.py` | Treino pareado, cinco sementes, top-k e limiar p99,9 rastreável. |
 | `estatistica_comparacao.py` | Métricas, Wilson e bootstrap por ensaio. |
 | `avaliacao_comparativa.py` | Avaliação E3 dos modelos congelados. |
 | `graficos_comparacao.py` | Figuras comparativas E3 em PNG e PDF. |
