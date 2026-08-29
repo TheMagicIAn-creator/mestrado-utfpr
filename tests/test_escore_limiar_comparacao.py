@@ -49,8 +49,9 @@ def test_score_lstm_uses_top_k_only_on_last_time_step():
 @pytest.mark.parametrize("top_k", [0, 25, 1.5, True])
 def test_score_rejects_invalid_top_k(top_k):
     values = np.zeros((2, 24), dtype=np.float32)
+    model = _ZeroReconstruction()
     with pytest.raises(ValueError, match="top_k"):
-        score_dense(_ZeroReconstruction(), values, top_k=top_k)
+        score_dense(model, values, top_k=top_k)
 
 
 @pytest.mark.leve
