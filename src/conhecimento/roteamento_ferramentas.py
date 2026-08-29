@@ -16,7 +16,7 @@ from src.conhecimento.intencoes_ferramentas import (
     _quer_resposta_autoral,
     _quer_status,
 )
-from src.conhecimento.provedores import texto_da_resposta
+from src.conhecimento.contratos_llm import texto_resultado_llm
 from src.core.logs import get_logger
 from src.core.seguranca import mascarar_segredos
 from src.core.texto import normalizar_sem_acentos
@@ -182,7 +182,7 @@ def _rotear_por_llm(pergunta: str, llm) -> dict:
         f"Ferramentas: {', '.join(names)}\nSolicitação: {pergunta}"
     )
     try:
-        raw = texto_da_resposta(llm.invoke(prompt))
+        raw = texto_resultado_llm(llm.invoke(prompt))
         cleaned = re.sub(r"```json?\s*", "", str(raw)).replace("```", "").strip()
         decision = json.loads(cleaned)
     except Exception as exc:
@@ -283,7 +283,7 @@ Resultado determinístico:
             request = [HumanMessage(content=prompt)]
         except ImportError:
             request = prompt
-        answer = texto_da_resposta(llm.invoke(request))
+        answer = texto_resultado_llm(llm.invoke(request))
         return _corrigir_descricao_visual(answer, resultado.get("imagens"))
     except Exception as exc:
         LOGGER.debug("Comentário por LLM indisponível: %s", mascarar_segredos(str(exc)))

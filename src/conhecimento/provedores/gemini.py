@@ -2,7 +2,8 @@
 provedores.py — Al IAdo PV
 Gerencia os provedores de LLM disponíveis.
 
-Equipe 100% Gemini, um modelo por nível de tarefa. Usa identificadores GA
+Adapter Google Gemini e fachada de compatibilidade para integrações legadas. Usa
+identificadores GA
 explícitos e verificados na API para evitar a latência de aliases indisponíveis:
 
   • NÍVEL 1 — conversa, síntese final e interpretação de imagens
@@ -37,6 +38,7 @@ from src.conhecimento.contratos_llm import (
     LLMRequest,
     LLMResult,
     LLMStreamChunk,
+    texto_resultado_llm,
 )
 from src.conhecimento.provedores.base import (
     ProviderNotConfiguredError,
@@ -124,48 +126,9 @@ def _conteudo_da_mensagem(mensagem):
 
 
 def texto_da_resposta(resposta) -> str:
-    """Converte respostas dos SDKs/integrações em texto puro.
+    """Fachada legada para o normalizador neutro do contrato comum."""
 
-    Versões recentes dos provedores podem devolver ``content`` como uma lista
-    de blocos em vez de ``str``. Centralizar a conversão evita que cada fluxo
-    tente concatenar ou interpretar diretamente estruturas incompatíveis.
-    Blocos não textuais são ignorados deliberadamente.
-    """
-
-    conteudo = resposta if isinstance(resposta, (str, list, tuple, dict)) else getattr(
-        resposta, "content", resposta
-    )
-
-    def _partes(valor):
-        if valor is None:
-            return
-        if isinstance(valor, str):
-            if valor:
-                yield valor
-            return
-        if isinstance(valor, (list, tuple)):
-            for item in valor:
-                yield from _partes(item)
-            return
-        if isinstance(valor, dict):
-            tipo = str(valor.get("type", "")).lower()
-            if tipo and tipo not in {"text", "output_text"}:
-                return
-            for chave in ("text", "content", "value"):
-                if chave in valor:
-                    yield from _partes(valor[chave])
-                    return
-            return
-
-        texto = getattr(valor, "text", None)
-        if texto is not None:
-            yield from _partes(texto)
-            return
-        interno = getattr(valor, "content", None)
-        if interno is not None and interno is not valor:
-            yield from _partes(interno)
-
-    return "".join(_partes(conteudo) or ())
+    return texto_resultado_llm(resposta)
 
 
 # Fallback GA explicito: se o modelo configurado some, a chamada cai na versao

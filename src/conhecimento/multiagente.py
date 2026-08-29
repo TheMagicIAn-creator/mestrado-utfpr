@@ -1,9 +1,7 @@
-"""Orquestracao enxuta da equipe 100% Gemini, um modelo por papel.
+"""Orquestração neutra dos papéis de conversa, auditoria e memória.
 
-Gemini Pro conversa, interpreta ferramentas/imagens e produz a resposta final.
-Gemini Flash recebe somente pacotes textuais compactos para auditar evidencias
-e aprovar memorias.
-Calculos, recuperacao e geracao de artefatos permanecem deterministicos.
+O Router escolhe o recurso de inferência adequado a cada tarefa. Cálculos,
+recuperação, validações de contrato e geração de artefatos permanecem locais.
 """
 
 from __future__ import annotations
@@ -12,22 +10,89 @@ import json
 import re
 from dataclasses import dataclass, field
 
+from src.conhecimento.cliente_llm import RouterLLMFacade
+from src.conhecimento.contratos_llm import (
+    MethodologicalRisk,
+    TaskType,
+    texto_resultado_llm,
+)
 from src.core.texto import normalizar_busca as _normalizar
 from src.conhecimento.memoria_persistente import (
     MemoriaInvalida,
     MemoriaPersistente,
 )
-from src.conhecimento.provedores import inicializar_papel, texto_da_resposta
-
-
 STATUS_AUDITORIA = {"aprovado", "com_ressalvas", "insuficiente", "nao_aplicavel"}
+
+_SCHEMA_AUDITORIA = {
+    "type": "object",
+    "properties": {
+        "status": {
+            "type": "string",
+            "enum": ["aprovado", "com_ressalvas", "insuficiente"],
+        },
+        "restricoes": {"type": "array", "items": {"type": "string"}},
+        "orientacao": {"type": "string"},
+        "fontes_utilizaveis": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["status", "restricoes", "orientacao", "fontes_utilizaveis"],
+    "additionalProperties": False,
+}
+
+_SCHEMA_MEMORIA = {
+    "type": "object",
+    "properties": {
+        "salvar": {"type": "boolean"},
+        "motivo": {"type": "string"},
+        "candidatos": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "tipo": {"type": "string"},
+                    "escopo": {"type": "string"},
+                    "conteudo": {"type": "string"},
+                    "evidencia_usuario": {"type": "string"},
+                    "substitui_id": {"type": "string"},
+                    "confianca": {"type": "number"},
+                },
+                "required": [
+                    "tipo",
+                    "escopo",
+                    "conteudo",
+                    "evidencia_usuario",
+                    "substitui_id",
+                    "confianca",
+                ],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["salvar", "motivo", "candidatos"],
+    "additionalProperties": False,
+}
 
 
 def _texto_resposta(resposta) -> str:
-    return texto_da_resposta(resposta)
+    return texto_resultado_llm(resposta)
 
 
-def _json_da_resposta(llm, prompt: str, max_tokens: int) -> dict:
+def _json_da_resposta(
+    llm,
+    prompt: str,
+    max_tokens: int,
+    *,
+    schema: dict | None = None,
+    task_type: str | None = None,
+    methodological_risk: str | None = None,
+) -> dict:
+    if isinstance(llm, RouterLLMFacade):
+        return llm.invoke_json(
+            [{"content": prompt}],
+            max_tokens=max_tokens,
+            schema=schema,
+            task_type=task_type,
+            methodological_risk=methodological_risk,
+        )
     if hasattr(llm, "invoke_json"):
         return llm.invoke_json([{"content": prompt}], max_tokens=max_tokens)
     bruto = _texto_resposta(llm.invoke([{"content": prompt}])).strip()
@@ -99,13 +164,13 @@ def filtrar_citacoes_auditadas(
     }
 
 
-class AgenteConversacionalGemini:
-    """Coordenador humano e sintetizador final baseado em Gemini."""
+class AgenteConversacional:
+    """Coordenador humano e sintetizador final independente de provedor."""
 
     def __init__(self, llm, memoria: MemoriaPersistente) -> None:
         self.llm = llm
         self.memoria = memoria
-        self.nome = "Google Gemini - conversa"
+        self.nome = "Router LLM - conversa"
 
     def invoke(self, mensagens):
         return self.llm.invoke(mensagens)
@@ -144,8 +209,8 @@ parecer em evidencia bibliografica.
         return "\n\n".join(blocos)
 
 
-class AgenteAuditorGemini:
-    """Auditor de evidencias e porteiro da memoria persistente."""
+class AgenteAuditor:
+    """Auditor de evidências e porteiro de memória independente de provedor."""
 
     _GATILHOS_APRENDIZADO = (
         "lembre", "memorize", "guarde", "prefiro", "minha preferencia",
@@ -160,7 +225,7 @@ class AgenteAuditorGemini:
     def __init__(self, llm, memoria: MemoriaPersistente) -> None:
         self.llm = llm
         self.memoria = memoria
-        self.nome = "Gemini Flash - auditoria e memoria"
+        self.nome = "Router LLM - auditoria e memória"
 
     def deve_avaliar_aprendizado(self, pergunta: str) -> bool:
         texto = _normalizar(pergunta)
@@ -214,7 +279,14 @@ pergunta pedir comparacao e as fontes cobrirem apenas parte dos autores, use
 status com_ressalvas ou insuficiente.
 """.strip()
         try:
-            dados = _json_da_resposta(self.llm, prompt, max_tokens=650)
+            dados = _json_da_resposta(
+                self.llm,
+                prompt,
+                max_tokens=650,
+                schema=_SCHEMA_AUDITORIA,
+                task_type=TaskType.EVIDENCE_AUDIT,
+                methodological_risk=MethodologicalRisk.MEDIUM,
+            )
             status = str(dados.get("status", "insuficiente")).lower()
             if status not in STATUS_AUDITORIA - {"nao_aplicavel"}:
                 status = "insuficiente"
@@ -283,7 +355,14 @@ Retorne apenas JSON:
 }}
 """.strip()
         try:
-            dados = _json_da_resposta(self.llm, prompt, max_tokens=700)
+            dados = _json_da_resposta(
+                self.llm,
+                prompt,
+                max_tokens=700,
+                schema=_SCHEMA_MEMORIA,
+                task_type=TaskType.MEMORY_CONSOLIDATION,
+                methodological_risk=MethodologicalRisk.LOW,
+            )
         except Exception as exc:
             return ResultadoAprendizado(
                 avaliou=True,
@@ -384,7 +463,14 @@ Retorne apenas JSON:
 }}
 """.strip()
         try:
-            dados = _json_da_resposta(self.llm, prompt, max_tokens=1100)
+            dados = _json_da_resposta(
+                self.llm,
+                prompt,
+                max_tokens=1100,
+                schema=_SCHEMA_MEMORIA,
+                task_type=TaskType.MEMORY_CONSOLIDATION,
+                methodological_risk=MethodologicalRisk.LOW,
+            )
         except Exception as exc:
             return ResultadoAprendizado(
                 avaliou=True,
@@ -426,8 +512,8 @@ Retorne apenas JSON:
 
 @dataclass
 class EquipeAgentes:
-    conversa: AgenteConversacionalGemini
-    auditoria: AgenteAuditorGemini
+    conversa: AgenteConversacional
+    auditoria: AgenteAuditor
     memoria: MemoriaPersistente
     nomes: dict[str, str] = field(default_factory=dict)
 
@@ -435,25 +521,43 @@ class EquipeAgentes:
 def criar_equipe_agentes(
     *,
     memoria: MemoriaPersistente | None = None,
+    router=None,
+    llm_conversa=None,
     llm_gemini=None,
     llm_auditor=None,
 ) -> EquipeAgentes:
-    """Cria a equipe com papeis fixos e dependencias injetaveis para testes."""
+    """Cria papéis estáveis; `llm_gemini` permanece só como alias legado."""
     memoria = memoria or MemoriaPersistente()
-    nomes = {}
-    if llm_gemini is None:
-        llm_gemini, nome, rotulo = inicializar_papel("conversa")
-        nomes["conversa"] = f"{rotulo} ({nome})"
-    else:
-        nomes["conversa"] = "Gemini - conversa e sintese"
+    if llm_conversa is None:
+        llm_conversa = llm_gemini
+    if llm_conversa is None or llm_auditor is None:
+        from src.conhecimento.roteador_llm import build_default_router
+
+        router = router or build_default_router()
+    if llm_conversa is None:
+        llm_conversa = RouterLLMFacade(
+            router,
+            task_type=TaskType.SCIENTIFIC_REASONING,
+            methodological_risk=MethodologicalRisk.MEDIUM,
+        )
     if llm_auditor is None:
-        llm_auditor, nome, rotulo = inicializar_papel("auditoria")
-        nomes["auditoria"] = f"{rotulo} ({nome})"
-    else:
-        nomes["auditoria"] = "Gemini Flash - auditoria e memoria"
+        llm_auditor = RouterLLMFacade(
+            router,
+            task_type=TaskType.EVIDENCE_AUDIT,
+            methodological_risk=MethodologicalRisk.MEDIUM,
+        )
+    nomes = {
+        "conversa": "Router automático - conversa e síntese",
+        "auditoria": "Router automático - auditoria e memória",
+    }
     return EquipeAgentes(
-        conversa=AgenteConversacionalGemini(llm_gemini, memoria),
-        auditoria=AgenteAuditorGemini(llm_auditor, memoria),
+        conversa=AgenteConversacional(llm_conversa, memoria),
+        auditoria=AgenteAuditor(llm_auditor, memoria),
         memoria=memoria,
         nomes=nomes,
     )
+
+
+# Compatibilidade de importação para integrações e sessões anteriores.
+AgenteConversacionalGemini = AgenteConversacional
+AgenteAuditorGemini = AgenteAuditor

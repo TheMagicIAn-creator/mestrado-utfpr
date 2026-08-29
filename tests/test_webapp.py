@@ -560,6 +560,34 @@ def test_agente_encaminha_chunks_reais_do_llm(monkeypatch):
     assert captured["on_chunk"] is not None
 
 
+def test_status_publica_rota_real_sem_rotulo_fixo_de_provedor():
+    adapter = AgentAdapter(answerer=lambda *_args: "ok")
+    adapter._components = _Componentes(
+        perfil="perfil",
+        modelo_embeddings=object(),
+        literatura=object(),
+        sessoes=object(),
+        obsidian=object(),
+        indice_lexical=object(),
+        llm=SimpleNamespace(
+            route_status=lambda: {
+                "provider": "openai",
+                "model": "modelo-terra",
+                "task_type": "scientific_reasoning",
+                "route_reason": "technical_scientific_task",
+                "fallback_used": False,
+                "validation_used": False,
+            }
+        ),
+        auditor=SimpleNamespace(),
+        modo_consulta=True,
+    )
+    status = adapter.status()
+    assert status["provider"] == "openai"
+    assert status["model"] == "modelo-terra"
+    assert status["routing"]["route_reason"] == "technical_scientific_task"
+
+
 def test_manutencao_da_sessao_nao_bloqueia_resposta(monkeypatch, tmp_path):
     import src.conhecimento.agente as agent
 

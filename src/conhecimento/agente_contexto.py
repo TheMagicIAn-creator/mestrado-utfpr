@@ -6,7 +6,7 @@ from src.conhecimento.agente import (
     N_RESULTADOS,
     PERFIL_COMPACTO,
     _logger,
-    eh_multimodal,
+    _llm_suporta_multimodal,
     montar_bloco_texto_anexos,
 )
 from src.conhecimento.agente_interacao import (
@@ -45,7 +45,7 @@ def buscar_contexto(
     """
     Recuperacao local em quatro camadas: literatura híbrida, vault Obsidian,
     memória de sessões e memória estruturada adicionada pelo coordenador.
-    A auditoria (Gemini Flash) e a sintese (Gemini Pro) sao do invocador web.
+    A auditoria e a síntese são papéis do Router no invocador web.
     Quando consultar_literatura=False, pula expansão/busca/reranking da base
     bibliográfica e usa apenas o cérebro do projeto e a memória de sessões.
 
@@ -373,7 +373,7 @@ def preparar_prompt(
         colecao_obsidian=colecao_obsidian,
     )
 
-    suporta_imagem = eh_multimodal(nome_provedor)
+    suporta_imagem = _llm_suporta_multimodal(None, nome_provedor)
     anexos_texto = (
         montar_bloco_texto_anexos(anexos, suporta_imagem=suporta_imagem)
         if anexos else ""

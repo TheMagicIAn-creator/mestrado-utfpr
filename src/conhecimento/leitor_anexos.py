@@ -322,7 +322,7 @@ def montar_bloco_texto_anexos(anexos: list[dict], suporta_imagem: bool = True) -
                 partes.append(
                     f"[Anexo (imagem): {nome} — {resumo}. "
                     "O provedor de LLM atual nao le imagens (texto puro). "
-                    "Avise o Rodolfo que, para analise visual, ele deve conectar o Google Gemini.]"
+                    "Avise o Rodolfo que a análise visual requer um modelo multimodal configurado.]"
                 )
         else:
             partes.append(f"[Anexo nao lido: {nome} — {a.get('erro') or 'erro desconhecido'}]")

@@ -94,15 +94,38 @@ class AgentAdapter:
 
     def status(self) -> dict:
         with self._lock:
+            route = self._route_status(self._components)
             return {
                 "state": self._state,
-                "provider": "Google Gemini",
+                "provider": route.get("provider") or "automatic",
+                "model": route.get("model"),
+                "routing": route,
                 "engine": AGENT_ENGINE,
                 "retrieval": ["semantic", "bm25", "sessions", "obsidian"],
                 "evidence_audit": True,
                 "detail": self._error,
                 "background_warmup": True,
             }
+
+    @staticmethod
+    def _route_status(componentes: _Componentes | None) -> dict:
+        llm = getattr(componentes, "llm", None)
+        getter = getattr(llm, "route_status", None)
+        if callable(getter):
+            try:
+                status = getter()
+                if isinstance(status, dict):
+                    return status
+            except Exception:
+                _logger.warning("status seguro do Router indisponível")
+        return {
+            "provider": None,
+            "model": None,
+            "task_type": None,
+            "route_reason": "not_invoked",
+            "fallback_used": False,
+            "validation_used": False,
+        }
 
     def initialize(self) -> dict:
         """Aquece o mesmo runtime usado pela conversa e devolve seu estado."""
@@ -244,7 +267,7 @@ class AgentAdapter:
                     _decisao_rapida(mensagem) if contexto_cientifico else None
                 )
                 # Perguntas discursivas inequívocas sobre os contratos canônicos não
-                # precisam gastar uma chamada ao Gemini apenas para concluir
+                # não precisam gastar uma chamada de inferência apenas para concluir
                 # que nenhuma ferramenta deve ser executada.
                 if decisao_local and not decisao_local.get("usar_ferramenta"):
                     decisao = decisao_local
@@ -302,7 +325,7 @@ class AgentAdapter:
             historico=historico,
             streaming=on_chunk is not None,
             colecao_sessoes=componentes.sessoes,
-            nome_provedor="Google Gemini",
+            nome_provedor="Router LLM",
             anexos=anexos,
             colecao_obsidian=componentes.obsidian,
             indice_lexical=componentes.indice_lexical,
@@ -314,6 +337,7 @@ class AgentAdapter:
             "answer": resposta,
             "images": [],
             "route": "rag",
+            "inference": self._route_status(componentes),
             "scientific_contract": "canonical" if contexto_cientifico else None,
         }
 

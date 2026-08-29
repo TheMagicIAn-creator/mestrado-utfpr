@@ -106,6 +106,56 @@ class LLMStreamChunk:
     route_reason: str | None = None
 
 
+def _partes_de_sequencia(valores):
+    for valor in valores:
+        yield from _partes_textuais(valor)
+
+
+def _partes_de_mapeamento(valor: dict):
+    tipo = str(valor.get("type", "")).lower()
+    if tipo and tipo not in {"text", "output_text"}:
+        return
+    for chave in ("text", "content", "value"):
+        if chave in valor:
+            yield from _partes_textuais(valor[chave])
+            return
+
+
+def _partes_de_objeto(valor):
+    texto = getattr(valor, "text", None)
+    if texto is not None:
+        yield from _partes_textuais(texto)
+        return
+    interno = getattr(valor, "content", None)
+    if interno is not None and interno is not valor:
+        yield from _partes_textuais(interno)
+
+
+def _partes_textuais(valor):
+    if valor is None:
+        return
+    if isinstance(valor, str):
+        if valor:
+            yield valor
+        return
+    if isinstance(valor, (list, tuple)):
+        yield from _partes_de_sequencia(valor)
+        return
+    if isinstance(valor, dict):
+        yield from _partes_de_mapeamento(valor)
+        return
+    yield from _partes_de_objeto(valor)
+
+
+def texto_resultado_llm(resposta: Any) -> str:
+    """Normaliza texto de resultados neutros, SDKs legados e blocos."""
+
+    conteudo = resposta if isinstance(resposta, (str, list, tuple, dict)) else getattr(
+        resposta, "content", resposta
+    )
+    return "".join(_partes_textuais(conteudo) or ())
+
+
 __all__ = [
     "LLMRequest",
     "LLMResult",
@@ -113,4 +163,5 @@ __all__ = [
     "LLMUsage",
     "MethodologicalRisk",
     "TaskType",
+    "texto_resultado_llm",
 ]

@@ -13,7 +13,7 @@ from src.conhecimento.ferramentas_academicas import (
     consultar_datasets,
     listar_base_bibliografica,
 )
-from src.conhecimento.provedores import texto_da_resposta
+from src.conhecimento.contratos_llm import texto_resultado_llm
 from src.conhecimento.intencoes_ferramentas import (
     _quer_registrar_no_cerebro,
     _quer_resposta_autoral,
@@ -271,7 +271,7 @@ Não invente números ou fontes. Responda apenas JSON válido:
 "nivel_evidencia":"projeto|E1|E2|E3|literatura"}}
 """
     try:
-        raw = texto_da_resposta(llm.invoke(prompt))
+        raw = texto_resultado_llm(llm.invoke(prompt))
         cleaned = re.sub(r"```json?\s*", "", str(raw)).replace("```", "").strip()
         value = json.loads(cleaned)
     except Exception as exc:
