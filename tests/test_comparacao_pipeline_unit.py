@@ -1,0 +1,243 @@
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+
+import numpy as np
+import pandas as pd
+import pytest
+
+
+torch = pytest.importorskip("torch")
+
+import src.ml.avaliacao_comparativa as evaluation  # noqa: E402
+import src.ml.comparacao_autoencoders as orchestrator  # noqa: E402
+import src.ml.graficos_comparacao as charts  # noqa: E402
+
+
+class _IdentityScaler:
+    def transform(self, values):
+        return np.asarray(values, dtype=float)
+
+
+def _reference_run(model_id: str, *, threshold: float = 0.5):
+    calibration = SimpleNamespace(
+        value=threshold,
+        requested_percentile=99.9,
+        effective_percentile=100.0,
+    )
+    return SimpleNamespace(
+        model_id=model_id,
+        model=object(),
+        seed=42,
+        threshold=threshold,
+        threshold_calibration=calibration,
+        score_top_k=5,
+    )
+
+
+@pytest.mark.integracao
+def test_evaluate_e3_aggregates_models_metrics_and_confusion(monkeypatch):
+    monkeypatch.setattr(evaluation, "FAULT_EXPERIMENTS", ("F1L",))
+    monkeypatch.setattr(
+        evaluation,
+        "normalize_commissioning",
+        lambda _features, _baseline: (
+            np.asarray([[0.0] * 24, [1.0] * 24]),
+            np.asarray([0]),
+            np.asarray([1]),
+            {"n_baseline": 1},
+        ),
+    )
+    monkeypatch.setattr(evaluation, "sequences_from_flow", lambda values: values)
+    monkeypatch.setattr(
+        evaluation,
+        "score_dense",
+        lambda _model, _values, *, top_k: np.asarray([0.1, 0.9]),
+    )
+    monkeypatch.setattr(
+        evaluation,
+        "score_lstm",
+        lambda _model, _values, *, top_k: np.asarray([0.1, 0.9]),
+    )
+    prepared = SimpleNamespace(
+        scaler=_IdentityScaler(),
+        baseline_normalization={},
+    )
+    runs = {
+        model_id: [_reference_run(model_id)]
+        for model_id in ("ae_denso", "ae_lstm")
+    }
+    faults = pd.DataFrame(
+        {
+            "experiment": ["F1L", "F1L"],
+            "window_index": [0, 1],
+            "time_center_s": [0.0, 1.0],
+        }
+    )
+
+    result = evaluation.evaluate_e3(prepared, runs, faults)
+
+    assert len(result["scenarios"]) == 2
+    assert set(result["scores"]["model"]) == {"ae_denso", "ae_lstm"}
+    assert result["confusion"][["tn", "fp", "fn", "tp"]].to_numpy().tolist() == [
+        [1, 0, 0, 1],
+        [1, 0, 0, 1],
+    ]
+    assert result["macro"]["n_valid_experiments"].min() == 1
+
+
+def test_orchestrator_forwards_scientific_configuration(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(
+        orchestrator,
+        "load_or_extract_features",
+        lambda *, force: ("healthy", "faults", {"dataset": "GPVS-Faults"}),
+    )
+    monkeypatch.setattr(orchestrator, "prepare_healthy_data", lambda data: "prepared")
+
+    def fake_train(prepared, **kwargs):
+        captured["training"] = (prepared, kwargs)
+        return "runs"
+
+    monkeypatch.setattr(orchestrator, "train_models", fake_train)
+    monkeypatch.setattr(
+        orchestrator,
+        "evaluate_e3",
+        lambda prepared, runs, faults: {
+            "prepared": prepared,
+            "runs": runs,
+            "faults": faults,
+        },
+    )
+
+    def fake_save(dataset_manifest, prepared, runs, e3, *, seeds):
+        captured["publication"] = (dataset_manifest, prepared, runs, e3, seeds)
+        return {
+            "manifest": Path("manifest.json"),
+            "outputs": [Path("result.json")],
+            "payload": {"ok": True},
+        }
+
+    monkeypatch.setattr(orchestrator, "save_results", fake_save)
+
+    result = orchestrator.run(
+        force_features=True,
+        seeds=(42,),
+        threshold_percentile=99.0,
+        score_top_k=3,
+    )
+
+    assert captured["training"] == (
+        "prepared",
+        {"seeds": (42,), "threshold_percentile": 99.0, "score_top_k": 3},
+    )
+    assert captured["publication"][-1] == (42,)
+    assert result["output_count"] == 1
+
+
+def test_comparison_cli_accepts_threshold_and_top_k(monkeypatch, capsys):
+    captured = {}
+
+    def fake_run(**kwargs):
+        captured.update(kwargs)
+        return {"ok": True, "payload": {"omitted": True}}
+
+    monkeypatch.setattr(orchestrator, "run", fake_run)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "comparacao_autoencoders",
+            "--seeds",
+            "42",
+            "--threshold-percentile",
+            "99.5",
+            "--score-top-k",
+            "4",
+        ],
+    )
+
+    orchestrator.main()
+
+    assert captured["seeds"] == (42,)
+    assert captured["threshold_percentile"] == 99.5
+    assert captured["score_top_k"] == 4
+    assert "payload" not in capsys.readouterr().out
+
+
+@pytest.mark.integracao
+def test_generate_all_comparison_figures_from_tabular_sources(tmp_path):
+    metric_names = [
+        "recall",
+        "f1",
+        "precision",
+        "auc_roc",
+        "auc_pr",
+        "false_positive_rate",
+    ]
+    summary = pd.DataFrame(
+        [
+            {
+                "model": model,
+                "metric": metric,
+                "estimate": 0.75,
+                "ci95_low": 0.65,
+                "ci95_high": 0.85,
+            }
+            for model in ("ae_denso", "ae_lstm")
+            for metric in metric_names
+        ]
+    )
+    scores = pd.DataFrame(
+        [
+            {
+                "model": model,
+                "y_true": target,
+                "anomaly_index": score,
+                "auc_roc_macro": 0.8,
+                "auc_pr_macro": 0.8,
+            }
+            for model in ("ae_denso", "ae_lstm")
+            for target, score in ((0, 0.1), (0, 0.3), (1, 0.7), (1, 0.9))
+        ]
+    )
+    confusion = pd.DataFrame(
+        [
+            {
+                "model": model,
+                "tn": 8,
+                "fp": 2,
+                "fn": 3,
+                "tp": 7,
+                "threshold_requested_percentile": 99.9,
+            }
+            for model in ("ae_denso", "ae_lstm")
+        ]
+    )
+    scenarios = pd.DataFrame(
+        [
+            {
+                "model": model,
+                "experiment": f"F{fault}{mode}",
+                "is_reference": True,
+                "recall": 0.7,
+                "f1": 0.65,
+            }
+            for fault in range(1, 8)
+            for mode in "LM"
+            for model in ("ae_denso", "ae_lstm")
+        ]
+    )
+
+    paths = charts.generate_all(
+        tmp_path,
+        e3_summary=summary,
+        e3_scores=scores,
+        e3_confusion=confusion,
+        e3_scenarios=scenarios,
+    )
+
+    assert len(paths) == 8
+    assert all(path.is_file() and path.stat().st_size > 0 for path in paths)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
@@ -74,6 +75,43 @@ def test_publicador_converte_nao_finitos_para_null(tmp_path):
         parse_constant=_reject_non_finite,
     )
     assert payload == {"nan": None, "infinito": None}
+
+
+def test_relatorio_deriva_tabelas_do_contrato_publicado(tmp_path):
+    from src.ml.publicacao_comparacao import _write_report
+
+    payload = _json(RESULTS / "comparacao_autoencoders.json")
+    report = _write_report(payload, tmp_path / "relatorio.md")
+    text = report.read_text(encoding="utf-8")
+
+    assert "Recall | F1 | Precision | ROC-AUC | PR-AUC" in text
+    assert "Matrizes de confusão agregadas" in text
+    assert "Percentil efetivo" in text
+
+
+def test_publicador_rejeita_configuracao_desigual_entre_modelos(monkeypatch, tmp_path):
+    import src.ml.publicacao_comparacao as publication
+
+    monkeypatch.setattr(publication, "RESULTS_DIR", tmp_path)
+    runs = {
+        "ae_denso": [
+            SimpleNamespace(
+                seed=42,
+                score_top_k=5,
+                threshold_calibration=SimpleNamespace(requested_percentile=99.9),
+            )
+        ],
+        "ae_lstm": [
+            SimpleNamespace(
+                seed=42,
+                score_top_k=4,
+                threshold_calibration=SimpleNamespace(requested_percentile=99.9),
+            )
+        ],
+    }
+
+    with pytest.raises(ValueError, match="mesmo percentil e top-k"):
+        publication.save_results({}, object(), runs, {}, seeds=(42,))
 
 
 @pytest.mark.integracao
