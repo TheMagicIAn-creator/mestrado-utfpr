@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 import threading
 from typing import Any
 
@@ -220,7 +219,12 @@ class RouterLLMFacade:
             return result.structured_data
         raw = texto_resultado_llm(result).strip()
         if raw.startswith("```"):
-            raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.I)
+            linhas = raw.splitlines()
+            if linhas and linhas[0].strip().lower() in {"```", "```json"}:
+                linhas = linhas[1:]
+            if linhas and linhas[-1].strip() == "```":
+                linhas = linhas[:-1]
+            raw = "\n".join(linhas).strip()
         payload = json.loads(raw)
         if not isinstance(payload, dict):
             raise ValueError("A saída estruturada deve ser um objeto JSON")
