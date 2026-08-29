@@ -19,6 +19,7 @@ import re
 import shutil
 import sys
 import threading
+from functools import lru_cache
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -35,12 +36,35 @@ from src.core.config import (
 from src.core.logs import get_logger
 from src.core.seguranca import mascarar_segredos
 from src.core.tempo import agora_local
+from src.conhecimento.cliente_llm import build_default_client
+from src.conhecimento.contratos_llm import MethodologicalRisk, TaskType
 
 _logger = get_logger("conhecimento.processador_pdf")
 
 # Pasta de notas de literatura dentro do vault Obsidian
 PASTA_NOTAS_LIT = PASTA_NOTAS / "Literatura"
 _LOCK_METADADOS = threading.RLock()
+
+_SCHEMA_METADADOS = {
+    "type": "object",
+    "properties": {
+        "autor": {"type": "string"},
+        "titulo": {"type": "string"},
+        "ano": {"type": "string"},
+    },
+    "required": ["autor", "titulo", "ano"],
+    "additionalProperties": False,
+}
+
+
+@lru_cache(maxsize=1)
+def _cliente_metadados():
+    return build_default_client(
+        task_type=TaskType.DOCUMENT_EXTRACTION,
+        methodological_risk=MethodologicalRisk.LOW,
+        temperature=0.0,
+        max_output_tokens=700,
+    )
 
 
 # ============================================================
@@ -226,13 +250,16 @@ Nome do arquivo (pode ajudar): {nome_arquivo}
 {texto[:2000]}
 </conteudo_documento>"""
 
-    # Tarefa de fundo → adaptador leve com JSON nativo. O fallback seguinte
-    # continua sendo regex + metadados internos do PDF.
+    # Tarefa de fundo via Router. O fallback determinístico continua sendo
+    # regex + metadados internos do PDF.
     try:
-        from src.conhecimento.provedores import inicializar_llm_fundo
-
-        llm = inicializar_llm_fundo(temperature=0.0, max_output_tokens=700)
-        resposta = llm.invoke_json([{"content": prompt}], max_tokens=700)
+        resposta = _cliente_metadados().invoke_json(
+            [{"content": prompt}],
+            max_tokens=700,
+            schema=_SCHEMA_METADADOS,
+            task_type=TaskType.DOCUMENT_EXTRACTION,
+            methodological_risk=MethodologicalRisk.LOW,
+        )
         if isinstance(resposta, dict):
             return resposta
     except Exception as exc:

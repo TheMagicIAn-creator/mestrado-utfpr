@@ -37,6 +37,7 @@ webapp/ -> conhecimento/ -> ml/
 | `atalhos.py` | Respostas determinísticas anteriores ao RAG. |
 | `base_runtime.py` | Inicialização progressiva do conhecimento. |
 | `catalogo_bibliografico.py` | Catálogo versionado, identidade SHA-256 e metadados das fontes. |
+| `cliente_llm.py` | Fachada compatível e neutra que encaminha `invoke`, JSON e streaming ao Router. |
 | `consolidar_memoria.py` | Consolidação de sessões. |
 | `contratos_llm.py` | Contratos neutros de pedido, resultado, uso e streaming de LLM. |
 | `roteador_llm.py` | Política explícita de seleção, retry, fallback, escalonamento e validação cruzada. |

@@ -6,7 +6,6 @@ from types import SimpleNamespace
 import pytest
 
 import src.conhecimento.consolidar_memoria as cm
-import src.conhecimento.provedores as provedores
 
 
 def _sessao(tmp_path: Path) -> dict:
@@ -26,9 +25,7 @@ def test_consolidacao_aceita_resposta_em_blocos(tmp_path, monkeypatch):
                 {"type": "output_text", "text": "Decisão preservada."},
             ])
 
-    monkeypatch.setattr(
-        provedores, "inicializar_llm_fundo", lambda **_kwargs: LLM()
-    )
+    monkeypatch.setattr(cm, "_cliente_consolidacao", lambda: LLM())
 
     resumo = cm.consolidar_com_llm([_sessao(tmp_path)], "")
 
@@ -37,9 +34,9 @@ def test_consolidacao_aceita_resposta_em_blocos(tmp_path, monkeypatch):
 
 def test_consolidacao_falha_sem_salvar_texto_de_erro(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        provedores,
-        "inicializar_llm_fundo",
-        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("API indisponível")),
+        cm,
+        "_cliente_consolidacao",
+        lambda: (_ for _ in ()).throw(RuntimeError("API indisponível")),
     )
 
     with pytest.raises(RuntimeError, match="API indisponível"):

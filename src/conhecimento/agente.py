@@ -1,12 +1,12 @@
 """
 agente.py — Al IAdo PV
-Conecta o Gemini (LLM) ao ChromaDB (memória) usando RAG.
+Conecta o Router de LLM ao ChromaDB (memória) usando RAG.
 
 RAG = Retrieval Augmented Generation
       = Geração Aumentada por Recuperação
 
 Fluxo:
-  Pergunta → Vetor → ChromaDB → Contexto → Gemini → Resposta
+  Pergunta → Vetor → ChromaDB → Contexto → Router → Resposta
 
 Autor: Rodolfo Torres (UTFPR)
 """
@@ -41,15 +41,15 @@ from src.core.config import (
 )
 from src.core.logs import get_logger
 from src.core.tempo import FUSO_PADRAO, agora_local
+from src.conhecimento.contratos_llm import texto_resultado_llm
 from src.conhecimento.leitor_anexos import montar_bloco_texto_anexos, tem_imagem
-from src.conhecimento.provedores import eh_multimodal, texto_da_resposta
 
 _logger = get_logger("conhecimento.agente")
 if not _SAIDA_UTF8:
     _logger.debug("stdout/stderr não suportam reconfigure; mantendo encoding atual")
 
 ORCAMENTOS_RAG = {
-    "gemini": {
+    "amplo": {
         "n_pool": 300,
         "n_resultados": 30,
         "n_resultados_revisao": 50,
@@ -76,6 +76,13 @@ ORCAMENTOS_RAG = {
         "max_prompt_chars": 34_000,
     },
 }
+
+
+def _llm_suporta_multimodal(llm, nome_provedor: str | None = None) -> bool:
+    if bool(getattr(llm, "supports_multimodal", False)):
+        return True
+    nome = (nome_provedor or getattr(llm, "name", "") or "").lower()
+    return any(marca in nome for marca in ("router", "gemini", "google"))
 
 # Pesos por pasta tematica — usados no rerank para priorizar literatura
 # nuclear do mestrado (PV, ML preditivo, manutencao) sobre material lateral.
@@ -402,11 +409,11 @@ def inicializar_agente(llm_externo=None):
         llm = llm_externo
         print("\n🤖 LLM externo recebido!")
     else:
-        print("\n🤖 Inicializando Gemini (padrão)...")
-        from src.conhecimento.provedores import inicializar_provedor
+        print("\n🤖 Inicializando Router de inferência...")
+        from src.conhecimento.multiagente import criar_equipe_agentes
 
-        llm, _ = inicializar_provedor("1")
-        print("   ✅ Gemini pronto!")
+        llm = criar_equipe_agentes().conversa
+        print("   ✅ Router pronto!")
 
     print("\n" + "=" * 60)
     print("  AL IADO PV ESTÁ ONLINE! 🤖")
@@ -467,12 +474,11 @@ def perguntar(
 
     `anexos` (opcional): lista de dicts de `leitor_anexos.ler_anexos(...)`. O
     texto extraido entra no prompt; imagens vao pela via multimodal quando o
-    provedor ativo for multimodal (Gemini). Caso contrario, viram nota textual.
+    Router encontrar capacidade multimodal. Caso contrário, viram nota textual.
     """
 
     from src.conhecimento.agente_contexto import catalogo_literatura, preparar_prompt
     from src.conhecimento.agente_interacao import (
-        _espera_retry_429,
         deve_consultar_literatura,
         formatar_referencias_markdown,
         remover_bloco_fontes_llm,
@@ -541,54 +547,27 @@ def perguntar(
         prompt = prompt + "\n\n" + montar_restricao_fontes(citacoes)
 
     conteudo_humano = montar_conteudo_humano(
-        prompt, anexos, eh_multimodal(nome_provedor)
+        prompt, anexos, _llm_suporta_multimodal(llm, nome_provedor)
     )
     from langchain_core.messages import HumanMessage
 
     mensagens = [HumanMessage(content=conteudo_humano)]
     texto_completo = ""
 
-    import time
-
     if streaming:
-        # ── MODO STREAMING ──────────────────────────────────────
-        max_tentativas = 3
-        for tentativa in range(1, max_tentativas + 1):
-            try:
-                for chunk in llm.stream(mensagens):
-                    pedaco = texto_da_resposta(chunk)
-                    if on_chunk is None:
-                        print(pedaco, end="", flush=True)
-                    elif pedaco:
-                        on_chunk(pedaco)
-                    texto_completo += pedaco
-                if on_chunk is None:
-                    print()  # quebra de linha ao terminar
-                break
-            except Exception as e:
-                erro = str(e)
-                if "429" in erro and tentativa < max_tentativas:
-                    espera = _espera_retry_429(erro, tentativa)
-                    print(f"\n  ⏳ Limite atingido. Aguardando {espera}s... ({tentativa}/{max_tentativas-1})")
-                    time.sleep(espera)
-                else:
-                    raise
+        # Retry e fallback pertencem ao Router; repetir aqui duplicaria chunks.
+        for chunk in llm.stream(mensagens):
+            pedaco = texto_resultado_llm(chunk)
+            if on_chunk is None:
+                print(pedaco, end="", flush=True)
+            elif pedaco:
+                on_chunk(pedaco)
+            texto_completo += pedaco
+        if on_chunk is None:
+            print()
     else:
-        # ── MODO NORMAL (sem streaming) ──────────────────────────
-        max_tentativas = 3
-        for tentativa in range(1, max_tentativas + 1):
-            try:
-                resposta       = llm.invoke(mensagens)
-                texto_completo = texto_da_resposta(resposta)
-                break
-            except Exception as e:
-                erro = str(e)
-                if "429" in erro and tentativa < max_tentativas:
-                    espera = _espera_retry_429(erro, tentativa)
-                    print(f"\n  ⏳ Limite atingido. Aguardando {espera}s... ({tentativa}/{max_tentativas-1})")
-                    time.sleep(espera)
-                else:
-                    raise
+        resposta = llm.invoke(mensagens)
+        texto_completo = texto_resultado_llm(resposta)
 
     from src.core.citacao_guarda import alerta_citacao_infundada
 

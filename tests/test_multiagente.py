@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from src.conhecimento.cliente_llm import RouterLLMFacade
+from src.conhecimento.contratos_llm import LLMResult, TaskType
 from src.conhecimento.memoria_persistente import MemoriaPersistente
 from src.conhecimento.multiagente import (
+    AgenteAuditor,
     AgenteAuditorGemini,
     criar_equipe_agentes,
     filtrar_citacoes_auditadas,
@@ -213,3 +216,59 @@ def test_correcao_pode_superar_memoria_anterior(tmp_path):
     assert memoria.contar() == 1
     assert memoria.listar()[0]["conteudo"].startswith("Prefere respostas detalhadas")
     assert anterior["id"] in llm.chamadas[0][0][0]["content"]
+
+
+def test_alias_legado_aponta_para_classe_neutra():
+    assert AgenteAuditorGemini is AgenteAuditor
+
+
+def test_fabrica_padrao_compartilha_router_entre_papeis(tmp_path):
+    router = SimpleNamespace()
+    equipe = criar_equipe_agentes(
+        memoria=MemoriaPersistente(tmp_path / "m.json"),
+        router=router,
+    )
+    assert isinstance(equipe.conversa.llm, RouterLLMFacade)
+    assert isinstance(equipe.auditoria.llm, RouterLLMFacade)
+    assert equipe.conversa.llm.router is router
+    assert equipe.auditoria.llm.router is router
+    assert "Gemini" not in " ".join(equipe.nomes.values())
+
+
+def test_auditoria_e_memoria_declaram_tarefas_distintas_ao_router(tmp_path):
+    class Router:
+        def __init__(self):
+            self.requests = []
+
+        def execute(self, request):
+            self.requests.append(request)
+            if request.task_type == TaskType.EVIDENCE_AUDIT:
+                payload = {
+                    "status": "aprovado",
+                    "restricoes": [],
+                    "orientacao": "Use F1.",
+                    "fontes_utilizaveis": ["F1"],
+                }
+            else:
+                payload = {"salvar": False, "motivo": "Nada durável", "candidatos": []}
+            import json
+
+            return LLMResult(
+                content=json.dumps(payload),
+                provider="fake",
+                model="modelo",
+                task_type=request.task_type,
+                structured_data=payload,
+            )
+
+    router = Router()
+    auditor = AgenteAuditor(
+        RouterLLMFacade(router),
+        MemoriaPersistente(tmp_path / "m.json"),
+    )
+    auditor.auditar_evidencias("Explique", {"fonte": "trecho"})
+    auditor.consolidar_memoria_das_sessoes("Pesquisador: decisão durável")
+    assert [request.task_type for request in router.requests] == [
+        TaskType.EVIDENCE_AUDIT,
+        TaskType.MEMORY_CONSOLIDATION,
+    ]

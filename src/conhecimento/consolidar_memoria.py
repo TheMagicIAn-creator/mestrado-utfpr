@@ -14,6 +14,7 @@ Autor: Rodolfo Torres (UTFPR)
 import sys
 import os
 import re
+from functools import lru_cache
 from pathlib import Path
 from datetime import datetime, date, timedelta
 
@@ -27,11 +28,27 @@ from src.core.config import (
     NOME_COLECAO_SESSOES
 )
 from src.core.tempo import agora_local
+from src.conhecimento.cliente_llm import build_default_client
+from src.conhecimento.contratos_llm import (
+    MethodologicalRisk,
+    TaskType,
+    texto_resultado_llm,
+)
 
 # ─── Parâmetros (sobrescrevíveis via .env) ───────────────────
 MINIMO_SESSOES        = 2
 LIMITE_INTERACOES     = int(os.getenv("CONSOLIDAR_LIMITE_INTERACOES", 15))
 DIAS_ACUMULACAO       = int(os.getenv("CONSOLIDAR_DIAS_ACUMULACAO",   3))
+
+
+@lru_cache(maxsize=1)
+def _cliente_consolidacao():
+    return build_default_client(
+        task_type=TaskType.MEMORY_CONSOLIDATION,
+        methodological_risk=MethodologicalRisk.LOW,
+        temperature=0.2,
+        max_output_tokens=16_384,
+    )
 
 
 # ============================================================
@@ -212,25 +229,17 @@ Artigos e documentos mais relevantes mencionados, com contexto de uso.
 """
 
     try:
-        from src.conhecimento.provedores import (
-            inicializar_llm_fundo,
-            texto_da_resposta,
-        )
-
-        llm = inicializar_llm_fundo(
-            temperature=0.2,
-            max_output_tokens=16_384,
-        )
-        resposta = texto_da_resposta(llm.invoke([{"content": prompt}])).strip()
+        llm = _cliente_consolidacao()
+        resposta = texto_resultado_llm(llm.invoke([{"content": prompt}])).strip()
     except Exception as exc:
         raise RuntimeError(
             f"não foi possível gerar a memória consolidada: {exc}"
         ) from exc
 
     if not resposta:
-        raise RuntimeError("o Gemini retornou uma memória consolidada vazia")
+        raise RuntimeError("o Router retornou uma memória consolidada vazia")
 
-    print("   ✅ Resumo gerado pelo Gemini")
+    print("   ✅ Resumo gerado pelo Router")
     return resposta
 
 
@@ -240,7 +249,7 @@ Artigos e documentos mais relevantes mencionados, com contexto de uso.
 
 def consolidar_memoria_validada(sessoes: list) -> None:
     """Extrai decisões/preferências metodológicas das sessões para a memória
-    validada (``memoria_validada.json``), com o auditor (Gemini Flash) filtrando
+    validada (``memoria_validada.json``), com o auditor do Router filtrando
     ruído — sem depender do gatilho manual ("lembre…").
 
     Best-effort: qualquer falha (sem chave de API, erro de rede) é reportada e
@@ -248,19 +257,18 @@ def consolidar_memoria_validada(sessoes: list) -> None:
     """
     try:
         from src.conhecimento.memoria_persistente import MemoriaPersistente
-        from src.conhecimento.multiagente import AgenteAuditorGemini
-        from src.conhecimento.provedores import inicializar_papel
+        from src.conhecimento.multiagente import AgenteAuditor
     except Exception as e:
         print(f"   ⚠️  Memória validada indisponível (import): {e}")
         return
 
-    try:
-        llm, _nome, _rotulo = inicializar_papel("auditoria")
-    except Exception as e:
-        print(f"   ⏭️  Sem auditor (chave ausente?) — memória validada intacta: {e}")
-        return
-
-    auditor = AgenteAuditorGemini(llm, MemoriaPersistente())
+    auditor = AgenteAuditor(
+        _cliente_consolidacao().with_task(
+            TaskType.MEMORY_CONSOLIDATION,
+            methodological_risk=MethodologicalRisk.LOW,
+        ),
+        MemoriaPersistente(),
+    )
     texto = ""
     for s in sessoes:
         texto += f"\n\n=== SESSÃO {s['data']} ===\n{s['conteudo'][:12000]}"
@@ -286,9 +294,7 @@ def consolidar_memoria_validada(sessoes: list) -> None:
 def salvar_consolidado(resumo: str, sessoes: list) -> Path:
     """Salva o resumo consolidado como nota .md."""
     if not isinstance(resumo, str):
-        from src.conhecimento.provedores import texto_da_resposta
-
-        resumo = texto_da_resposta(resumo)
+        resumo = texto_resultado_llm(resumo)
     resumo = resumo.strip()
     if not resumo:
         raise ValueError("Resumo consolidado vazio; nenhuma sessão será arquivada.")

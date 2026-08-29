@@ -253,8 +253,8 @@ def resposta_interacao_simples(pergunta: str, historico=None) -> str | None:
 
 def _orcamento_rag(nome_provedor: str | None = None) -> dict:
     nome = (nome_provedor or "").lower()
-    if "gemini" in nome or "google" in nome:
-        orcamento = ORCAMENTOS_RAG["gemini"].copy()
+    if any(marca in nome for marca in ("router", "gemini", "google")):
+        orcamento = ORCAMENTOS_RAG["amplo"].copy()
     else:
         orcamento = ORCAMENTOS_RAG["padrao"].copy()
     for chave in orcamento:
@@ -271,7 +271,7 @@ def _limitar_texto(texto: str, limite: int) -> str:
     if limite <= 0 or len(texto) <= limite:
         return texto
     corte = texto[:limite].rsplit(" ", 1)[0].strip()
-    return corte + "\n[trecho encurtado para caber no limite do provedor]"
+    return corte + "\n[trecho encurtado para caber no limite de inferência]"
 
 
 def _tokens_busca(pergunta: str) -> list[str]:

@@ -106,6 +106,44 @@ class LLMStreamChunk:
     route_reason: str | None = None
 
 
+def texto_resultado_llm(resposta: Any) -> str:
+    """Normaliza texto de resultados neutros, SDKs legados e blocos."""
+
+    conteudo = resposta if isinstance(resposta, (str, list, tuple, dict)) else getattr(
+        resposta, "content", resposta
+    )
+
+    def partes(valor):
+        if valor is None:
+            return
+        if isinstance(valor, str):
+            if valor:
+                yield valor
+            return
+        if isinstance(valor, (list, tuple)):
+            for item in valor:
+                yield from partes(item)
+            return
+        if isinstance(valor, dict):
+            tipo = str(valor.get("type", "")).lower()
+            if tipo and tipo not in {"text", "output_text"}:
+                return
+            for chave in ("text", "content", "value"):
+                if chave in valor:
+                    yield from partes(valor[chave])
+                    return
+            return
+        texto = getattr(valor, "text", None)
+        if texto is not None:
+            yield from partes(texto)
+            return
+        interno = getattr(valor, "content", None)
+        if interno is not None and interno is not valor:
+            yield from partes(interno)
+
+    return "".join(partes(conteudo) or ())
+
+
 __all__ = [
     "LLMRequest",
     "LLMResult",
@@ -113,4 +151,5 @@ __all__ = [
     "LLMUsage",
     "MethodologicalRisk",
     "TaskType",
+    "texto_resultado_llm",
 ]
