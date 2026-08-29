@@ -36,6 +36,7 @@ webapp/ -> conhecimento/ -> ml/
 | `agente_recuperacao.py` | Recuperação híbrida e reranking. |
 | `atalhos.py` | Respostas determinísticas anteriores ao RAG. |
 | `base_runtime.py` | Inicialização progressiva do conhecimento. |
+| `benchmark_retrieval.py` | Gold set, validação de evidências e benchmark versionado do RAG. |
 | `catalogo_bibliografico.py` | Catálogo versionado, identidade SHA-256 e metadados das fontes. |
 | `cliente_llm.py` | Fachada compatível e neutra que encaminha `invoke`, JSON e streaming ao Router. |
 | `consolidar_memoria.py` | Consolidação de sessões. |

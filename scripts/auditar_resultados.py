@@ -13,10 +13,12 @@ from src.core.config import RAIZ_PROJETO
 from src.ml.proveniencia import funcao_de_hash_para
 
 RESULT_DIRS = {"comparacao", "confiabilidade", "manifestos"}
-MANIFEST_NAMES = {
+SCIENTIFIC_MANIFEST_NAMES = {
     "comparacao_autoencoders.json",
     "confiabilidade_componentes.json",
 }
+EVALUATION_MANIFEST_NAMES = {"evidence_rag_baseline_v1.json"}
+MANIFEST_NAMES = SCIENTIFIC_MANIFEST_NAMES | EVALUATION_MANIFEST_NAMES
 LEGACY_DIRS = {"auditoria", "autoencoder", "gpvs", "macro", "qualidade", "v2"}
 
 
@@ -69,6 +71,46 @@ def _audit_manifest(root: Path, path: Path, errors: list[str]) -> int:
     return checked
 
 
+def _audit_retrieval_baseline(path: Path, errors: list[str]) -> None:
+    try:
+        manifest = _read_json(path)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        errors.append(f"manifesto inválido {path.name}: {exc}")
+        return
+
+    if manifest.get("schema_version") != 1:
+        errors.append(f"{path.name}: schema_version deve ser 1")
+    if manifest.get("stage") != "R0-R1" or manifest.get("variant") != "baseline_current":
+        errors.append(f"{path.name}: etapa ou variante baseline inválida")
+    gold = manifest.get("gold_set", {})
+    if gold.get("status") != "provisional_pending_researcher_review":
+        errors.append(f"{path.name}: gold set não está marcado como provisório")
+    if gold.get("researcher_review_required_at") != "R6":
+        errors.append(f"{path.name}: revisão humana R6 não está registrada")
+
+    corpus = manifest.get("corpus", {})
+    if corpus.get("n_documents") != 44 or corpus.get("n_chunks") != 12556:
+        errors.append(f"{path.name}: inventário do corpus divergente")
+    if corpus.get("collection_count") != corpus.get("n_chunks"):
+        errors.append(f"{path.name}: coleção medida não corresponde ao snapshot")
+
+    metricas = manifest.get("metric_definition", {})
+    if metricas.get("primary_level") != "page":
+        errors.append(f"{path.name}: métrica primária deve usar evidência por página")
+    resumo = manifest.get("summary", {})
+    if (
+        resumo.get("n_queries") != 40
+        or resumo.get("n_retrieval_queries") != 39
+        or resumo.get("n_future_abstention_queries") != 1
+    ):
+        errors.append(f"{path.name}: contagem de perguntas do gold set divergente")
+    consultas = manifest.get("queries")
+    if not isinstance(consultas, list) or len(consultas) != 40:
+        errors.append(f"{path.name}: resultados por pergunta incompletos")
+    elif len({item.get("query_id") for item in consultas}) != len(consultas):
+        errors.append(f"{path.name}: query_id duplicado")
+
+
 def auditar_publicacao(root: Path | str = RAIZ_PROJETO) -> dict:
     """Retorna um relatório determinístico dos resultados publicados."""
     root = Path(root).resolve()
@@ -95,8 +137,10 @@ def auditar_publicacao(root: Path | str = RAIZ_PROJETO) -> dict:
         )
 
     artifact_count = 0
-    for name in sorted(MANIFEST_NAMES):
+    for name in sorted(SCIENTIFIC_MANIFEST_NAMES):
         artifact_count += _audit_manifest(root, manifests / name, errors)
+    for name in sorted(EVALUATION_MANIFEST_NAMES):
+        _audit_retrieval_baseline(manifests / name, errors)
 
     comparison = _read_json(results / "comparacao" / "comparacao_autoencoders.json")
     if comparison.get("dataset", {}).get("dataset") != "GPVS-Faults":

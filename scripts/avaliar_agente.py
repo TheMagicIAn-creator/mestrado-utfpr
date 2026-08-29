@@ -72,7 +72,65 @@ def run() -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", type=Path, help="Arquivo opcional para o relatório JSON")
+    parser.add_argument(
+        "--benchmark-retrieval",
+        action="store_true",
+        help="Mede o Evidence RAG vigente com o gold set versionado.",
+    )
+    parser.add_argument(
+        "--gold-set",
+        type=Path,
+        default=RAIZ / "literatura" / "gold_set_retrieval_v1.json",
+        help="Contrato provisório de perguntas e evidências.",
+    )
+    parser.add_argument(
+        "--snapshot",
+        type=Path,
+        default=RAIZ / "artefatos" / "literatura_indexada.jsonl.gz",
+        help="Snapshot portátil da literatura usado na validação.",
+    )
+    parser.add_argument(
+        "--markdown",
+        type=Path,
+        help="Relatório Markdown opcional do benchmark de retrieval.",
+    )
+    parser.add_argument(
+        "--git-revision",
+        help="Revisão do algoritmo baseline avaliado.",
+    )
     args = parser.parse_args()
+
+    if args.benchmark_retrieval:
+        from src.conhecimento.benchmark_retrieval import (
+            executar_baseline_local,
+            relatorio_markdown,
+        )
+
+        report = executar_baseline_local(
+            args.gold_set,
+            args.snapshot,
+            git_revision=args.git_revision,
+        )
+        serialized = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
+        if args.json:
+            args.json.parent.mkdir(parents=True, exist_ok=True)
+            args.json.write_text(serialized, encoding="utf-8")
+        if args.markdown:
+            args.markdown.parent.mkdir(parents=True, exist_ok=True)
+            args.markdown.write_text(relatorio_markdown(report), encoding="utf-8")
+        print(
+            json.dumps(
+                {
+                    "benchmark_id": report["benchmark_id"],
+                    "gold_set": report["gold_set"],
+                    "summary": report["summary"],
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+
     report = run()
     serialized = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
     if args.json:
