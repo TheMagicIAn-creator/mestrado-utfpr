@@ -59,18 +59,9 @@ def cobertura_fontes(recuperados: list) -> int:
     return len(set(recuperados))
 
 
-def metricas_por_grupos(
-    recuperados: list[str],
+def _normalizar_grupos(
     grupos_relevantes: list[dict],
-    k: int,
-) -> dict[str, float | int]:
-    """Avalia evidências com alternativas de chunk e relevância graduada.
-
-    Cada grupo representa uma unidade de informação esperada e contém
-    ``chunk_ids`` aceitáveis e ``relevance`` entre 1 e 3. Apenas a primeira
-    ocorrência de cada grupo pontua; assim, chunks vizinhos não inflam Recall,
-    Precision ou nDCG.
-    """
+) -> tuple[list[tuple[tuple[str, ...], int]], dict[str, list[int]]]:
     grupos = []
     por_chunk: dict[str, list[int]] = {}
     for indice, grupo in enumerate(grupos_relevantes):
@@ -83,19 +74,15 @@ def metricas_por_grupos(
         grupos.append((ids, relevancia))
         for chunk_id in ids:
             por_chunk.setdefault(chunk_id, []).append(indice)
+    return grupos, por_chunk
 
-    if not grupos:
-        return {
-            "k": k,
-            f"recall@{k}": 0.0,
-            f"precision@{k}": 0.0,
-            f"hit_rate@{k}": 0.0,
-            "mrr": 0.0,
-            f"ndcg@{k}": 0.0,
-            "grupos_relevantes": 0,
-            "grupos_recuperados": 0,
-        }
 
+def _ganhos_por_rank(
+    recuperados: list[str],
+    grupos: list[tuple[tuple[str, ...], int]],
+    por_chunk: dict[str, list[int]],
+    k: int,
+) -> tuple[set[int], list[int], int | None]:
     grupos_vistos: set[int] = set()
     ganhos: list[int] = []
     primeiro_rank: int | None = None
@@ -115,6 +102,40 @@ def metricas_por_grupos(
         ganhos.append(grupos[grupo_novo][1])
         if primeiro_rank is None:
             primeiro_rank = rank
+    return grupos_vistos, ganhos, primeiro_rank
+
+
+def metricas_por_grupos(
+    recuperados: list[str],
+    grupos_relevantes: list[dict],
+    k: int,
+) -> dict[str, float | int]:
+    """Avalia evidências com alternativas de chunk e relevância graduada.
+
+    Cada grupo representa uma unidade de informação esperada e contém
+    ``chunk_ids`` aceitáveis e ``relevance`` entre 1 e 3. Apenas a primeira
+    ocorrência de cada grupo pontua; assim, chunks vizinhos não inflam Recall,
+    Precision ou nDCG.
+    """
+    grupos, por_chunk = _normalizar_grupos(grupos_relevantes)
+    if not grupos:
+        return {
+            "k": k,
+            f"recall@{k}": 0.0,
+            f"precision@{k}": 0.0,
+            f"hit_rate@{k}": 0.0,
+            "mrr": 0.0,
+            f"ndcg@{k}": 0.0,
+            "grupos_relevantes": 0,
+            "grupos_recuperados": 0,
+        }
+
+    grupos_vistos, ganhos, primeiro_rank = _ganhos_por_rank(
+        recuperados,
+        grupos,
+        por_chunk,
+        k,
+    )
 
     dcg = sum(
         ((2**ganho) - 1) / math.log2(rank + 1)
@@ -137,6 +158,36 @@ def metricas_por_grupos(
         "grupos_relevantes": len(grupos),
         "grupos_recuperados": encontrados,
     }
+
+
+def _corresponde_ao_grupo(recuperado: dict, grupo: dict, nivel: str) -> bool:
+    if nivel == "chunk":
+        return str(recuperado.get("chunk_id", "")) in {
+            str(item) for item in grupo.get("chunk_ids", [])
+        }
+    mesmo_documento = str(recuperado.get("document_id", "")) == str(
+        grupo.get("document_id", "")
+    )
+    if nivel == "document":
+        return mesmo_documento
+    paginas_recuperadas = {int(item) for item in recuperado.get("pages", [])}
+    paginas_esperadas = {int(item) for item in grupo.get("pages", [])}
+    return mesmo_documento and bool(paginas_recuperadas & paginas_esperadas)
+
+
+def _selecionar_grupo(
+    recuperado: dict,
+    grupos_relevantes: list[dict],
+    nivel: str,
+    grupos_atribuidos: set[int],
+) -> int | None:
+    candidatos = [
+        (int(grupo.get("relevance", 1)), indice)
+        for indice, grupo in enumerate(grupos_relevantes)
+        if indice not in grupos_atribuidos
+        and _corresponde_ao_grupo(recuperado, grupo, nivel)
+    ]
+    return max(candidatos)[1] if candidatos else None
 
 
 def metricas_por_evidencias(
@@ -165,29 +216,13 @@ def metricas_por_evidencias(
     recuperados_sinteticos = []
     grupos_atribuidos: set[int] = set()
     for rank, recuperado in enumerate(recuperados):
-        candidatos = []
-        paginas_recuperadas = {int(item) for item in recuperado.get("pages", [])}
-        for indice, grupo in enumerate(grupos_relevantes):
-            mesmo_documento = (
-                str(recuperado.get("document_id", ""))
-                == str(grupo.get("document_id", ""))
-            )
-            if nivel == "chunk":
-                corresponde = str(recuperado.get("chunk_id", "")) in {
-                    str(item) for item in grupo.get("chunk_ids", [])
-                }
-            elif nivel == "page":
-                corresponde = mesmo_documento and bool(
-                    paginas_recuperadas
-                    & {int(item) for item in grupo.get("pages", [])}
-                )
-            else:
-                corresponde = mesmo_documento
-            if corresponde and indice not in grupos_atribuidos:
-                candidatos.append((int(grupo.get("relevance", 1)), indice))
-
-        if candidatos:
-            _, indice = max(candidatos)
+        indice = _selecionar_grupo(
+            recuperado,
+            grupos_relevantes,
+            nivel,
+            grupos_atribuidos,
+        )
+        if indice is not None:
             grupos_atribuidos.add(indice)
             recuperados_sinteticos.append(f"grupo:{indice}")
         else:

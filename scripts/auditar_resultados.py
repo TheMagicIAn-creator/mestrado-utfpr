@@ -39,7 +39,7 @@ def _read_json(path: Path) -> dict:
 def _audit_manifest(root: Path, path: Path, errors: list[str]) -> int:
     try:
         manifest = _read_json(path)
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError) as exc:
         errors.append(f"manifesto inválido {path.name}: {exc}")
         return 0
 
@@ -74,7 +74,7 @@ def _audit_manifest(root: Path, path: Path, errors: list[str]) -> int:
 def _audit_retrieval_baseline(path: Path, errors: list[str]) -> None:
     try:
         manifest = _read_json(path)
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError) as exc:
         errors.append(f"manifesto inválido {path.name}: {exc}")
         return
 
@@ -111,13 +111,7 @@ def _audit_retrieval_baseline(path: Path, errors: list[str]) -> None:
         errors.append(f"{path.name}: query_id duplicado")
 
 
-def auditar_publicacao(root: Path | str = RAIZ_PROJETO) -> dict:
-    """Retorna um relatório determinístico dos resultados publicados."""
-    root = Path(root).resolve()
-    results = root / "resultados"
-    manifests = results / "manifestos"
-    errors: list[str] = []
-
+def _audit_result_layout(results: Path, errors: list[str]) -> None:
     present_dirs = {path.name for path in results.iterdir() if path.is_dir()}
     extra_dirs = present_dirs - RESULT_DIRS
     missing_dirs = RESULT_DIRS - present_dirs
@@ -129,19 +123,8 @@ def auditar_publicacao(root: Path | str = RAIZ_PROJETO) -> dict:
         if (results / legacy).exists():
             errors.append(f"pasta legada ainda presente: resultados/{legacy}")
 
-    manifest_names = {path.name for path in manifests.glob("*.json")}
-    if manifest_names != MANIFEST_NAMES:
-        errors.append(
-            "manifestos divergentes: "
-            f"esperados={sorted(MANIFEST_NAMES)}, encontrados={sorted(manifest_names)}"
-        )
 
-    artifact_count = 0
-    for name in sorted(SCIENTIFIC_MANIFEST_NAMES):
-        artifact_count += _audit_manifest(root, manifests / name, errors)
-    for name in sorted(EVALUATION_MANIFEST_NAMES):
-        _audit_retrieval_baseline(manifests / name, errors)
-
+def _audit_scientific_contracts(results: Path, errors: list[str]) -> None:
     comparison = _read_json(results / "comparacao" / "comparacao_autoencoders.json")
     if comparison.get("dataset", {}).get("dataset") != "GPVS-Faults":
         errors.append("a comparação não declara GPVS-Faults como dataset único")
@@ -158,6 +141,31 @@ def auditar_publicacao(root: Path | str = RAIZ_PROJETO) -> dict:
     physical_weibull = reliability.get("physical_weibull", {})
     if physical_weibull.get("beta") is not None or physical_weibull.get("eta") is not None:
         errors.append("a publicação fabricou parâmetros Weibull físicos")
+
+
+def auditar_publicacao(root: Path | str = RAIZ_PROJETO) -> dict:
+    """Retorna um relatório determinístico dos resultados publicados."""
+    root = Path(root).resolve()
+    results = root / "resultados"
+    manifests = results / "manifestos"
+    errors: list[str] = []
+
+    _audit_result_layout(results, errors)
+
+    manifest_names = {path.name for path in manifests.glob("*.json")}
+    if manifest_names != MANIFEST_NAMES:
+        errors.append(
+            "manifestos divergentes: "
+            f"esperados={sorted(MANIFEST_NAMES)}, encontrados={sorted(manifest_names)}"
+        )
+
+    artifact_count = 0
+    for name in sorted(SCIENTIFIC_MANIFEST_NAMES):
+        artifact_count += _audit_manifest(root, manifests / name, errors)
+    for name in sorted(EVALUATION_MANIFEST_NAMES):
+        _audit_retrieval_baseline(manifests / name, errors)
+
+    _audit_scientific_contracts(results, errors)
 
     return {
         "ok": not errors,

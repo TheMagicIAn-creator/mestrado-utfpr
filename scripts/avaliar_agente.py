@@ -12,8 +12,11 @@ RAIZ = Path(__file__).resolve().parents[1]
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
-from src.conhecimento.roteamento_ferramentas import decidir_acao
-from src.ml.resultados import resumir_resultados
+from src.conhecimento.benchmark_retrieval import (  # noqa: E402
+    resolver_caminho_no_projeto,
+)
+from src.conhecimento.roteamento_ferramentas import decidir_acao  # noqa: E402
+from src.ml.resultados import resumir_resultados  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -106,18 +109,28 @@ def main() -> int:
             relatorio_markdown,
         )
 
+        gold_set = resolver_caminho_no_projeto(args.gold_set, deve_existir=True)
+        snapshot = resolver_caminho_no_projeto(args.snapshot, deve_existir=True)
+        output_json = (
+            resolver_caminho_no_projeto(args.json) if args.json is not None else None
+        )
+        output_markdown = (
+            resolver_caminho_no_projeto(args.markdown)
+            if args.markdown is not None
+            else None
+        )
         report = executar_baseline_local(
-            args.gold_set,
-            args.snapshot,
+            gold_set,
+            snapshot,
             git_revision=args.git_revision,
         )
         serialized = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
-        if args.json:
-            args.json.parent.mkdir(parents=True, exist_ok=True)
-            args.json.write_text(serialized, encoding="utf-8")
-        if args.markdown:
-            args.markdown.parent.mkdir(parents=True, exist_ok=True)
-            args.markdown.write_text(relatorio_markdown(report), encoding="utf-8")
+        if output_json:
+            output_json.parent.mkdir(parents=True, exist_ok=True)
+            output_json.write_text(serialized, encoding="utf-8")
+        if output_markdown:
+            output_markdown.parent.mkdir(parents=True, exist_ok=True)
+            output_markdown.write_text(relatorio_markdown(report), encoding="utf-8")
         print(
             json.dumps(
                 {
@@ -134,8 +147,9 @@ def main() -> int:
     report = run()
     serialized = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
     if args.json:
-        args.json.parent.mkdir(parents=True, exist_ok=True)
-        args.json.write_text(serialized, encoding="utf-8")
+        output_json = resolver_caminho_no_projeto(args.json)
+        output_json.parent.mkdir(parents=True, exist_ok=True)
+        output_json.write_text(serialized, encoding="utf-8")
     print(serialized, end="")
     return 0 if report["ok"] else 1
 

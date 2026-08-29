@@ -14,6 +14,8 @@ def test_cli_publica_benchmark_retrieval(monkeypatch, tmp_path, capsys):
     snapshot = tmp_path / "snapshot.jsonl.gz"
     output_json = tmp_path / "reports" / "baseline.json"
     output_markdown = tmp_path / "reports" / "baseline.md"
+    gold_set.write_text("{}", encoding="utf-8")
+    snapshot.write_bytes(b"")
     report = {
         "benchmark_id": "evidence-rag-baseline-v1",
         "gold_set": {"n_queries": 40},
@@ -31,6 +33,7 @@ def test_cli_publica_benchmark_retrieval(monkeypatch, tmp_path, capsys):
 
     monkeypatch.setattr(benchmark_retrieval, "executar_baseline_local", fake_execute)
     monkeypatch.setattr(benchmark_retrieval, "relatorio_markdown", lambda _: "# Baseline\n")
+    monkeypatch.setattr(benchmark_retrieval, "RAIZ_PROJETO", tmp_path)
     monkeypatch.setattr(
         sys,
         "argv",

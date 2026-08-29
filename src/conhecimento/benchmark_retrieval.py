@@ -20,11 +20,11 @@ from typing import Callable, Iterable
 
 from src.conhecimento.retrieval_metrics import metricas_por_evidencias
 
-
 GOLD_SCHEMA_VERSION = 1
 BENCHMARK_SCHEMA_VERSION = 1
 DEFAULT_KS = (5, 8)
 GOLD_STATUS_PROVISORIO = "provisional_pending_researcher_review"
+RAIZ_PROJETO = Path(__file__).resolve().parents[2]
 CATEGORIAS_OBRIGATORIAS = frozenset(
     {
         "localizacao_direta",
@@ -45,6 +45,26 @@ CATEGORIAS_OBRIGATORIAS = frozenset(
 )
 
 
+def resolver_caminho_no_projeto(
+    caminho: str | Path,
+    *,
+    deve_existir: bool = False,
+) -> Path:
+    """Resolve um caminho sem permitir escape da raiz versionada."""
+    raiz = RAIZ_PROJETO.resolve()
+    candidato = Path(caminho)
+    if not candidato.is_absolute():
+        candidato = raiz / candidato
+    resolvido = candidato.resolve(strict=False)
+    try:
+        resolvido.relative_to(raiz)
+    except ValueError as exc:
+        raise ValueError(f"Caminho fora da raiz do projeto: {caminho}") from exc
+    if deve_existir and not resolvido.is_file():
+        raise FileNotFoundError(f"Arquivo local não encontrado: {resolvido}")
+    return resolvido
+
+
 def _json_canonico(valor: object) -> bytes:
     return (
         json.dumps(
@@ -62,9 +82,48 @@ def hash_json_sha256(valor: object) -> str:
 
 
 def carregar_gold_set(caminho: str | Path, *, validar_campanha: bool = True) -> dict:
-    dados = json.loads(Path(caminho).read_text(encoding="utf-8"))
+    arquivo = resolver_caminho_no_projeto(caminho, deve_existir=True)
+    dados = json.loads(arquivo.read_text(encoding="utf-8"))
     validar_gold_set(dados, validar_campanha=validar_campanha)
     return dados
+
+
+def _validar_evidencia_gold(evidencia: dict, query_id: str) -> None:
+    chunks = evidencia.get("chunk_ids", [])
+    paginas = evidencia.get("pages", [])
+    if not evidencia.get("document_id") or not evidencia.get("file"):
+        raise ValueError(f"Evidência sem identidade documental em {query_id}.")
+    if not chunks or not paginas:
+        raise ValueError(f"Evidência sem página ou chunk em {query_id}.")
+    if int(evidencia.get("relevance", 0)) not in (1, 2, 3):
+        raise ValueError(f"Relevância fora da escala 1–3 em {query_id}.")
+
+
+def _validar_pergunta_gold(pergunta: dict, ids: set[str]) -> tuple[str, str]:
+    query_id = str(pergunta.get("id", "")).strip()
+    texto = str(pergunta.get("question", "")).strip()
+    categoria = str(pergunta.get("category", "")).strip()
+    comportamento = pergunta.get("expected_behavior", "retrieve")
+    evidencias = pergunta.get("expected_evidence", [])
+
+    if not query_id or query_id in ids:
+        raise ValueError(f"ID de pergunta ausente ou duplicado: {query_id!r}.")
+    if not texto:
+        raise ValueError(f"Pergunta vazia em {query_id}.")
+    if categoria not in CATEGORIAS_OBRIGATORIAS:
+        raise ValueError(f"Categoria inválida em {query_id}: {categoria!r}.")
+    if comportamento not in {"retrieve", "abstain"}:
+        raise ValueError(f"Comportamento inválido em {query_id}.")
+    if comportamento == "retrieve" and not evidencias:
+        raise ValueError(f"Pergunta recuperável sem evidência em {query_id}.")
+    if comportamento == "abstain" and evidencias:
+        raise ValueError(f"Pergunta de abstenção não pode ter evidência em {query_id}.")
+    if pergunta.get("curation_status") != "provisional_verified_in_snapshot":
+        raise ValueError(f"Estado de curadoria inválido em {query_id}.")
+
+    for evidencia in evidencias:
+        _validar_evidencia_gold(evidencia, query_id)
+    return query_id, categoria
 
 
 def validar_gold_set(dados: dict, *, validar_campanha: bool = True) -> None:
@@ -82,37 +141,7 @@ def validar_gold_set(dados: dict, *, validar_campanha: bool = True) -> None:
     ids: set[str] = set()
     categorias: set[str] = set()
     for pergunta in perguntas:
-        query_id = str(pergunta.get("id", "")).strip()
-        texto = str(pergunta.get("question", "")).strip()
-        categoria = str(pergunta.get("category", "")).strip()
-        comportamento = pergunta.get("expected_behavior", "retrieve")
-        evidencias = pergunta.get("expected_evidence", [])
-
-        if not query_id or query_id in ids:
-            raise ValueError(f"ID de pergunta ausente ou duplicado: {query_id!r}.")
-        if not texto:
-            raise ValueError(f"Pergunta vazia em {query_id}.")
-        if categoria not in CATEGORIAS_OBRIGATORIAS:
-            raise ValueError(f"Categoria inválida em {query_id}: {categoria!r}.")
-        if comportamento not in {"retrieve", "abstain"}:
-            raise ValueError(f"Comportamento inválido em {query_id}.")
-        if comportamento == "retrieve" and not evidencias:
-            raise ValueError(f"Pergunta recuperável sem evidência em {query_id}.")
-        if comportamento == "abstain" and evidencias:
-            raise ValueError(f"Pergunta de abstenção não pode ter evidência em {query_id}.")
-        if pergunta.get("curation_status") != "provisional_verified_in_snapshot":
-            raise ValueError(f"Estado de curadoria inválido em {query_id}.")
-
-        for evidencia in evidencias:
-            chunks = evidencia.get("chunk_ids", [])
-            paginas = evidencia.get("pages", [])
-            if not evidencia.get("document_id") or not evidencia.get("file"):
-                raise ValueError(f"Evidência sem identidade documental em {query_id}.")
-            if not chunks or not paginas:
-                raise ValueError(f"Evidência sem página ou chunk em {query_id}.")
-            if int(evidencia.get("relevance", 0)) not in (1, 2, 3):
-                raise ValueError(f"Relevância fora da escala 1–3 em {query_id}.")
-
+        query_id, categoria = _validar_pergunta_gold(pergunta, ids)
         ids.add(query_id)
         categorias.add(categoria)
 
@@ -124,7 +153,8 @@ def validar_gold_set(dados: dict, *, validar_campanha: bool = True) -> None:
 
 def carregar_snapshot(caminho: str | Path) -> tuple[dict, dict[str, dict]]:
     registros: dict[str, dict] = {}
-    with gzip.open(caminho, "rt", encoding="utf-8") as arquivo:
+    arquivo_snapshot = resolver_caminho_no_projeto(caminho, deve_existir=True)
+    with gzip.open(arquivo_snapshot, "rt", encoding="utf-8") as arquivo:
         try:
             manifesto = json.loads(next(arquivo))
         except StopIteration as exc:
@@ -142,6 +172,47 @@ def carregar_snapshot(caminho: str | Path) -> tuple[dict, dict[str, dict]]:
     return manifesto, registros
 
 
+def _validar_chunk_gold(
+    chunk_id: str,
+    *,
+    documento: str,
+    arquivo: str,
+    paginas: set[int],
+    registros_snapshot: dict[str, dict],
+) -> None:
+    registro = registros_snapshot.get(str(chunk_id))
+    if registro is None:
+        raise ValueError(f"Chunk do gold set não existe: {chunk_id}.")
+    metadata = registro.get("metadata", {})
+    if metadata.get("arquivo_hash") != documento:
+        raise ValueError(f"Hash documental divergente em {chunk_id}.")
+    if metadata.get("arquivo") != arquivo:
+        raise ValueError(f"Arquivo divergente em {chunk_id}.")
+    inicio = int(metadata.get("pagina_inicio", 0) or 0)
+    fim = int(metadata.get("pagina_fim", inicio) or inicio)
+    if not paginas.intersection(range(inicio, fim + 1)):
+        raise ValueError(f"Página do gold set não pertence ao chunk {chunk_id}.")
+
+
+def _validar_evidencia_contra_snapshot(
+    evidencia: dict,
+    registros_snapshot: dict[str, dict],
+) -> int:
+    documento = str(evidencia["document_id"])
+    arquivo = str(evidencia["file"])
+    paginas = {int(item) for item in evidencia["pages"]}
+    chunks = [str(item) for item in evidencia["chunk_ids"]]
+    for chunk_id in chunks:
+        _validar_chunk_gold(
+            chunk_id,
+            documento=documento,
+            arquivo=arquivo,
+            paginas=paginas,
+            registros_snapshot=registros_snapshot,
+        )
+    return len(chunks)
+
+
 def validar_gold_contra_snapshot(
     gold_set: dict,
     manifesto_snapshot: dict,
@@ -155,26 +226,15 @@ def validar_gold_contra_snapshot(
             f"esperado={hash_esperado or 'ausente'}, observado={hash_observado or 'ausente'}."
         )
 
-    validados = 0
-    for pergunta in gold_set["queries"]:
-        for evidencia in pergunta.get("expected_evidence", []):
-            documento = str(evidencia["document_id"])
-            arquivo = str(evidencia["file"])
-            paginas = {int(item) for item in evidencia["pages"]}
-            for chunk_id in evidencia["chunk_ids"]:
-                registro = registros_snapshot.get(str(chunk_id))
-                if registro is None:
-                    raise ValueError(f"Chunk do gold set não existe: {chunk_id}.")
-                metadata = registro.get("metadata", {})
-                if metadata.get("arquivo_hash") != documento:
-                    raise ValueError(f"Hash documental divergente em {chunk_id}.")
-                if metadata.get("arquivo") != arquivo:
-                    raise ValueError(f"Arquivo divergente em {chunk_id}.")
-                inicio = int(metadata.get("pagina_inicio", 0) or 0)
-                fim = int(metadata.get("pagina_fim", inicio) or inicio)
-                if not paginas.intersection(range(inicio, fim + 1)):
-                    raise ValueError(f"Página do gold set não pertence ao chunk {chunk_id}.")
-                validados += 1
+    evidencias = (
+        evidencia
+        for pergunta in gold_set["queries"]
+        for evidencia in pergunta.get("expected_evidence", [])
+    )
+    validados = sum(
+        _validar_evidencia_contra_snapshot(evidencia, registros_snapshot)
+        for evidencia in evidencias
+    )
     return {
         "n_queries": len(gold_set["queries"]),
         "n_chunks_gold": validados,
@@ -501,7 +561,7 @@ def relatorio_markdown(resultado: dict) -> str:
         item
         for item in resultado["queries"]
         if item["expected_behavior"] == "retrieve"
-        and item["metrics"]["5"]["hit_rate@5"] == 0.0
+        and not item["metrics"]["5"]["hit_rate@5"]
     ]
     categorias = Counter(item["category"] for item in resultado["queries"])
     abstencoes = resumo["n_future_abstention_queries"]

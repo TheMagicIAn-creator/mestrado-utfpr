@@ -8,7 +8,6 @@ import pytest
 
 from src.conhecimento import benchmark_retrieval as benchmark
 
-
 DOCUMENT_ID = "a" * 64
 CHUNK_ID = f"{DOCUMENT_ID}__chunk_00000"
 
@@ -92,7 +91,8 @@ def test_validar_gold_set_rejeita_contratos_invalidos(mutacao, mensagem):
         benchmark.validar_gold_set(gold, validar_campanha=False)
 
 
-def test_carregar_e_validar_snapshot(tmp_path: Path):
+def test_carregar_e_validar_snapshot(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(benchmark, "RAIZ_PROJETO", tmp_path)
     caminho = tmp_path / "snapshot.jsonl.gz"
     registro = {
         "tipo": "chunk_indice_portatil",
@@ -127,14 +127,25 @@ def test_validacao_snapshot_detecta_hash_e_chunk_ausente():
             "pagina_fim": 7,
         }
     }
+    gold = _gold()
+    manifesto_divergente = {**_manifesto(), "hash_corpus_sha256": "outro"}
+    registros = {CHUNK_ID: registro}
     with pytest.raises(ValueError, match="não corresponde"):
         benchmark.validar_gold_contra_snapshot(
-            _gold(),
-            {**_manifesto(), "hash_corpus_sha256": "outro"},
-            {CHUNK_ID: registro},
+            gold,
+            manifesto_divergente,
+            registros,
         )
+    manifesto = _manifesto()
     with pytest.raises(ValueError, match="não existe"):
-        benchmark.validar_gold_contra_snapshot(_gold(), _manifesto(), {})
+        benchmark.validar_gold_contra_snapshot(gold, manifesto, {})
+
+
+def test_resolver_caminho_rejeita_escape_da_raiz(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(benchmark, "RAIZ_PROJETO", tmp_path / "projeto")
+
+    with pytest.raises(ValueError, match="fora da raiz"):
+        benchmark.resolver_caminho_no_projeto(tmp_path / "externo.json")
 
 
 def test_recuperar_baseline_preserva_pipeline_vigente(monkeypatch):
