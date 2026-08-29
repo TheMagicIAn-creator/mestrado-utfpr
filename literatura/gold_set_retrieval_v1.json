@@ -1,0 +1,806 @@
+{
+  "schema_version": 1,
+  "gold_set_id": "evidence-rag-gold-v1-provisional",
+  "status": "provisional_pending_researcher_review",
+  "created_at": "2026-08-29",
+  "corpus_hash_sha256": "0ef91e96379c546c7bee42434a935e86d3711a3a31500476245274518c6612b0",
+  "curation": {
+    "assistant_drafted": true,
+    "final_truth_model_only": false,
+    "evidence_verified_against_snapshot": true,
+    "researcher_review": "pending_R6",
+    "review_owner": "Rodolfo Torres",
+    "rule": "Nenhum rótulo provisório pode promover o índice sem revisão humana em R6."
+  },
+  "relevance_scale": {
+    "1": "contextual",
+    "2": "relevant",
+    "3": "direct_answer"
+  },
+  "queries": [
+    {
+      "id": "direct-rcm-nasa-001",
+      "question": "Onde a NASA descreve a abordagem de manutenção centrada em confiabilidade e as estratégias que ela integra?",
+      "category": "localizacao_direta",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b",
+          "file": "administration_nasa-reliability-centered-maintenance-guide-for-facilities-a_2008.pdf",
+          "pages": [19],
+          "chunk_ids": ["2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b__chunk_00029"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "direct-tcc-rates-002",
+      "question": "Mostre a tabela do TCC que reúne taxas de falha de componentes fotovoltaicos, incluindo inversor e fusível.",
+      "category": "localizacao_direta",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
+          "file": "torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+          "pages": [35],
+          "chunk_ids": ["dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00050"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "direct-stender-signals-003",
+      "question": "Em qual página Stender lista os sinais disponíveis no dataset do inversor IGBT trifásico?",
+      "category": "localizacao_direta",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "039650129aab79f8ea018ed6b840e5e94c74b0ade160744b75e309588bbd1f43",
+          "file": "stender_data-set-description-three-phase-igbt-two-level-inverter-for_2020.pdf",
+          "pages": [3],
+          "chunk_ids": ["039650129aab79f8ea018ed6b840e5e94c74b0ade160744b75e309588bbd1f43__chunk_00006"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "direct-aelstm-description-004",
+      "question": "Onde Ahirwar explica o papel do autoencoder e da LSTM na detecção de anomalias temporais?",
+      "category": "localizacao_direta",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f",
+          "file": "ahirwar_enhanced-anomaly-detection-in-solar-power-plants-using-hybri_2025.pdf",
+          "pages": [3],
+          "chunk_ids": ["09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f__chunk_00008"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "concept-reliability-005",
+      "question": "Qual é o conceito de confiabilidade de um sistema fotovoltaico sob condições e período definidos?",
+      "category": "conceito",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "c3dd03756822fe9dc8c2310e53dc0145f5b9434a734e0f663010796450105aa5",
+          "file": "pahwa_design-and-estimation-of-reliability-of-an-off-grid-solar-ph_2017.pdf",
+          "pages": [2],
+          "chunk_ids": ["c3dd03756822fe9dc8c2310e53dc0145f5b9434a734e0f663010796450105aa5__chunk_00004"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "concept-failure-mode-effect-006",
+      "question": "Qual é a diferença entre modo de falha, falha e efeito da falha?",
+      "category": "conceito",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b",
+          "file": "administration_nasa-reliability-centered-maintenance-guide-for-facilities-a_2008.pdf",
+          "pages": [240],
+          "chunk_ids": ["2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b__chunk_00396"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "concept-pod-007",
+      "question": "O que significa probabilidade de detecção em ensaios não destrutivos e que cautela metodológica é indicada?",
+      "category": "conceito",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "b7119c332bbe36e04401bc8b7ca6faafe4151f3c3bbb7a21b371930416a23c33",
+          "file": "virkkunen_practical-experiences-in-pod-determination-for-airframe-et-inspection_2016.pdf",
+          "pages": [1],
+          "chunk_ids": [
+            "b7119c332bbe36e04401bc8b7ca6faafe4151f3c3bbb7a21b371930416a23c33__chunk_00000",
+            "b7119c332bbe36e04401bc8b7ca6faafe4151f3c3bbb7a21b371930416a23c33__chunk_00001"
+          ],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "authors-weibull-008",
+      "question": "Compare o foco de Nketiah e Lien ao tratar análise de Weibull e dados de falha.",
+      "category": "comparacao_autores",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "73be38c42a6045e4b972da72c2f05e02376050a02f9d5d3a9a4e47d0743b3706",
+          "file": "nketiah_parameter-estimation-of-the-weibull-distribution-comparison-of-ls-and-mle_2021.pdf",
+          "pages": [2],
+          "chunk_ids": ["73be38c42a6045e4b972da72c2f05e02376050a02f9d5d3a9a4e47d0743b3706__chunk_00003"],
+          "relevance": 3
+        },
+        {
+          "document_id": "006f3edcff170336618057370ffb915c575edeab78c3d5842b2c701710e7d211",
+          "file": "lien_unlocking-weibull-analysis_2013.pdf",
+          "pages": [2],
+          "chunk_ids": ["006f3edcff170336618057370ffb915c575edeab78c3d5842b2c701710e7d211__chunk_00003"],
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "authors-anomaly-009",
+      "question": "Como Ahirwar e Ibrahim descrevem o uso de AE-LSTM em anomalias de geração solar?",
+      "category": "comparacao_autores",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f",
+          "file": "ahirwar_enhanced-anomaly-detection-in-solar-power-plants-using-hybri_2025.pdf",
+          "pages": [3],
+          "chunk_ids": ["09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f__chunk_00008"],
+          "relevance": 3
+        },
+        {
+          "document_id": "a60ce084f28879d4fd6096d0a9d52a177fa7b992ca8b40963c1936f1d53cd364",
+          "file": "ibrahim_machine-learning-schemes-for-anomaly-detection-in-solar-powe_2022.pdf",
+          "pages": [11, 12],
+          "chunk_ids": [
+            "a60ce084f28879d4fd6096d0a9d52a177fa7b992ca8b40963c1936f1d53cd364__chunk_00021",
+            "a60ce084f28879d4fd6096d0a9d52a177fa7b992ca8b40963c1936f1d53cd364__chunk_00024"
+          ],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "method-weibull-estimation-010",
+      "question": "Quais métodos são comparados para estimar os parâmetros de forma e escala da Weibull 2P?",
+      "category": "metodo",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "73be38c42a6045e4b972da72c2f05e02376050a02f9d5d3a9a4e47d0743b3706",
+          "file": "nketiah_parameter-estimation-of-the-weibull-distribution-comparison-of-ls-and-mle_2021.pdf",
+          "pages": [1, 2],
+          "chunk_ids": [
+            "73be38c42a6045e4b972da72c2f05e02376050a02f9d5d3a9a4e47d0743b3706__chunk_00000",
+            "73be38c42a6045e4b972da72c2f05e02376050a02f9d5d3a9a4e47d0743b3706__chunk_00003"
+          ],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "method-censoring-weibull-011",
+      "question": "Por que dados suspensos ou censurados devem ser preservados numa análise Weibull?",
+      "category": "metodo",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "006f3edcff170336618057370ffb915c575edeab78c3d5842b2c701710e7d211",
+          "file": "lien_unlocking-weibull-analysis_2013.pdf",
+          "pages": [2],
+          "chunk_ids": ["006f3edcff170336618057370ffb915c575edeab78c3d5842b2c701710e7d211__chunk_00003"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "method-maintenance-interval-012",
+      "question": "Como o intervalo ótimo de manutenção é relacionado à RCM e aos parâmetros de confiabilidade?",
+      "category": "metodo",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "48442c0ccd004a8541bd2289fcc7d1f9f2c5ac05a87d38022d0a847df31522c0",
+          "file": "muqauwim_analysis-of-optimal-maintenance-interval-on-id-fan-using-rel_2020.pdf",
+          "pages": [1, 3],
+          "chunk_ids": [
+            "48442c0ccd004a8541bd2289fcc7d1f9f2c5ac05a87d38022d0a847df31522c0__chunk_00000",
+            "48442c0ccd004a8541bd2289fcc7d1f9f2c5ac05a87d38022d0a847df31522c0__chunk_00008"
+          ],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "component-igbt-dataset-013",
+      "question": "Quais características e sinais elétricos são informados para o inversor IGBT de dois níveis?",
+      "category": "componente",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "039650129aab79f8ea018ed6b840e5e94c74b0ade160744b75e309588bbd1f43",
+          "file": "stender_data-set-description-three-phase-igbt-two-level-inverter-for_2020.pdf",
+          "pages": [2, 3],
+          "chunk_ids": [
+            "039650129aab79f8ea018ed6b840e5e94c74b0ade160744b75e309588bbd1f43__chunk_00003",
+            "039650129aab79f8ea018ed6b840e5e94c74b0ade160744b75e309588bbd1f43__chunk_00006"
+          ],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "component-inverter-alerts-014",
+      "question": "Quais falhas internas e alertas são observados em inversores fotovoltaicos segundo Monteiro?",
+      "category": "componente",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "7452f61d82ea955686f4e7539b84695bfc84113900c6b6f6772f70e5240b04de",
+          "file": "monteiro_identifying-critical-failures-in-pv-systems-based-on-pv-inve_2024.pdf",
+          "pages": [5],
+          "chunk_ids": [
+            "7452f61d82ea955686f4e7539b84695bfc84113900c6b6f6772f70e5240b04de__chunk_00012",
+            "7452f61d82ea955686f4e7539b84695bfc84113900c6b6f6772f70e5240b04de__chunk_00013"
+          ],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "component-ac-tickets-015",
+      "question": "Que participações de tickets são atribuídas ao Contator AC, IGBT e Fusíveis AC?",
+      "category": "componente",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
+          "file": "torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+          "pages": [35],
+          "chunk_ids": ["dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00050"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "fmeca-definition-016",
+      "question": "Como o TCC distingue FMEA de FMECA e situa a análise de criticidade?",
+      "category": "fmeca",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
+          "file": "torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+          "pages": [22, 59],
+          "chunk_ids": [
+            "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00031",
+            "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00090"
+          ],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "fmeca-sod-npr-017",
+      "question": "Como severidade, ocorrência e detecção compõem o NPR na FMECA?",
+      "category": "fmeca",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
+          "file": "torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+          "pages": [49, 82],
+          "chunk_ids": [
+            "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00071",
+            "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00123"
+          ],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "fmeca-risk-planning-018",
+      "question": "Como RPN e risco são usados para priorizar planos de melhoria e manutenção?",
+      "category": "fmeca",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "42c2b546236692059a51597679998e869dbdf19f87a8e93aac6a61d28e2c1777",
+          "file": "patil_a-reliability-and-risk-assessment-of-solar-photovoltaic-pane_2024.pdf",
+          "pages": [13],
+          "chunk_ids": ["42c2b546236692059a51597679998e869dbdf19f87a8e93aac6a61d28e2c1777__chunk_00036"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "rcm-strategies-019",
+      "question": "Quais estratégias de manutenção são integradas pela abordagem RCM da NASA?",
+      "category": "rcm",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b",
+          "file": "administration_nasa-reliability-centered-maintenance-guide-for-facilities-a_2008.pdf",
+          "pages": [19],
+          "chunk_ids": ["2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b__chunk_00029"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "rcm-rigorous-fmea-020",
+      "question": "Em que a RCM rigorosa se apoia e que tipo de cálculo ela inclui?",
+      "category": "rcm",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b",
+          "file": "administration_nasa-reliability-centered-maintenance-guide-for-facilities-a_2008.pdf",
+          "pages": [21],
+          "chunk_ids": ["2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b__chunk_00033"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "rcm-fmeca-actions-021",
+      "question": "Como a FMECA do TCC é convertida em atividades e prazos de manutenção?",
+      "category": "rcm",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
+          "file": "torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+          "pages": [59],
+          "chunk_ids": [
+            "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00090",
+            "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00091"
+          ],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "reliability-exponential-functions-022",
+      "question": "Quais são as expressões de f(t), R(t) e h(t) no modelo exponencial com taxa de falha constante?",
+      "category": "confiabilidade",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
+          "file": "torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+          "pages": [44, 46],
+          "chunk_ids": [
+            "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00064",
+            "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00066"
+          ],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "reliability-system-composition-023",
+      "question": "Como a confiabilidade de componentes se combina em sistemas série e paralelo?",
+      "category": "confiabilidade",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "3253acaaad7611cb82bf9e186762dfce82687d6ec41f5ada22c552ee83955fe6",
+          "file": "joshi_reliability-estimation-for-components-of-photovoltaic-system_1996.pdf",
+          "pages": [3],
+          "chunk_ids": ["3253acaaad7611cb82bf9e186762dfce82687d6ec41f5ada22c552ee83955fe6__chunk_00005"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "reliability-inverter-mil-024",
+      "question": "Como Shuttleworth calcula taxas de falha de inversores fotovoltaicos com MIL-HDBK-217?",
+      "category": "confiabilidade",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "ceaa21c1b1b06a71923ef4103ac3813b660817952c97a23b248d54dc8e60be3a",
+          "file": "shuttleworth_reliability-prediction-of-pv-inverters-based-on-mil-hdbk-217_2015.pdf",
+          "pages": [6],
+          "chunk_ids": ["ceaa21c1b1b06a71923ef4103ac3813b660817952c97a23b248d54dc8e60be3a__chunk_00016"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "reliability-risk-definition-025",
+      "question": "Como uma revisão recente diferencia falha de confiabilidade e risco em sistemas fotovoltaicos?",
+      "category": "confiabilidade",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "5225fd5ee823c8221020e922fa3c45258f63b0f6239e7c69a4e7c51ca202532e",
+          "file": "karim_a-review-on-risk-and-reliability-analysis-in-photovoltaic-po_2025.pdf",
+          "pages": [2],
+          "chunk_ids": ["5225fd5ee823c8221020e922fa3c45258f63b0f6239e7c69a4e7c51ca202532e__chunk_00003"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "autoencoder-reconstruction-026",
+      "question": "Como o erro de reconstrução é usado por autoencoders na detecção de anomalias?",
+      "category": "autoencoders",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f",
+          "file": "ahirwar_enhanced-anomaly-detection-in-solar-power-plants-using-hybri_2025.pdf",
+          "pages": [3],
+          "chunk_ids": ["09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f__chunk_00007"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "autoencoder-temporal-027",
+      "question": "Por que combinar autoencoder e LSTM para séries temporais de uma usina solar?",
+      "category": "autoencoders",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f",
+          "file": "ahirwar_enhanced-anomaly-detection-in-solar-power-plants-using-hybri_2025.pdf",
+          "pages": [3],
+          "chunk_ids": ["09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f__chunk_00008"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "autoencoder-evaluation-028",
+      "question": "Quais métricas e resultados são usados por Ibrahim para avaliar a detecção do AE-LSTM?",
+      "category": "autoencoders",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "a60ce084f28879d4fd6096d0a9d52a177fa7b992ca8b40963c1936f1d53cd364",
+          "file": "ibrahim_machine-learning-schemes-for-anomaly-detection-in-solar-powe_2022.pdf",
+          "pages": [12],
+          "chunk_ids": [
+            "a60ce084f28879d4fd6096d0a9d52a177fa7b992ca8b40963c1936f1d53cd364__chunk_00023",
+            "a60ce084f28879d4fd6096d0a9d52a177fa7b992ca8b40963c1936f1d53cd364__chunk_00024"
+          ],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "gpvs-direct-source-029",
+      "question": "Qual PDF da biblioteca documenta diretamente os 16 ensaios F0L a F7M do GPVS-Faults?",
+      "category": "gpvs_faults",
+      "language": "pt-BR",
+      "expected_behavior": "abstain",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": []
+    },
+    {
+      "id": "gpvs-domain-contrast-030",
+      "question": "Qual documento descreve um dataset de inversor IGBT trifásico que não deve ser confundido com o GPVS-Faults?",
+      "category": "gpvs_faults",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "039650129aab79f8ea018ed6b840e5e94c74b0ade160744b75e309588bbd1f43",
+          "file": "stender_data-set-description-three-phase-igbt-two-level-inverter-for_2020.pdf",
+          "pages": [1, 3],
+          "chunk_ids": [
+            "039650129aab79f8ea018ed6b840e5e94c74b0ade160744b75e309588bbd1f43__chunk_00000",
+            "039650129aab79f8ea018ed6b840e5e94c74b0ade160744b75e309588bbd1f43__chunk_00006"
+          ],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "multilingual-rcm-en-031",
+      "question": "Which maintenance strategies are integrated by reliability-centered maintenance?",
+      "category": "multilingue",
+      "language": "en",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b",
+          "file": "administration_nasa-reliability-centered-maintenance-guide-for-facilities-a_2008.pdf",
+          "pages": [19],
+          "chunk_ids": ["2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b__chunk_00029"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "multilingual-weibull-en-032",
+      "question": "How are the shape and scale parameters of a two-parameter Weibull distribution estimated?",
+      "category": "multilingue",
+      "language": "en",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "73be38c42a6045e4b972da72c2f05e02376050a02f9d5d3a9a4e47d0743b3706",
+          "file": "nketiah_parameter-estimation-of-the-weibull-distribution-comparison-of-ls-and-mle_2021.pdf",
+          "pages": [2],
+          "chunk_ids": ["73be38c42a6045e4b972da72c2f05e02376050a02f9d5d3a9a4e47d0743b3706__chunk_00003"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "multilingual-fmeca-es-033",
+      "question": "¿Cuál es la diferencia entre FMEA y FMECA en el análisis de criticidad?",
+      "category": "multilingue",
+      "language": "es",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
+          "file": "torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+          "pages": [22],
+          "chunk_ids": ["dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00031"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "synonym-unreliability-034",
+      "question": "Como a não confiabilidade, também chamada probabilidade acumulada de falha, se relaciona com R(t)?",
+      "category": "sinonimo",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
+          "file": "torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+          "pages": [44, 46],
+          "chunk_ids": [
+            "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00064",
+            "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00066"
+          ],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "synonym-rpn-npr-035",
+      "question": "RPN e NPR representam o mesmo número de prioridade de risco? Onde isso é definido?",
+      "category": "sinonimo",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
+          "file": "torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+          "pages": [49],
+          "chunk_ids": ["dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00071"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "review-pv-reliability-036",
+      "question": "Faça um panorama da literatura sobre risco e confiabilidade de sistemas e inversores fotovoltaicos.",
+      "category": "revisao_ampla",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "5225fd5ee823c8221020e922fa3c45258f63b0f6239e7c69a4e7c51ca202532e",
+          "file": "karim_a-review-on-risk-and-reliability-analysis-in-photovoltaic-po_2025.pdf",
+          "pages": [2],
+          "chunk_ids": ["5225fd5ee823c8221020e922fa3c45258f63b0f6239e7c69a4e7c51ca202532e__chunk_00003"],
+          "relevance": 3
+        },
+        {
+          "document_id": "c016ac3f5a08924fe27e8afb52e7f4678b7a8f07d1927e5bc22729ee7afe2b74",
+          "file": "dhople_estimation-of-photovoltaic-system-reliability-and-performanc_2012.pdf",
+          "pages": [1],
+          "chunk_ids": ["c016ac3f5a08924fe27e8afb52e7f4678b7a8f07d1927e5bc22729ee7afe2b74__chunk_00000"],
+          "relevance": 2
+        },
+        {
+          "document_id": "ceaa21c1b1b06a71923ef4103ac3813b660817952c97a23b248d54dc8e60be3a",
+          "file": "shuttleworth_reliability-prediction-of-pv-inverters-based-on-mil-hdbk-217_2015.pdf",
+          "pages": [6],
+          "chunk_ids": ["ceaa21c1b1b06a71923ef4103ac3813b660817952c97a23b248d54dc8e60be3a__chunk_00016"],
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "review-anomaly-pv-037",
+      "question": "Revise os trabalhos da base sobre detecção de anomalias e manutenção inteligente em sistemas fotovoltaicos.",
+      "category": "revisao_ampla",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f",
+          "file": "ahirwar_enhanced-anomaly-detection-in-solar-power-plants-using-hybri_2025.pdf",
+          "pages": [3],
+          "chunk_ids": ["09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f__chunk_00008"],
+          "relevance": 3
+        },
+        {
+          "document_id": "a60ce084f28879d4fd6096d0a9d52a177fa7b992ca8b40963c1936f1d53cd364",
+          "file": "ibrahim_machine-learning-schemes-for-anomaly-detection-in-solar-powe_2022.pdf",
+          "pages": [12],
+          "chunk_ids": ["a60ce084f28879d4fd6096d0a9d52a177fa7b992ca8b40963c1936f1d53cd364__chunk_00024"],
+          "relevance": 3
+        },
+        {
+          "document_id": "4e386f03464e92f454301422c37cc9a4a42234ddf1cfd91fffcfdbde04bdd7da",
+          "file": "marangis_intelligent-maintenance-approaches-for-improving-photovoltai_2025.pdf",
+          "pages": [8],
+          "chunk_ids": ["4e386f03464e92f454301422c37cc9a4a42234ddf1cfd91fffcfdbde04bdd7da__chunk_00030"],
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "multihop-fmeca-rcm-038",
+      "question": "Relacione a priorização S/O/D da FMECA com a seleção de tarefas de manutenção na RCM.",
+      "category": "multi_hop",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
+          "file": "torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+          "pages": [49, 59],
+          "chunk_ids": [
+            "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00071",
+            "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e__chunk_00090"
+          ],
+          "relevance": 3
+        },
+        {
+          "document_id": "2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b",
+          "file": "administration_nasa-reliability-centered-maintenance-guide-for-facilities-a_2008.pdf",
+          "pages": [21],
+          "chunk_ids": ["2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b__chunk_00033"],
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "multihop-weibull-maintenance-039",
+      "question": "Como estimativas Weibull de forma e escala podem apoiar a definição de intervalos de manutenção?",
+      "category": "multi_hop",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "73be38c42a6045e4b972da72c2f05e02376050a02f9d5d3a9a4e47d0743b3706",
+          "file": "nketiah_parameter-estimation-of-the-weibull-distribution-comparison-of-ls-and-mle_2021.pdf",
+          "pages": [2],
+          "chunk_ids": ["73be38c42a6045e4b972da72c2f05e02376050a02f9d5d3a9a4e47d0743b3706__chunk_00003"],
+          "relevance": 3
+        },
+        {
+          "document_id": "48442c0ccd004a8541bd2289fcc7d1f9f2c5ac05a87d38022d0a847df31522c0",
+          "file": "muqauwim_analysis-of-optimal-maintenance-interval-on-id-fan-using-rel_2020.pdf",
+          "pages": [3],
+          "chunk_ids": ["48442c0ccd004a8541bd2289fcc7d1f9f2c5ac05a87d38022d0a847df31522c0__chunk_00008"],
+          "relevance": 3
+        }
+      ]
+    },
+    {
+      "id": "multihop-failures-maintenance-040",
+      "question": "Conecte falhas observadas em inversores fotovoltaicos à análise de risco e às estratégias de manutenção inteligente.",
+      "category": "multi_hop",
+      "language": "pt-BR",
+      "expected_behavior": "retrieve",
+      "curation_status": "provisional_verified_in_snapshot",
+      "expected_evidence": [
+        {
+          "document_id": "7452f61d82ea955686f4e7539b84695bfc84113900c6b6f6772f70e5240b04de",
+          "file": "monteiro_identifying-critical-failures-in-pv-systems-based-on-pv-inve_2024.pdf",
+          "pages": [5],
+          "chunk_ids": ["7452f61d82ea955686f4e7539b84695bfc84113900c6b6f6772f70e5240b04de__chunk_00013"],
+          "relevance": 3
+        },
+        {
+          "document_id": "f74ae8ecaeaea68d3bd1aaec8f5ae08fa2bb364f57a955631aae6fc00f40fa9e",
+          "file": "cristaldi_a-root-cause-analysis-and-a-risk-evaluation-of-pv-balance-of_2017.pdf",
+          "pages": [3],
+          "chunk_ids": ["f74ae8ecaeaea68d3bd1aaec8f5ae08fa2bb364f57a955631aae6fc00f40fa9e__chunk_00010"],
+          "relevance": 2
+        },
+        {
+          "document_id": "4e386f03464e92f454301422c37cc9a4a42234ddf1cfd91fffcfdbde04bdd7da",
+          "file": "marangis_intelligent-maintenance-approaches-for-improving-photovoltai_2025.pdf",
+          "pages": [8],
+          "chunk_ids": ["4e386f03464e92f454301422c37cc9a4a42234ddf1cfd91fffcfdbde04bdd7da__chunk_00030"],
+          "relevance": 2
+        }
+      ]
+    }
+  ]
+}

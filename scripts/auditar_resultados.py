@@ -13,10 +13,12 @@ from src.core.config import RAIZ_PROJETO
 from src.ml.proveniencia import funcao_de_hash_para
 
 RESULT_DIRS = {"comparacao", "confiabilidade", "manifestos"}
-MANIFEST_NAMES = {
+SCIENTIFIC_MANIFEST_NAMES = {
     "comparacao_autoencoders.json",
     "confiabilidade_componentes.json",
 }
+EVALUATION_MANIFEST_NAMES = {"evidence_rag_baseline_v1.json"}
+MANIFEST_NAMES = SCIENTIFIC_MANIFEST_NAMES | EVALUATION_MANIFEST_NAMES
 LEGACY_DIRS = {"auditoria", "autoencoder", "gpvs", "macro", "qualidade", "v2"}
 
 
@@ -37,7 +39,7 @@ def _read_json(path: Path) -> dict:
 def _audit_manifest(root: Path, path: Path, errors: list[str]) -> int:
     try:
         manifest = _read_json(path)
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError) as exc:
         errors.append(f"manifesto inválido {path.name}: {exc}")
         return 0
 
@@ -69,13 +71,47 @@ def _audit_manifest(root: Path, path: Path, errors: list[str]) -> int:
     return checked
 
 
-def auditar_publicacao(root: Path | str = RAIZ_PROJETO) -> dict:
-    """Retorna um relatório determinístico dos resultados publicados."""
-    root = Path(root).resolve()
-    results = root / "resultados"
-    manifests = results / "manifestos"
-    errors: list[str] = []
+def _audit_retrieval_baseline(path: Path, errors: list[str]) -> None:
+    try:
+        manifest = _read_json(path)
+    except (OSError, ValueError) as exc:
+        errors.append(f"manifesto inválido {path.name}: {exc}")
+        return
 
+    if manifest.get("schema_version") != 1:
+        errors.append(f"{path.name}: schema_version deve ser 1")
+    if manifest.get("stage") != "R0-R1" or manifest.get("variant") != "baseline_current":
+        errors.append(f"{path.name}: etapa ou variante baseline inválida")
+    gold = manifest.get("gold_set", {})
+    if gold.get("status") != "provisional_pending_researcher_review":
+        errors.append(f"{path.name}: gold set não está marcado como provisório")
+    if gold.get("researcher_review_required_at") != "R6":
+        errors.append(f"{path.name}: revisão humana R6 não está registrada")
+
+    corpus = manifest.get("corpus", {})
+    if corpus.get("n_documents") != 44 or corpus.get("n_chunks") != 12556:
+        errors.append(f"{path.name}: inventário do corpus divergente")
+    if corpus.get("collection_count") != corpus.get("n_chunks"):
+        errors.append(f"{path.name}: coleção medida não corresponde ao snapshot")
+
+    metricas = manifest.get("metric_definition", {})
+    if metricas.get("primary_level") != "page":
+        errors.append(f"{path.name}: métrica primária deve usar evidência por página")
+    resumo = manifest.get("summary", {})
+    if (
+        resumo.get("n_queries") != 40
+        or resumo.get("n_retrieval_queries") != 39
+        or resumo.get("n_future_abstention_queries") != 1
+    ):
+        errors.append(f"{path.name}: contagem de perguntas do gold set divergente")
+    consultas = manifest.get("queries")
+    if not isinstance(consultas, list) or len(consultas) != 40:
+        errors.append(f"{path.name}: resultados por pergunta incompletos")
+    elif len({item.get("query_id") for item in consultas}) != len(consultas):
+        errors.append(f"{path.name}: query_id duplicado")
+
+
+def _audit_result_layout(results: Path, errors: list[str]) -> None:
     present_dirs = {path.name for path in results.iterdir() if path.is_dir()}
     extra_dirs = present_dirs - RESULT_DIRS
     missing_dirs = RESULT_DIRS - present_dirs
@@ -87,17 +123,8 @@ def auditar_publicacao(root: Path | str = RAIZ_PROJETO) -> dict:
         if (results / legacy).exists():
             errors.append(f"pasta legada ainda presente: resultados/{legacy}")
 
-    manifest_names = {path.name for path in manifests.glob("*.json")}
-    if manifest_names != MANIFEST_NAMES:
-        errors.append(
-            "manifestos divergentes: "
-            f"esperados={sorted(MANIFEST_NAMES)}, encontrados={sorted(manifest_names)}"
-        )
 
-    artifact_count = 0
-    for name in sorted(MANIFEST_NAMES):
-        artifact_count += _audit_manifest(root, manifests / name, errors)
-
+def _audit_scientific_contracts(results: Path, errors: list[str]) -> None:
     comparison = _read_json(results / "comparacao" / "comparacao_autoencoders.json")
     if comparison.get("dataset", {}).get("dataset") != "GPVS-Faults":
         errors.append("a comparação não declara GPVS-Faults como dataset único")
@@ -114,6 +141,31 @@ def auditar_publicacao(root: Path | str = RAIZ_PROJETO) -> dict:
     physical_weibull = reliability.get("physical_weibull", {})
     if physical_weibull.get("beta") is not None or physical_weibull.get("eta") is not None:
         errors.append("a publicação fabricou parâmetros Weibull físicos")
+
+
+def auditar_publicacao(root: Path | str = RAIZ_PROJETO) -> dict:
+    """Retorna um relatório determinístico dos resultados publicados."""
+    root = Path(root).resolve()
+    results = root / "resultados"
+    manifests = results / "manifestos"
+    errors: list[str] = []
+
+    _audit_result_layout(results, errors)
+
+    manifest_names = {path.name for path in manifests.glob("*.json")}
+    if manifest_names != MANIFEST_NAMES:
+        errors.append(
+            "manifestos divergentes: "
+            f"esperados={sorted(MANIFEST_NAMES)}, encontrados={sorted(manifest_names)}"
+        )
+
+    artifact_count = 0
+    for name in sorted(SCIENTIFIC_MANIFEST_NAMES):
+        artifact_count += _audit_manifest(root, manifests / name, errors)
+    for name in sorted(EVALUATION_MANIFEST_NAMES):
+        _audit_retrieval_baseline(manifests / name, errors)
+
+    _audit_scientific_contracts(results, errors)
 
     return {
         "ok": not errors,

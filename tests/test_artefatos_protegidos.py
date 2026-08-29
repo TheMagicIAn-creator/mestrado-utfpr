@@ -39,15 +39,16 @@ def test_resultados_contem_somente_as_tres_pastas_canonicas():
     assert entradas == {"comparacao", "confiabilidade", "manifestos"}
 
 
-def test_manifestos_contem_somente_as_duas_execucoes_canonicas():
+def test_manifestos_contem_execucoes_cientificas_e_baseline_rag():
     assert {item.name for item in MANIFESTOS.iterdir()} == {
         "comparacao_autoencoders.json",
         "confiabilidade_componentes.json",
+        "evidence_rag_baseline_v1.json",
     }
 
 
 def test_auditoria_canonica_aprova_publicacao():
     relatorio = auditar_publicacao(RAIZ)
     assert relatorio["ok"], "\n".join(relatorio["errors"])
-    assert relatorio["manifests"] == 2
+    assert relatorio["manifests"] == 3
     assert relatorio["artifacts"] == 30
