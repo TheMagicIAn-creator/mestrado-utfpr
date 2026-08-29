@@ -758,34 +758,36 @@ function confusionFigure(item) {
 function renderE3(data) {
   const dense = data.metrics.ae_denso;
   const lstm = data.metrics.ae_lstm;
-  const diff = data.paired_differences.find((item) => item.metric === "auc_pr");
+  const diff = data.paired_differences.find((item) => item.metric === "recall");
   const rows = [
-    ["AUC-PR", dense.auc_pr, lstm.auc_pr],
-    ["AUC-ROC", dense.auc_roc, lstm.auc_roc],
-    ["Sensibilidade", dense.sensitivity, lstm.sensitivity],
+    ["Recall", dense.recall, lstm.recall],
+    ["F1", dense.f1, lstm.f1],
+    ["Precision", dense.precision, lstm.precision],
+    ["ROC-AUC (complementar)", dense.auc_roc, lstm.auc_roc],
+    ["PR-AUC (complementar)", dense.auc_pr, lstm.auc_pr],
     ["Especificidade", dense.specificity, lstm.specificity],
     ["Acurácia balanceada", dense.balanced_accuracy, lstm.balanced_accuracy],
     ["MCC", dense.mcc, lstm.mcc],
-    ["F1", dense.f1, lstm.f1],
+    ["Taxa de falso positivo", dense.false_positive_rate, lstm.false_positive_rate],
   ];
   return `
     <section class="summary-band">
       <h2>Autoencoder Denso × AE-LSTM</h2>
-      <p>Autoencoder Denso e AE-LSTM foram congelados antes dos 14 ensaios F1L–F7M. AUC-PR é a métrica principal e os IC95% usam o ensaio como unidade.</p>
+      <p>Autoencoder Denso e AE-LSTM foram congelados antes dos 14 ensaios F1L–F7M. Recall, F1 e Precision são as métricas principais; os IC95% usam o ensaio como unidade.</p>
       <div class="boundary-note"><i data-lucide="info"></i><span>${escapeHtml(data.dataset.fault_boundary.caveat)}</span></div>
     </section>
     <section class="metric-strip compact" aria-label="Síntese E3">
-      <div class="metric-item is-blue"><span>AUC-PR Denso</span><strong>${fmt(dense.auc_pr.estimate)}</strong><small>IC95% ${ci(dense.auc_pr)}</small></div>
-      <div class="metric-item is-amber"><span>AUC-PR AE-LSTM</span><strong>${fmt(lstm.auc_pr.estimate)}</strong><small>IC95% ${ci(lstm.auc_pr)}</small></div>
-      <div class="metric-item is-accent"><span>Diferença pareada</span><strong>${fmt(diff.difference_dense_minus_lstm)}</strong><small>IC95% ${fmt(diff.ci95_low)}–${fmt(diff.ci95_high)}</small></div>
+      <div class="metric-item is-blue"><span>Recall Denso</span><strong>${fmt(dense.recall.estimate)}</strong><small>IC95% ${ci(dense.recall)}</small></div>
+      <div class="metric-item is-amber"><span>Recall AE-LSTM</span><strong>${fmt(lstm.recall.estimate)}</strong><small>IC95% ${ci(lstm.recall)}</small></div>
+      <div class="metric-item is-accent"><span>Diferença pareada de Recall</span><strong>${fmt(diff.difference_dense_minus_lstm)}</strong><small>IC95% ${fmt(diff.ci95_low)}–${fmt(diff.ci95_high)}</small></div>
     </section>
     <section class="section-band">
       <div class="section-heading"><div><h2>Desempenho macro com IC95%</h2><p>Estimativas da semente pré-fixada 42, com 20.000 reamostragens no nível do ensaio.</p></div></div>
       <div class="academic-chart" data-chart="e3-metrics" aria-label="Comparação das métricas macro dos dois autoencoders"></div>
     </section>
     <section class="section-band">
-      <div class="section-heading"><div><h2>AUC-PR por ensaio</h2><p>Heterogeneidade das condições L e M, sem retreino ou recalibração.</p></div></div>
-      <div class="academic-chart" data-chart="e3-trials" aria-label="AUC-PR por ensaio para os dois autoencoders"></div>
+      <div class="section-heading"><div><h2>Recall por ensaio</h2><p>Heterogeneidade das condições L e M, sem retreino ou recalibração.</p></div></div>
+      <div class="academic-chart" data-chart="e3-trials" aria-label="Recall por ensaio para os dois autoencoders"></div>
     </section>
     <section class="section-band">
       <div class="section-heading"><div><h2>Curvas de discriminação</h2><p>Curvas agregadas por janela são descritivas; as estimativas acadêmicas permanecem macro por ensaio.</p></div></div>
@@ -800,8 +802,8 @@ function renderE3(data) {
     </section>
     <details class="method-details">
       <summary>Arquiteturas, limiares e tabela completa</summary>
-      <div class="table-wrap"><table class="data-table"><thead><tr><th>Modelo</th><th>Arquitetura</th><th class="numeric">Parâmetros</th><th class="numeric">Limiar p99</th><th class="numeric">FP saudável</th></tr></thead><tbody>
-        ${Object.entries(data.models).map(([_id, model]) => `<tr><td>${escapeHtml(model.name)}</td><td>${escapeHtml(model.architecture)}</td><td class="numeric">${Number(model.n_parameters).toLocaleString("pt-BR")}</td><td class="numeric">${fmt(model.score_threshold, 4)}</td><td class="numeric">${pct(model.healthy_test_false_positive_rate, 2)}</td></tr>`).join("")}
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>Modelo</th><th>Arquitetura</th><th class="numeric">Parâmetros</th><th class="numeric">Top-k</th><th class="numeric">Percentil solicitado / efetivo</th><th class="numeric">Limiar</th><th class="numeric">FP saudável</th></tr></thead><tbody>
+        ${Object.entries(data.models).map(([_id, model]) => `<tr><td>${escapeHtml(model.name)}</td><td>${escapeHtml(model.architecture)}</td><td class="numeric">${Number(model.n_parameters).toLocaleString("pt-BR")}</td><td class="numeric">${model.score_top_k}</td><td class="numeric">p${fmt(model.threshold_requested_percentile, 1)} / p${fmt(model.threshold_effective_percentile, 3)}</td><td class="numeric">${fmt(model.score_threshold, 4)}</td><td class="numeric">${pct(model.healthy_test_false_positive_rate, 2)}</td></tr>`).join("")}
       </tbody></table></div>
       <div class="table-wrap"><table class="data-table"><thead><tr><th>Métrica</th><th class="numeric">Autoencoder Denso</th><th class="numeric">AE-LSTM</th></tr></thead><tbody>${rows.map((row) => metricRow(...row)).join("")}</tbody></table></div>
     </details>

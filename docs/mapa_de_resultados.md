@@ -25,9 +25,10 @@ uma família autônoma de “resultados GPVS”.
 | Estabilidade em cinco sementes | `e3_estabilidade_sementes.csv` |
 | Diferenças pareadas | `e3_diferencas_pareadas.csv` |
 
-AUC-PR é a métrica principal. O bootstrap usa o ensaio como unidade de
-reamostragem. Cada modelo mantém seu próprio limiar p99, aprendido antes dos
-ensaios de falha.
+Recall, F1 e Precision são as métricas principais; ROC-AUC e PR-AUC são
+complementares. O bootstrap usa o ensaio como unidade de reamostragem. Cada
+modelo mantém seu próprio limiar p99,9 solicitado, aprendido antes dos ensaios
+de falha, com ordem estatística, percentil efetivo e resolução registrados.
 
 ## Confiabilidade e manutenção
 

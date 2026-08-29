@@ -94,15 +94,16 @@ def test_e3_publica_apenas_denso_e_lstm_no_gpvs(client):
     response = client.get("/api/results/e3")
     assert response.status_code == 200
     data = response.json()
-    assert data["contract_version"] == 2
+    assert data["contract_version"] == 3
     assert data["dataset"]["name"] == "GPVS-Faults"
     assert set(data["models"]) == {"ae_denso", "ae_lstm"}
-    assert data["primary_metric"] == "auc_pr"
+    assert data["primary_metrics"] == ["recall", "f1", "precision"]
+    assert data["complementary_metrics"] == ["auc_roc", "auc_pr"]
     assert data["metrics"]["ae_denso"]["auc_pr"]["estimate"] == pytest.approx(
-        0.8607589231887786
+        0.8618504150911235
     )
     assert data["metrics"]["ae_lstm"]["auc_pr"]["estimate"] == pytest.approx(
-        0.8409618301937369
+        0.8411642809389649
     )
     assert len(data["trials"]) == 28
     assert len(data["confusion_matrices"]) == 2
@@ -154,7 +155,7 @@ def test_contratos_cientificos_grandes_sao_comprimidos(client):
     )
     assert response.status_code == 200
     assert response.headers["content-encoding"] == "gzip"
-    assert response.json()["contract_version"] == 2
+    assert response.json()["contract_version"] == 3
 
 
 def test_fontes_expoem_dataset_pdf_e_manifestos(client):
@@ -706,8 +707,10 @@ def test_contexto_cientifico_reconcilia_comparacao_e_confiabilidade():
         "Compare o autoencoder denso com o AE-LSTM e explique a taxa de falha"
     )
     assert context is not None
-    assert "0.860759" in context
-    assert "0.840962" in context
+    assert "0.384146" in context
+    assert "0.386702" in context
+    assert "0.861850" in context
+    assert "0.841164" in context
     assert "2.170e-06 h^-1" in context
     assert "SMD95" not in context
     assert "a_det" not in context

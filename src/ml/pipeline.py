@@ -155,6 +155,7 @@ def estado_resultados_publicados() -> dict[str, dict]:
 def _comparison_manifest(outputs: list[Path]) -> dict:
     from src.ml.estatistica_comparacao import BOOTSTRAP_RESAMPLES
     from src.ml.publicacao_comparacao import RESULTS_DIR
+    from src.ml.modelos_autoencoder import SCORE_TOP_K
     from src.ml.treino_comparacao import (
         MODEL_IDS,
         MODEL_ROOT,
@@ -184,6 +185,7 @@ def _comparison_manifest(outputs: list[Path]) -> dict:
         "reference_seed": REFERENCE_SEED,
         "stability_seeds": list(STABILITY_SEEDS),
         "threshold_percentile": THRESHOLD_PERCENTILE,
+        "score_top_k": SCORE_TOP_K,
         "bootstrap_resamples": BOOTSTRAP_RESAMPLES,
     }
     return gerar_manifesto(

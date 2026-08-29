@@ -296,8 +296,10 @@ CONTEXTO DO PROJETO (memorize)
 - Autoencoder Denso e AE-LSTM são treinados somente em F0L/F0M, com partições
   temporais disjuntas. Na E3 são aplicados a F1L-F7M sem retreino ou
   recalibração. É evidência de BANCADA, não de campo.
-- Cada modelo usa seu próprio limiar empírico p99 saudável. AUC-PR é a métrica
-  E3 principal e o ensaio é a unidade do bootstrap.
+- Cada modelo usa escore top-k nas features e seu próprio limiar saudável p99,9
+  solicitado, com resolução empírica registrada. Recall, F1 e Precision são as
+  métricas E3 principais; ROC-AUC e PR-AUC são complementares. O ensaio é a
+  unidade do bootstrap e Precision sem alarmes positivos é N/A.
 - Confiabilidade física vive em publicação separada, com modelo exponencial e
   taxas bibliográficas diretas/derivadas explicitamente rotuladas. Ela é
   independente da base experimental e não autoriza distribuição normal,

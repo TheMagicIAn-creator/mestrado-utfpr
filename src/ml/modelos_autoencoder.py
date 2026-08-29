@@ -27,6 +27,7 @@ DENSE_HIDDEN = 16
 LATENT_DIM = 8
 LSTM_HIDDEN = 32
 SEQUENCE_LENGTH = 8
+SCORE_TOP_K = 5
 LEARNING_RATE = 1e-3
 MAX_EPOCHS = 150
 PATIENCE = 20
@@ -249,18 +250,58 @@ def train_lstm(
     return model, history
 
 
-def score_dense(model, values: np.ndarray, *, device=None) -> np.ndarray:
+def _top_k_feature_mse(reconstructed, target, *, top_k: int):
+    """Média dos ``k`` maiores erros quadráticos no eixo de features."""
+
+    if reconstructed.shape != target.shape:
+        raise ValueError("Reconstrução e alvo devem possuir o mesmo shape")
+    n_features = int(target.shape[-1])
+    if isinstance(top_k, bool) or int(top_k) != top_k:
+        raise ValueError("top_k deve ser um número inteiro")
+    normalized_k = int(top_k)
+    if not 1 <= normalized_k <= n_features:
+        raise ValueError(f"top_k deve estar entre 1 e {n_features}")
+    squared_error = (reconstructed - target) ** 2
+    largest = torch.topk(
+        squared_error,
+        k=normalized_k,
+        dim=-1,
+        largest=True,
+        sorted=False,
+    ).values
+    return largest.mean(dim=-1)
+
+
+def score_dense(
+    model,
+    values: np.ndarray,
+    *,
+    top_k: int = SCORE_TOP_K,
+    device=None,
+) -> np.ndarray:
+    """Escore localizado nas ``top_k`` features de cada janela."""
+
     _require_torch()
     device = device or next(model.parameters()).device
     tensor = torch.as_tensor(values, dtype=torch.float32, device=device)
     model.eval()
     with torch.no_grad():
         reconstructed = model(tensor)
-        return ((reconstructed - tensor) ** 2).mean(dim=1).cpu().numpy()
+        return _top_k_feature_mse(
+            reconstructed,
+            tensor,
+            top_k=top_k,
+        ).cpu().numpy()
 
 
-def score_lstm(model, sequences: np.ndarray, *, device=None) -> np.ndarray:
-    """MSE do último passo: janela atual condicionada ao histórico temporal."""
+def score_lstm(
+    model,
+    sequences: np.ndarray,
+    *,
+    top_k: int = SCORE_TOP_K,
+    device=None,
+) -> np.ndarray:
+    """Top-k no último passo, condicionado ao histórico temporal da sequência."""
 
     _require_torch()
     device = device or next(model.parameters()).device
@@ -268,9 +309,11 @@ def score_lstm(model, sequences: np.ndarray, *, device=None) -> np.ndarray:
     model.eval()
     with torch.no_grad():
         reconstructed = model(tensor)
-        return (
-            (reconstructed[:, -1, :] - tensor[:, -1, :]) ** 2
-        ).mean(dim=1).cpu().numpy()
+        return _top_k_feature_mse(
+            reconstructed[:, -1, :],
+            tensor[:, -1, :],
+            top_k=top_k,
+        ).cpu().numpy()
 
 
 def sequences_from_flow(values: np.ndarray, length: int = SEQUENCE_LENGTH) -> np.ndarray:
@@ -348,6 +391,7 @@ __all__ = [
     "MAX_EPOCHS",
     "PATIENCE",
     "SEQUENCE_LENGTH",
+    "SCORE_TOP_K",
     "TrainingHistory",
     "parameter_count",
     "score_dense",

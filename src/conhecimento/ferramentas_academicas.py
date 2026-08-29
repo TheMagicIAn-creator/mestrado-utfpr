@@ -141,7 +141,8 @@ def comparar_abordagens_ml(progresso=None, pergunta: str = "") -> dict:
 | Literatura de confiabilidade | modelo exponencial | cenário bibliográfico | `R(t)`, `F(t)`, `f(t)` e `h(t)` no tempo físico |
 
 O Autoencoder Denso e o AE-LSTM usam as mesmas 24 features, partições, sementes
-e orçamento de treino. AUC-PR é a métrica E3 principal. Os cenários físicos
+e orçamento de treino. Recall, F1 e Precision são as métricas E3 principais;
+ROC-AUC e PR-AUC são complementares. Os cenários físicos
 usam somente taxas bibliográficas diretas ou derivadas e não são inferidos da
 base experimental.
 """

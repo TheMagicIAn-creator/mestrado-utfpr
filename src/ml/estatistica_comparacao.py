@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import numpy as np
 from sklearn.metrics import (
-    average_precision_score,
+    auc,
     balanced_accuracy_score,
     confusion_matrix,
     f1_score,
     matthews_corrcoef,
-    precision_score,
-    recall_score,
+    precision_recall_curve,
     roc_auc_score,
 )
 
@@ -18,15 +17,16 @@ from sklearn.metrics import (
 BOOTSTRAP_RESAMPLES = 20_000
 BOOTSTRAP_SEED = 20260815
 METRIC_NAMES = (
-    "auc_pr",
-    "auc_roc",
-    "sensitivity",
-    "specificity",
-    "balanced_accuracy",
-    "mcc",
+    "recall",
     "f1",
     "precision",
+    "auc_roc",
+    "auc_pr",
     "false_positive_rate",
+    "specificity",
+    "sensitivity",
+    "balanced_accuracy",
+    "mcc",
 )
 
 
@@ -57,17 +57,19 @@ def bootstrap_mean(
     *,
     seed: int,
     n_resamples: int = BOOTSTRAP_RESAMPLES,
-) -> tuple[float, float, float]:
+) -> tuple[float, float, float, int]:
     data = np.asarray(values, dtype=float)
-    if not len(data) or not np.isfinite(data).all():
-        return float("nan"), float("nan"), float("nan")
+    finite = data[np.isfinite(data)]
+    if not len(finite):
+        return float("nan"), float("nan"), float("nan"), 0
     rng = np.random.default_rng(int(seed))
-    indices = rng.integers(0, len(data), size=(int(n_resamples), len(data)))
-    means = data[indices].mean(axis=1)
+    indices = rng.integers(0, len(finite), size=(int(n_resamples), len(finite)))
+    means = finite[indices].mean(axis=1)
     return (
-        float(data.mean()),
+        float(finite.mean()),
         float(np.percentile(means, 2.5)),
         float(np.percentile(means, 97.5)),
+        int(len(finite)),
     )
 
 
@@ -88,10 +90,13 @@ def binary_metrics(
     tn, fp, fn, tp = confusion_matrix(target, prediction, labels=(0, 1)).ravel()
     sensitivity = tp / max(tp + fn, 1)
     specificity = tn / max(tn + fp, 1)
+    predicted_positive = int(tp + fp)
+    precision = float(tp / predicted_positive) if predicted_positive else float("nan")
     sensitivity_ci = wilson_interval(int(tp), int(tp + fn))
     specificity_ci = wilson_interval(int(tn), int(tn + fp))
+    curve_precision, curve_recall, _ = precision_recall_curve(target, values)
     return {
-        "auc_pr": float(average_precision_score(target, values)),
+        "auc_pr": float(auc(curve_recall, curve_precision)),
         "auc_roc": float(roc_auc_score(target, values)),
         "sensitivity": float(sensitivity),
         "sensitivity_ci95_low": sensitivity_ci[0],
@@ -102,8 +107,9 @@ def binary_metrics(
         "balanced_accuracy": float(balanced_accuracy_score(target, prediction)),
         "mcc": float(matthews_corrcoef(target, prediction)),
         "f1": float(f1_score(target, prediction, zero_division=0)),
-        "precision": float(precision_score(target, prediction, zero_division=0)),
-        "recall": float(recall_score(target, prediction, zero_division=0)),
+        "precision": precision,
+        "precision_defined": bool(predicted_positive),
+        "recall": float(sensitivity),
         "false_positive_rate": float(fp / max(fp + tn, 1)),
         "tn": int(tn),
         "fp": int(fp),

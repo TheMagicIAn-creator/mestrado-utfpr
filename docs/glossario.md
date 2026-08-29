@@ -24,9 +24,14 @@ ensaio. Os nomes dos ensaios vêm do dataset e não significam frequência.
 
 - **Autoencoder Denso:** arquitetura `24-16-8-16-24`.
 - **AE-LSTM:** modelo temporal com sequência 8, oculto 32 e latente 8.
-- **Limiar p99:** percentil empírico próprio de cada modelo na calibração saudável.
+- **Escore top-k:** média dos `k=5` maiores erros quadráticos por feature; no
+  AE-LSTM, calculada no último passo temporal.
+- **Limiar p99,9:** percentil solicitado próprio de cada modelo na calibração
+  saudável; o contrato também informa o percentil empírico efetivamente
+  realizável.
 - **E3 de bancada:** avaliação dos modelos congelados nos 14 ensaios F1L-F7M.
-- **AUC-PR:** métrica principal da comparação.
+- **Recall, F1 e Precision:** métricas principais da comparação.
+- **ROC-AUC e PR-AUC:** métricas complementares de discriminação.
 - **Bootstrap por ensaio:** reamostragem cuja unidade é o ensaio, não cada janela.
 
 ## Confiabilidade física

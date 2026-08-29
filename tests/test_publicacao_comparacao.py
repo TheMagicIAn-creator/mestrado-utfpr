@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
@@ -36,12 +37,20 @@ def test_contrato_publicado_e_canonico():
     assert payload["dataset"]["active_dataset_count"] == 1
     assert len(payload["dataset"]["experiments"]) == 16
     assert payload["e3"]["evidence_level"] == "E3_bench"
-    assert payload["e3"]["primary_metric"] == "auc_pr"
+    assert payload["e3"]["primary_metrics"] == ["recall", "f1", "precision"]
+    assert payload["e3"]["complementary_metrics"] == ["auc_roc", "auc_pr"]
     assert payload["e3"]["confusion_matrix_unit"] == "window_descriptive_only"
     assert "e2" not in payload
     assert "GPVS-Faults" not in payload["title"]
     assert {item["stability_seeds"][0] for item in payload["models"].values()} == {13}
     assert all(item["stability_seeds"] == SEEDS for item in payload["models"].values())
+    for model in payload["models"].values():
+        assert model["score_top_k"] == 5
+        assert model["score_dimension"] == "feature"
+        assert model["threshold_requested_percentile"] == 99.9
+        assert model["threshold_effective_percentile"] == 100.0
+        assert model["threshold_selected_rank"] == model["calibration_n"] == 210
+        assert model["threshold_percentile_resolution"] == pytest.approx(100 / 210)
 
 
 @pytest.mark.integracao
@@ -51,7 +60,7 @@ def test_contrato_publicado_e_json_estrito():
         parse_constant=_reject_non_finite,
     )
     assert set(payload["models"]) == MODELS
-    assert payload["e3"]["primary_metric"] == "auc_pr"
+    assert payload["e3"]["primary_metrics"] == ["recall", "f1", "precision"]
 
 
 def test_publicador_converte_nao_finitos_para_null(tmp_path):
@@ -68,6 +77,43 @@ def test_publicador_converte_nao_finitos_para_null(tmp_path):
     assert payload == {"nan": None, "infinito": None}
 
 
+def test_relatorio_deriva_tabelas_do_contrato_publicado(tmp_path):
+    from src.ml.publicacao_comparacao import _write_report
+
+    payload = _json(RESULTS / "comparacao_autoencoders.json")
+    report = _write_report(payload, tmp_path / "relatorio.md")
+    text = report.read_text(encoding="utf-8")
+
+    assert "Recall | F1 | Precision | ROC-AUC | PR-AUC" in text
+    assert "Matrizes de confusão agregadas" in text
+    assert "Percentil efetivo" in text
+
+
+def test_publicador_rejeita_configuracao_desigual_entre_modelos(monkeypatch, tmp_path):
+    import src.ml.publicacao_comparacao as publication
+
+    monkeypatch.setattr(publication, "RESULTS_DIR", tmp_path)
+    runs = {
+        "ae_denso": [
+            SimpleNamespace(
+                seed=42,
+                score_top_k=5,
+                threshold_calibration=SimpleNamespace(requested_percentile=99.9),
+            )
+        ],
+        "ae_lstm": [
+            SimpleNamespace(
+                seed=42,
+                score_top_k=4,
+                threshold_calibration=SimpleNamespace(requested_percentile=99.9),
+            )
+        ],
+    }
+
+    with pytest.raises(ValueError, match="mesmo percentil e top-k"):
+        publication.save_results({}, object(), runs, {}, seeds=(42,))
+
+
 @pytest.mark.integracao
 def test_tabelas_e3_reconciliam():
     scenarios = pd.read_csv(RESULTS / "e3_metricas_por_ensaio.csv")
@@ -77,8 +123,16 @@ def test_tabelas_e3_reconciliam():
 
     assert len(scenarios) == 14 * len(MODELS) * len(SEEDS)
     assert set(scenarios["seed"]) == set(SEEDS)
-    assert len(stability) == len(MODELS) * len(SEEDS) * 9
+    assert len(stability) == len(MODELS) * len(SEEDS) * 10
     assert confusion["unit"].eq("window_descriptive_only").all()
+    assert confusion["normalization"].eq("within_actual_class").all()
+    np_columns = {
+        "tn_rate_actual_healthy",
+        "fp_rate_actual_healthy",
+        "fn_rate_actual_fault",
+        "tp_rate_actual_fault",
+    }
+    assert np_columns.issubset(confusion.columns)
     score_counts = scores.groupby("model").size()
     for row in confusion.itertuples(index=False):
         assert row.tn + row.fp + row.fn + row.tp == score_counts[row.model]
@@ -90,6 +144,8 @@ def test_manifesto_reconcilia_os_16_outputs():
 
     assert manifest["manifest_version"] == 2
     assert manifest["parameters"]["stability_seeds"] == SEEDS
+    assert manifest["parameters"]["threshold_percentile"] == 99.9
+    assert manifest["parameters"]["score_top_k"] == 5
     assert "e2_steps" not in manifest["parameters"]
     assert manifest["evidence_level"] == "E3_bench"
     assert len(manifest["outputs"]) == 16

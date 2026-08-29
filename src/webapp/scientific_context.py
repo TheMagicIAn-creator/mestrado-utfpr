@@ -44,10 +44,12 @@ _COMPARISON_TERMS = (
 
 def _metric(metrics: dict, name: str) -> str:
     item = metrics[name]
+    if item["estimate"] is None:
+        return f"N/A (n válido={item['n_valid_experiments']})"
     return (
         f"{item['estimate']:.6f} "
         f"(IC95% {item['ci95_low']:.6f} a {item['ci95_high']:.6f}; "
-        f"n={item['n_experiments']})"
+        f"n válido={item['n_valid_experiments']}/{item['n_experiments']})"
     )
 
 
@@ -58,7 +60,7 @@ def _comparison_context() -> str:
     dense = e3["metrics"]["ae_denso"]
     lstm = e3["metrics"]["ae_lstm"]
     difference = next(
-        item for item in e3["paired_differences"] if item["metric"] == "auc_pr"
+        item for item in e3["paired_differences"] if item["metric"] == "recall"
     )
     return "\n".join(
         (
@@ -68,18 +70,28 @@ def _comparison_context() -> str:
             "dataset identifica a proveniência; os resultados pertencem aos modelos.",
             "Modelos congelados antes dos ensaios: Autoencoder Denso "
             "24-16-8-16-24 e AE-LSTM temporal L=8, hidden=32, latent=8.",
-            f"AUC-PR macro do Denso: {_metric(dense, 'auc_pr')}.",
-            f"AUC-PR macro do AE-LSTM: {_metric(lstm, 'auc_pr')}.",
-            "Diferença pareada Denso menos LSTM em AUC-PR: "
+            "Métricas principais na ordem definida pelo pesquisador: Recall, F1 e "
+            "Precision. Precision é N/A quando não há alarmes positivos.",
+            f"Recall macro do Denso: {_metric(dense, 'recall')}.",
+            f"Recall macro do AE-LSTM: {_metric(lstm, 'recall')}.",
+            f"F1 macro do Denso: {_metric(dense, 'f1')}; "
+            f"AE-LSTM: {_metric(lstm, 'f1')}.",
+            f"Precision macro do Denso: {_metric(dense, 'precision')}; "
+            f"AE-LSTM: {_metric(lstm, 'precision')}.",
+            "Diferença pareada Denso menos LSTM em Recall: "
             f"{difference['difference_dense_minus_lstm']:.6f} "
             f"(IC95% {difference['ci95_low']:.6f} a "
             f"{difference['ci95_high']:.6f}; n=14 ensaios).",
-            f"AUC-ROC do Denso: {_metric(dense, 'auc_roc')}; "
+            "Métricas complementares de discriminação: "
+            f"ROC-AUC do Denso: {_metric(dense, 'auc_roc')}; "
             f"AE-LSTM: {_metric(lstm, 'auc_roc')}.",
-            f"Sensibilidade do Denso: {_metric(dense, 'sensitivity')}; "
-            f"AE-LSTM: {_metric(lstm, 'sensitivity')}.",
+            f"PR-AUC do Denso: {_metric(dense, 'auc_pr')}; "
+            f"AE-LSTM: {_metric(lstm, 'auc_pr')}.",
             f"Especificidade do Denso: {_metric(dense, 'specificity')}; "
             f"AE-LSTM: {_metric(lstm, 'specificity')}.",
+            "Escore: média dos cinco maiores erros quadráticos por feature; no "
+            "AE-LSTM, somente no último passo. Limiar saudável p99,9 solicitado, "
+            "com order statistic e percentil efetivo registrados por modelo.",
             "Não apresente métricas como resultados autônomos do dataset. "
             "Elas comparam exclusivamente os dois detectores.",
         )

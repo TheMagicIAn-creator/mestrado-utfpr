@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 from src.core.config import RAIZ_PROJETO
@@ -26,7 +27,7 @@ def _json(path: Path) -> dict:
 
 
 def _fmt(value, digits: int = 3) -> str:
-    if not isinstance(value, (int, float)):
+    if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
         return "não disponível"
     return f"{float(value):.{digits}f}".replace(".", ",")
 
@@ -89,18 +90,18 @@ def _e3_summary(payload: dict) -> str:
     lines = [
         "## Comparação Denso versus AE-LSTM: 14 ensaios experimentais",
         "",
-        "| Modelo | AUC-PR (IC95%) | ROC-AUC | Sensibilidade | Especificidade | MCC | F1 |",
+        "| Modelo | Recall (IC95%) | F1 | Precision | ROC-AUC | PR-AUC | FP saudável |",
         "|---|---:|---:|---:|---:|---:|---:|",
     ]
     for model_id in MODEL_LABELS:
-        auc = rows.get((model_id, "auc_pr"), {})
+        recall = rows.get((model_id, "recall"), {})
         values = [
             rows.get((model_id, metric), {}).get("estimate")
-            for metric in ("auc_roc", "sensitivity", "specificity", "mcc", "f1")
+            for metric in ("f1", "precision", "auc_roc", "auc_pr", "false_positive_rate")
         ]
         interval = (
-            f"{_fmt(auc.get('estimate'))} "
-            f"({_fmt(auc.get('ci95_low'))}-{_fmt(auc.get('ci95_high'))})"
+            f"{_fmt(recall.get('estimate'))} "
+            f"({_fmt(recall.get('ci95_low'))}-{_fmt(recall.get('ci95_high'))})"
         )
         lines.append(
             f"| {MODEL_LABELS[model_id]} | {interval} | "
@@ -112,18 +113,20 @@ def _e3_summary(payload: dict) -> str:
         (
             row
             for row in payload.get("e3", {}).get("paired_differences", [])
-            if row.get("metric") == "auc_pr"
+            if row.get("metric") == "recall"
         ),
         {},
     )
     lines.extend(
         [
             "",
-            "AUC-PR é a métrica principal. A diferença pareada Denso menos AE-LSTM foi "
+            "Recall, F1 e Precision são as métricas principais. Para Recall, a diferença "
+            "pareada Denso menos AE-LSTM foi "
             f"{_fmt(paired.get('difference_dense_minus_lstm'))} "
             f"(IC95% {_fmt(paired.get('ci95_low'))}-{_fmt(paired.get('ci95_high'))}).",
             "Os intervalos usam o ensaio como unidade de bootstrap; pesos, scaler e "
-            "limiares permaneceram congelados nos 14 ensaios de falha.",
+            "limiares permaneceram congelados nos 14 ensaios de falha. ROC-AUC e "
+            "PR-AUC são complementares; Precision sem alarmes positivos é N/A.",
         ]
     )
     return "\n".join(lines)
