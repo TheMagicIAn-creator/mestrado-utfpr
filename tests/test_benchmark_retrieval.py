@@ -98,6 +98,7 @@ def test_carregar_e_validar_snapshot(tmp_path: Path, monkeypatch):
         "tipo": "chunk_indice_portatil",
         "id": CHUNK_ID,
         "documento": "trecho",
+        "embedding": [0.1, 0.2],
         "metadata": {
             "arquivo_hash": DOCUMENT_ID,
             "arquivo": "fonte.pdf",
@@ -253,6 +254,62 @@ def test_executar_benchmark_calcula_metricas_e_abstencao_futura(monkeypatch):
     assert resultado["retrieval"]["warmup_ms"] == 100.0
     assert resultado["queries"][1]["metrics"] == {}
     assert resultado["git_revision"] == "abc123"
+
+
+def test_comparacao_r2_exige_metricas_e_ranking_idênticos(monkeypatch):
+    recuperado = {
+        "rank": 1,
+        "chunk_id": CHUNK_ID,
+        "document_id": DOCUMENT_ID,
+        "file": "fonte.pdf",
+        "pages": [7],
+        "rrf_score": 0.1,
+        "context_chars": 120,
+    }
+    monkeypatch.setattr(
+        benchmark,
+        "recuperar_baseline",
+        lambda *args, **kwargs: [recuperado],
+    )
+    baseline = benchmark.executar_benchmark(
+        _gold(),
+        modelo_embeddings="modelo",
+        colecao=_Colecao(),
+        indice_lexical=_Lexical(),
+        manifesto_snapshot=_manifesto(),
+        relogio=lambda: 0.0,
+        warmup=False,
+    )
+    manifesto_v2 = {
+        **_manifesto(),
+        "schema_version": 2,
+        "retrieval_text_strategy": "identity_raw_text",
+        "hash_conteudo_retrieval_sha256": "c" * 64,
+    }
+    candidato = benchmark.executar_benchmark(
+        _gold(),
+        modelo_embeddings="modelo",
+        colecao=_Colecao(),
+        indice_lexical=_Lexical(),
+        manifesto_snapshot=manifesto_v2,
+        relogio=lambda: 0.0,
+        warmup=False,
+        benchmark_id="evidence-rag-r2-schema-v2",
+        stage="R2",
+        variant="jsonl_schema_v2_identity",
+    )
+
+    comparacao = benchmark.comparar_benchmarks(baseline, candidato)
+
+    assert comparacao["corpus_identity_preserved"] is True
+    assert comparacao["ranking_contract_preserved"] is True
+    assert comparacao["scientific_metrics_identical"] is True
+    assert comparacao["metrics"]["recall@5"]["delta"] == 0.0
+    assert candidato["retrieval"]["raw_text_separated_from_retrieval_text"] is True
+    candidato["comparison_to_baseline"] = comparacao
+    relatorio = benchmark.relatorio_markdown(candidato)
+    assert "Comparação baseline x candidato" in relatorio
+    assert "Gate R2: APROVADO" in relatorio
 
 
 def test_relatorio_markdown_explicita_estado_provisorio(monkeypatch):

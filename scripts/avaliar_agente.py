@@ -101,10 +101,17 @@ def main() -> int:
         "--git-revision",
         help="Revisão do algoritmo baseline avaliado.",
     )
+    parser.add_argument(
+        "--baseline-result",
+        type=Path,
+        default=RAIZ / "resultados" / "manifestos" / "evidence_rag_baseline_v1.json",
+        help="Resultado R0-R1 usado para medir regressões de candidatos posteriores.",
+    )
     args = parser.parse_args()
 
     if args.benchmark_retrieval:
         from src.conhecimento.benchmark_retrieval import (
+            comparar_benchmarks,
             executar_baseline_local,
             relatorio_markdown,
         )
@@ -124,6 +131,23 @@ def main() -> int:
             snapshot,
             git_revision=args.git_revision,
         )
+        comparison_ok = True
+        if report.get("stage") == "R2":
+            baseline_path = resolver_caminho_no_projeto(
+                args.baseline_result,
+                deve_existir=True,
+            )
+            baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+            comparacao = comparar_benchmarks(baseline, report)
+            report["comparison_to_baseline"] = comparacao
+            comparison_ok = all(
+                comparacao[campo]
+                for campo in (
+                    "corpus_identity_preserved",
+                    "ranking_contract_preserved",
+                    "scientific_metrics_identical",
+                )
+            )
         serialized = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
         if output_json:
             output_json.parent.mkdir(parents=True, exist_ok=True)
@@ -142,7 +166,7 @@ def main() -> int:
                 indent=2,
             )
         )
-        return 0
+        return 0 if comparison_ok else 1
 
     report = run()
     serialized = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
