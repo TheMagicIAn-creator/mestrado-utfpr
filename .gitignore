@@ -30,9 +30,6 @@ __pycache__/
 venv_mestrado/
 .venv/
 *.egg-info/
-.coverage
-coverage.xml
-htmlcov/
 
 # ========================
 # JUPYTER
