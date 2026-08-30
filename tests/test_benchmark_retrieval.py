@@ -304,7 +304,12 @@ def test_comparacao_r2_exige_metricas_e_ranking_idênticos(monkeypatch):
     assert comparacao["corpus_identity_preserved"] is True
     assert comparacao["ranking_contract_preserved"] is True
     assert comparacao["scientific_metrics_identical"] is True
+    assert comparacao["metrics"]["recall@5"]["delta"] == 0.0
     assert candidato["retrieval"]["raw_text_separated_from_retrieval_text"] is True
+    candidato["comparison_to_baseline"] = comparacao
+    relatorio = benchmark.relatorio_markdown(candidato)
+    assert "Comparação baseline x candidato" in relatorio
+    assert "Gate R2: APROVADO" in relatorio
 
 
 def test_relatorio_markdown_explicita_estado_provisorio(monkeypatch):

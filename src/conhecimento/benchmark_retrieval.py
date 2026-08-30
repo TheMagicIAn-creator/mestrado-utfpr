@@ -615,6 +615,14 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
         )
         for metrica in METRICAS_RETRIEVAL_COMPARAVEIS
     }
+    metricas = {
+        metrica: {
+            "baseline": resumo_base[metrica],
+            "candidate": resumo_candidato[metrica],
+            "delta": deltas[metrica],
+        }
+        for metrica in METRICAS_RETRIEVAL_COMPARAVEIS
+    }
     campos_ranking = (
         "fusion",
         "rrf_constant",
@@ -640,6 +648,7 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
         "corpus_identity_preserved": corpus_inalterado,
         "ranking_contract_preserved": ranking_inalterado,
         "scientific_metrics_identical": all(valor == 0.0 for valor in deltas.values()),
+        "metrics": metricas,
         "metric_deltas": deltas,
         "latency_ms": {
             "baseline_mean": resumo_base["latency_ms_mean"],
@@ -647,6 +656,43 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
             "informational_only": True,
         },
     }
+
+
+def _linhas_comparacao(resultado: dict) -> list[str]:
+    comparacao = resultado.get("comparison_to_baseline")
+    if not comparacao:
+        return []
+    linhas = [
+        "## Comparação baseline x candidato",
+        "",
+        "| Métrica | R0–R1 | R2 | Delta |",
+        "|---|---:|---:|---:|",
+    ]
+    for metrica, valores in comparacao["metrics"].items():
+        linhas.append(
+            f"| {metrica} | {float(valores['baseline']):.6f} | "
+            f"{float(valores['candidate']):.6f} | {float(valores['delta']):+.6f} |"
+        )
+    aprovado = all(
+        comparacao[campo]
+        for campo in (
+            "corpus_identity_preserved",
+            "ranking_contract_preserved",
+            "scientific_metrics_identical",
+        )
+    )
+    linhas.extend(
+        [
+            "",
+            f"- Identidade do corpus preservada: {str(comparacao['corpus_identity_preserved']).lower()}.",
+            f"- Contrato de ranking preservado: {str(comparacao['ranking_contract_preserved']).lower()}.",
+            f"- Métricas científicas idênticas: {str(comparacao['scientific_metrics_identical']).lower()}.",
+            "- Latência é informativa e não participa do gate científico de R2.",
+            f"- Gate R2: {'APROVADO' if aprovado else 'REPROVADO'}.",
+            "",
+        ]
+    )
+    return linhas
 
 
 def relatorio_markdown(resultado: dict) -> str:
@@ -748,6 +794,7 @@ def relatorio_markdown(resultado: dict) -> str:
         "frequentemente localiza a fonte correta, mas não a passagem citável correta. "
         "O Recall por chunk exato permanece como controle estrito das fronteiras de segmentação.",
         "",
+        *_linhas_comparacao(resultado),
         "## Diagnóstico por categoria",
         "",
         "| Categoria | Perguntas | Recall página@5 | Recall documento@5 | Latência média (ms) |",
