@@ -209,6 +209,15 @@ def test_cli_contextualiza_snapshot_r3_sem_promover_indice(
         "promovido": False,
     }
 
+    assert manter_base.contextualizar_literatura_r3(None, tamanho_lote=3) == 0
+    assert chamadas["destino"] == (
+        manter_base.RAIZ
+        / "artefatos"
+        / "candidatos"
+        / "literatura_contextual_r3.jsonl.gz"
+    )
+    assert chamadas["tamanho_lote"] == 3
+
 
 def test_cli_expõe_comando_contextual_r3(monkeypatch, tmp_path):
     from scripts import manter_base
