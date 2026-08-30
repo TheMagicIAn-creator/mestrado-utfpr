@@ -537,7 +537,11 @@ def atualizar_metadados_snapshot(
     }
 
 
-def _extrair_lote_exportacao(colecao, offset: int, tamanho_lote: int) -> tuple:
+def _extrair_lote_exportacao(
+    colecao,
+    offset: int,
+    tamanho_lote: int,
+) -> list[tuple]:
     lote = colecao.get(
         limit=tamanho_lote,
         offset=offset,
@@ -556,7 +560,7 @@ def _extrair_lote_exportacao(colecao, offset: int, tamanho_lote: int) -> tuple:
             f"ids={tamanhos[0]}, docs={tamanhos[1]}, "
             f"metadados={tamanhos[2]}, embeddings={tamanhos[3]}."
         )
-    return zip(ids, documentos, metadados, embeddings)
+    return list(zip(ids, documentos, metadados, embeddings))
 
 
 def _preparar_registro_exportacao(
