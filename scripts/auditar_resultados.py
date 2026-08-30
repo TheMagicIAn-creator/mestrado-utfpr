@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -74,6 +75,92 @@ def _audit_manifest(root: Path, path: Path, errors: list[str]) -> int:
     return checked
 
 
+def _audit_retrieval_identity(
+    manifest: dict,
+    errors: list[str],
+    *,
+    path: Path,
+    expected_stage: str,
+    expected_variant: str,
+) -> None:
+    if manifest.get("schema_version") != 1:
+        errors.append(f"{path.name}: schema_version deve ser 1")
+    if (
+        manifest.get("stage") != expected_stage
+        or manifest.get("variant") != expected_variant
+    ):
+        errors.append(f"{path.name}: etapa ou variante de retrieval inválida")
+
+
+def _audit_retrieval_gold(manifest: dict, errors: list[str], path: Path) -> None:
+    gold = manifest.get("gold_set", {})
+    if gold.get("status") != "provisional_pending_researcher_review":
+        errors.append(f"{path.name}: gold set não está marcado como provisório")
+    if gold.get("researcher_review_required_at") != "R6":
+        errors.append(f"{path.name}: revisão humana R6 não está registrada")
+
+
+def _audit_retrieval_corpus(
+    manifest: dict,
+    errors: list[str],
+    path: Path,
+    expected_snapshot_schema: int | None,
+) -> None:
+    corpus = manifest.get("corpus", {})
+    if (
+        expected_snapshot_schema is not None
+        and corpus.get("snapshot_schema_version") != expected_snapshot_schema
+    ):
+        errors.append(f"{path.name}: schema do snapshot divergente")
+    if corpus.get("n_documents") != 44 or corpus.get("n_chunks") != 12556:
+        errors.append(f"{path.name}: inventário do corpus divergente")
+    if corpus.get("collection_count") != corpus.get("n_chunks"):
+        errors.append(f"{path.name}: coleção medida não corresponde ao snapshot")
+
+
+def _audit_retrieval_metrics(
+    manifest: dict,
+    errors: list[str],
+    path: Path,
+) -> list | None:
+    metricas = manifest.get("metric_definition", {})
+    if metricas.get("primary_level") != "page":
+        errors.append(f"{path.name}: métrica primária deve usar evidência por página")
+    resumo = manifest.get("summary", {})
+    if (
+        resumo.get("n_queries") != 40
+        or resumo.get("n_retrieval_queries") != 39
+        or resumo.get("n_future_abstention_queries") != 1
+    ):
+        errors.append(f"{path.name}: contagem de perguntas do gold set divergente")
+    consultas = manifest.get("queries")
+    if not isinstance(consultas, list) or len(consultas) != 40:
+        errors.append(f"{path.name}: resultados por pergunta incompletos")
+        return None
+    if len({item.get("query_id") for item in consultas}) != len(consultas):
+        errors.append(f"{path.name}: query_id duplicado")
+    return consultas
+
+
+def _audit_retrieval_r2(manifest: dict, errors: list[str], path: Path) -> None:
+    comparacao = manifest.get("comparison_to_baseline", {})
+    gates = (
+        "corpus_identity_preserved",
+        "ranking_contract_preserved",
+        "scientific_metrics_identical",
+    )
+    if not all(comparacao.get(campo) is True for campo in gates):
+        errors.append(f"{path.name}: gate de regressão R2 não foi aprovado")
+    deltas = comparacao.get("metric_deltas", {}).values()
+    if any(not math.isclose(float(valor), 0.0, abs_tol=1e-12) for valor in deltas):
+        errors.append(f"{path.name}: métricas científicas divergiram do baseline")
+    retrieval = manifest.get("retrieval", {})
+    if retrieval.get("retrieval_text_strategy") != "identity_raw_text":
+        errors.append(f"{path.name}: R2 não usa estratégia de texto identidade")
+    if retrieval.get("raw_text_separated_from_retrieval_text") is not True:
+        errors.append(f"{path.name}: contrato raw/retrieval não está separado")
+
+
 def _audit_retrieval_result(
     path: Path,
     errors: list[str],
@@ -88,64 +175,18 @@ def _audit_retrieval_result(
         errors.append(f"manifesto inválido {path.name}: {exc}")
         return
 
-    if manifest.get("schema_version") != 1:
-        errors.append(f"{path.name}: schema_version deve ser 1")
-    if (
-        manifest.get("stage") != expected_stage
-        or manifest.get("variant") != expected_variant
-    ):
-        errors.append(f"{path.name}: etapa ou variante de retrieval inválida")
-    gold = manifest.get("gold_set", {})
-    if gold.get("status") != "provisional_pending_researcher_review":
-        errors.append(f"{path.name}: gold set não está marcado como provisório")
-    if gold.get("researcher_review_required_at") != "R6":
-        errors.append(f"{path.name}: revisão humana R6 não está registrada")
-
-    corpus = manifest.get("corpus", {})
-    if (
-        expected_snapshot_schema is not None
-        and corpus.get("snapshot_schema_version") != expected_snapshot_schema
-    ):
-        errors.append(f"{path.name}: schema do snapshot divergente")
-    if corpus.get("n_documents") != 44 or corpus.get("n_chunks") != 12556:
-        errors.append(f"{path.name}: inventário do corpus divergente")
-    if corpus.get("collection_count") != corpus.get("n_chunks"):
-        errors.append(f"{path.name}: coleção medida não corresponde ao snapshot")
-
-    metricas = manifest.get("metric_definition", {})
-    if metricas.get("primary_level") != "page":
-        errors.append(f"{path.name}: métrica primária deve usar evidência por página")
-    resumo = manifest.get("summary", {})
-    if (
-        resumo.get("n_queries") != 40
-        or resumo.get("n_retrieval_queries") != 39
-        or resumo.get("n_future_abstention_queries") != 1
-    ):
-        errors.append(f"{path.name}: contagem de perguntas do gold set divergente")
-    consultas = manifest.get("queries")
-    if not isinstance(consultas, list) or len(consultas) != 40:
-        errors.append(f"{path.name}: resultados por pergunta incompletos")
-
+    _audit_retrieval_identity(
+        manifest,
+        errors,
+        path=path,
+        expected_stage=expected_stage,
+        expected_variant=expected_variant,
+    )
+    _audit_retrieval_gold(manifest, errors, path)
+    _audit_retrieval_corpus(manifest, errors, path, expected_snapshot_schema)
+    _audit_retrieval_metrics(manifest, errors, path)
     if expected_stage == "R2":
-        comparacao = manifest.get("comparison_to_baseline", {})
-        gates = (
-            "corpus_identity_preserved",
-            "ranking_contract_preserved",
-            "scientific_metrics_identical",
-        )
-        if not all(comparacao.get(campo) is True for campo in gates):
-            errors.append(f"{path.name}: gate de regressão R2 não foi aprovado")
-        if any(float(valor) != 0.0 for valor in comparacao.get("metric_deltas", {}).values()):
-            errors.append(f"{path.name}: métricas científicas divergiram do baseline")
-        retrieval = manifest.get("retrieval", {})
-        if retrieval.get("retrieval_text_strategy") != "identity_raw_text":
-            errors.append(f"{path.name}: R2 não usa estratégia de texto identidade")
-        if retrieval.get("raw_text_separated_from_retrieval_text") is not True:
-            errors.append(f"{path.name}: contrato raw/retrieval não está separado")
-    if isinstance(consultas, list) and len(
-        {item.get("query_id") for item in consultas}
-    ) != len(consultas):
-        errors.append(f"{path.name}: query_id duplicado")
+        _audit_retrieval_r2(manifest, errors, path)
 
 
 def _audit_retrieval_baseline(path: Path, errors: list[str]) -> None:

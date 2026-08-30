@@ -647,7 +647,9 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
         "candidate_benchmark_id": candidato.get("benchmark_id"),
         "corpus_identity_preserved": corpus_inalterado,
         "ranking_contract_preserved": ranking_inalterado,
-        "scientific_metrics_identical": all(valor == 0.0 for valor in deltas.values()),
+        "scientific_metrics_identical": all(
+            math.isclose(valor, 0.0, abs_tol=1e-12) for valor in deltas.values()
+        ),
         "metrics": metricas,
         "metric_deltas": deltas,
         "latency_ms": {

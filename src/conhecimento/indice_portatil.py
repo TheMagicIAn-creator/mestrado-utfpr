@@ -157,6 +157,61 @@ def _registro_v1(registro: dict) -> dict:
     }
 
 
+def _validar_registro_v1(registro: dict, numero_linha: int | None) -> None:
+    if not registro.get("id") or not isinstance(registro.get("documento"), str):
+        _erro_registro("Chunk v1 incompleto", numero_linha)
+    if not isinstance(registro.get("metadata"), dict):
+        _erro_registro("Metadados v1 inválidos", numero_linha)
+    if not isinstance(registro.get("embedding"), list):
+        _erro_registro("Embedding v1 inválido", numero_linha)
+
+
+def _validar_textos_v2(
+    registro: dict,
+    numero_linha: int | None,
+    estrategia_texto: str | None,
+) -> None:
+    raw_text = registro.get("raw_text")
+    retrieval_text = registro.get("retrieval_text")
+    if not isinstance(raw_text, str) or not raw_text.strip():
+        _erro_registro("raw_text ausente", numero_linha)
+    if not isinstance(retrieval_text, str) or not retrieval_text.strip():
+        _erro_registro("retrieval_text ausente", numero_linha)
+    if estrategia_texto == ESTRATEGIA_TEXTO_R2 and retrieval_text != raw_text:
+        _erro_registro("R2 exige retrieval_text idêntico a raw_text", numero_linha)
+
+
+def _validar_identidade_v2(registro: dict, numero_linha: int | None) -> None:
+    chunk_id = str(registro.get("chunk_id") or "")
+    if not chunk_id or str(registro.get("id") or "") != chunk_id:
+        _erro_registro("IDs de chunk ausentes ou divergentes", numero_linha)
+    metadata = registro.get("metadata")
+    if not isinstance(metadata, dict):
+        _erro_registro("Metadados v2 inválidos", numero_linha)
+    arquivo_sha256 = _hash_documento(metadata)
+    if len(arquivo_sha256) != 64 or any(
+        c not in "0123456789abcdef" for c in arquivo_sha256
+    ):
+        _erro_registro("SHA-256 documental inválido", numero_linha)
+    if registro.get("document_id") != f"doc:{arquivo_sha256}":
+        _erro_registro("document_id divergente do SHA-256", numero_linha)
+    indice = int(metadata.get("chunk_index", -1))
+    esperado = f"{arquivo_sha256}__chunk_{indice:05d}"
+    if indice < 0 or chunk_id != esperado:
+        _erro_registro("chunk_id não segue a identidade determinística", numero_linha)
+
+
+def _validar_metadados_v2(metadata: dict, numero_linha: int | None) -> None:
+    if not str(metadata.get("arquivo") or "").strip():
+        _erro_registro("Arquivo de origem ausente", numero_linha)
+    if int(metadata.get("pagina_inicio") or 0) <= 0:
+        _erro_registro("Página física ausente", numero_linha)
+    if "prev_chunk_id" not in metadata or "next_chunk_id" not in metadata:
+        _erro_registro("IDs de vizinhança ausentes", numero_linha)
+    if not str(metadata.get("idioma") or "").strip():
+        _erro_registro("Idioma ausente", numero_linha)
+
+
 def validar_registro(
     registro: dict,
     schema_version: int,
@@ -168,53 +223,16 @@ def validar_registro(
     if registro.get("tipo") not in TIPOS_CHUNK_COMPATIVEIS:
         _erro_registro("Tipo de registro desconhecido", numero_linha)
     if schema_version == 1:
-        if not registro.get("id") or not isinstance(registro.get("documento"), str):
-            _erro_registro("Chunk v1 incompleto", numero_linha)
-        if not isinstance(registro.get("metadata"), dict):
-            _erro_registro("Metadados v1 inválidos", numero_linha)
-        if not isinstance(registro.get("embedding"), list):
-            _erro_registro("Embedding v1 inválido", numero_linha)
+        _validar_registro_v1(registro, numero_linha)
         return
-
     if schema_version != SCHEMA_VERSION:
         _erro_registro(f"Schema de chunk incompatível: {schema_version}", numero_linha)
     if int(registro.get("schema_version", 0)) != SCHEMA_VERSION:
         _erro_registro("Chunk sem marcação de schema v2", numero_linha)
 
-    chunk_id = str(registro.get("chunk_id") or "")
-    if not chunk_id or str(registro.get("id") or "") != chunk_id:
-        _erro_registro("IDs de chunk ausentes ou divergentes", numero_linha)
-    raw_text = registro.get("raw_text")
-    retrieval_text = registro.get("retrieval_text")
-    if not isinstance(raw_text, str) or not raw_text.strip():
-        _erro_registro("raw_text ausente", numero_linha)
-    if not isinstance(retrieval_text, str) or not retrieval_text.strip():
-        _erro_registro("retrieval_text ausente", numero_linha)
-    if estrategia_texto == ESTRATEGIA_TEXTO_R2 and retrieval_text != raw_text:
-        _erro_registro("R2 exige retrieval_text idêntico a raw_text", numero_linha)
-
-    metadata = registro.get("metadata")
-    if not isinstance(metadata, dict):
-        _erro_registro("Metadados v2 inválidos", numero_linha)
-    arquivo_sha256 = _hash_documento(metadata)
-    if len(arquivo_sha256) != 64 or any(c not in "0123456789abcdef" for c in arquivo_sha256):
-        _erro_registro("SHA-256 documental inválido", numero_linha)
-    if registro.get("document_id") != f"doc:{arquivo_sha256}":
-        _erro_registro("document_id divergente do SHA-256", numero_linha)
-    if not str(metadata.get("arquivo") or "").strip():
-        _erro_registro("Arquivo de origem ausente", numero_linha)
-    if int(metadata.get("pagina_inicio") or 0) <= 0:
-        _erro_registro("Página física ausente", numero_linha)
-    indice = int(metadata.get("chunk_index", -1))
-    if indice < 0:
-        _erro_registro("Índice ordinal do chunk inválido", numero_linha)
-    esperado = f"{arquivo_sha256}__chunk_{indice:05d}"
-    if chunk_id != esperado:
-        _erro_registro("chunk_id não segue a identidade determinística", numero_linha)
-    if "prev_chunk_id" not in metadata or "next_chunk_id" not in metadata:
-        _erro_registro("IDs de vizinhança ausentes", numero_linha)
-    if not str(metadata.get("idioma") or "").strip():
-        _erro_registro("Idioma ausente", numero_linha)
+    _validar_textos_v2(registro, numero_linha, estrategia_texto)
+    _validar_identidade_v2(registro, numero_linha)
+    _validar_metadados_v2(registro["metadata"], numero_linha)
     if not isinstance(registro.get("embedding"), list) or not registro["embedding"]:
         _erro_registro("Embedding v2 inválido", numero_linha)
 
@@ -387,6 +405,82 @@ def hash_corpus_pdfs(raiz: Path) -> tuple[str, int]:
     return hashlib.sha256(serializado).hexdigest(), len(registros)
 
 
+def _decodificar_registro(linha: str, numero_linha: int) -> dict:
+    try:
+        registro = json.loads(linha)
+    except json.JSONDecodeError as exc:
+        raise IndicePortatilInvalido(
+            f"JSON inválido na linha {numero_linha}: {exc}"
+        ) from exc
+    if registro.get("tipo") not in TIPOS_CHUNK_COMPATIVEIS:
+        raise IndicePortatilInvalido(
+            f"Registro desconhecido na linha {numero_linha}."
+        )
+    return registro
+
+
+def _aplicar_atualizacao_metadados(
+    registro: dict,
+    novos: dict | None,
+    *,
+    schema_version: int,
+    numero_linha: int,
+    estrategia_texto: str | None,
+) -> tuple[dict, bool]:
+    if not novos:
+        return registro, False
+
+    metadata = registro.get("metadata") or {}
+    metadata_atualizada = {**metadata, **novos}
+    if "autor" in novos and "autores" not in novos:
+        metadata_atualizada.pop("autores", None)
+    registro["metadata"] = metadata_atualizada
+    if schema_version == SCHEMA_VERSION:
+        registro = _registro_v2(registro)
+        validar_registro(
+            registro,
+            schema_version,
+            numero_linha=numero_linha,
+            estrategia_texto=estrategia_texto,
+        )
+    return registro, True
+
+
+def _reescrever_registros_snapshot(
+    origem,
+    destino,
+    *,
+    atualizacoes: dict[str, dict],
+    schema_version: int,
+    estrategia_texto: str | None,
+) -> tuple[int, int, set[str]]:
+    chunks_lidos = 0
+    chunks_atualizados = 0
+    documentos_atualizados: set[str] = set()
+    for numero_linha, linha in enumerate(origem, 2):
+        registro = _decodificar_registro(linha, numero_linha)
+        validar_registro(
+            registro,
+            schema_version,
+            numero_linha=numero_linha,
+            estrategia_texto=estrategia_texto,
+        )
+        nome_antigo = str((registro.get("metadata") or {}).get("arquivo", ""))
+        registro, atualizado = _aplicar_atualizacao_metadados(
+            registro,
+            atualizacoes.get(nome_antigo),
+            schema_version=schema_version,
+            numero_linha=numero_linha,
+            estrategia_texto=estrategia_texto,
+        )
+        if atualizado:
+            chunks_atualizados += 1
+            documentos_atualizados.add(nome_antigo)
+        destino.write(_linha_json(registro))
+        chunks_lidos += 1
+    return chunks_lidos, chunks_atualizados, documentos_atualizados
+
+
 def atualizar_metadados_snapshot(
     caminho: Path,
     atualizacoes: dict[str, dict],
@@ -403,9 +497,6 @@ def atualizar_metadados_snapshot(
     manifesto = ler_manifesto(caminho)
     schema_version = int(manifesto["schema_version"])
     temporario = caminho.with_name(caminho.name + ".tmp")
-    chunks_lidos = 0
-    chunks_atualizados = 0
-    documentos_atualizados: set[str] = set()
 
     try:
         with gzip.open(caminho, "rt", encoding="utf-8") as origem, gzip.open(
@@ -418,47 +509,17 @@ def atualizar_metadados_snapshot(
                 cabecalho["n_documentos"] = int(n_documentos)
             cabecalho["gerado_em_utc"] = datetime.now(timezone.utc).isoformat()
             destino.write(_linha_json(cabecalho))
-
-            for numero_linha, linha in enumerate(origem, 2):
-                try:
-                    registro = json.loads(linha)
-                except json.JSONDecodeError as exc:
-                    raise IndicePortatilInvalido(
-                        f"JSON inválido na linha {numero_linha}: {exc}"
-                    ) from exc
-                if registro.get("tipo") not in TIPOS_CHUNK_COMPATIVEIS:
-                    raise IndicePortatilInvalido(
-                        f"Registro desconhecido na linha {numero_linha}."
-                    )
-                validar_registro(
-                    registro,
-                    schema_version,
-                    numero_linha=numero_linha,
-                    estrategia_texto=manifesto.get("retrieval_text_strategy"),
-                )
-
-                chunks_lidos += 1
-                metadata = registro.get("metadata") or {}
-                nome_antigo = str(metadata.get("arquivo", ""))
-                novos = atualizacoes.get(nome_antigo)
-                if novos:
-                    metadata_atualizada = {**metadata, **novos}
-                    if "autor" in novos and "autores" not in novos:
-                        metadata_atualizada.pop("autores", None)
-                    registro["metadata"] = metadata_atualizada
-                    if schema_version == SCHEMA_VERSION:
-                        registro = _registro_v2(registro)
-                        validar_registro(
-                            registro,
-                            schema_version,
-                            numero_linha=numero_linha,
-                            estrategia_texto=manifesto.get(
-                                "retrieval_text_strategy"
-                            ),
-                        )
-                    chunks_atualizados += 1
-                    documentos_atualizados.add(nome_antigo)
-                destino.write(_linha_json(registro))
+            (
+                chunks_lidos,
+                chunks_atualizados,
+                documentos_atualizados,
+            ) = _reescrever_registros_snapshot(
+                origem,
+                destino,
+                atualizacoes=atualizacoes,
+                schema_version=schema_version,
+                estrategia_texto=manifesto.get("retrieval_text_strategy"),
+            )
 
         esperado = int(manifesto["n_chunks"])
         if chunks_lidos != esperado:
@@ -474,6 +535,85 @@ def atualizar_metadados_snapshot(
         "documentos_atualizados": len(documentos_atualizados),
         "arquivo_sha256": _sha256(caminho),
     }
+
+
+def _extrair_lote_exportacao(colecao, offset: int, tamanho_lote: int) -> tuple:
+    lote = colecao.get(
+        limit=tamanho_lote,
+        offset=offset,
+        include=["documents", "metadatas", "embeddings"],
+    )
+    ids = lote.get("ids") or []
+    documentos = lote.get("documents") or []
+    metadados = lote.get("metadatas") or []
+    embeddings = lote.get("embeddings")
+    if embeddings is None:
+        embeddings = []
+    tamanhos = (len(ids), len(documentos), len(metadados), len(embeddings))
+    if len(set(tamanhos)) != 1:
+        raise IndicePortatilInvalido(
+            f"Lote inconsistente no offset {offset}: "
+            f"ids={tamanhos[0]}, docs={tamanhos[1]}, "
+            f"metadados={tamanhos[2]}, embeddings={tamanhos[3]}."
+        )
+    return zip(ids, documentos, metadados, embeddings)
+
+
+def _preparar_registro_exportacao(
+    chunk_id,
+    documento,
+    metadata,
+    embedding,
+    *,
+    schema_version: int,
+) -> dict:
+    vetor = embedding.tolist() if hasattr(embedding, "tolist") else list(embedding)
+    registro_base = {
+        "tipo": TIPO_CHUNK,
+        "id": chunk_id,
+        "documento": documento,
+        "metadata": metadata,
+        "embedding": vetor,
+    }
+    registro = (
+        _registro_v2(registro_base)
+        if schema_version == SCHEMA_VERSION
+        else _registro_v1(registro_base)
+    )
+    validar_registro(
+        registro,
+        schema_version,
+        estrategia_texto=(
+            ESTRATEGIA_TEXTO_R2 if schema_version == SCHEMA_VERSION else None
+        ),
+    )
+    return registro
+
+
+def _exportar_registros_colecao(
+    colecao,
+    registros,
+    digest,
+    *,
+    n_chunks: int,
+    tamanho_lote: int,
+    schema_version: int,
+) -> int:
+    escritos = 0
+    for offset in range(0, n_chunks, tamanho_lote):
+        lote = _extrair_lote_exportacao(colecao, offset, tamanho_lote)
+        for chunk_id, documento, metadata, embedding in lote:
+            registro = _preparar_registro_exportacao(
+                chunk_id,
+                documento,
+                metadata,
+                embedding,
+                schema_version=schema_version,
+            )
+            registros.write(_linha_json(registro))
+            _atualizar_hash_conteudo(digest, registro)
+            escritos += 1
+    return escritos
 
 
 def exportar_colecao(
@@ -509,7 +649,6 @@ def exportar_colecao(
         "gerado_em_utc": datetime.now(timezone.utc).isoformat(),
     }
 
-    escritos = 0
     digest = hashlib.sha256()
     try:
         with tempfile.SpooledTemporaryFile(
@@ -518,55 +657,14 @@ def exportar_colecao(
             newline="\n",
             max_size=8 * 1024 * 1024,
         ) as registros:
-            for offset in range(0, n_chunks, tamanho_lote):
-                lote = colecao.get(
-                    limit=tamanho_lote,
-                    offset=offset,
-                    include=["documents", "metadatas", "embeddings"],
-                )
-                ids = lote.get("ids") or []
-                documentos = lote.get("documents") or []
-                metadados = lote.get("metadatas") or []
-                embeddings = lote.get("embeddings")
-                if embeddings is None:
-                    embeddings = []
-
-                if not (len(ids) == len(documentos) == len(metadados) == len(embeddings)):
-                    raise IndicePortatilInvalido(
-                        f"Lote inconsistente no offset {offset}: "
-                        f"ids={len(ids)}, docs={len(documentos)}, "
-                        f"metadados={len(metadados)}, embeddings={len(embeddings)}."
-                    )
-
-                for chunk_id, documento, metadata, embedding in zip(
-                    ids, documentos, metadados, embeddings
-                ):
-                    vetor = embedding.tolist() if hasattr(embedding, "tolist") else list(embedding)
-                    registro_base = {
-                        "tipo": TIPO_CHUNK,
-                        "id": chunk_id,
-                        "documento": documento,
-                        "metadata": metadata,
-                        "embedding": vetor,
-                    }
-                    registro = (
-                        _registro_v2(registro_base)
-                        if schema_version == SCHEMA_VERSION
-                        else _registro_v1(registro_base)
-                    )
-                    validar_registro(
-                        registro,
-                        schema_version,
-                        estrategia_texto=(
-                            ESTRATEGIA_TEXTO_R2
-                            if schema_version == SCHEMA_VERSION
-                            else None
-                        ),
-                    )
-                    registros.write(_linha_json(registro))
-                    _atualizar_hash_conteudo(digest, registro)
-                    escritos += 1
-
+            escritos = _exportar_registros_colecao(
+                colecao,
+                registros,
+                digest,
+                n_chunks=n_chunks,
+                tamanho_lote=tamanho_lote,
+                schema_version=schema_version,
+            )
             if escritos != n_chunks:
                 raise IndicePortatilInvalido(
                     f"Exportação incompleta: {escritos}/{n_chunks} chunks."
