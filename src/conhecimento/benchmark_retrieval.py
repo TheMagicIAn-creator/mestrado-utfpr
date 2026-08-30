@@ -559,8 +559,8 @@ def executar_baseline_local(
     from src.conhecimento.base_runtime import _versao_indice_lexical
     from src.conhecimento.contextual_retrieval import ESTRATEGIA_CONTEXTO_R3
     from src.conhecimento.embeddings import criar_modelo_embeddings
-    from src.conhecimento.indice_portatil import importar_colecao
     from src.conhecimento.indice_lexical import IndiceLexicalSQLite
+    from src.conhecimento.indice_portatil import importar_colecao
     from src.core.config import NOME_COLECAO, PASTA_CHROMADB
 
     gold_set = carregar_gold_set(gold_path)

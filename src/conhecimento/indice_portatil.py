@@ -758,7 +758,7 @@ def migrar_snapshot_v2(origem: Path, destino: Path | None = None) -> dict:
                         "retrieval_text_strategy"
                     ),
                 )
-                _atualizar_hash_conteudo(digest_origem, registro_origem)
+                atualizar_hash_conteudo(digest_origem, registro_origem)
                 registro_v2 = _registro_v2(registro_origem)
                 validar_registro(
                     registro_v2,
@@ -767,7 +767,7 @@ def migrar_snapshot_v2(origem: Path, destino: Path | None = None) -> dict:
                     estrategia_texto=ESTRATEGIA_TEXTO_R2,
                 )
                 registros.write(_linha_json(registro_v2))
-                _atualizar_hash_conteudo(digest, registro_v2)
+                atualizar_hash_conteudo(digest, registro_v2)
                 escritos += 1
 
             esperado = int(manifesto_origem["n_chunks"])

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import gzip
 import json
 from pathlib import Path
@@ -310,6 +311,59 @@ def test_comparacao_r2_exige_metricas_e_ranking_idênticos(monkeypatch):
     relatorio = benchmark.relatorio_markdown(candidato)
     assert "Comparação baseline x candidato" in relatorio
     assert "Gate R2: APROVADO" in relatorio
+
+
+def test_comparacao_r3_registra_ganho_sem_promover(monkeypatch):
+    recuperado = {
+        "rank": 1,
+        "chunk_id": CHUNK_ID,
+        "document_id": DOCUMENT_ID,
+        "file": "fonte.pdf",
+        "pages": [7],
+        "rrf_score": 0.1,
+        "context_chars": 120,
+    }
+    monkeypatch.setattr(
+        benchmark,
+        "recuperar_baseline",
+        lambda *args, **kwargs: [recuperado],
+    )
+    baseline = benchmark.executar_benchmark(
+        _gold(),
+        modelo_embeddings="modelo",
+        colecao=_Colecao(),
+        indice_lexical=_Lexical(),
+        manifesto_snapshot={
+            **_manifesto(),
+            "schema_version": 2,
+            "retrieval_text_strategy": "identity_raw_text",
+        },
+        relogio=lambda: 0.0,
+        warmup=False,
+        benchmark_id="evidence-rag-r2-schema-v2",
+        stage="R2",
+        variant="jsonl_schema_v2_identity",
+    )
+    candidato = copy.deepcopy(baseline)
+    candidato.update(
+        benchmark_id="evidence-rag-r3-contextual-deterministic",
+        stage="R3",
+        variant="deterministic_document_context_v1",
+    )
+    baseline["summary"]["recall@5"] = 0.0
+    baseline["queries"][0]["metrics"]["5"]["recall@5"] = 0.0
+
+    comparacao = benchmark.comparar_benchmarks(baseline, candidato)
+
+    assert comparacao["quality_gain_observed"] is True
+    assert comparacao["improved_queries_at_5"] == ["q1"]
+    assert comparacao["critical_simple_regressions"] == []
+    assert comparacao["promotion_eligible_after_quality_stages"] is True
+    assert comparacao["promotion_decision"] == "deferred_to_r4_r5_r6"
+    candidato["comparison_to_baseline"] = comparacao
+    texto = benchmark.relatorio_markdown(candidato)
+    assert "Contextual Retrieval determinístico R3" in texto
+    assert "candidato não promovido" in texto
 
 
 def test_relatorio_markdown_explicita_estado_provisorio(monkeypatch):
