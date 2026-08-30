@@ -396,6 +396,7 @@ def executar_benchmark(
 ) -> dict:
     from src.conhecimento.embeddings import REPOSITORIO_MODELO, REVISAO_MODELO
 
+    contexto_deterministico = manifesto_snapshot.get("contextual_retrieval", {})
     ks_ordenados = tuple(sorted({int(k) for k in ks if int(k) > 0}))
     if not ks_ordenados:
         raise ValueError("Informe ao menos um valor positivo de k.")
@@ -500,7 +501,9 @@ def executar_benchmark(
             "embedding_model": manifesto_snapshot.get("modelo_embeddings"),
             "embedding_repository": REPOSITORIO_MODELO,
             "embedding_revision": REVISAO_MODELO,
-            "index_embedding_backend": "sentence-transformers",
+            "index_embedding_backend": contexto_deterministico.get(
+                "embedding_backend", "sentence-transformers"
+            ),
             "query_embedding_backend": "onnxruntime",
             "semantic_index": "ChromaDB",
             "lexical_index": "SQLite FTS5 BM25",
@@ -521,6 +524,14 @@ def executar_benchmark(
             "retrieval_text_strategy": manifesto_snapshot.get(
                 "retrieval_text_strategy", "legacy_documento"
             ),
+            "contextual_retrieval": stage == "R3",
+            "context_template_version": contexto_deterministico.get(
+                "template_version"
+            ),
+            "llm_contextualization_used": contexto_deterministico.get(
+                "llm_used", False
+            ),
+            "parallel_candidate_index": stage == "R3",
             "evidence_package": False,
             "evidence_guard": False,
         },
@@ -541,11 +552,14 @@ def executar_baseline_local(
     snapshot_path: str | Path,
     *,
     git_revision: str | None = None,
+    candidate_runtime: str | Path | None = None,
 ) -> dict:
     import chromadb
 
     from src.conhecimento.base_runtime import _versao_indice_lexical
+    from src.conhecimento.contextual_retrieval import ESTRATEGIA_CONTEXTO_R3
     from src.conhecimento.embeddings import criar_modelo_embeddings
+    from src.conhecimento.indice_portatil import importar_colecao
     from src.conhecimento.indice_lexical import IndiceLexicalSQLite
     from src.core.config import NOME_COLECAO, PASTA_CHROMADB
 
@@ -553,27 +567,58 @@ def executar_baseline_local(
     manifesto, registros = carregar_snapshot(snapshot_path)
     validar_gold_contra_snapshot(gold_set, manifesto, registros)
 
-    cliente = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
-    colecao = cliente.get_or_create_collection(name=NOME_COLECAO)
-    if colecao.count() != int(manifesto.get("n_chunks", -1)):
-        raise RuntimeError(
-            "A coleção ChromaDB local não corresponde ao snapshot auditado. "
-            "Restaure a base antes de medir o baseline."
-        )
-
-    modelo = criar_modelo_embeddings(modo_consulta=True)
-    indice_lexical = IndiceLexicalSQLite()
-    indice_lexical.sincronizar(
-        colecao,
-        versao=_versao_indice_lexical(colecao, modo_consulta=True),
-    )
     identificacao = {}
-    if int(manifesto.get("schema_version", 0)) >= 2:
+    estrategia = manifesto.get("retrieval_text_strategy")
+    if estrategia == ESTRATEGIA_CONTEXTO_R3:
+        runtime = resolver_caminho_no_projeto(
+            candidate_runtime
+            or RAIZ_PROJETO / "base_conhecimento" / "candidatos" / "r3_contextual"
+        )
+        runtime.mkdir(parents=True, exist_ok=True)
+        conteudo_hash = str(manifesto["hash_conteudo_retrieval_sha256"])
+        nome_colecao = f"literatura_contextual_r3_{conteudo_hash[:12]}"
+        cliente = chromadb.PersistentClient(path=str(runtime / "chromadb"))
+        colecao = cliente.get_or_create_collection(
+            name=nome_colecao,
+            metadata={"hnsw:space": "cosine"},
+        )
+        esperado = int(manifesto["n_chunks"])
+        if colecao.count() not in {0, esperado}:
+            cliente.delete_collection(nome_colecao)
+            colecao = cliente.get_or_create_collection(
+                name=nome_colecao,
+                metadata={"hnsw:space": "cosine"},
+            )
+        importar_colecao(colecao, snapshot_path)
+        indice_lexical = IndiceLexicalSQLite(
+            runtime / f"{nome_colecao}_fts.sqlite3"
+        )
+        indice_lexical.sincronizar(colecao, versao=conteudo_hash)
+        identificacao = {
+            "benchmark_id": "evidence-rag-r3-contextual-deterministic",
+            "stage": "R3",
+            "variant": "deterministic_document_context_v1",
+        }
+    else:
+        cliente = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
+        colecao = cliente.get_or_create_collection(name=NOME_COLECAO)
+        if colecao.count() != int(manifesto.get("n_chunks", -1)):
+            raise RuntimeError(
+                "A coleção ChromaDB local não corresponde ao snapshot auditado. "
+                "Restaure a base antes de medir o baseline."
+            )
+        indice_lexical = IndiceLexicalSQLite()
+        indice_lexical.sincronizar(
+            colecao,
+            versao=_versao_indice_lexical(colecao, modo_consulta=True),
+        )
+    if int(manifesto.get("schema_version", 0)) >= 2 and not identificacao:
         identificacao = {
             "benchmark_id": "evidence-rag-r2-schema-v2",
             "stage": "R2",
             "variant": "jsonl_schema_v2_identity",
         }
+    modelo = criar_modelo_embeddings(modo_consulta=True)
     return executar_benchmark(
         gold_set,
         modelo_embeddings=modelo,
@@ -605,7 +650,7 @@ METRICAS_RETRIEVAL_COMPARAVEIS = (
 
 
 def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
-    """Compara R2 com R0–R1 sem misturar latência com qualidade científica."""
+    """Compara candidatos sem misturar latência com qualidade científica."""
     resumo_base = baseline["summary"]
     resumo_candidato = candidato["summary"]
     deltas = {
@@ -642,6 +687,42 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
         baseline["corpus"].get(campo) == candidato["corpus"].get(campo)
         for campo in ("hash_sha256", "n_documents", "n_chunks", "collection_count")
     )
+    base_por_id = {item["query_id"]: item for item in baseline["queries"]}
+    candidato_por_id = {item["query_id"]: item for item in candidato["queries"]}
+    regressions = []
+    improvements = []
+    simple_categories = {"localizacao_direta", "conceito", "metodo"}
+    critical_simple_regressions = []
+    for query_id in sorted(base_por_id.keys() & candidato_por_id.keys()):
+        base_item = base_por_id[query_id]
+        candidate_item = candidato_por_id[query_id]
+        if base_item["expected_behavior"] != "retrieve":
+            continue
+        base_recall = float(base_item["metrics"]["5"]["recall@5"])
+        candidate_recall = float(candidate_item["metrics"]["5"]["recall@5"])
+        if candidate_recall < base_recall:
+            regressions.append(query_id)
+            if base_item["category"] in simple_categories:
+                critical_simple_regressions.append(query_id)
+        elif candidate_recall > base_recall:
+            improvements.append(query_id)
+    quality_metrics = (
+        "recall@5",
+        "recall@8",
+        "mrr@5",
+        "mrr@8",
+        "ndcg@5",
+        "ndcg@8",
+    )
+    quality_gain = any(deltas[metrica] > 1e-12 for metrica in quality_metrics)
+    promotion_eligible = all(
+        (
+            corpus_inalterado,
+            ranking_inalterado,
+            quality_gain,
+            not critical_simple_regressions,
+        )
+    )
     return {
         "baseline_benchmark_id": baseline.get("benchmark_id"),
         "candidate_benchmark_id": candidato.get("benchmark_id"),
@@ -649,6 +730,16 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
         "ranking_contract_preserved": ranking_inalterado,
         "scientific_metrics_identical": all(
             math.isclose(valor, 0.0, abs_tol=1e-12) for valor in deltas.values()
+        ),
+        "quality_gain_observed": quality_gain,
+        "regressed_queries_at_5": regressions,
+        "improved_queries_at_5": improvements,
+        "critical_simple_regressions": critical_simple_regressions,
+        "promotion_eligible_after_quality_stages": promotion_eligible,
+        "promotion_decision": (
+            "deferred_to_r4_r5_r6"
+            if candidato.get("stage") == "R3"
+            else "not_applicable"
         ),
         "metrics": metricas,
         "metric_deltas": deltas,
@@ -664,10 +755,13 @@ def _linhas_comparacao(resultado: dict) -> list[str]:
     comparacao = resultado.get("comparison_to_baseline")
     if not comparacao:
         return []
+    stage = resultado.get("stage")
+    baseline_label = "R2" if stage == "R3" else "R0–R1"
+    candidate_label = stage if stage in {"R2", "R3"} else "candidato"
     linhas = [
         "## Comparação baseline x candidato",
         "",
-        "| Métrica | R0–R1 | R2 | Delta |",
+        f"| Métrica | {baseline_label} | {candidate_label} | Delta |",
         "|---|---:|---:|---:|",
     ]
     for metrica, valores in comparacao["metrics"].items():
@@ -675,7 +769,7 @@ def _linhas_comparacao(resultado: dict) -> list[str]:
             f"| {metrica} | {float(valores['baseline']):.6f} | "
             f"{float(valores['candidate']):.6f} | {float(valores['delta']):+.6f} |"
         )
-    aprovado = all(
+    aprovado_r2 = all(
         comparacao[campo]
         for campo in (
             "corpus_identity_preserved",
@@ -689,11 +783,31 @@ def _linhas_comparacao(resultado: dict) -> list[str]:
             f"- Identidade do corpus preservada: {str(comparacao['corpus_identity_preserved']).lower()}.",
             f"- Contrato de ranking preservado: {str(comparacao['ranking_contract_preserved']).lower()}.",
             f"- Métricas científicas idênticas: {str(comparacao['scientific_metrics_identical']).lower()}.",
-            "- Latência é informativa e não participa do gate científico de R2.",
-            f"- Gate R2: {'APROVADO' if aprovado else 'REPROVADO'}.",
-            "",
         ]
     )
+    if stage == "R3":
+        linhas.extend(
+            [
+                f"- Ganho de qualidade observado: {str(comparacao['quality_gain_observed']).lower()}.",
+                "- Consultas com regressão de Recall@5: "
+                + (", ".join(comparacao["regressed_queries_at_5"]) or "nenhuma")
+                + ".",
+                "- Regressões críticas em perguntas simples: "
+                + (", ".join(comparacao["critical_simple_regressions"]) or "nenhuma")
+                + ".",
+                "- Decisão: candidato não promovido; avaliação continua em R4–R6.",
+                "- Latência é informativa e não participa do gate científico de qualidade.",
+                "",
+            ]
+        )
+    else:
+        linhas.extend(
+            [
+                "- Latência é informativa e não participa do gate científico de R2.",
+                f"- Gate R2: {'APROVADO' if aprovado_r2 else 'REPROVADO'}.",
+                "",
+            ]
+        )
     return linhas
 
 
@@ -710,29 +824,49 @@ def relatorio_markdown(resultado: dict) -> str:
     categorias = Counter(item["category"] for item in resultado["queries"])
     abstencoes = resumo["n_future_abstention_queries"]
     rotulo_abstencao = "reservada" if abstencoes == 1 else "reservadas"
+    stage = resultado.get("stage", "R0-R1")
     schema_v2 = int(corpus["snapshot_schema_version"]) >= 2
-    titulo_relatorio = (
-        "# Evidence RAG — JSONL schema v2 R2"
-        if schema_v2
-        else "# Evidence RAG — baseline R0–R1"
-    )
-    estado_relatorio = (
-        "> Estado: contrato JSONL v2 medido sem contextualização; gold set provisório e pendente de revisão do pesquisador em R6."
-        if schema_v2
-        else "> Estado: baseline vigente medido; gold set provisório e pendente de revisão do pesquisador em R6."
-    )
-    descricao_snapshot = (
-        "campos `raw_text` e `retrieval_text` separados, ainda idênticos em R2, "
-        "com embeddings preservados por chunk."
-        if schema_v2
-        else "texto bruto no campo `documento` e embeddings armazenados por chunk."
-    )
-    estado_contrato = (
-        "- O schema v2 separa os contratos de texto sem acrescentar contexto; "
-        "`retrieval_text` permanece idêntico a `raw_text` nesta etapa."
-        if schema_v2
-        else "- O schema v1 ainda não separa `raw_text` de `retrieval_text` e não registra contexto do chunk."
-    )
+    if stage == "R3":
+        titulo_relatorio = "# Evidence RAG — Contextual Retrieval determinístico R3"
+        estado_relatorio = (
+            "> Estado: candidato contextual paralelo medido e não promovido; "
+            "gold set provisório e pendente de revisão do pesquisador em R6."
+        )
+        descricao_snapshot = (
+            "`raw_text` preservado, `retrieval_text` contextualizado e embeddings "
+            "recalculados com o mesmo encoder."
+        )
+        estado_contrato = (
+            "- O contexto usa apenas título, autores, ano, coleção, página e idioma "
+            "observados; nenhuma LLM inferiu ou resumiu conteúdo."
+        )
+    elif schema_v2:
+        titulo_relatorio = "# Evidence RAG — JSONL schema v2 R2"
+        estado_relatorio = (
+            "> Estado: contrato JSONL v2 medido sem contextualização; gold set "
+            "provisório e pendente de revisão do pesquisador em R6."
+        )
+        descricao_snapshot = (
+            "campos `raw_text` e `retrieval_text` separados, ainda idênticos em R2, "
+            "com embeddings preservados por chunk."
+        )
+        estado_contrato = (
+            "- O schema v2 separa os contratos de texto sem acrescentar contexto; "
+            "`retrieval_text` permanece idêntico a `raw_text` nesta etapa."
+        )
+    else:
+        titulo_relatorio = "# Evidence RAG — baseline R0–R1"
+        estado_relatorio = (
+            "> Estado: baseline vigente medido; gold set provisório e pendente de "
+            "revisão do pesquisador em R6."
+        )
+        descricao_snapshot = (
+            "texto bruto no campo `documento` e embeddings armazenados por chunk."
+        )
+        estado_contrato = (
+            "- O schema v1 ainda não separa `raw_text` de `retrieval_text` e não "
+            "registra contexto do chunk."
+        )
     limitacao_snapshot = (
         "- O schema v2 registra estratégia e hash de conteúdo, mas tamanho e overlap "
         "do snapshot legado permanecem desconhecidos; nenhum valor foi inferido."
@@ -745,7 +879,7 @@ def relatorio_markdown(resultado: dict) -> str:
         "",
         estado_relatorio,
         "",
-        "## Auditoria R2" if schema_v2 else "## Auditoria R0",
+        f"## Auditoria {stage}",
         "",
         f"- Corpus: {corpus['n_documents']} PDFs e {corpus['n_chunks']} chunks.",
         f"- Snapshot portátil: schema v{corpus['snapshot_schema_version']}; "

@@ -237,7 +237,8 @@ def validar_registro(
         _erro_registro("Embedding v2 inválido", numero_linha)
 
 
-def _atualizar_hash_conteudo(digest, registro: dict) -> None:
+def atualizar_hash_conteudo(digest, registro: dict) -> None:
+    """Atualiza o digest canônico de texto e embedding de um chunk."""
     payload = {
         "chunk_id": registro.get("chunk_id") or registro.get("id"),
         "raw_text": registro.get("raw_text", registro.get("documento", "")),
@@ -257,7 +258,14 @@ def _atualizar_hash_conteudo(digest, registro: dict) -> None:
     digest.update(b"\n")
 
 
-def _manifesto_v2(manifesto: dict, hash_conteudo: str) -> dict:
+def criar_manifesto_v2(
+    manifesto: dict,
+    hash_conteudo: str,
+    *,
+    retrieval_text_strategy: str = ESTRATEGIA_TEXTO_R2,
+    extras: dict | None = None,
+) -> dict:
+    """Cria o cabeçalho v2 compartilhado por snapshots base e candidatos."""
     atualizado = {
         **manifesto,
         "tipo": TIPO_MANIFESTO,
@@ -266,11 +274,16 @@ def _manifesto_v2(manifesto: dict, hash_conteudo: str) -> dict:
         "chunk_id_strategy": ESTRATEGIA_CHUNK_ID,
         "raw_text_field": "raw_text",
         "retrieval_text_field": "retrieval_text",
-        "retrieval_text_strategy": ESTRATEGIA_TEXTO_R2,
+        "retrieval_text_strategy": str(retrieval_text_strategy),
         "embedding_input_field": "retrieval_text",
         "hash_conteudo_retrieval_sha256": hash_conteudo,
     }
+    atualizado.update(extras or {})
     return atualizado
+
+
+def _manifesto_v2(manifesto: dict, hash_conteudo: str) -> dict:
+    return criar_manifesto_v2(manifesto, hash_conteudo)
 
 
 def _metadata_para_chroma(metadata: dict) -> dict:
@@ -367,7 +380,7 @@ def validar_snapshot(caminho: Path) -> dict:
                     f"Chunk duplicado na linha {numero_linha}: {chunk_id}."
                 )
             ids.add(chunk_id)
-            _atualizar_hash_conteudo(digest, registro)
+            atualizar_hash_conteudo(digest, registro)
             lidos += 1
 
     esperado = int(manifesto["n_chunks"])
@@ -615,7 +628,7 @@ def _exportar_registros_colecao(
                 schema_version=schema_version,
             )
             registros.write(_linha_json(registro))
-            _atualizar_hash_conteudo(digest, registro)
+            atualizar_hash_conteudo(digest, registro)
             escritos += 1
     return escritos
 

@@ -70,6 +70,34 @@ def migrar_snapshot_v2() -> int:
     return 0
 
 
+def contextualizar_literatura_r3(
+    destino: Path | None = None,
+    *,
+    tamanho_lote: int = 32,
+) -> int:
+    from src.conhecimento.benchmark_retrieval import resolver_caminho_no_projeto
+    from src.conhecimento.contextual_retrieval import contextualizar_snapshot
+    from src.conhecimento.embeddings import criar_modelo_embeddings
+    from src.core.config import ARQUIVO_INDICE_LITERATURA
+
+    caminho_destino = resolver_caminho_no_projeto(
+        destino
+        or RAIZ
+        / "artefatos"
+        / "candidatos"
+        / "literatura_contextual_r3.jsonl.gz"
+    )
+    modelo = criar_modelo_embeddings(modo_consulta=False)
+    resultado = contextualizar_snapshot(
+        ARQUIVO_INDICE_LITERATURA,
+        caminho_destino,
+        modelo,
+        tamanho_lote=tamanho_lote,
+    )
+    print(json.dumps(resultado, ensure_ascii=False, indent=2))
+    return 0
+
+
 def reindexar_sessoes() -> int:
     from src.conhecimento.embeddings import criar_modelo_embeddings
     from src.conhecimento.indexador import indexar_sessao
@@ -192,6 +220,12 @@ def construir_parser() -> argparse.ArgumentParser:
         "migrar-snapshot-v2",
         help="migra atomicamente o snapshot de literatura vigente para o schema v2",
     )
+    contextual = sub.add_parser(
+        "contextualizar-literatura-r3",
+        help="gera o snapshot contextual R3 sem promover o índice candidato",
+    )
+    contextual.add_argument("--destino", type=Path)
+    contextual.add_argument("--tamanho-lote", type=int, default=32)
     sub.add_parser("reindexar-sessoes", help="reindexa sessoes e memorias Markdown")
     obsidian = sub.add_parser("sincronizar-obsidian", help="sincroniza o vault e seu snapshot")
     obsidian.add_argument("--vault", type=Path)
@@ -207,6 +241,11 @@ def main(argv: list[str] | None = None) -> int:
         return exportar_literatura()
     if args.comando == "migrar-snapshot-v2":
         return migrar_snapshot_v2()
+    if args.comando == "contextualizar-literatura-r3":
+        return contextualizar_literatura_r3(
+            args.destino,
+            tamanho_lote=args.tamanho_lote,
+        )
     if args.comando == "reindexar-sessoes":
         return reindexar_sessoes()
     if args.comando == "sincronizar-obsidian":
