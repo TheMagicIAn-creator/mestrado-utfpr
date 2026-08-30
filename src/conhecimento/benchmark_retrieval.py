@@ -13,11 +13,13 @@ import json
 import math
 import statistics
 import time
-from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Iterable
 
+from src.conhecimento.benchmark_relatorio import (
+    relatorio_markdown as relatorio_markdown,
+)
 from src.conhecimento.indice_portatil import (
     TIPOS_CHUNK_COMPATIVEIS,
     ler_manifesto,
@@ -84,6 +86,14 @@ def _json_canonico(valor: object) -> bytes:
 
 def hash_json_sha256(valor: object) -> str:
     return hashlib.sha256(_json_canonico(valor)).hexdigest()
+
+
+def hash_arquivo_sha256(caminho: str | Path) -> str:
+    digest = hashlib.sha256()
+    with Path(caminho).open("rb") as arquivo:
+        for bloco in iter(lambda: arquivo.read(1024 * 1024), b""):
+            digest.update(bloco)
+    return digest.hexdigest()
 
 
 def carregar_gold_set(caminho: str | Path, *, validar_campanha: bool = True) -> dict:
@@ -396,6 +406,7 @@ def executar_benchmark(
 ) -> dict:
     from src.conhecimento.embeddings import REPOSITORIO_MODELO, REVISAO_MODELO
 
+    contexto_deterministico = manifesto_snapshot.get("contextual_retrieval", {})
     ks_ordenados = tuple(sorted({int(k) for k in ks if int(k) > 0}))
     if not ks_ordenados:
         raise ValueError("Informe ao menos um valor positivo de k.")
@@ -488,9 +499,27 @@ def executar_benchmark(
         },
         "corpus": {
             "snapshot_schema_version": int(manifesto_snapshot.get("schema_version", 0)),
+            "snapshot_file_sha256": manifesto_snapshot.get(
+                "arquivo_snapshot_sha256"
+            ),
+            "snapshot_size_bytes": manifesto_snapshot.get(
+                "arquivo_snapshot_tamanho_bytes"
+            ),
             "hash_sha256": manifesto_snapshot.get("hash_corpus_sha256"),
             "snapshot_content_hash_sha256": manifesto_snapshot.get(
                 "hash_conteudo_retrieval_sha256"
+            ),
+            "raw_text_hash_sha256": manifesto_snapshot.get(
+                "hash_raw_text_sha256"
+            ),
+            "chunk_ids_hash_sha256": manifesto_snapshot.get(
+                "hash_chunk_ids_sha256"
+            ),
+            "source_snapshot_sha256": contexto_deterministico.get(
+                "source_snapshot_sha256"
+            ),
+            "source_content_hash_sha256": contexto_deterministico.get(
+                "source_content_hash_sha256"
             ),
             "n_documents": int(manifesto_snapshot.get("n_documentos", 0)),
             "n_chunks": int(manifesto_snapshot.get("n_chunks", 0)),
@@ -500,7 +529,9 @@ def executar_benchmark(
             "embedding_model": manifesto_snapshot.get("modelo_embeddings"),
             "embedding_repository": REPOSITORIO_MODELO,
             "embedding_revision": REVISAO_MODELO,
-            "index_embedding_backend": "sentence-transformers",
+            "index_embedding_backend": contexto_deterministico.get(
+                "embedding_backend", "sentence-transformers"
+            ),
             "query_embedding_backend": "onnxruntime",
             "semantic_index": "ChromaDB",
             "lexical_index": "SQLite FTS5 BM25",
@@ -521,6 +552,24 @@ def executar_benchmark(
             "retrieval_text_strategy": manifesto_snapshot.get(
                 "retrieval_text_strategy", "legacy_documento"
             ),
+            "contextual_retrieval": stage == "R3",
+            "context_template_version": contexto_deterministico.get(
+                "template_version"
+            ),
+            "context_fields": contexto_deterministico.get("fields", []),
+            "context_field_limits_chars": contexto_deterministico.get(
+                "field_limits_chars", {}
+            ),
+            "contextualized_chunks": contexto_deterministico.get(
+                "contextualized_chunks", 0
+            ),
+            "mean_prefix_chars": contexto_deterministico.get(
+                "mean_prefix_chars", 0.0
+            ),
+            "llm_contextualization_used": contexto_deterministico.get(
+                "llm_used", False
+            ),
+            "parallel_candidate_index": stage == "R3",
             "evidence_package": False,
             "evidence_guard": False,
         },
@@ -541,39 +590,79 @@ def executar_baseline_local(
     snapshot_path: str | Path,
     *,
     git_revision: str | None = None,
+    candidate_runtime: str | Path | None = None,
 ) -> dict:
     import chromadb
 
     from src.conhecimento.base_runtime import _versao_indice_lexical
+    from src.conhecimento.contextual_retrieval import ESTRATEGIA_CONTEXTO_R3
     from src.conhecimento.embeddings import criar_modelo_embeddings
     from src.conhecimento.indice_lexical import IndiceLexicalSQLite
+    from src.conhecimento.indice_portatil import importar_colecao
     from src.core.config import NOME_COLECAO, PASTA_CHROMADB
 
     gold_set = carregar_gold_set(gold_path)
-    manifesto, registros = carregar_snapshot(snapshot_path)
+    arquivo_snapshot = resolver_caminho_no_projeto(snapshot_path, deve_existir=True)
+    manifesto, registros = carregar_snapshot(arquivo_snapshot)
+    manifesto = {
+        **manifesto,
+        "arquivo_snapshot_sha256": hash_arquivo_sha256(arquivo_snapshot),
+        "arquivo_snapshot_tamanho_bytes": arquivo_snapshot.stat().st_size,
+    }
     validar_gold_contra_snapshot(gold_set, manifesto, registros)
 
-    cliente = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
-    colecao = cliente.get_or_create_collection(name=NOME_COLECAO)
-    if colecao.count() != int(manifesto.get("n_chunks", -1)):
-        raise RuntimeError(
-            "A coleção ChromaDB local não corresponde ao snapshot auditado. "
-            "Restaure a base antes de medir o baseline."
-        )
-
-    modelo = criar_modelo_embeddings(modo_consulta=True)
-    indice_lexical = IndiceLexicalSQLite()
-    indice_lexical.sincronizar(
-        colecao,
-        versao=_versao_indice_lexical(colecao, modo_consulta=True),
-    )
     identificacao = {}
-    if int(manifesto.get("schema_version", 0)) >= 2:
+    estrategia = manifesto.get("retrieval_text_strategy")
+    if estrategia == ESTRATEGIA_CONTEXTO_R3:
+        runtime = resolver_caminho_no_projeto(
+            candidate_runtime
+            or RAIZ_PROJETO / "base_conhecimento" / "candidatos" / "r3_contextual"
+        )
+        runtime.mkdir(parents=True, exist_ok=True)
+        conteudo_hash = str(manifesto["hash_conteudo_retrieval_sha256"])
+        nome_colecao = f"literatura_contextual_r3_{conteudo_hash[:12]}"
+        cliente = chromadb.PersistentClient(path=str(runtime / "chromadb"))
+        colecao = cliente.get_or_create_collection(
+            name=nome_colecao,
+            metadata={"hnsw:space": "cosine"},
+        )
+        esperado = int(manifesto["n_chunks"])
+        if colecao.count() not in {0, esperado}:
+            cliente.delete_collection(nome_colecao)
+            colecao = cliente.get_or_create_collection(
+                name=nome_colecao,
+                metadata={"hnsw:space": "cosine"},
+            )
+        importar_colecao(colecao, arquivo_snapshot)
+        indice_lexical = IndiceLexicalSQLite(
+            runtime / f"{nome_colecao}_fts.sqlite3"
+        )
+        indice_lexical.sincronizar(colecao, versao=conteudo_hash)
+        identificacao = {
+            "benchmark_id": "evidence-rag-r3-contextual-deterministic",
+            "stage": "R3",
+            "variant": "deterministic_document_context_v1",
+        }
+    else:
+        cliente = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
+        colecao = cliente.get_or_create_collection(name=NOME_COLECAO)
+        if colecao.count() != int(manifesto.get("n_chunks", -1)):
+            raise RuntimeError(
+                "A coleção ChromaDB local não corresponde ao snapshot auditado. "
+                "Restaure a base antes de medir o baseline."
+            )
+        indice_lexical = IndiceLexicalSQLite()
+        indice_lexical.sincronizar(
+            colecao,
+            versao=_versao_indice_lexical(colecao, modo_consulta=True),
+        )
+    if int(manifesto.get("schema_version", 0)) >= 2 and not identificacao:
         identificacao = {
             "benchmark_id": "evidence-rag-r2-schema-v2",
             "stage": "R2",
             "variant": "jsonl_schema_v2_identity",
         }
+    modelo = criar_modelo_embeddings(modo_consulta=True)
     return executar_benchmark(
         gold_set,
         modelo_embeddings=modelo,
@@ -605,7 +694,7 @@ METRICAS_RETRIEVAL_COMPARAVEIS = (
 
 
 def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
-    """Compara R2 com R0–R1 sem misturar latência com qualidade científica."""
+    """Compara candidatos sem misturar latência com qualidade científica."""
     resumo_base = baseline["summary"]
     resumo_candidato = candidato["summary"]
     deltas = {
@@ -642,6 +731,65 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
         baseline["corpus"].get(campo) == candidato["corpus"].get(campo)
         for campo in ("hash_sha256", "n_documents", "n_chunks", "collection_count")
     )
+    base_por_id = {item["query_id"]: item for item in baseline["queries"]}
+    candidato_por_id = {item["query_id"]: item for item in candidato["queries"]}
+    regressions = []
+    regression_details = []
+    improvements = []
+    simple_categories = {"localizacao_direta", "conceito", "metodo"}
+    critical_simple_regressions = []
+    for query_id in sorted(base_por_id.keys() & candidato_por_id.keys()):
+        base_item = base_por_id[query_id]
+        candidate_item = candidato_por_id[query_id]
+        if base_item["expected_behavior"] != "retrieve":
+            continue
+        base_recall = float(base_item["metrics"]["5"]["recall@5"])
+        candidate_recall = float(candidate_item["metrics"]["5"]["recall@5"])
+        if candidate_recall < base_recall:
+            regressions.append(query_id)
+            base_top = (base_item.get("retrieved") or [{}])[0]
+            candidate_top = (candidate_item.get("retrieved") or [{}])[0]
+            regression_details.append(
+                {
+                    "query_id": query_id,
+                    "category": base_item["category"],
+                    "question": base_item["question"],
+                    "baseline_page_recall_at_5": base_recall,
+                    "candidate_page_recall_at_5": candidate_recall,
+                    "candidate_document_recall_at_5": float(
+                        candidate_item["metrics"]["5"]["document_recall@5"]
+                    ),
+                    "baseline_top_1": {
+                        "file": base_top.get("file"),
+                        "pages": base_top.get("pages", []),
+                    },
+                    "candidate_top_1": {
+                        "file": candidate_top.get("file"),
+                        "pages": candidate_top.get("pages", []),
+                    },
+                }
+            )
+            if base_item["category"] in simple_categories:
+                critical_simple_regressions.append(query_id)
+        elif candidate_recall > base_recall:
+            improvements.append(query_id)
+    quality_metrics = (
+        "recall@5",
+        "recall@8",
+        "mrr@5",
+        "mrr@8",
+        "ndcg@5",
+        "ndcg@8",
+    )
+    quality_gain = any(deltas[metrica] > 1e-12 for metrica in quality_metrics)
+    promotion_eligible = all(
+        (
+            corpus_inalterado,
+            ranking_inalterado,
+            quality_gain,
+            not critical_simple_regressions,
+        )
+    )
     return {
         "baseline_benchmark_id": baseline.get("benchmark_id"),
         "candidate_benchmark_id": candidato.get("benchmark_id"),
@@ -649,6 +797,17 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
         "ranking_contract_preserved": ranking_inalterado,
         "scientific_metrics_identical": all(
             math.isclose(valor, 0.0, abs_tol=1e-12) for valor in deltas.values()
+        ),
+        "quality_gain_observed": quality_gain,
+        "regressed_queries_at_5": regressions,
+        "regression_details": regression_details,
+        "improved_queries_at_5": improvements,
+        "critical_simple_regressions": critical_simple_regressions,
+        "promotion_eligible_after_quality_stages": promotion_eligible,
+        "promotion_decision": (
+            "deferred_to_r4_r5_r6"
+            if candidato.get("stage") == "R3"
+            else "not_applicable"
         ),
         "metrics": metricas,
         "metric_deltas": deltas,
@@ -660,172 +819,3 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
     }
 
 
-def _linhas_comparacao(resultado: dict) -> list[str]:
-    comparacao = resultado.get("comparison_to_baseline")
-    if not comparacao:
-        return []
-    linhas = [
-        "## Comparação baseline x candidato",
-        "",
-        "| Métrica | R0–R1 | R2 | Delta |",
-        "|---|---:|---:|---:|",
-    ]
-    for metrica, valores in comparacao["metrics"].items():
-        linhas.append(
-            f"| {metrica} | {float(valores['baseline']):.6f} | "
-            f"{float(valores['candidate']):.6f} | {float(valores['delta']):+.6f} |"
-        )
-    aprovado = all(
-        comparacao[campo]
-        for campo in (
-            "corpus_identity_preserved",
-            "ranking_contract_preserved",
-            "scientific_metrics_identical",
-        )
-    )
-    linhas.extend(
-        [
-            "",
-            f"- Identidade do corpus preservada: {str(comparacao['corpus_identity_preserved']).lower()}.",
-            f"- Contrato de ranking preservado: {str(comparacao['ranking_contract_preserved']).lower()}.",
-            f"- Métricas científicas idênticas: {str(comparacao['scientific_metrics_identical']).lower()}.",
-            "- Latência é informativa e não participa do gate científico de R2.",
-            f"- Gate R2: {'APROVADO' if aprovado else 'REPROVADO'}.",
-            "",
-        ]
-    )
-    return linhas
-
-
-def relatorio_markdown(resultado: dict) -> str:
-    resumo = resultado["summary"]
-    retrieval = resultado["retrieval"]
-    corpus = resultado["corpus"]
-    falhas = [
-        item
-        for item in resultado["queries"]
-        if item["expected_behavior"] == "retrieve"
-        and not item["metrics"]["5"]["hit_rate@5"]
-    ]
-    categorias = Counter(item["category"] for item in resultado["queries"])
-    abstencoes = resumo["n_future_abstention_queries"]
-    rotulo_abstencao = "reservada" if abstencoes == 1 else "reservadas"
-    schema_v2 = int(corpus["snapshot_schema_version"]) >= 2
-    titulo_relatorio = (
-        "# Evidence RAG — JSONL schema v2 R2"
-        if schema_v2
-        else "# Evidence RAG — baseline R0–R1"
-    )
-    estado_relatorio = (
-        "> Estado: contrato JSONL v2 medido sem contextualização; gold set provisório e pendente de revisão do pesquisador em R6."
-        if schema_v2
-        else "> Estado: baseline vigente medido; gold set provisório e pendente de revisão do pesquisador em R6."
-    )
-    descricao_snapshot = (
-        "campos `raw_text` e `retrieval_text` separados, ainda idênticos em R2, "
-        "com embeddings preservados por chunk."
-        if schema_v2
-        else "texto bruto no campo `documento` e embeddings armazenados por chunk."
-    )
-    estado_contrato = (
-        "- O schema v2 separa os contratos de texto sem acrescentar contexto; "
-        "`retrieval_text` permanece idêntico a `raw_text` nesta etapa."
-        if schema_v2
-        else "- O schema v1 ainda não separa `raw_text` de `retrieval_text` e não registra contexto do chunk."
-    )
-    limitacao_snapshot = (
-        "- O schema v2 registra estratégia e hash de conteúdo, mas tamanho e overlap "
-        "do snapshot legado permanecem desconhecidos; nenhum valor foi inferido."
-        if schema_v2
-        else "- O snapshot v1 não registra tamanho/overlap de chunk nem proveniência do texto contextual."
-    )
-    hash_conteudo = corpus.get("snapshot_content_hash_sha256")
-    linhas = [
-        titulo_relatorio,
-        "",
-        estado_relatorio,
-        "",
-        "## Auditoria R2" if schema_v2 else "## Auditoria R0",
-        "",
-        f"- Corpus: {corpus['n_documents']} PDFs e {corpus['n_chunks']} chunks.",
-        f"- Snapshot portátil: schema v{corpus['snapshot_schema_version']}; "
-        + descricao_snapshot,
-        f"- Hash SHA-256 do corpus: `{corpus['hash_sha256']}`.",
-        *(
-            [f"- Hash de texto/embedding do snapshot: `{hash_conteudo}`."]
-            if hash_conteudo
-            else []
-        ),
-        f"- Índice semântico: {retrieval['semantic_index']} com `{retrieval['embedding_model']}` "
-        f"na revisão `{retrieval['embedding_revision']}`.",
-        f"- Backend de indexação: {retrieval['index_embedding_backend']}; "
-        f"backend de consulta equivalente: {retrieval['query_embedding_backend']}.",
-        f"- Índice lexical: {retrieval['lexical_index']} (disponível: {str(retrieval['lexical_available']).lower()}).",
-        "- Fusão: Reciprocal Rank Fusion com constante 60; reranking e diversificação locais vigentes.",
-        "- IDs: SHA-256 documental mais índice ordinal do chunk; páginas preservadas nos metadados.",
-        estado_contrato,
-        "- O caminho atual não possui Evidence Package nem Evidence Guard determinístico.",
-        "- Nenhum parâmetro de ranking foi modificado nesta etapa.",
-        "",
-        "## Gold set R1",
-        "",
-        f"- Perguntas: {resumo['n_queries']} ({resumo['n_retrieval_queries']} recuperáveis e "
-        f"{abstencoes} {rotulo_abstencao} à futura avaliação de abstenção).",
-        "- Categorias: " + ", ".join(f"{nome}={quantidade}" for nome, quantidade in sorted(categorias.items())) + ".",
-        "- Todas as evidências provisórias foram validadas contra arquivo, hash, página e chunk do snapshot.",
-        "- O conjunto não é verdade final: a promoção R6 permanece bloqueada até revisão humana do pesquisador.",
-        "",
-        "## Métricas de retrieval",
-        "",
-        "| Métrica | k=5 | k=8 |",
-        "|---|---:|---:|",
-        f"| Recall por página@k | {resumo['recall@5']:.4f} | {resumo['recall@8']:.4f} |",
-        f"| Recall por chunk exato@k | {resumo['strict_chunk_recall@5']:.4f} | {resumo['strict_chunk_recall@8']:.4f} |",
-        f"| Recall por documento@k | {resumo['document_recall@5']:.4f} | {resumo['document_recall@8']:.4f} |",
-        f"| Precision@k | {resumo['precision@5']:.4f} | {resumo['precision@8']:.4f} |",
-        f"| Hit Rate@k | {resumo['hit_rate@5']:.4f} | {resumo['hit_rate@8']:.4f} |",
-        f"| MRR@k | {resumo['mrr@5']:.4f} | {resumo['mrr@8']:.4f} |",
-        f"| nDCG@k | {resumo['ndcg@5']:.4f} | {resumo['ndcg@8']:.4f} |",
-        "",
-        f"- Latência aquecida média: {resumo['latency_ms_mean']:.1f} ms; "
-        f"p50={resumo['latency_ms_p50']:.1f} ms; p95={resumo['latency_ms_p95']:.1f} ms.",
-        f"- Contexto médio no maior k: {resumo['context_chars_mean_at_max_k']:.0f} caracteres.",
-        f"- Consultas recuperáveis sem acerto no top-5: {len(falhas)}.",
-        "",
-        "A diferença entre Recall documental e Recall por página mostra que o baseline "
-        "frequentemente localiza a fonte correta, mas não a passagem citável correta. "
-        "O Recall por chunk exato permanece como controle estrito das fronteiras de segmentação.",
-        "",
-        *_linhas_comparacao(resultado),
-        "## Diagnóstico por categoria",
-        "",
-        "| Categoria | Perguntas | Recall página@5 | Recall documento@5 | Latência média (ms) |",
-        "|---|---:|---:|---:|---:|",
-        *(
-            f"| {categoria} | {dados['n_queries']} | {dados['recall@5']:.4f} | "
-            f"{dados['document_recall@5']:.4f} | {dados['latency_ms_mean']:.1f} |"
-            for categoria, dados in sorted(resultado["by_category"].items())
-        ),
-        "",
-        "## Limitações e próximo gate",
-        "",
-        "- Métricas de retrieval não medem fidelidade da resposta gerada.",
-        limitacao_snapshot,
-        "- A expansão vigente possui regras temáticas manuais e ainda associa Paderborn a Stender; "
-        "não existe regra ou fonte bibliográfica direta para os 16 ensaios GPVS-Faults.",
-        "- A recuperação não aplica filtro de página e ainda não valida citações após a geração.",
-        "- Perguntas de abstenção serão pontuadas apenas após o Evidence Guard (R5).",
-        "- O baseline deve permanecer disponível para comparação e rollback durante R2–R6.",
-        "- Contextual Retrieval só poderá ser promovido após ganho mensurável e ausência de regressão crítica.",
-        "",
-    ]
-    if falhas:
-        linhas.extend(
-            [
-                "### Consultas sem acerto no top-5",
-                "",
-                *(f"- `{item['query_id']}`: {item['question']}" for item in falhas),
-                "",
-            ]
-        )
-    return "\n".join(linhas)

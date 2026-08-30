@@ -20,6 +20,11 @@ SCIENTIFIC_MANIFEST_NAMES = {
 }
 EVALUATION_MANIFESTS = {
     "evidence_rag_baseline_v1.json": ("R0-R1", "baseline_current", 1),
+    "evidence_rag_contextual_r3.json": (
+        "R3",
+        "deterministic_document_context_v1",
+        2,
+    ),
     "evidence_rag_schema_v2_r2.json": ("R2", "jsonl_schema_v2_identity", 2),
 }
 MANIFEST_NAMES = SCIENTIFIC_MANIFEST_NAMES | set(EVALUATION_MANIFESTS)
@@ -161,6 +166,30 @@ def _audit_retrieval_r2(manifest: dict, errors: list[str], path: Path) -> None:
         errors.append(f"{path.name}: contrato raw/retrieval não está separado")
 
 
+def _audit_retrieval_r3(manifest: dict, errors: list[str], path: Path) -> None:
+    comparacao = manifest.get("comparison_to_baseline", {})
+    if comparacao.get("baseline_benchmark_id") != "evidence-rag-r2-schema-v2":
+        errors.append(f"{path.name}: R3 não foi comparado diretamente ao R2")
+    if not all(
+        comparacao.get(campo) is True
+        for campo in ("corpus_identity_preserved", "ranking_contract_preserved")
+    ):
+        errors.append(f"{path.name}: identidade de corpus ou ranking mudou em R3")
+    if comparacao.get("promotion_decision") != "deferred_to_r4_r5_r6":
+        errors.append(f"{path.name}: candidato R3 foi promovido antes dos gates")
+    retrieval = manifest.get("retrieval", {})
+    if retrieval.get("retrieval_text_strategy") != (
+        "deterministic_document_context_v1"
+    ):
+        errors.append(f"{path.name}: estratégia contextual R3 divergente")
+    if retrieval.get("contextual_retrieval") is not True:
+        errors.append(f"{path.name}: Contextual Retrieval R3 não está declarado")
+    if retrieval.get("llm_contextualization_used") is not False:
+        errors.append(f"{path.name}: R3 usou contextualização por LLM")
+    if retrieval.get("parallel_candidate_index") is not True:
+        errors.append(f"{path.name}: R3 não foi medido em índice paralelo")
+
+
 def _audit_retrieval_result(
     path: Path,
     errors: list[str],
@@ -187,6 +216,8 @@ def _audit_retrieval_result(
     _audit_retrieval_metrics(manifest, errors, path)
     if expected_stage == "R2":
         _audit_retrieval_r2(manifest, errors, path)
+    elif expected_stage == "R3":
+        _audit_retrieval_r3(manifest, errors, path)
 
 
 def _audit_retrieval_baseline(path: Path, errors: list[str]) -> None:

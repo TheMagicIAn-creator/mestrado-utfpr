@@ -47,6 +47,7 @@ base_conhecimento/
 # A nuvem usa o snapshot portátil versionado em artefatos/, não o diretório
 # interno do ChromaDB. O banco local acumula segmentos e não é portátil.
 artefatos/*.tmp
+/artefatos/candidatos/
 
 # ========================
 # LOGS

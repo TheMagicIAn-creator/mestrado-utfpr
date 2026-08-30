@@ -37,6 +37,8 @@ webapp/ -> conhecimento/ -> ml/
 | `atalhos.py` | Respostas determinísticas anteriores ao RAG. |
 | `base_runtime.py` | Inicialização progressiva do conhecimento. |
 | `benchmark_retrieval.py` | Gold set, validação de evidências e benchmark versionado do RAG. |
+| `benchmark_relatorio.py` | Renderização auditável dos relatórios comparativos de retrieval. |
+| `contextual_retrieval.py` | Construção determinística do candidato contextual paralelo R3. |
 | `catalogo_bibliografico.py` | Catálogo versionado, identidade SHA-256 e metadados das fontes. |
 | `cliente_llm.py` | Fachada compatível e neutra que encaminha `invoke`, JSON e streaming ao Router. |
 | `consolidar_memoria.py` | Consolidação de sessões. |
