@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import gzip
 import json
+import sys
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -154,3 +157,82 @@ def test_contextualizacao_recusa_sobrescrever_snapshot_base(tmp_path, item):
 
     with pytest.raises(ContextualizacaoInvalida, match="separado"):
         contextualizar_snapshot(origem, origem, EncoderFalso())
+
+
+def test_cli_contextualiza_snapshot_r3_sem_promover_indice(
+    monkeypatch, tmp_path, capsys
+):
+    from scripts import manter_base
+
+    destino = tmp_path / "candidato.jsonl.gz"
+    chamadas = {}
+
+    def contextualizar(origem, caminho_destino, modelo, *, tamanho_lote):
+        chamadas.update(
+            origem=origem,
+            destino=caminho_destino,
+            modelo=modelo,
+            tamanho_lote=tamanho_lote,
+        )
+        return {"stage": "R3", "promovido": False}
+
+    monkeypatch.setitem(
+        sys.modules,
+        "src.conhecimento.benchmark_retrieval",
+        SimpleNamespace(resolver_caminho_no_projeto=lambda caminho: Path(caminho)),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "src.conhecimento.contextual_retrieval",
+        SimpleNamespace(contextualizar_snapshot=contextualizar),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "src.conhecimento.embeddings",
+        SimpleNamespace(criar_modelo_embeddings=lambda **kwargs: kwargs),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "src.core.config",
+        SimpleNamespace(ARQUIVO_INDICE_LITERATURA=Path("origem-r2.jsonl.gz")),
+    )
+
+    assert manter_base.contextualizar_literatura_r3(destino, tamanho_lote=7) == 0
+    assert chamadas == {
+        "origem": Path("origem-r2.jsonl.gz"),
+        "destino": destino,
+        "modelo": {"modo_consulta": False},
+        "tamanho_lote": 7,
+    }
+    assert json.loads(capsys.readouterr().out) == {
+        "stage": "R3",
+        "promovido": False,
+    }
+
+
+def test_cli_expõe_comando_contextual_r3(monkeypatch, tmp_path):
+    from scripts import manter_base
+
+    destino = tmp_path / "candidato.jsonl.gz"
+    chamadas = []
+    monkeypatch.setattr(
+        manter_base,
+        "contextualizar_literatura_r3",
+        lambda caminho, *, tamanho_lote: chamadas.append(
+            (caminho, tamanho_lote)
+        )
+        or 0,
+    )
+
+    retorno = manter_base.main(
+        [
+            "contextualizar-literatura-r3",
+            "--destino",
+            str(destino),
+            "--tamanho-lote",
+            "9",
+        ]
+    )
+
+    assert retorno == 0
+    assert chamadas == [(destino, 9)]
