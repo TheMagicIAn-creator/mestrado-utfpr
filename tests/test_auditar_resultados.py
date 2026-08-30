@@ -7,7 +7,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scripts.auditar_resultados import _audit_retrieval_baseline
+from scripts.auditar_resultados import (
+    _audit_retrieval_baseline,
+    _audit_retrieval_r3,
+)
 
 
 def test_auditor_executa_fora_da_raiz(tmp_path):
@@ -76,3 +79,31 @@ def test_auditor_rejeita_resultados_incompletos_e_json_invalido(tmp_path):
 
     assert any("resultados por pergunta incompletos" in error for error in errors)
     assert any("manifesto inválido" in error for error in errors)
+
+
+def test_auditor_rejeita_candidato_r3_sem_gates_cientificos(tmp_path):
+    errors = []
+
+    _audit_retrieval_r3(
+        {
+            "comparison_to_baseline": {
+                "baseline_benchmark_id": "baseline-incorreto",
+                "corpus_identity_preserved": False,
+                "ranking_contract_preserved": False,
+                "promotion_decision": "promoted",
+            },
+            "retrieval": {
+                "retrieval_text_strategy": "estrategia-incorreta",
+                "contextual_retrieval": False,
+                "llm_contextualization_used": True,
+                "parallel_candidate_index": False,
+            },
+        },
+        errors,
+        tmp_path / "r3.json",
+    )
+
+    assert len(errors) == 7
+    assert any("comparado diretamente ao R2" in error for error in errors)
+    assert any("promovido antes dos gates" in error for error in errors)
+    assert any("usou contextualização por LLM" in error for error in errors)
