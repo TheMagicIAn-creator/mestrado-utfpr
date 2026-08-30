@@ -732,6 +732,7 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
     base_por_id = {item["query_id"]: item for item in baseline["queries"]}
     candidato_por_id = {item["query_id"]: item for item in candidato["queries"]}
     regressions = []
+    regression_details = []
     improvements = []
     simple_categories = {"localizacao_direta", "conceito", "metodo"}
     critical_simple_regressions = []
@@ -744,6 +745,28 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
         candidate_recall = float(candidate_item["metrics"]["5"]["recall@5"])
         if candidate_recall < base_recall:
             regressions.append(query_id)
+            base_top = (base_item.get("retrieved") or [{}])[0]
+            candidate_top = (candidate_item.get("retrieved") or [{}])[0]
+            regression_details.append(
+                {
+                    "query_id": query_id,
+                    "category": base_item["category"],
+                    "question": base_item["question"],
+                    "baseline_page_recall_at_5": base_recall,
+                    "candidate_page_recall_at_5": candidate_recall,
+                    "candidate_document_recall_at_5": float(
+                        candidate_item["metrics"]["5"]["document_recall@5"]
+                    ),
+                    "baseline_top_1": {
+                        "file": base_top.get("file"),
+                        "pages": base_top.get("pages", []),
+                    },
+                    "candidate_top_1": {
+                        "file": candidate_top.get("file"),
+                        "pages": candidate_top.get("pages", []),
+                    },
+                }
+            )
             if base_item["category"] in simple_categories:
                 critical_simple_regressions.append(query_id)
         elif candidate_recall > base_recall:
@@ -775,6 +798,7 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
         ),
         "quality_gain_observed": quality_gain,
         "regressed_queries_at_5": regressions,
+        "regression_details": regression_details,
         "improved_queries_at_5": improvements,
         "critical_simple_regressions": critical_simple_regressions,
         "promotion_eligible_after_quality_stages": promotion_eligible,
@@ -842,6 +866,25 @@ def _linhas_comparacao(resultado: dict) -> list[str]:
                 "",
             ]
         )
+        if comparacao["regression_details"]:
+            linhas.extend(
+                [
+                    "### Regressões auditadas",
+                    "",
+                    *(
+                        f"- `{item['query_id']}` ({item['category']}): Recall de "
+                        f"página@5 {item['baseline_page_recall_at_5']:.1f}→"
+                        f"{item['candidate_page_recall_at_5']:.1f}; Recall documental "
+                        f"R3={item['candidate_document_recall_at_5']:.1f}; top-1 R2 "
+                        f"`{item['baseline_top_1']['file']}` p."
+                        f"{item['baseline_top_1']['pages']}; top-1 R3 "
+                        f"`{item['candidate_top_1']['file']}` p."
+                        f"{item['candidate_top_1']['pages']}."
+                        for item in comparacao["regression_details"]
+                    ),
+                    "",
+                ]
+            )
     else:
         linhas.extend(
             [

@@ -366,6 +366,46 @@ def test_comparacao_r3_registra_ganho_sem_promover(monkeypatch):
     assert "candidato não promovido" in texto
 
 
+def test_comparacao_r3_detalha_regressao_de_pagina_com_documento_correto(
+    monkeypatch,
+):
+    recuperado = {
+        "rank": 1,
+        "chunk_id": CHUNK_ID,
+        "document_id": DOCUMENT_ID,
+        "file": "fonte.pdf",
+        "pages": [7],
+        "rrf_score": 0.1,
+        "context_chars": 120,
+    }
+    monkeypatch.setattr(
+        benchmark,
+        "recuperar_baseline",
+        lambda *args, **kwargs: [recuperado],
+    )
+    baseline = benchmark.executar_benchmark(
+        _gold(),
+        modelo_embeddings="modelo",
+        colecao=_Colecao(),
+        indice_lexical=_Lexical(),
+        manifesto_snapshot=_manifesto(),
+        relogio=lambda: 0.0,
+        warmup=False,
+    )
+    candidato = copy.deepcopy(baseline)
+    candidato.update(stage="R3", benchmark_id="r3")
+    candidato["summary"]["recall@5"] = 0.0
+    candidato["queries"][0]["metrics"]["5"]["recall@5"] = 0.0
+
+    comparacao = benchmark.comparar_benchmarks(baseline, candidato)
+
+    detalhe = comparacao["regression_details"][0]
+    assert detalhe["query_id"] == "q1"
+    assert detalhe["candidate_page_recall_at_5"] == 0.0
+    assert detalhe["candidate_document_recall_at_5"] == 1.0
+    assert detalhe["candidate_top_1"] == {"file": "fonte.pdf", "pages": [7]}
+
+
 def test_relatorio_markdown_explicita_estado_provisorio(monkeypatch):
     monkeypatch.setattr(
         benchmark,
