@@ -41,8 +41,8 @@ Especificação: `ALIADO_ALINHAMENTO_ARQUITETURA_METODOLOGIA.md`
 - `pytest -m "not pesado"`: 430 aprovados, 3 ignorados e 17 excluídos.
 - Testes com PyTorch real: 6 aprovados.
 - Ruff `F821,F822,F823`: aprovado.
-- SonarQube Quality Gate: aprovado.
-- Cobertura de código novo no SonarQube: 82,7%.
+- Gate de qualidade da campanha: aprovado.
+- Cobertura de código novo medida na campanha: 82,7%.
 - Duplicação em código novo: 0,0%.
 - Hotspots revisados: 100%.
 

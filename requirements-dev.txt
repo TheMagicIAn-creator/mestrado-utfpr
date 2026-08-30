@@ -1,6 +1,5 @@
 # CI leve e verificacao local sem Torch ou ChromaDB reais.
 pytest>=8
-pytest-cov>=6
 ruff>=0.6
 httpx
 markdown-it-py

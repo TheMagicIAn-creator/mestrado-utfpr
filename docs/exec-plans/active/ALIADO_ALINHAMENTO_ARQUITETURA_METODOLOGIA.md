@@ -14,7 +14,7 @@ Ao recebê-lo, o Codex deve:
 
 1. ler integralmente este documento antes de modificar qualquer arquivo;
 2. inspecionar o estado atual do repositório e identificar divergências entre esta especificação e o código/documentação existentes;
-3. preservar todas as regras de segurança já existentes no `AGENTS.md`, especialmente o protocolo de varredura de segredos do SonarQube;
+3. preservar as regras essenciais de segurança, sem expor credenciais em código, logs, prompts ou artefatos;
 4. não substituir o `AGENTS.md` atual por este documento;
 5. armazenar esta especificação no repositório, preferencialmente em:
    `docs/exec-plans/active/ALIADO_ALINHAMENTO_ARQUITETURA_METODOLOGIA.md`;
@@ -935,9 +935,9 @@ Objetivo:
 
 # 21. DOCUMENTAÇÃO DO CODEX
 
-O `AGENTS.md` atual contém protocolo de segurança do SonarQube.
+O `AGENTS.md` deve permanecer limitado às instruções essenciais do projeto e ao ponteiro para esta especificação.
 
-NÃO REMOVER.
+Não adicionar scanners externos obrigatórios ao fluxo local de leitura de arquivos.
 
 Após incorporar este documento ao repositório, acrescentar apenas uma seção curta semelhante a:
 
@@ -1184,7 +1184,7 @@ Eliminar contradições.
 
 ## Fase 8 — Qualidade
 
-Executar testes, Sonar, lint e auditorias.
+Executar testes, lint e auditorias.
 
 ## Fase 9 — Relatório final
 
@@ -1285,7 +1285,7 @@ Não:
 - apagar resultados negativos;
 - ocultar falsos positivos;
 - quebrar rastreabilidade;
-- remover protocolo Sonar;
+- remover verificações essenciais de testes, lint ou integridade;
 - commitar segredos;
 - criar documentação canônica contraditória;
 - fazer refatoração estética sem benefício para a tarefa.

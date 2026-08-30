@@ -1,3 +1,0 @@
-[mcp_servers.sonarqube]
-command = "sonar.exe"
-args = [ "run", "mcp", "--project", "TheMagicIAn-creator_mestrado-utfpr" ]
