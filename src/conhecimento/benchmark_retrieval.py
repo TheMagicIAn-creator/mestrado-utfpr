@@ -86,6 +86,14 @@ def hash_json_sha256(valor: object) -> str:
     return hashlib.sha256(_json_canonico(valor)).hexdigest()
 
 
+def hash_arquivo_sha256(caminho: str | Path) -> str:
+    digest = hashlib.sha256()
+    with Path(caminho).open("rb") as arquivo:
+        for bloco in iter(lambda: arquivo.read(1024 * 1024), b""):
+            digest.update(bloco)
+    return digest.hexdigest()
+
+
 def carregar_gold_set(caminho: str | Path, *, validar_campanha: bool = True) -> dict:
     arquivo = resolver_caminho_no_projeto(caminho, deve_existir=True)
     dados = json.loads(arquivo.read_text(encoding="utf-8"))
@@ -489,9 +497,27 @@ def executar_benchmark(
         },
         "corpus": {
             "snapshot_schema_version": int(manifesto_snapshot.get("schema_version", 0)),
+            "snapshot_file_sha256": manifesto_snapshot.get(
+                "arquivo_snapshot_sha256"
+            ),
+            "snapshot_size_bytes": manifesto_snapshot.get(
+                "arquivo_snapshot_tamanho_bytes"
+            ),
             "hash_sha256": manifesto_snapshot.get("hash_corpus_sha256"),
             "snapshot_content_hash_sha256": manifesto_snapshot.get(
                 "hash_conteudo_retrieval_sha256"
+            ),
+            "raw_text_hash_sha256": manifesto_snapshot.get(
+                "hash_raw_text_sha256"
+            ),
+            "chunk_ids_hash_sha256": manifesto_snapshot.get(
+                "hash_chunk_ids_sha256"
+            ),
+            "source_snapshot_sha256": contexto_deterministico.get(
+                "source_snapshot_sha256"
+            ),
+            "source_content_hash_sha256": contexto_deterministico.get(
+                "source_content_hash_sha256"
             ),
             "n_documents": int(manifesto_snapshot.get("n_documentos", 0)),
             "n_chunks": int(manifesto_snapshot.get("n_chunks", 0)),
@@ -527,6 +553,16 @@ def executar_benchmark(
             "contextual_retrieval": stage == "R3",
             "context_template_version": contexto_deterministico.get(
                 "template_version"
+            ),
+            "context_fields": contexto_deterministico.get("fields", []),
+            "context_field_limits_chars": contexto_deterministico.get(
+                "field_limits_chars", {}
+            ),
+            "contextualized_chunks": contexto_deterministico.get(
+                "contextualized_chunks", 0
+            ),
+            "mean_prefix_chars": contexto_deterministico.get(
+                "mean_prefix_chars", 0.0
             ),
             "llm_contextualization_used": contexto_deterministico.get(
                 "llm_used", False
@@ -564,7 +600,13 @@ def executar_baseline_local(
     from src.core.config import NOME_COLECAO, PASTA_CHROMADB
 
     gold_set = carregar_gold_set(gold_path)
-    manifesto, registros = carregar_snapshot(snapshot_path)
+    arquivo_snapshot = resolver_caminho_no_projeto(snapshot_path, deve_existir=True)
+    manifesto, registros = carregar_snapshot(arquivo_snapshot)
+    manifesto = {
+        **manifesto,
+        "arquivo_snapshot_sha256": hash_arquivo_sha256(arquivo_snapshot),
+        "arquivo_snapshot_tamanho_bytes": arquivo_snapshot.stat().st_size,
+    }
     validar_gold_contra_snapshot(gold_set, manifesto, registros)
 
     identificacao = {}
@@ -589,7 +631,7 @@ def executar_baseline_local(
                 name=nome_colecao,
                 metadata={"hnsw:space": "cosine"},
             )
-        importar_colecao(colecao, snapshot_path)
+        importar_colecao(colecao, arquivo_snapshot)
         indice_lexical = IndiceLexicalSQLite(
             runtime / f"{nome_colecao}_fts.sqlite3"
         )
