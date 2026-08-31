@@ -37,6 +37,11 @@ aplicar_estilo()
 
 MODEL_COLORS = {"ae_denso": PALETA[0], "ae_lstm": PALETA[1]}
 MODEL_LABELS = {"ae_denso": "Autoencoder Denso", "ae_lstm": "AE-LSTM"}
+PRIMARY_METRIC_COLORS = {
+    "recall": PALETA[0],
+    "f1": PALETA[1],
+    "precision": PALETA[2],
+}
 
 
 def _save_pair(fig, base_path: Path, note: str) -> tuple[Path, Path]:
@@ -261,6 +266,79 @@ def plot_e3_scenarios(scenarios: pd.DataFrame, output: Path) -> tuple[Path, Path
     )
 
 
+def plot_temporal_ablation(
+    paired: pd.DataFrame,
+    output: Path,
+) -> tuple[Path, Path]:
+    """Mostra se a vantagem do AE-LSTM depende do cruzamento da fronteira."""
+
+    analyses = ["current_full", "transition", "sustained", "post_fault_reset"]
+    analysis_labels = {
+        "current_full": "Completa",
+        "transition": "Transição (7 janelas)",
+        "sustained": "Falha sustentada",
+        "post_fault_reset": "Contexto reiniciado",
+    }
+    metric_labels = {"recall": "Recall", "f1": "F1", "precision": "Precision"}
+    primary = paired[paired["metric"].isin(metric_labels)].copy()
+    reference = primary[primary["is_reference"]].copy()
+    fig, axes = plt.subplots(1, 2, figsize=TAM["painel_2"], layout="constrained")
+
+    y_labels = []
+    y_positions = []
+    position = 0
+    for analysis in analyses:
+        for metric in metric_labels:
+            row = reference[
+                reference["analysis"].eq(analysis) & reference["metric"].eq(metric)
+            ].iloc[0]
+            estimate = float(row["difference_lstm_minus_dense"])
+            low = float(row["ci95_low"])
+            high = float(row["ci95_high"])
+            axes[0].errorbar(
+                estimate,
+                position,
+                xerr=np.asarray([[estimate - low], [high - estimate]]),
+                fmt="o",
+                color=PRIMARY_METRIC_COLORS[metric],
+                capsize=3,
+                markersize=5,
+            )
+            y_positions.append(position)
+            y_labels.append(f"{analysis_labels[analysis]} · {metric_labels[metric]}")
+            position += 1
+        position += 0.45
+    axes[0].axvline(0.0, color=COR_EIXO, linestyle=":")
+    axes[0].set_yticks(y_positions, y_labels)
+    axes[0].invert_yaxis()
+    axes[0].set_xlabel("Diferença pareada AE-LSTM − Denso (IC95%)")
+    axes[0].set_title("Execução de referência · semente 42")
+
+    sustained = primary[primary["analysis"].eq("sustained")]
+    seeds = sorted(int(seed) for seed in sustained["seed"].unique())
+    for metric in metric_labels:
+        block = sustained[sustained["metric"].eq(metric)].set_index("seed").reindex(seeds)
+        axes[1].plot(
+            seeds,
+            block["difference_lstm_minus_dense"].to_numpy(dtype=float),
+            marker="o",
+            color=PRIMARY_METRIC_COLORS[metric],
+            label=metric_labels[metric],
+        )
+    axes[1].axhline(0.0, color=COR_EIXO, linestyle=":")
+    axes[1].set_xticks(seeds)
+    axes[1].set_xlabel("Semente")
+    axes[1].set_ylabel("Diferença macro AE-LSTM − Denso")
+    axes[1].set_title("Estabilidade na falha sustentada")
+    axes[1].legend(loc="best")
+    fig.suptitle("Ablação temporal do AE-LSTM na validação experimental E3")
+    return _save_pair(
+        fig,
+        output,
+        "Falha sustentada exclui as sete primeiras janelas pós-fronteira; diferenças usam o ensaio como unidade.",
+    )
+
+
 def generate_all(
     output_dir: Path,
     *,
@@ -268,6 +346,7 @@ def generate_all(
     e3_scores: pd.DataFrame,
     e3_confusion: pd.DataFrame,
     e3_scenarios: pd.DataFrame,
+    temporal_ablation_paired: pd.DataFrame,
 ) -> list[Path]:
     """Gera somente as figuras publicáveis da comparação dos modelos."""
 
@@ -278,6 +357,10 @@ def generate_all(
         plot_e3_discrimination_curves(e3_scores, output_dir / "e3_curvas_discriminacao"),
         plot_e3_confusion_matrices(e3_confusion, output_dir / "e3_matrizes_confusao"),
         plot_e3_scenarios(e3_scenarios, output_dir / "e3_resultados_por_ensaio"),
+        plot_temporal_ablation(
+            temporal_ablation_paired,
+            output_dir / "e3_ablacao_temporal",
+        ),
     )
     for pair in pairs:
         paths.extend(pair)
@@ -292,4 +375,5 @@ __all__ = [
     "plot_e3_discrimination_curves",
     "plot_e3_metric_summary",
     "plot_e3_scenarios",
+    "plot_temporal_ablation",
 ]

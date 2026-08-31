@@ -41,3 +41,15 @@ A fronteira de falha é nominalmente 50% do registro porque os CSVs
 não contêm canal instrumentado de disparo.
 
 O escore é a média dos cinco maiores erros quadráticos por feature. Cada modelo calibra seu próprio limiar no bloco saudável de calibração usando p99,9 solicitado; o contrato registra o order statistic e o percentil empírico efetivamente alcançável.
+
+## Ablação temporal do AE-LSTM
+
+A análise suplementar separa as sete primeiras janelas pós-fronteira da falha sustentada e também reinicia o contexto pós-falha do AE-LSTM. Treino, scaler, escore e limiares permanecem congelados.
+
+| Métrica | AE-LSTM − Denso na falha sustentada | IC95% |
+|---|---:|---:|
+| Recall | 0.002 | -0.005 a 0.011 |
+| F1 | 0.000 | -0.013 a 0.015 |
+| Precision | 0.055 | -0.020 a 0.181 |
+
+Conclusão pré-especificada: `inconclusive`. Os intervalos da falha sustentada não sustentam superioridade inequívoca.

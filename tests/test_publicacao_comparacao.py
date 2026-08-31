@@ -40,6 +40,15 @@ def test_contrato_publicado_e_canonico():
     assert payload["e3"]["primary_metrics"] == ["recall", "f1", "precision"]
     assert payload["e3"]["complementary_metrics"] == ["auc_roc", "auc_pr"]
     assert payload["e3"]["confusion_matrix_unit"] == "window_descriptive_only"
+    ablation = payload["e3"]["temporal_ablation"]
+    assert ablation["role"] == "supplementary_diagnostic"
+    assert ablation["sequence_length"] == 8
+    assert ablation["transition_post_windows"] == 7
+    assert ablation["conclusion"]["status"] in {
+        "survives",
+        "does_not_survive",
+        "inconclusive",
+    }
     assert "e2" not in payload
     assert "GPVS-Faults" not in payload["title"]
     assert {item["stability_seeds"][0] for item in payload["models"].values()} == {13}
@@ -87,6 +96,7 @@ def test_relatorio_deriva_tabelas_do_contrato_publicado(tmp_path):
     assert "Recall | F1 | Precision | ROC-AUC | PR-AUC" in text
     assert "Matrizes de confusão agregadas" in text
     assert "Percentil efetivo" in text
+    assert "Ablação temporal do AE-LSTM" in text
 
 
 def test_publicador_rejeita_configuracao_desigual_entre_modelos(monkeypatch, tmp_path):
@@ -120,12 +130,22 @@ def test_tabelas_e3_reconciliam():
     stability = pd.read_csv(RESULTS / "e3_estabilidade_sementes.csv")
     confusion = pd.read_csv(RESULTS / "e3_matrizes_confusao.csv")
     scores = pd.read_csv(RESULTS / "e3_escores_referencia.csv")
+    ablation = pd.read_csv(RESULTS / "e3_ablacao_temporal_por_ensaio.csv")
+    ablation_paired = pd.read_csv(RESULTS / "e3_ablacao_temporal.csv")
 
     assert len(scenarios) == 14 * len(MODELS) * len(SEEDS)
     assert set(scenarios["seed"]) == set(SEEDS)
     assert len(stability) == len(MODELS) * len(SEEDS) * 10
     assert confusion["unit"].eq("window_descriptive_only").all()
     assert confusion["normalization"].eq("within_actual_class").all()
+    assert len(ablation) == 14 * len(MODELS) * len(SEEDS) * 4
+    assert set(ablation["analysis"]) == {
+        "current_full",
+        "transition",
+        "sustained",
+        "post_fault_reset",
+    }
+    assert len(ablation_paired) == len(SEEDS) * 4 * 10
     np_columns = {
         "tn_rate_actual_healthy",
         "fp_rate_actual_healthy",
@@ -139,7 +159,7 @@ def test_tabelas_e3_reconciliam():
 
 
 @pytest.mark.integracao
-def test_manifesto_reconcilia_os_16_outputs():
+def test_manifesto_reconcilia_os_20_outputs():
     manifest = _json(MANIFEST_PATH)
 
     assert manifest["manifest_version"] == 2
@@ -148,7 +168,7 @@ def test_manifesto_reconcilia_os_16_outputs():
     assert manifest["parameters"]["score_top_k"] == 5
     assert "e2_steps" not in manifest["parameters"]
     assert manifest["evidence_level"] == "E3_bench"
-    assert len(manifest["outputs"]) == 16
+    assert len(manifest["outputs"]) == 20
     assert set(manifest["outputs"]) == set(manifest["output_artifacts"])
     for relative_path, expected_hash in manifest["output_artifacts"].items():
         path = ROOT / relative_path
@@ -174,8 +194,8 @@ def test_figuras_tem_png_300_dpi_e_pdf_vetorial():
     pngs = sorted(RESULTS.glob("*.png"))
     pdfs = sorted(RESULTS.glob("*.pdf"))
 
-    assert len(pngs) == 4
-    assert len(pdfs) == 4
+    assert len(pngs) == 5
+    assert len(pdfs) == 5
     for path in pngs:
         data = path.read_bytes()
         assert data.startswith(b"\x89PNG\r\n\x1a\n")
