@@ -40,6 +40,8 @@ EVALUATION_MANIFESTS = {
 MANIFEST_NAMES = SCIENTIFIC_MANIFEST_NAMES | set(EVALUATION_MANIFESTS)
 EVIDENCE_GUARD_MANIFEST = "evidence_rag_guard_r5.json"
 MANIFEST_NAMES.add(EVIDENCE_GUARD_MANIFEST)
+EVIDENCE_GRAPH_MANIFEST = "evidence_graph_pilot_r7.json"
+MANIFEST_NAMES.add(EVIDENCE_GRAPH_MANIFEST)
 LEGACY_DIRS = {"auditoria", "autoencoder", "gpvs", "macro", "qualidade", "v2"}
 
 
@@ -381,6 +383,39 @@ def _audit_evidence_guard(path: Path, errors: list[str]) -> None:
         errors.append(f"{path.name}: claims sem suporte passaram pelo guard")
 
 
+def _audit_evidence_graph(path: Path, root: Path, errors: list[str]) -> None:
+    try:
+        manifest = _read_json(path)
+    except (OSError, ValueError) as exc:
+        errors.append(f"manifesto inválido {path.name}: {exc}")
+        return
+    if (
+        manifest.get("stage") != "R7"
+        or manifest.get("variant") != "lightweight_evidence_anchored_graph_v1"
+    ):
+        errors.append(f"{path.name}: identidade do piloto R7 divergente")
+    contracts = manifest.get("contracts", {})
+    expected = {
+        "primary_retrieval": False,
+        "full_graphrag": False,
+        "raptor_enabled": False,
+        "llm_relation_extraction": False,
+        "literal_entity_match_required": True,
+        "evidence_id_required_per_edge": True,
+        "chunk_id_required_per_edge": True,
+        "memory_is_scientific_source": False,
+    }
+    for campo, valor in expected.items():
+        if contracts.get(campo) is not valor:
+            errors.append(f"{path.name}: contrato R7 divergente em {campo}")
+    taxonomy = manifest.get("taxonomy", {})
+    taxonomy_path = root / str(taxonomy.get("path", ""))
+    if not taxonomy_path.is_file():
+        errors.append(f"{path.name}: taxonomia R7 ausente")
+    elif funcao_de_hash_para(taxonomy_path)(taxonomy_path) != taxonomy.get("sha256"):
+        errors.append(f"{path.name}: hash da taxonomia R7 divergente")
+
+
 def _audit_result_layout(results: Path, errors: list[str]) -> None:
     present_dirs = {path.name for path in results.iterdir() if path.is_dir()}
     extra_dirs = present_dirs - RESULT_DIRS
@@ -443,6 +478,7 @@ def auditar_publicacao(root: Path | str = RAIZ_PROJETO) -> dict:
             expected_snapshot_schema=snapshot_schema,
         )
     _audit_evidence_guard(manifests / EVIDENCE_GUARD_MANIFEST, errors)
+    _audit_evidence_graph(manifests / EVIDENCE_GRAPH_MANIFEST, root, errors)
 
     _audit_scientific_contracts(results, errors)
 

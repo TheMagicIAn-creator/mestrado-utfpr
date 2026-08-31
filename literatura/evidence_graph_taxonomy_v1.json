@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "taxonomy_id": "aliado-evidence-graph-taxonomy-v1",
+  "entities": [
+    {"type": "component", "name": "IGBT", "aliases": ["igbt"]},
+    {"type": "component", "name": "Fusível AC", "aliases": ["fusível ac", "fusivel ac", "ac fuse"]},
+    {"type": "component", "name": "Contator AC", "aliases": ["contator ac", "ac contactor"]},
+    {"type": "component", "name": "Capacitor de elo CC", "aliases": ["capacitor de elo cc", "dc-link capacitor", "dc link capacitor"]},
+    {"type": "component", "name": "Filtro", "aliases": ["filtro lcl", "lcl filter"]},
+    {"type": "component", "name": "Sensor", "aliases": ["sensor", "sensores", "sensors"]},
+    {"type": "method", "name": "RCM", "aliases": ["rcm", "reliability-centered maintenance", "manutenção centrada em confiabilidade"]},
+    {"type": "method", "name": "FMECA", "aliases": ["fmeca", "failure mode effects and criticality analysis"]},
+    {"type": "method", "name": "Dense Autoencoder", "aliases": ["dense autoencoder", "autoencoder denso"]},
+    {"type": "method", "name": "LSTM Autoencoder", "aliases": ["lstm autoencoder", "autoencoder lstm", "ae-lstm"]},
+    {"type": "method", "name": "Anomaly Detection", "aliases": ["anomaly detection", "detecção de anomalias"]},
+    {"type": "method", "name": "Condition Monitoring", "aliases": ["condition monitoring", "monitoramento de condição"]},
+    {"type": "dataset", "name": "GPVS-Faults", "aliases": ["gpvs-faults", "gpvs faults"]},
+    {"type": "data_state", "name": "Healthy", "aliases": ["healthy", "saudável", "saudavel"]},
+    {"type": "data_state", "name": "Fault", "aliases": ["fault", "falha", "anomalia"]},
+    {"type": "metric", "name": "Recall", "aliases": ["recall", "sensibilidade"]},
+    {"type": "metric", "name": "Precision", "aliases": ["precision", "precisão", "precisao"]},
+    {"type": "metric", "name": "F1", "aliases": ["f1", "f1-score"]},
+    {"type": "metric", "name": "ROC-AUC", "aliases": ["roc-auc", "roc auc"]},
+    {"type": "metric", "name": "PR-AUC", "aliases": ["pr-auc", "pr auc", "auc-pr"]},
+    {"type": "failure_mode", "name": "Circuito aberto", "aliases": ["circuito aberto", "open-circuit fault"]},
+    {"type": "failure_mode", "name": "Curto-circuito", "aliases": ["curto-circuito", "curto circuito", "short-circuit fault"]},
+    {"type": "maintenance_strategy", "name": "Manutenção preventiva", "aliases": ["manutenção preventiva", "preventive maintenance"]},
+    {"type": "maintenance_strategy", "name": "Manutenção preditiva", "aliases": ["manutenção preditiva", "predictive maintenance"]},
+    {"type": "maintenance_strategy", "name": "Manutenção corretiva", "aliases": ["manutenção corretiva", "corrective maintenance"]}
+  ]
+}

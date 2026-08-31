@@ -47,6 +47,7 @@ webapp/ -> conhecimento/ -> ml/
 | `consultas_obsidian.py` | Consultas ao vault. |
 | `embeddings.py` | Backend de embeddings. |
 | `evidence_guard.py` | Pacotes de evidência, validação de claims e abstenção científica. |
+| `evidence_graph.py` | Grafo leve R7 com relações ancoradas em Evidence Packages. |
 | `ferramentas.py` | Especificação e despacho das ferramentas. |
 | `ferramentas_academicas.py` | Literatura, dataset e resultados canônicos. |
 | `index_lock.py` | Lock de escrita do índice. |

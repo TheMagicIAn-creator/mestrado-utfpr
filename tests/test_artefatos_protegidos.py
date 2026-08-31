@@ -48,6 +48,7 @@ def test_manifestos_contem_execucoes_cientificas_e_evidence_rag():
         "evidence_rag_hybrid_r4.json",
         "evidence_rag_guard_r5.json",
         "evidence_rag_promotion_r6.json",
+        "evidence_graph_pilot_r7.json",
         "evidence_rag_schema_v2_r2.json",
     }
 
@@ -55,5 +56,5 @@ def test_manifestos_contem_execucoes_cientificas_e_evidence_rag():
 def test_auditoria_canonica_aprova_publicacao():
     relatorio = auditar_publicacao(RAIZ)
     assert relatorio["ok"], "\n".join(relatorio["errors"])
-    assert relatorio["manifests"] == 8
+    assert relatorio["manifests"] == 9
     assert relatorio["artifacts"] == 30

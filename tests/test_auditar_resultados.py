@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from scripts.auditar_resultados import (
+    _audit_evidence_graph,
     _audit_evidence_guard,
     _audit_retrieval_baseline,
     _audit_retrieval_r3,
@@ -152,3 +153,40 @@ def test_auditor_rejeita_evidence_guard_sem_integridade(tmp_path):
     assert any("external_model_required" in error for error in errors)
     assert any("citation_validity" in error for error in errors)
     assert any("claims sem suporte" in error for error in errors)
+
+
+def test_auditor_rejeita_evidence_graph_sem_ancoragem(tmp_path):
+    taxonomy_path = tmp_path / "taxonomy.json"
+    taxonomy_path.write_text("{}", encoding="utf-8")
+    manifest_path = tmp_path / "r7.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "stage": "R7",
+                "variant": "lightweight_evidence_anchored_graph_v1",
+                "contracts": {
+                    "primary_retrieval": True,
+                    "full_graphrag": False,
+                    "raptor_enabled": False,
+                    "llm_relation_extraction": False,
+                    "literal_entity_match_required": True,
+                    "evidence_id_required_per_edge": False,
+                    "chunk_id_required_per_edge": False,
+                    "memory_is_scientific_source": False,
+                },
+                "taxonomy": {
+                    "path": "taxonomy.json",
+                    "sha256": "hash-incorreto",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    errors = []
+
+    _audit_evidence_graph(manifest_path, tmp_path, errors)
+
+    assert any("primary_retrieval" in error for error in errors)
+    assert any("evidence_id_required_per_edge" in error for error in errors)
+    assert any("chunk_id_required_per_edge" in error for error in errors)
+    assert any("hash da taxonomia" in error for error in errors)
