@@ -10,6 +10,7 @@ from pathlib import Path
 from scripts.auditar_resultados import (
     _audit_retrieval_baseline,
     _audit_retrieval_r3,
+    _audit_retrieval_r4,
 )
 
 
@@ -107,3 +108,25 @@ def test_auditor_rejeita_candidato_r3_sem_gates_cientificos(tmp_path):
     assert any("comparado diretamente ao R2" in error for error in errors)
     assert any("promovido antes dos gates" in error for error in errors)
     assert any("usou contextualização por LLM" in error for error in errors)
+
+
+def test_auditor_rejeita_candidato_r4_sem_gates_cientificos(tmp_path):
+    errors = []
+    _audit_retrieval_r4(
+        {
+            "comparison_to_baseline": {
+                "baseline_benchmark_id": "incorreto",
+                "corpus_identity_preserved": False,
+                "quality_gain_observed": False,
+                "regressed_queries_at_5": ["q"],
+                "critical_simple_regressions": ["q"],
+                "promotion_decision": "promoted",
+            },
+            "retrieval": {},
+        },
+        errors,
+        tmp_path / "r4.json",
+    )
+    assert any("comparado diretamente ao R3" in error for error in errors)
+    assert any("ganho de qualidade" in error for error in errors)
+    assert any("antes dos gates R5-R6" in error for error in errors)

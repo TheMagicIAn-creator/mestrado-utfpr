@@ -31,6 +31,8 @@ GOLD_SCHEMA_VERSION = 1
 BENCHMARK_SCHEMA_VERSION = 1
 DEFAULT_KS = (5, 8)
 GOLD_STATUS_PROVISORIO = "provisional_pending_researcher_review"
+RETRIEVAL_PROFILE_BASELINE = "baseline"
+RETRIEVAL_PROFILE_R4 = "r4_hybrid"
 RAIZ_PROJETO = Path(__file__).resolve().parents[2]
 CATEGORIAS_OBRIGATORIAS = frozenset(
     {
@@ -317,6 +319,10 @@ def recuperar_baseline(
         termos_extra=termos,
     )
 
+    return _serializar_recuperados(melhores)
+
+
+def _serializar_recuperados(melhores: list) -> list[dict]:
     saida = []
     for rank, (documento, metadata) in enumerate(melhores, start=1):
         inicio = int(metadata.get("pagina_inicio", 0) or 0)
@@ -333,6 +339,65 @@ def recuperar_baseline(
             }
         )
     return saida
+
+
+def recuperar_refinado_r4(
+    pergunta: str,
+    modelo_embeddings,
+    colecao,
+    indice_lexical,
+    *,
+    n_pool: int = 80,
+    n_resultados: int = 12,
+    n_resultados_revisao: int = 20,
+    max_chunks_por_fonte: int = 2,
+    peso_filtro_semantico: float = 0.25,
+) -> list[dict]:
+    """Executa o candidato R4 sem substituir o caminho vigente."""
+    from src.conhecimento.agente_recuperacao import (
+        _busca_hibrida,
+        _expandir_query,
+        _expandir_vizinhanca,
+        _filtros_metadata_explicitos,
+        _rerankar,
+    )
+
+    expansao = _expandir_query(pergunta)
+    variacoes = list(expansao.get("variacoes") or [pergunta])
+    if pergunta not in variacoes:
+        variacoes.insert(0, pergunta)
+    termos = list(expansao.get("termos") or [])
+    revisao = bool(expansao.get("revisao"))
+    n_final = n_resultados_revisao if revisao else n_resultados
+    filtros = _filtros_metadata_explicitos(pergunta, colecao)
+    candidatos = _busca_hibrida(
+        variacoes,
+        termos,
+        colecao,
+        modelo_embeddings,
+        n_pool=n_pool,
+        indice_lexical=indice_lexical,
+        rrf_constant=60.0,
+        filtros_metadata=filtros,
+        n_filtrado=3,
+        peso_filtro_semantico=peso_filtro_semantico,
+        peso_scan_metadata=1.0,
+        preferir_filtro_semantico=False,
+    )
+    melhores = _rerankar(
+        candidatos,
+        pergunta,
+        n_final=n_final,
+        max_por_fonte=1 if revisao else max_chunks_por_fonte,
+        termos_extra=termos,
+    )
+    com_vizinhanca = _expandir_vizinhanca(
+        melhores,
+        colecao,
+        max_sementes=min(20, len(melhores)),
+        decaimento_rrf=0.85,
+    )
+    return _serializar_recuperados(com_vizinhanca)
 
 
 def _percentil(valores: list[float], probabilidade: float) -> float:
@@ -403,6 +468,7 @@ def executar_benchmark(
     benchmark_id: str = "evidence-rag-baseline-v1",
     stage: str = "R0-R1",
     variant: str = "baseline_current",
+    retrieval_profile: str = RETRIEVAL_PROFILE_BASELINE,
 ) -> dict:
     from src.conhecimento.embeddings import REPOSITORIO_MODELO, REVISAO_MODELO
 
@@ -411,9 +477,16 @@ def executar_benchmark(
     if not ks_ordenados:
         raise ValueError("Informe ao menos um valor positivo de k.")
 
+    if retrieval_profile == RETRIEVAL_PROFILE_R4:
+        recuperador = recuperar_refinado_r4
+    elif retrieval_profile == RETRIEVAL_PROFILE_BASELINE:
+        recuperador = recuperar_baseline
+    else:
+        raise ValueError(f"Perfil de retrieval desconhecido: {retrieval_profile}.")
+
     inicio_warmup = relogio()
     if warmup:
-        recuperar_baseline(
+        recuperador(
             "confiabilidade de inversores fotovoltaicos",
             modelo_embeddings,
             colecao,
@@ -425,7 +498,7 @@ def executar_benchmark(
     max_k = max(ks_ordenados)
     for item in gold_set["queries"]:
         inicio = relogio()
-        recuperados = recuperar_baseline(
+        recuperados = recuperador(
             item["question"],
             modelo_embeddings,
             colecao,
@@ -526,6 +599,7 @@ def executar_benchmark(
             "collection_count": int(colecao.count()),
         },
         "retrieval": {
+            "profile": retrieval_profile,
             "embedding_model": manifesto_snapshot.get("modelo_embeddings"),
             "embedding_repository": REPOSITORIO_MODELO,
             "embedding_revision": REVISAO_MODELO,
@@ -538,7 +612,11 @@ def executar_benchmark(
             "lexical_available": bool(getattr(indice_lexical, "disponivel", False)),
             "fusion": "reciprocal_rank_fusion",
             "rrf_constant": 60,
-            "reranker": "deterministic_local_v1",
+            "reranker": (
+                "deterministic_local_v2"
+                if retrieval_profile == RETRIEVAL_PROFILE_R4
+                else "deterministic_local_v1"
+            ),
             "source_diversification": True,
             "n_pool": 80,
             "n_results": 12,
@@ -552,7 +630,7 @@ def executar_benchmark(
             "retrieval_text_strategy": manifesto_snapshot.get(
                 "retrieval_text_strategy", "legacy_documento"
             ),
-            "contextual_retrieval": stage == "R3",
+            "contextual_retrieval": stage in {"R3", "R4"},
             "context_template_version": contexto_deterministico.get(
                 "template_version"
             ),
@@ -569,7 +647,28 @@ def executar_benchmark(
             "llm_contextualization_used": contexto_deterministico.get(
                 "llm_used", False
             ),
-            "parallel_candidate_index": stage == "R3",
+            "parallel_candidate_index": stage in {"R3", "R4"},
+            "explicit_metadata_filtered_search": (
+                retrieval_profile == RETRIEVAL_PROFILE_R4
+            ),
+            "metadata_filters_are_advisory": (
+                retrieval_profile == RETRIEVAL_PROFILE_R4
+            ),
+            "metadata_filtered_results_per_query": (
+                3 if retrieval_profile == RETRIEVAL_PROFILE_R4 else 0
+            ),
+            "metadata_filtered_rrf_weight": (
+                0.25 if retrieval_profile == RETRIEVAL_PROFILE_R4 else 0.0
+            ),
+            "neighborhood_expansion": (
+                retrieval_profile == RETRIEVAL_PROFILE_R4
+            ),
+            "neighborhood_radius": (
+                1 if retrieval_profile == RETRIEVAL_PROFILE_R4 else 0
+            ),
+            "neighborhood_seed_limit": (
+                20 if retrieval_profile == RETRIEVAL_PROFILE_R4 else 0
+            ),
             "evidence_package": False,
             "evidence_guard": False,
         },
@@ -591,6 +690,7 @@ def executar_baseline_local(
     *,
     git_revision: str | None = None,
     candidate_runtime: str | Path | None = None,
+    retrieval_profile: str = "auto",
 ) -> dict:
     import chromadb
 
@@ -614,9 +714,20 @@ def executar_baseline_local(
     identificacao = {}
     estrategia = manifesto.get("retrieval_text_strategy")
     if estrategia == ESTRATEGIA_CONTEXTO_R3:
+        if retrieval_profile not in {"auto", RETRIEVAL_PROFILE_R4}:
+            raise ValueError(
+                "Snapshot contextual aceita apenas os perfis auto ou r4_hybrid."
+            )
         runtime = resolver_caminho_no_projeto(
             candidate_runtime
-            or RAIZ_PROJETO / "base_conhecimento" / "candidatos" / "r3_contextual"
+            or RAIZ_PROJETO
+            / "base_conhecimento"
+            / "candidatos"
+            / (
+                "r4_hybrid"
+                if retrieval_profile == RETRIEVAL_PROFILE_R4
+                else "r3_contextual"
+            )
         )
         runtime.mkdir(parents=True, exist_ok=True)
         conteudo_hash = str(manifesto["hash_conteudo_retrieval_sha256"])
@@ -638,12 +749,22 @@ def executar_baseline_local(
             runtime / f"{nome_colecao}_fts.sqlite3"
         )
         indice_lexical.sincronizar(colecao, versao=conteudo_hash)
-        identificacao = {
-            "benchmark_id": "evidence-rag-r3-contextual-deterministic",
-            "stage": "R3",
-            "variant": "deterministic_document_context_v1",
-        }
+        if retrieval_profile == RETRIEVAL_PROFILE_R4:
+            identificacao = {
+                "benchmark_id": "evidence-rag-r4-hybrid-refinement",
+                "stage": "R4",
+                "variant": "filtered_hybrid_neighborhood_v1",
+                "retrieval_profile": RETRIEVAL_PROFILE_R4,
+            }
+        else:
+            identificacao = {
+                "benchmark_id": "evidence-rag-r3-contextual-deterministic",
+                "stage": "R3",
+                "variant": "deterministic_document_context_v1",
+            }
     else:
+        if retrieval_profile == RETRIEVAL_PROFILE_R4:
+            raise ValueError("O perfil R4 exige o snapshot contextual R3.")
         cliente = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
         colecao = cliente.get_or_create_collection(name=NOME_COLECAO)
         if colecao.count() != int(manifesto.get("n_chunks", -1)):
@@ -785,7 +906,7 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
     promotion_eligible = all(
         (
             corpus_inalterado,
-            ranking_inalterado,
+            ranking_inalterado or candidato.get("stage") == "R4",
             quality_gain,
             not critical_simple_regressions,
         )
@@ -795,6 +916,7 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
         "candidate_benchmark_id": candidato.get("benchmark_id"),
         "corpus_identity_preserved": corpus_inalterado,
         "ranking_contract_preserved": ranking_inalterado,
+        "ranking_change_expected": candidato.get("stage") == "R4",
         "scientific_metrics_identical": all(
             math.isclose(valor, 0.0, abs_tol=1e-12) for valor in deltas.values()
         ),
@@ -807,7 +929,11 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
         "promotion_decision": (
             "deferred_to_r4_r5_r6"
             if candidato.get("stage") == "R3"
-            else "not_applicable"
+            else (
+                "deferred_to_r5_r6"
+                if candidato.get("stage") == "R4"
+                else "not_applicable"
+            )
         ),
         "metrics": metricas,
         "metric_deltas": deltas,

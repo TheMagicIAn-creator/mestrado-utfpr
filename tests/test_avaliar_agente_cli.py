@@ -23,11 +23,18 @@ def test_cli_publica_benchmark_retrieval(monkeypatch, tmp_path, capsys):
     }
     observed = {}
 
-    def fake_execute(gold_path, snapshot_path, *, git_revision):
+    def fake_execute(
+        gold_path,
+        snapshot_path,
+        *,
+        git_revision,
+        retrieval_profile,
+    ):
         observed.update(
             gold_path=gold_path,
             snapshot_path=snapshot_path,
             git_revision=git_revision,
+            retrieval_profile=retrieval_profile,
         )
         return report
 
@@ -58,6 +65,7 @@ def test_cli_publica_benchmark_retrieval(monkeypatch, tmp_path, capsys):
         "gold_path": gold_set,
         "snapshot_path": snapshot,
         "git_revision": "abc123",
+        "retrieval_profile": "auto",
     }
     assert json.loads(output_json.read_text(encoding="utf-8")) == report
     assert output_markdown.read_text(encoding="utf-8") == "# Baseline\n"

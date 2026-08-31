@@ -30,6 +30,8 @@ import pytest
 from src.conhecimento.agente_recuperacao import (
     _busca_hibrida,
     _diversificar_por_fonte,
+    _expandir_vizinhanca,
+    _filtros_metadata_explicitos,
     _rerankar,
     eh_query_de_revisao,
 )
@@ -44,19 +46,31 @@ class ColecaoFalsa:
         self._por_query = por_query or []
         self._por_get = por_get or []
         self.chamadas_query = 0
+        self.detalhes_query = []
 
-    def query(self, query_embeddings=None, n_results=10, **_):
+    def query(self, query_embeddings=None, n_results=10, **kwargs):
         self.chamadas_query += 1
+        self.detalhes_query.append(kwargs)
         ids, docs, metas = zip(*self._por_query) if self._por_query else ((), (), ())
         corte = slice(0, n_results)
         return {"ids": [list(ids)[corte]], "documents": [list(docs)[corte]],
                 "metadatas": [list(metas)[corte]]}
 
-    def get(self, **_):
+    def get(self, ids=None, **_):
         if not self._por_get:
             return {"ids": [], "documents": [], "metadatas": []}
-        ids, docs, metas = zip(*self._por_get)
-        return {"ids": list(ids), "documents": list(docs), "metadatas": list(metas)}
+        registros = self._por_get
+        if ids is not None:
+            permitidos = {str(item) for item in ids}
+            registros = [item for item in registros if str(item[0]) in permitidos]
+        if not registros:
+            return {"ids": [], "documents": [], "metadatas": []}
+        ids_saida, docs, metas = zip(*registros)
+        return {
+            "ids": list(ids_saida),
+            "documents": list(docs),
+            "metadatas": list(metas),
+        }
 
     def count(self):
         return len(self._por_query) + len(self._por_get)
@@ -147,6 +161,82 @@ def test_indice_lexical_indisponivel_cai_no_fallback_sem_estourar():
 
 def test_banco_vazio_devolve_lista_vazia_em_vez_de_erro():
     assert _busca_hibrida(["p"], ["t"], ColecaoFalsa(), EncoderFalso()) == []
+
+
+def test_constante_rrf_e_configuravel_e_origem_fica_auditavel():
+    colecao = ColecaoFalsa(por_query=[_chunk(1)])
+    saida = _busca_hibrida(
+        ["pergunta"], [], colecao, EncoderFalso(), rrf_constant=10
+    )
+
+    assert saida[0][1]["_rrf_score"] == pytest.approx(1 / 11)
+    assert saida[0][1]["_chunk_id"] == "id1"
+    assert saida[0][1]["_retrieval_sources"] == ("semantic:1",)
+
+
+def test_filtro_semantico_e_adicional_e_nao_substitui_busca_global():
+    colecao = ColecaoFalsa(por_query=[_chunk(1)])
+    _busca_hibrida(
+        ["Ibrahim"],
+        ["ibrahim"],
+        colecao,
+        EncoderFalso(),
+        filtros_metadata=[{"where": {"autor": "Mariam Ibrahim"}}],
+        preferir_filtro_semantico=True,
+    )
+
+    assert colecao.chamadas_query == 2
+    assert colecao.detalhes_query[0].get("where") is None
+    assert colecao.detalhes_query[1]["where"] == {"autor": "Mariam Ibrahim"}
+
+
+def test_filtros_metadata_so_usam_autor_explicitamente_nomeado(monkeypatch):
+    monkeypatch.setattr(
+        "src.conhecimento.agente_recuperacao.autores_indexados",
+        lambda _colecao: {"ibrahim", "torres"},
+    )
+    monkeypatch.setattr(
+        "src.conhecimento.agente_recuperacao.autores_canonicos_para",
+        lambda token, _colecao: {
+            "ibrahim": {"Mariam Ibrahim"},
+            "torres": {"Torres"},
+        }.get(token, set()),
+    )
+
+    assert _filtros_metadata_explicitos("Segundo Ibrahim, qual método?", object()) == [
+        {
+            "where": {"autor": "Mariam Ibrahim"},
+            "reason": "explicit_author:ibrahim",
+        }
+    ]
+    assert _filtros_metadata_explicitos("Explique o método", object()) == []
+    assert _filtros_metadata_explicitos("Mostre a tabela do TCC", object()) == [
+        {"where": {"autor": "Torres"}, "reason": "explicit_author:torres"}
+    ]
+
+
+def test_expansao_de_vizinhanca_recupera_adjacentes_sem_duplicar():
+    semente = (
+        "centro",
+        {
+            "_chunk_id": "id2",
+            "_rrf_score": 0.2,
+            "prev_chunk_id": "id1",
+            "next_chunk_id": "id3",
+        },
+    )
+    colecao = ColecaoFalsa(
+        por_get=[
+            ("id1", "anterior", {"arquivo": "a.pdf"}),
+            ("id3", "seguinte", {"arquivo": "a.pdf"}),
+        ]
+    )
+
+    expandidos = _expandir_vizinhanca([semente], colecao)
+
+    assert [meta["_chunk_id"] for _, meta in expandidos] == ["id2", "id1", "id3"]
+    assert expandidos[1][1]["_neighbor_of"] == "id2"
+    assert expandidos[1][1]["_rrf_score"] == pytest.approx(0.17)
 
 
 # ── Camada 3: diversificação por fonte ─────────────────────────────────────
