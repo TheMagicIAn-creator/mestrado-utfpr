@@ -11,6 +11,7 @@ from src.ml.avaliacao_comparativa import evaluate_e3
 from src.ml.dados_gpvs import load_or_extract_features, prepare_healthy_data
 from src.ml.modelos_autoencoder import SCORE_TOP_K
 from src.ml.publicacao_comparacao import RESULTS_DIR, save_results
+from src.ml.sensibilidade_escore import evaluate_score_threshold_sensitivity
 from src.ml.treino_comparacao import (
     REFERENCE_SEED,
     STABILITY_SEEDS,
@@ -49,6 +50,12 @@ def run(
     )
     LOGGER.info("Executando E3 nos 14 ensaios reais com modelos congelados")
     e3 = evaluate_e3(prepared, runs, faults)
+    LOGGER.info("Calculando sensibilidade pré-fixada de top-k e limiar saudável")
+    e3["score_threshold_sensitivity"] = evaluate_score_threshold_sensitivity(
+        prepared,
+        runs,
+        faults,
+    )
     LOGGER.info("Publicando dados-fonte, figuras e manifesto v2")
     saved = save_results(
         dataset_manifest,

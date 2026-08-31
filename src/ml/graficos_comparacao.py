@@ -339,6 +339,98 @@ def plot_temporal_ablation(
     )
 
 
+def plot_score_threshold_sensitivity(
+    sensitivity: pd.DataFrame,
+    output: Path,
+) -> tuple[Path, Path]:
+    """Grade descritiva pré-fixada sem promover configuração pelo holdout."""
+
+    reference = sensitivity[sensitivity["is_reference"]].copy()
+    top_k_values = sorted(int(value) for value in reference["score_top_k"].unique())
+    percentiles = sorted(
+        float(value)
+        for value in reference["threshold_requested_percentile"].unique()
+    )
+    columns = (
+        ("healthy_test_false_positive_rate", "Falso positivo saudável"),
+        ("macro_recall", "Recall macro E3"),
+        ("macro_f1", "F1 macro E3"),
+        ("macro_precision", "Precision macro E3"),
+    )
+    fpr_max = float(reference["healthy_test_false_positive_rate"].max())
+    fpr_vmax = max(0.05, np.ceil(fpr_max * 20.0) / 20.0)
+    fig, axes = plt.subplots(2, 4, figsize=TAM["painel_8"], layout="constrained")
+    fpr_image = None
+    metric_image = None
+    for row_index, model in enumerate(("ae_denso", "ae_lstm")):
+        block = reference[reference["model"].eq(model)]
+        for column_index, (metric, title) in enumerate(columns):
+            matrix = (
+                block.pivot(
+                    index="score_top_k",
+                    columns="threshold_requested_percentile",
+                    values=metric,
+                )
+                .reindex(index=top_k_values, columns=percentiles)
+            )
+            vmax = fpr_vmax if column_index == 0 else 1.0
+            image = axes[row_index, column_index].imshow(
+                matrix.to_numpy(dtype=float),
+                vmin=0.0,
+                vmax=vmax,
+                cmap="viridis",
+                aspect="auto",
+            )
+            if column_index == 0:
+                fpr_image = image
+            else:
+                metric_image = image
+            axes[row_index, column_index].set_xticks(
+                range(len(percentiles)),
+                [f"p{value:g}".replace(".", ",") for value in percentiles],
+                rotation=25,
+            )
+            axes[row_index, column_index].set_yticks(
+                range(len(top_k_values)),
+                top_k_values,
+            )
+            axes[row_index, column_index].set_xlabel("Percentil saudável solicitado")
+            axes[row_index, column_index].set_ylabel("Top-k de features")
+            axes[row_index, column_index].set_title(
+                f"{MODEL_LABELS[model]} · {title}"
+            )
+            for i in range(len(top_k_values)):
+                for j in range(len(percentiles)):
+                    value = float(matrix.iloc[i, j])
+                    axes[row_index, column_index].text(
+                        j,
+                        i,
+                        f"{value:.1%}",
+                        ha="center",
+                        va="center",
+                        color="white" if value < 0.55 * vmax else "black",
+                        fontsize=7,
+                    )
+    fig.colorbar(
+        fpr_image,
+        ax=axes[:, 0],
+        label="Proporção no teste saudável",
+        shrink=0.75,
+    )
+    fig.colorbar(
+        metric_image,
+        ax=axes[:, 1:],
+        label="Estimativa macro por ensaio",
+        shrink=0.75,
+    )
+    fig.suptitle("Sensibilidade descritiva do escore top-k e do limiar saudável")
+    return _save_pair(
+        fig,
+        output,
+        "Grade pré-fixada; limiares usam somente calibração saudável. Nenhuma configuração é selecionada pelas falhas.",
+    )
+
+
 def generate_all(
     output_dir: Path,
     *,
@@ -347,6 +439,7 @@ def generate_all(
     e3_confusion: pd.DataFrame,
     e3_scenarios: pd.DataFrame,
     temporal_ablation_paired: pd.DataFrame,
+    score_threshold_sensitivity: pd.DataFrame,
 ) -> list[Path]:
     """Gera somente as figuras publicáveis da comparação dos modelos."""
 
@@ -360,6 +453,10 @@ def generate_all(
         plot_temporal_ablation(
             temporal_ablation_paired,
             output_dir / "e3_ablacao_temporal",
+        ),
+        plot_score_threshold_sensitivity(
+            score_threshold_sensitivity,
+            output_dir / "e3_sensibilidade_escore_limiar",
         ),
     )
     for pair in pairs:
@@ -376,4 +473,5 @@ __all__ = [
     "plot_e3_metric_summary",
     "plot_e3_scenarios",
     "plot_temporal_ablation",
+    "plot_score_threshold_sensitivity",
 ]

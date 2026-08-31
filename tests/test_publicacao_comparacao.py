@@ -49,6 +49,11 @@ def test_contrato_publicado_e_canonico():
         "does_not_survive",
         "inconclusive",
     }
+    sensitivity = payload["e3"]["score_threshold_sensitivity"]
+    assert sensitivity["role"] == "supplementary_no_model_selection"
+    assert sensitivity["top_k_values"] == [1, 3, 5, 8, 12, 24]
+    assert sensitivity["requested_percentiles"] == [95.0, 97.5, 99.0, 99.5, 99.9]
+    assert sensitivity["uses_fault_data_for_selection"] is False
     assert "e2" not in payload
     assert "GPVS-Faults" not in payload["title"]
     assert {item["stability_seeds"][0] for item in payload["models"].values()} == {13}
@@ -97,6 +102,7 @@ def test_relatorio_deriva_tabelas_do_contrato_publicado(tmp_path):
     assert "Matrizes de confusão agregadas" in text
     assert "Percentil efetivo" in text
     assert "Ablação temporal do AE-LSTM" in text
+    assert "Sensibilidade do escore e do limiar" in text
 
 
 def test_publicador_rejeita_configuracao_desigual_entre_modelos(monkeypatch, tmp_path):
@@ -132,6 +138,7 @@ def test_tabelas_e3_reconciliam():
     scores = pd.read_csv(RESULTS / "e3_escores_referencia.csv")
     ablation = pd.read_csv(RESULTS / "e3_ablacao_temporal_por_ensaio.csv")
     ablation_paired = pd.read_csv(RESULTS / "e3_ablacao_temporal.csv")
+    sensitivity = pd.read_csv(RESULTS / "e3_sensibilidade_escore_limiar.csv")
 
     assert len(scenarios) == 14 * len(MODELS) * len(SEEDS)
     assert set(scenarios["seed"]) == set(SEEDS)
@@ -146,6 +153,9 @@ def test_tabelas_e3_reconciliam():
         "post_fault_reset",
     }
     assert len(ablation_paired) == len(SEEDS) * 4 * 10
+    assert len(sensitivity) == len(MODELS) * len(SEEDS) * 6 * 5
+    assert sensitivity["uses_fault_data_for_selection"].eq(False).all()  # noqa: E712
+    assert sensitivity["is_canonical_configuration"].sum() == len(MODELS) * len(SEEDS)
     np_columns = {
         "tn_rate_actual_healthy",
         "fp_rate_actual_healthy",
@@ -159,7 +169,7 @@ def test_tabelas_e3_reconciliam():
 
 
 @pytest.mark.integracao
-def test_manifesto_reconcilia_os_20_outputs():
+def test_manifesto_reconcilia_os_23_outputs():
     manifest = _json(MANIFEST_PATH)
 
     assert manifest["manifest_version"] == 2
@@ -168,7 +178,7 @@ def test_manifesto_reconcilia_os_20_outputs():
     assert manifest["parameters"]["score_top_k"] == 5
     assert "e2_steps" not in manifest["parameters"]
     assert manifest["evidence_level"] == "E3_bench"
-    assert len(manifest["outputs"]) == 20
+    assert len(manifest["outputs"]) == 23
     assert set(manifest["outputs"]) == set(manifest["output_artifacts"])
     for relative_path, expected_hash in manifest["output_artifacts"].items():
         path = ROOT / relative_path
@@ -182,7 +192,9 @@ def test_manifesto_reconcilia_os_20_outputs():
         "evaluation": "avaliacao_comparativa.py",
         "statistics": "estatistica_comparacao.py",
         "plots": "graficos_comparacao.py",
+        "plot_style": "estilo_graficos.py",
         "publication": "publicacao_comparacao.py",
+        "sensitivity": "sensibilidade_escore.py",
     }
     for key, filename in dependencies.items():
         path = ROOT / "src" / "ml" / filename
@@ -194,8 +206,8 @@ def test_figuras_tem_png_300_dpi_e_pdf_vetorial():
     pngs = sorted(RESULTS.glob("*.png"))
     pdfs = sorted(RESULTS.glob("*.pdf"))
 
-    assert len(pngs) == 5
-    assert len(pdfs) == 5
+    assert len(pngs) == 6
+    assert len(pdfs) == 6
     for path in pngs:
         data = path.read_bytes()
         assert data.startswith(b"\x89PNG\r\n\x1a\n")

@@ -53,3 +53,14 @@ A análise suplementar separa as sete primeiras janelas pós-fronteira da falha 
 | Precision | 0.055 | -0.020 a 0.181 |
 
 Conclusão pré-especificada: `inconclusive`. Os intervalos da falha sustentada não sustentam superioridade inequívoca.
+
+## Sensibilidade do escore e do limiar
+
+A grade complementar usa `k = 1, 3, 5, 8, 12, 24` e percentis solicitados p95, p97,5, p99, p99,5 e p99,9. Cada limiar é derivado exclusivamente da calibração saudável; as falhas não selecionam a configuração.
+
+| Modelo | FP saudável mínimo-máximo | Recall E3 mínimo-máximo | F1 E3 mínimo-máximo | Precision E3 mínimo-máximo |
+|---|---:|---:|---:|---:|
+| Autoencoder Denso | 0.712%–7.117% | 0.383–0.527 | 0.430–0.604 | 0.823–0.934 |
+| AE-LSTM | 0.712%–5.694% | 0.386–0.409 | 0.433–0.454 | 0.855–0.950 |
+
+A configuração canônica continua sendo k=5 com p99,9 solicitado. A tabela registra também o percentil empírico efetivo e a resolução da calibração; esta análise não promove uma alternativa.

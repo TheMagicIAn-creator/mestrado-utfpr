@@ -57,4 +57,4 @@ def test_auditoria_canonica_aprova_publicacao():
     relatorio = auditar_publicacao(RAIZ)
     assert relatorio["ok"], "\n".join(relatorio["errors"])
     assert relatorio["manifests"] == 9
-    assert relatorio["artifacts"] == 34
+    assert relatorio["artifacts"] == 37
