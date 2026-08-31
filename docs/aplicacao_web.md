@@ -6,7 +6,8 @@ A aplicação ASGI separa três responsabilidades:
 
 1. scripts reproduzíveis produzem os resultados científicos;
 2. `src/webapp/contracts.py` valida projeções somente leitura;
-3. o navegador apresenta os contratos e conversa com o mesmo agente RAG.
+3. o navegador oferece uma experiência de conversa e Biblioteca; o agente usa
+   os contratos conforme a intenção identificada pelo Router LLM.
 
 Abrir a aplicação não treina modelos nem altera artefatos. O HTML é entregue
 imediatamente; contratos, embeddings, ChromaDB, BM25 e equipe multiagente
@@ -37,17 +38,25 @@ uvicorn src.webapp.app:app --reload
 |---|---|---|
 | `/` | GET | aplicação HTML chat-first |
 | `/api/chat/stream` | POST | eventos SSE `status`, `delta`, `done` e `error` |
+| `/api/render` | POST | Markdown e matemática seguros para sessões restauradas |
+| `/api/conversations` | GET | histórico ativo ou arquivado |
+| `/api/conversations/{id}` | GET/PATCH/DELETE | leitura, renomeação e ocultação auditável |
+| `/api/conversations/{id}/archive` | POST | arquivamento sem apagar o transcrito |
+| `/api/conversations/{id}/restore` | POST | restauração de conversa arquivada |
 | `/api/status` | GET | estado barato do agente e dos contratos |
 | `/api/health` | GET | alias operacional de status |
-| `/api/results/e3` | GET | comparação Denso × AE-LSTM na base experimental |
-| `/api/reliability` | GET | confiabilidade física bibliográfica |
+| `/api/library` | GET/POST | catálogo e inclusão local de referências |
+| `/api/library/{id}` | PATCH | edição local de metadados bibliográficos |
+| `/api/library/{id}/reindex` | POST | reindexação assíncrona da fonte |
+| `/api/results/e3` | GET | contrato científico interno Denso × AE-LSTM |
+| `/api/reliability` | GET | contrato científico interno de confiabilidade |
 | `/api/sources` | GET | dataset, PDFs, relatórios e manifestos |
 | `/api/version` | GET | identidade da aplicação e versão da API |
 
-O frontend não estima limiares, métricas, Weibull ou confiabilidade. Figuras
-acadêmicas são carregadas somente quando o painel é aberto e permanecem
-disponíveis como PNG 300 dpi e PDF vetorial; os dados-fonte CSV/JSON têm links
-de download e hash.
+O frontend não apresenta dashboards científicos fixos e não estima limiares,
+métricas, Weibull ou confiabilidade. Quando solicitado na conversa, o agente
+consulta ou executa a ferramenta adequada e pode anexar as figuras acadêmicas
+publicadas. Os contratos HTTP continuam disponíveis para auditoria e automação.
 
 ## Fronteiras científicas
 
@@ -63,11 +72,17 @@ de download e hash.
 híbrida semântica/BM25, ChromaDB, sessões, Obsidian, auditoria multiagente,
 anexos e memória. Saudações são respondidas localmente antes do aquecimento.
 Perguntas acadêmicas recebem o contexto autoritativo produzido pelos mesmos
-contratos que alimentam os painéis.
+contratos científicos internos.
 
 Cada conversa mantém um identificador próprio. Os turnos são gravados em
 `notas/sessoes/*_sessao_web.md`, reindexados fora do caminho crítico e podem ser
-exportados em Markdown pelo navegador.
+renomeados, arquivados, restaurados, ocultados ou exportados em Markdown. A
+exclusão na interface não apaga o transcrito auditável.
+
+O Router LLM interpreta pedidos normais antes de selecionar ferramentas. Regras
+determinísticas ficam restritas à confirmação literal de operações destrutivas
+e às guardas de integridade científica. O fallback textual só é usado quando o
+provedor semântico está indisponível.
 
 ## Desempenho e segurança
 

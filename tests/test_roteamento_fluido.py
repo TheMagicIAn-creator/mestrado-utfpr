@@ -26,28 +26,42 @@ class LLMFalso:
         return R()
 
 
-# ── 1. guardas críticas decidem ANTES do LLM (nem o consultam) ───────────────
+# ── 1. o Router LLM recebe toda intenção ainda não confirmada ───────────────
 
-def test_declaracao_de_memoria_nao_chega_ao_llm():
-    llm = LLMFalso("executar_pipeline_cientifico")
+def test_declaracao_de_memoria_e_decidida_semanticamente_pelo_llm():
+    llm = LLMFalso(None, usar=False)
     d = fr.decidir_acao("Lembre-se: decidimos que a falha injetada no pipeline "
                         "é a do contator", llm)
     assert d["usar_ferramenta"] is False
-    assert llm.chamadas == 0, "guarda negativa deve decidir sem gastar LLM"
+    assert llm.chamadas == 1
 
 
-def test_pedido_de_codigo_nao_chega_ao_llm():
+def test_pedido_de_codigo_chega_ao_llm_mas_nao_executa_pipeline():
     llm = LLMFalso("consultar_resultados")
     d = fr.decidir_acao("escreva um código em python para plotar a curva de TTF", llm)
     assert d["usar_ferramenta"] is False
+    assert llm.chamadas == 1
+
+
+def test_pedido_de_limpeza_e_decidido_semanticamente_pelo_llm():
+    llm = LLMFalso("limpar_resultados_ml")
+    d = fr.decidir_acao("apague os resultados a partir do autoencoder", llm)
+    assert d == {"usar_ferramenta": True, "ferramenta": "limpar_resultados_ml"}
+    assert llm.chamadas == 1
+
+
+def test_confirmacao_literal_de_limpeza_nao_depende_do_llm():
+    llm = LLMFalso("consultar_resultados")
+    d = fr.decidir_acao("CONFIRMAR LIMPEZA COMPARAÇÃO", llm)
+    assert d == {"usar_ferramenta": True, "ferramenta": "limpar_resultados_ml"}
     assert llm.chamadas == 0
 
 
-def test_limpeza_e_destrutiva_e_nao_depende_do_llm():
-    llm = LLMFalso("consultar_resultados")
-    d = fr.decidir_acao("apague os resultados a partir do autoencoder", llm)
-    assert d == {"usar_ferramenta": True, "ferramenta": "limpar_resultados_ml"}
-    assert llm.chamadas == 0, "destrutivo não pode depender do LLM"
+def test_mudar_painel_nao_e_confundido_com_apagar_resultados():
+    llm = LLMFalso(None, usar=False)
+    d = fr.decidir_acao("remova o painel de confiabilidade da interface", llm)
+    assert d == {"usar_ferramenta": False, "ferramenta": None}
+    assert llm.chamadas == 1
 
 
 # ── 2. o LLM roteia o resto (fluidez) ────────────────────────────────────────
@@ -99,6 +113,13 @@ def test_guardas_criticas_sao_poucas():
     import inspect
     fonte = inspect.getsource(fr._guardas_criticas)
     assert fonte.count("return {") <= 6
+
+
+def test_referencia_especifica_nao_dispara_catalogo_completo():
+    llm = LLMFalso(None, usar=False)
+    d = fr.decidir_acao("O que o artigo de Stender diz sobre corrente?", llm)
+    assert d == {"usar_ferramenta": False, "ferramenta": None}
+    assert llm.chamadas == 1
 
 
 # ── 4. a RESPOSTA também é fluida (o LLM fala, não despeja) ──────────────────

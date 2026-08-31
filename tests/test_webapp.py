@@ -333,7 +333,7 @@ def test_versao_e_entrypoint_sao_canonicos(client):
     assert response.json() == {
         "application": "aliado-web",
         "name": "ALIAdo",
-        "version": "3.5.0",
+        "version": "4.0.1",
         "api_version": 1,
         "interface": "asgi",
     }
@@ -651,6 +651,108 @@ def test_diario_canonico_persiste_e_reindexa_turnos(tmp_path):
     assert "tipo: sessao-web" in text
     assert "V2" not in text
     assert len(indexed) == 2
+
+
+def test_catalogo_de_conversas_preserva_historico_e_imagens(tmp_path):
+    journal = SessionJournal(pasta=tmp_path, indexer=lambda *_args: None)
+    session_id = "sessao_catalogo_123"
+    recorded = journal.record(
+        session_id,
+        "Mostre a curva de confiabilidade.",
+        "Segue a figura solicitada.",
+        [
+            {
+                "caption": "Curva de confiabilidade R(t)",
+                "url": "/artifacts/reliability/confiabilidade.png",
+            }
+        ],
+        object(),
+    )
+
+    detail = journal.get_conversation(session_id)
+    assert recorded is not None
+    assert detail["status"] == "active"
+    assert detail["messages"][-1]["images"] == [
+        {
+            "caption": "Curva de confiabilidade R(t)",
+            "url": "/artifacts/reliability/confiabilidade.png",
+        }
+    ]
+
+    assert journal.rename(session_id, "Confiabilidade física")["title"] == (
+        "Confiabilidade física"
+    )
+    assert journal.archive(session_id)["status"] == "archived"
+    assert journal.list_conversations("active") == []
+    assert journal.list_conversations("archived")[0]["id"] == session_id
+    assert journal.restore(session_id)["status"] == "active"
+
+    transcript = Path(recorded["path"])
+    if not transcript.is_absolute():
+        transcript = ROOT / transcript
+    journal.delete(session_id)
+    assert transcript.is_file()
+    assert journal.list_conversations("active") == []
+    assert journal.list_conversations("archived") == []
+    with pytest.raises(KeyError):
+        journal.get_conversation(session_id)
+
+
+def test_api_de_conversas_cobre_ciclo_completo_e_origem(tmp_path):
+    journal = SessionJournal(pasta=tmp_path / "sessions", indexer=lambda *_args: None)
+    session_id = "sessao_api_12345"
+    recorded = journal.record(
+        session_id,
+        "Analise a referência específica.",
+        "Análise concluída.",
+        [],
+        object(),
+    )
+    adapter = AgentAdapter(
+        answerer=lambda *_args: {"answer": "ok", "images": [], "route": "test"},
+        session_journal=journal,
+    )
+    app = create_app(
+        adapter,
+        warm_on_startup=False,
+        library_service=_web_library(tmp_path / "library"),
+    )
+
+    with TestClient(app, base_url="http://127.0.0.1") as local:
+        active = local.get("/api/conversations?status=active")
+        assert active.status_code == 200
+        assert active.json()["conversations"][0]["id"] == session_id
+        assert local.get(f"/api/conversations/{session_id}").status_code == 200
+
+        renamed = local.patch(
+            f"/api/conversations/{session_id}",
+            json={"title": "Referência selecionada"},
+        )
+        assert renamed.status_code == 200
+        assert renamed.json()["conversation"]["title"] == "Referência selecionada"
+
+        archived = local.post(f"/api/conversations/{session_id}/archive")
+        assert archived.json()["conversation"]["status"] == "archived"
+        assert local.get("/api/conversations?status=active").json()[
+            "conversations"
+        ] == []
+        restored = local.post(f"/api/conversations/{session_id}/restore")
+        assert restored.json()["conversation"]["status"] == "active"
+
+        denied = local.patch(
+            f"/api/conversations/{session_id}",
+            headers={"Origin": "https://example.com"},
+            json={"title": "Origem indevida"},
+        )
+        assert denied.status_code == 403
+        deleted = local.delete(f"/api/conversations/{session_id}")
+        assert deleted.json()["conversation"]["memory_retained"] is True
+        assert local.get(f"/api/conversations/{session_id}").status_code == 404
+
+    transcript = Path(recorded["path"])
+    if not transcript.is_absolute():
+        transcript = ROOT / transcript
+    assert transcript.is_file()
 
 
 def test_renderizacao_markdown_bloqueia_html_bruto():
