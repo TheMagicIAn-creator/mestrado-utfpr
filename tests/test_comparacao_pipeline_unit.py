@@ -152,6 +152,11 @@ def test_orchestrator_forwards_scientific_configuration(monkeypatch):
             "faults": faults,
         },
     )
+    monkeypatch.setattr(
+        orchestrator,
+        "evaluate_score_threshold_sensitivity",
+        lambda prepared, runs, faults: "sensitivity",
+    )
 
     def fake_save(dataset_manifest, prepared, runs, e3, *, seeds):
         captured["publication"] = (dataset_manifest, prepared, runs, e3, seeds)
@@ -175,6 +180,7 @@ def test_orchestrator_forwards_scientific_configuration(monkeypatch):
         {"seeds": (42,), "threshold_percentile": 99.0, "score_top_k": 3},
     )
     assert captured["publication"][-1] == (42,)
+    assert captured["publication"][3]["score_threshold_sensitivity"] == "sensitivity"
     assert result["output_count"] == 1
 
 
@@ -287,6 +293,24 @@ def test_generate_all_comparison_figures_from_tabular_sources(tmp_path):
             for metric in ("recall", "f1", "precision")
         ]
     )
+    sensitivity = pd.DataFrame(
+        [
+            {
+                "model": model,
+                "seed": 42,
+                "is_reference": True,
+                "score_top_k": top_k,
+                "threshold_requested_percentile": percentile,
+                "healthy_test_false_positive_rate": 0.02,
+                "macro_recall": 0.7,
+                "macro_f1": 0.65,
+                "macro_precision": 0.8,
+            }
+            for model in ("ae_denso", "ae_lstm")
+            for top_k in (1, 3, 5, 8, 12, 24)
+            for percentile in (95.0, 97.5, 99.0, 99.5, 99.9)
+        ]
+    )
 
     paths = charts.generate_all(
         tmp_path,
@@ -295,7 +319,8 @@ def test_generate_all_comparison_figures_from_tabular_sources(tmp_path):
         e3_confusion=confusion,
         e3_scenarios=scenarios,
         temporal_ablation_paired=temporal_paired,
+        score_threshold_sensitivity=sensitivity,
     )
 
-    assert len(paths) == 10
+    assert len(paths) == 12
     assert all(path.is_file() and path.stat().st_size > 0 for path in paths)

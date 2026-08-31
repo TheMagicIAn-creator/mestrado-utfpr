@@ -67,7 +67,7 @@ def test_estilo_tamanhos_canonicos():
 
     assert set(TAM) == {
         "unico", "painel_2", "quadrado", "painel_3", "painel_4",
-        "painel_6", "painel_9",
+        "painel_6", "painel_8", "painel_9",
     }
     assert tam_barras_h(3)[0] == 12          # largura fixa
     assert tam_barras_h(30)[1] > tam_barras_h(3)[1]

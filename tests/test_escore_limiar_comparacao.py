@@ -10,7 +10,11 @@ from src.ml.treino_comparacao import calibrate_threshold, empirical_threshold
 
 torch = pytest.importorskip("torch")
 
-from src.ml.modelos_autoencoder import score_dense, score_lstm  # noqa: E402
+from src.ml.modelos_autoencoder import (  # noqa: E402
+    score_dense,
+    score_lstm,
+    top_k_scores_from_feature_errors,
+)
 
 
 class _ZeroReconstruction(torch.nn.Module):
@@ -52,6 +56,20 @@ def test_score_rejects_invalid_top_k(top_k):
     model = _ZeroReconstruction()
     with pytest.raises(ValueError, match="top_k"):
         score_dense(model, values, top_k=top_k)
+
+
+@pytest.mark.leve
+def test_precomputed_feature_errors_support_the_prespecified_top_k_grid():
+    errors = np.asarray([[1.0, 4.0, 9.0, 16.0], [16.0, 9.0, 4.0, 1.0]])
+
+    np.testing.assert_allclose(
+        top_k_scores_from_feature_errors(errors, top_k=1),
+        [16.0, 16.0],
+    )
+    np.testing.assert_allclose(
+        top_k_scores_from_feature_errors(errors, top_k=4),
+        [7.5, 7.5],
+    )
 
 
 @pytest.mark.leve

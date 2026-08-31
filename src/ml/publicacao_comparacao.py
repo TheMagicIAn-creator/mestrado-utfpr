@@ -16,6 +16,10 @@ from src.ml.estatistica_comparacao import BOOTSTRAP_RESAMPLES
 from src.ml.graficos_comparacao import generate_all
 from src.ml.modelos_autoencoder import SEQUENCE_LENGTH
 from src.ml.proveniencia import gerar_manifesto, salvar_manifesto
+from src.ml.sensibilidade_escore import (
+    SENSITIVITY_PERCENTILES,
+    SENSITIVITY_TOP_K,
+)
 from src.ml.treino_comparacao import (
     MODEL_IDS,
     MODEL_NAMES,
@@ -79,6 +83,8 @@ def results_payload(
     *,
     seeds: tuple[int, ...],
 ) -> dict:
+    sensitivity = e3["score_threshold_sensitivity"]
+    reference_sensitivity = sensitivity[sensitivity["is_reference"]]
     model_contract = {}
     for model_id in MODEL_IDS:
         reference = next(run for run in runs[model_id] if run.seed == REFERENCE_SEED)
@@ -156,6 +162,20 @@ def results_payload(
                 ),
                 "conclusion": e3["temporal_ablation_conclusion"],
             },
+            "score_threshold_sensitivity": {
+                "role": "supplementary_no_model_selection",
+                "top_k_values": list(SENSITIVITY_TOP_K),
+                "requested_percentiles": list(SENSITIVITY_PERCENTILES),
+                "reference_seed": REFERENCE_SEED,
+                "canonical_configuration": {
+                    "score_top_k": 5,
+                    "threshold_requested_percentile": 99.9,
+                },
+                "calibration_source": "healthy_calibration_only",
+                "uses_fault_data_for_selection": False,
+                "table": "e3_sensibilidade_escore_limiar.csv",
+                "reference_rows": reference_sensitivity.to_dict(orient="records"),
+            },
         },
         "limitations": [
             "GPVS-Faults é evidência experimental de bancada, não validação de campo.",
@@ -176,6 +196,8 @@ def _write_report(payload: dict, output: Path) -> Path:
         & temporal_paired["analysis"].eq("sustained")
         & temporal_paired["metric"].isin(["recall", "f1", "precision"])
     ].set_index("metric")
+    sensitivity_contract = payload["e3"]["score_threshold_sensitivity"]
+    sensitivity = pd.DataFrame(sensitivity_contract["reference_rows"])
 
     def formatted(model_id: str, metric: str) -> str:
         row = indexed.loc[(model_id, metric)]
@@ -282,6 +304,32 @@ def _write_report(payload: dict, output: Path) -> Path:
             "",
             f"Conclusão pré-especificada: `{temporal['conclusion']['status']}`. "
             f"{temporal['conclusion']['reason']}",
+            "",
+            "## Sensibilidade do escore e do limiar",
+            "",
+            "A grade complementar usa `k = 1, 3, 5, 8, 12, 24` e percentis "
+            "solicitados p95, p97,5, p99, p99,5 e p99,9. Cada limiar é derivado "
+            "exclusivamente da calibração saudável; as falhas não selecionam a "
+            "configuração.",
+            "",
+            "| Modelo | FP saudável mínimo-máximo | Recall E3 mínimo-máximo | F1 E3 mínimo-máximo | Precision E3 mínimo-máximo |",
+            "|---|---:|---:|---:|---:|",
+            *(
+                f"| {MODEL_NAMES[model_id]} | "
+                f"{sensitivity[sensitivity['model'].eq(model_id)]['healthy_test_false_positive_rate'].min():.3%}–"
+                f"{sensitivity[sensitivity['model'].eq(model_id)]['healthy_test_false_positive_rate'].max():.3%} | "
+                f"{sensitivity[sensitivity['model'].eq(model_id)]['macro_recall'].min():.3f}–"
+                f"{sensitivity[sensitivity['model'].eq(model_id)]['macro_recall'].max():.3f} | "
+                f"{sensitivity[sensitivity['model'].eq(model_id)]['macro_f1'].min():.3f}–"
+                f"{sensitivity[sensitivity['model'].eq(model_id)]['macro_f1'].max():.3f} | "
+                f"{sensitivity[sensitivity['model'].eq(model_id)]['macro_precision'].min():.3f}–"
+                f"{sensitivity[sensitivity['model'].eq(model_id)]['macro_precision'].max():.3f} |"
+                for model_id in MODEL_IDS
+            ),
+            "",
+            "A configuração canônica continua sendo k=5 com p99,9 solicitado. "
+            "A tabela registra também o percentil empírico efetivo e a resolução "
+            "da calibração; esta análise não promove uma alternativa.",
         ]
     )
     output.write_text(
@@ -322,6 +370,9 @@ def save_results(
         "e3_diferencas_pareadas.csv": e3["paired"],
         "e3_ablacao_temporal_por_ensaio.csv": e3["temporal_ablation"],
         "e3_ablacao_temporal.csv": e3["temporal_ablation_paired"],
+        "e3_sensibilidade_escore_limiar.csv": e3[
+            "score_threshold_sensitivity"
+        ],
     }
     for name, frame in tables.items():
         outputs.append(_write_csv(RESULTS_DIR / name, frame))
@@ -343,6 +394,7 @@ def save_results(
             e3_confusion=e3["confusion"],
             e3_scenarios=e3["scenarios"],
             temporal_ablation_paired=e3["temporal_ablation_paired"],
+            score_threshold_sensitivity=e3["score_threshold_sensitivity"],
         )
     )
 
@@ -375,6 +427,12 @@ def save_results(
                 "transition_post_windows": SEQUENCE_LENGTH - 1,
                 "reference_seed": REFERENCE_SEED,
             },
+            "score_threshold_sensitivity": {
+                "top_k_values": list(SENSITIVITY_TOP_K),
+                "requested_percentiles": list(SENSITIVITY_PERCENTILES),
+                "reference_seed": REFERENCE_SEED,
+                "uses_fault_data_for_selection": False,
+            },
         },
         inputs,
         outputs,
@@ -385,7 +443,9 @@ def save_results(
             "evaluation": Path(__file__).with_name("avaliacao_comparativa.py"),
             "statistics": Path(__file__).with_name("estatistica_comparacao.py"),
             "plots": Path(__file__).with_name("graficos_comparacao.py"),
+            "plot_style": Path(__file__).with_name("estilo_graficos.py"),
             "publication": Path(__file__),
+            "sensitivity": Path(__file__).with_name("sensibilidade_escore.py"),
         },
         evidence_level="E3_bench",
     )

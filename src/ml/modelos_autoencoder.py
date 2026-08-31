@@ -272,6 +272,61 @@ def _top_k_feature_mse(reconstructed, target, *, top_k: int):
     return largest.mean(dim=-1)
 
 
+def top_k_scores_from_feature_errors(
+    feature_squared_errors: np.ndarray,
+    *,
+    top_k: int,
+) -> np.ndarray:
+    """Agrega erros já calculados sem repetir a inferência dos modelos."""
+
+    errors = np.asarray(feature_squared_errors)
+    if errors.ndim != 2 or not len(errors):
+        raise ValueError("Os erros por feature devem ter shape (n_janelas, n_features)")
+    if not np.isfinite(errors).all() or np.any(errors < 0.0):
+        raise ValueError("Os erros quadráticos por feature devem ser finitos e não negativos")
+    n_features = int(errors.shape[1])
+    if isinstance(top_k, bool) or int(top_k) != top_k:
+        raise ValueError("top_k deve ser um número inteiro")
+    normalized_k = int(top_k)
+    if not 1 <= normalized_k <= n_features:
+        raise ValueError(f"top_k deve estar entre 1 e {n_features}")
+    partitioned = np.partition(errors, n_features - normalized_k, axis=1)
+    return partitioned[:, -normalized_k:].mean(axis=1)
+
+
+def dense_feature_squared_errors(model, values: np.ndarray, *, device=None) -> np.ndarray:
+    """Retorna o erro quadrático de cada feature para o Autoencoder Denso."""
+
+    _require_torch()
+    device = device or next(model.parameters()).device
+    tensor = torch.as_tensor(values, dtype=torch.float32, device=device)
+    model.eval()
+    with torch.no_grad():
+        reconstructed = model(tensor)
+        if reconstructed.shape != tensor.shape:
+            raise ValueError("Reconstrução e alvo devem possuir o mesmo shape")
+        return ((reconstructed - tensor) ** 2).cpu().numpy()
+
+
+def lstm_feature_squared_errors(
+    model,
+    sequences: np.ndarray,
+    *,
+    device=None,
+) -> np.ndarray:
+    """Retorna erros por feature no último passo de cada sequência AE-LSTM."""
+
+    _require_torch()
+    device = device or next(model.parameters()).device
+    tensor = torch.as_tensor(sequences, dtype=torch.float32, device=device)
+    model.eval()
+    with torch.no_grad():
+        reconstructed = model(tensor)
+        if reconstructed.shape != tensor.shape:
+            raise ValueError("Reconstrução e alvo devem possuir o mesmo shape")
+        return ((reconstructed[:, -1, :] - tensor[:, -1, :]) ** 2).cpu().numpy()
+
+
 def score_dense(
     model,
     values: np.ndarray,
@@ -394,12 +449,15 @@ __all__ = [
     "SCORE_TOP_K",
     "TrainingHistory",
     "parameter_count",
+    "dense_feature_squared_errors",
+    "lstm_feature_squared_errors",
     "score_dense",
     "score_lstm",
     "sequences_for_blocks",
     "sequences_from_flow",
     "sequences_with_current_values",
     "set_deterministic_seed",
+    "top_k_scores_from_feature_errors",
     "train_dense",
     "train_lstm",
 ]

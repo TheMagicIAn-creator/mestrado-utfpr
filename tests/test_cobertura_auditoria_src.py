@@ -25,6 +25,7 @@ ALVOS = {
     "src/ml/publicacao_comparacao.py": "tests/test_publicacao_comparacao.py",
     "src/ml/publicacao_confiabilidade.py": "tests/test_confiabilidade_componentes.py",
     "src/ml/resultados.py": "tests/test_resultados_canonicos.py",
+    "src/ml/sensibilidade_escore.py": "tests/test_sensibilidade_escore.py",
 }
 
 

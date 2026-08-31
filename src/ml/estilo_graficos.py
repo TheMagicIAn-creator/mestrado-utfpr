@@ -80,6 +80,7 @@ TAM = {
     "painel_3": (15, 5),   # 1 linha x 3 colunas
     "painel_4": (14, 9),   # 2 linhas x 2 colunas
     "painel_6": (15, 8),   # 2 linhas x 3 colunas
+    "painel_8": (20, 9),   # 2 linhas x 4 colunas
     "painel_9": (15, 13),  # 3 linhas x 3 colunas
 }
 
