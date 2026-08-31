@@ -69,6 +69,15 @@ def test_validar_gold_set_aceita_fixture_minima_e_rejeita_duplicidade():
         benchmark.validar_gold_set(duplicado, validar_campanha=False)
 
 
+def test_validar_gold_set_aceita_aprovacao_humana_r6():
+    gold = _gold()
+    gold["status"] = benchmark.GOLD_STATUS_APROVADO_R6
+    gold["curation"] = {"researcher_review": "approved_R6_2026-08-30"}
+    gold["queries"][0]["curation_status"] = "researcher_approved_R6"
+
+    benchmark.validar_gold_set(gold, validar_campanha=False)
+
+
 @pytest.mark.parametrize(
     ("mutacao", "mensagem"),
     [
