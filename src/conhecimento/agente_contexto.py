@@ -429,4 +429,21 @@ def preparar_prompt(
         anexos_texto=anexos_texto,
         perfil=perfil_prompt,
     )
+    from src.conhecimento.evidence_graph import (
+        construir_evidence_graph,
+        consulta_relacional,
+        resumir_grafo_para_prompt,
+    )
+
+    if consulta_relacional(pergunta) and evidence_package.get("evidences"):
+        grafo = construir_evidence_graph(evidence_package)
+        evidence_package["evidence_graph"] = grafo
+        resumo_grafo = resumir_grafo_para_prompt(grafo)
+        if resumo_grafo:
+            prompt += (
+                "\n\n## Evidence Graph R7 — apoio relacional rastreável\n"
+                "Use somente as relações abaixo e preserve os marcadores [E#]. "
+                "O grafo é auxiliar; o texto recuperado continua sendo a fonte.\n"
+                + resumo_grafo
+            )
     return prompt, citacoes, evidence_package

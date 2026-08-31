@@ -55,3 +55,15 @@ python -m src.webapp
 
 O snapshot anterior permanece recuperável pelo histórico Git imediatamente
 anterior à promoção R6. Os manifestos R0-R5 mantêm hashes, métricas e decisões.
+
+## Evidence Graph leve
+
+A R7 acrescenta um grafo efêmero somente para perguntas relacionais ou
+multi-hop. Ele é construído a partir do Evidence Package já recuperado e usa
+uma taxonomia curada com correspondência literal de entidades. Toda relação
+científica precisa conservar `evidence_id` e `chunk_id`; relações sem essa
+âncora são descartadas e não chegam ao prompt.
+
+Perguntas simples continuam no RAG híbrido promovido. O grafo não substitui o
+retrieval textual, não usa LLM para inventar metadados ou relações, não é um
+GraphRAG completo e não implementa RAPTOR.

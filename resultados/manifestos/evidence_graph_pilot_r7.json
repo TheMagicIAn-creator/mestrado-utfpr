@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "manifest_id": "evidence-graph-pilot-r7",
+  "stage": "R7",
+  "variant": "lightweight_evidence_anchored_graph_v1",
+  "taxonomy": {
+    "path": "literatura/evidence_graph_taxonomy_v1.json",
+    "sha256": "8267678fb28f3c3cc45faa9b14c69fba55ea81f76a3382cd82c2c322309894a5",
+    "entity_count": 25
+  },
+  "contracts": {
+    "primary_retrieval": false,
+    "full_graphrag": false,
+    "raptor_enabled": false,
+    "llm_relation_extraction": false,
+    "literal_entity_match_required": true,
+    "evidence_id_required_per_edge": true,
+    "chunk_id_required_per_edge": true,
+    "memory_is_scientific_source": false
+  },
+  "routing": {
+    "relational_and_multihop_only": true,
+    "simple_queries_use_hybrid_rag": true
+  },
+  "node_types": [
+    "author",
+    "component",
+    "data_state",
+    "dataset",
+    "document",
+    "evidence",
+    "failure_mode",
+    "maintenance_strategy",
+    "method",
+    "metric"
+  ],
+  "edge_types": ["STUDIES", "SUPPORTED_BY"],
+  "status": "pilot_after_r6_promotion"
+}
