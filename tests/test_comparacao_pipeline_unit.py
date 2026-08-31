@@ -44,9 +44,9 @@ def test_evaluate_e3_aggregates_models_metrics_and_confusion(monkeypatch):
         evaluation,
         "normalize_commissioning",
         lambda _features, _baseline: (
-            np.asarray([[0.0] * 24, [1.0] * 24]),
+            np.asarray([[float(index)] * 24 for index in range(10)]),
             np.asarray([0]),
-            np.asarray([1]),
+            np.arange(1, 10),
             {"n_baseline": 1},
         ),
     )
@@ -54,12 +54,12 @@ def test_evaluate_e3_aggregates_models_metrics_and_confusion(monkeypatch):
     monkeypatch.setattr(
         evaluation,
         "score_dense",
-        lambda _model, _values, *, top_k: np.asarray([0.1, 0.9]),
+        lambda _model, values, *, top_k: np.linspace(0.1, 0.9, len(values)),
     )
     monkeypatch.setattr(
         evaluation,
         "score_lstm",
-        lambda _model, _values, *, top_k: np.asarray([0.1, 0.9]),
+        lambda _model, values, *, top_k: np.linspace(0.1, 0.9, len(values)),
     )
     prepared = SimpleNamespace(
         scaler=_IdentityScaler(),
@@ -71,9 +71,9 @@ def test_evaluate_e3_aggregates_models_metrics_and_confusion(monkeypatch):
     }
     faults = pd.DataFrame(
         {
-            "experiment": ["F1L", "F1L"],
-            "window_index": [0, 1],
-            "time_center_s": [0.0, 1.0],
+            "experiment": ["F1L"] * 10,
+            "window_index": range(10),
+            "time_center_s": np.arange(10, dtype=float),
         }
     )
 
@@ -82,10 +82,51 @@ def test_evaluate_e3_aggregates_models_metrics_and_confusion(monkeypatch):
     assert len(result["scenarios"]) == 2
     assert set(result["scores"]["model"]) == {"ae_denso", "ae_lstm"}
     assert result["confusion"][["tn", "fp", "fn", "tp"]].to_numpy().tolist() == [
-        [1, 0, 0, 1],
-        [1, 0, 0, 1],
+        [1, 0, 4, 5],
+        [1, 0, 4, 5],
     ]
     assert result["macro"]["n_valid_experiments"].min() == 1
+    assert set(result["temporal_ablation"]["analysis"]) == set(
+        evaluation.TEMPORAL_ANALYSES
+    )
+    sustained = result["temporal_ablation"]
+    sustained = sustained[sustained["analysis"].eq("sustained")]
+    assert set(sustained["n_post_fault_evaluated"]) == {2}
+
+
+@pytest.mark.integracao
+def test_temporal_ablation_resets_only_the_post_fault_lstm_context(monkeypatch):
+    captured_sequences = []
+    monkeypatch.setattr(
+        evaluation,
+        "score_dense",
+        lambda _model, values, *, top_k: np.linspace(0.1, 0.9, len(values)),
+    )
+
+    def fake_score_lstm(_model, values, *, top_k):
+        captured_sequences.append(np.asarray(values).copy())
+        return np.linspace(0.1, 0.9, len(values))
+
+    monkeypatch.setattr(evaluation, "score_lstm", fake_score_lstm)
+    scaled = np.repeat(np.arange(13, dtype=float)[:, None], 24, axis=1)
+    runs = {
+        model_id: [_reference_run(model_id)]
+        for model_id in ("ae_denso", "ae_lstm")
+    }
+
+    rows = evaluation._temporal_ablation_for_experiment(
+        experiment="F1L",
+        scaled=scaled,
+        pre_test=np.asarray([2, 3]),
+        post_test=np.arange(4, 13),
+        runs=runs,
+    )
+
+    reset_sequences = next(values for values in captured_sequences if len(values) == 9)
+    assert np.all(reset_sequences[0, :, 0] == 4.0)
+    assert reset_sequences.min() >= 4.0
+    sustained = [row for row in rows if row["analysis"] == "sustained"]
+    assert {row["n_post_fault_evaluated"] for row in sustained} == {2}
 
 
 def test_orchestrator_forwards_scientific_configuration(monkeypatch):
@@ -230,6 +271,22 @@ def test_generate_all_comparison_figures_from_tabular_sources(tmp_path):
             for model in ("ae_denso", "ae_lstm")
         ]
     )
+    temporal_paired = pd.DataFrame(
+        [
+            {
+                "seed": seed,
+                "is_reference": seed == 42,
+                "analysis": analysis,
+                "metric": metric,
+                "difference_lstm_minus_dense": 0.05,
+                "ci95_low": 0.01,
+                "ci95_high": 0.09,
+            }
+            for seed in (13, 29, 42, 71, 101)
+            for analysis in evaluation.TEMPORAL_ANALYSES
+            for metric in ("recall", "f1", "precision")
+        ]
+    )
 
     paths = charts.generate_all(
         tmp_path,
@@ -237,7 +294,8 @@ def test_generate_all_comparison_figures_from_tabular_sources(tmp_path):
         e3_scores=scores,
         e3_confusion=confusion,
         e3_scenarios=scenarios,
+        temporal_ablation_paired=temporal_paired,
     )
 
-    assert len(paths) == 8
+    assert len(paths) == 10
     assert all(path.is_file() and path.stat().st_size > 0 for path in paths)

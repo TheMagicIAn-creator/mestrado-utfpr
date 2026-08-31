@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "stage": "comparacao_autoencoders",
-  "created_at": "2026-08-28T22:19:26.318432-03:00",
-  "git_commit": "63e509d1f8e6b205acbbed7ba89456d57ec7331a",
+  "created_at": "2026-08-31T17:19:52.058421-03:00",
+  "git_commit": "58866ae75595e4a10ee2f334972f0fb342f045a9",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
@@ -11,10 +11,10 @@
     "dataset": "c7382e02df1002a9781fd2e0029977c588aa6cb570e616892c2ec08627c06b6e",
     "models": "d62bfea4a295266a1061546fdb25c027e5472b5e982a85a6be67663acb5eaec5",
     "training": "ba70160766d47e38fbb8bf9d59a76c8ef96331601561392ad5aad5eb05ad4a44",
-    "evaluation": "bc1965cf3f63038348980ee6172c17c6b6cf0480cd2e68430a5d2442b9bdbf5c",
+    "evaluation": "0d1c666cfee92c4901beaf563f28a77528dbd2ba5e3550f270ca0b96296428c0",
     "statistics": "b953b9ae1db8003365958e7fdad5370eb2cbe34c42de1a65eab40c0c5f7bc141",
-    "plots": "425a675aadf37061381f5084df6c62df8064cbfee5b62067f73ba9452fa0694c",
-    "publication": "ad512762ce45f13217c10fa6ea87bfdb6f132dee06adbc36fa83ff111d7c7611"
+    "plots": "bfbbd4b8b94a3e3c4a5df5ba2009613e64e233a7751b95c2ac83ebc31bb49326",
+    "publication": "b55c77271d3e545c7707ed6add6a6d29bbf78cf2fa88b4d1ed96b9d93d7d6af3"
   },
   "parameters": {
     "dataset": "GPVS-Faults",
@@ -32,7 +32,12 @@
     ],
     "threshold_percentile": 99.9,
     "score_top_k": 5,
-    "bootstrap_resamples": 20000
+    "bootstrap_resamples": 20000,
+    "temporal_ablation": {
+      "sequence_length": 8,
+      "transition_post_windows": 7,
+      "reference_seed": 42
+    }
   },
   "input_artifacts": {
     "raw_F0L": "0af0dddf273838ca4e255d99da50f37f86c9bf9e0b343d3175ccc4366accd458",
@@ -69,6 +74,8 @@
     "resultados/comparacao/e3_matrizes_confusao.csv",
     "resultados/comparacao/e3_estabilidade_sementes.csv",
     "resultados/comparacao/e3_diferencas_pareadas.csv",
+    "resultados/comparacao/e3_ablacao_temporal_por_ensaio.csv",
+    "resultados/comparacao/e3_ablacao_temporal.csv",
     "resultados/comparacao/comparacao_autoencoders.json",
     "resultados/comparacao/relatorio_comparacao.md",
     "resultados/comparacao/e3_metricas_macro.png",
@@ -78,7 +85,9 @@
     "resultados/comparacao/e3_matrizes_confusao.png",
     "resultados/comparacao/e3_matrizes_confusao.pdf",
     "resultados/comparacao/e3_resultados_por_ensaio.png",
-    "resultados/comparacao/e3_resultados_por_ensaio.pdf"
+    "resultados/comparacao/e3_resultados_por_ensaio.pdf",
+    "resultados/comparacao/e3_ablacao_temporal.png",
+    "resultados/comparacao/e3_ablacao_temporal.pdf"
   ],
   "output_artifacts": {
     "resultados/comparacao/e3_metricas_por_ensaio.csv": "5ba7824783edd36a656e48d3e77824574c251e0e1c7784bcb450d07aeee004d1",
@@ -87,8 +96,10 @@
     "resultados/comparacao/e3_matrizes_confusao.csv": "164062aeb5531f875f474121958625a7c82f25b9cf53b00efe8540ed0756c318",
     "resultados/comparacao/e3_estabilidade_sementes.csv": "a278e59a1ecf2586d7e48fc5874629058df1f4a8bc3c1661174214e9e2c282ff",
     "resultados/comparacao/e3_diferencas_pareadas.csv": "fceec39e54d4f6327c94fd9c3e4c1d09af8fb263dce0f4e2d6199134800a832b",
-    "resultados/comparacao/comparacao_autoencoders.json": "ed9354989cca27e45cfbc2720b78205091ae029d862159173cec39cd1315675d",
-    "resultados/comparacao/relatorio_comparacao.md": "1e27b2031c01bc57a94cbf1eb3274d9e7196692cc0c64b4b31d4ab218a5e08e4",
+    "resultados/comparacao/e3_ablacao_temporal_por_ensaio.csv": "c08af3b181a66bb67c410b54c31151b37797cde843d05e4144dec14cdedb4acc",
+    "resultados/comparacao/e3_ablacao_temporal.csv": "62a07f0492d66371093a898552564aa76fa49def500ef28f6ab9841744fba238",
+    "resultados/comparacao/comparacao_autoencoders.json": "7443a8f00699a61eb8445c9feeaced5c65380651455a62585edfa798d6d79ff3",
+    "resultados/comparacao/relatorio_comparacao.md": "b8db5f7b2b524389b675856df12d97aabd5481d74f198c6a04fd1d2d43b2fe16",
     "resultados/comparacao/e3_metricas_macro.png": "a3a56855702f4ab386feb0f9acaaeca45f88f61f91d24d15937ce761cfaa2787",
     "resultados/comparacao/e3_metricas_macro.pdf": "30b88e3a279cfd31adf17a23fa23f48b1c4435b6fb6fdaa01cf3959e12e67127",
     "resultados/comparacao/e3_curvas_discriminacao.png": "f36b1b62790324d9f9f09b056ed6ab209c714a7b5ff5d21a0181d1496f335d93",
@@ -96,7 +107,9 @@
     "resultados/comparacao/e3_matrizes_confusao.png": "2fea1e11afdefee7a2eee49fdf5859fa8759531354bf618e99f98d555f18d55f",
     "resultados/comparacao/e3_matrizes_confusao.pdf": "bf7f3a6d4899ab057c28a83355b3da9e111543883d4f280072d3c6874b1dfe09",
     "resultados/comparacao/e3_resultados_por_ensaio.png": "bc7deea2584c781acd2a1ee4b49cf6e853b62f7c0d6be81b7d5fe46afb62621c",
-    "resultados/comparacao/e3_resultados_por_ensaio.pdf": "bfd3e557206e44c8d6d8c4560d21195917138f516360f1e8f4febec2621dacc3"
+    "resultados/comparacao/e3_resultados_por_ensaio.pdf": "bfd3e557206e44c8d6d8c4560d21195917138f516360f1e8f4febec2621dacc3",
+    "resultados/comparacao/e3_ablacao_temporal.png": "29963555b3a5f0ed10684252939242de8eae942e49358ab7231ff02c1c6222ce",
+    "resultados/comparacao/e3_ablacao_temporal.pdf": "88e9c7a732f8ab6fd5c1dfa99e7b7f5fe7ac37616f326928eda6861386dade52"
   },
   "evidence_level": "E3_bench"
 }

@@ -14,6 +14,7 @@ from src.core.tempo import agora_local
 from src.ml.dados_gpvs import FEATURE_COLUMNS, PreparedData, dataset_files
 from src.ml.estatistica_comparacao import BOOTSTRAP_RESAMPLES
 from src.ml.graficos_comparacao import generate_all
+from src.ml.modelos_autoencoder import SEQUENCE_LENGTH
 from src.ml.proveniencia import gerar_manifesto, salvar_manifesto
 from src.ml.treino_comparacao import (
     MODEL_IDS,
@@ -140,6 +141,21 @@ def results_payload(
             "paired_differences": e3["paired"].to_dict(orient="records"),
             "stability": e3["stability"].to_dict(orient="records"),
             "confusion_matrices": e3["confusion"].to_dict(orient="records"),
+            "temporal_ablation": {
+                "role": "supplementary_diagnostic",
+                "sequence_length": SEQUENCE_LENGTH,
+                "transition_post_windows": SEQUENCE_LENGTH - 1,
+                "analyses": [
+                    "current_full",
+                    "transition",
+                    "sustained",
+                    "post_fault_reset",
+                ],
+                "paired_differences": e3["temporal_ablation_paired"].to_dict(
+                    orient="records"
+                ),
+                "conclusion": e3["temporal_ablation_conclusion"],
+            },
         },
         "limitations": [
             "GPVS-Faults é evidência experimental de bancada, não validação de campo.",
@@ -153,6 +169,13 @@ def _write_report(payload: dict, output: Path) -> Path:
     macro = pd.DataFrame(payload["e3"]["macro"])
     indexed = macro.set_index(["model", "metric"])
     confusion = pd.DataFrame(payload["e3"]["confusion_matrices"]).set_index("model")
+    temporal = payload["e3"]["temporal_ablation"]
+    temporal_paired = pd.DataFrame(temporal["paired_differences"])
+    sustained = temporal_paired[
+        temporal_paired["is_reference"]
+        & temporal_paired["analysis"].eq("sustained")
+        & temporal_paired["metric"].isin(["recall", "f1", "precision"])
+    ].set_index("metric")
 
     def formatted(model_id: str, metric: str) -> str:
         row = indexed.loc[(model_id, metric)]
@@ -240,6 +263,25 @@ def _write_report(payload: dict, output: Path) -> Path:
             "Cada modelo calibra seu próprio limiar no bloco saudável de calibração "
             "usando p99,9 solicitado; o contrato registra o order statistic e o "
             "percentil empírico efetivamente alcançável.",
+            "",
+            "## Ablação temporal do AE-LSTM",
+            "",
+            "A análise suplementar separa as sete primeiras janelas pós-fronteira "
+            "da falha sustentada e também reinicia o contexto pós-falha do AE-LSTM. "
+            "Treino, scaler, escore e limiares permanecem congelados.",
+            "",
+            "| Métrica | AE-LSTM − Denso na falha sustentada | IC95% |",
+            "|---|---:|---:|",
+            *(
+                f"| {metric.title()} | "
+                f"{float(sustained.loc[metric, 'difference_lstm_minus_dense']):.3f} | "
+                f"{float(sustained.loc[metric, 'ci95_low']):.3f} a "
+                f"{float(sustained.loc[metric, 'ci95_high']):.3f} |"
+                for metric in ("recall", "f1", "precision")
+            ),
+            "",
+            f"Conclusão pré-especificada: `{temporal['conclusion']['status']}`. "
+            f"{temporal['conclusion']['reason']}",
         ]
     )
     output.write_text(
@@ -278,6 +320,8 @@ def save_results(
         "e3_matrizes_confusao.csv": e3["confusion"],
         "e3_estabilidade_sementes.csv": e3["stability"],
         "e3_diferencas_pareadas.csv": e3["paired"],
+        "e3_ablacao_temporal_por_ensaio.csv": e3["temporal_ablation"],
+        "e3_ablacao_temporal.csv": e3["temporal_ablation_paired"],
     }
     for name, frame in tables.items():
         outputs.append(_write_csv(RESULTS_DIR / name, frame))
@@ -298,6 +342,7 @@ def save_results(
             e3_scores=e3["scores"],
             e3_confusion=e3["confusion"],
             e3_scenarios=e3["scenarios"],
+            temporal_ablation_paired=e3["temporal_ablation_paired"],
         )
     )
 
@@ -325,6 +370,11 @@ def save_results(
             "threshold_percentile": threshold_percentile,
             "score_top_k": score_top_k,
             "bootstrap_resamples": BOOTSTRAP_RESAMPLES,
+            "temporal_ablation": {
+                "sequence_length": SEQUENCE_LENGTH,
+                "transition_post_windows": SEQUENCE_LENGTH - 1,
+                "reference_seed": REFERENCE_SEED,
+            },
         },
         inputs,
         outputs,
