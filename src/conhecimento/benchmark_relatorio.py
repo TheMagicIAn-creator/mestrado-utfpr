@@ -10,8 +10,8 @@ def _linhas_comparacao(resultado: dict) -> list[str]:
     if not comparacao:
         return []
     stage = resultado.get("stage")
-    baseline_label = "R2" if stage == "R3" else "R0–R1"
-    candidate_label = stage if stage in {"R2", "R3"} else "candidato"
+    baseline_label = {"R3": "R2", "R4": "R3"}.get(stage, "R0–R1")
+    candidate_label = stage if stage in {"R2", "R3", "R4"} else "candidato"
     linhas = [
         "## Comparação baseline x candidato",
         "",
@@ -39,7 +39,8 @@ def _linhas_comparacao(resultado: dict) -> list[str]:
             f"- Métricas científicas idênticas: {str(comparacao['scientific_metrics_identical']).lower()}.",
         ]
     )
-    if stage == "R3":
+    if stage in {"R3", "R4"}:
+        proximo_gate = "R4–R6" if stage == "R3" else "R5–R6"
         linhas.extend(
             [
                 f"- Ganho de qualidade observado: {str(comparacao['quality_gain_observed']).lower()}.",
@@ -49,7 +50,7 @@ def _linhas_comparacao(resultado: dict) -> list[str]:
                 "- Regressões críticas em perguntas simples: "
                 + (", ".join(comparacao["critical_simple_regressions"]) or "nenhuma")
                 + ".",
-                "- Decisão: candidato não promovido; avaliação continua em R4–R6.",
+                f"- Decisão: candidato não promovido; avaliação continua em {proximo_gate}.",
                 "- Latência é informativa e não participa do gate científico de qualidade.",
                 "",
             ]
@@ -57,7 +58,7 @@ def _linhas_comparacao(resultado: dict) -> list[str]:
         detalhes = comparacao["regression_details"]
         if detalhes:
             linhas.extend(["### Regressões auditadas", ""])
-            linhas.extend(_linha_regressao(item) for item in detalhes)
+            linhas.extend(_linha_regressao(item, stage) for item in detalhes)
             linhas.append("")
     else:
         linhas.extend(
@@ -70,19 +71,30 @@ def _linhas_comparacao(resultado: dict) -> list[str]:
     return linhas
 
 
-def _linha_regressao(item: dict) -> str:
+def _linha_regressao(item: dict, stage: str) -> str:
+    baseline_label = "R2" if stage == "R3" else "R3"
     return (
         f"- `{item['query_id']}` ({item['category']}): Recall de página@5 "
         f"{item['baseline_page_recall_at_5']:.1f}→"
-        f"{item['candidate_page_recall_at_5']:.1f}; Recall documental R3="
-        f"{item['candidate_document_recall_at_5']:.1f}; top-1 R2 "
+        f"{item['candidate_page_recall_at_5']:.1f}; Recall documental {stage}="
+        f"{item['candidate_document_recall_at_5']:.1f}; top-1 {baseline_label} "
         f"`{item['baseline_top_1']['file']}` p.{item['baseline_top_1']['pages']}; "
-        f"top-1 R3 `{item['candidate_top_1']['file']}` p."
+        f"top-1 {stage} `{item['candidate_top_1']['file']}` p."
         f"{item['candidate_top_1']['pages']}."
     )
 
 
 def _estado_relatorio(stage: str, schema_v2: bool) -> tuple[str, str, str, str]:
+    if stage == "R4":
+        return (
+            "# Evidence RAG — Refinamento híbrido R4",
+            "> Estado: ranking híbrido candidato medido e não promovido; "
+            "gold set provisório e pendente de revisão do pesquisador em R6.",
+            "`raw_text` preservado; o índice contextual R3 permanece paralelo e "
+            "recebe filtros consultivos e expansão de vizinhança no ranking.",
+            "- Filtros de metadados são aplicados somente quando a pergunta nomeia "
+            "explicitamente um autor ou fonte; a busca global permanece ativa.",
+        )
     if stage == "R3":
         return (
             "# Evidence RAG — Contextual Retrieval determinístico R3",
@@ -160,11 +172,19 @@ def relatorio_markdown(resultado: dict) -> str:
         f"backend de consulta equivalente: {retrieval['query_embedding_backend']}.",
         f"- Índice lexical: {retrieval['lexical_index']} (disponível: "
         f"{str(retrieval['lexical_available']).lower()}).",
-        "- Fusão: Reciprocal Rank Fusion com constante 60; reranking e diversificação locais vigentes.",
+        f"- Fusão: Reciprocal Rank Fusion com constante {retrieval['rrf_constant']}; "
+        f"reranker `{retrieval['reranker']}` e diversificação local.",
         "- IDs: SHA-256 documental mais índice ordinal do chunk; páginas preservadas nos metadados.",
         estado_contrato,
         "- O caminho atual não possui Evidence Package nem Evidence Guard determinístico.",
-        "- Nenhum parâmetro de ranking foi modificado nesta etapa.",
+        *(
+            [
+                "- R4 usa filtros consultivos por autor explícito e vizinhança de raio 1; "
+                "nenhum filtro elimina a busca global.",
+            ]
+            if stage == "R4"
+            else ["- Nenhum parâmetro de ranking foi modificado nesta etapa."]
+        ),
         "",
         "## Gold set R1",
         "",

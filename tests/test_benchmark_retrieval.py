@@ -406,6 +406,63 @@ def test_comparacao_r3_detalha_regressao_de_pagina_com_documento_correto(
     assert detalhe["candidate_top_1"] == {"file": "fonte.pdf", "pages": [7]}
 
 
+def test_r4_usa_perfil_refinado_e_adia_promocao_para_r5_r6(monkeypatch):
+    recuperado = {
+        "rank": 1,
+        "chunk_id": CHUNK_ID,
+        "document_id": DOCUMENT_ID,
+        "file": "fonte.pdf",
+        "pages": [7],
+        "rrf_score": 0.1,
+        "context_chars": 120,
+    }
+    monkeypatch.setattr(
+        benchmark,
+        "recuperar_refinado_r4",
+        lambda *args, **kwargs: [recuperado],
+    )
+    candidato = benchmark.executar_benchmark(
+        _gold(),
+        modelo_embeddings="modelo",
+        colecao=_Colecao(),
+        indice_lexical=_Lexical(),
+        manifesto_snapshot={
+            **_manifesto(),
+            "schema_version": 2,
+            "retrieval_text_strategy": "deterministic_document_context_v1",
+        },
+        relogio=lambda: 0.0,
+        warmup=False,
+        benchmark_id="evidence-rag-r4-hybrid-refinement",
+        stage="R4",
+        variant="filtered_hybrid_neighborhood_v1",
+        retrieval_profile=benchmark.RETRIEVAL_PROFILE_R4,
+    )
+    baseline = copy.deepcopy(candidato)
+    baseline.update(stage="R3", benchmark_id="r3")
+    baseline["retrieval"].update(
+        profile="baseline",
+        reranker="deterministic_local_v1",
+        explicit_metadata_filtered_search=False,
+        neighborhood_expansion=False,
+    )
+    baseline["summary"]["recall@5"] = 0.0
+    baseline["queries"][0]["metrics"]["5"]["recall@5"] = 0.0
+
+    comparacao = benchmark.comparar_benchmarks(baseline, candidato)
+
+    assert candidato["retrieval"]["explicit_metadata_filtered_search"] is True
+    assert candidato["retrieval"]["neighborhood_expansion"] is True
+    assert comparacao["ranking_contract_preserved"] is False
+    assert comparacao["ranking_change_expected"] is True
+    assert comparacao["promotion_eligible_after_quality_stages"] is True
+    assert comparacao["promotion_decision"] == "deferred_to_r5_r6"
+    candidato["comparison_to_baseline"] = comparacao
+    texto = benchmark.relatorio_markdown(candidato)
+    assert "Refinamento híbrido R4" in texto
+    assert "avaliação continua em R5–R6" in texto
+
+
 def test_relatorio_markdown_explicita_estado_provisorio(monkeypatch):
     monkeypatch.setattr(
         benchmark,

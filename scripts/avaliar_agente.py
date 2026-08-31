@@ -113,6 +113,12 @@ def main() -> int:
         type=Path,
         help="Diretório local isolado para os índices candidatos não promovidos.",
     )
+    parser.add_argument(
+        "--retrieval-profile",
+        choices=("auto", "r4_hybrid"),
+        default="auto",
+        help="Perfil de ranking; R4 permanece candidato paralelo.",
+    )
     args = parser.parse_args()
 
     if args.benchmark_retrieval:
@@ -132,22 +138,29 @@ def main() -> int:
             if args.markdown is not None
             else None
         )
-        opcoes_execucao = {"git_revision": args.git_revision}
+        opcoes_execucao = {
+            "git_revision": args.git_revision,
+            "retrieval_profile": args.retrieval_profile,
+        }
         if args.candidate_runtime is not None:
             opcoes_execucao["candidate_runtime"] = resolver_caminho_no_projeto(
                 args.candidate_runtime
             )
         report = executar_baseline_local(gold_set, snapshot, **opcoes_execucao)
         comparison_ok = True
-        if report.get("stage") in {"R2", "R3"}:
+        if report.get("stage") in {"R2", "R3", "R4"}:
             baseline_default = (
                 RAIZ
                 / "resultados"
                 / "manifestos"
                 / (
-                    "evidence_rag_schema_v2_r2.json"
-                    if report["stage"] == "R3"
-                    else "evidence_rag_baseline_v1.json"
+                    "evidence_rag_contextual_r3.json"
+                    if report["stage"] == "R4"
+                    else (
+                        "evidence_rag_schema_v2_r2.json"
+                        if report["stage"] == "R3"
+                        else "evidence_rag_baseline_v1.json"
+                    )
                 )
             )
             baseline_path = resolver_caminho_no_projeto(
@@ -157,13 +170,22 @@ def main() -> int:
             baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
             comparacao = comparar_benchmarks(baseline, report)
             report["comparison_to_baseline"] = comparacao
-            campos_gate = [
-                "corpus_identity_preserved",
-                "ranking_contract_preserved",
-            ]
-            if report["stage"] == "R2":
-                campos_gate.append("scientific_metrics_identical")
-            comparison_ok = all(comparacao[campo] for campo in campos_gate)
+            if report["stage"] == "R4":
+                comparison_ok = all(
+                    (
+                        comparacao["corpus_identity_preserved"],
+                        comparacao["quality_gain_observed"],
+                        not comparacao["critical_simple_regressions"],
+                    )
+                )
+            else:
+                campos_gate = [
+                    "corpus_identity_preserved",
+                    "ranking_contract_preserved",
+                ]
+                if report["stage"] == "R2":
+                    campos_gate.append("scientific_metrics_identical")
+                comparison_ok = all(comparacao[campo] for campo in campos_gate)
         serialized = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
         if output_json:
             output_json.parent.mkdir(parents=True, exist_ok=True)

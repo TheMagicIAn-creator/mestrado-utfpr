@@ -25,6 +25,11 @@ EVALUATION_MANIFESTS = {
         "deterministic_document_context_v1",
         2,
     ),
+    "evidence_rag_hybrid_r4.json": (
+        "R4",
+        "filtered_hybrid_neighborhood_v1",
+        2,
+    ),
     "evidence_rag_schema_v2_r2.json": ("R2", "jsonl_schema_v2_identity", 2),
 }
 MANIFEST_NAMES = SCIENTIFIC_MANIFEST_NAMES | set(EVALUATION_MANIFESTS)
@@ -190,6 +195,44 @@ def _audit_retrieval_r3(manifest: dict, errors: list[str], path: Path) -> None:
         errors.append(f"{path.name}: R3 não foi medido em índice paralelo")
 
 
+def _audit_retrieval_r4(manifest: dict, errors: list[str], path: Path) -> None:
+    comparacao = manifest.get("comparison_to_baseline", {})
+    if comparacao.get("baseline_benchmark_id") != (
+        "evidence-rag-r3-contextual-deterministic"
+    ):
+        errors.append(f"{path.name}: R4 não foi comparado diretamente ao R3")
+    if comparacao.get("corpus_identity_preserved") is not True:
+        errors.append(f"{path.name}: identidade do corpus mudou em R4")
+    if comparacao.get("quality_gain_observed") is not True:
+        errors.append(f"{path.name}: R4 não demonstrou ganho de qualidade")
+    if comparacao.get("regressed_queries_at_5"):
+        errors.append(f"{path.name}: R4 contém regressões em recall de página@5")
+    if comparacao.get("critical_simple_regressions"):
+        errors.append(f"{path.name}: R4 contém regressões simples críticas")
+    if comparacao.get("promotion_decision") != "deferred_to_r5_r6":
+        errors.append(f"{path.name}: candidato R4 avançou antes dos gates R5-R6")
+    retrieval = manifest.get("retrieval", {})
+    gates = {
+        "parallel_candidate_index": True,
+        "explicit_metadata_filtered_search": True,
+        "metadata_filters_are_advisory": True,
+        "neighborhood_expansion": True,
+        "evidence_package": False,
+        "evidence_guard": False,
+    }
+    for campo, esperado in gates.items():
+        if retrieval.get(campo) is not esperado:
+            errors.append(f"{path.name}: contrato R4 divergente em {campo}")
+    if retrieval.get("metadata_filtered_results_per_query") != 3:
+        errors.append(f"{path.name}: limite filtrado R4 divergente")
+    if not math.isclose(
+        float(retrieval.get("metadata_filtered_rrf_weight", -1.0)),
+        0.25,
+        abs_tol=1e-12,
+    ):
+        errors.append(f"{path.name}: peso filtrado R4 divergente")
+
+
 def _audit_retrieval_result(
     path: Path,
     errors: list[str],
@@ -218,6 +261,8 @@ def _audit_retrieval_result(
         _audit_retrieval_r2(manifest, errors, path)
     elif expected_stage == "R3":
         _audit_retrieval_r3(manifest, errors, path)
+    elif expected_stage == "R4":
+        _audit_retrieval_r4(manifest, errors, path)
 
 
 def _audit_retrieval_baseline(path: Path, errors: list[str]) -> None:

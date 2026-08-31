@@ -329,6 +329,12 @@ def _busca_hibrida(
     modelo_embeddings,
     n_pool          : int = 60,
     indice_lexical  = None,
+    rrf_constant    : float = 60.0,
+    filtros_metadata: list[dict] | None = None,
+    n_filtrado      : int = 30,
+    peso_filtro_semantico: float = 0.25,
+    peso_scan_metadata: float = 1.0,
+    preferir_filtro_semantico: bool = False,
 ) -> list:
     """
     CAMADA 2 — Busca híbrida.
@@ -337,12 +343,25 @@ def _busca_hibrida(
     """
     pool = {}  # chunk_id -> (documento, metadado)
     rrf = {}   # Reciprocal Rank Fusion entre semantica e BM25
+    origens: dict[str, set[str]] = {}
+    rrf_constant = max(1.0, float(rrf_constant))
 
-    def adicionar(chunk_id, documento, metadata, rank: int) -> None:
+    def adicionar(
+        chunk_id,
+        documento,
+        metadata,
+        rank: int,
+        *,
+        origem: str,
+        peso: float = 1.0,
+    ) -> None:
         chave = str(chunk_id)
         if chave not in pool:
             pool[chave] = (documento, dict(metadata or {}))
-        rrf[chave] = rrf.get(chave, 0.0) + 1.0 / (60.0 + max(1, rank))
+        rrf[chave] = rrf.get(chave, 0.0) + float(peso) / (
+            rrf_constant + max(1, rank)
+        )
+        origens.setdefault(chave, set()).add(origem)
 
     # Busca semântica para cada variação da query
     n_por_variacao = max(10, n_pool // max(len(variacoes), 1))
@@ -352,7 +371,10 @@ def _busca_hibrida(
     except Exception:
         vetores_semanticos = []
 
-    for variacao, vetor in zip(variacoes, vetores_semanticos):
+    for indice_variacao, (variacao, vetor) in enumerate(
+        zip(variacoes, vetores_semanticos),
+        start=1,
+    ):
         try:
             resultados = colecao.query(
                 query_embeddings = [vetor],
@@ -363,9 +385,48 @@ def _busca_hibrida(
             ids   = resultados.get("ids",        [[]])[0]
 
             for rank, (id_, doc, meta) in enumerate(zip(ids, docs, metas), 1):
-                adicionar(id_, doc, meta, rank)
+                adicionar(
+                    id_,
+                    doc,
+                    meta,
+                    rank,
+                    origem=f"semantic:{indice_variacao}",
+                )
         except Exception:
             continue
+
+    # Filtros so entram quando foram extraidos de informacao explicita da
+    # pergunta. A consulta continua sem filtro acima; esta segunda passagem
+    # apenas garante que a fonte nomeada participe do pool e nao transforma
+    # metadado inferido em restricao dura.
+    for indice_filtro, filtro in enumerate(filtros_metadata or (), start=1):
+        where = filtro.get("where") if isinstance(filtro, dict) else None
+        if not where:
+            continue
+        for indice_variacao, vetor in enumerate(vetores_semanticos, start=1):
+            try:
+                resultados = colecao.query(
+                    query_embeddings=[vetor],
+                    n_results=max(1, min(int(n_filtrado), 50)),
+                    where=where,
+                )
+                docs = resultados.get("documents", [[]])[0]
+                metas = resultados.get("metadatas", [[]])[0]
+                ids = resultados.get("ids", [[]])[0]
+                for rank, (id_, doc, meta) in enumerate(zip(ids, docs, metas), 1):
+                    adicionar(
+                        id_,
+                        doc,
+                        meta,
+                        rank,
+                        origem=(
+                            f"semantic_filtered:{indice_filtro}:"
+                            f"{indice_variacao}"
+                        ),
+                        peso=max(0.0, float(peso_filtro_semantico)),
+                    )
+            except Exception:
+                continue
 
     # O BM25 forma uma segunda lista de candidatos. A RRF combina posicoes
     # sem comparar diretamente distancia vetorial e score lexical.
@@ -386,6 +447,7 @@ def _busca_hibrida(
                     item.documento,
                     item.metadata,
                     item.rank,
+                    origem="lexical",
                 )
         except Exception:
             indice_disponivel = False
@@ -417,7 +479,13 @@ def _busca_hibrida(
                     for rank, (id_, doc, meta) in enumerate(
                         zip(ids, docs, metas), 1
                     ):
-                        adicionar(id_, doc, meta, rank)
+                        adicionar(
+                            id_,
+                            doc,
+                            meta,
+                            rank,
+                            origem=f"keyword_fallback:{termo}",
+                        )
                 except Exception:
                     continue
 
@@ -430,7 +498,10 @@ def _busca_hibrida(
         # muito diferentes (Kalman: 1710 chunks; Power Electronics: 63),
         # uma unica query where={"autor": X} com limit alto so traz o maior.
         # Por isso iteramos por arquivo, garantindo amostra de CADA paper.
-        if termo.lower() in autores_conhecidos:
+        if (
+            termo.lower() in autores_conhecidos
+            and not (preferir_filtro_semantico and filtros_metadata)
+        ):
             canonicos = autores_canonicos_para(termo, colecao)
             tentativas = set(canonicos) if canonicos else {
                 termo.title(), termo.upper(), termo.capitalize(), termo
@@ -458,16 +529,120 @@ def _busca_hibrida(
                         for rank, (id_, doc, meta) in enumerate(
                             zip(ids, docs, metas), 1
                         ):
-                            adicionar(id_, doc, meta, rank)
+                            adicionar(
+                                id_,
+                                doc,
+                                meta,
+                                rank,
+                                origem=f"metadata_author_scan:{termo}",
+                                peso=peso_scan_metadata,
+                            )
                     except Exception:
                         continue
 
     saida = []
     for chunk_id, (documento, metadata) in pool.items():
         meta = dict(metadata)
+        meta["_chunk_id"] = chunk_id
         meta["_rrf_score"] = float(rrf.get(chunk_id, 0.0))
+        meta["_retrieval_sources"] = tuple(sorted(origens.get(chunk_id, ())))
         saida.append((documento, meta))
     saida.sort(key=lambda item: item[1].get("_rrf_score", 0.0), reverse=True)
+    return saida
+
+
+_ALIASES_AUTOR_R4 = {
+    "nasa": "administration",
+    "tcc": "torres",
+}
+
+
+def _filtros_metadata_explicitos(pergunta: str, colecao) -> list[dict]:
+    """Extrai filtros consultivos somente de autores nomeados pelo usuario."""
+    texto = _normalizar_texto(pergunta or "")
+    tokens = set(_tokens_busca(pergunta or ""))
+    for marcador, autor in _ALIASES_AUTOR_R4.items():
+        if marcador in texto.split():
+            tokens.add(autor)
+
+    autores = autores_indexados(colecao)
+    filtros: list[dict] = []
+    vistos: set[tuple[str, str]] = set()
+    for token in sorted(tokens):
+        token_normalizado = _normalizar_texto(token).strip()
+        if token_normalizado not in autores:
+            continue
+        for canonico in sorted(autores_canonicos_para(token_normalizado, colecao)):
+            chave = ("autor", canonico)
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            filtros.append(
+                {
+                    "where": {"autor": canonico},
+                    "reason": f"explicit_author:{token_normalizado}",
+                }
+            )
+    return filtros[:4]
+
+
+def _expandir_vizinhanca(
+    candidatos: list,
+    colecao,
+    *,
+    max_sementes: int = 16,
+    decaimento_rrf: float = 0.85,
+) -> list:
+    """Acrescenta chunks imediatamente adjacentes sem alterar os originais."""
+    if not candidatos or max_sementes <= 0:
+        return list(candidatos)
+
+    existentes = {
+        str(meta.get("_chunk_id"))
+        for _, meta in candidatos
+        if meta.get("_chunk_id")
+    }
+    pedidos: dict[str, tuple[str, float]] = {}
+    for _, meta in candidatos[:max_sementes]:
+        origem = str(meta.get("_chunk_id") or "")
+        score = float(meta.get("_rrf_score", 0.0) or 0.0)
+        for campo in ("prev_chunk_id", "next_chunk_id"):
+            vizinho = str(meta.get(campo) or "")
+            if not vizinho or vizinho in existentes:
+                continue
+            atual = pedidos.get(vizinho)
+            if atual is None or score > atual[1]:
+                pedidos[vizinho] = (origem, score)
+
+    if not pedidos:
+        return list(candidatos)
+
+    try:
+        resposta = colecao.get(
+            ids=list(pedidos),
+            include=["documents", "metadatas"],
+        )
+    except Exception:
+        return list(candidatos)
+
+    saida = list(candidatos)
+    for chunk_id, documento, metadata in zip(
+        resposta.get("ids", []) or [],
+        resposta.get("documents", []) or [],
+        resposta.get("metadatas", []) or [],
+    ):
+        chave = str(chunk_id)
+        if chave in existentes or chave not in pedidos:
+            continue
+        origem, score_origem = pedidos[chave]
+        meta = dict(metadata or {})
+        meta["_chunk_id"] = chave
+        meta["_neighbor_of"] = origem
+        meta["_neighbor_distance"] = 1
+        meta["_rrf_score"] = score_origem * max(0.0, float(decaimento_rrf))
+        meta["_retrieval_sources"] = ("neighborhood",)
+        saida.append((str(documento or ""), meta))
+        existentes.add(chave)
     return saida
 
 
