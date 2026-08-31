@@ -273,6 +273,7 @@ def create_app(
     library_service: LibraryService | None = None,
 ) -> Starlette:
     adapter = agent_adapter or AgentAdapter()
+    conversations = adapter.session_journal
     library = library_service or LibraryService()
     started_at = perf_counter()
 
@@ -426,6 +427,81 @@ def create_app(
             },
         )
 
+    async def conversations_api(request: Request) -> JSONResponse:
+        status = str(request.query_params.get("status") or "active")
+        try:
+            items = await run_in_threadpool(conversations.list_conversations, status)
+        except ValueError as exc:
+            return JSONResponse(
+                {"error": "invalid_conversation_status", "detail": str(exc)},
+                status_code=400,
+            )
+        return JSONResponse(
+            {
+                "conversations": items,
+                "status": status,
+                "memory_policy": "non_destructive_audit_log",
+            }
+        )
+
+    async def conversation_detail_api(request: Request) -> JSONResponse:
+        try:
+            conversation = await run_in_threadpool(
+                conversations.get_conversation,
+                request.path_params["session_id"],
+            )
+        except (KeyError, ValueError):
+            return JSONResponse(
+                {
+                    "error": "conversation_not_found",
+                    "detail": "Conversa nao encontrada.",
+                },
+                status_code=404,
+            )
+        return JSONResponse({"conversation": conversation})
+
+    def conversation_write_denied(request: Request) -> JSONResponse | None:
+        allowed, reason = _same_origin(request)
+        if allowed:
+            return None
+        return JSONResponse(
+            {"error": "cross_origin_write", "detail": reason},
+            status_code=403,
+        )
+
+    async def conversation_status_api(request: Request, status: str) -> JSONResponse:
+        denied = conversation_write_denied(request)
+        if denied:
+            return denied
+        action = {
+            "archived": conversations.archive,
+            "active": conversations.restore,
+            "deleted": conversations.delete,
+        }[status]
+        try:
+            conversation = await run_in_threadpool(
+                action,
+                request.path_params["session_id"],
+            )
+        except (KeyError, ValueError):
+            return JSONResponse(
+                {
+                    "error": "conversation_not_found",
+                    "detail": "Conversa nao encontrada.",
+                },
+                status_code=404,
+            )
+        return JSONResponse({"conversation": conversation})
+
+    async def conversation_archive_api(request: Request) -> JSONResponse:
+        return await conversation_status_api(request, "archived")
+
+    async def conversation_restore_api(request: Request) -> JSONResponse:
+        return await conversation_status_api(request, "active")
+
+    async def conversation_delete_api(request: Request) -> JSONResponse:
+        return await conversation_status_api(request, "deleted")
+
     async def library_api(request: Request) -> JSONResponse:
         try:
             catalog, provenance = await asyncio.gather(
@@ -561,6 +637,27 @@ def create_app(
         Route("/", homepage, methods=["GET"]),
         Route("/api/chat/stream", chat_stream_api, methods=["POST"]),
         Route("/api/render", render_api, methods=["POST"]),
+        Route("/api/conversations", conversations_api, methods=["GET"]),
+        Route(
+            "/api/conversations/{session_id}",
+            conversation_detail_api,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/conversations/{session_id}",
+            conversation_delete_api,
+            methods=["DELETE"],
+        ),
+        Route(
+            "/api/conversations/{session_id}/archive",
+            conversation_archive_api,
+            methods=["POST"],
+        ),
+        Route(
+            "/api/conversations/{session_id}/restore",
+            conversation_restore_api,
+            methods=["POST"],
+        ),
         Route("/api/status", status_api, methods=["GET"]),
         Route("/api/health", status_api, methods=["GET"]),
         Route("/api/results/e3", e3_api, methods=["GET"]),

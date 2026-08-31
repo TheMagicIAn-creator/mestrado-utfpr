@@ -5,6 +5,7 @@ const API = {
   reliability: "/api/reliability",
   library: "/api/library",
   render: "/api/render",
+  conversations: "/api/conversations",
 };
 
 const VIEW_NAMES = new Set(["chat", "results", "library"]);
@@ -12,7 +13,7 @@ const RESULT_TABS = new Set(["reliability", "e3"]);
 const PANEL_NAMES = new Set([...RESULT_TABS, "library"]);
 const STORAGE_KEY = "aliado:sessions:canonical";
 const THEME_KEY = "aliado:theme";
-const MAX_SESSIONS = 12;
+const MAX_LOCAL_SESSIONS = 20;
 let fallbackSessionSequence = 0;
 
 const state = {
@@ -20,6 +21,8 @@ const state = {
   resultTab: "reliability",
   sessions: [],
   currentSessionId: null,
+  historyMode: "active",
+  pendingDeleteId: null,
   files: [],
   attachmentPolicy: "conversation",
   controller: null,
@@ -136,7 +139,14 @@ function sessionId() {
 function loadSessions() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    state.sessions = Array.isArray(parsed) ? parsed.slice(0, MAX_SESSIONS) : [];
+    state.sessions = Array.isArray(parsed)
+      ? parsed.slice(0, MAX_LOCAL_SESSIONS).map((session) => ({
+          ...session,
+          status: session.status || "active",
+          messagesLoaded: true,
+          serverBacked: Boolean(session.serverBacked),
+        }))
+      : [];
   } catch (error) {
     console.warn("Historico local invalido; iniciando uma nova sessao.", error);
     state.sessions = [];
@@ -154,8 +164,10 @@ function currentSession() {
 
 function saveSessions() {
   state.sessions.sort((a, b) => b.updatedAt - a.updatedAt);
-  state.sessions = state.sessions.slice(0, MAX_SESSIONS);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.sessions));
+  const localSnapshot = state.sessions
+    .filter((session) => session.status !== "deleted" && session.messagesLoaded !== false)
+    .slice(0, MAX_LOCAL_SESSIONS);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(localSnapshot));
   renderHistory();
 }
 
@@ -165,9 +177,13 @@ function createSession(render = true) {
     title: "Nova conversa",
     updatedAt: Date.now(),
     messages: [],
+    status: "active",
+    messagesLoaded: true,
+    serverBacked: false,
   };
   state.sessions.unshift(session);
   state.currentSessionId = session.id;
+  state.historyMode = "active";
   saveSessions();
   if (render) {
     activateView("chat");
@@ -179,19 +195,96 @@ function createSession(render = true) {
 
 function renderHistory() {
   const list = $("#history-list");
-  if (!state.sessions.length) {
-    list.innerHTML = '<div class="history-empty">Nenhuma conversa</div>';
+  const sessions = state.sessions.filter(
+    (session) => (session.status || "active") === state.historyMode,
+  );
+  $$("[data-history-mode]").forEach((button) => {
+    const active = button.dataset.historyMode === state.historyMode;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+  if (!sessions.length) {
+    list.innerHTML = `<div class="history-empty">${
+      state.historyMode === "archived" ? "Nenhuma conversa arquivada" : "Nenhuma conversa recente"
+    }</div>`;
     return;
   }
-  list.innerHTML = state.sessions
+  list.innerHTML = sessions
     .map(
       (session) => `
-        <button class="history-item ${session.id === state.currentSessionId ? "is-current" : ""}"
-          type="button" data-session-id="${escapeHtml(session.id)}" title="${escapeHtml(session.title)}">
-          ${escapeHtml(session.title)}
-        </button>`,
+        <div class="history-entry ${session.id === state.currentSessionId ? "is-current" : ""}">
+          <button class="history-item" type="button" data-session-id="${escapeHtml(session.id)}"
+            title="${escapeHtml(session.title)}">
+            <span>${escapeHtml(session.title)}</span>
+          </button>
+          <div class="history-actions" aria-label="Ações da conversa">
+            <button type="button" data-conversation-action="${state.historyMode === "archived" ? "restore" : "archive"}"
+              data-session-id="${escapeHtml(session.id)}" aria-label="${state.historyMode === "archived" ? "Restaurar" : "Arquivar"} conversa"
+              title="${state.historyMode === "archived" ? "Restaurar" : "Arquivar"}">
+              <i data-lucide="${state.historyMode === "archived" ? "archive-restore" : "archive"}"></i>
+            </button>
+            <button type="button" data-conversation-action="delete" data-session-id="${escapeHtml(session.id)}"
+              aria-label="Excluir conversa" title="Excluir da interface"><i data-lucide="trash-2"></i></button>
+          </div>
+        </div>`,
     )
     .join("");
+  icons();
+}
+
+async function syncConversations(mode = state.historyMode) {
+  try {
+    const payload = await apiJson(`${API.conversations}?status=${encodeURIComponent(mode)}`);
+    payload.conversations.forEach((item) => {
+      let session = state.sessions.find((candidate) => candidate.id === item.id);
+      const updatedAt = Date.parse(item.updated_at || "") || Date.now();
+      if (session) {
+        session.title = item.title || session.title;
+        session.status = item.status || mode;
+        session.updatedAt = Math.max(session.updatedAt || 0, updatedAt);
+        session.serverBacked = true;
+      } else {
+        session = {
+          id: item.id,
+          title: item.title || "Conversa",
+          updatedAt,
+          status: item.status || mode,
+          messages: [],
+          messagesLoaded: false,
+          serverBacked: true,
+        };
+        state.sessions.push(session);
+      }
+    });
+    renderHistory();
+  } catch (error) {
+    console.warn("Catalogo de conversas indisponivel; usando cache local.", error);
+  }
+}
+
+async function loadConversation(session) {
+  if (!session || session.messagesLoaded !== false) return session;
+  const payload = await apiJson(`${API.conversations}/${encodeURIComponent(session.id)}`);
+  session.messages = payload.conversation.messages || [];
+  session.title = payload.conversation.title || session.title;
+  session.status = payload.conversation.status || session.status;
+  session.messagesLoaded = true;
+  session.serverBacked = true;
+  saveSessions();
+  return session;
+}
+
+async function selectConversation(sessionIdValue) {
+  const session = state.sessions.find((candidate) => candidate.id === sessionIdValue);
+  if (!session) return;
+  state.currentSessionId = session.id;
+  activateView("chat");
+  try {
+    await loadConversation(session);
+  } catch (error) {
+    toast(error.message);
+  }
+  renderConversation();
 }
 
 function closeSidebar() {
@@ -368,6 +461,7 @@ async function hydrateAssistantMessages(session) {
 function renderConversation() {
   const conversation = $("#conversation");
   const session = currentSession();
+  const archived = session?.status === "archived";
   conversation.innerHTML = "";
   if (!session?.messages.length) {
     conversation.appendChild($("#welcome-state-template") || buildWelcomeState());
@@ -381,6 +475,11 @@ function renderConversation() {
     });
   }
   updateWelcomeIdentity();
+  $("#archived-notice").hidden = !archived;
+  $("#chat-input").disabled = archived;
+  $("#chat-files").disabled = archived;
+  $("#send-button").disabled = archived;
+  $("#archive-chat").hidden = archived || !session?.messages.length;
   icons();
   void hydrateAssistantMessages(session);
   scrollConversation(false);
@@ -439,8 +538,13 @@ function addPendingAssistant() {
       <div class="assistant-avatar" aria-hidden="true">A</div>
       <div>
         <div class="message-author">ALIAdo</div>
-        <div class="message-content streaming"></div>
-        <div class="message-meta"><span>Gerando resposta</span></div>
+        <div class="message-content pending-response">
+          <div class="response-loader" role="status" aria-label="ALIAdo está preparando a resposta">
+            <span></span><span></span><span></span>
+            <em>Organizando evidências</em>
+          </div>
+        </div>
+        <div class="message-meta"><span>Preparando contexto</span></div>
       </div>
     </div>`;
   $("#conversation").appendChild(article);
@@ -565,6 +669,10 @@ async function sendMessage(rawMessage) {
   if (!message) return;
   let session = currentSession();
   if (!session) session = createSession(false);
+  if (session.status === "archived") {
+    toast("Restaure a conversa para continuar escrevendo.");
+    return;
+  }
   const history = previousHistory(session);
   session.messages.push({ role: "user", content: message });
   if (session.title === "Nova conversa") session.title = message.slice(0, 54);
@@ -612,14 +720,20 @@ async function sendMessage(rawMessage) {
     });
     await consumeSse(response, (event, payload) => {
       if (event === "status") {
-        updateStreamStatus(payload.message || "Consultando base acadêmica");
+        const phase = payload.message || "Consultando base acadêmica";
+        updateStreamStatus(phase);
+        pendingMeta.textContent = phase;
+        const loaderLabel = $(".response-loader em", pendingContent);
+        if (loaderLabel) loaderLabel.textContent = phase;
       } else if (event === "delta") {
         complete += payload.text || "";
+        pendingContent.classList.remove("pending-response");
+        pendingContent.classList.add("streaming");
         pendingContent.textContent = complete;
         scrollConversation(false);
       } else if (event === "done") {
         complete = payload.answer || complete;
-        pendingContent.classList.remove("streaming");
+        pendingContent.classList.remove("streaming", "pending-response");
         pendingContent.innerHTML = payload.answer_html || escapeHtml(complete);
         appendCitations(pendingContent, payload.citations);
         typesetMath(pendingContent);
@@ -638,6 +752,7 @@ async function sendMessage(rawMessage) {
           response_ms: payload.response_ms,
         });
         session.updatedAt = Date.now();
+        session.serverBacked = true;
         saveSessions();
         updateStreamStatus("");
         icons();
@@ -646,6 +761,7 @@ async function sendMessage(rawMessage) {
       }
     });
   } catch (error) {
+    pendingContent.classList.remove("streaming", "pending-response");
     if (error.name === "AbortError") {
       pendingContent.textContent = complete || "Resposta cancelada.";
       pendingMeta.textContent = "Cancelada";

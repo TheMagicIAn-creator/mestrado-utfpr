@@ -8,10 +8,10 @@
   <title>ALIAdo</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/static/vendor/katex/katex.min.css?v=3.5.0">
-  <link rel="stylesheet" href="/static/styles.css?v=3.5.0">
+  <link rel="stylesheet" href="/static/styles.css?v=3.6.0">
   <script defer src="/static/vendor/katex/katex.min.js?v=3.5.0"></script>
   <script defer src="/static/vendor/katex/auto-render.min.js?v=3.5.0"></script>
-  <script defer src="/static/app.js?v=3.5.0"></script>
+  <script defer src="/static/app.js?v=3.6.0"></script>
   <script async id="lucide-runtime" src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
 </head>
 <body>
@@ -51,10 +51,14 @@
 
       <section class="history-region" aria-labelledby="history-heading">
         <div class="sidebar-section-heading">
-          <span id="history-heading">Recentes</span>
+          <span id="history-heading">Conversas</span>
           <button class="icon-button" id="export-chat" type="button" aria-label="Exportar conversa" title="Exportar conversa">
             <i data-lucide="download" aria-hidden="true"></i>
           </button>
+        </div>
+        <div class="history-filters" role="tablist" aria-label="Estado das conversas">
+          <button class="is-active" type="button" role="tab" aria-selected="true" data-history-mode="active">Recentes</button>
+          <button type="button" role="tab" aria-selected="false" data-history-mode="archived">Arquivadas</button>
         </div>
         <div class="history-list" id="history-list"></div>
       </section>
@@ -91,8 +95,11 @@
               <h1 id="chat-title">Conversa</h1>
             </div>
             <div class="header-actions">
-              <span class="provider-label"><span class="provider-dot" aria-hidden="true"></span>Gemini</span>
-              <button class="icon-button" id="clear-chat" type="button" aria-label="Limpar conversa" title="Limpar conversa">
+              <span class="provider-label"><span class="provider-dot" aria-hidden="true"></span><span id="provider-text">Router LLM</span></span>
+              <button class="icon-button" id="archive-chat" type="button" aria-label="Arquivar conversa" title="Arquivar conversa">
+                <i data-lucide="archive" aria-hidden="true"></i>
+              </button>
+              <button class="icon-button" id="clear-chat" type="button" aria-label="Excluir conversa" title="Excluir conversa">
                 <i data-lucide="trash-2" aria-hidden="true"></i>
               </button>
             </div>
@@ -122,6 +129,11 @@
                 </button>
               </div>
             </div>
+          </div>
+
+          <div class="conversation-state-notice" id="archived-notice" hidden>
+            <span><i data-lucide="archive" aria-hidden="true"></i>Esta conversa está arquivada e permanece na memória auditável.</span>
+            <button type="button" id="restore-current-chat">Restaurar conversa</button>
           </div>
 
           <div class="composer-region">
@@ -228,6 +240,20 @@
       <p class="form-dialog-note">Metadados editados ficam pendentes de reindexação para atualizar a busca.</p>
       <footer class="form-dialog-actions"><button class="secondary-button" type="button" data-close-dialog="library-edit-dialog">Cancelar</button><button class="primary-button" type="submit"><i data-lucide="save" aria-hidden="true"></i><span>Salvar metadados</span></button></footer>
     </form>
+  </dialog>
+
+  <dialog class="confirm-dialog" id="conversation-delete-dialog">
+    <div class="confirm-dialog-content">
+      <div class="confirm-dialog-icon" aria-hidden="true"><i data-lucide="trash-2"></i></div>
+      <div>
+        <h2>Excluir esta conversa?</h2>
+        <p>Ela deixará de aparecer na interface, mas o transcrito será preservado na memória auditável do ALIAdo.</p>
+      </div>
+    </div>
+    <div class="confirm-dialog-actions">
+      <button class="secondary-button" id="cancel-delete-chat" type="button">Cancelar</button>
+      <button class="danger-button" id="confirm-delete-chat" type="button">Excluir da interface</button>
+    </div>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "atualizado_em_utc": "2026-07-21T23:20:28.937070+00:00",
+  "atualizado_em_utc": "2026-08-30T01:39:42.512905+00:00",
   "itens": [
     {
       "id": "1a08c0bc82b79ceb39b9",
@@ -15,6 +15,35 @@
       "versao": 1,
       "criado_em_utc": "2026-07-21T23:20:28.937070+00:00",
       "substitui_id": null
+    },
+    {
+      "id": "dd3e1e167145c6062d23",
+      "tipo": "preferencia",
+      "escopo": "conversa",
+      "conteudo": "O pesquisador prefere nao receber listas e quer que seja discutido o estudo de Karl.",
+      "evidencia_usuario": "Eu não quero a lista. Eu quero que você fale sobre o estudo de Karl.",
+      "origem": "chat_web",
+      "validado_por": "Router LLM - auditoria e memória",
+      "confianca": 1.0,
+      "status": "superado",
+      "versao": 1,
+      "criado_em_utc": "2026-08-30T01:25:00.536732+00:00",
+      "substitui_id": "None",
+      "superado_em_utc": "2026-08-30T01:39:42.512905+00:00"
+    },
+    {
+      "id": "14d63f53b58e04ac1bfe",
+      "tipo": "preferencia",
+      "escopo": "conversa",
+      "conteudo": "O pesquisador prefere nao receber listas de literatura e exige citacoes diretas do artigo.",
+      "evidencia_usuario": "NÃO QUERO A LISTA DE LITERATURA.",
+      "origem": "chat_web",
+      "validado_por": "Router LLM - auditoria e memória",
+      "confianca": 0.95,
+      "status": "ativo",
+      "versao": 1,
+      "criado_em_utc": "2026-08-30T01:39:42.512905+00:00",
+      "substitui_id": "dd3e1e167145c6062d23"
     }
   ]
 }

@@ -92,6 +92,10 @@ class AgentAdapter:
         self._state = "pronto" if answerer is not None else "iniciando"
         self._error: str | None = None
 
+    @property
+    def session_journal(self) -> SessionJournal:
+        return self._session_journal
+
     def status(self) -> dict:
         with self._lock:
             route = self._route_status(self._components)
@@ -346,7 +350,7 @@ class AgentAdapter:
         mensagem: str,
         resposta: dict,
         session_id: str | None,
-        componentes: _Componentes,
+        componentes: _Componentes | None,
     ) -> None:
         """Persiste sessao e memoria sem atrasar a resposta HTTP."""
         with self._maintenance_lock:
@@ -356,10 +360,13 @@ class AgentAdapter:
                     mensagem,
                     str(resposta["answer"]),
                     resposta["images"],
-                    componentes.modelo_embeddings,
+                    componentes.modelo_embeddings if componentes else None,
                 )
             except Exception as exc:
                 _logger.warning("registro assincrono da sessao falhou: %s", exc)
+
+            if componentes is None:
+                return
 
             aprender = getattr(componentes.auditor, "aprender_da_interacao", None)
             if callable(aprender):
@@ -409,7 +416,7 @@ class AgentAdapter:
         mensagem: str,
         resposta: dict,
         session_id: str | None,
-        componentes: _Componentes,
+        componentes: _Componentes | None,
     ) -> None:
         threading.Thread(
             target=self._postprocess_interaction,
@@ -440,12 +447,21 @@ class AgentAdapter:
 
             resposta_simples = resposta_interacao_simples(mensagem, historico)
             if resposta_simples:
-                return {
+                resposta = {
                     "answer": resposta_simples,
                     "images": [],
                     "route": "local",
                     "memories_saved": 0,
                 }
+                if session_id:
+                    self._schedule_postprocessing(
+                        mensagem,
+                        resposta,
+                        session_id,
+                        self._components,
+                    )
+                    resposta["maintenance_scheduled"] = True
+                return resposta
 
         try:
             if self._answerer is not None:
@@ -473,8 +489,8 @@ class AgentAdapter:
         resposta.setdefault("images", [])
         resposta.setdefault("route", "adapter")
         resposta.setdefault("memories_saved", 0)
-        if self._answerer is None and self._components is not None:
-            componentes = self._components
+        if session_id:
+            componentes = self._components if self._answerer is None else None
             self._schedule_postprocessing(
                 mensagem,
                 resposta,
