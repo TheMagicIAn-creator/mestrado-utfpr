@@ -511,7 +511,7 @@ def perguntar(
         _logger.warning("atalho de catálogo indisponível; seguindo para o RAG: %s", exc)
 
     consultar_literatura = deve_consultar_literatura(pergunta, colecao)
-    prompt, citacoes = preparar_prompt(
+    prompt, citacoes, evidence_package = preparar_prompt(
         pergunta=pergunta,
         perfil=perfil,
         modelo_embeddings=modelo_embeddings,
@@ -544,9 +544,16 @@ def perguntar(
         prompt = llm.contextualizar_prompt(prompt, pergunta, auditoria)
 
     if consultar_literatura:
+        from src.conhecimento.evidence_guard import renderizar_restricao_pacote
         from src.core.citacao_guarda import montar_restricao_fontes
 
-        prompt = prompt + "\n\n" + montar_restricao_fontes(citacoes)
+        prompt = (
+            prompt
+            + "\n\n"
+            + montar_restricao_fontes(citacoes)
+            + "\n\n"
+            + renderizar_restricao_pacote(evidence_package)
+        )
 
     conteudo_humano = montar_conteudo_humano(
         prompt, anexos, _llm_suporta_multimodal(llm, nome_provedor)
@@ -571,7 +578,11 @@ def perguntar(
         resposta = llm.invoke(mensagens)
         texto_completo = texto_resultado_llm(resposta)
 
+    from src.conhecimento.evidence_guard import resposta_segura
     from src.core.citacao_guarda import alerta_citacao_infundada
+
+    if consultar_literatura:
+        texto_completo = resposta_segura(texto_completo, evidence_package)
 
     aviso = alerta_citacao_infundada(
         texto_completo,

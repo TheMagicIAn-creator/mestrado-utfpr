@@ -33,6 +33,8 @@ EVALUATION_MANIFESTS = {
     "evidence_rag_schema_v2_r2.json": ("R2", "jsonl_schema_v2_identity", 2),
 }
 MANIFEST_NAMES = SCIENTIFIC_MANIFEST_NAMES | set(EVALUATION_MANIFESTS)
+EVIDENCE_GUARD_MANIFEST = "evidence_rag_guard_r5.json"
+MANIFEST_NAMES.add(EVIDENCE_GUARD_MANIFEST)
 LEGACY_DIRS = {"auditoria", "autoencoder", "gpvs", "macro", "qualidade", "v2"}
 
 
@@ -276,6 +278,46 @@ def _audit_retrieval_baseline(path: Path, errors: list[str]) -> None:
     )
 
 
+def _audit_evidence_guard(path: Path, errors: list[str]) -> None:
+    try:
+        manifest = _read_json(path)
+    except (OSError, ValueError) as exc:
+        errors.append(f"manifesto inválido {path.name}: {exc}")
+        return
+    if (
+        manifest.get("schema_version") != 1
+        or manifest.get("stage") != "R5"
+        or manifest.get("variant") != "deterministic_claim_evidence_guard_v1"
+    ):
+        errors.append(f"{path.name}: identidade do Evidence Guard divergente")
+    guard = manifest.get("guard", {})
+    gates = {
+        "external_model_required": False,
+        "claim_evidence_chain": True,
+        "quote_uses_raw_text": True,
+        "memory_is_scientific_source": False,
+        "abstention_enabled": True,
+    }
+    for campo, esperado in gates.items():
+        if guard.get(campo) is not esperado:
+            errors.append(f"{path.name}: contrato divergente em {campo}")
+    resumo = manifest.get("summary", {})
+    for campo in (
+        "citation_validity",
+        "invalid_claim_rejection_rate",
+        "abstention_accuracy",
+        "memory_rejection_accuracy",
+    ):
+        if not math.isclose(float(resumo.get(campo, -1.0)), 1.0, abs_tol=1e-12):
+            errors.append(f"{path.name}: gate R5 reprovado em {campo}")
+    if not math.isclose(
+        float(resumo.get("unsupported_claim_rate_after_guard", -1.0)),
+        0.0,
+        abs_tol=1e-12,
+    ):
+        errors.append(f"{path.name}: claims sem suporte passaram pelo guard")
+
+
 def _audit_result_layout(results: Path, errors: list[str]) -> None:
     present_dirs = {path.name for path in results.iterdir() if path.is_dir()}
     extra_dirs = present_dirs - RESULT_DIRS
@@ -337,6 +379,7 @@ def auditar_publicacao(root: Path | str = RAIZ_PROJETO) -> dict:
             expected_variant=variant,
             expected_snapshot_schema=snapshot_schema,
         )
+    _audit_evidence_guard(manifests / EVIDENCE_GUARD_MANIFEST, errors)
 
     _audit_scientific_contracts(results, errors)
 
