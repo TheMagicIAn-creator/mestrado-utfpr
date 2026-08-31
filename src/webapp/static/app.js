@@ -1,41 +1,35 @@
 "use strict";
 
 const API = {
-  e3: "/api/results/e3",
-  reliability: "/api/reliability",
+  conversations: "/api/conversations",
   library: "/api/library",
   render: "/api/render",
 };
 
-const VIEW_NAMES = new Set(["chat", "results", "library"]);
-const RESULT_TABS = new Set(["reliability", "e3"]);
-const PANEL_NAMES = new Set([...RESULT_TABS, "library"]);
 const STORAGE_KEY = "aliado:sessions:canonical";
 const THEME_KEY = "aliado:theme";
-const MAX_SESSIONS = 12;
+const MAX_LOCAL_SESSIONS = 30;
 let fallbackSessionSequence = 0;
 
 const state = {
   currentView: "chat",
-  resultTab: "reliability",
   sessions: [],
   currentSessionId: null,
+  historyMode: "active",
+  historyQuery: "",
+  pendingDeleteId: null,
   files: [],
   attachmentPolicy: "conversation",
   controller: null,
-  cache: new Map(),
-  figures: new Map(),
-  zoom: 1,
-  toastTimer: null,
   identity: {
     displayName: "Rodolfo",
     greeting: greetingForHour(new Date().getHours()),
     timezone: "America/Sao_Paulo",
   },
-  chartLoader: null,
   libraryData: null,
   libraryFilters: { query: "", category: "", language: "" },
   libraryJobs: new Map(),
+  toastTimer: null,
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -56,8 +50,17 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function normalizeSearch(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase();
+}
+
 function icons() {
-  if (window.lucide) window.lucide.createIcons({ attrs: { "aria-hidden": "true" } });
+  if (window.lucide) {
+    window.lucide.createIcons({ attrs: { "aria-hidden": "true" } });
+  }
 }
 
 function typesetMath(container) {
@@ -75,48 +78,8 @@ function typesetMath(container) {
       strict: "warn",
     });
   } catch (_error) {
-    // Mantem o LaTeX legivel quando a biblioteca nao consegue interpretar uma expressao.
+    // O Markdown continua legível quando uma expressão isolada é inválida.
   }
-}
-
-function updateWelcomeIdentity() {
-  const title = $("#welcome-title");
-  if (!title) return;
-  title.textContent = `${state.identity.greeting}, ${state.identity.displayName}.`;
-}
-
-function fmt(value, digits = 3) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
-  return Number(value).toLocaleString("pt-BR", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  });
-}
-
-function pct(value, digits = 1) {
-  if (value === null || value === undefined) return "—";
-  return `${fmt(Number(value) * 100, digits)}%`;
-}
-
-function sci(value) {
-  if (value === null || value === undefined) return "—";
-  const [mantissa, exponent] = Number(value).toExponential(2).split("e");
-  const superscript = String(Number(exponent))
-    .split("")
-    .map((character) => ({ "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" })[character])
-    .join("");
-  return `${mantissa.replace(".", ",")} × 10${superscript}`;
-}
-
-function bytes(value) {
-  const number = Number(value || 0);
-  if (number < 1024) return `${number} B`;
-  if (number < 1024 * 1024) return `${fmt(number / 1024, 1)} KB`;
-  return `${fmt(number / (1024 * 1024), 1)} MB`;
-}
-
-function ci(metric, digits = 3) {
-  return `${fmt(metric.ci95_low, digits)}–${fmt(metric.ci95_high, digits)}`;
 }
 
 function toast(message) {
@@ -124,21 +87,56 @@ function toast(message) {
   node.textContent = message;
   node.classList.add("is-visible");
   clearTimeout(state.toastTimer);
-  state.toastTimer = setTimeout(() => node.classList.remove("is-visible"), 2400);
+  state.toastTimer = setTimeout(() => node.classList.remove("is-visible"), 2800);
+}
+
+function closeSidebar() {
+  document.body.classList.remove("sidebar-open");
+}
+
+async function apiJson(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: { Accept: "application/json", ...options.headers },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload.detail || `Falha HTTP ${response.status}`);
+    error.code = payload.error;
+    error.payload = payload;
+    throw error;
+  }
+  return payload;
 }
 
 function sessionId() {
-  if (window.crypto?.randomUUID) return `sessao_${crypto.randomUUID().replaceAll("-", "")}`;
+  if (window.crypto?.randomUUID) {
+    return `sessao_${crypto.randomUUID().replaceAll("-", "")}`;
+  }
   fallbackSessionSequence += 1;
   return `sessao_${Date.now()}_${fallbackSessionSequence}`;
+}
+
+function normalizeSession(session) {
+  return {
+    id: String(session.id || sessionId()),
+    title: String(session.title || "Novo chat"),
+    updatedAt: Number(session.updatedAt || Date.parse(session.updated_at || "") || Date.now()),
+    status: session.status || "active",
+    messages: Array.isArray(session.messages) ? session.messages : [],
+    messagesLoaded: session.messagesLoaded !== false,
+    serverBacked: Boolean(session.serverBacked),
+  };
 }
 
 function loadSessions() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    state.sessions = Array.isArray(parsed) ? parsed.slice(0, MAX_SESSIONS) : [];
+    state.sessions = Array.isArray(parsed)
+      ? parsed.slice(0, MAX_LOCAL_SESSIONS).map(normalizeSession)
+      : [];
   } catch (error) {
-    console.warn("Historico local invalido; iniciando uma nova sessao.", error);
+    console.warn("Histórico local inválido; iniciando um novo chat.", error);
     state.sessions = [];
   }
   if (state.sessions.length) {
@@ -154,20 +152,25 @@ function currentSession() {
 
 function saveSessions() {
   state.sessions.sort((a, b) => b.updatedAt - a.updatedAt);
-  state.sessions = state.sessions.slice(0, MAX_SESSIONS);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.sessions));
+  const localSnapshot = state.sessions
+    .filter((session) => session.status !== "deleted" && session.messagesLoaded !== false)
+    .slice(0, MAX_LOCAL_SESSIONS);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(localSnapshot));
   renderHistory();
+  updateConversationChrome();
 }
 
 function createSession(render = true) {
-  const session = {
+  const session = normalizeSession({
     id: sessionId(),
-    title: "Nova conversa",
+    title: "Novo chat",
     updatedAt: Date.now(),
+    status: "active",
     messages: [],
-  };
+  });
   state.sessions.unshift(session);
   state.currentSessionId = session.id;
+  state.historyMode = "active";
   saveSessions();
   if (render) {
     activateView("chat");
@@ -177,103 +180,174 @@ function createSession(render = true) {
   return session;
 }
 
+function historyGroup(timestamp) {
+  const now = new Date();
+  const date = new Date(timestamp);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const itemDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const days = Math.floor((today - itemDay) / 86400000);
+  if (days <= 0) return "Hoje";
+  if (days === 1) return "Ontem";
+  if (days < 7) return "Últimos 7 dias";
+  if (days < 30) return "Últimos 30 dias";
+  return "Anteriores";
+}
+
+function historyActionButton(action, sessionIdValue, label, icon, danger = false) {
+  return `<button type="button" class="${danger ? "is-danger" : ""}" data-conversation-action="${action}" data-session-id="${escapeHtml(sessionIdValue)}"><i data-lucide="${icon}"></i><span>${label}</span></button>`;
+}
+
 function renderHistory() {
   const list = $("#history-list");
-  if (!state.sessions.length) {
-    list.innerHTML = '<div class="history-empty">Nenhuma conversa</div>';
+  const query = normalizeSearch(state.historyQuery);
+  const sessions = state.sessions
+    .filter((session) => (session.status || "active") === state.historyMode)
+    .filter((session) => !query || normalizeSearch(session.title).includes(query))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  $$('[data-history-mode]').forEach((button) => {
+    const active = button.dataset.historyMode === state.historyMode;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+
+  if (!sessions.length) {
+    const label = state.historyMode === "archived"
+      ? "Nenhum chat arquivado"
+      : (query ? "Nenhum chat encontrado" : "Nenhum chat recente");
+    list.innerHTML = `<div class="history-empty">${label}</div>`;
     return;
   }
-  list.innerHTML = state.sessions
-    .map(
-      (session) => `
-        <button class="history-item ${session.id === state.currentSessionId ? "is-current" : ""}"
-          type="button" data-session-id="${escapeHtml(session.id)}" title="${escapeHtml(session.title)}">
-          ${escapeHtml(session.title)}
-        </button>`,
-    )
-    .join("");
-}
 
-function closeSidebar() {
-  document.body.classList.remove("sidebar-open");
-}
-
-function activateResultTab(tab, updateHash = true) {
-  if (!RESULT_TABS.has(tab)) tab = "reliability";
-  state.resultTab = tab;
-  $$('[data-result-panel]').forEach((panel) => {
-    panel.hidden = panel.dataset.resultPanel !== tab;
+  const groups = new Map();
+  sessions.forEach((session) => {
+    const label = historyGroup(session.updatedAt);
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(session);
   });
-  $$('[data-result-tab]').forEach((button) => {
-    const active = button.dataset.resultTab === tab;
-    button.setAttribute("aria-selected", String(active));
-    button.classList.toggle("is-active", active);
-  });
-  if (updateHash && location.hash !== `#results/${tab}`) {
-    history.replaceState(null, "", `#results/${tab}`);
-  }
-  loadPanel(tab);
+
+  list.innerHTML = [...groups.entries()].map(([label, items]) => `
+    <section class="history-group">
+      <span class="history-group-label">${label}</span>
+      ${items.map((session) => {
+        const archived = session.status === "archived";
+        return `<div class="history-entry ${session.id === state.currentSessionId ? "is-current" : ""}">
+          <button class="history-item" type="button" data-select-session="${escapeHtml(session.id)}" title="${escapeHtml(session.title)}">${escapeHtml(session.title)}</button>
+          <details class="conversation-menu">
+            <summary aria-label="Ações de ${escapeHtml(session.title)}" title="Mais ações"><i data-lucide="ellipsis"></i></summary>
+            <div class="conversation-menu-popover">
+              ${historyActionButton("rename", session.id, "Renomear", "pencil")}
+              ${historyActionButton(archived ? "restore" : "archive", session.id, archived ? "Restaurar" : "Arquivar", archived ? "archive-restore" : "archive")}
+              ${historyActionButton("delete", session.id, "Excluir", "trash-2", true)}
+            </div>
+          </details>
+        </div>`;
+      }).join("")}
+    </section>`).join("");
+  icons();
 }
 
-function activateView(route, updateHash = true) {
-  const normalized = String(route || "chat").replace(/^#/, "");
-  let view = normalized;
-  if (RESULT_TABS.has(normalized)) {
-    state.resultTab = normalized;
-    view = "results";
-  } else if (normalized.startsWith("results/")) {
-    const requestedTab = normalized.split("/")[1];
-    state.resultTab = RESULT_TABS.has(requestedTab) ? requestedTab : "reliability";
-    view = "results";
+async function syncConversations() {
+  const results = await Promise.allSettled([
+    apiJson(`${API.conversations}?status=active`),
+    apiJson(`${API.conversations}?status=archived`),
+  ]);
+  let changed = false;
+  results.forEach((result) => {
+    if (result.status !== "fulfilled") return;
+    result.value.conversations.forEach((item) => {
+      let session = state.sessions.find((candidate) => candidate.id === item.id);
+      const updatedAt = Date.parse(item.updated_at || "") || Date.now();
+      if (session) {
+        session.title = item.title || session.title;
+        session.status = item.status || session.status;
+        session.updatedAt = Math.max(session.updatedAt || 0, updatedAt);
+        session.serverBacked = true;
+      } else {
+        session = normalizeSession({
+          ...item,
+          updatedAt,
+          messages: [],
+          messagesLoaded: false,
+          serverBacked: true,
+        });
+        state.sessions.push(session);
+      }
+      changed = true;
+    });
+  });
+  if (changed) {
+    saveSessions();
+  } else {
+    renderHistory();
   }
-  if (!VIEW_NAMES.has(view)) view = "chat";
-  state.currentView = view;
+}
+
+async function loadConversation(session) {
+  if (!session || session.messagesLoaded !== false) return session;
+  const payload = await apiJson(`${API.conversations}/${encodeURIComponent(session.id)}`);
+  session.messages = payload.conversation.messages || [];
+  session.title = payload.conversation.title || session.title;
+  session.status = payload.conversation.status || session.status;
+  session.messagesLoaded = true;
+  session.serverBacked = true;
+  saveSessions();
+  return session;
+}
+
+async function selectConversation(sessionIdValue) {
+  const session = state.sessions.find((candidate) => candidate.id === sessionIdValue);
+  if (!session) return;
+  state.currentSessionId = session.id;
+  activateView("chat");
+  try {
+    await loadConversation(session);
+  } catch (error) {
+    toast(error.message);
+  }
+  renderConversation();
+}
+
+function updateConversationChrome() {
+  const session = currentSession();
+  $("#conversation-title").textContent = session?.title || "Novo chat";
+  $("#conversation-actions").hidden = state.currentView !== "chat";
+  $("#library-actions").hidden = state.currentView !== "library";
+  const archived = session?.status === "archived";
+  $("#archived-notice").hidden = !archived || state.currentView !== "chat";
+  $("#chat-input").disabled = archived;
+  $("#chat-files").disabled = archived;
+  $("#send-button").disabled = archived;
+  $("#archive-chat").hidden = archived || !session?.messages.length;
+  $("#rename-chat").disabled = !session;
+  $("#export-chat").disabled = !session?.messages.length;
+  $("#delete-chat").disabled = !session;
+}
+
+function activateView(view, updateHash = true) {
+  const normalized = view === "references" ? "library" : view;
+  state.currentView = normalized === "library" ? "library" : "chat";
   $$('[data-view-panel]').forEach((panel) => {
-    const active = panel.dataset.viewPanel === view;
+    const active = panel.dataset.viewPanel === state.currentView;
     panel.hidden = !active;
     panel.classList.toggle("is-active", active);
   });
-  $$(".nav-item").forEach((item) => {
-    const active = item.dataset.view === view;
-    item.classList.toggle("is-active", active);
-    if (active) item.setAttribute("aria-current", "page");
-    else item.removeAttribute("aria-current");
+  $$('[data-view]').forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.view === state.currentView);
   });
-  if (view === "results") {
-    activateResultTab(state.resultTab, updateHash);
-  } else {
-    if (updateHash && location.hash !== `#${view}`) history.replaceState(null, "", `#${view}`);
-    if (view !== "chat") loadPanel(view);
+  if (updateHash) {
+    const hash = state.currentView === "library" ? "#references" : "#chat";
+    if (location.hash !== hash) history.replaceState(null, "", hash);
   }
+  if (state.currentView === "library") void loadLibrary();
+  updateConversationChrome();
   closeSidebar();
-  $("#workspace-main").focus({ preventScroll: true });
 }
 
-function loadScript(url) {
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${url}"]`);
-    if (existing?.dataset.loaded === "true") {
-      resolve();
-      return;
-    }
-    const script = existing || document.createElement("script");
-    script.src = url;
-    script.defer = true;
-    script.addEventListener("load", () => {
-      script.dataset.loaded = "true";
-      resolve();
-    }, { once: true });
-    script.addEventListener("error", () => reject(new Error(`Recurso indisponível: ${url}`)), { once: true });
-    if (!existing) document.head.appendChild(script);
-  });
-}
-
-function ensureResultsCharts() {
-  if (!state.chartLoader) {
-    state.chartLoader = loadScript("/static/vendor/d3/d3.min.js?v=3.5.0")
-      .then(() => loadScript("/static/results-charts.js?v=3.5.0"));
-  }
-  return state.chartLoader;
+function updateWelcomeIdentity() {
+  const title = $("#welcome-title");
+  if (title) title.textContent = `${state.identity.greeting}, ${state.identity.displayName}.`;
+  $("#profile-name").textContent = state.identity.displayName;
 }
 
 function renderUserMessage(message) {
@@ -286,19 +360,56 @@ function renderUserMessage(message) {
   return article;
 }
 
+function safeAssetUrl(value) {
+  const url = String(value || "");
+  return url.startsWith("/artifacts/") ? url : "";
+}
+
 function appendCitations(container, citations) {
   if (!Array.isArray(citations) || !citations.length) return;
   const list = document.createElement("div");
   list.className = "citation-list";
   citations.forEach((citation) => {
+    const href = String(citation.url || "");
+    if (!href.startsWith("http://") && !href.startsWith("https://") && !href.startsWith("/")) return;
     const link = document.createElement("a");
-    link.href = citation.url;
+    link.href = href;
     link.target = "_blank";
     link.rel = "noreferrer";
-    link.textContent = citation.label || citation.url;
+    link.textContent = citation.label || href;
     list.appendChild(link);
   });
-  container.appendChild(list);
+  if (list.childElementCount) container.appendChild(list);
+}
+
+function appendResponseAssets(container, images) {
+  if (!Array.isArray(images) || !images.length) return;
+  const valid = images
+    .map((item) => ({ ...item, url: safeAssetUrl(item.url) }))
+    .filter((item) => item.url);
+  if (!valid.length) return;
+  const gallery = document.createElement("div");
+  gallery.className = "response-assets";
+  valid.forEach((item) => {
+    const figure = document.createElement("figure");
+    figure.className = "response-asset";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.openMedia = item.url;
+    button.dataset.mediaTitle = item.caption || "Figura";
+    button.setAttribute("aria-label", `Ampliar ${item.caption || "figura"}`);
+    const image = document.createElement("img");
+    image.src = item.url;
+    image.alt = item.caption || "Figura produzida pelo ALIAdo";
+    image.loading = "lazy";
+    image.decoding = "async";
+    const caption = document.createElement("figcaption");
+    caption.textContent = item.caption || "Figura";
+    button.appendChild(image);
+    figure.append(button, caption);
+    gallery.appendChild(figure);
+  });
+  container.appendChild(gallery);
 }
 
 function renderAssistantMessage(message, index) {
@@ -309,11 +420,11 @@ function renderAssistantMessage(message, index) {
       <div class="assistant-avatar" aria-hidden="true">A</div>
       <div>
         <div class="message-author">ALIAdo</div>
-        <div class="message-content"></div>
+        <div class="message-content" data-message-index="${index}"></div>
         <div class="message-meta">
-          <span>${message.response_ms ? `${fmt(message.response_ms, 0)} ms` : "Resposta acadêmica"}</span>
+          <span>${message.response_ms ? `${Math.round(message.response_ms)} ms` : "Resposta do ALIAdo"}</span>
           <div class="message-actions">
-            <button class="message-action" type="button" data-copy-index="${index}" aria-label="Copiar resposta" title="Copiar resposta"><i data-lucide="copy"></i></button>
+            <button class="message-action" type="button" data-copy-index="${index}" aria-label="Copiar resposta" title="Copiar"><i data-lucide="copy"></i></button>
             <button class="message-action" type="button" data-retry-index="${index}" aria-label="Tentar novamente" title="Tentar novamente"><i data-lucide="refresh-cw"></i></button>
           </div>
         </div>
@@ -321,7 +432,8 @@ function renderAssistantMessage(message, index) {
     </div>`;
   const content = $(".message-content", article);
   content.textContent = message.content;
-  content.dataset.messageIndex = String(index);
+  appendCitations(content, message.citations);
+  appendResponseAssets(content, message.images);
   return article;
 }
 
@@ -333,36 +445,37 @@ async function hydrateAssistantMessages(session) {
     .filter(({ message }) => message.role === "assistant")
     .map(({ message, index }) => ({ id: String(index), content: message.content }));
   if (!messages.length) return;
-
-  const applyCitationsFallback = () => {
-    messages.forEach(({ id }) => {
-      const node = $(`.message-content[data-message-index="${id}"]`);
-      const message = session.messages[Number(id)];
-      if (node && !$(".citation-list", node)) appendCitations(node, message?.citations);
-    });
-  };
-
   try {
-    const response = await fetch(API.render, {
+    const payload = await apiJson(API.render, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages }),
     });
-    if (!response.ok) throw new Error(`Falha HTTP ${response.status}`);
-    const payload = await response.json();
     if (state.currentSessionId !== sessionIdAtStart) return;
     payload.messages.forEach((rendered) => {
+      const index = Number(rendered.id);
       const node = $(`.message-content[data-message-index="${rendered.id}"]`);
-      const message = session.messages[Number(rendered.id)];
+      const message = session.messages[index];
       if (!node || !message) return;
       node.innerHTML = rendered.html;
       appendCitations(node, message.citations);
+      appendResponseAssets(node, message.images);
       typesetMath(node);
     });
   } catch (error) {
-    console.warn("Nao foi possivel restaurar a renderizacao enriquecida.", error);
-    if (state.currentSessionId === sessionIdAtStart) applyCitationsFallback();
+    console.warn("Não foi possível restaurar a renderização enriquecida.", error);
   }
+}
+
+function buildWelcomeState() {
+  const welcome = document.createElement("section");
+  welcome.className = "welcome-state";
+  welcome.id = "welcome-state";
+  welcome.innerHTML = `
+    <div class="welcome-mark" aria-hidden="true">A</div>
+    <h1 id="welcome-title">${escapeHtml(state.identity.greeting)}, ${escapeHtml(state.identity.displayName)}.</h1>
+    <p>Converse, pesquise suas referências, analise arquivos ou peça a execução do pipeline.</p>`;
+  return welcome;
 }
 
 function renderConversation() {
@@ -370,7 +483,7 @@ function renderConversation() {
   const session = currentSession();
   conversation.innerHTML = "";
   if (!session?.messages.length) {
-    conversation.appendChild($("#welcome-state-template") || buildWelcomeState());
+    conversation.appendChild(buildWelcomeState());
   } else {
     session.messages.forEach((message, index) => {
       conversation.appendChild(
@@ -381,28 +494,10 @@ function renderConversation() {
     });
   }
   updateWelcomeIdentity();
+  updateConversationChrome();
   icons();
   void hydrateAssistantMessages(session);
   scrollConversation(false);
-}
-
-function buildWelcomeState() {
-  const source = $("#welcome-state");
-  if (source) return source;
-  const welcome = document.createElement("div");
-  welcome.className = "welcome-state";
-  welcome.id = "welcome-state";
-  welcome.innerHTML = `
-    <div class="welcome-mark" aria-hidden="true">A</div>
-    <h2 id="welcome-title">${escapeHtml(state.identity.greeting)}, ${escapeHtml(state.identity.displayName)}.</h2>
-    <p>Em que parte da dissertação trabalhamos agora?</p>
-    <div class="prompt-grid" id="prompt-grid">
-      <button type="button" data-prompt="Compare o Autoencoder Denso com o AE-LSTM, destacando as métricas acadêmicas e suas limitações."><i data-lucide="git-compare-arrows"></i><span>Comparar Denso e AE-LSTM</span></button>
-      <button type="button" data-prompt="Explique as curvas R(t), F(t), f(t) e h(t) dos componentes com base nas taxas bibliográficas."><i data-lucide="activity"></i><span>Analisar confiabilidade</span></button>
-      <button type="button" data-prompt="Relacione Contator AC, IGBT e Fusível AC às prioridades de manutenção e à FMECA com base na literatura indexada."><i data-lucide="wrench"></i><span>Planejar manutenção</span></button>
-      <button type="button" data-prompt="Prepare um panorama acadêmico da comparação dos modelos e da confiabilidade física para minha orientadora."><i data-lucide="file-text"></i><span>Panorama da dissertação</span></button>
-    </div>`;
-  return welcome;
 }
 
 function scrollConversation(smooth = true) {
@@ -426,9 +521,7 @@ function setStreaming(active) {
 }
 
 function updateStreamStatus(message = "") {
-  const node = $("#stream-status");
-  node.textContent = message;
-  node.classList.toggle("is-active", Boolean(message));
+  $("#stream-status").textContent = message;
 }
 
 function addPendingAssistant() {
@@ -439,8 +532,10 @@ function addPendingAssistant() {
       <div class="assistant-avatar" aria-hidden="true">A</div>
       <div>
         <div class="message-author">ALIAdo</div>
-        <div class="message-content streaming"></div>
-        <div class="message-meta"><span>Gerando resposta</span></div>
+        <div class="message-content pending-response">
+          <div class="response-loader" role="status" aria-label="ALIAdo está preparando a resposta"><span></span><span></span><span></span><em>Organizando contexto</em></div>
+        </div>
+        <div class="message-meta"><span>Preparando resposta</span></div>
       </div>
     </div>`;
   $("#conversation").appendChild(article);
@@ -488,47 +583,7 @@ function previousHistory(session) {
   }));
 }
 
-async function apiJson(url, options = {}) {
-  const response = await fetch(url, {
-    ...options,
-    headers: { Accept: "application/json", ...options.headers },
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(payload.detail || `Falha HTTP ${response.status}`);
-    error.code = payload.error;
-    error.payload = payload;
-    throw error;
-  }
-  return payload;
-}
-
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-
-async function trackLibraryJob(initialJob) {
-  let job = initialJob;
-  state.libraryJobs.set(job.job_id, job);
-  renderLibraryJobs();
-  while (["queued", "running"].includes(job.state)) {
-    await wait(1200);
-    try {
-      const payload = await apiJson(`/api/library/jobs/${encodeURIComponent(job.job_id)}`);
-      job = payload.job;
-      state.libraryJobs.set(job.job_id, job);
-      renderLibraryJobs();
-    } catch (error) {
-      toast(error.message);
-      return;
-    }
-  }
-  if (job.state === "completed") {
-    toast(job.warnings?.length ? "Fonte indexada com ressalva no snapshot." : "Fonte adicionada à biblioteca.");
-  } else {
-    toast(`A fonte não foi indexada: ${job.message}`);
-  }
-  state.cache.delete("library");
-  if (state.currentView === "library") await loadPanel("library", true);
-}
 
 async function queuePdfFile(file, metadata = {}) {
   const form = new FormData();
@@ -544,18 +599,26 @@ async function queuePdfFile(file, metadata = {}) {
 async function queueAttachedPdfs() {
   const pdfs = state.files.filter((file) => file.name.toLocaleLowerCase().endsWith(".pdf"));
   if (!pdfs.length || state.attachmentPolicy !== "library") return;
-  updateStreamStatus(`Adicionando ${pdfs.length} PDF${pdfs.length > 1 ? "s" : ""} à biblioteca`);
+  updateStreamStatus(`Adicionando ${pdfs.length} PDF${pdfs.length > 1 ? "s" : ""} às referências`);
   for (const file of pdfs) {
     try {
       await queuePdfFile(file);
     } catch (error) {
-      if (error.code === "duplicate_pdf") {
-        toast(`${file.name} já está na biblioteca.`);
-      } else {
-        toast(`Não foi possível catalogar ${file.name}: ${error.message}`);
-      }
+      toast(error.code === "duplicate_pdf"
+        ? `${file.name} já está nas referências.`
+        : `Não foi possível indexar ${file.name}: ${error.message}`);
     }
   }
+}
+
+function updateRouteLabel(payload) {
+  const route = payload?.agent?.routing || payload?.inference || {};
+  const rawProvider = route.provider || payload?.agent?.provider;
+  const provider = rawProvider === "automatic" ? "" : rawProvider;
+  const model = route.model || payload?.agent?.model;
+  const label = [provider, model].filter(Boolean).join(" · ") || "Seleção automática";
+  $("#model-route").lastChild.textContent = label;
+  $("#model-route").classList.toggle("is-ready", Boolean(provider || model));
 }
 
 async function sendMessage(rawMessage) {
@@ -565,9 +628,16 @@ async function sendMessage(rawMessage) {
   if (!message) return;
   let session = currentSession();
   if (!session) session = createSession(false);
-  const history = previousHistory(session);
+  if (session.status === "archived") {
+    toast("Restaure o chat para continuar.");
+    return;
+  }
+
+  const historyItems = previousHistory(session);
   session.messages.push({ role: "user", content: message });
-  if (session.title === "Nova conversa") session.title = message.slice(0, 54);
+  if (session.title === "Novo chat" || session.title === "Nova conversa") {
+    session.title = message.replace(/\s+/g, " ").slice(0, 58);
+  }
   session.updatedAt = Date.now();
   saveSessions();
 
@@ -585,7 +655,6 @@ async function sendMessage(rawMessage) {
   state.controller = controller;
   setStreaming(true);
   updateStreamStatus("Preparando contexto");
-
   await queueAttachedPdfs();
 
   let body;
@@ -593,16 +662,17 @@ async function sendMessage(rawMessage) {
   if (state.files.length) {
     const form = new FormData();
     form.append("message", message);
-    form.append("history", JSON.stringify(history));
+    form.append("history", JSON.stringify(historyItems));
     form.append("session_id", session.id);
     state.files.forEach((file) => form.append("files", file, file.name));
     body = form;
   } else {
     headers = { "Content-Type": "application/json" };
-    body = JSON.stringify({ message, history, session_id: session.id });
+    body = JSON.stringify({ message, history: historyItems, session_id: session.id });
   }
 
   let complete = "";
+  let completed = false;
   try {
     const response = await fetch("/api/chat/stream", {
       method: "POST",
@@ -612,40 +682,53 @@ async function sendMessage(rawMessage) {
     });
     await consumeSse(response, (event, payload) => {
       if (event === "status") {
-        updateStreamStatus(payload.message || "Consultando base acadêmica");
+        const phase = payload.message || "Consultando contexto";
+        updateStreamStatus(phase);
+        pendingMeta.textContent = phase;
+        const loaderLabel = $(".response-loader em", pendingContent);
+        if (loaderLabel) loaderLabel.textContent = phase;
       } else if (event === "delta") {
         complete += payload.text || "";
+        pendingContent.classList.remove("pending-response");
+        pendingContent.classList.add("streaming");
         pendingContent.textContent = complete;
         scrollConversation(false);
       } else if (event === "done") {
+        completed = true;
         complete = payload.answer || complete;
-        pendingContent.classList.remove("streaming");
+        pendingContent.classList.remove("streaming", "pending-response");
         pendingContent.innerHTML = payload.answer_html || escapeHtml(complete);
         appendCitations(pendingContent, payload.citations);
+        appendResponseAssets(pendingContent, payload.images);
         typesetMath(pendingContent);
-        pendingMeta.textContent = `${fmt(payload.response_ms, 0)} ms · ${payload.route || "agente"}`;
+        pendingMeta.textContent = `${Math.round(payload.response_ms || 0)} ms · ${payload.route || "agente"}`;
         const index = session.messages.length;
         const actions = document.createElement("div");
         actions.className = "message-actions";
         actions.innerHTML = `
-          <button class="message-action" type="button" data-copy-index="${index}" aria-label="Copiar resposta" title="Copiar resposta"><i data-lucide="copy"></i></button>
+          <button class="message-action" type="button" data-copy-index="${index}" aria-label="Copiar resposta" title="Copiar"><i data-lucide="copy"></i></button>
           <button class="message-action" type="button" data-retry-index="${index}" aria-label="Tentar novamente" title="Tentar novamente"><i data-lucide="refresh-cw"></i></button>`;
         $(".message-meta", pending).appendChild(actions);
         session.messages.push({
           role: "assistant",
           content: complete,
           citations: payload.citations || [],
+          images: payload.images || [],
           response_ms: payload.response_ms,
         });
         session.updatedAt = Date.now();
         saveSessions();
+        updateRouteLabel(payload);
         updateStreamStatus("");
         icons();
+        setTimeout(() => void syncConversations(), 1000);
       } else if (event === "error") {
-        throw new Error(payload.detail || "O agente não conseguiu responder.");
+        throw new Error(payload.detail || "O ALIAdo não conseguiu responder.");
       }
     });
+    if (!completed && !complete) throw new Error("A resposta terminou sem conteúdo.");
   } catch (error) {
+    pendingContent.classList.remove("streaming", "pending-response");
     if (error.name === "AbortError") {
       pendingContent.textContent = complete || "Resposta cancelada.";
       pendingMeta.textContent = "Cancelada";
@@ -674,7 +757,7 @@ function renderAttachments() {
   state.files.forEach((file, index) => {
     const chip = document.createElement("div");
     chip.className = "attachment-chip";
-    chip.innerHTML = `<i data-lucide="file" aria-hidden="true"></i><span></span><button type="button" data-remove-file="${index}" aria-label="Remover anexo" title="Remover anexo"><i data-lucide="x"></i></button>`;
+    chip.innerHTML = `<i data-lucide="file" aria-hidden="true"></i><span></span><button type="button" data-remove-file="${index}" aria-label="Remover anexo" title="Remover"><i data-lucide="x"></i></button>`;
     $("span", chip).textContent = file.name;
     list.appendChild(chip);
   });
@@ -685,198 +768,124 @@ function renderAttachments() {
 function resizeInput() {
   const input = $("#chat-input");
   input.style.height = "auto";
-  input.style.height = `${Math.min(input.scrollHeight, 170)}px`;
+  input.style.height = `${Math.min(input.scrollHeight, 180)}px`;
 }
 
-function figureCards(figures) {
-  figures.forEach((figure) => state.figures.set(figure.url, figure));
-  return `<div class="figure-grid">${figures
-    .map(
-      (figure) => `
-      <article class="figure-card">
-        <button class="figure-open" type="button" data-open-figure="${escapeHtml(figure.url)}" aria-label="Ampliar ${escapeHtml(figure.title)}">
-          <img src="${escapeHtml(figure.url)}" alt="${escapeHtml(figure.title)}" loading="lazy" decoding="async">
-        </button>
-        <div class="figure-caption">
-          <div><strong>${escapeHtml(figure.title)}</strong><p>${escapeHtml(figure.note)}</p></div>
-          <div class="figure-links">
-            <button class="icon-button" type="button" data-open-figure="${escapeHtml(figure.url)}" aria-label="Ampliar" title="Ampliar"><i data-lucide="maximize-2"></i></button>
-            <a class="icon-button" href="${escapeHtml(figure.pdf_url)}" target="_blank" rel="noreferrer" aria-label="Abrir PDF" title="Abrir PDF"><i data-lucide="file-down"></i></a>
-          </div>
-        </div>
-      </article>`,
-    )
-    .join("")}</div>`;
+function exportConversation() {
+  const session = currentSession();
+  if (!session?.messages.length) {
+    toast("Este chat ainda está vazio.");
+    return;
+  }
+  const content = [
+    `# ${session.title}`,
+    "",
+    ...session.messages.flatMap((message) => [
+      `## ${message.role === "user" ? state.identity.displayName : "ALIAdo"}`,
+      "",
+      message.content,
+      "",
+    ]),
+  ].join("\n");
+  const url = URL.createObjectURL(new Blob([content], { type: "text/markdown;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${session.id}_chat.md`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
-function downloadRows(items) {
-  return `<div class="download-list">${items
-    .map(
-      (item) => `
-      <div class="download-row">
-        <div><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.sha256)} · ${bytes(item.size_bytes)}</small></div>
-        <a class="download-link" href="${escapeHtml(item.url)}" download><i data-lucide="download"></i><span>Baixar</span></a>
-      </div>`,
-    )
-    .join("")}</div>`;
+function retryMessage(index) {
+  const session = currentSession();
+  if (!session) return;
+  for (let cursor = Number(index) - 1; cursor >= 0; cursor -= 1) {
+    if (session.messages[cursor]?.role === "user") {
+      void sendMessage(session.messages[cursor].content);
+      return;
+    }
+  }
 }
 
-function metricRow(label, dense, lstm) {
-  return `<tr><td>${escapeHtml(label)}</td><td class="numeric">${fmt(dense.estimate)}<br><small>IC95% ${ci(dense)}</small></td><td class="numeric">${fmt(lstm.estimate)}<br><small>IC95% ${ci(lstm)}</small></td></tr>`;
+async function copyMessage(index) {
+  const message = currentSession()?.messages[Number(index)];
+  if (!message) return;
+  await navigator.clipboard.writeText(message.content);
+  toast("Resposta copiada.");
 }
 
-function publicationDetails(data, description) {
-  return `
-    <details class="publication-details">
-      <summary><span>Publicação e dados-fonte</span><i data-lucide="chevron-down" aria-hidden="true"></i></summary>
-      <div class="publication-content">
-        <p>${escapeHtml(description)}</p>
-        ${figureCards(data.figures)}
-        ${downloadRows(data.tables)}
-      </div>
-    </details>`;
+function openRenameDialog(sessionIdValue) {
+  const session = state.sessions.find((item) => item.id === sessionIdValue);
+  if (!session) return;
+  state.currentSessionId = session.id;
+  const form = $("#conversation-rename-form");
+  form.elements.title.value = session.title;
+  $("#conversation-rename-dialog").showModal();
+  requestAnimationFrame(() => form.elements.title.select());
 }
 
-function confusionMatrices(items) {
-  return `<div class="confusion-grid">${items.map(confusionFigure).join("")}</div>`;
+function openDeleteDialog(sessionIdValue) {
+  const session = state.sessions.find((item) => item.id === sessionIdValue);
+  if (!session) return;
+  state.pendingDeleteId = session.id;
+  $("#conversation-delete-dialog").showModal();
 }
 
-function confusionFigure(item) {
-  return `
-    <figure class="confusion-figure">
-      <figcaption>${escapeHtml(item.model_name)} <small>contagens por janela</small></figcaption>
-      <div class="confusion-axis-label">Predição</div>
-      <div class="confusion-matrix" role="img" aria-label="Matriz de confusão de ${escapeHtml(item.model_name)}: ${item.tn} verdadeiros negativos, ${item.fp} falsos positivos, ${item.fn} falsos negativos e ${item.tp} verdadeiros positivos">
-        <span class="matrix-corner"></span><span>Normal</span><span>Falha</span>
-        <strong>Normal</strong><div><b>${item.tn.toLocaleString("pt-BR")}</b><small>VN</small></div><div><b>${item.fp.toLocaleString("pt-BR")}</b><small>FP</small></div>
-        <strong>Falha</strong><div><b>${item.fn.toLocaleString("pt-BR")}</b><small>FN</small></div><div><b>${item.tp.toLocaleString("pt-BR")}</b><small>VP</small></div>
-      </div>
-      <div class="confusion-actual-label">Classe real</div>
-    </figure>`;
+async function performConversationAction(action, sessionIdValue) {
+  const session = state.sessions.find((item) => item.id === sessionIdValue);
+  if (!session) return;
+  if (action === "rename") {
+    openRenameDialog(session.id);
+    return;
+  }
+  if (action === "delete") {
+    openDeleteDialog(session.id);
+    return;
+  }
+
+  const status = action === "archive" ? "archived" : "active";
+  if (session.serverBacked) {
+    const endpoint = `${API.conversations}/${encodeURIComponent(session.id)}/${action}`;
+    try {
+      await apiJson(endpoint, { method: "POST" });
+    } catch (error) {
+      if (error.code !== "conversation_not_found") throw error;
+    }
+  }
+  session.status = status;
+  session.updatedAt = Date.now();
+  state.historyMode = status;
+  saveSessions();
+  renderConversation();
+  toast(status === "archived" ? "Chat arquivado." : "Chat restaurado.");
 }
 
-function renderE3(data) {
-  const dense = data.metrics.ae_denso;
-  const lstm = data.metrics.ae_lstm;
-  const diff = data.paired_differences.find((item) => item.metric === "recall");
-  const rows = [
-    ["Recall", dense.recall, lstm.recall],
-    ["F1", dense.f1, lstm.f1],
-    ["Precision", dense.precision, lstm.precision],
-    ["ROC-AUC (complementar)", dense.auc_roc, lstm.auc_roc],
-    ["PR-AUC (complementar)", dense.auc_pr, lstm.auc_pr],
-    ["Especificidade", dense.specificity, lstm.specificity],
-    ["Acurácia balanceada", dense.balanced_accuracy, lstm.balanced_accuracy],
-    ["MCC", dense.mcc, lstm.mcc],
-    ["Taxa de falso positivo", dense.false_positive_rate, lstm.false_positive_rate],
-  ];
-  return `
-    <section class="summary-band">
-      <h2>Autoencoder Denso × AE-LSTM</h2>
-      <p>Autoencoder Denso e AE-LSTM foram congelados antes dos 14 ensaios F1L–F7M. Recall, F1 e Precision são as métricas principais; os IC95% usam o ensaio como unidade.</p>
-      <div class="boundary-note"><i data-lucide="info"></i><span>${escapeHtml(data.dataset.fault_boundary.caveat)}</span></div>
-    </section>
-    <section class="metric-strip compact" aria-label="Síntese E3">
-      <div class="metric-item is-blue"><span>Recall Denso</span><strong>${fmt(dense.recall.estimate)}</strong><small>IC95% ${ci(dense.recall)}</small></div>
-      <div class="metric-item is-amber"><span>Recall AE-LSTM</span><strong>${fmt(lstm.recall.estimate)}</strong><small>IC95% ${ci(lstm.recall)}</small></div>
-      <div class="metric-item is-accent"><span>Diferença pareada de Recall</span><strong>${fmt(diff.difference_dense_minus_lstm)}</strong><small>IC95% ${fmt(diff.ci95_low)}–${fmt(diff.ci95_high)}</small></div>
-    </section>
-    <section class="section-band">
-      <div class="section-heading"><div><h2>Desempenho macro com IC95%</h2><p>Estimativas da semente pré-fixada 42, com 20.000 reamostragens no nível do ensaio.</p></div></div>
-      <div class="academic-chart" data-chart="e3-metrics" aria-label="Comparação das métricas macro dos dois autoencoders"></div>
-    </section>
-    <section class="section-band">
-      <div class="section-heading"><div><h2>Recall por ensaio</h2><p>Heterogeneidade das condições L e M, sem retreino ou recalibração.</p></div></div>
-      <div class="academic-chart" data-chart="e3-trials" aria-label="Recall por ensaio para os dois autoencoders"></div>
-    </section>
-    <section class="section-band">
-      <div class="section-heading"><div><h2>Curvas de discriminação</h2><p>Curvas agregadas por janela são descritivas; as estimativas acadêmicas permanecem macro por ensaio.</p></div></div>
-      <div class="chart-pair">
-        <article><h3>Curva ROC</h3><div class="academic-chart" data-chart="e3-roc" aria-label="Curva ROC agregada dos dois autoencoders"></div></article>
-        <article><h3>Curva precisão-revocação</h3><div class="academic-chart" data-chart="e3-pr" aria-label="Curva precisão-revocação agregada dos dois autoencoders"></div></article>
-      </div>
-    </section>
-    <section class="section-band">
-      <div class="section-heading"><div><h2>Matrizes de confusão</h2><p>Contagens agregadas por janela no ponto operacional; uso estritamente descritivo devido à autocorrelação intraensaio.</p></div></div>
-      ${confusionMatrices(data.confusion_matrices)}
-    </section>
-    <details class="method-details">
-      <summary>Arquiteturas, limiares e tabela completa</summary>
-      <div class="table-wrap"><table class="data-table"><thead><tr><th>Modelo</th><th>Arquitetura</th><th class="numeric">Parâmetros</th><th class="numeric">Top-k</th><th class="numeric">Percentil solicitado / efetivo</th><th class="numeric">Limiar</th><th class="numeric">FP saudável</th></tr></thead><tbody>
-        ${Object.entries(data.models).map(([_id, model]) => `<tr><td>${escapeHtml(model.name)}</td><td>${escapeHtml(model.architecture)}</td><td class="numeric">${Number(model.n_parameters).toLocaleString("pt-BR")}</td><td class="numeric">${model.score_top_k}</td><td class="numeric">p${fmt(model.threshold_requested_percentile, 1)} / p${fmt(model.threshold_effective_percentile, 3)}</td><td class="numeric">${fmt(model.score_threshold, 4)}</td><td class="numeric">${pct(model.healthy_test_false_positive_rate, 2)}</td></tr>`).join("")}
-      </tbody></table></div>
-      <div class="table-wrap"><table class="data-table"><thead><tr><th>Métrica</th><th class="numeric">Autoencoder Denso</th><th class="numeric">AE-LSTM</th></tr></thead><tbody>${rows.map((row) => metricRow(...row)).join("")}</tbody></table></div>
-    </details>
-    ${publicationDetails(data, "Figuras em PNG 300 dpi, PDF vetorial e tabelas que sustentam esta apresentação.")}`;
-}
-
-function evidenceLabel(type) {
-  return type === "direct_bibliographic" ? "Bibliográfica direta" : "Sensibilidade derivada";
-}
-
-function renderReliability(data) {
-  const distribution = data.failure_rate_distribution;
-  const maintenanceRows = data.scenarios.filter((item) => item.ticket_share !== null);
-  const fmecaRows = [...data.fmeca.components].sort((left, right) => right.npr - left.npr);
-  return String.raw`
-    <section class="summary-band">
-      <h2>Confiabilidade física e planejamento de manutenção</h2>
-      <p>As curvas usam exclusivamente taxas bibliográficas diretas ou cenários derivados e rastreáveis do TCC.</p>
-      <div class="boundary-note"><i data-lucide="shield-alert"></i><span>O modelo exponencial é a hipótese documentada. Uma distribuição normal de tempos de falha não é estimável com as evidências disponíveis.</span></div>
-    </section>
-    <section class="section-band">
-      <div class="section-heading"><div><h2>Funções do modelo exponencial</h2><p>Tempo primário em horas, com conversão explícita por 8.760 h/ano.</p></div></div>
-      <div class="formula-strip">
-        <div class="formula-item"><span>Confiabilidade</span><div>\(R(t)=e^{-\lambda t}\)</div></div>
-        <div class="formula-item"><span>Falha acumulada</span><div>\(F(t)=1-e^{-\lambda t}\)</div></div>
-        <div class="formula-item"><span>Densidade</span><div>\(f(t)=\lambda e^{-\lambda t}\)</div></div>
-        <div class="formula-item"><span>Taxa de falha</span><div>\(h(t)=\lambda\)</div></div>
-      </div>
-    </section>
-    <section class="section-band fmeca-section">
-      <div class="section-heading"><div><h2>Priorização FMECA dos componentes CA</h2><p>${escapeHtml(data.fmeca.formula)}. Os índices permanecem independentes do desempenho dos Autoencoders.</p></div></div>
-      <div class="table-wrap"><table class="data-table fmeca-table"><thead><tr><th>Prioridade</th><th>Componente</th><th>Função</th><th class="numeric">S</th><th class="numeric">O</th><th class="numeric">D_campo</th><th class="numeric">NPR</th></tr></thead><tbody>
-        ${fmecaRows.map((item, index) => `<tr${index === 0 ? ' class="is-priority"' : ""}><td><span class="npr-rank">${index + 1}ª</span></td><td><strong>${escapeHtml(item.component_name)}</strong></td><td>${escapeHtml(item.function)}</td><td class="numeric">${item.severity}</td><td class="numeric">${item.occurrence}</td><td class="numeric">${item.field_detection}</td><td class="numeric npr-value"><strong>${item.npr}</strong></td></tr>`).join("")}
-      </tbody></table></div>
-      <div class="boundary-note compact"><i data-lucide="info"></i><span>${escapeHtml(data.fmeca.boundary)}</span></div>
-    </section>
-    <section class="section-band">
-      <div class="section-heading"><div><h2>Curvas físicas dos componentes</h2><p>Quatro cenários rastreáveis; linhas contínuas são derivadas e a linha tracejada é bibliográfica direta.</p></div></div>
-      <div class="scenario-legend">${data.scenarios.map((item, index) => `<span data-series-index="${index}"><i></i>${escapeHtml(item.plot_label)}</span>`).join("")}</div>
-      <div class="reliability-chart-grid">
-        <article><h3>Curva de confiabilidade R(t)</h3><p>Probabilidade de operação sem falha.</p><div class="academic-chart" data-chart="reliability-r"></div></article>
-        <article><h3>Curva da probabilidade acumulada de falha F(t)</h3><p>Probabilidade de falha até o tempo t.</p><div class="academic-chart" data-chart="reliability-f"></div></article>
-        <article><h3>Curva da densidade de probabilidade de falha f(t)</h3><p>Densidade anual exponencial em escala linear.</p><div class="academic-chart" data-chart="reliability-density"></div></article>
-        <article><h3>Curva da taxa de falha h(t)</h3><p>Risco constante por ano em escala linear.</p><div class="academic-chart" data-chart="reliability-hazard"></div></article>
-      </div>
-    </section>
-    <section class="section-band">
-      <div class="section-heading"><div><h2>Taxas utilizadas nos cenários</h2><p>Comparação em escala linear, sem tratar valores derivados como medições.</p></div></div>
-      <div class="academic-chart" data-chart="reliability-rates"></div>
-    </section>
-    <section class="section-band">
-      <div class="section-heading"><div><h2>Indicadores para planejamento de manutenção</h2><p>Participação de chamados e cenário de taxa são evidências complementares; não substituem severidade, ocorrência e detecção da FMECA.</p></div></div>
-      <div class="table-wrap"><table class="data-table"><thead><tr><th>Componente</th><th class="numeric">Chamados</th><th class="numeric">λ do cenário (h⁻¹)</th><th class="numeric">1/λ (anos)</th><th>Ressalva</th></tr></thead><tbody>
-        ${maintenanceRows.map((item) => `<tr><td>${escapeHtml(item.component_name)}</td><td class="numeric">${pct(item.ticket_share, 0)}</td><td class="numeric">${sci(item.lambda_per_hour)}</td><td class="numeric">${fmt(item.reciprocal_time_years, 2)}</td><td>${escapeHtml(item.caveat)}</td></tr>`).join("")}
-      </tbody></table></div>
-    </section>
-    <section class="distribution-unavailable" aria-labelledby="distribution-title">
-      <div><i data-lucide="circle-off" aria-hidden="true"></i></div>
-      <div><h2 id="distribution-title">Distribuição estatística de λ indisponível</h2><p>${escapeHtml(distribution.reason)}</p><p><strong>Para estimar uma normal com histograma:</strong> ${distribution.required_data.map(escapeHtml).join("; ")}.</p></div>
-    </section>
-    <details class="method-details">
-      <summary>Cenários, taxas e localização bibliográfica</summary>
-      <div class="table-wrap"><table class="data-table"><thead><tr><th>Componente</th><th>Natureza</th><th class="numeric">λ (h⁻¹)</th><th class="numeric">λ (ano⁻¹)</th><th class="numeric">1/λ (anos)</th><th>Origem</th></tr></thead><tbody>
-        ${data.scenarios.map((item) => `<tr><td>${escapeHtml(item.component_name)}</td><td>${evidenceLabel(item.evidence_type)}</td><td class="numeric">${sci(item.lambda_per_hour)}</td><td class="numeric">${fmt(item.lambda_per_year, 5)}</td><td class="numeric">${fmt(item.reciprocal_time_years, 2)}</td><td>${escapeHtml(item.source_table)}<br><small>PDF ${item.pdf_page}, impressa ${item.printed_page}</small></td></tr>`).join("")}
-      </tbody></table></div>
-    </details>
-    ${publicationDetails(data, "Curvas temporais, taxas rastreáveis, metodologia e relatório acadêmico.")}`;
+async function confirmDeleteConversation() {
+  const sessionIdValue = state.pendingDeleteId;
+  const session = state.sessions.find((item) => item.id === sessionIdValue);
+  $("#conversation-delete-dialog").close();
+  state.pendingDeleteId = null;
+  if (!session) return;
+  if (session.serverBacked) {
+    try {
+      await apiJson(`${API.conversations}/${encodeURIComponent(session.id)}`, { method: "DELETE" });
+    } catch (error) {
+      if (error.code !== "conversation_not_found") {
+        toast(error.message);
+        return;
+      }
+    }
+  }
+  session.status = "deleted";
+  if (state.currentSessionId === session.id) createSession(false);
+  saveSessions();
+  renderConversation();
+  toast("Chat removido da interface.");
 }
 
 const CATEGORY_LABELS = {
-  "confiabilidade": "Confiabilidade",
+  confiabilidade: "Confiabilidade",
   "inversores-pv": "Inversores PV",
-  "manutencao": "Manutenção",
+  manutencao: "Manutenção",
   "ml-preditivo": "ML preditivo",
   "sinais-eletricos": "Sinais elétricos",
 };
@@ -898,42 +907,42 @@ const INDEX_LABELS = {
   not_indexed: "Não indexada",
 };
 
-function normalizeSearch(value) {
-  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
+function downloadRows(items) {
+  return `<div class="download-list">${items.map((item) => `
+    <div class="download-row">
+      <div><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.sha256 || "")}</small></div>
+      <a class="download-link" href="${escapeHtml(item.url)}" download><i data-lucide="download"></i><span>Baixar</span></a>
+    </div>`).join("")}</div>`;
 }
 
 function renderLibrary(data) {
   state.libraryData = data;
-  const provenance = data.provenance;
+  $("#library-count").textContent = data.summary.documents;
   const writeNote = data.writable
-    ? "Alterações permanecem locais até revisão em PR."
-    : (data.write_policy.reason || "Biblioteca disponível somente para leitura.");
+    ? "Alterações ficam locais até revisão e commit."
+    : (data.write_policy.reason || "Referências disponíveis somente para leitura.");
   return `
-    <section class="metric-strip library-metrics" aria-label="Resumo da biblioteca">
-      <div class="metric-item"><span>Documentos</span><strong>${data.summary.documents}</strong><small>PDFs por SHA-256</small></div>
-      <div class="metric-item"><span>Trechos indexados</span><strong>${Number(data.summary.indexed_chunks).toLocaleString("pt-BR")}</strong><small>manifesto excluído da contagem</small></div>
-      <div class="metric-item"><span>Categorias</span><strong>${Object.keys(data.summary.categories).length}</strong><small>corpus acadêmico</small></div>
-      <div class="metric-item"><span>Alertas</span><strong>${data.summary.metadata_warnings}</strong><small>extração, sem alterar PDFs</small></div>
+    <section class="library-summary" aria-label="Resumo das referências">
+      <div class="library-stat"><span>Documentos</span><strong>${data.summary.documents}</strong><small>PDFs identificados por SHA-256</small></div>
+      <div class="library-stat"><span>Trechos indexados</span><strong>${Number(data.summary.indexed_chunks).toLocaleString("pt-BR")}</strong><small>Disponíveis para busca híbrida</small></div>
+      <div class="library-stat"><span>Alertas de metadados</span><strong>${data.summary.metadata_warnings}</strong><small>Sem alterar os PDFs originais</small></div>
     </section>
     <section class="library-control-band">
       <div class="library-toolbar">
-        <label class="library-search"><span class="sr-only">Pesquisar biblioteca</span><i data-lucide="search" aria-hidden="true"></i><input id="library-query" type="search" value="${escapeHtml(state.libraryFilters.query)}" placeholder="Título, autor, ano ou arquivo"></label>
-        <label><span class="sr-only">Filtrar por categoria</span><select id="library-category"><option value="">Todas as categorias</option>${data.categories.map((value) => `<option value="${value}"${state.libraryFilters.category === value ? " selected" : ""}>${CATEGORY_LABELS[value] || escapeHtml(value)}</option>`).join("")}</select></label>
-        <label><span class="sr-only">Filtrar por idioma</span><select id="library-language"><option value="">Todos os idiomas</option>${data.languages.map((value) => `<option value="${value}"${state.libraryFilters.language === value ? " selected" : ""}>${LANGUAGE_LABELS[value] || escapeHtml(value)}</option>`).join("")}</select></label>
+        <label class="library-search"><span class="sr-only">Pesquisar referências</span><i data-lucide="search"></i><input id="library-query" type="search" value="${escapeHtml(state.libraryFilters.query)}" placeholder="Título, autor, ano ou arquivo"></label>
+        <label><span class="sr-only">Categoria</span><select id="library-category"><option value="">Todas as categorias</option>${data.categories.map((value) => `<option value="${value}"${state.libraryFilters.category === value ? " selected" : ""}>${CATEGORY_LABELS[value] || escapeHtml(value)}</option>`).join("")}</select></label>
+        <label><span class="sr-only">Idioma</span><select id="library-language"><option value="">Todos os idiomas</option>${data.languages.map((value) => `<option value="${value}"${state.libraryFilters.language === value ? " selected" : ""}>${LANGUAGE_LABELS[value] || escapeHtml(value)}</option>`).join("")}</select></label>
         <output id="library-result-count" aria-live="polite"></output>
       </div>
-      <p class="library-policy"><i data-lucide="shield-check" aria-hidden="true"></i><span>${escapeHtml(writeNote)}</span></p>
+      <p class="library-policy"><i data-lucide="shield-check"></i><span>${escapeHtml(writeNote)}</span></p>
       <div class="library-jobs" id="library-jobs" aria-live="polite"></div>
       <div class="library-list" id="library-list"></div>
     </section>
-    <details class="method-details library-provenance">
-      <summary>Proveniência científica e regras de separação</summary>
+    <details class="library-provenance">
+      <summary>Proveniência e arquivos auditáveis</summary>
       <div class="provenance-body">
-        <h3>Dataset experimental único</h3>
-        <p><a href="${escapeHtml(provenance.dataset.url)}" target="_blank" rel="noreferrer">${escapeHtml(provenance.dataset.name)}</a> · ${provenance.dataset.experiments} ensaios · DOI ${escapeHtml(provenance.dataset.doi)}</p>
-        <div class="rule-list">${provenance.separation_rules.map((rule) => `<div class="rule-row"><span>${escapeHtml(rule)}</span><i data-lucide="check-circle-2" aria-hidden="true"></i></div>`).join("")}</div>
-        <h3>Manifestos e relatórios</h3>
-        ${downloadRows([...provenance.manifests, ...provenance.reports])}
+        <p>A Biblioteca registra hash, categoria, idioma e quantidade de trechos de cada PDF. O índice vetorial é reconstruível.</p>
+        ${downloadRows([...(data.provenance?.manifests || []), ...(data.provenance?.reports || [])])}
       </div>
     </details>`;
 }
@@ -955,25 +964,24 @@ function renderLibraryDocuments() {
   });
   $("#library-result-count").textContent = `${documents.length} de ${state.libraryData.documents.length}`;
   if (!documents.length) {
-    container.innerHTML = '<div class="empty-library"><i data-lucide="search-x" aria-hidden="true"></i><p>Nenhuma fonte corresponde aos filtros.</p></div>';
+    container.innerHTML = '<div class="empty-library"><i data-lucide="search-x"></i><p>Nenhuma referência corresponde aos filtros.</p></div>';
     icons();
     return;
   }
   container.innerHTML = documents.map((document) => {
-    const authors = document.authors.join("; ");
     const warnings = document.extraction_warnings?.length
-      ? `<span class="metadata-warning" title="${escapeHtml(document.extraction_warnings.join("; "))}"><i data-lucide="triangle-alert" aria-hidden="true"></i><span>Revisar extração</span></span>`
+      ? `<span class="metadata-warning" title="${escapeHtml(document.extraction_warnings.join("; "))}">Revisar extração</span>`
       : "";
     const writeActions = state.libraryData.writable ? `
-      <button class="icon-button" type="button" data-edit-source="${document.source_id}" aria-label="Editar metadados" title="Editar metadados"><i data-lucide="pencil" aria-hidden="true"></i></button>
-      <button class="icon-button" type="button" data-reindex-source="${document.source_id}" aria-label="Reindexar fonte" title="Reindexar fonte"><i data-lucide="refresh-cw" aria-hidden="true"></i></button>` : "";
+      <button class="icon-button" type="button" data-edit-source="${document.source_id}" aria-label="Editar metadados" title="Editar"><i data-lucide="pencil"></i></button>
+      <button class="icon-button" type="button" data-reindex-source="${document.source_id}" aria-label="Reindexar fonte" title="Reindexar"><i data-lucide="refresh-cw"></i></button>` : "";
     return `<article class="library-row" data-source-id="${document.source_id}">
       <div class="library-document-main">
         <h2>${escapeHtml(document.title)}</h2>
-        <p>${escapeHtml(authors)} · ${document.year || "s.d."}</p>
+        <p>${escapeHtml(document.authors.join("; "))} · ${document.year || "s.d."}</p>
         <div class="library-document-meta"><span>${CATEGORY_LABELS[document.category] || escapeHtml(document.category)}</span><span>${LANGUAGE_LABELS[document.language] || escapeHtml(document.language)}</span><span>${Number(document.chunk_count).toLocaleString("pt-BR")} trechos</span><span data-index-status="${escapeHtml(document.index_status)}">${INDEX_LABELS[document.index_status] || escapeHtml(document.index_status)}</span>${warnings}</div>
       </div>
-      <div class="library-row-actions">${writeActions}<a class="icon-button" href="${escapeHtml(document.url)}" target="_blank" rel="noreferrer" aria-label="Abrir PDF" title="Abrir PDF"><i data-lucide="external-link" aria-hidden="true"></i></a></div>
+      <div class="library-row-actions">${writeActions}<a class="icon-button" href="${escapeHtml(document.url)}" target="_blank" rel="noreferrer" aria-label="Abrir PDF" title="Abrir PDF"><i data-lucide="external-link"></i></a></div>
     </article>`;
   }).join("");
   icons();
@@ -985,8 +993,51 @@ function renderLibraryJobs() {
   const jobs = [...state.libraryJobs.values()].slice(-4).reverse();
   container.innerHTML = jobs.map((job) => {
     const progress = Math.max(0, Math.min(100, Number(job.progress) || 0));
-    return `<div class="library-job" data-job-state="${escapeHtml(job.state)}"><div><strong>${job.kind === "add" ? "Nova fonte" : "Reindexação"}</strong><span>${escapeHtml(job.message)}</span></div><div class="job-progress" role="progressbar" aria-label="Progresso da indexação" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><span style="width:${progress}%"></span></div></div>`;
+    return `<div class="library-job" data-job-state="${escapeHtml(job.state)}"><div><strong>${job.kind === "add" ? "Nova referência" : "Reindexação"}</strong><span>${escapeHtml(job.message)}</span></div><div class="job-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><span style="width:${progress}%"></span></div></div>`;
   }).join("");
+}
+
+async function trackLibraryJob(initialJob) {
+  let job = initialJob;
+  state.libraryJobs.set(job.job_id, job);
+  renderLibraryJobs();
+  while (["queued", "running"].includes(job.state)) {
+    await wait(1200);
+    try {
+      const payload = await apiJson(`/api/library/jobs/${encodeURIComponent(job.job_id)}`);
+      job = payload.job;
+      state.libraryJobs.set(job.job_id, job);
+      renderLibraryJobs();
+    } catch (error) {
+      toast(error.message);
+      return;
+    }
+  }
+  toast(job.state === "completed" ? "Referência indexada." : `Falha na indexação: ${job.message}`);
+  state.libraryData = null;
+  if (state.currentView === "library") await loadLibrary(true);
+}
+
+async function loadLibrary(force = false) {
+  const content = $("#library-content");
+  const loading = $('[data-loading="library"]');
+  if (state.libraryData && !force) return;
+  loading.hidden = false;
+  content.innerHTML = "";
+  try {
+    const data = await apiJson(API.library);
+    state.libraryData = data;
+    content.innerHTML = renderLibrary(data);
+    $("#library-add").hidden = !data.writable;
+    renderLibraryDocuments();
+    renderLibraryJobs();
+    loading.hidden = true;
+    icons();
+  } catch (error) {
+    loading.hidden = true;
+    content.innerHTML = `<div class="error-state"><i data-lucide="circle-alert"></i><strong>Não foi possível carregar as referências.</strong><p>${escapeHtml(error.message)}</p><button class="secondary-button" type="button" data-reload-library><i data-lucide="refresh-cw"></i><span>Tentar novamente</span></button></div>`;
+    icons();
+  }
 }
 
 function openLibraryEdit(sourceId) {
@@ -1002,81 +1053,29 @@ function openLibraryEdit(sourceId) {
   $("#library-edit-dialog").showModal();
 }
 
-const RENDERERS = new Map([
-  ["e3", renderE3],
-  ["reliability", renderReliability],
-  ["library", renderLibrary],
-]);
-
-async function loadPanel(view, force = false) {
-  if (!PANEL_NAMES.has(view)) return;
-  const content = $(`#${view}-content`);
-  const loading = $(`[data-loading="${view}"]`);
-  if (!content || !loading) return;
-  if (state.cache.has(view) && !force) return;
-  loading.hidden = false;
-  content.innerHTML = "";
+async function reindexLibrarySource(sourceId) {
   try {
-    const response = await fetch(API[view], { headers: { Accept: "application/json" } });
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}));
-      throw new Error(payload.detail || `Falha HTTP ${response.status}`);
-    }
-    const data = await response.json();
-    state.cache.set(view, data);
-    content.innerHTML = RENDERERS.get(view)(data);
-    if (view === "library") {
-      $("#library-add").hidden = !data.writable;
-      renderLibraryDocuments();
-      renderLibraryJobs();
-    }
-    typesetMath(content);
-    if (RESULT_TABS.has(view)) {
-      await ensureResultsCharts();
-      window.ALIAdoCharts.render(view, data);
-    }
-    loading.hidden = true;
-    icons();
+    const payload = await apiJson(`/api/library/${encodeURIComponent(sourceId)}/reindex`, { method: "POST" });
+    void trackLibraryJob(payload.job);
+    toast("Reindexação iniciada.");
   } catch (error) {
-    loading.hidden = true;
-    content.innerHTML = `<div class="error-state"><strong>Não foi possível carregar esta área.</strong><p>${escapeHtml(error.message)}</p><button class="download-link" type="button" data-reload-panel="${view}"><i data-lucide="refresh-cw"></i><span>Tentar novamente</span></button></div>`;
-    icons();
+    toast(error.message);
   }
-}
-
-function openFigure(url) {
-  const figure = state.figures.get(url);
-  if (!figure) return;
-  state.zoom = 1;
-  $("#dialog-title").textContent = figure.title;
-  $("#dialog-note").textContent = figure.note;
-  $("#dialog-image").src = figure.url;
-  $("#dialog-image").alt = figure.title;
-  $("#dialog-pdf").href = figure.pdf_url;
-  updateZoom();
-  $("#image-dialog").showModal();
-}
-
-function updateZoom() {
-  state.zoom = Math.min(2.5, Math.max(0.6, state.zoom));
-  $("#dialog-image").style.width = `${state.zoom * 100}%`;
-  $("#zoom-level").textContent = `${Math.round(state.zoom * 100)}%`;
 }
 
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   localStorage.setItem(THEME_KEY, theme);
-  const button = $("#theme-toggle");
-  button.innerHTML = theme === "dark" ? '<i data-lucide="sun"></i>' : '<i data-lucide="moon"></i>';
-  window.ALIAdoCharts?.rerenderAll();
+  $("#theme-toggle").innerHTML = theme === "dark"
+    ? '<i data-lucide="sun"></i>'
+    : '<i data-lucide="moon"></i>';
   icons();
 }
 
 async function pollStatus() {
   let delay = 4000;
   try {
-    const response = await fetch("/api/status", { headers: { Accept: "application/json" } });
-    const payload = await response.json();
+    const payload = await apiJson("/api/status");
     if (payload.identity) {
       state.identity = {
         displayName: payload.identity.display_name || state.identity.displayName,
@@ -1085,130 +1084,123 @@ async function pollStatus() {
       };
       updateWelcomeIdentity();
     }
-    const node = $("#runtime-status");
-    node.dataset.state = payload.state;
+    const status = $("#runtime-status");
+    status.dataset.state = payload.state;
+    status.setAttribute("aria-label", payload.state);
     $("#runtime-status-text").textContent = {
-      pronto: "Pronto",
-      iniciando: "Aquecendo base",
+      pronto: "Pronto para conversar",
+      iniciando: "Aquecendo conhecimento",
       degradado: "Modo degradado",
     }[payload.state] || "Verificando";
-    delay = payload.state === "pronto" ? 15000 : 4000;
+    updateRouteLabel({ agent: payload.agent });
+    delay = payload.state === "pronto" ? 45000 : 5000;
   } catch (error) {
-    console.warn("Status do runtime indisponivel.", error);
+    console.warn("Status do runtime indisponível.", error);
     $("#runtime-status").dataset.state = "degradado";
     $("#runtime-status-text").textContent = "Sem conexão";
   }
-  setTimeout(pollStatus, delay);
+  setTimeout(pollStatus, document.hidden ? Math.max(delay, 60000) : delay);
 }
 
-function exportConversation() {
-  const session = currentSession();
-  if (!session?.messages.length) {
-    toast("A conversa ainda está vazia.");
-    return;
-  }
-  const content = [
-    `# ${session.title}`,
-    "",
-    ...session.messages.flatMap((message) => [
-      `## ${message.role === "user" ? "Rodolfo" : "ALIAdo"}`,
-      "",
-      message.content,
-      "",
-    ]),
-  ].join("\n");
-  const url = URL.createObjectURL(new Blob([content], { type: "text/markdown;charset=utf-8" }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${session.id}_sessao.md`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function retryMessage(index) {
-  const session = currentSession();
-  if (!session) return;
-  let prompt = "";
-  for (let cursor = Number(index) - 1; cursor >= 0; cursor -= 1) {
-    if (session.messages[cursor]?.role === "user") {
-      prompt = session.messages[cursor].content;
-      break;
-    }
-  }
-  if (prompt) sendMessage(prompt);
-}
-
-async function reindexLibrarySource(sourceId) {
-  try {
-    const payload = await apiJson(
-      `/api/library/${encodeURIComponent(sourceId)}/reindex`,
-      { method: "POST" },
-    );
-    void trackLibraryJob(payload.job);
-    toast("Reindexação colocada na fila local.");
-  } catch (error) {
-    toast(error.message);
-  }
-}
-
-async function copyMessage(index) {
-  const message = currentSession()?.messages[Number(index)];
-  if (!message) return;
-  await navigator.clipboard.writeText(message.content);
-  toast("Resposta copiada.");
+function openMedia(url, title) {
+  const safeUrl = safeAssetUrl(url);
+  if (!safeUrl) return;
+  $("#media-title").textContent = title || "Figura";
+  $("#media-image").src = safeUrl;
+  $("#media-image").alt = title || "Figura";
+  $("#media-download").href = safeUrl;
+  $("#media-dialog").showModal();
 }
 
 async function handleDocumentClick(event) {
-  const nav = event.target.closest("[data-view]");
-  if (nav) activateView(nav.dataset.view);
+  const view = event.target.closest("[data-view]");
+  if (view) {
+    activateView(view.dataset.view);
+    return;
+  }
 
-  const resultTab = event.target.closest("[data-result-tab]");
-  if (resultTab) activateResultTab(resultTab.dataset.resultTab);
+  const action = event.target.closest("[data-conversation-action]");
+  if (action) {
+    event.preventDefault();
+    await performConversationAction(action.dataset.conversationAction, action.dataset.sessionId);
+    return;
+  }
 
-  const prompt = event.target.closest("[data-prompt]");
-  if (prompt) sendMessage(prompt.dataset.prompt);
-
-  const historyItem = event.target.closest("[data-session-id]");
-  if (historyItem) {
-    state.currentSessionId = historyItem.dataset.sessionId;
-    activateView("chat");
-    renderConversation();
+  const session = event.target.closest("[data-select-session]");
+  if (session) {
+    await selectConversation(session.dataset.selectSession);
+    return;
   }
 
   const removeFile = event.target.closest("[data-remove-file]");
   if (removeFile) {
     state.files.splice(Number(removeFile.dataset.removeFile), 1);
     renderAttachments();
+    return;
   }
 
-  const figure = event.target.closest("[data-open-figure]");
-  if (figure) openFigure(figure.dataset.openFigure);
-
-  const reload = event.target.closest("[data-reload-panel]");
-  if (reload) loadPanel(reload.dataset.reloadPanel, true);
-
-  const editSource = event.target.closest("[data-edit-source]");
-  if (editSource) openLibraryEdit(editSource.dataset.editSource);
-
-  const reindexSource = event.target.closest("[data-reindex-source]");
-  if (reindexSource) await reindexLibrarySource(reindexSource.dataset.reindexSource);
-
-  const closeDialog = event.target.closest("[data-close-dialog]");
-  if (closeDialog) $(`#${closeDialog.dataset.closeDialog}`).close();
-
   const copy = event.target.closest("[data-copy-index]");
-  if (copy) await copyMessage(copy.dataset.copyIndex);
+  if (copy) {
+    await copyMessage(copy.dataset.copyIndex);
+    return;
+  }
 
   const retry = event.target.closest("[data-retry-index]");
-  if (retry) retryMessage(retry.dataset.retryIndex);
+  if (retry) {
+    retryMessage(retry.dataset.retryIndex);
+    return;
+  }
+
+  const media = event.target.closest("[data-open-media]");
+  if (media) {
+    openMedia(media.dataset.openMedia, media.dataset.mediaTitle);
+    return;
+  }
+
+  const editSource = event.target.closest("[data-edit-source]");
+  if (editSource) {
+    openLibraryEdit(editSource.dataset.editSource);
+    return;
+  }
+
+  const reindexSource = event.target.closest("[data-reindex-source]");
+  if (reindexSource) {
+    await reindexLibrarySource(reindexSource.dataset.reindexSource);
+    return;
+  }
+
+  if (event.target.closest("[data-reload-library]")) {
+    await loadLibrary(true);
+    return;
+  }
+
+  const closeDialog = event.target.closest("[data-close-dialog]");
+  if (closeDialog) $("#" + closeDialog.dataset.closeDialog).close();
 }
 
 function bindEvents() {
   document.addEventListener("click", handleDocumentClick);
 
+  $("#new-chat").addEventListener("click", () => createSession());
+  $("#sidebar-open").addEventListener("click", () => document.body.classList.add("sidebar-open"));
+  $("#sidebar-close").addEventListener("click", closeSidebar);
+  $("#sidebar-scrim").addEventListener("click", closeSidebar);
+
+  $("#history-query").addEventListener("input", (event) => {
+    state.historyQuery = event.target.value;
+    renderHistory();
+  });
+  $$('[data-history-mode]').forEach((button) => {
+    button.addEventListener("click", () => {
+      state.historyMode = button.dataset.historyMode;
+      renderHistory();
+      void syncConversations();
+    });
+  });
+
   $("#chat-form").addEventListener("submit", (event) => {
     event.preventDefault();
-    sendMessage();
+    void sendMessage();
   });
   $("#send-button").addEventListener("click", () => {
     if (state.controller) state.controller.abort();
@@ -1217,7 +1209,7 @@ function bindEvents() {
   $("#chat-input").addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
-      sendMessage();
+      void sendMessage();
     }
   });
   $("#chat-files").addEventListener("change", (event) => {
@@ -1231,6 +1223,45 @@ function bindEvents() {
     });
   });
 
+  $("#rename-chat").addEventListener("click", () => openRenameDialog(state.currentSessionId));
+  $("#export-chat").addEventListener("click", exportConversation);
+  $("#archive-chat").addEventListener("click", () => void performConversationAction("archive", state.currentSessionId));
+  $("#delete-chat").addEventListener("click", () => openDeleteDialog(state.currentSessionId));
+  $("#restore-current-chat").addEventListener("click", () => void performConversationAction("restore", state.currentSessionId));
+  $("#cancel-delete-chat").addEventListener("click", () => $("#conversation-delete-dialog").close());
+  $("#confirm-delete-chat").addEventListener("click", () => void confirmDeleteConversation());
+
+  $("#conversation-rename-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const session = currentSession();
+    const title = event.currentTarget.elements.title.value.trim();
+    if (!session || !title) return;
+    if (session.serverBacked) {
+      try {
+        await apiJson(`${API.conversations}/${encodeURIComponent(session.id)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title }),
+        });
+      } catch (error) {
+        if (error.code !== "conversation_not_found") {
+          toast(error.message);
+          return;
+        }
+      }
+    }
+    session.title = title;
+    session.updatedAt = Date.now();
+    saveSessions();
+    $("#conversation-rename-dialog").close();
+    toast("Chat renomeado.");
+  });
+
+  $("#theme-toggle").addEventListener("click", () => {
+    applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+  });
+
+  $("#library-add").addEventListener("click", () => $("#library-add-dialog").showModal());
   document.addEventListener("input", (event) => {
     if (event.target.id === "library-query") {
       state.libraryFilters.query = event.target.value;
@@ -1246,26 +1277,6 @@ function bindEvents() {
       state.libraryFilters.language = event.target.value;
       renderLibraryDocuments();
     }
-  });
-
-  $("#new-chat").addEventListener("click", () => createSession());
-  $(".mobile-new-chat").addEventListener("click", () => createSession());
-  $("#clear-chat").addEventListener("click", () => createSession());
-  $("#export-chat").addEventListener("click", exportConversation);
-  $("#library-add").addEventListener("click", () => $("#library-add-dialog").showModal());
-  $("#sidebar-open").addEventListener("click", () => document.body.classList.add("sidebar-open"));
-  $("#sidebar-close").addEventListener("click", closeSidebar);
-  $("#sidebar-scrim").addEventListener("click", closeSidebar);
-
-  $("#theme-toggle").addEventListener("click", () => {
-    applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
-  });
-
-  $("#dialog-close").addEventListener("click", () => $("#image-dialog").close());
-  $("#zoom-in").addEventListener("click", () => { state.zoom += 0.2; updateZoom(); });
-  $("#zoom-out").addEventListener("click", () => { state.zoom -= 0.2; updateZoom(); });
-  $("#image-dialog").addEventListener("click", (event) => {
-    if (event.target === $("#image-dialog")) $("#image-dialog").close();
   });
 
   $("#library-add-form").addEventListener("submit", async (event) => {
@@ -1289,9 +1300,9 @@ function bindEvents() {
       });
       form.reset();
       $("#library-add-dialog").close();
-      toast("Fonte recebida; indexação em andamento.");
+      toast("Referência recebida; indexação em andamento.");
     } catch (error) {
-      toast(error.code === "duplicate_pdf" ? "Este PDF já está na biblioteca." : error.message);
+      toast(error.code === "duplicate_pdf" ? "Este PDF já está nas referências." : error.message);
     } finally {
       submit.disabled = false;
     }
@@ -1317,9 +1328,9 @@ function bindEvents() {
         }),
       });
       $("#library-edit-dialog").close();
-      state.cache.delete("library");
-      await loadPanel("library", true);
-      toast("Metadados salvos; reindexe a fonte para atualizar a busca.");
+      state.libraryData = null;
+      await loadLibrary(true);
+      toast("Metadados salvos. Reindexe para atualizar a busca.");
     } catch (error) {
       toast(error.message);
     } finally {
@@ -1327,18 +1338,33 @@ function bindEvents() {
     }
   });
 
-  window.addEventListener("hashchange", () => activateView(location.hash.slice(1), false));
+  $("#media-close").addEventListener("click", () => $("#media-dialog").close());
+  $("#media-dialog").addEventListener("click", (event) => {
+    if (event.target === $("#media-dialog")) $("#media-dialog").close();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase() === "k") {
+      event.preventDefault();
+      createSession();
+    }
+    if (event.key === "Escape") closeSidebar();
+  });
+
+  window.addEventListener("hashchange", () => {
+    activateView(location.hash === "#references" ? "library" : "chat", false);
+  });
 }
 
 function initialize() {
-  const savedTheme = localStorage.getItem(THEME_KEY);
-  applyTheme(savedTheme || "light");
+  applyTheme(localStorage.getItem(THEME_KEY) || "light");
   loadSessions();
+  bindEvents();
   renderHistory();
   renderConversation();
-  bindEvents();
-  activateView(location.hash.slice(1) || "chat", false);
-  pollStatus();
+  activateView(location.hash === "#references" ? "library" : "chat", false);
+  void syncConversations();
+  void pollStatus();
   $("#lucide-runtime")?.addEventListener("load", icons);
   icons();
 }

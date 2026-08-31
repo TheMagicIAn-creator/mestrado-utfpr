@@ -171,15 +171,37 @@ def _specifications() -> list[dict]:
     return ESPEC_FERRAMENTAS
 
 
-def _rotear_por_llm(pergunta: str, llm) -> dict:
+def _confirma_limpeza(pergunta: str) -> bool:
+    text = _text(pergunta)
+    return any(
+        token in text
+        for token in (
+            "confirmar limpeza comparacao",
+            "confirmar limpeza confiabilidade",
+        )
+    )
+
+
+def _rotear_por_llm(pergunta: str, llm) -> dict | None:
     if llm is None:
-        return {"usar_ferramenta": False, "ferramenta": None}
-    names = [item["name"] for item in _specifications()]
+        return None
+    specifications = _specifications()
+    names = [item["name"] for item in specifications]
+    catalog = "\n".join(
+        f"- {item['name']}: {item.get('description', '')}"
+        for item in specifications
+    )
     prompt = (
-        "Escolha uma ferramenta somente se a solicitação exigir ação ou leitura "
-        "determinística. Responda apenas JSON: "
+        "Classifique semanticamente a solicitação. Escolha uma ferramenta somente "
+        "quando ela exigir uma ação ou leitura determinística; perguntas conceituais "
+        "e perguntas sobre uma referência específica seguem para o RAG sem ferramenta. "
+        "Use listar_base_bibliografica apenas quando o usuário pedir o inventário "
+        "completo, nunca para uma fonte específica. Não execute pipeline quando o "
+        "usuário apenas pedir explicação, interpretação ou código. Pedidos para mudar "
+        "a interface ou o código não significam apagar resultados científicos. "
+        "Responda apenas JSON: "
         '{"usar_ferramenta":true|false,"ferramenta":"nome|null"}.\n'
-        f"Ferramentas: {', '.join(names)}\nSolicitação: {pergunta}"
+        f"Ferramentas:\n{catalog}\nSolicitação: {pergunta}"
     )
     try:
         raw = texto_resultado_llm(llm.invoke(prompt))
@@ -187,18 +209,26 @@ def _rotear_por_llm(pergunta: str, llm) -> dict:
         decision = json.loads(cleaned)
     except Exception as exc:
         LOGGER.debug("Roteamento por LLM indisponível: %s", mascarar_segredos(str(exc)))
-        return {"usar_ferramenta": False, "ferramenta": None}
+        return None
     tool = decision.get("ferramenta")
+    if not decision.get("usar_ferramenta"):
+        return {"usar_ferramenta": False, "ferramenta": None}
     if tool not in names:
         return {"usar_ferramenta": False, "ferramenta": None}
     return {"usar_ferramenta": bool(decision.get("usar_ferramenta")), "ferramenta": tool}
 
 
 def decidir_acao(pergunta: str, llm=None) -> dict:
-    fast = _decisao_rapida(pergunta)
-    if fast is not None:
-        return _guardas_criticas(pergunta, fast) or fast
+    if _confirma_limpeza(pergunta):
+        return {"usar_ferramenta": True, "ferramenta": "limpar_resultados_ml"}
+
     decision = _rotear_por_llm(pergunta, llm)
+    if decision is not None:
+        return _guardas_criticas(pergunta, decision) or decision
+
+    fallback = _decisao_rapida(pergunta)
+    if fallback is not None:
+        return _guardas_criticas(pergunta, fallback) or fallback
     return _guardas_criticas(pergunta, decision) or {
         "usar_ferramenta": False,
         "ferramenta": None,

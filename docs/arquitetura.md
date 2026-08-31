@@ -28,10 +28,13 @@ scripts/
    em thread de fundo.
 4. Saudações são respondidas localmente; perguntas acadêmicas usam eventos SSE
    `status`, `delta`, `done` e `error`.
-5. Painéis de Comparação e Confiabilidade carregam contratos somente quando abertos.
+5. O Router LLM decide entre resposta, RAG e ferramenta; figuras e resultados
+   aparecem na própria conversa somente quando solicitados.
 
-As figuras são PNG acadêmico de 300 dpi e PDF vetorial. O frontend não recalcula
-métrica, limiar ou ajuste estatístico.
+A navegação visual contém apenas Conversa e Referências. Histórico, busca,
+renomeação, arquivamento, restauração, exclusão não destrutiva e exportação são
+recursos da conversa. As figuras continuam em PNG acadêmico de 300 dpi e PDF
+vetorial; o frontend não recalcula métrica, limiar ou ajuste estatístico.
 
 ## Fluxo científico
 

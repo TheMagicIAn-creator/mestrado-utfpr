@@ -493,106 +493,14 @@ def autores_canonicos_para(token: str, colecao=None) -> set[str]:
 
 def deve_consultar_literatura(pergunta: str, colecao=None) -> bool:
     """
-    Retorna True quando o pedido:
-      - menciona explicitamente literatura/artigo/fonte/referencia,
-      - OU cita o sobrenome de um autor indexado (Torres, NASA, Ahirwar...),
-      - OU pergunta sobre presenca/localizacao de uma fonte
-        ("tem o Stender?", "cade o Torres?", "onde esta o paper do Ahirwar?",
-         "perdi a indexacao", "indexado", "na base").
+    Mantem a biblioteca disponível para toda pergunta não social do projeto.
+
+    A decisão deixa de depender de listas de palavras-chave ou sobrenomes. O
+    ranking híbrido seleciona os trechos pertinentes e o Evidence Guard impede
+    citações sem lastro. O pesquisador ainda pode proibir explicitamente o uso
+    de literatura em uma pergunta.
     """
-    if pedido_sem_literatura(pergunta):
-        return False
-
-    txt = _normalizar_texto(pergunta or "")
-    frases = (
-        "segundo a literatura",
-        "com base na literatura",
-        "consulte a literatura",
-        "na literatura",
-        "com referencias",
-        "com fontes",
-        "cite artigos",
-        "citar artigos",
-        "cite autores",
-        "citar autores",
-        "segundo os autores",
-        "de acordo com os autores",
-        "base indexada",
-        "base de conhecimento",
-        "nos documentos",
-        "documentos indexados",
-        "revisao bibliografica",
-        "estado da arte",
-        "levantamento bibliografico",
-        "perdi a indexacao",
-        "perdeu a indexacao",
-        "na base",
-        "no chromadb",
-        "indexado",
-        "indexada",
-        "esta indexado",
-        "esta indexada",
-        "according to the literature",
-        "based on the literature",
-        "scientific literature",
-        "literature review",
-        "state of the art",
-        "cite papers",
-        "cite sources",
-        "indexed documents",
-        "knowledge base",
-        "segun la literatura",
-        "según la literatura",
-        "con base en la literatura",
-        "revision bibliografica",
-        "revisión bibliográfica",
-        "estado del arte",
-        "citar articulos",
-        "citar fuentes",
-        "base de conocimiento",
-        "selon la litterature",
-        "selon la littérature",
-        "revue bibliographique",
-        "etat de l art",
-        "état de l art",
-        "citer des articles",
-        "citer les sources",
-        "base de connaissances",
-    )
-    if any(frase in txt for frase in frases):
-        return True
-
-    gatilhos = {
-        "literatura", "artigo", "artigos", "paper", "papers", "fonte",
-        "fontes", "referencia", "referencias", "bibliografia",
-        "bibliografica", "bibliografico", "citacao", "citacoes",
-        "cite", "citar", "autores", "autor", "survey", "review",
-        "indexado", "indexada", "indexacao", "indexar",
-        "literature", "source", "sources", "reference", "references",
-        "citation", "citations", "author", "authors", "bibliography",
-        "indexed", "indexing",
-        # Normas técnicas: pedir norma/cláusula é pedido de referência — engata
-        # o retrieval + restrição + guard (a norma quase nunca está indexada, e
-        # o agente deve dizer isso em vez de inventar página/cláusula).
-        "norma", "normas", "norm", "standard", "standards", "clausula",
-        "clausulas", "norme", "normes",
-        "articulo", "articulos", "fuente", "fuentes", "referencia",
-        "referencias", "bibliografia", "autor", "autores", "revision",
-        "indexado", "indexada",
-        "litterature", "littérature", "article", "articles", "source",
-        "sources", "reference", "référence", "references", "références",
-        "auteur", "auteurs", "bibliographie", "revue",
-    }
-    palavras = set(txt.split())
-    if palavras & gatilhos:
-        return True
-
-    # Mencao a um autor/fonte indexada — "E o da NASA?", "Cade o Torres?"
-    nomes = autores_indexados(colecao)
-    if palavras & nomes:
-        return True
-
-    return False
+    return bool(str(pergunta or "").strip()) and not pedido_sem_literatura(pergunta)
 
 
 def _espera_retry_429(erro: str, tentativa: int) -> int:

@@ -99,10 +99,11 @@ cenário bibliográfico separado e não deriva taxas de falha do GPVS.
 `python -m src.webapp` inicia a aplicação ASGI. `contracts.py` valida os
 resultados sem recalcular; `chart_data.py` prepara séries visuais compactas;
 `agent_adapter.py` preserva Gemini, RAG híbrido, memória e auditoria; os
-painéis de comparação e confiabilidade carregam sob demanda.
+contratos científicos são consultados pelo agente sob demanda. A interface
+mantém apenas conversa, histórico gerenciável e Referências.
 
 ## Fluxos
 
-1. Chat: `webapp` -> `roteamento_ferramentas.py` -> ferramenta determinística ou RAG.
+1. Chat: `webapp` -> Router LLM -> resposta, RAG ou ferramenta com guardas críticas.
 2. Cálculo: `pipeline.py` -> comparação E3 -> confiabilidade bibliográfica.
 3. Publicação: dados-fonte + JSON metodológico + PNG/PDF + manifesto v2.

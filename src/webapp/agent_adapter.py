@@ -92,6 +92,12 @@ class AgentAdapter:
         self._state = "pronto" if answerer is not None else "iniciando"
         self._error: str | None = None
 
+    @property
+    def session_journal(self) -> SessionJournal:
+        """Catálogo persistente compartilhado pelas APIs de conversa."""
+
+        return self._session_journal
+
     def status(self) -> dict:
         with self._lock:
             route = self._route_status(self._components)
@@ -261,18 +267,8 @@ class AgentAdapter:
                     decidir_acao,
                     processar_com_ferramentas,
                 )
-                from src.conhecimento.roteamento_ferramentas import _decisao_rapida
 
-                decisao_local = (
-                    _decisao_rapida(mensagem) if contexto_cientifico else None
-                )
-                # Perguntas discursivas inequívocas sobre os contratos canônicos não
-                # não precisam gastar uma chamada de inferência apenas para concluir
-                # que nenhuma ferramenta deve ser executada.
-                if decisao_local and not decisao_local.get("usar_ferramenta"):
-                    decisao = decisao_local
-                else:
-                    decisao = decidir_acao(mensagem, componentes.llm)
+                decisao = decidir_acao(mensagem, componentes.llm)
                 if decisao.get("usar_ferramenta"):
                     saida = processar_com_ferramentas(
                         pergunta=mensagem,

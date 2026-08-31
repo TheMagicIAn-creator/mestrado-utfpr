@@ -40,8 +40,9 @@ src/
   memory consolidation
 - **ml** — canonical GPVS ingestion, Denso versus AE-LSTM comparison,
   FMECA maintenance context and bibliographic physical reliability
-- **webapp** — read-only model-comparison and reliability contracts, academic figures
-  loaded on demand and an HTTP adapter for the ALIAdo agent
+- **webapp** — modern conversation workspace, managed chat history, editable
+  reference library, and an HTTP adapter for the ALIAdo agent; scientific
+  contracts and figures are invoked from the conversation when requested
 - **orquestrador** — executes explicitly requested indexing and ML operations;
   it is not run when the dashboard opens
 

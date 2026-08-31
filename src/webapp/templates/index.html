@@ -2,232 +2,197 @@
 <html lang="pt-BR" data-theme="light">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="ALIAdo, ambiente acadêmico para análise de inversores fotovoltaicos.">
-  <meta name="theme-color" content="#f7f8fa">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="ALIAdo, ambiente acadêmico de inteligência artificial para pesquisa em confiabilidade e manutenção.">
+  <meta name="theme-color" content="#f7f7f5">
   <title>ALIAdo</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="/static/vendor/katex/katex.min.css?v=3.5.0">
-  <link rel="stylesheet" href="/static/styles.css?v=3.5.0">
-  <script defer src="/static/vendor/katex/katex.min.js?v=3.5.0"></script>
-  <script defer src="/static/vendor/katex/auto-render.min.js?v=3.5.0"></script>
-  <script defer src="/static/app.js?v=3.5.0"></script>
+  <link rel="stylesheet" href="/static/vendor/katex/katex.min.css?v=4.0.1">
+  <link rel="stylesheet" href="/static/styles.css?v=4.0.1">
+  <script defer src="/static/vendor/katex/katex.min.js?v=4.0.1"></script>
+  <script defer src="/static/vendor/katex/auto-render.min.js?v=4.0.1"></script>
+  <script defer src="/static/app.js?v=4.0.1"></script>
   <script async id="lucide-runtime" src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
 </head>
 <body>
-  <a class="skip-link" href="#workspace-main">Ir para o conteúdo</a>
+  <a class="skip-link" href="#workspace-main">Ir para a conversa</a>
 
   <div class="app-shell">
-    <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
-      <div class="brand-row">
-        <div class="brand-mark" aria-hidden="true">A</div>
-        <div class="brand-copy"><strong>ALIAdo</strong><span>Pesquisa UTFPR</span></div>
-        <button class="icon-button sidebar-close" id="sidebar-close" type="button" aria-label="Fechar menu" title="Fechar menu">
-          <i data-lucide="x" aria-hidden="true"></i>
+    <aside class="sidebar" id="sidebar" aria-label="Conversas e referências">
+      <header class="sidebar-header">
+        <button class="brand-button" type="button" data-view="chat" aria-label="Abrir conversa atual">
+          <span class="brand-mark" aria-hidden="true">A</span>
+          <span class="brand-name">ALIAdo</span>
         </button>
-      </div>
+        <button class="icon-button sidebar-close" id="sidebar-close" type="button" aria-label="Fechar barra lateral" title="Fechar barra lateral">
+          <i data-lucide="panel-left-close" aria-hidden="true"></i>
+        </button>
+      </header>
 
       <button class="new-chat-button" id="new-chat" type="button">
-        <i data-lucide="square-pen" aria-hidden="true"></i><span>Nova conversa</span>
+        <i data-lucide="square-pen" aria-hidden="true"></i>
+        <span>Novo chat</span>
+        <kbd>Ctrl K</kbd>
       </button>
 
-      <nav class="primary-nav" aria-label="Áreas da pesquisa">
-        <button class="nav-item is-active" type="button" data-view="chat" aria-current="page">
-          <i data-lucide="message-square" aria-hidden="true"></i><span>Conversa</span>
-        </button>
-        <button class="nav-item" type="button" data-view="results">
-          <i data-lucide="chart-no-axes-combined" aria-hidden="true"></i><span>Análises</span>
-        </button>
-        <button class="nav-item" type="button" data-view="library">
-          <i data-lucide="library" aria-hidden="true"></i><span>Biblioteca</span>
-        </button>
-      </nav>
+      <label class="history-search" for="history-query">
+        <i data-lucide="search" aria-hidden="true"></i>
+        <span class="sr-only">Pesquisar conversas</span>
+        <input id="history-query" type="search" autocomplete="off" placeholder="Pesquisar chats">
+      </label>
 
-      <section class="research-scope" aria-label="Escopo acadêmico ativo">
-        <span>Escopo acadêmico</span>
-        <strong>Confiabilidade e manutenção</strong>
-        <small>Comparação Denso × AE-LSTM</small>
-      </section>
+      <div class="history-tabs" role="tablist" aria-label="Estado das conversas">
+        <button class="is-active" type="button" role="tab" aria-selected="true" data-history-mode="active">Chats</button>
+        <button type="button" role="tab" aria-selected="false" data-history-mode="archived">Arquivados</button>
+      </div>
 
-      <section class="history-region" aria-labelledby="history-heading">
-        <div class="sidebar-section-heading">
-          <span id="history-heading">Recentes</span>
-          <button class="icon-button" id="export-chat" type="button" aria-label="Exportar conversa" title="Exportar conversa">
-            <i data-lucide="download" aria-hidden="true"></i>
-          </button>
-        </div>
+      <section class="history-region" aria-label="Histórico de conversas">
         <div class="history-list" id="history-list"></div>
       </section>
 
-      <div class="sidebar-footer">
-        <div class="runtime-status" id="runtime-status" data-state="iniciando" role="status">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span id="runtime-status-text">Inicializando</span>
-        </div>
-        <button class="icon-button" id="theme-toggle" type="button" aria-label="Alternar tema" title="Alternar tema">
-          <i data-lucide="moon" aria-hidden="true"></i>
+      <footer class="sidebar-footer">
+        <button class="sidebar-nav-item" type="button" data-view="library">
+          <i data-lucide="library-big" aria-hidden="true"></i>
+          <span>Referências</span>
+          <small id="library-count"></small>
         </button>
-      </div>
+        <div class="profile-row">
+          <span class="profile-avatar" aria-hidden="true">RT</span>
+          <span class="profile-copy"><strong id="profile-name">Rodolfo</strong><small id="runtime-status-text">Inicializando</small></span>
+          <span class="runtime-dot" id="runtime-status" data-state="iniciando" role="status" aria-label="Inicializando"></span>
+          <button class="icon-button" id="theme-toggle" type="button" aria-label="Alternar tema" title="Alternar tema">
+            <i data-lucide="moon" aria-hidden="true"></i>
+          </button>
+        </div>
+      </footer>
     </aside>
 
-    <button class="sidebar-scrim" id="sidebar-scrim" type="button" aria-label="Fechar menu"></button>
+    <button class="sidebar-scrim" id="sidebar-scrim" type="button" aria-label="Fechar barra lateral"></button>
 
-    <div class="workspace">
-      <header class="mobile-header">
-        <button class="icon-button" id="sidebar-open" type="button" aria-label="Abrir menu" title="Abrir menu">
-          <i data-lucide="menu" aria-hidden="true"></i>
-        </button>
-        <div class="mobile-brand"><span class="brand-mark" aria-hidden="true">A</span><strong>ALIAdo</strong></div>
-        <button class="icon-button mobile-new-chat" type="button" aria-label="Nova conversa" title="Nova conversa">
-          <i data-lucide="square-pen" aria-hidden="true"></i>
-        </button>
+    <main class="workspace" id="workspace-main" tabindex="-1">
+      <header class="topbar">
+        <div class="topbar-leading">
+          <button class="icon-button sidebar-open" id="sidebar-open" type="button" aria-label="Abrir barra lateral" title="Abrir barra lateral">
+            <i data-lucide="panel-left" aria-hidden="true"></i>
+          </button>
+          <div class="conversation-title-group">
+            <strong id="conversation-title">Novo chat</strong>
+            <span class="model-route" id="model-route"><span></span>Roteamento automático</span>
+          </div>
+        </div>
+        <div class="topbar-actions" id="conversation-actions">
+          <button class="icon-button" id="rename-chat" type="button" aria-label="Renomear conversa" title="Renomear">
+            <i data-lucide="pencil" aria-hidden="true"></i>
+          </button>
+          <button class="icon-button" id="export-chat" type="button" aria-label="Exportar conversa" title="Exportar">
+            <i data-lucide="download" aria-hidden="true"></i>
+          </button>
+          <button class="icon-button" id="archive-chat" type="button" aria-label="Arquivar conversa" title="Arquivar">
+            <i data-lucide="archive" aria-hidden="true"></i>
+          </button>
+          <button class="icon-button danger-icon" id="delete-chat" type="button" aria-label="Excluir conversa" title="Excluir">
+            <i data-lucide="trash-2" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="topbar-actions library-actions" id="library-actions" hidden>
+          <button class="text-button" id="library-add" type="button" hidden>
+            <i data-lucide="file-plus-2" aria-hidden="true"></i><span>Adicionar fonte</span>
+          </button>
+        </div>
       </header>
 
-      <main id="workspace-main" tabindex="-1">
-        <section class="view chat-view is-active" id="view-chat" data-view-panel="chat" aria-labelledby="chat-title">
-          <header class="workspace-header chat-workspace-header">
-            <div>
-              <p class="section-kicker">Agente acadêmico</p>
-              <h1 id="chat-title">Conversa</h1>
-            </div>
-            <div class="header-actions">
-              <span class="provider-label"><span class="provider-dot" aria-hidden="true"></span>Gemini</span>
-              <button class="icon-button" id="clear-chat" type="button" aria-label="Limpar conversa" title="Limpar conversa">
-                <i data-lucide="trash-2" aria-hidden="true"></i>
-              </button>
-            </div>
-          </header>
-
-          <div class="conversation" id="conversation" aria-live="polite">
-            <div class="welcome-state" id="welcome-state">
-              <div class="welcome-mark" aria-hidden="true">A</div>
-              <h2 id="welcome-title">Olá, Rodolfo.</h2>
-              <p>Em que parte da dissertação trabalhamos agora?</p>
-              <div class="prompt-grid" id="prompt-grid">
-                <button type="button" data-prompt="Compare o Autoencoder Denso com o AE-LSTM, destacando as métricas acadêmicas e suas limitações.">
-                  <i data-lucide="git-compare-arrows" aria-hidden="true"></i>
-                  <span>Comparar Denso e AE-LSTM</span>
-                </button>
-                <button type="button" data-prompt="Explique as curvas R(t), F(t), f(t) e h(t) dos componentes com base nas taxas bibliográficas.">
-                  <i data-lucide="activity" aria-hidden="true"></i>
-                  <span>Analisar confiabilidade</span>
-                </button>
-                <button type="button" data-prompt="Relacione Contator AC, IGBT e Fusível AC às prioridades de manutenção e à FMECA com base na literatura indexada.">
-                  <i data-lucide="wrench" aria-hidden="true"></i>
-                  <span>Planejar manutenção</span>
-                </button>
-                <button type="button" data-prompt="Prepare um panorama acadêmico da comparação dos modelos e da confiabilidade física para minha orientadora.">
-                  <i data-lucide="file-text" aria-hidden="true"></i>
-                  <span>Panorama da dissertação</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="composer-region">
-            <div class="stream-status" id="stream-status" role="status" aria-live="polite"></div>
-            <div class="attachment-list" id="attachment-list" aria-live="polite"></div>
-            <fieldset class="attachment-policy" id="attachment-policy" hidden>
-              <legend>Destino dos PDFs anexados</legend>
-              <div class="segmented-choice">
-                <label><input type="radio" name="attachment-policy" value="conversation" checked><span>Somente nesta conversa</span></label>
-                <label><input type="radio" name="attachment-policy" value="library"><span>Adicionar à biblioteca</span></label>
-              </div>
-            </fieldset>
-            <form class="chat-composer" id="chat-form">
-              <label class="icon-button attach-button" for="chat-files" aria-label="Anexar arquivos" title="Anexar arquivos">
-                <i data-lucide="paperclip" aria-hidden="true"></i>
-              </label>
-              <input id="chat-files" name="files" type="file" multiple hidden>
-              <textarea id="chat-input" name="message" rows="1" maxlength="12000" placeholder="Mensagem para o ALIAdo" aria-label="Mensagem" required></textarea>
-              <button class="send-button" id="send-button" type="submit" aria-label="Enviar mensagem" title="Enviar mensagem">
-                <i data-lucide="arrow-up" aria-hidden="true"></i>
-              </button>
-            </form>
-            <p class="composer-note">Respostas acadêmicas devem ser verificadas nas fontes citadas.</p>
-          </div>
-        </section>
-
-        <section class="view research-view" id="view-results" data-view-panel="results" aria-labelledby="results-title" hidden>
-          <header class="workspace-header research-header">
-            <div><p class="section-kicker">Evidências canônicas</p><h1 id="results-title">Confiabilidade e manutenção</h1></div>
-            <span class="evidence-badge">Literatura rastreável</span>
-          </header>
-          <div class="result-tabs" role="tablist" aria-label="Áreas de resultados">
-            <button type="button" role="tab" aria-selected="true" aria-controls="result-panel-reliability" data-result-tab="reliability">Confiabilidade e manutenção</button>
-            <button type="button" role="tab" aria-selected="false" aria-controls="result-panel-e3" data-result-tab="e3">Denso × AE-LSTM</button>
-          </div>
-          <section class="result-tab-panel" id="result-panel-reliability" data-result-panel="reliability" role="tabpanel">
-            <div class="panel-loading" data-loading="reliability" role="status"><span></span>Carregando confiabilidade</div>
-            <div class="panel-content" id="reliability-content"></div>
+      <section class="view chat-view is-active" id="view-chat" data-view-panel="chat">
+        <div class="conversation" id="conversation" aria-live="polite">
+          <section class="welcome-state" id="welcome-state">
+            <div class="welcome-mark" aria-hidden="true">A</div>
+            <h1 id="welcome-title">Olá, Rodolfo.</h1>
+            <p>Converse, pesquise suas referências, analise arquivos ou peça a execução do pipeline.</p>
           </section>
-          <section class="result-tab-panel" id="result-panel-e3" data-result-panel="e3" role="tabpanel" hidden>
-            <div class="panel-loading" data-loading="e3" role="status"><span></span>Carregando comparação</div>
-            <div class="panel-content" id="e3-content"></div>
-          </section>
-        </section>
+        </div>
 
-        <section class="view research-view" id="view-library" data-view-panel="library" aria-labelledby="library-title" hidden>
-          <header class="workspace-header research-header">
-            <div><p class="section-kicker">Corpus rastreável</p><h1 id="library-title">Biblioteca acadêmica</h1></div>
-            <button class="header-action" id="library-add" type="button" aria-label="Adicionar fonte" title="Adicionar fonte" hidden><i data-lucide="file-plus-2" aria-hidden="true"></i><span>Adicionar fonte</span></button>
-          </header>
-          <div class="panel-loading" data-loading="library" role="status"><span></span>Carregando biblioteca</div>
-          <div class="panel-content" id="library-content"></div>
-        </section>
-      </main>
-    </div>
+        <div class="conversation-state-notice" id="archived-notice" hidden>
+          <span><i data-lucide="archive" aria-hidden="true"></i>Este chat está arquivado.</span>
+          <button type="button" id="restore-current-chat">Restaurar</button>
+        </div>
+
+        <div class="composer-shell">
+          <div class="stream-status" id="stream-status" role="status" aria-live="polite"></div>
+          <div class="attachment-list" id="attachment-list" aria-live="polite"></div>
+          <fieldset class="attachment-policy" id="attachment-policy" hidden>
+            <legend>Destino dos PDFs</legend>
+            <label><input type="radio" name="attachment-policy" value="conversation" checked><span>Só neste chat</span></label>
+            <label><input type="radio" name="attachment-policy" value="library"><span>Adicionar às referências</span></label>
+          </fieldset>
+          <form class="chat-composer" id="chat-form">
+            <label class="composer-icon-button" for="chat-files" aria-label="Anexar arquivos" title="Anexar arquivos">
+              <i data-lucide="plus" aria-hidden="true"></i>
+            </label>
+            <input id="chat-files" name="files" type="file" multiple hidden>
+            <textarea id="chat-input" name="message" rows="1" maxlength="12000" placeholder="Mensagem para o ALIAdo" aria-label="Mensagem para o ALIAdo" required></textarea>
+            <button class="send-button" id="send-button" type="submit" aria-label="Enviar mensagem" title="Enviar mensagem">
+              <i data-lucide="arrow-up" aria-hidden="true"></i>
+            </button>
+          </form>
+          <p class="composer-note">O ALIAdo pode cometer erros. Confira informações importantes nas referências citadas.</p>
+        </div>
+      </section>
+
+      <section class="view library-view" id="view-library" data-view-panel="library" hidden aria-labelledby="library-title">
+        <div class="library-page-heading">
+          <div><span>Base acadêmica</span><h1 id="library-title">Referências</h1><p>Consulte, organize e indexe as fontes utilizadas pelo ALIAdo.</p></div>
+        </div>
+        <div class="panel-loading" data-loading="library" role="status"><span></span>Carregando referências</div>
+        <div class="library-content" id="library-content"></div>
+      </section>
+    </main>
   </div>
 
-  <dialog class="image-dialog" id="image-dialog">
-    <div class="dialog-toolbar">
-      <div class="dialog-title-group"><strong id="dialog-title"></strong><span id="dialog-note"></span></div>
-      <div class="dialog-actions">
-        <button class="icon-button" id="zoom-out" type="button" aria-label="Reduzir" title="Reduzir"><i data-lucide="zoom-out" aria-hidden="true"></i></button>
-        <output id="zoom-level" aria-live="polite">100%</output>
-        <button class="icon-button" id="zoom-in" type="button" aria-label="Ampliar" title="Ampliar"><i data-lucide="zoom-in" aria-hidden="true"></i></button>
-        <a class="icon-button" id="dialog-pdf" href="#" target="_blank" rel="noreferrer" aria-label="Abrir PDF" title="Abrir PDF"><i data-lucide="file-down" aria-hidden="true"></i></a>
-        <button class="icon-button" id="dialog-close" type="button" aria-label="Fechar" title="Fechar"><i data-lucide="x" aria-hidden="true"></i></button>
-      </div>
-    </div>
-    <div class="dialog-canvas" id="dialog-canvas"><img id="dialog-image" alt=""></div>
+  <dialog class="modal-dialog" id="conversation-rename-dialog">
+    <form id="conversation-rename-form">
+      <header><div><span>Organização</span><h2>Renomear chat</h2></div><button class="icon-button" type="button" data-close-dialog="conversation-rename-dialog" aria-label="Fechar" title="Fechar"><i data-lucide="x"></i></button></header>
+      <label class="form-field"><span>Título</span><input name="title" type="text" maxlength="120" autocomplete="off" required></label>
+      <footer><button class="secondary-button" type="button" data-close-dialog="conversation-rename-dialog">Cancelar</button><button class="primary-button" type="submit">Salvar</button></footer>
+    </form>
   </dialog>
 
-  <dialog class="library-dialog" id="library-add-dialog">
+  <dialog class="modal-dialog confirm-dialog" id="conversation-delete-dialog">
+    <div class="confirm-copy"><span class="confirm-icon" aria-hidden="true"><i data-lucide="trash-2"></i></span><div><h2>Excluir este chat?</h2><p>Ele sairá da interface, mas o transcrito será preservado na memória auditável da pesquisa.</p></div></div>
+    <footer><button class="secondary-button" id="cancel-delete-chat" type="button">Cancelar</button><button class="danger-button" id="confirm-delete-chat" type="button">Excluir chat</button></footer>
+  </dialog>
+
+  <dialog class="modal-dialog library-dialog" id="library-add-dialog">
     <form id="library-add-form">
-      <header class="form-dialog-header">
-        <div><p class="section-kicker">Indexação local</p><h2>Adicionar fonte</h2></div>
-        <button class="icon-button" type="button" data-close-dialog="library-add-dialog" aria-label="Fechar" title="Fechar"><i data-lucide="x" aria-hidden="true"></i></button>
-      </header>
-      <div class="form-dialog-body">
+      <header><div><span>Indexação local</span><h2>Adicionar referência</h2></div><button class="icon-button" type="button" data-close-dialog="library-add-dialog" aria-label="Fechar" title="Fechar"><i data-lucide="x"></i></button></header>
+      <div class="form-grid">
         <label class="form-field form-field-wide"><span>Arquivo PDF</span><input name="file" type="file" accept="application/pdf,.pdf" required></label>
         <label class="form-field form-field-wide"><span>Título</span><input name="title" type="text" maxlength="500" placeholder="Detectar do PDF"></label>
-        <label class="form-field form-field-wide"><span>Autores</span><input name="authors" type="text" maxlength="1000" placeholder="Separe autores por ponto e vírgula"></label>
+        <label class="form-field form-field-wide"><span>Autores</span><input name="authors" type="text" maxlength="1000" placeholder="Separe por ponto e vírgula"></label>
         <label class="form-field"><span>Ano</span><input name="year" type="number" min="1800" max="2099" placeholder="Detectar"></label>
         <label class="form-field"><span>Categoria</span><select name="category"><option value="">Classificar automaticamente</option><option value="confiabilidade">Confiabilidade</option><option value="inversores-pv">Inversores PV</option><option value="manutencao">Manutenção</option><option value="ml-preditivo">ML preditivo</option><option value="sinais-eletricos">Sinais elétricos</option></select></label>
         <label class="form-field"><span>Idioma</span><select name="language"><option value="">Detectar automaticamente</option><option value="pt">Português</option><option value="en">Inglês</option><option value="es">Espanhol</option><option value="fr">Francês</option></select></label>
       </div>
-      <footer class="form-dialog-actions"><button class="secondary-button" type="button" data-close-dialog="library-add-dialog">Cancelar</button><button class="primary-button" type="submit"><i data-lucide="database" aria-hidden="true"></i><span>Adicionar e indexar</span></button></footer>
+      <footer><button class="secondary-button" type="button" data-close-dialog="library-add-dialog">Cancelar</button><button class="primary-button" type="submit"><i data-lucide="database"></i><span>Adicionar e indexar</span></button></footer>
     </form>
   </dialog>
 
-  <dialog class="library-dialog" id="library-edit-dialog">
+  <dialog class="modal-dialog library-dialog" id="library-edit-dialog">
     <form id="library-edit-form">
       <input name="source_id" type="hidden">
-      <header class="form-dialog-header">
-        <div><p class="section-kicker">Metadados curatoriais</p><h2>Editar fonte</h2></div>
-        <button class="icon-button" type="button" data-close-dialog="library-edit-dialog" aria-label="Fechar" title="Fechar"><i data-lucide="x" aria-hidden="true"></i></button>
-      </header>
-      <div class="form-dialog-body">
+      <header><div><span>Curadoria</span><h2>Editar referência</h2></div><button class="icon-button" type="button" data-close-dialog="library-edit-dialog" aria-label="Fechar" title="Fechar"><i data-lucide="x"></i></button></header>
+      <div class="form-grid">
         <label class="form-field form-field-wide"><span>Título</span><input name="title" type="text" maxlength="500" required></label>
         <label class="form-field form-field-wide"><span>Autores</span><input name="authors" type="text" maxlength="1000" required></label>
         <label class="form-field"><span>Ano</span><input name="year" type="number" min="1800" max="2099"></label>
         <label class="form-field"><span>Categoria</span><select name="category" required><option value="confiabilidade">Confiabilidade</option><option value="inversores-pv">Inversores PV</option><option value="manutencao">Manutenção</option><option value="ml-preditivo">ML preditivo</option><option value="sinais-eletricos">Sinais elétricos</option></select></label>
-        <label class="form-field"><span>Idioma</span><select name="language" required><option value="pt">Português</option><option value="en">Inglês</option><option value="es">Espanhol</option><option value="fr">Francês</option><option value="desconhecido">Não identificado</option></select></label>
+        <label class="form-field"><span>Idioma</span><select name="language" required><option value="pt">Português</option><option value="en">Inglês</option><option value="es">Espanhol</option><option value="fr">Francês</option></select></label>
       </div>
-      <p class="form-dialog-note">Metadados editados ficam pendentes de reindexação para atualizar a busca.</p>
-      <footer class="form-dialog-actions"><button class="secondary-button" type="button" data-close-dialog="library-edit-dialog">Cancelar</button><button class="primary-button" type="submit"><i data-lucide="save" aria-hidden="true"></i><span>Salvar metadados</span></button></footer>
+      <footer><button class="secondary-button" type="button" data-close-dialog="library-edit-dialog">Cancelar</button><button class="primary-button" type="submit">Salvar metadados</button></footer>
     </form>
+  </dialog>
+
+  <dialog class="media-dialog" id="media-dialog">
+    <header><strong id="media-title">Figura</strong><div><a class="icon-button" id="media-download" href="#" download aria-label="Baixar figura" title="Baixar"><i data-lucide="download"></i></a><button class="icon-button" id="media-close" type="button" aria-label="Fechar" title="Fechar"><i data-lucide="x"></i></button></div></header>
+    <div><img id="media-image" alt=""></div>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
