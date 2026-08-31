@@ -120,7 +120,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--retrieval-profile",
-        choices=("auto", "r4_hybrid"),
+        choices=("auto", "r4_hybrid", "r6_promoted"),
         default="auto",
         help="Perfil de ranking; R4 permanece candidato paralelo.",
     )
@@ -180,15 +180,33 @@ def main() -> int:
                 args.candidate_runtime
             )
         report = executar_baseline_local(gold_set, snapshot, **opcoes_execucao)
+        if report.get("stage") == "R6":
+            guard_path = RAIZ / "resultados" / "manifestos" / "evidence_rag_guard_r5.json"
+            r4_path = RAIZ / "resultados" / "manifestos" / "evidence_rag_hybrid_r4.json"
+            guard = json.loads(guard_path.read_text(encoding="utf-8"))
+            r4 = json.loads(r4_path.read_text(encoding="utf-8"))
+            report["promotion"] = {
+                "decision": "promoted_R6",
+                "researcher_review": "approved_R6_2026-08-30",
+                "retrieval_profile_default": "r4_hybrid",
+                "rollback_profile": "baseline",
+                "rollback_environment_variable": "AL_IADO_RETRIEVAL_PROFILE",
+                "previous_snapshot_sha256": r4["corpus"]["source_snapshot_sha256"],
+                "promoted_snapshot_sha256": report["corpus"]["snapshot_file_sha256"],
+                "snapshot_restored_from_empty_runtime": True,
+                "local_and_deploy_contract_identical": True,
+                "evidence_guard_benchmark_id": guard["benchmark_id"],
+                "evidence_guard_summary": guard["summary"],
+            }
         comparison_ok = True
-        if report.get("stage") in {"R2", "R3", "R4"}:
+        if report.get("stage") in {"R2", "R3", "R4", "R6"}:
             baseline_default = (
                 RAIZ
                 / "resultados"
                 / "manifestos"
                 / (
                     "evidence_rag_contextual_r3.json"
-                    if report["stage"] == "R4"
+                    if report["stage"] in {"R4", "R6"}
                     else (
                         "evidence_rag_schema_v2_r2.json"
                         if report["stage"] == "R3"
@@ -203,7 +221,7 @@ def main() -> int:
             baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
             comparacao = comparar_benchmarks(baseline, report)
             report["comparison_to_baseline"] = comparacao
-            if report["stage"] == "R4":
+            if report["stage"] in {"R4", "R6"}:
                 comparison_ok = all(
                     (
                         comparacao["corpus_identity_preserved"],

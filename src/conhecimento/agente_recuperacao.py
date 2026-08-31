@@ -847,3 +847,50 @@ def _rerankar(
         return [(doc, meta) for _, _, doc, meta in pontuados]
 
     return _diversificar_por_fonte(pontuados, n_final, max_por_fonte=max_por_fonte)
+
+
+def recuperar_hibrido_r4(
+    pergunta: str,
+    modelo_embeddings,
+    colecao,
+    indice_lexical=None,
+    *,
+    n_pool: int = 80,
+    n_resultados: int = 12,
+    n_resultados_revisao: int = 20,
+    max_chunks_por_fonte: int = 2,
+) -> list:
+    """Executa o ranking híbrido promovido na R6 e retorna chunks nativos."""
+    expansao = _expandir_query(pergunta)
+    variacoes = list(expansao.get("variacoes") or [pergunta])
+    if pergunta not in variacoes:
+        variacoes.insert(0, pergunta)
+    termos = list(expansao.get("termos") or [])
+    revisao = bool(expansao.get("revisao"))
+    candidatos = _busca_hibrida(
+        variacoes,
+        termos,
+        colecao,
+        modelo_embeddings,
+        n_pool=n_pool,
+        indice_lexical=indice_lexical,
+        rrf_constant=60.0,
+        filtros_metadata=_filtros_metadata_explicitos(pergunta, colecao),
+        n_filtrado=3,
+        peso_filtro_semantico=0.25,
+        peso_scan_metadata=1.0,
+        preferir_filtro_semantico=False,
+    )
+    melhores = _rerankar(
+        candidatos,
+        pergunta,
+        n_final=n_resultados_revisao if revisao else n_resultados,
+        max_por_fonte=1 if revisao else max_chunks_por_fonte,
+        termos_extra=termos,
+    )
+    return _expandir_vizinhanca(
+        melhores,
+        colecao,
+        max_sementes=min(20, len(melhores)),
+        decaimento_rrf=0.85,
+    )

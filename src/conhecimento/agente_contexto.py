@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 from src.conhecimento.agente import (
     N_RESULTADOS,
     PERFIL_COMPACTO,
@@ -24,7 +26,14 @@ from src.conhecimento.agente_recuperacao import (
     _expandir_query,
     _montar_prompt,
     _rerankar,
+    recuperar_hibrido_r4,
 )
+
+
+def perfil_retrieval_ativo() -> str:
+    """Perfil canônico com rollback imediato para o ranking legado."""
+    perfil = os.getenv("AL_IADO_RETRIEVAL_PROFILE", "r4_hybrid").strip().lower()
+    return perfil if perfil in {"r4_hybrid", "baseline"} else "r4_hybrid"
 
 def buscar_contexto(
     pergunta        : str,
@@ -69,30 +78,41 @@ def buscar_contexto(
         if pergunta not in variacoes:
             variacoes.insert(0, pergunta)
 
-        # ── CAMADA 2 — Busca híbrida ─────────────────────────
-        candidatos = _busca_hibrida(
-            variacoes,
-            termos,
-            colecao,
-            modelo_embeddings,
-            n_pool=n_pool or 30,
-            indice_lexical=indice_lexical,
-        )
-
-        # ── CAMADA 3 — Reranking ─────────────────────────────
-        if revisao:
-            alvo = n_resultados_revisao or (n_resultados or N_RESULTADOS) * 2
-            cap = 1  # exige diversidade absoluta em revisao
+        if perfil_retrieval_ativo() == "r4_hybrid":
+            melhores = recuperar_hibrido_r4(
+                pergunta,
+                modelo_embeddings,
+                colecao,
+                indice_lexical,
+                n_pool=n_pool or 80,
+                n_resultados=n_resultados or min(N_RESULTADOS, 8),
+                n_resultados_revisao=(
+                    n_resultados_revisao or (n_resultados or N_RESULTADOS) * 2
+                ),
+                max_chunks_por_fonte=max_chunks_por_fonte,
+            )
         else:
-            alvo = n_resultados or min(N_RESULTADOS, 8)
-            cap = max_chunks_por_fonte
-        melhores = _rerankar(
-            candidatos,
-            pergunta,
-            n_final=alvo,
-            max_por_fonte=cap,
-            termos_extra=termos,
-        )
+            candidatos = _busca_hibrida(
+                variacoes,
+                termos,
+                colecao,
+                modelo_embeddings,
+                n_pool=n_pool or 30,
+                indice_lexical=indice_lexical,
+            )
+            if revisao:
+                alvo = n_resultados_revisao or (n_resultados or N_RESULTADOS) * 2
+                cap = 1
+            else:
+                alvo = n_resultados or min(N_RESULTADOS, 8)
+                cap = max_chunks_por_fonte
+            melhores = _rerankar(
+                candidatos,
+                pergunta,
+                n_final=alvo,
+                max_por_fonte=cap,
+                termos_extra=termos,
+            )
     else:
         melhores = []
 

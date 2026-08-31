@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
-  "gold_set_id": "evidence-rag-gold-v1-provisional",
-  "status": "provisional_pending_researcher_review",
+  "gold_set_id": "evidence-rag-gold-v1-approved-r6",
+  "status": "researcher_approved_R6",
   "created_at": "2026-08-29",
   "corpus_hash_sha256": "0ef91e96379c546c7bee42434a935e86d3711a3a31500476245274518c6612b0",
   "curation": {
     "assistant_drafted": true,
     "final_truth_model_only": false,
     "evidence_verified_against_snapshot": true,
-    "researcher_review": "pending_R6",
+    "researcher_review": "approved_R6_2026-08-30",
     "review_owner": "Rodolfo Torres",
-    "rule": "Nenhum rótulo provisório pode promover o índice sem revisão humana em R6."
+    "rule": "Gold set aprovado pelo pesquisador para a decisão de promoção R6."
   },
   "relevance_scale": {
     "1": "contextual",
@@ -24,7 +24,7 @@
       "category": "localizacao_direta",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b",
@@ -41,7 +41,7 @@
       "category": "localizacao_direta",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
@@ -58,7 +58,7 @@
       "category": "localizacao_direta",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "039650129aab79f8ea018ed6b840e5e94c74b0ade160744b75e309588bbd1f43",
@@ -75,7 +75,7 @@
       "category": "localizacao_direta",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f",
@@ -92,7 +92,7 @@
       "category": "conceito",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "c3dd03756822fe9dc8c2310e53dc0145f5b9434a734e0f663010796450105aa5",
@@ -109,7 +109,7 @@
       "category": "conceito",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b",
@@ -126,7 +126,7 @@
       "category": "conceito",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "b7119c332bbe36e04401bc8b7ca6faafe4151f3c3bbb7a21b371930416a23c33",
@@ -146,7 +146,7 @@
       "category": "comparacao_autores",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "73be38c42a6045e4b972da72c2f05e02376050a02f9d5d3a9a4e47d0743b3706",
@@ -170,7 +170,7 @@
       "category": "comparacao_autores",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f",
@@ -197,7 +197,7 @@
       "category": "metodo",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "73be38c42a6045e4b972da72c2f05e02376050a02f9d5d3a9a4e47d0743b3706",
@@ -217,7 +217,7 @@
       "category": "metodo",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "006f3edcff170336618057370ffb915c575edeab78c3d5842b2c701710e7d211",
@@ -234,7 +234,7 @@
       "category": "metodo",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "48442c0ccd004a8541bd2289fcc7d1f9f2c5ac05a87d38022d0a847df31522c0",
@@ -254,7 +254,7 @@
       "category": "componente",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "039650129aab79f8ea018ed6b840e5e94c74b0ade160744b75e309588bbd1f43",
@@ -274,7 +274,7 @@
       "category": "componente",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "7452f61d82ea955686f4e7539b84695bfc84113900c6b6f6772f70e5240b04de",
@@ -294,7 +294,7 @@
       "category": "componente",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
@@ -311,7 +311,7 @@
       "category": "fmeca",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
@@ -331,7 +331,7 @@
       "category": "fmeca",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
@@ -351,7 +351,7 @@
       "category": "fmeca",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "42c2b546236692059a51597679998e869dbdf19f87a8e93aac6a61d28e2c1777",
@@ -368,7 +368,7 @@
       "category": "rcm",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b",
@@ -385,7 +385,7 @@
       "category": "rcm",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b",
@@ -402,7 +402,7 @@
       "category": "rcm",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
@@ -422,7 +422,7 @@
       "category": "confiabilidade",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
@@ -442,7 +442,7 @@
       "category": "confiabilidade",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "3253acaaad7611cb82bf9e186762dfce82687d6ec41f5ada22c552ee83955fe6",
@@ -459,7 +459,7 @@
       "category": "confiabilidade",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "ceaa21c1b1b06a71923ef4103ac3813b660817952c97a23b248d54dc8e60be3a",
@@ -476,7 +476,7 @@
       "category": "confiabilidade",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "5225fd5ee823c8221020e922fa3c45258f63b0f6239e7c69a4e7c51ca202532e",
@@ -493,7 +493,7 @@
       "category": "autoencoders",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f",
@@ -510,7 +510,7 @@
       "category": "autoencoders",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f",
@@ -527,7 +527,7 @@
       "category": "autoencoders",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "a60ce084f28879d4fd6096d0a9d52a177fa7b992ca8b40963c1936f1d53cd364",
@@ -547,7 +547,7 @@
       "category": "gpvs_faults",
       "language": "pt-BR",
       "expected_behavior": "abstain",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": []
     },
     {
@@ -556,7 +556,7 @@
       "category": "gpvs_faults",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "039650129aab79f8ea018ed6b840e5e94c74b0ade160744b75e309588bbd1f43",
@@ -576,7 +576,7 @@
       "category": "multilingue",
       "language": "en",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "2d5752842bccfac479d8bd7e621db0c40701082a6cd4e042c53aabe9166da64b",
@@ -593,7 +593,7 @@
       "category": "multilingue",
       "language": "en",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "73be38c42a6045e4b972da72c2f05e02376050a02f9d5d3a9a4e47d0743b3706",
@@ -610,7 +610,7 @@
       "category": "multilingue",
       "language": "es",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
@@ -627,7 +627,7 @@
       "category": "sinonimo",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
@@ -647,7 +647,7 @@
       "category": "sinonimo",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
@@ -664,7 +664,7 @@
       "category": "revisao_ampla",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "5225fd5ee823c8221020e922fa3c45258f63b0f6239e7c69a4e7c51ca202532e",
@@ -695,7 +695,7 @@
       "category": "revisao_ampla",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "09d5546b68675628d02a5ef9e4ea1e08ed8e658600f4ad8e01ed2b4e66d0409f",
@@ -726,7 +726,7 @@
       "category": "multi_hop",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "dc083c4d189114997269a354d55293dabaef3f7851961aff08b3fd7159491f9e",
@@ -753,7 +753,7 @@
       "category": "multi_hop",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "73be38c42a6045e4b972da72c2f05e02376050a02f9d5d3a9a4e47d0743b3706",
@@ -777,7 +777,7 @@
       "category": "multi_hop",
       "language": "pt-BR",
       "expected_behavior": "retrieve",
-      "curation_status": "provisional_verified_in_snapshot",
+      "curation_status": "researcher_approved_R6",
       "expected_evidence": [
         {
           "document_id": "7452f61d82ea955686f4e7539b84695bfc84113900c6b6f6772f70e5240b04de",

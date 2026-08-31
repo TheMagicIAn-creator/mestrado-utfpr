@@ -30,6 +30,11 @@ EVALUATION_MANIFESTS = {
         "filtered_hybrid_neighborhood_v1",
         2,
     ),
+    "evidence_rag_promotion_r6.json": (
+        "R6",
+        "promoted_hybrid_evidence_guard_v1",
+        2,
+    ),
     "evidence_rag_schema_v2_r2.json": ("R2", "jsonl_schema_v2_identity", 2),
 }
 MANIFEST_NAMES = SCIENTIFIC_MANIFEST_NAMES | set(EVALUATION_MANIFESTS)
@@ -104,10 +109,20 @@ def _audit_retrieval_identity(
         errors.append(f"{path.name}: etapa ou variante de retrieval inválida")
 
 
-def _audit_retrieval_gold(manifest: dict, errors: list[str], path: Path) -> None:
+def _audit_retrieval_gold(
+    manifest: dict,
+    errors: list[str],
+    path: Path,
+    expected_stage: str,
+) -> None:
     gold = manifest.get("gold_set", {})
-    if gold.get("status") != "provisional_pending_researcher_review":
-        errors.append(f"{path.name}: gold set não está marcado como provisório")
+    status_esperado = (
+        "researcher_approved_R6"
+        if expected_stage == "R6"
+        else "provisional_pending_researcher_review"
+    )
+    if gold.get("status") != status_esperado:
+        errors.append(f"{path.name}: estado do gold set divergente")
     if gold.get("researcher_review_required_at") != "R6":
         errors.append(f"{path.name}: revisão humana R6 não está registrada")
 
@@ -235,6 +250,52 @@ def _audit_retrieval_r4(manifest: dict, errors: list[str], path: Path) -> None:
         errors.append(f"{path.name}: peso filtrado R4 divergente")
 
 
+def _audit_retrieval_r6(manifest: dict, errors: list[str], path: Path) -> None:
+    comparacao = manifest.get("comparison_to_baseline", {})
+    gates = {
+        "corpus_identity_preserved": True,
+        "quality_gain_observed": True,
+        "promotion_eligible_after_quality_stages": True,
+    }
+    if comparacao.get("baseline_benchmark_id") != (
+        "evidence-rag-r3-contextual-deterministic"
+    ):
+        errors.append(f"{path.name}: promoção R6 não foi comparada ao R3")
+    for campo, esperado in gates.items():
+        if comparacao.get(campo) is not esperado:
+            errors.append(f"{path.name}: gate R6 divergente em {campo}")
+    if comparacao.get("regressed_queries_at_5"):
+        errors.append(f"{path.name}: promoção R6 contém regressões")
+    if comparacao.get("promotion_decision") != "promoted_R6":
+        errors.append(f"{path.name}: decisão de promoção R6 ausente")
+    promocao = manifest.get("promotion", {})
+    if promocao.get("researcher_review") != "approved_R6_2026-08-30":
+        errors.append(f"{path.name}: aprovação do pesquisador não registrada")
+    if promocao.get("snapshot_restored_from_empty_runtime") is not True:
+        errors.append(f"{path.name}: snapshot promovido não foi restaurado")
+    if promocao.get("local_and_deploy_contract_identical") is not True:
+        errors.append(f"{path.name}: contrato local/deploy divergente")
+    if promocao.get("retrieval_profile_default") != "r4_hybrid":
+        errors.append(f"{path.name}: perfil promovido divergente")
+    if promocao.get("rollback_profile") != "baseline":
+        errors.append(f"{path.name}: rollback de ranking ausente")
+    if not promocao.get("previous_snapshot_sha256"):
+        errors.append(f"{path.name}: hash do snapshot de rollback ausente")
+    if promocao.get("promoted_snapshot_sha256") != manifest.get("corpus", {}).get(
+        "snapshot_file_sha256"
+    ):
+        errors.append(f"{path.name}: hash do snapshot promovido divergente")
+    resumo_guard = promocao.get("evidence_guard_summary", {})
+    for campo in (
+        "citation_validity",
+        "invalid_claim_rejection_rate",
+        "abstention_accuracy",
+        "memory_rejection_accuracy",
+    ):
+        if not math.isclose(float(resumo_guard.get(campo, -1.0)), 1.0):
+            errors.append(f"{path.name}: gate do Evidence Guard divergente em {campo}")
+
+
 def _audit_retrieval_result(
     path: Path,
     errors: list[str],
@@ -256,7 +317,7 @@ def _audit_retrieval_result(
         expected_stage=expected_stage,
         expected_variant=expected_variant,
     )
-    _audit_retrieval_gold(manifest, errors, path)
+    _audit_retrieval_gold(manifest, errors, path, expected_stage)
     _audit_retrieval_corpus(manifest, errors, path, expected_snapshot_schema)
     _audit_retrieval_metrics(manifest, errors, path)
     if expected_stage == "R2":
@@ -265,6 +326,8 @@ def _audit_retrieval_result(
         _audit_retrieval_r3(manifest, errors, path)
     elif expected_stage == "R4":
         _audit_retrieval_r4(manifest, errors, path)
+    elif expected_stage == "R6":
+        _audit_retrieval_r6(manifest, errors, path)
 
 
 def _audit_retrieval_baseline(path: Path, errors: list[str]) -> None:

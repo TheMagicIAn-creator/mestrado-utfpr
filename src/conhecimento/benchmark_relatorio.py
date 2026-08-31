@@ -10,8 +10,8 @@ def _linhas_comparacao(resultado: dict) -> list[str]:
     if not comparacao:
         return []
     stage = resultado.get("stage")
-    baseline_label = {"R3": "R2", "R4": "R3"}.get(stage, "R0–R1")
-    candidate_label = stage if stage in {"R2", "R3", "R4"} else "candidato"
+    baseline_label = {"R3": "R2", "R4": "R3", "R6": "R3"}.get(stage, "R0–R1")
+    candidate_label = stage if stage in {"R2", "R3", "R4", "R6"} else "candidato"
     linhas = [
         "## Comparação baseline x candidato",
         "",
@@ -39,7 +39,7 @@ def _linhas_comparacao(resultado: dict) -> list[str]:
             f"- Métricas científicas idênticas: {str(comparacao['scientific_metrics_identical']).lower()}.",
         ]
     )
-    if stage in {"R3", "R4"}:
+    if stage in {"R3", "R4", "R6"}:
         proximo_gate = "R4–R6" if stage == "R3" else "R5–R6"
         linhas.extend(
             [
@@ -50,7 +50,11 @@ def _linhas_comparacao(resultado: dict) -> list[str]:
                 "- Regressões críticas em perguntas simples: "
                 + (", ".join(comparacao["critical_simple_regressions"]) or "nenhuma")
                 + ".",
-                f"- Decisão: candidato não promovido; avaliação continua em {proximo_gate}.",
+                (
+                    "- Decisão: perfil promovido na R6."
+                    if stage == "R6"
+                    else f"- Decisão: candidato não promovido; avaliação continua em {proximo_gate}."
+                ),
                 "- Latência é informativa e não participa do gate científico de qualidade.",
                 "",
             ]
@@ -85,6 +89,13 @@ def _linha_regressao(item: dict, stage: str) -> str:
 
 
 def _estado_relatorio(stage: str, schema_v2: bool) -> tuple[str, str, str, str]:
+    if stage == "R6":
+        return (
+            "# Evidence RAG — promoção R6",
+            "> Estado: gold set aprovado pelo pesquisador; perfil híbrido promovido com rollback.",
+            "`raw_text` preservado, snapshot contextual restaurável e Evidence Guard ativo.",
+            "- A promoção exige ganho medido, ausência de regressões críticas e integridade de citação R5.",
+        )
     if stage == "R4":
         return (
             "# Evidence RAG — Refinamento híbrido R4",

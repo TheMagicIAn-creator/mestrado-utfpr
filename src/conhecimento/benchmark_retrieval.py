@@ -31,8 +31,10 @@ GOLD_SCHEMA_VERSION = 1
 BENCHMARK_SCHEMA_VERSION = 1
 DEFAULT_KS = (5, 8)
 GOLD_STATUS_PROVISORIO = "provisional_pending_researcher_review"
+GOLD_STATUS_APROVADO_R6 = "researcher_approved_R6"
 RETRIEVAL_PROFILE_BASELINE = "baseline"
 RETRIEVAL_PROFILE_R4 = "r4_hybrid"
+RETRIEVAL_PROFILE_R6 = "r6_promoted"
 RAIZ_PROJETO = Path(__file__).resolve().parents[2]
 CATEGORIAS_OBRIGATORIAS = frozenset(
     {
@@ -116,7 +118,12 @@ def _validar_evidencia_gold(evidencia: dict, query_id: str) -> None:
         raise ValueError(f"Relevância fora da escala 1–3 em {query_id}.")
 
 
-def _validar_pergunta_gold(pergunta: dict, ids: set[str]) -> tuple[str, str]:
+def _validar_pergunta_gold(
+    pergunta: dict,
+    ids: set[str],
+    *,
+    status_esperado: str,
+) -> tuple[str, str]:
     query_id = str(pergunta.get("id", "")).strip()
     texto = str(pergunta.get("question", "")).strip()
     categoria = str(pergunta.get("category", "")).strip()
@@ -135,7 +142,7 @@ def _validar_pergunta_gold(pergunta: dict, ids: set[str]) -> tuple[str, str]:
         raise ValueError(f"Pergunta recuperável sem evidência em {query_id}.")
     if comportamento == "abstain" and evidencias:
         raise ValueError(f"Pergunta de abstenção não pode ter evidência em {query_id}.")
-    if pergunta.get("curation_status") != "provisional_verified_in_snapshot":
+    if pergunta.get("curation_status") != status_esperado:
         raise ValueError(f"Estado de curadoria inválido em {query_id}.")
 
     for evidencia in evidencias:
@@ -146,8 +153,17 @@ def _validar_pergunta_gold(pergunta: dict, ids: set[str]) -> tuple[str, str]:
 def validar_gold_set(dados: dict, *, validar_campanha: bool = True) -> None:
     if int(dados.get("schema_version", 0)) != GOLD_SCHEMA_VERSION:
         raise ValueError("Schema do gold set incompatível.")
-    if dados.get("status") != GOLD_STATUS_PROVISORIO:
-        raise ValueError("O gold set inicial deve permanecer provisório até a revisão R6.")
+    status = dados.get("status")
+    if status not in {GOLD_STATUS_PROVISORIO, GOLD_STATUS_APROVADO_R6}:
+        raise ValueError("Estado do gold set deve ser provisório ou aprovado na R6.")
+    revisao = str(dados.get("curation", {}).get("researcher_review", ""))
+    if status == GOLD_STATUS_APROVADO_R6 and not revisao.startswith("approved_R6_"):
+        raise ValueError("Gold set R6 sem registro de aprovação do pesquisador.")
+    status_pergunta = (
+        "researcher_approved_R6"
+        if status == GOLD_STATUS_APROVADO_R6
+        else "provisional_verified_in_snapshot"
+    )
 
     perguntas = dados.get("queries")
     if not isinstance(perguntas, list) or not perguntas:
@@ -158,7 +174,11 @@ def validar_gold_set(dados: dict, *, validar_campanha: bool = True) -> None:
     ids: set[str] = set()
     categorias: set[str] = set()
     for pergunta in perguntas:
-        query_id, categoria = _validar_pergunta_gold(pergunta, ids)
+        query_id, categoria = _validar_pergunta_gold(
+            pergunta,
+            ids,
+            status_esperado=status_pergunta,
+        )
         ids.add(query_id)
         categorias.add(categoria)
 
@@ -354,48 +374,19 @@ def recuperar_refinado_r4(
     peso_filtro_semantico: float = 0.25,
 ) -> list[dict]:
     """Executa o candidato R4 sem substituir o caminho vigente."""
-    from src.conhecimento.agente_recuperacao import (
-        _busca_hibrida,
-        _expandir_query,
-        _expandir_vizinhanca,
-        _filtros_metadata_explicitos,
-        _rerankar,
-    )
+    from src.conhecimento.agente_recuperacao import recuperar_hibrido_r4
 
-    expansao = _expandir_query(pergunta)
-    variacoes = list(expansao.get("variacoes") or [pergunta])
-    if pergunta not in variacoes:
-        variacoes.insert(0, pergunta)
-    termos = list(expansao.get("termos") or [])
-    revisao = bool(expansao.get("revisao"))
-    n_final = n_resultados_revisao if revisao else n_resultados
-    filtros = _filtros_metadata_explicitos(pergunta, colecao)
-    candidatos = _busca_hibrida(
-        variacoes,
-        termos,
-        colecao,
-        modelo_embeddings,
-        n_pool=n_pool,
-        indice_lexical=indice_lexical,
-        rrf_constant=60.0,
-        filtros_metadata=filtros,
-        n_filtrado=3,
-        peso_filtro_semantico=peso_filtro_semantico,
-        peso_scan_metadata=1.0,
-        preferir_filtro_semantico=False,
-    )
-    melhores = _rerankar(
-        candidatos,
+    if peso_filtro_semantico != 0.25:
+        raise ValueError("O perfil R4 publicado usa peso de filtro 0.25.")
+    com_vizinhanca = recuperar_hibrido_r4(
         pergunta,
-        n_final=n_final,
-        max_por_fonte=1 if revisao else max_chunks_por_fonte,
-        termos_extra=termos,
-    )
-    com_vizinhanca = _expandir_vizinhanca(
-        melhores,
+        modelo_embeddings,
         colecao,
-        max_sementes=min(20, len(melhores)),
-        decaimento_rrf=0.85,
+        indice_lexical,
+        n_pool=n_pool,
+        n_resultados=n_resultados,
+        n_resultados_revisao=n_resultados_revisao,
+        max_chunks_por_fonte=max_chunks_por_fonte,
     )
     return _serializar_recuperados(com_vizinhanca)
 
@@ -477,7 +468,7 @@ def executar_benchmark(
     if not ks_ordenados:
         raise ValueError("Informe ao menos um valor positivo de k.")
 
-    if retrieval_profile == RETRIEVAL_PROFILE_R4:
+    if retrieval_profile in {RETRIEVAL_PROFILE_R4, RETRIEVAL_PROFILE_R6}:
         recuperador = recuperar_refinado_r4
     elif retrieval_profile == RETRIEVAL_PROFILE_BASELINE:
         recuperador = recuperar_baseline
@@ -649,25 +640,25 @@ def executar_benchmark(
             ),
             "parallel_candidate_index": stage in {"R3", "R4"},
             "explicit_metadata_filtered_search": (
-                retrieval_profile == RETRIEVAL_PROFILE_R4
+                retrieval_profile in {RETRIEVAL_PROFILE_R4, RETRIEVAL_PROFILE_R6}
             ),
             "metadata_filters_are_advisory": (
-                retrieval_profile == RETRIEVAL_PROFILE_R4
+                retrieval_profile in {RETRIEVAL_PROFILE_R4, RETRIEVAL_PROFILE_R6}
             ),
             "metadata_filtered_results_per_query": (
-                3 if retrieval_profile == RETRIEVAL_PROFILE_R4 else 0
+                3 if retrieval_profile in {RETRIEVAL_PROFILE_R4, RETRIEVAL_PROFILE_R6} else 0
             ),
             "metadata_filtered_rrf_weight": (
-                0.25 if retrieval_profile == RETRIEVAL_PROFILE_R4 else 0.0
+                0.25 if retrieval_profile in {RETRIEVAL_PROFILE_R4, RETRIEVAL_PROFILE_R6} else 0.0
             ),
             "neighborhood_expansion": (
-                retrieval_profile == RETRIEVAL_PROFILE_R4
+                retrieval_profile in {RETRIEVAL_PROFILE_R4, RETRIEVAL_PROFILE_R6}
             ),
             "neighborhood_radius": (
-                1 if retrieval_profile == RETRIEVAL_PROFILE_R4 else 0
+                1 if retrieval_profile in {RETRIEVAL_PROFILE_R4, RETRIEVAL_PROFILE_R6} else 0
             ),
             "neighborhood_seed_limit": (
-                20 if retrieval_profile == RETRIEVAL_PROFILE_R4 else 0
+                20 if retrieval_profile in {RETRIEVAL_PROFILE_R4, RETRIEVAL_PROFILE_R6} else 0
             ),
             "evidence_package": False,
             "evidence_guard": False,
@@ -714,9 +705,13 @@ def executar_baseline_local(
     identificacao = {}
     estrategia = manifesto.get("retrieval_text_strategy")
     if estrategia == ESTRATEGIA_CONTEXTO_R3:
-        if retrieval_profile not in {"auto", RETRIEVAL_PROFILE_R4}:
+        if retrieval_profile not in {
+            "auto",
+            RETRIEVAL_PROFILE_R4,
+            RETRIEVAL_PROFILE_R6,
+        }:
             raise ValueError(
-                "Snapshot contextual aceita apenas os perfis auto ou r4_hybrid."
+                "Snapshot contextual aceita apenas auto, r4_hybrid ou r6_promoted."
             )
         runtime = resolver_caminho_no_projeto(
             candidate_runtime
@@ -724,7 +719,9 @@ def executar_baseline_local(
             / "base_conhecimento"
             / "candidatos"
             / (
-                "r4_hybrid"
+                "r6_promoted"
+                if retrieval_profile == RETRIEVAL_PROFILE_R6
+                else "r4_hybrid"
                 if retrieval_profile == RETRIEVAL_PROFILE_R4
                 else "r3_contextual"
             )
@@ -749,13 +746,21 @@ def executar_baseline_local(
             runtime / f"{nome_colecao}_fts.sqlite3"
         )
         indice_lexical.sincronizar(colecao, versao=conteudo_hash)
-        if retrieval_profile == RETRIEVAL_PROFILE_R4:
-            identificacao = {
-                "benchmark_id": "evidence-rag-r4-hybrid-refinement",
-                "stage": "R4",
-                "variant": "filtered_hybrid_neighborhood_v1",
-                "retrieval_profile": RETRIEVAL_PROFILE_R4,
-            }
+        if retrieval_profile in {RETRIEVAL_PROFILE_R4, RETRIEVAL_PROFILE_R6}:
+            if retrieval_profile == RETRIEVAL_PROFILE_R6:
+                identificacao = {
+                    "benchmark_id": "evidence-rag-r6-promoted",
+                    "stage": "R6",
+                    "variant": "promoted_hybrid_evidence_guard_v1",
+                    "retrieval_profile": RETRIEVAL_PROFILE_R6,
+                }
+            else:
+                identificacao = {
+                    "benchmark_id": "evidence-rag-r4-hybrid-refinement",
+                    "stage": "R4",
+                    "variant": "filtered_hybrid_neighborhood_v1",
+                    "retrieval_profile": RETRIEVAL_PROFILE_R4,
+                }
         else:
             identificacao = {
                 "benchmark_id": "evidence-rag-r3-contextual-deterministic",
@@ -763,7 +768,7 @@ def executar_baseline_local(
                 "variant": "deterministic_document_context_v1",
             }
     else:
-        if retrieval_profile == RETRIEVAL_PROFILE_R4:
+        if retrieval_profile in {RETRIEVAL_PROFILE_R4, RETRIEVAL_PROFILE_R6}:
             raise ValueError("O perfil R4 exige o snapshot contextual R3.")
         cliente = chromadb.PersistentClient(path=str(PASTA_CHROMADB))
         colecao = cliente.get_or_create_collection(name=NOME_COLECAO)
@@ -906,7 +911,7 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
     promotion_eligible = all(
         (
             corpus_inalterado,
-            ranking_inalterado or candidato.get("stage") == "R4",
+            ranking_inalterado or candidato.get("stage") in {"R4", "R6"},
             quality_gain,
             not critical_simple_regressions,
         )
@@ -916,7 +921,7 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
         "candidate_benchmark_id": candidato.get("benchmark_id"),
         "corpus_identity_preserved": corpus_inalterado,
         "ranking_contract_preserved": ranking_inalterado,
-        "ranking_change_expected": candidato.get("stage") == "R4",
+        "ranking_change_expected": candidato.get("stage") in {"R4", "R6"},
         "scientific_metrics_identical": all(
             math.isclose(valor, 0.0, abs_tol=1e-12) for valor in deltas.values()
         ),
@@ -932,7 +937,11 @@ def comparar_benchmarks(baseline: dict, candidato: dict) -> dict:
             else (
                 "deferred_to_r5_r6"
                 if candidato.get("stage") == "R4"
-                else "not_applicable"
+                else (
+                    "promoted_R6"
+                    if candidato.get("stage") == "R6"
+                    else "not_applicable"
+                )
             )
         ),
         "metrics": metricas,
