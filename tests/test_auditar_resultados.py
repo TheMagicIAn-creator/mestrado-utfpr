@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from scripts.auditar_resultados import (
+    _audit_evidence_guard,
     _audit_retrieval_baseline,
     _audit_retrieval_r3,
     _audit_retrieval_r4,
@@ -130,3 +131,24 @@ def test_auditor_rejeita_candidato_r4_sem_gates_cientificos(tmp_path):
     assert any("comparado diretamente ao R3" in error for error in errors)
     assert any("ganho de qualidade" in error for error in errors)
     assert any("antes dos gates R5-R6" in error for error in errors)
+
+
+def test_auditor_rejeita_evidence_guard_sem_integridade(tmp_path):
+    path = tmp_path / "r5.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "stage": "R5",
+                "variant": "deterministic_claim_evidence_guard_v1",
+                "guard": {},
+                "summary": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    errors = []
+    _audit_evidence_guard(path, errors)
+    assert any("external_model_required" in error for error in errors)
+    assert any("citation_validity" in error for error in errors)
+    assert any("claims sem suporte" in error for error in errors)

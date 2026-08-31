@@ -41,6 +41,7 @@ def buscar_contexto(
     indice_lexical = None,
     colecao_obsidian = None,
     obsidian_chars: int | None = None,
+    retornar_pacote_evidencias: bool = False,
 ) -> tuple:
     """
     Recuperacao local em quatro camadas: literatura híbrida, vault Obsidian,
@@ -56,6 +57,7 @@ def buscar_contexto(
     """
     contexto = ""
     citacoes = {}
+    evidencias_incluidas = []
 
     if consultar_literatura:
         # ── CAMADA 1 — Expansão ───────────────────────────────
@@ -133,7 +135,8 @@ def buscar_contexto(
                 trecho = _trecho_relevante(doc, pergunta, meta)
                 trecho_linha = f'Trecho-chave: "{trecho}"\n' if trecho else ""
                 rotulo = citacao + (f" - {pagina}" if pagina else "")
-                cabecalho = f"\n[Fonte: {rotulo}]\n"
+                evidence_id = f"E{len(evidencias_incluidas) + 1}"
+                cabecalho = f"\n[{evidence_id}] [Fonte: {rotulo}]\n"
                 bloco = f"{cabecalho}{trecho_linha}{doc}\n"
                 if usados + len(bloco) > limite:
                     restante = limite - usados - len(cabecalho) - len(trecho_linha)
@@ -142,6 +145,7 @@ def buscar_contexto(
                         break
                     bloco = f"{cabecalho}{trecho_linha}{_limitar_texto(doc, restante)}\n"
                 citacoes[_chave_citacao(meta, doc)] = _entrada_citacao(meta, doc, pergunta)
+                evidencias_incluidas.append((doc, meta))
                 contexto += bloco
                 usados += len(bloco)
                 if usados >= limite:
@@ -197,6 +201,14 @@ def buscar_contexto(
         except Exception as exc:
             _logger.warning("fallback de sessões legadas indisponível: %s", exc)
 
+    if retornar_pacote_evidencias:
+        from src.conhecimento.evidence_guard import construir_evidence_package
+
+        return (
+            contexto,
+            citacoes,
+            construir_evidence_package(pergunta, evidencias_incluidas),
+        )
     return contexto, citacoes
 
 def listar_documentos(colecao) -> str:
@@ -342,7 +354,7 @@ def preparar_prompt(
 ) -> tuple:
     """
     Prepara o prompt completo sem invocar o LLM.
-    Retorna (prompt_str, citacoes_dict).
+    Retorna (prompt_str, citacoes_dict, evidence_package).
     Usado pela camada HTTP para fazer streaming separado.
 
     `anexos` e a lista de dicts vinda de `leitor_anexos.ler_anexos(...)`: o texto
@@ -356,7 +368,7 @@ def preparar_prompt(
 
     orcamento = _orcamento_rag(nome_provedor)
     consultar_literatura = deve_consultar_literatura(pergunta, colecao)
-    contexto, citacoes = buscar_contexto(
+    contexto, citacoes, evidence_package = buscar_contexto(
         pergunta,
         modelo_embeddings,
         colecao,
@@ -371,6 +383,7 @@ def preparar_prompt(
         consultar_literatura=consultar_literatura,
         indice_lexical=indice_lexical,
         colecao_obsidian=colecao_obsidian,
+        retornar_pacote_evidencias=True,
     )
 
     suporta_imagem = _llm_suporta_multimodal(None, nome_provedor)
@@ -396,4 +409,4 @@ def preparar_prompt(
         anexos_texto=anexos_texto,
         perfil=perfil_prompt,
     )
-    return prompt, citacoes
+    return prompt, citacoes, evidence_package

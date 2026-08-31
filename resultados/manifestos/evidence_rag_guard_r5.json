@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "evidence-rag-r5-evidence-guard",
+  "stage": "R5",
+  "variant": "deterministic_claim_evidence_guard_v1",
+  "generated_at_utc": "2026-08-31T00:55:29.568125+00:00",
+  "git_revision": "8564714",
+  "guard": {
+    "external_model_required": false,
+    "claim_evidence_chain": true,
+    "quote_uses_raw_text": true,
+    "memory_is_scientific_source": false,
+    "abstention_enabled": true,
+    "support_levels": [
+      "contextual",
+      "derived",
+      "direct",
+      "unsupported"
+    ]
+  },
+  "summary": {
+    "n_cases": 9,
+    "citation_validity": 1.0,
+    "invalid_claim_rejection_rate": 1.0,
+    "abstention_accuracy": 1.0,
+    "memory_rejection_accuracy": 1.0,
+    "unsupported_claim_rate_after_guard": 0.0
+  },
+  "cases": [
+    {
+      "case": "valid_direct",
+      "expected_valid": true,
+      "observed_valid": true,
+      "passed": true,
+      "errors": []
+    },
+    {
+      "case": "unknown_evidence",
+      "expected_valid": false,
+      "observed_valid": false,
+      "passed": true,
+      "errors": [
+        "unknown_evidence_id"
+      ]
+    },
+    {
+      "case": "invented_page",
+      "expected_valid": false,
+      "observed_valid": false,
+      "passed": true,
+      "errors": [
+        "page_not_in_evidence"
+      ]
+    },
+    {
+      "case": "invented_author",
+      "expected_valid": false,
+      "observed_valid": false,
+      "passed": true,
+      "errors": [
+        "author_not_in_evidence"
+      ]
+    },
+    {
+      "case": "invented_year",
+      "expected_valid": false,
+      "observed_valid": false,
+      "passed": true,
+      "errors": [
+        "year_not_in_evidence"
+      ]
+    },
+    {
+      "case": "invented_quote",
+      "expected_valid": false,
+      "observed_valid": false,
+      "passed": true,
+      "errors": [
+        "quote_not_in_raw_text"
+      ]
+    },
+    {
+      "case": "unsupported_claim",
+      "expected_valid": false,
+      "observed_valid": false,
+      "passed": true,
+      "errors": [
+        "unsupported_claim"
+      ]
+    }
+  ],
+  "abstention_case": {
+    "passed": true
+  },
+  "memory_case": {
+    "passed": true
+  }
+}

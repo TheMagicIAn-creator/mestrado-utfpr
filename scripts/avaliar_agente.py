@@ -81,6 +81,11 @@ def main() -> int:
         help="Mede o Evidence RAG vigente com o gold set versionado.",
     )
     parser.add_argument(
+        "--benchmark-evidence-guard",
+        action="store_true",
+        help="Mede os contratos determinísticos de citação e abstenção R5.",
+    )
+    parser.add_argument(
         "--gold-set",
         type=Path,
         default=RAIZ / "literatura" / "gold_set_retrieval_v1.json",
@@ -120,6 +125,34 @@ def main() -> int:
         help="Perfil de ranking; R4 permanece candidato paralelo.",
     )
     args = parser.parse_args()
+
+    if args.benchmark_evidence_guard:
+        from src.conhecimento.evidence_guard import (
+            executar_benchmark_guard,
+            relatorio_guard_markdown,
+        )
+
+        report = executar_benchmark_guard(git_revision=args.git_revision)
+        serialized = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
+        if args.json:
+            output_json = resolver_caminho_no_projeto(args.json)
+            output_json.parent.mkdir(parents=True, exist_ok=True)
+            output_json.write_text(serialized, encoding="utf-8")
+        if args.markdown:
+            output_markdown = resolver_caminho_no_projeto(args.markdown)
+            output_markdown.parent.mkdir(parents=True, exist_ok=True)
+            output_markdown.write_text(
+                relatorio_guard_markdown(report), encoding="utf-8"
+            )
+        print(serialized, end="")
+        return 0 if all(
+            (
+                report["summary"]["citation_validity"] == 1.0,
+                report["summary"]["invalid_claim_rejection_rate"] == 1.0,
+                report["summary"]["abstention_accuracy"] == 1.0,
+                report["summary"]["memory_rejection_accuracy"] == 1.0,
+            )
+        ) else 1
 
     if args.benchmark_retrieval:
         from src.conhecimento.benchmark_retrieval import (

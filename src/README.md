@@ -46,6 +46,7 @@ webapp/ -> conhecimento/ -> ml/
 | `roteador_llm.py` | Política explícita de seleção, retry, fallback, escalonamento e validação cruzada. |
 | `consultas_obsidian.py` | Consultas ao vault. |
 | `embeddings.py` | Backend de embeddings. |
+| `evidence_guard.py` | Pacotes de evidência, validação de claims e abstenção científica. |
 | `ferramentas.py` | Especificação e despacho das ferramentas. |
 | `ferramentas_academicas.py` | Literatura, dataset e resultados canônicos. |
 | `index_lock.py` | Lock de escrita do índice. |
