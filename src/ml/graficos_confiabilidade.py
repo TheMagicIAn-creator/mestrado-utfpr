@@ -1,4 +1,4 @@
-"""Figuras acadêmicas dos cenários físicos de confiabilidade por componente."""
+"""Figuras acadêmicas dos cenários bibliográficos históricos de confiabilidade."""
 
 from __future__ import annotations
 
@@ -99,7 +99,7 @@ def plot_reliability(curves: pd.DataFrame, output: Path) -> tuple[Path, Path]:
         curves,
         output,
         column="reliability",
-        title="Curva de confiabilidade R(t)",
+        title="Curva de confiabilidade R(t) — cenários bibliográficos históricos",
         ylabel="R(t) - probabilidade de operação sem falha",
         note=r"Modelo exponencial: $R(t)=e^{-\lambda t}$. Eixos lineares; taxas bibliográficas direta/derivadas.",
         probability=True,
@@ -111,7 +111,10 @@ def plot_cumulative_failure(curves: pd.DataFrame, output: Path) -> tuple[Path, P
         curves,
         output,
         column="cumulative_failure_probability",
-        title="Curva da probabilidade acumulada de falha F(t)",
+        title=(
+            "Curva da probabilidade acumulada de falha F(t) — "
+            "cenários bibliográficos históricos"
+        ),
         ylabel="F(t) - probabilidade acumulada de falha",
         note=r"Modelo exponencial: $F(t)=1-e^{-\lambda t}$. Eixos lineares; não representa incidência observada de campo.",
         probability=True,
@@ -123,7 +126,10 @@ def plot_failure_density(curves: pd.DataFrame, output: Path) -> tuple[Path, Path
         curves,
         output,
         column="failure_density_per_year",
-        title="Curva da densidade de probabilidade de falha f(t)",
+        title=(
+            "Curva da densidade de probabilidade de falha f(t) — "
+            "cenários bibliográficos históricos"
+        ),
         ylabel="f(t) (ano⁻¹)",
         note=r"Modelo exponencial: $f(t)=\lambda e^{-\lambda t}$. Escala linear; não é uma distribuição normal ajustada.",
     )
@@ -134,7 +140,7 @@ def plot_hazard(curves: pd.DataFrame, output: Path) -> tuple[Path, Path]:
         curves,
         output,
         column="hazard_per_year",
-        title="Curva da taxa de falha h(t)",
+        title="Curva da taxa de falha h(t) — cenários bibliográficos históricos",
         ylabel="h(t) (ano⁻¹)",
         note=r"Modelo exponencial: $h(t)=\lambda$. Escala linear e taxa constante; não há curva de banheira estimável.",
     )
@@ -156,7 +162,7 @@ def plot_rates(scenarios: pd.DataFrame, output: Path) -> tuple[Path, Path]:
     ax.ticklabel_format(axis="x", style="sci", scilimits=(-2, 2), useMathText=True)
     ax.set_yticks(y, frame["plot_label"])
     ax.set_xlabel(r"Taxa de falha, $\lambda$ (falhas h$^{-1}$)")
-    ax.set_title("Comparação das taxas de falha λ por componente")
+    ax.set_title("Comparação histórica das taxas bibliográficas de falha λ")
     ax.legend(
         handles=[
             Line2D(

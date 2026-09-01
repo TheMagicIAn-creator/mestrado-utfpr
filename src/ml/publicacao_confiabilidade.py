@@ -37,10 +37,10 @@ def _report() -> str:
 
 ## Escopo
 
-As curvas são cenários bibliográficos de sensibilidade, independentes da base
-experimental usada na comparação dos detectores. As fontes disponíveis não
-fornecem uma amostra de tempos individuais de falha, exposição de frota e
-censura por ativo.
+As curvas são cenários bibliográficos históricos de sensibilidade do TCC,
+independentes da base experimental usada na comparação dos detectores e do
+escopo atual da FMECA. As fontes disponíveis não fornecem uma amostra de tempos
+individuais de falha, exposição de frota e censura por ativo.
 
 ## Taxas
 
@@ -53,25 +53,25 @@ Os percentuais são participações de chamados, não frações demonstradas da 
 de falha do inversor. Por isso, as três alocações são rotuladas como derivadas.
 A ausência de taxas diretas equivalentes para Contator AC e IGBT é preservada.
 
-## Priorização FMECA
+## FMECA vigente
 
-O NPR permanece independente do detector: Contator AC 315, IGBT 90 e Fusível
-AC 30. Adota-se NPR=S x O x D_campo; D_campo é a dificuldade de detecção no
-processo de manutenção e não uma métrica dos Autoencoders.
+O escopo atual é formado por IGBT, sistema de sensor/realimentação e
+sistema/circuito de controle do inversor. Os campos S, O, D e NPR permanecem
+nulos com status `awaiting_user_fmeca`; os valores históricos de Contator AC,
+IGBT e Fusível AC não são transferidos para esse novo escopo.
 
-A extensão POD_mon/D_mon/D_proj/NPR_proj permanece bloqueada. Ainda não existe
-um mapeamento bibliograficamente validado de POD_mon para a escala ordinal
-D_mon; por isso os quatro campos projetados são publicados como nulos e o NPR
-base não é sobrescrito.
+A validação E3 mede detecção de anomalias. Ela não produz escalas ordinais da
+FMECA e não recalcula NPR.
 
 ## Modelo
 
 Adota-se o cenário exponencial de taxa constante: R(t)=exp(-lambda*t),
 F(t)=1-R(t), f(t)=lambda*exp(-lambda*t) e h(t)=lambda. A conversão usa
-1 ano=8.760 horas. As figuras usam escalas lineares. Não são estimados beta,
-eta, distribuição normal, Lognormal, histograma de vidas, curva de banheira ou
-RUL físico. O contrato metodológico informa os parâmetros e as evidências que
-faltam para habilitar cada família no futuro.
+1 ano=8.760 horas. As figuras usam escalas lineares. A busca no corpus local
+encontrou 22 trechos sobre IGBT e 74 sobre Weibull; a única fonte comum discute
+os assuntos separadamente e não fornece beta ou eta para IGBT. Por isso Weibull
+2P, distribuição normal, Lognormal, histograma de vidas, curva de banheira e RUL
+físico permanecem bloqueados, sem parâmetros fabricados.
 """
 
 
@@ -119,6 +119,10 @@ def generate() -> dict:
             "horizon_years": HORIZON_YEARS,
             "n_points": N_POINTS,
             "scenarios": [scenario.scenario_id for scenario in SCENARIOS],
+            "fmeca_status": "awaiting_user_fmeca",
+            "weibull_2p_status": (
+                "blocked_no_traceable_igbt_parameters_in_current_corpus"
+            ),
         },
         input_artifacts={"torres_tcc": source_path},
         outputs=outputs,

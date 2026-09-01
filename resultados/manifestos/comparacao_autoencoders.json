@@ -1,22 +1,22 @@
 {
   "manifest_version": 2,
   "stage": "comparacao_autoencoders",
-  "created_at": "2026-08-31T17:45:02.419230-03:00",
-  "git_commit": "31533238b4b2d76f8ee2fd20bd75478fe90f104e",
+  "created_at": "2026-09-01T15:46:42.874633-03:00",
+  "git_commit": "94c70fdb8ee3ee98a07364a64aec5be9cc26e7c5",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "code_sha256": "c1d50b0844534fa0448c773b15fe8eaa4d7f56cc8007d9ce432eb292dbd7d5c6",
   "code_dependencies": {
-    "dataset": "c7382e02df1002a9781fd2e0029977c588aa6cb570e616892c2ec08627c06b6e",
-    "models": "22d592fe016edc812f8c477f11dcfb6474da5089c7f0c6b55b361355cab829ea",
+    "dataset": "cd4390349e9b13b2d7e2f1c931ba0aec72ff75059ed0bf809b8ebf1559ce72e4",
+    "models": "122e146b5d99af24b4c24a956a0ca1d6f954167171bd3d906c983c996f8bd159",
     "training": "ba70160766d47e38fbb8bf9d59a76c8ef96331601561392ad5aad5eb05ad4a44",
-    "evaluation": "0d1c666cfee92c4901beaf563f28a77528dbd2ba5e3550f270ca0b96296428c0",
+    "evaluation": "06dcb26aa6b4cf8a0c69529185b4236ef66c654fde4ae02c0fb37095fc97b47b",
     "statistics": "b953b9ae1db8003365958e7fdad5370eb2cbe34c42de1a65eab40c0c5f7bc141",
     "plots": "3c6bdca21312d3141e353750751ecd82aad57e49641ebac2e95378174cb816fe",
-    "plot_style": "e551f826ec6c4cb8d25542cb9f88c355446b7ede8796ff1337f71acdcbec90f2",
-    "publication": "aed0a9f70170d2ae0a363d7ea6e049e07940346c382f0ca4df18d877c59ec2a3",
-    "sensitivity": "f1b34d1c5b69da43ccc4c437b8d50e037f2b3f2d4b95d1e4955743ae10444a8e"
+    "plot_style": "d6f5e719be9852c44f016f566e984e28e29ce804b1b31e63d43b415d93ed3914",
+    "publication": "92933df6826f6120fac9688a897706406c3a8f4bf31f6af1fd2ccbb123c030bd",
+    "sensitivity": "5c1a29ad155fa8978e73e12aeb1362356c355c1437a9aad15cef5bc16092cf4f"
   },
   "parameters": {
     "dataset": "GPVS-Faults",
@@ -42,20 +42,16 @@
     },
     "score_threshold_sensitivity": {
       "top_k_values": [
-        1,
-        3,
         5,
-        8,
-        12,
-        24
+        10,
+        20
       ],
       "requested_percentiles": [
-        95.0,
-        97.5,
         99.0,
         99.5,
         99.9
       ],
+      "configuration_count_per_model_seed": 9,
       "reference_seed": 42,
       "uses_fault_data_for_selection": false
     }
@@ -114,17 +110,17 @@
     "resultados/comparacao/e3_sensibilidade_escore_limiar.pdf"
   ],
   "output_artifacts": {
-    "resultados/comparacao/e3_metricas_por_ensaio.csv": "5ba7824783edd36a656e48d3e77824574c251e0e1c7784bcb450d07aeee004d1",
+    "resultados/comparacao/e3_metricas_por_ensaio.csv": "45e970f6b59fa55cc18d411a9df6f3dc6c5eb578a17d7c87545e0f4b415d8199",
     "resultados/comparacao/e3_metricas_macro.csv": "19a93861fd5a6ed48e8779f2897f8e9b9a70bd874800944269d1f0972caae3f5",
     "resultados/comparacao/e3_escores_referencia.csv": "664c489f59d115a70ce556fe2be7d7a1eb3a4338fa61d31bac65061a16c8e121",
     "resultados/comparacao/e3_matrizes_confusao.csv": "164062aeb5531f875f474121958625a7c82f25b9cf53b00efe8540ed0756c318",
     "resultados/comparacao/e3_estabilidade_sementes.csv": "a278e59a1ecf2586d7e48fc5874629058df1f4a8bc3c1661174214e9e2c282ff",
     "resultados/comparacao/e3_diferencas_pareadas.csv": "fceec39e54d4f6327c94fd9c3e4c1d09af8fb263dce0f4e2d6199134800a832b",
-    "resultados/comparacao/e3_ablacao_temporal_por_ensaio.csv": "c08af3b181a66bb67c410b54c31151b37797cde843d05e4144dec14cdedb4acc",
+    "resultados/comparacao/e3_ablacao_temporal_por_ensaio.csv": "768e3d66332da34eeb189cd322a60e9e3ae12b00c5c1ed5f10f542e8e1059755",
     "resultados/comparacao/e3_ablacao_temporal.csv": "62a07f0492d66371093a898552564aa76fa49def500ef28f6ab9841744fba238",
-    "resultados/comparacao/e3_sensibilidade_escore_limiar.csv": "6f5724f38caaf922642426ac7d5e45f3e7deb56d54327c389c5d128088de8882",
-    "resultados/comparacao/comparacao_autoencoders.json": "a067f35cb45cbd7d655e8efbbb758f89c6cea5107946e02d1498bb0f0faaef0c",
-    "resultados/comparacao/relatorio_comparacao.md": "dcf4dc804b0bc8162e5b2ad16ca7bcb6cd87c154701e70a72c32d0da000cf369",
+    "resultados/comparacao/e3_sensibilidade_escore_limiar.csv": "3f157ad72da349e928e57e7fc4cb6991ebd4c3a324201cd081a169e433301abc",
+    "resultados/comparacao/comparacao_autoencoders.json": "09f495a5945cffede68ba506bc237022a2a3d75807ca7d4f6c92977b4a00119e",
+    "resultados/comparacao/relatorio_comparacao.md": "d396863ab6da62d165226f61c74115dd9d2f8d05d2bb24e9f7a4a9a763121843",
     "resultados/comparacao/e3_metricas_macro.png": "a3a56855702f4ab386feb0f9acaaeca45f88f61f91d24d15937ce761cfaa2787",
     "resultados/comparacao/e3_metricas_macro.pdf": "30b88e3a279cfd31adf17a23fa23f48b1c4435b6fb6fdaa01cf3959e12e67127",
     "resultados/comparacao/e3_curvas_discriminacao.png": "f36b1b62790324d9f9f09b056ed6ab209c714a7b5ff5d21a0181d1496f335d93",
@@ -135,8 +131,8 @@
     "resultados/comparacao/e3_resultados_por_ensaio.pdf": "bfd3e557206e44c8d6d8c4560d21195917138f516360f1e8f4febec2621dacc3",
     "resultados/comparacao/e3_ablacao_temporal.png": "29963555b3a5f0ed10684252939242de8eae942e49358ab7231ff02c1c6222ce",
     "resultados/comparacao/e3_ablacao_temporal.pdf": "88e9c7a732f8ab6fd5c1dfa99e7b7f5fe7ac37616f326928eda6861386dade52",
-    "resultados/comparacao/e3_sensibilidade_escore_limiar.png": "261cbacc55fc73b3e0aa99122d8d38c1ac72baa0bf82c76defad5fcf414be233",
-    "resultados/comparacao/e3_sensibilidade_escore_limiar.pdf": "ff59f0e938ed82b83c1ba2b2f7edb2c8cdb0b58ee43a1b21f062c7e4b11a6687"
+    "resultados/comparacao/e3_sensibilidade_escore_limiar.png": "7ca9731304a59c350b191cc91dd393a6675230d1ee1fb522870838bce148a098",
+    "resultados/comparacao/e3_sensibilidade_escore_limiar.pdf": "29b5eabaf2d26e4479873b01f116a87687102744d294855338d845dbed2116de"
   },
   "evidence_level": "E3_bench"
 }

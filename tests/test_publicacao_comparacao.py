@@ -44,6 +44,8 @@ def test_contrato_publicado_e_canonico():
     assert ablation["role"] == "supplementary_diagnostic"
     assert ablation["sequence_length"] == 8
     assert ablation["transition_post_windows"] == 7
+    assert ablation["decision_target"] == "W_t"
+    assert ablation["context"] == "causal_continuous_W_t_minus_7_to_W_t"
     assert ablation["conclusion"]["status"] in {
         "survives",
         "does_not_survive",
@@ -51,8 +53,14 @@ def test_contrato_publicado_e_canonico():
     }
     sensitivity = payload["e3"]["score_threshold_sensitivity"]
     assert sensitivity["role"] == "supplementary_no_model_selection"
-    assert sensitivity["top_k_values"] == [1, 3, 5, 8, 12, 24]
-    assert sensitivity["requested_percentiles"] == [95.0, 97.5, 99.0, 99.5, 99.9]
+    assert sensitivity["top_k_values"] == [5, 10, 20]
+    assert sensitivity["requested_percentiles"] == [99.0, 99.5, 99.9]
+    assert sensitivity["configuration_count_per_model_seed"] == 9
+    assert sensitivity["historical_reference_configuration"] == {
+        "score_top_k": 5,
+        "threshold_requested_percentile": 99.9,
+        "role": "reproducibility_reference_not_universal_optimum",
+    }
     assert sensitivity["uses_fault_data_for_selection"] is False
     assert "e2" not in payload
     assert "GPVS-Faults" not in payload["title"]
@@ -153,9 +161,20 @@ def test_tabelas_e3_reconciliam():
         "post_fault_reset",
     }
     assert len(ablation_paired) == len(SEEDS) * 4 * 10
-    assert len(sensitivity) == len(MODELS) * len(SEEDS) * 6 * 5
+    assert len(sensitivity) == len(MODELS) * len(SEEDS) * 3 * 3
     assert sensitivity["uses_fault_data_for_selection"].eq(False).all()  # noqa: E712
-    assert sensitivity["is_canonical_configuration"].sum() == len(MODELS) * len(SEEDS)
+    assert sensitivity["calibration_role"].eq("healthy_calibration_only").all()
+    assert sensitivity["fault_evaluation_role"].eq(
+        "post_freeze_descriptive_only"
+    ).all()
+    assert sensitivity["is_historical_reference_configuration"].sum() == (
+        len(MODELS) * len(SEEDS)
+    )
+    assert sensitivity["threshold_selected_rank"].le(
+        sensitivity["calibration_n"]
+    ).all()
+    assert sensitivity["threshold_effective_percentile"].le(100.0).all()
+    assert sensitivity["threshold_percentile_resolution"].gt(0.0).all()
     np_columns = {
         "tn_rate_actual_healthy",
         "fp_rate_actual_healthy",

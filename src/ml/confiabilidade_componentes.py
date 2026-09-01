@@ -1,8 +1,10 @@
-"""Confiabilidade física bibliográfica dos componentes CA priorizados na FMECA.
+"""Confiabilidade física bibliográfica e contrato atual da FMECA.
 
 O GPVS-Faults não contém tempos de vida. Este módulo implementa somente
-cenários de sensibilidade exponenciais rastreáveis ao TCC de Torres (2024),
-sem estimar parâmetros físicos a partir dos detectores ou da validação E3.
+cenários históricos de sensibilidade exponenciais rastreáveis ao TCC de Torres
+(2024), sem estimar parâmetros físicos a partir dos detectores ou da validação
+E3. A FMECA atual possui escopo próprio e permanece sem S/O/D/NPR até que o
+pesquisador forneça os valores e fontes correspondentes.
 """
 
 from __future__ import annotations
@@ -60,6 +62,7 @@ class ReliabilityScenario:
             "time_model": "exponential_constant_hazard",
             "time_unit_primary": "hour",
             "hours_per_year": HOURS_PER_YEAR,
+            "scientific_role": "historical_tcc_reliability_sensitivity",
         }
 
 
@@ -68,46 +71,45 @@ class FmecaComponent:
     component_id: str
     component_name: str
     function: str
-    severity: int
-    occurrence: int
-    field_detection: int
-
-    @property
-    def npr(self) -> int:
-        return self.severity * self.occurrence * self.field_detection
+    failure_mode: str
+    native_experiments: tuple[str, ...]
+    severity: int | None = None
+    occurrence: int | None = None
+    detectability: int | None = None
+    npr: int | None = None
+    status: str = "awaiting_user_fmeca"
 
     def as_record(self) -> dict:
         return {
             **asdict(self),
-            "npr": self.npr,
-            "detection_meaning": "dificuldade de detecção no processo de manutenção",
+            "native_experiments": list(self.native_experiments),
+            "calculation_enabled": False,
         }
 
 
 FMECA_COMPONENTS = (
     FmecaComponent(
-        component_id="contator_ac",
-        component_name="Contator AC",
-        function="Conectar a saída CA do inversor à rede",
-        severity=5,
-        occurrence=7,
-        field_detection=9,
-    ),
-    FmecaComponent(
         component_id="igbt",
         component_name="IGBT",
         function="Realizar o chaveamento da conversão CC-CA",
-        severity=5,
-        occurrence=6,
-        field_detection=3,
+        failure_mode="Falha completa de um IGBT",
+        native_experiments=("F1L", "F1M"),
     ),
     FmecaComponent(
-        component_id="fusivel_ac",
-        component_name="Fusível AC",
-        function="Proteger o lado CA contra sobrecorrente",
-        severity=5,
-        occurrence=3,
-        field_detection=2,
+        component_id="sensor_feedback_system",
+        component_name="Sistema de sensor/realimentação",
+        function="Medir e realimentar as variáveis elétricas usadas pelo controle",
+        failure_mode="Erro de 20% no sistema de sensor/realimentação",
+        native_experiments=("F2L", "F2M"),
+    ),
+    FmecaComponent(
+        component_id="inverter_control_system",
+        component_name="Sistema/circuito de controle do inversor",
+        function="Regular a operação MPPT/IPPT por meio do controlador PI",
+        failure_mode=(
+            "Anomalia funcional no ganho ou na constante de tempo do controlador PI"
+        ),
+        native_experiments=("F6L", "F6M", "F7L", "F7M"),
     ),
 )
 
@@ -237,41 +239,6 @@ def hazard_rate(time_hours, lambda_per_hour: float) -> np.ndarray:
     return np.full_like(time, rate, dtype=float)
 
 
-def monitoring_extension_contract() -> dict:
-    """Contrato anulável da extensão FMECA, sem fabricar detectabilidade."""
-
-    return {
-        "status": "blocked_pending_pod_to_detection_mapping",
-        "publication_allowed": False,
-        "baseline_formula": "NPR_base = S * O * D_campo",
-        "candidate_projection_formula": "D_proj = min(D_campo, D_mon)",
-        "candidate_npr_formula": "NPR_proj = S * O * D_proj",
-        "mapping": {
-            "pod_mon_to_d_mon": None,
-            "source": None,
-            "validation_status": "not_defined",
-        },
-        "required_methodological_inputs": [
-            "definicao estatistica de POD_mon por componente e modo de falha",
-            "unidade inferencial, denominador e intervalo de confianca de POD_mon",
-            "mapeamento validado de POD_mon para a escala ordinal D_mon",
-            "fonte e regra de versionamento do mapeamento",
-        ],
-        "components": [
-            {
-                "component_id": component.component_id,
-                "d_campo": component.field_detection,
-                "npr_base": component.npr,
-                "pod_mon": None,
-                "d_mon": None,
-                "d_proj": None,
-                "npr_proj": None,
-            }
-            for component in FMECA_COMPONENTS
-        ],
-    }
-
-
 def distribution_model_contracts() -> dict:
     """Disponibilidade e parâmetros mínimos dos modelos físicos discutidos."""
 
@@ -288,10 +255,21 @@ def distribution_model_contracts() -> dict:
             "outputs": ["R(t)", "F(t)", "f(t)", "h(t)"],
         },
         "weibull_2p": {
-            "status": "blocked_missing_lifetime_evidence",
+            "status": "blocked_no_traceable_igbt_parameters_in_current_corpus",
             "parameters": {"beta": None, "eta_hours": None},
             "required_evidence": missing_lifetime_evidence,
             "outputs": [],
+            "corpus_audit": {
+                "date": "2026-09-01",
+                "igbt_chunks_reviewed": 22,
+                "weibull_chunks_found": 74,
+                "joint_sources": [SOURCE_PDF],
+                "joint_source_pages_reviewed": [35, 48],
+                "finding": (
+                    "A fonte comum discute IGBT e Weibull em contextos separados, "
+                    "sem fornecer beta ou eta para IGBT."
+                ),
+            },
         },
         "normal": {
             "status": "blocked_missing_lifetime_evidence",
@@ -358,7 +336,7 @@ def component_curves(
 
 def methodology() -> dict:
     return {
-        "schema_version": 5,
+        "schema_version": 6,
         "status": "bibliographic_component_sensitivity",
         "evidence_scope": "bibliographic_reliability_only",
         "time_unit_primary": "hour",
@@ -370,25 +348,34 @@ def methodology() -> dict:
             "hazard": "h(t) = lambda",
         },
         "fmeca": {
-            "formula": "NPR = S * O * D_campo",
-            "source_pdf": SOURCE_PDF,
-            "pdf_page": 35,
-            "printed_page": 34,
-            "source_table": "Tabela 3.3",
+            "status": "awaiting_user_fmeca",
+            "formula": "NPR = S * O * D",
+            "calculation_enabled": False,
+            "source_pdf": None,
+            "source_page": None,
+            "source_table": None,
             "components": [component.as_record() for component in FMECA_COMPONENTS],
             "boundary": (
-                "D_campo mede dificuldade de detecção na manutenção e não é uma "
-                "métrica dos Autoencoders."
+                "A validação E3 mede detecção de anomalias e não fornece valores "
+                "ordinais S/O/D nem recalcula NPR."
             ),
-            "monitoring_extension": monitoring_extension_contract(),
+            "legacy_tcc_scope": {
+                "status": "historical_not_canonical",
+                "components": ["Contator AC", "IGBT", "Fusível AC"],
+                "source_pdf": SOURCE_PDF,
+                "pdf_page": 35,
+                "printed_page": 34,
+                "source_table": "Tabela 3.3",
+            },
         },
         "distribution_models": distribution_model_contracts(),
         "physical_weibull": {
-            "status": "not_estimable_from_available_evidence",
+            "status": "blocked_no_traceable_igbt_parameters_in_current_corpus",
             "beta": None,
             "eta": None,
             "reason": (
-                "Ausência de tempos individuais de falha, exposição e censura por ativo"
+                "O corpus não fornece beta/eta de IGBT nem tempos individuais de "
+                "falha, exposição e censura por ativo."
             ),
         },
         "scenarios": [scenario.as_record() for scenario in SCENARIOS],
@@ -408,7 +395,6 @@ __all__ = [
     "failure_density",
     "hazard_rate",
     "methodology",
-    "monitoring_extension_contract",
     "reliability",
     "scenario_table",
     "distribution_model_contracts",

@@ -71,8 +71,12 @@ def test_sensitivity_uses_healthy_calibration_and_never_selects_on_faults(monkey
 
     assert len(result) == 8
     assert result["uses_fault_data_for_selection"].eq(False).all()  # noqa: E712
+    assert result["calibration_role"].eq("healthy_calibration_only").all()
+    assert result["fault_evaluation_role"].eq(
+        "post_freeze_descriptive_only"
+    ).all()
     assert set(result["calibration_n"]) == {4}
     assert set(result["threshold_percentile_resolution"]) == {25.0}
-    canonical = result[result["is_canonical_configuration"]]
-    assert set(canonical["score_top_k"]) == {5}
-    assert set(canonical["threshold_requested_percentile"]) == {99.9}
+    historical = result[result["is_historical_reference_configuration"]]
+    assert set(historical["score_top_k"]) == {5}
+    assert set(historical["threshold_requested_percentile"]) == {99.9}

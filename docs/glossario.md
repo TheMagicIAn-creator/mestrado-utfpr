@@ -15,17 +15,21 @@ ensaio. Os nomes dos ensaios vêm do dataset e não significam frequência.
 
 - **FMEA:** análise de modos e efeitos de falha.
 - **FMECA:** FMEA com análise de criticidade.
-- **NPR:** `S x O x D_campo`.
-- **D_campo:** dificuldade de detecção no processo de manutenção, não uma
-  métrica do Autoencoder.
-- **Contator AC, IGBT e Fusível AC:** componentes do recorte de manutenção.
+- **NPR:** produto entre severidade, ocorrência e detectabilidade, calculável
+  somente quando os três valores pertencem ao mesmo escopo documentado.
+- **Escopo FMECA vigente:** IGBT, sistema de sensor/realimentação e
+  sistema/circuito de controle do inversor.
+- **`awaiting_user_fmeca`:** S, O, D e NPR aguardam valores e fontes aprovados
+  pelo pesquisador; `null` não significa zero.
 
 ## Detectores e evidência E3
 
 - **Autoencoder Denso:** arquitetura `24-16-8-16-24`.
 - **AE-LSTM:** modelo temporal com sequência 8, oculto 32 e latente 8.
-- **Escore top-k:** média dos `k=5` maiores erros quadráticos por feature; no
-  AE-LSTM, calculada no último passo temporal.
+- **Escore top-k:** média dos `k` maiores erros quadráticos por feature; no
+  AE-LSTM, calculada em `W_t` após contexto causal `[W_(t-7), ..., W_t]`.
+- **Grade de sensibilidade:** nove combinações de `k={5,10,20}` com percentis
+  `{99;99,5;99,9}` por modelo e semente, sem seleção pelas falhas.
 - **Limiar p99,9:** percentil solicitado próprio de cada modelo na calibração
   saudável; o contrato também informa o percentil empírico efetivamente
   realizável. Na execução vigente, `n=210` implica ordem 210/210, p100 efetivo
@@ -43,10 +47,6 @@ ensaio. Os nomes dos ensaios vêm do dataset e não significam frequência.
 - **`h(t)`:** taxa instantânea de falha.
 - **Cenário derivado:** taxa calculada por hipótese de alocação; não é medição.
 - **Taxa direta:** valor transcrito de fonte bibliográfica identificada.
-- **POD_mon:** probabilidade de detecção do monitoramento, ainda sem definição
-  estatística componentizada no projeto.
-- **D_mon, D_proj e NPR_proj:** extensão anulável da FMECA; permanecem nulos
-  enquanto não houver mapeamento validado de POD_mon para D_mon.
 
 O contrato atual usa modelo exponencial de taxa constante. Curvas Normal,
 Lognormal ou Weibull exigiriam tempos individuais de falha, exposição e censura

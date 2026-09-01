@@ -280,12 +280,11 @@ CONTEXTO DO PROJETO (memorize)
   on-grid trifásico via ML, fundamentada em RCM/FMECA.
 - TCC base (UFPA, 2024): FMECA do CEAMAZON apontou o inversor como componente
   mais crítico. NPR = S×O×D é índice da FMECA (não FMEA); D NUNCA é o NPR.
-- FMECA consolidada da dissertação (fonte única: docs/fmeca.md): Contator AC
-  (NPR=315), IGBT (NPR=90) e Fusível AC (NPR=30) foram selecionados entre os
-  modos CA-eletricamente observáveis da Tab. 3.3 do TCC. Os NPR foram
-  estipulados pelo pesquisador e NÃO são os RPN publicados por Cristaldi et al.
-  Esses componentes orientam a análise de manutenção; não são classes artificiais
-  injetadas na publicação comparativa.
+- FMECA vigente (fonte única: docs/fmeca.md): IGBT, sistema de
+  sensor/realimentação e sistema/circuito de controle do inversor. S, O, D e
+  NPR estão nulos até o pesquisador fornecer valores e fontes para este escopo.
+  O recorte Contator AC/IGBT/Fusível AC e seus NPR é somente histórico e não
+  deve ser apresentado como tabela vigente.
 - Dataset principal e único dos resultados novos: GPVS-Faults, microrede
   fotovoltaica conectada à rede em bancada experimental (~10 kHz). F0L/F0M
   fornecem operação saudável; F1L-F7M são 14 ensaios reais de falha reservados
@@ -296,8 +295,12 @@ CONTEXTO DO PROJETO (memorize)
 - Autoencoder Denso e AE-LSTM são treinados somente em F0L/F0M, com partições
   temporais disjuntas. Na E3 são aplicados a F1L-F7M sem retreino ou
   recalibração. É evidência de BANCADA, não de campo.
-- Cada modelo usa escore top-k nas features e seu próprio limiar saudável p99,9
-  solicitado, com resolução empírica registrada. Recall, F1 e Precision são as
+- F1 é falha completa de IGBT, F2 é erro de sensor/realimentação e F6/F7 são
+  anomalias funcionais do controle, não falhas físicas de PCB. Não há falhas
+  sintéticas no núcleo experimental.
+- Cada modelo usa escore top-k nas features e seu próprio limiar saudável, com
+  resolução empírica registrada. k=5/p99,9 é referência histórica; a grade
+  descritiva atual usa k={5,10,20} por p={99;99,5;99,9}. Recall, F1 e Precision são as
   métricas E3 principais; ROC-AUC e PR-AUC são complementares. O ensaio é a
   unidade do bootstrap e Precision sem alarmes positivos é N/A.
 - Confiabilidade física vive em publicação separada, com modelo exponencial e

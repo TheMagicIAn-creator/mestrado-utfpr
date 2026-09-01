@@ -63,12 +63,9 @@ Utilizar como contexto secundário as decisões consolidadas no ambiente Work:
 - Dense Autoencoder versus AE-LSTM;
 - GPVS-Faults;
 - top-k;
-- `k=5` como valor de trabalho;
-- percentil 99,9 como limiar atualmente pretendido;
-- `POD_mon`;
-- `D_mon`;
-- regra conservadora `D_proj = min(D_campo, D_mon)`;
-- NPR projetado como extensão metodológica em avaliação;
+- `k=5` e p99,9 somente como referência histórica reproduzível;
+- grade descritiva `k={5,10,20}` por `{p99,p99,5,p99,9}`;
+- separação estrita entre métricas dos detectores e FMECA;
 - RCM + FMECA;
 - necessidade de consistência entre código, resultados e dissertação.
 
@@ -598,19 +595,12 @@ Quando houver suporte dos dados:
 
 # 11. LIMIAR DE DETECÇÃO
 
-Há divergência atual no projeto:
-
-- documentação atual usa p99;
-- consolidação do Work registra percentil 99,9 como valor de trabalho.
-
-O Codex não deve resolver essa divergência “no palpite”.
-
 Implementar:
 
 - threshold configurável;
 - método de calibração rastreável;
-- p99,9 como configuração de trabalho atualmente preferida pelo pesquisador;
-- capacidade de comparar alternativas em etapa de calibração;
+- p99,9 como referência histórica reproduzível;
+- grade pré-fixada p99, p99,5 e p99,9;
 - proibição de escolher o threshold olhando o resultado final de falhas do holdout.
 
 Exemplo:
@@ -626,16 +616,12 @@ A saída deve registrar o threshold real de cada modelo.
 
 # 12. ESCORE TOP-K
 
-O Work registra:
-
-- escore localizado top-k;
-- `k=5` como valor de trabalho.
-
 Implementar como componente configurável e reproduzível.
 
 Regras:
 
-- `k=5` não é constante científica universal;
+- `k=5` é referência histórica, não constante científica universal;
+- a grade descritiva usa `k={5,10,20}`;
 - documentar fórmula;
 - documentar qual dimensão recebe top-k;
 - justificar ou avaliar alternativas;
@@ -696,7 +682,9 @@ Portanto:
 
 > Não ajustar Weibull, Normal, Lognormal, bathtub curve ou RUL ao GPVS apenas para gerar figuras.
 
-Se a literatura fornecer parâmetros Weibull válidos para IGBT, Fusível AC ou Contator AC, a curva pode ser implementada como **cenário bibliográfico**, com fonte, parâmetros e hipótese explicitamente registrados.
+Se a literatura fornecer parâmetros Weibull válidos para IGBT, a curva pode ser
+implementada como **cenário bibliográfico**, com fonte, parâmetros e hipótese
+explicitamente registrados. Sem `beta` e `eta` rastreáveis, permanece bloqueada.
 
 ## 13.4. Histograma e “distribuição de taxa de falha”
 
@@ -722,11 +710,14 @@ Se um gráfico desejado não puder ser cientificamente produzido agora:
 
 A análise deve preservar a conexão com componentes internos do inversor.
 
-Componentes de interesse atualmente consolidados:
+Escopo canônico vigente:
 
-- IGBT;
-- Fusível AC;
-- Contator AC.
+- IGBT, associado a F1;
+- sistema de sensor/realimentação, associado a F2;
+- sistema/circuito de controle do inversor, associado a F6/F7.
+
+F6/F7 são anomalias funcionais do controle, não falhas físicas de PCB. O
+recorte histórico do TCC não transfere valores para o novo escopo.
 
 A FMECA não deve ser reduzida a “falha de tensão”, “falha de corrente” ou anomalias genéricas de sinal.
 
@@ -753,12 +744,15 @@ componente
 
 Não atribuir genericamente NPR à FMEA quando o trabalho está utilizando FMECA.
 
-Preservar:
+Preservar os campos:
 
 - Severidade `S`;
 - Ocorrência `O`;
 - Detectabilidade `D`;
 - NPR conforme escala/metodologia adotada.
+
+Enquanto o pesquisador não fornecer valores e fontes compatíveis com os três
+itens atuais, todos permanecem `null`, com estado `awaiting_user_fmeca`.
 
 Não confundir `D` com NPR.
 
@@ -766,84 +760,25 @@ Não sobrescrever os valores originais da FMECA.
 
 ---
 
-# 16. D_mon, D_proj E NPR PROJETADO
+# 16. SEPARAÇÃO ENTRE DETECTOR E FMECA
 
-O Work registra a extensão:
+A extensão que transformava desempenho do detector em detectabilidade ordinal
+foi revogada pela decisão metodológica de 2026-09-01. Ela não deve permanecer
+na publicação científica vigente nem ser tratada como capacidade futura.
 
-\[
-D_{proj} = \min(D_{campo}, D_{mon})
-\]
-
-e o uso de NPR projetado.
-
-Entretanto, existe uma divergência com a documentação atual, que separa o detector da FMECA.
-
-A implementação deve reconciliar isso da seguinte forma:
-
-## 16.1. Baseline imutável
-
-Manter:
-
-```text
-D_campo
-NPR_base
-```
-
-como baseline rastreável da FMECA.
-
-## 16.2. Extensão separada
-
-Criar, quando a transformação estiver validada:
-
-```text
-POD_mon
-D_mon
-D_proj
-NPR_proj
-```
-
-sem substituir os valores originais.
-
-## 16.3. Regra conservadora
-
-Se aprovada metodologicamente:
-
-\[
-D_{proj} = \min(D_{campo}, D_{mon})
-\]
-
-deve ser explicitamente descrita como regra conservadora da extensão.
-
-## 16.4. Proibição
-
-Não inventar uma função `POD_mon -> D_mon`.
-
-Se a literatura/base metodológica ainda não definir a transformação:
-
-- implementar contrato/interface;
-- deixar mapping pendente;
-- testar comportamento sem dados;
-- impedir que um `NPR_proj` fictício seja publicado como resultado.
+Recall, F1, Precision, matrizes de confusão e falso positivo saudável descrevem
+os detectores. Nenhuma dessas métricas altera S, O, D ou NPR.
 
 ---
 
-# 17. POD_mon
+# 17. MÉTRICAS DO MONITORAMENTO
 
-Se utilizado, `POD_mon` deve ter definição estatística explícita.
+As métricas experimentais devem manter unidade inferencial, denominador,
+estimativa e incerteza explícitos. O ensaio é a unidade do bootstrap E3; janelas
+agregadas em matrizes têm uso descritivo.
 
-O Codex deve verificar:
-
-- unidade inferencial;
-- denominador;
-- nível de falha;
-- condição saudável;
-- estimativa pontual;
-- incerteza;
-- intervalo de confiança quando aplicável.
-
-Não igualar automaticamente Recall global a POD sem justificar a equivalência.
-
-Se o trabalho decidir usar Recall como aproximação operacional, isso deve ser escrito como hipótese/definição do método.
+Não converter automaticamente Recall global em probabilidade física de
+detecção por componente ou em escala de manutenção.
 
 ---
 
@@ -1043,8 +978,8 @@ Validar:
 - monotonicidade de `R(t)` quando aplicável;
 - `F(t)` entre 0 e 1;
 - consistência de fonte;
-- baseline FMECA imutável;
-- ausência de `NPR_proj` quando `D_mon` não for validado.
+- S/O/D/NPR nulos enquanto faltar decisão do pesquisador;
+- ausência de qualquer conversão de métrica do detector em criticidade FMECA.
 
 ---
 
@@ -1154,8 +1089,8 @@ Corrigir:
 - matrizes de confusão;
 - falsos alarmes;
 - threshold configurável;
-- p99,9 como configuração de trabalho;
-- top-k;
+- p99,9 e `k=5` como referência histórica;
+- grade descritiva 3×3;
 - tabelas;
 - documentação.
 
@@ -1167,9 +1102,8 @@ Restaurar/garantir:
 
 - funções de confiabilidade;
 - gráficos;
-- componentes;
-- baseline;
-- infraestrutura de extensão `D_mon/D_proj/NPR_proj`;
+- FMECA atual com IGBT, sensor/realimentação e sistema de controle;
+- S/O/D/NPR anuláveis, sem herança do recorte histórico;
 - bloqueios científicos quando faltarem dados.
 
 ## Fase 6 — Frontend
@@ -1219,13 +1153,14 @@ Estado desejado:
 - AUC complementar;
 - matriz de confusão obrigatória.
 
-## C3 — p99 versus p99,9
+## C3 — calibração e resolução empírica
 
 Estado antigo:
 - documentação atual registra p99.
 
 Estado desejado:
-- p99,9 como configuração de trabalho atual;
+- p99,9 como referência histórica;
+- grade p99/p99,5/p99,9 com ordem e percentil efetivo;
 - threshold configurável;
 - sem otimização usando holdout final.
 
@@ -1237,15 +1172,15 @@ Estado observado pelo pesquisador:
 Estado desejado:
 - devem existir e permanecer.
 
-## C5 — FMECA separada versus integração projetada
+## C5 — FMECA e métricas do detector
 
 Estado antigo:
 - detector não recalcula NPR.
 
 Estado desejado:
-- baseline continua imutável;
-- extensão `D_mon/D_proj/NPR_proj` pode existir separadamente;
-- publicação somente depois de mapping validado.
+- novo escopo FMECA com campos nulos até decisão do pesquisador;
+- nenhuma transformação de desempenho do detector em NPR;
+- recorte antigo preservado somente como histórico.
 
 ## C6 — Distribuições de confiabilidade
 
@@ -1279,9 +1214,8 @@ Não:
 - ajustar threshold com dados de teste de falha;
 - criar Weibull/Normal/Lognormal com dados inventados;
 - inferir vida útil do GPVS sem dados de vida;
-- sobrescrever FMECA original;
-- inventar `D_mon`;
-- inventar NPR projetado;
+- transferir valores do recorte histórico para a FMECA vigente;
+- inferir S/O/D/NPR a partir de métricas dos detectores;
 - apagar resultados negativos;
 - ocultar falsos positivos;
 - quebrar rastreabilidade;
@@ -1309,12 +1243,12 @@ A tarefa só pode ser considerada concluída quando:
 - matriz de confusão estiver restaurada;
 - falsos alarmes estiverem quantificados;
 - threshold estiver configurável;
-- p99,9 estiver registrado como configuração de trabalho atual;
-- top-k/k=5 estiver rastreável/configurável se mantido;
+- p99,9 e k=5 estiverem registrados somente como referência histórica;
+- grade 3×3 estiver rastreável e calibrada apenas no saudável;
 - R(t), F(t), f(t) e h(t) estiverem matematicamente corretos;
 - Weibull/Normal/Lognormal não forem fabricados;
-- FMECA base estiver preservada;
-- infraestrutura de `D_mon/D_proj/NPR_proj` não publicar dados sem validação;
+- FMECA vigente estiver com o novo escopo e campos nulos sem fonte;
+- métricas do detector não recalcularem NPR;
 - frontend não recalcular ciência;
 - documentação refletir a mesma arquitetura;
 - `.env.example` refletir os dois provedores;

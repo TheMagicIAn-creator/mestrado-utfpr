@@ -89,9 +89,10 @@ def _comparison_context() -> str:
             f"AE-LSTM: {_metric(lstm, 'auc_pr')}.",
             f"Especificidade do Denso: {_metric(dense, 'specificity')}; "
             f"AE-LSTM: {_metric(lstm, 'specificity')}.",
-            "Escore: média dos cinco maiores erros quadráticos por feature; no "
-            "AE-LSTM, somente no último passo. Limiar saudável p99,9 solicitado, "
-            "com order statistic e percentil efetivo registrados por modelo.",
+            "Referência histórica: média dos cinco maiores erros quadráticos por "
+            "feature e p99,9 solicitado; não é ótimo universal. A sensibilidade "
+            "usa k={5,10,20} por p={99;99,5;99,9}. No AE-LSTM, a decisão em W_t "
+            "usa contexto causal contínuo.",
             "Não apresente métricas como resultados autônomos do dataset. "
             "Elas comparam exclusivamente os dois detectores.",
         )
@@ -120,7 +121,9 @@ def _reliability_context() -> str:
             "Portanto, distribuição normal, Weibull físico e curva de banheira "
             "não são estimáveis sem fabricar evidência.",
             "Participação de chamados auxilia o planejamento de manutenção, mas "
-            "não substitui severidade, ocorrência e detecção da FMECA.",
+            "não substitui severidade, ocorrência e detecção da FMECA. O escopo "
+            "vigente é IGBT, sensor/realimentação e sistema de controle, com "
+            "S/O/D/NPR nulos até decisão documentada do pesquisador.",
         )
     )
 

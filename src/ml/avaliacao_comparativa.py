@@ -59,6 +59,8 @@ def _temporal_ablation_for_experiment(
         )
     transition = post_test[:transition_size]
     sustained = post_test[transition_size:]
+    if np.any(np.diff(post_test) != 1):
+        raise ValueError(f"{experiment} possui janelas pós-falha não contíguas")
     continuous_sequences = sequences_from_flow(scaled)
     reset_post_sequences = sequences_from_flow(scaled[post_test])
     analysis_indices = {
@@ -125,10 +127,16 @@ def _temporal_ablation_for_experiment(
                         "mode": experiment[-1],
                         "mode_name": OPERATING_MODES[experiment[-1]],
                         "sequence_length": SEQUENCE_LENGTH,
+                        "decision_target": "W_t",
+                        "context_policy": "continuous_causal_within_experiment",
+                        "uses_future_windows": False,
+                        "crosses_experiment_or_split": False,
                         "transition_post_windows": transition_size,
                         "n_pre_fault_test": len(pre_test),
                         "n_post_fault_evaluated": n_positive,
                         "post_fault_context_reset": analysis == "post_fault_reset",
+                        "context_fully_post_fault": analysis
+                        in {"sustained", "post_fault_reset"},
                         "score_threshold": run.threshold,
                         "score_top_k": run.score_top_k,
                         **metrics,

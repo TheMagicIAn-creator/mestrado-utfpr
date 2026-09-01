@@ -17,7 +17,6 @@ from src.ml.confiabilidade_componentes import (
     failure_density,
     hazard_rate,
     methodology,
-    monitoring_extension_contract,
     reliability,
     scenario_table,
     distribution_model_contracts,
@@ -78,14 +77,16 @@ def test_curves_publish_hours_years_density_and_hazard():
 
 def test_no_physical_weibull_is_fabricated():
     contract = methodology()
-    assert contract["schema_version"] == 5
-    assert [item.npr for item in FMECA_COMPONENTS] == [315, 90, 30]
-    assert contract["fmeca"]["formula"] == "NPR = S * O * D_campo"
+    assert contract["schema_version"] == 6
+    assert contract["fmeca"]["formula"] == "NPR = S * O * D"
     assert contract["physical_weibull"] == {
-        "status": "not_estimable_from_available_evidence",
+        "status": "blocked_no_traceable_igbt_parameters_in_current_corpus",
         "beta": None,
         "eta": None,
-        "reason": "Ausência de tempos individuais de falha, exposição e censura por ativo",
+        "reason": (
+            "O corpus não fornece beta/eta de IGBT nem tempos individuais de "
+            "falha, exposição e censura por ativo."
+        ),
     }
     assert contract["evidence_scope"] == "bibliographic_reliability_only"
     assert "experimental_dataset" not in contract
@@ -93,18 +94,24 @@ def test_no_physical_weibull_is_fabricated():
     assert "eta" not in scenario_table().columns
 
 
-def test_monitoring_extension_is_nullable_and_cannot_publish_projected_npr():
-    extension = monitoring_extension_contract()
+def test_current_fmeca_scope_is_nullable_and_does_not_inherit_legacy_npr():
+    contract = methodology()["fmeca"]
 
-    assert extension["status"] == "blocked_pending_pod_to_detection_mapping"
-    assert extension["publication_allowed"] is False
-    assert extension["mapping"]["pod_mon_to_d_mon"] is None
-    assert [item["npr_base"] for item in extension["components"]] == [315, 90, 30]
-    for item in extension["components"]:
-        assert item["pod_mon"] is None
-        assert item["d_mon"] is None
-        assert item["d_proj"] is None
-        assert item["npr_proj"] is None
+    assert contract["status"] == "awaiting_user_fmeca"
+    assert contract["calculation_enabled"] is False
+    assert {item.component_id for item in FMECA_COMPONENTS} == {
+        "igbt",
+        "sensor_feedback_system",
+        "inverter_control_system",
+    }
+    assert "contator_ac" not in {item.component_id for item in FMECA_COMPONENTS}
+    assert "fusivel_ac" not in {item.component_id for item in FMECA_COMPONENTS}
+    for item in contract["components"]:
+        assert item["status"] == "awaiting_user_fmeca"
+        assert item["severity"] is None
+        assert item["occurrence"] is None
+        assert item["detectability"] is None
+        assert item["npr"] is None
 
 
 def test_distribution_contract_lists_missing_parameters_without_curves():
@@ -112,7 +119,18 @@ def test_distribution_contract_lists_missing_parameters_without_curves():
 
     assert contracts["exponential"]["status"] == "published_bibliographic_sensitivity"
     assert contracts["exponential"]["outputs"] == ["R(t)", "F(t)", "f(t)", "h(t)"]
-    for model in ("weibull_2p", "normal", "lognormal", "lifetime_histogram"):
+    assert contracts["weibull_2p"]["status"] == (
+        "blocked_no_traceable_igbt_parameters_in_current_corpus"
+    )
+    audit = contracts["weibull_2p"]["corpus_audit"]
+    assert audit["igbt_chunks_reviewed"] == 22
+    assert audit["weibull_chunks_found"] == 74
+    assert contracts["weibull_2p"]["outputs"] == []
+    assert all(
+        value is None
+        for value in contracts["weibull_2p"]["parameters"].values()
+    )
+    for model in ("normal", "lognormal", "lifetime_histogram"):
         assert contracts[model]["status"].startswith("blocked_missing_lifetime")
         assert contracts[model]["outputs"] == []
         assert all(value is None for value in contracts[model]["parameters"].values())

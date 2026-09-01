@@ -407,28 +407,6 @@ def sequences_for_blocks(
     return np.concatenate(sequences), np.concatenate(targets)
 
 
-def sequences_with_current_values(
-    healthy_context: np.ndarray,
-    current_values: np.ndarray,
-    groups: np.ndarray | list[str],
-    length: int = SEQUENCE_LENGTH,
-) -> np.ndarray:
-    """Substitui apenas o último passo e preserva contexto saudável por ensaio."""
-
-    context = np.asarray(healthy_context, dtype=np.float32)
-    current = np.asarray(current_values, dtype=np.float32)
-    labels = np.asarray(groups).astype(str)
-    if context.shape != current.shape or len(labels) != len(context):
-        raise ValueError("Contexto, itens atuais e grupos devem estar alinhados")
-    output = np.empty((len(context), int(length), context.shape[1]), dtype=np.float32)
-    for label in dict.fromkeys(labels.tolist()):
-        indices = np.flatnonzero(labels == label)
-        base_sequences = sequences_from_flow(context[indices], length)
-        base_sequences[:, -1, :] = current[indices]
-        output[indices] = base_sequences
-    return output
-
-
 def parameter_count(model) -> int:
     _require_torch()
     return int(sum(parameter.numel() for parameter in model.parameters()))
@@ -455,7 +433,6 @@ __all__ = [
     "score_lstm",
     "sequences_for_blocks",
     "sequences_from_flow",
-    "sequences_with_current_values",
     "set_deterministic_seed",
     "top_k_scores_from_feature_errors",
     "train_dense",

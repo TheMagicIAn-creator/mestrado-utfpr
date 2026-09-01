@@ -92,9 +92,10 @@ Models, scalers and local Obsidian state are not published.
 Phase 5 status: the two-stage scientific pipeline uses GPVS-Faults only as the
 experimental base for comparing the Denso and AE-LSTM detectors. F0L/F0M train,
 validate, calibrate and test the models; F1L-F7M provide E3 experimental bench
-validation. FMECA supports maintenance prioritization, while temporal
-reliability curves are independent bibliographic sensitivity scenarios. Field
-validation is still absent.
+validation. The current FMECA scope is IGBT, sensor/feedback and inverter
+control, with S/O/D/NPR intentionally null until researcher-supplied evidence
+is available. Temporal reliability curves remain independent historical
+bibliographic sensitivity scenarios. Field validation is still absent.
 
 ## Documentação técnica
 

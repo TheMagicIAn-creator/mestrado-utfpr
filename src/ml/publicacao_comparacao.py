@@ -11,7 +11,12 @@ import pandas as pd
 
 from src.core.config import RAIZ_PROJETO
 from src.core.tempo import agora_local
-from src.ml.dados_gpvs import FEATURE_COLUMNS, PreparedData, dataset_files
+from src.ml.dados_gpvs import (
+    FAULT_CONTRACTS,
+    FEATURE_COLUMNS,
+    PreparedData,
+    dataset_files,
+)
 from src.ml.estatistica_comparacao import BOOTSTRAP_RESAMPLES
 from src.ml.graficos_comparacao import generate_all
 from src.ml.modelos_autoencoder import SEQUENCE_LENGTH
@@ -127,6 +132,8 @@ def results_payload(
             "feature_count": len(FEATURE_COLUMNS),
             "feature_columns": list(FEATURE_COLUMNS),
             "model_selection_uses_fault_data": False,
+            "fault_data_role": "E3_evaluation_only_after_freeze",
+            "synthetic_faults_used_in_experimental_core": False,
             "e3": (
                 "14 ensaios reais de bancada; pesos, scaler e limiares congelados; "
                 "bootstrap no nível do ensaio"
@@ -143,6 +150,9 @@ def results_payload(
             "fault_boundary_caveat": (
                 "Os CSVs não fornecem canal de disparo; 50% é fronteira nominal."
             ),
+            "native_fault_catalog": {
+                f"F{fault}": contract for fault, contract in FAULT_CONTRACTS.items()
+            },
             "macro": e3["macro"].to_dict(orient="records"),
             "paired_differences": e3["paired"].to_dict(orient="records"),
             "stability": e3["stability"].to_dict(orient="records"),
@@ -151,6 +161,14 @@ def results_payload(
                 "role": "supplementary_diagnostic",
                 "sequence_length": SEQUENCE_LENGTH,
                 "transition_post_windows": SEQUENCE_LENGTH - 1,
+                "decision_target": "W_t",
+                "context": "causal_continuous_W_t_minus_7_to_W_t",
+                "transition_definition": (
+                    "primeiras sete janelas após a fronteira nominal"
+                ),
+                "sustained_definition": (
+                    "janelas posteriores, com contexto integralmente pós-fronteira"
+                ),
                 "analyses": [
                     "current_full",
                     "transition",
@@ -167,9 +185,13 @@ def results_payload(
                 "top_k_values": list(SENSITIVITY_TOP_K),
                 "requested_percentiles": list(SENSITIVITY_PERCENTILES),
                 "reference_seed": REFERENCE_SEED,
-                "canonical_configuration": {
+                "configuration_count_per_model_seed": (
+                    len(SENSITIVITY_TOP_K) * len(SENSITIVITY_PERCENTILES)
+                ),
+                "historical_reference_configuration": {
                     "score_top_k": 5,
                     "threshold_requested_percentile": 99.9,
+                    "role": "reproducibility_reference_not_universal_optimum",
                 },
                 "calibration_source": "healthy_calibration_only",
                 "uses_fault_data_for_selection": False,
@@ -281,16 +303,19 @@ def _write_report(payload: dict, output: Path) -> Path:
             "A fronteira de falha é nominalmente 50% do registro porque os CSVs ",
             "não contêm canal instrumentado de disparo.",
             "",
-            "O escore é a média dos cinco maiores erros quadráticos por feature. "
-            "Cada modelo calibra seu próprio limiar no bloco saudável de calibração "
-            "usando p99,9 solicitado; o contrato registra o order statistic e o "
-            "percentil empírico efetivamente alcançável.",
+            "O ponto operacional reproduzido usa a média dos cinco maiores erros "
+            "quadráticos por feature e p99,9 solicitado. Ele é uma referência "
+            "histórica pré-fixada, não um ótimo universal. Cada modelo calibra seu "
+            "próprio limiar somente no bloco saudável; o contrato registra o order "
+            "statistic e o percentil empírico efetivamente alcançável.",
             "",
             "## Ablação temporal do AE-LSTM",
             "",
-            "A análise suplementar separa as sete primeiras janelas pós-fronteira "
-            "da falha sustentada e também reinicia o contexto pós-falha do AE-LSTM. "
-            "Treino, scaler, escore e limiares permanecem congelados.",
+            "A análise canônica usa a sequência causal contínua [W_(t-7), ..., W_t] "
+            "e decide em W_t. Ela separa as sete primeiras janelas pós-fronteira "
+            "da falha sustentada, cujo contexto já é integralmente pós-fronteira. "
+            "O reinício pós-falha permanece apenas como diagnóstico auxiliar. Treino, "
+            "scaler, escore e limiares permanecem congelados.",
             "",
             "| Métrica | AE-LSTM − Denso na falha sustentada | IC95% |",
             "|---|---:|---:|",
@@ -307,8 +332,9 @@ def _write_report(payload: dict, output: Path) -> Path:
             "",
             "## Sensibilidade do escore e do limiar",
             "",
-            "A grade complementar usa `k = 1, 3, 5, 8, 12, 24` e percentis "
-            "solicitados p95, p97,5, p99, p99,5 e p99,9. Cada limiar é derivado "
+            "A grade complementar usa `k = 5, 10, 20` e percentis solicitados "
+            "p99, p99,5 e p99,9, totalizando nove configurações por modelo e "
+            "semente. Cada limiar é derivado "
             "exclusivamente da calibração saudável; as falhas não selecionam a "
             "configuração.",
             "",
@@ -327,9 +353,10 @@ def _write_report(payload: dict, output: Path) -> Path:
                 for model_id in MODEL_IDS
             ),
             "",
-            "A configuração canônica continua sendo k=5 com p99,9 solicitado. "
-            "A tabela registra também o percentil empírico efetivo e a resolução "
-            "da calibração; esta análise não promove uma alternativa.",
+            "k=5 com p99,9 solicitado permanece somente como referência histórica "
+            "de reprodutibilidade. A tabela registra também o percentil empírico "
+            "efetivo, a estatística de ordem e a resolução da calibração; esta "
+            "análise não promove uma configuração a partir das falhas.",
         ]
     )
     output.write_text(
@@ -430,6 +457,9 @@ def save_results(
             "score_threshold_sensitivity": {
                 "top_k_values": list(SENSITIVITY_TOP_K),
                 "requested_percentiles": list(SENSITIVITY_PERCENTILES),
+                "configuration_count_per_model_seed": (
+                    len(SENSITIVITY_TOP_K) * len(SENSITIVITY_PERCENTILES)
+                ),
                 "reference_seed": REFERENCE_SEED,
                 "uses_fault_data_for_selection": False,
             },
