@@ -107,10 +107,10 @@ def test_catalogo_rejeita_titulo_interno_de_template(tmp_path):
 def test_catalogo_versionado_cobre_corpus_real_sem_confundir_manifesto_com_chunk():
     catalog = carregar_catalogo(ROOT / "literatura" / "catalogo.json")
 
-    assert catalog["summary"]["documents"] == 44
+    assert catalog["summary"]["documents"] == 45
     assert catalog["summary"]["indexed_chunks"] == 12556
     assert catalog["summary"]["portable_index_records"] == 12557
-    assert catalog["summary"]["metadata_warnings"] == 3
+    assert catalog["summary"]["metadata_warnings"] == 4
     assert all(len(item["source_id"]) == 64 for item in catalog["documents"])
     assert all("\ufffd" not in item["title"] for item in catalog["documents"])
     assert all(
@@ -118,6 +118,17 @@ def test_catalogo_versionado_cobre_corpus_real_sem_confundir_manifesto_com_chunk
         for item in catalog["documents"]
         for author in item["authors"]
     )
+    kull = next(
+        item
+        for item in catalog["documents"]
+        if item["source_id"]
+        == "6a3d079ab53021fc6920608048113153605e90581548bc5e5bff0914b46d102c"
+    )
+    assert kull["year"] == 2025
+    assert kull["chunk_count"] == 0
+    assert kull["index_status"] == "pending_benchmark_regression"
+    assert "benchmark_r6_regression_not_promoted" in kull["extraction_warnings"]
+    assert kull["file_name"].endswith("_2025.pdf")
 
 
 def test_store_edita_metadados_e_marca_indice_como_stale(tmp_path):
