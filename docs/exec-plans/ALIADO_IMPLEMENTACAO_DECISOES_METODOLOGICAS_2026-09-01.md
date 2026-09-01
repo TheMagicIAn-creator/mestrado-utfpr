@@ -7,8 +7,8 @@
 - Branch: `codex/implementar-decisoes-metodologicas-2026-09-01`.
 - Linha de base de testes: 585 aprovados, 3 ignorados e 17 pesados não
   selecionados.
-- Implementação: `PREENCHER_APOS_COMMIT`.
-- PR final: `PREENCHER_APOS_PUBLICACAO`.
+- Implementação: `f96c0031f73a4a27e20a6733b9a9e64773a49f93`.
+- PR final: `#175`.
 
 ## A. Implementado
 
