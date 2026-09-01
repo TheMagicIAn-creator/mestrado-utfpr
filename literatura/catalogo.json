@@ -8,21 +8,21 @@
     "declared_chunks": 12556
   },
   "summary": {
-    "documents": 44,
+    "documents": 45,
     "indexed_chunks": 12556,
     "portable_index_records": 12557,
     "categories": {
       "confiabilidade": 6,
       "inversores-pv": 11,
       "manutencao": 4,
-      "ml-preditivo": 16,
+      "ml-preditivo": 17,
       "sinais-eletricos": 7
     },
     "languages": {
-      "en": 32,
+      "en": 33,
       "pt": 12
     },
-    "metadata_warnings": 3
+    "metadata_warnings": 4
   },
   "documents": [
     {
@@ -541,6 +541,37 @@
       "metadata_edited": false,
       "index_status": "indexed",
       "extraction_warnings": []
+    },
+    {
+      "source_id": "6a3d079ab53021fc6920608048113153605e90581548bc5e5bff0914b46d102c",
+      "sha256": "6a3d079ab53021fc6920608048113153605e90581548bc5e5bff0914b46d102c",
+      "file_name": "kull_faults-failures-reliability-and-predictive-maintenance-of-grid-connected-solar-systems-a-comprehensive-review_2025.pdf",
+      "relative_path": "ml-preditivo/kull_faults-failures-reliability-and-predictive-maintenance-of-grid-connected-solar-systems-a-comprehensive-review_2025.pdf",
+      "title": "Faults, Failures, Reliability, and Predictive Maintenance of Grid-Connected Solar Systems: A Comprehensive Review",
+      "authors": [
+        "Karl Kull",
+        "Bilal Asad",
+        "Muhammad Amir Khan",
+        "Muhammad Usman Naseer",
+        "Ants Kallaste",
+        "Toomas Vaimann"
+      ],
+      "year": 2025,
+      "year_status": "informado",
+      "category": "ml-preditivo",
+      "language": "en",
+      "chunk_count": 0,
+      "size_bytes": 6012938,
+      "citation": "Karl Kull et al. (2025) — Faults, Failures, Reliability, and Predictive Maintenance of Grid-Connected Solar Systems: A Comprehensive Review",
+      "metadata_origin": "upload_user",
+      "metadata_edited": true,
+      "index_status": "pending_benchmark_regression",
+      "extraction_warnings": [
+        "ausente_do_indice_portatil",
+        "benchmark_r6_regression_not_promoted"
+      ],
+      "created_at": "2026-08-30T00:38:34.086898+00:00",
+      "updated_at": "2026-09-01T09:06:48.651888+00:00"
     },
     {
       "source_id": "9982adc452e12332d35799505477626f9c203f9dd9c74e664c31c3af224a37bd",

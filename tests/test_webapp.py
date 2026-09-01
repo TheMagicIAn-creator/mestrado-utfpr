@@ -174,10 +174,10 @@ def test_biblioteca_expoe_todos_os_pdfs_e_trechos_sem_contar_manifesto(client):
     assert response.status_code == 200
     data = response.json()
 
-    assert data["summary"]["documents"] == 44
+    assert data["summary"]["documents"] == 45
     assert data["summary"]["indexed_chunks"] == 12556
     assert data["summary"]["portable_index_records"] == 12557
-    assert len(data["documents"]) == 44
+    assert len(data["documents"]) == 45
     assert all(item["url"].startswith("/library-files/") for item in data["documents"])
     assert data["write_policy"]["git_automation"] is False
 
