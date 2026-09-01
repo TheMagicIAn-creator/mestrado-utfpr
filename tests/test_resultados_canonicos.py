@@ -36,12 +36,16 @@ def test_published_json_contracts_are_strict_json():
     comparison = json.loads(resultados.COMPARISON_JSON.read_text(encoding="utf-8"))
     reliability = json.loads(resultados.RELIABILITY_JSON.read_text(encoding="utf-8"))
     assert comparison["schema_version"] == 2
-    assert reliability["schema_version"] == 5
+    assert reliability["schema_version"] == 6
     assert set(comparison["models"]) == {"ae_denso", "ae_lstm"}
     assert reliability["evidence_scope"] == "bibliographic_reliability_only"
-    extension = reliability["fmeca"]["monitoring_extension"]
-    assert extension["publication_allowed"] is False
-    assert all(item["npr_proj"] is None for item in extension["components"])
+    fmeca = reliability["fmeca"]
+    assert fmeca["status"] == "awaiting_user_fmeca"
+    assert fmeca["calculation_enabled"] is False
+    assert all(item["npr"] is None for item in fmeca["components"])
+    serialized = json.dumps(reliability, ensure_ascii=False).lower()
+    for revoked in ("pod_mon", "d_mon", "d_proj", "npr_proj"):
+        assert revoked not in serialized
     assert reliability["distribution_models"]["exponential"]["status"].startswith(
         "published"
     )

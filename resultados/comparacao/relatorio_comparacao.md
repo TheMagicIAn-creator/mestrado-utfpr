@@ -40,11 +40,11 @@ selecionar o modelo pelo desempenho nas falhas.
 A fronteira de falha é nominalmente 50% do registro porque os CSVs
 não contêm canal instrumentado de disparo.
 
-O escore é a média dos cinco maiores erros quadráticos por feature. Cada modelo calibra seu próprio limiar no bloco saudável de calibração usando p99,9 solicitado; o contrato registra o order statistic e o percentil empírico efetivamente alcançável.
+O ponto operacional reproduzido usa a média dos cinco maiores erros quadráticos por feature e p99,9 solicitado. Ele é uma referência histórica pré-fixada, não um ótimo universal. Cada modelo calibra seu próprio limiar somente no bloco saudável; o contrato registra o order statistic e o percentil empírico efetivamente alcançável.
 
 ## Ablação temporal do AE-LSTM
 
-A análise suplementar separa as sete primeiras janelas pós-fronteira da falha sustentada e também reinicia o contexto pós-falha do AE-LSTM. Treino, scaler, escore e limiares permanecem congelados.
+A análise canônica usa a sequência causal contínua [W_(t-7), ..., W_t] e decide em W_t. Ela separa as sete primeiras janelas pós-fronteira da falha sustentada, cujo contexto já é integralmente pós-fronteira. O reinício pós-falha permanece apenas como diagnóstico auxiliar. Treino, scaler, escore e limiares permanecem congelados.
 
 | Métrica | AE-LSTM − Denso na falha sustentada | IC95% |
 |---|---:|---:|
@@ -56,11 +56,11 @@ Conclusão pré-especificada: `inconclusive`. Os intervalos da falha sustentada 
 
 ## Sensibilidade do escore e do limiar
 
-A grade complementar usa `k = 1, 3, 5, 8, 12, 24` e percentis solicitados p95, p97,5, p99, p99,5 e p99,9. Cada limiar é derivado exclusivamente da calibração saudável; as falhas não selecionam a configuração.
+A grade complementar usa `k = 5, 10, 20` e percentis solicitados p99, p99,5 e p99,9, totalizando nove configurações por modelo e semente. Cada limiar é derivado exclusivamente da calibração saudável; as falhas não selecionam a configuração.
 
 | Modelo | FP saudável mínimo-máximo | Recall E3 mínimo-máximo | F1 E3 mínimo-máximo | Precision E3 mínimo-máximo |
 |---|---:|---:|---:|---:|
-| Autoencoder Denso | 0.712%–7.117% | 0.383–0.527 | 0.430–0.604 | 0.823–0.934 |
-| AE-LSTM | 0.712%–5.694% | 0.386–0.409 | 0.433–0.454 | 0.855–0.950 |
+| Autoencoder Denso | 0.712%–1.779% | 0.384–0.413 | 0.432–0.474 | 0.870–0.934 |
+| AE-LSTM | 1.068%–2.847% | 0.387–0.391 | 0.433–0.436 | 0.941–0.950 |
 
-A configuração canônica continua sendo k=5 com p99,9 solicitado. A tabela registra também o percentil empírico efetivo e a resolução da calibração; esta análise não promove uma alternativa.
+k=5 com p99,9 solicitado permanece somente como referência histórica de reprodutibilidade. A tabela registra também o percentil empírico efetivo, a estatística de ordem e a resolução da calibração; esta análise não promove uma configuração a partir das falhas.

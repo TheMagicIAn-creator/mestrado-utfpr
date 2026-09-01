@@ -1,62 +1,51 @@
-# FMECA consolidada
+# FMECA vigente
 
-A FMECA organiza a criticidade dos componentes do lado CA e orienta a análise
-de manutenção. Ela não é recalculada pelo desempenho dos Autoencoders e não
-produz uma campanha sintética de resultados.
+A FMECA atual acompanha os modos nativos do GPVS-Faults que possuem ligação
+direta com o inversor. Ela organiza a discussão de manutenção, mas não é
+recalculada pelo desempenho dos Autoencoders.
 
-## Conceitos
+## Escopo canônico
 
-- FMEA identifica modos e efeitos de falha.
-- FMECA acrescenta criticidade.
-- `NPR = S x O x D_campo`.
-- `D_campo` mede a dificuldade de detecção no processo de manutenção; não é a
-  sensibilidade do Autoencoder.
+| Item | Função | Contrapartida experimental | S | O | D | NPR | Estado |
+|---|---|---|---:|---:|---:|---:|---|
+| IGBT | chaveamento da conversão CC-CA | F1L/F1M: falha completa de um IGBT | `null` | `null` | `null` | `null` | `awaiting_user_fmeca` |
+| Sistema de sensor/realimentação | medir e realimentar variáveis elétricas | F2L/F2M: erro de 20% | `null` | `null` | `null` | `null` | `awaiting_user_fmeca` |
+| Sistema/circuito de controle do inversor | regular MPPT/IPPT pelo controlador PI | F6L/F6M: ganho -20%; F7L/F7M: constante de tempo +20% | `null` | `null` | `null` | `null` | `awaiting_user_fmeca` |
 
-## Componentes
+Os valores de severidade, ocorrência, detectabilidade e NPR dependem de decisão
+do pesquisador e de fonte compatível com este novo escopo. Nenhum número do
+recorte histórico é transferido automaticamente.
 
-| Componente | Função | S | O | D_campo | NPR |
-|---|---|---:|---:|---:|---:|
-| Contator AC | conectar a saída CA à rede | 5 | 7 | 9 | 315 |
-| IGBT | realizar o chaveamento da conversão CC-CA | 5 | 6 | 3 | 90 |
-| Fusível AC | proteger o lado CA contra sobrecorrente | 5 | 3 | 2 | 30 |
+## Interpretação dos ensaios
 
-Ordem de criticidade: Contator AC, IGBT e Fusível AC.
+- F1 representa falha física completa de um IGBT.
+- F2 representa erro funcional do sistema de sensor/realimentação.
+- F6 e F7 representam anomalias funcionais do sistema/circuito de controle.
+- F6 e F7 não são evidência de falha física de placa de circuito impresso.
+- F3, F4 e F5 continuam na avaliação E3, mas não integram o trio FMECA atual.
 
-## Fundamentação e uso
+O núcleo experimental usa somente as condições reais de bancada F1L-F7M. Não
+há injeção sintética de falhas para IGBT, sensor/realimentação ou controle.
 
-O TCC registra participações de chamados de 12% para Contator AC, 6% para IGBT
-e 4% para Fusível AC. Essas participações apoiam cenários bibliográficos de
-sensibilidade, mas não são taxas medidas dos componentes. Software e PCB ficam
-fora do recorte porque a dissertação prioriza componentes CA relacionados às
-assinaturas elétricas e ao planejamento de manutenção.
+## Limites científicos
 
-A FMECA deve ser lida junto às curvas `R(t)`, `F(t)`, `f(t)` e `h(t)` para
-discutir prioridade, inspeção e ressalvas da evidência. Ela não transforma
-taxas bibliográficas em observações de campo, não cria distribuição normal e
-não altera limiares ou métricas da comparação Denso versus AE-LSTM.
+Recall, F1, Precision, matrizes de confusão e falso positivo saudável medem o
+comportamento dos detectores. Essas métricas não definem escalas ordinais de
+manutenção e não recalculam NPR.
 
-## Ponte com a evidência GPVS
+O recorte Contator AC, IGBT e Fusível AC, com valores 315, 90 e 30, permanece
+apenas como registro histórico do TCC. Ele não é a FMECA canônica desta etapa e
+não fornece valores para sensor/realimentação ou sistema de controle.
 
-Os 14 ensaios F1L-F7M permanecem com as categorias nativas do GPVS-Faults. O
-pipeline os trata como condições experimentais de falha para comparar os dois
-detectores; não os relabela como Contator AC, IGBT ou Fusível AC e não injeta
-assinaturas sintéticas desses componentes.
+## Dados ainda necessários do pesquisador
 
-Consequentemente, a E3 sustenta a detecção de anomalias no conjunto de bancada
-avaliado, mas não uma probabilidade de detecção individual para cada componente
-da FMECA. Contator AC, IGBT e Fusível AC entram na dissertação pela priorização
-de manutenção e pelos cenários bibliográficos, em uma família separada.
+Para cada um dos três itens atuais ainda faltam:
 
-## Extensão de monitoramento
+- severidade e critério da escala;
+- ocorrência e base observacional ou bibliográfica;
+- detectabilidade de manutenção e definição operacional;
+- fonte, página e tabela;
+- regra aprovada para cálculo e interpretação do NPR.
 
-O contrato versionado preserva `D_campo` e `NPR_base` e expõe como nulos:
-
-- `POD_mon`;
-- `D_mon`;
-- `D_proj`;
-- `NPR_proj`.
-
-A regra candidata `D_proj=min(D_campo,D_mon)` só poderá ser ativada depois de
-definir POD por componente, unidade inferencial, denominador, IC e um mapeamento
-bibliograficamente validado para a escala ordinal `D_mon`. Até lá, a publicação
-bloqueia NPR projetado e mantém os valores 315, 90 e 30 imutáveis.
+Até esses dados existirem, S, O, D e NPR permanecem nulos nos artefatos
+versionados.

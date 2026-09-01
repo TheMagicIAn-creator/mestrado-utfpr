@@ -80,14 +80,14 @@ cenário bibliográfico separado e não deriva taxas de falha do GPVS.
 |---|---|
 | `dados_gpvs.py` | 16 ensaios, 24 features, split, normalização e holdout. |
 | `modelos_autoencoder.py` | Denso 24-16-8-16-24 e AE-LSTM temporal. |
-| `treino_comparacao.py` | Treino pareado, cinco sementes, top-k e limiar p99,9 rastreável. |
+| `treino_comparacao.py` | Treino pareado, cinco sementes e calibração saudável rastreável. |
 | `estatistica_comparacao.py` | Métricas, Wilson e bootstrap por ensaio. |
-| `avaliacao_comparativa.py` | Avaliação E3 dos modelos congelados. |
-| `sensibilidade_escore.py` | Grade descritiva de top-k e limiar sem seleção pelas falhas. |
+| `avaliacao_comparativa.py` | Avaliação E3 congelada e análise causal de transição/falha sustentada. |
+| `sensibilidade_escore.py` | Grade 3×3 de top-k e limiar sem seleção pelas falhas. |
 | `graficos_comparacao.py` | Figuras comparativas E3 em PNG e PDF. |
 | `publicacao_comparacao.py` | Tabelas, relatório, contrato e manifesto v2. |
 | `comparacao_autoencoders.py` | Entrada da campanha Denso versus AE-LSTM. |
-| `confiabilidade_componentes.py` | Cenários exponenciais diretos e derivados. |
+| `confiabilidade_componentes.py` | FMECA anulável vigente e cenários exponenciais históricos. |
 | `graficos_confiabilidade.py` | Figuras de R(t), F(t), f(t), h(t) e taxas. |
 | `publicacao_confiabilidade.py` | Publicação física e manifesto v2. |
 | `pipeline.py` | Orquestra as duas publicações canônicas. |

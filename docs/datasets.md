@@ -20,8 +20,9 @@ Os 16 CSVs locais totalizam 493.425.214 bytes (aproximadamente 493 MB em base de
 ## Protocolo canônico
 
 F0L/F0M alimentam o Autoencoder Denso e o AE-LSTM sob o mesmo protocolo. Cada
-modelo preserva seu próprio scaler, escore top-k (`k=5`) e limiar p99,9
-solicitado, todos congelados antes
+modelo preserva seu próprio scaler, escore top-k e limiar saudável. A referência
+histórica usa `k=5` e p99,9 solicitado; a sensibilidade pré-fixada usa
+`k={5,10,20}` e percentis `{99;99,5;99,9}`. Tudo é congelado antes
 de avaliar F1L-F7M na E3 de bancada. Não há publicação autônoma de métricas do
 dataset: toda métrica experimental compara os dois modelos.
 
@@ -32,10 +33,12 @@ Cada ensaio de falha usa a primeira metade pré-falha para normalização de
 comissionamento e reserva a segunda metade pré-falha para especificidade. Não
 há retreino nem recalibração do limiar por ensaio.
 
-Os rótulos F1-F7 não são convertidos em classes Contator AC, IGBT e Fusível AC.
-A FMECA permanece uma camada de priorização de manutenção separada. Portanto,
-as métricas E3 não devem ser apresentadas como POD específica desses três
-componentes.
+F1 representa falha completa de um IGBT; F2, erro de 20% no sistema de
+sensor/realimentação; F6, redução de 20% no ganho PI; e F7, aumento de 20% na
+constante de tempo PI. F6/F7 são anomalias funcionais de controle, não falhas
+físicas de PCB. A FMECA atual usa IGBT, sensor/realimentação e sistema/circuito
+de controle como escopo, mas suas escalas S/O/D/NPR permanecem independentes
+das métricas E3. Não há falhas sintéticas no núcleo experimental.
 
 ## Qualidade de amostragem
 

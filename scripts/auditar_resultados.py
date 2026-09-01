@@ -437,6 +437,18 @@ def _audit_scientific_contracts(results: Path, errors: list[str]) -> None:
         errors.append("active_dataset_count deve ser 1")
     if set(comparison.get("models", {})) != {"ae_denso", "ae_lstm"}:
         errors.append("a comparação deve conter somente AE Denso e AE-LSTM")
+    sensitivity = comparison.get("e3", {}).get("score_threshold_sensitivity", {})
+    if sensitivity.get("top_k_values") != [5, 10, 20]:
+        errors.append("a sensibilidade não usa a grade top-k canônica 5/10/20")
+    if sensitivity.get("requested_percentiles") != [99.0, 99.5, 99.9]:
+        errors.append("a sensibilidade não usa os percentis 99/99,5/99,9")
+    if sensitivity.get("configuration_count_per_model_seed") != 9:
+        errors.append("a sensibilidade não declara nove configurações por modelo/semente")
+    if sensitivity.get("uses_fault_data_for_selection") is not False:
+        errors.append("a publicação permite seleção com os ensaios F1-F7")
+    temporal = comparison.get("e3", {}).get("temporal_ablation", {})
+    if temporal.get("decision_target") != "W_t":
+        errors.append("a análise temporal não declara decisão causal em W_t")
 
     reliability = _read_json(results / "confiabilidade" / "metodologia.json")
     if reliability.get("evidence_scope") != "bibliographic_reliability_only":
@@ -446,6 +458,27 @@ def _audit_scientific_contracts(results: Path, errors: list[str]) -> None:
     physical_weibull = reliability.get("physical_weibull", {})
     if physical_weibull.get("beta") is not None or physical_weibull.get("eta") is not None:
         errors.append("a publicação fabricou parâmetros Weibull físicos")
+    fmeca = reliability.get("fmeca", {})
+    if fmeca.get("status") != "awaiting_user_fmeca":
+        errors.append("a FMECA não declara que aguarda os valores do pesquisador")
+    component_ids = {
+        item.get("component_id") for item in fmeca.get("components", [])
+    }
+    if component_ids != {
+        "igbt",
+        "sensor_feedback_system",
+        "inverter_control_system",
+    }:
+        errors.append("a FMECA publicada não usa o trio metodológico vigente")
+    if any(
+        item.get(field) is not None
+        for item in fmeca.get("components", [])
+        for field in ("severity", "occurrence", "detectability", "npr")
+    ):
+        errors.append("a FMECA publicou S/O/D/NPR sem dados aprovados")
+    serialized = json.dumps(reliability, ensure_ascii=False).lower()
+    if any(field in serialized for field in ("pod_mon", "d_mon", "d_proj", "npr_proj")):
+        errors.append("a publicação ainda contém campos de projeção revogados")
 
 
 def auditar_publicacao(root: Path | str = RAIZ_PROJETO) -> dict:

@@ -122,11 +122,23 @@ def test_temporal_ablation_resets_only_the_post_fault_lstm_context(monkeypatch):
         runs=runs,
     )
 
+    continuous_sequences = next(
+        values for values in captured_sequences if len(values) == len(scaled)
+    )
+    np.testing.assert_array_equal(
+        continuous_sequences[8, :, 0], np.arange(1.0, 9.0)
+    )
+    assert continuous_sequences[8, :, 0].max() == 8.0
     reset_sequences = next(values for values in captured_sequences if len(values) == 9)
     assert np.all(reset_sequences[0, :, 0] == 4.0)
     assert reset_sequences.min() >= 4.0
     sustained = [row for row in rows if row["analysis"] == "sustained"]
     assert {row["n_post_fault_evaluated"] for row in sustained} == {2}
+    assert all(row["context_fully_post_fault"] for row in sustained)
+    assert all(row["decision_target"] == "W_t" for row in rows)
+    assert all(row["context_policy"] == "continuous_causal_within_experiment" for row in rows)
+    assert not any(row["uses_future_windows"] for row in rows)
+    assert not any(row["crosses_experiment_or_split"] for row in rows)
 
 
 def test_orchestrator_forwards_scientific_configuration(monkeypatch):
@@ -307,8 +319,8 @@ def test_generate_all_comparison_figures_from_tabular_sources(tmp_path):
                 "macro_precision": 0.8,
             }
             for model in ("ae_denso", "ae_lstm")
-            for top_k in (1, 3, 5, 8, 12, 24)
-            for percentile in (95.0, 97.5, 99.0, 99.5, 99.9)
+            for top_k in (5, 10, 20)
+            for percentile in (99.0, 99.5, 99.9)
         ]
     )
 

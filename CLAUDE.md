@@ -31,6 +31,8 @@ O único dataset experimental ativo é o **GPVS-Faults**, DOI
 - Os blocos saudáveis são temporalmente disjuntos em treino, validação,
   calibração e teste, com purga de fronteira.
 - `F1L` a `F7M` são ensaios de falha e formam a avaliação experimental E3.
+- F1 é falha completa de IGBT; F2 é erro de sensor/realimentação; F6/F7 são
+  anomalias funcionais do controle e não falhas físicas de PCB.
 - Nenhum outro dataset pode ser combinado, usado como fonte ativa ou citado
   como origem dos resultados publicados.
 
@@ -40,9 +42,10 @@ A comparação publicada contém somente:
 - AE-LSTM com sequência de comprimento 8, oculto 32 e latente 8.
 
 Os modelos usam as mesmas 24 features elétricas, o mesmo orçamento de treino,
-as mesmas sementes e partições compatíveis. O escore é a média dos cinco
-maiores erros quadráticos por feature, e cada modelo aprende seu próprio limiar
-p99,9 solicitado na calibração saudável. Na execução vigente, 210 observações
+as mesmas sementes e partições compatíveis. A referência histórica usa a média
+dos cinco maiores erros quadráticos por feature e p99,9 solicitado. A análise
+de sensibilidade usa `k={5,10,20}` por `{p99,p99,5,p99,9}` e não escolhe uma
+configuração pelas falhas. Na execução vigente, 210 observações
 de calibração fazem esse pedido selecionar o máximo amostral (percentil
 empírico efetivo p100, resolução de 0,476 ponto percentual). Pesos, scaler e
 limiar ficam congelados na avaliação E3; a normalização de comissionamento
@@ -56,8 +59,9 @@ Avalia Denso e AE-LSTM nos 14 ensaios de falha reais. Recall, F1 e Precision
 são as métricas principais; ROC-AUC e PR-AUC são complementares, e
 especificidade, acurácia balanceada, MCC e falso positivo saudável permanecem
 auxiliares. Intervalos são calculados por bootstrap no nível do ensaio. A
-ablação temporal vigente foi inconclusiva e não autoriza afirmar superioridade
-do AE-LSTM. Consulte `resultados/comparacao/`.
+análise temporal causal vigente separa transição e falha sustentada, foi
+inconclusiva e não autoriza afirmar superioridade do AE-LSTM. Consulte
+`resultados/comparacao/`.
 
 ### Confiabilidade física bibliográfica
 
@@ -73,15 +77,18 @@ O eixo é tempo, com conversão explícita entre horas e anos. GPVS-Faults não
 contém exposição de frota, tempos até falha ou censura por ativo e, portanto,
 não estima confiabilidade física. Taxas derivadas de participações de chamados
 são cenários, não medições. A taxa direta do fusível e sua localização
-bibliográfica devem permanecer distinguíveis. Não invente beta, eta, curva de
-banheira ou RUL físico para Contator AC e IGBT.
+bibliográfica devem permanecer distinguíveis. A busca no corpus não encontrou
+beta/eta rastreáveis para IGBT. Não invente beta, eta, curva de banheira ou RUL
+físico.
 
 ### FMECA e manutenção
 
-A FMECA consolidada em `docs/fmeca.md` prioriza Contator AC, IGBT e Fusível AC
-por S, O, D_campo e NPR. Ela orienta a discussão de manutenção e a leitura dos
-cenários bibliográficos. Não produz injeções sintéticas, não altera o limiar dos
-modelos e não deve ser apresentada como uma terceira família de resultados.
+A FMECA vigente em `docs/fmeca.md` cobre IGBT, sistema de
+sensor/realimentação e sistema/circuito de controle do inversor. S, O, D e NPR
+permanecem nulos até decisão documentada do pesquisador. O recorte Contator AC,
+IGBT e Fusível AC é apenas histórico e não fornece valores ao novo escopo. A
+FMECA não produz injeções sintéticas, não altera o limiar e não deve ser
+apresentada como uma terceira família de resultados.
 
 ## Evidência e linguagem
 

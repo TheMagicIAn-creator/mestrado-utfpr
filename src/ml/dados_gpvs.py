@@ -88,13 +88,57 @@ FEATURE_COLUMNS = (
     "p_dc_iqr",
 )
 FAULT_NAMES = {
-    1: "Falha total em um IGBT",
-    2: "Falha de 20% em sensor de fase",
+    1: "Falha completa de um IGBT",
+    2: "Erro de 20% no sistema de sensor/realimentação",
     3: "Afundamentos intermitentes de tensão",
     4: "Sombreamento parcial não uniforme (10-20%)",
     5: "Circuito aberto em 15% do arranjo PV",
-    6: "Ganho PI do MPPT/IPPT reduzido em 20%",
-    7: "Constante de tempo PI elevada em 20%",
+    6: "Ganho do controlador PI reduzido em 20%",
+    7: "Constante de tempo do controlador PI elevada em 20%",
+}
+FAULT_CONTRACTS = {
+    1: {
+        "native_interpretation": "falha completa de um IGBT",
+        "fmeca_scope": "igbt",
+        "scope_relation": "direct_native_counterpart",
+        "physical_component_failure": True,
+    },
+    2: {
+        "native_interpretation": "erro de 20% no sistema de sensor/realimentação",
+        "fmeca_scope": "sensor_feedback_system",
+        "scope_relation": "direct_native_counterpart",
+        "physical_component_failure": False,
+    },
+    3: {
+        "native_interpretation": "afundamentos intermitentes de tensão da rede",
+        "fmeca_scope": None,
+        "scope_relation": "outside_canonical_fmeca_trio",
+        "physical_component_failure": False,
+    },
+    4: {
+        "native_interpretation": "sombreamento parcial não uniforme entre 10% e 20%",
+        "fmeca_scope": None,
+        "scope_relation": "outside_canonical_fmeca_trio",
+        "physical_component_failure": False,
+    },
+    5: {
+        "native_interpretation": "circuito aberto em 15% do arranjo fotovoltaico",
+        "fmeca_scope": None,
+        "scope_relation": "outside_canonical_fmeca_trio",
+        "physical_component_failure": True,
+    },
+    6: {
+        "native_interpretation": "redução de 20% no ganho do controlador PI",
+        "fmeca_scope": "inverter_control_system",
+        "scope_relation": "functional_control_anomaly",
+        "physical_component_failure": False,
+    },
+    7: {
+        "native_interpretation": "aumento de 20% na constante de tempo do controlador PI",
+        "fmeca_scope": "inverter_control_system",
+        "scope_relation": "functional_control_anomaly",
+        "physical_component_failure": False,
+    },
 }
 OPERATING_MODES = {
     "L": "IPPT (potência limitada)",
@@ -379,6 +423,10 @@ def load_or_extract_features(
         "experiments": list(ALL_EXPERIMENTS),
         "healthy_experiments": list(HEALTHY_EXPERIMENTS),
         "fault_experiments": list(FAULT_EXPERIMENTS),
+        "fault_catalog": {
+            f"F{fault}": contract for fault, contract in FAULT_CONTRACTS.items()
+        },
+        "synthetic_faults_used_in_experimental_core": False,
         "fault_boundary": {
             "method": "nominal_mid_record",
             "instrumented_trigger_available": False,
@@ -650,6 +698,7 @@ __all__ = [
     "DATASET_NAME",
     "FAULT_EXPERIMENTS",
     "FAULT_NAMES",
+    "FAULT_CONTRACTS",
     "FEATURE_COLUMNS",
     "HEALTHY_EXPERIMENTS",
     "NORMALIZATION_FILENAME",

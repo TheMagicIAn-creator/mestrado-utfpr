@@ -35,8 +35,8 @@ from src.ml.treino_comparacao import (
 )
 
 
-SENSITIVITY_TOP_K = (1, 3, 5, 8, 12, 24)
-SENSITIVITY_PERCENTILES = (95.0, 97.5, 99.0, 99.5, 99.9)
+SENSITIVITY_TOP_K = (5, 10, 20)
+SENSITIVITY_PERCENTILES = (99.0, 99.5, 99.9)
 PRIMARY_METRICS = ("recall", "f1", "precision")
 
 
@@ -154,8 +154,19 @@ def evaluate_score_threshold_sensitivity(
                         ),
                         "healthy_test_n": len(healthy_test_scores),
                         "fault_experiment_count": len(per_experiment),
+                        "valid_fault_trial_count": int(
+                            sum(
+                                all(
+                                    np.isfinite(metrics[metric])
+                                    for metric in PRIMARY_METRICS
+                                )
+                                for metrics in per_experiment
+                            )
+                        ),
+                        "calibration_role": "healthy_calibration_only",
+                        "fault_evaluation_role": "post_freeze_descriptive_only",
                         "uses_fault_data_for_selection": False,
-                        "is_canonical_configuration": (
+                        "is_historical_reference_configuration": (
                             top_k == SCORE_TOP_K
                             and percentile == THRESHOLD_PERCENTILE
                         ),

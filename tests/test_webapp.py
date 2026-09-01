@@ -130,8 +130,14 @@ def test_confiabilidade_publica_quatro_cenarios_fisicos_rastreaveis(client):
     assert "dataset" not in data
     assert data["physical_weibull"]["beta"] is None
     assert data["physical_weibull"]["eta"] is None
-    assert [item["npr"] for item in data["fmeca"]["components"]] == [315, 90, 30]
-    assert data["fmeca"]["boundary"].startswith("D_campo")
+    assert data["fmeca"]["status"] == "awaiting_user_fmeca"
+    assert {item["component_id"] for item in data["fmeca"]["components"]} == {
+        "igbt",
+        "sensor_feedback_system",
+        "inverter_control_system",
+    }
+    assert all(item["npr"] is None for item in data["fmeca"]["components"])
+    assert data["fmeca"]["boundary"].startswith("A validação E3")
     assert len(data["scenarios"]) == 4
     assert len(data["curve_series"]) == 4
     assert all(len(series["points"]) <= 121 for series in data["curve_series"])

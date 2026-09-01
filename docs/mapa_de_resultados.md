@@ -7,13 +7,13 @@ vigente indicado na tabela.
 
 | Família | Pasta | Pergunta | Evidência |
 |---|---|---|---|
-| Comparação dos modelos | `resultados/comparacao/` | Autoencoder Denso ou AE-LSTM detecta melhor os ensaios avaliados? | E3 de bancada |
+| Comparação dos modelos | `resultados/comparacao/` | Quantas falhas reais cada modelo detecta sem falsos alarmes operacionalmente inadequados? | E3 de bancada |
 | Confiabilidade e manutenção | `resultados/confiabilidade/` | Como evoluem `R(t)`, `F(t)`, `f(t)` e `h(t)` nos cenários bibliográficos? | sensibilidade bibliográfica |
 
 O nome GPVS-Faults identifica a proveniência da base experimental. Não existe
 uma família autônoma de “resultados GPVS”.
 
-## Comparação Denso versus AE-LSTM
+## Comparação Autoencoder Denso versus AE-LSTM
 
 | Afirmação | Fonte |
 |---|---|
@@ -29,12 +29,13 @@ uma família autônoma de “resultados GPVS”.
 
 Recall, F1 e Precision são as métricas principais; ROC-AUC e PR-AUC são
 complementares. O bootstrap usa o ensaio como unidade de reamostragem. Cada
-modelo mantém seu próprio limiar p99,9 solicitado, aprendido antes dos ensaios
-de falha, com ordem estatística, percentil efetivo e resolução registrados.
-Com 210 observações de calibração, o ponto vigente é a ordem 210/210, p100
-efetivo. A ablação temporal foi inconclusiva e não sustenta superioridade
-inequívoca do AE-LSTM. A grade de sensibilidade não seleciona configuração com
-os ensaios de falha.
+modelo mantém seu próprio limiar saudável, aprendido antes dos ensaios de
+falha, com ordem estatística, percentil efetivo e resolução registrados. A
+referência histórica usa `k=5` e p99,9; com 210 observações de calibração, esse
+ponto é a ordem 210/210 e p100 efetivo. A grade descritiva usa
+`k={5,10,20}` por `{p99,p99,5,p99,9}`, sem selecionar configuração com F1-F7.
+A análise causal de transição e falha sustentada foi inconclusiva e não sustenta
+superioridade inequívoca do AE-LSTM.
 
 ## Confiabilidade e manutenção
 
@@ -56,9 +57,10 @@ de tempos individuais de falha e censura, não há base para histograma normal,
 Weibull físico, curva de banheira ou RUL.
 
 `metodologia.json` também publica contratos nulos para Weibull 2P, Normal,
-Lognormal, histograma de vidas e para a extensão `POD_mon/D_mon/D_proj/NPR_proj`.
-Esses contratos documentam o que falta e impedem que ausência seja exibida como
-zero ou como resultado calculado.
+Lognormal e histograma de vidas. A busca no corpus não encontrou `beta` e `eta`
+rastreáveis para IGBT. A FMECA vigente cobre IGBT, sensor/realimentação e
+sistema/circuito de controle; seus campos S/O/D/NPR permanecem nulos, em vez de
+serem inferidos das métricas dos detectores.
 
 ## Proveniência
 

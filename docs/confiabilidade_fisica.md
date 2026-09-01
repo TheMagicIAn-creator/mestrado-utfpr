@@ -18,9 +18,9 @@ As quatro funções são publicadas em figuras separadas e eixos lineares.
 ## Cenários
 
 A taxa global do inversor, `1,75e-4 falha/h`, e as participações de chamados do
-TCC geram cenários de sensibilidade para Contator AC, IGBT e Fusível AC. Essa
-multiplicação é uma hipótese de alocação, não uma medição de taxa por
-componente.
+TCC geram cenários históricos de sensibilidade para Contator AC, IGBT e Fusível
+AC. Essa multiplicação é uma hipótese de alocação, não uma medição de taxa por
+componente nem o escopo da FMECA vigente.
 
 Para o fusível, a taxa `2,17e-6 falha/h` é transcrita diretamente da Tabela 3.4
 e permanece separada do cenário derivado. Contator AC e IGBT não possuem taxa
@@ -35,6 +35,9 @@ figuras.
 
 Não se produzem beta, eta, Weibull físico, distribuição normal, curva de
 banheira ou RUL sem vidas individuais, censura e exposição adequadas por ativo.
+A busca no corpus local revisou 22 trechos sobre IGBT e 74 sobre Weibull. A
+única fonte comum, o TCC, aborda os temas separadamente e não fornece `beta` ou
+`eta` para IGBT.
 
 ## Contratos de modelos ainda indisponíveis
 
@@ -54,5 +57,9 @@ avaliar a inadequação potencial do suporte negativo. Quatro taxas heterogênea
 de cenário não constituem uma amostra de vidas e não justificam uma curva em
 sino.
 
-O mesmo contrato mantém a extensão FMECA de monitoramento bloqueada: sem uma
-regra validada `POD_mon -> D_mon`, `D_proj` e `NPR_proj` permanecem nulos.
+## Relação com a FMECA vigente
+
+O escopo atual da FMECA é IGBT, sistema de sensor/realimentação e
+sistema/circuito de controle do inversor. S, O, D e NPR permanecem nulos com
+estado `awaiting_user_fmeca`. As taxas históricas acima não preenchem esses
+campos e as métricas dos detectores não recalculam criticidade de manutenção.

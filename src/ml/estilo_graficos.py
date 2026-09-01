@@ -62,14 +62,6 @@ COR_ALERTA = "#c43d3d"
 COR_SUCESSO = "#147a3d"
 COR_INFO = "#2a78d6"
 
-# Cores canônicas por família de falha FMECA (ordem fixa da paleta;
-# consumidas por injecao_falhas.FALHAS e por qualquer gráfico por família)
-CORES_FALHAS = {
-    "contator_ac": PALETA[0],
-    "igbt": PALETA[1],
-    "fusivel_ac": PALETA[2],
-}
-
 # Tamanhos canônicos (polegadas).
 # Qualquer gráfico deve usar um destes ou um
 # helper dinâmico abaixo — nunca um figsize avulso.

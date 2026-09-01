@@ -1,5 +1,5 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "status": "bibliographic_component_sensitivity",
   "evidence_scope": "bibliographic_reliability_only",
   "time_unit_primary": "hour",
@@ -11,90 +11,76 @@
     "hazard": "h(t) = lambda"
   },
   "fmeca": {
-    "formula": "NPR = S * O * D_campo",
-    "source_pdf": "literatura/inversores-pv/torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
-    "pdf_page": 35,
-    "printed_page": 34,
-    "source_table": "Tabela 3.3",
+    "status": "awaiting_user_fmeca",
+    "formula": "NPR = S * O * D",
+    "calculation_enabled": false,
+    "source_pdf": null,
+    "source_page": null,
+    "source_table": null,
     "components": [
-      {
-        "component_id": "contator_ac",
-        "component_name": "Contator AC",
-        "function": "Conectar a saída CA do inversor à rede",
-        "severity": 5,
-        "occurrence": 7,
-        "field_detection": 9,
-        "npr": 315,
-        "detection_meaning": "dificuldade de detecção no processo de manutenção"
-      },
       {
         "component_id": "igbt",
         "component_name": "IGBT",
         "function": "Realizar o chaveamento da conversão CC-CA",
-        "severity": 5,
-        "occurrence": 6,
-        "field_detection": 3,
-        "npr": 90,
-        "detection_meaning": "dificuldade de detecção no processo de manutenção"
+        "failure_mode": "Falha completa de um IGBT",
+        "native_experiments": [
+          "F1L",
+          "F1M"
+        ],
+        "severity": null,
+        "occurrence": null,
+        "detectability": null,
+        "npr": null,
+        "status": "awaiting_user_fmeca",
+        "calculation_enabled": false
       },
       {
-        "component_id": "fusivel_ac",
-        "component_name": "Fusível AC",
-        "function": "Proteger o lado CA contra sobrecorrente",
-        "severity": 5,
-        "occurrence": 3,
-        "field_detection": 2,
-        "npr": 30,
-        "detection_meaning": "dificuldade de detecção no processo de manutenção"
+        "component_id": "sensor_feedback_system",
+        "component_name": "Sistema de sensor/realimentação",
+        "function": "Medir e realimentar as variáveis elétricas usadas pelo controle",
+        "failure_mode": "Erro de 20% no sistema de sensor/realimentação",
+        "native_experiments": [
+          "F2L",
+          "F2M"
+        ],
+        "severity": null,
+        "occurrence": null,
+        "detectability": null,
+        "npr": null,
+        "status": "awaiting_user_fmeca",
+        "calculation_enabled": false
+      },
+      {
+        "component_id": "inverter_control_system",
+        "component_name": "Sistema/circuito de controle do inversor",
+        "function": "Regular a operação MPPT/IPPT por meio do controlador PI",
+        "failure_mode": "Anomalia funcional no ganho ou na constante de tempo do controlador PI",
+        "native_experiments": [
+          "F6L",
+          "F6M",
+          "F7L",
+          "F7M"
+        ],
+        "severity": null,
+        "occurrence": null,
+        "detectability": null,
+        "npr": null,
+        "status": "awaiting_user_fmeca",
+        "calculation_enabled": false
       }
     ],
-    "boundary": "D_campo mede dificuldade de detecção na manutenção e não é uma métrica dos Autoencoders.",
-    "monitoring_extension": {
-      "status": "blocked_pending_pod_to_detection_mapping",
-      "publication_allowed": false,
-      "baseline_formula": "NPR_base = S * O * D_campo",
-      "candidate_projection_formula": "D_proj = min(D_campo, D_mon)",
-      "candidate_npr_formula": "NPR_proj = S * O * D_proj",
-      "mapping": {
-        "pod_mon_to_d_mon": null,
-        "source": null,
-        "validation_status": "not_defined"
-      },
-      "required_methodological_inputs": [
-        "definicao estatistica de POD_mon por componente e modo de falha",
-        "unidade inferencial, denominador e intervalo de confianca de POD_mon",
-        "mapeamento validado de POD_mon para a escala ordinal D_mon",
-        "fonte e regra de versionamento do mapeamento"
-      ],
+    "boundary": "A validação E3 mede detecção de anomalias e não fornece valores ordinais S/O/D nem recalcula NPR.",
+    "legacy_tcc_scope": {
+      "status": "historical_not_canonical",
       "components": [
-        {
-          "component_id": "contator_ac",
-          "d_campo": 9,
-          "npr_base": 315,
-          "pod_mon": null,
-          "d_mon": null,
-          "d_proj": null,
-          "npr_proj": null
-        },
-        {
-          "component_id": "igbt",
-          "d_campo": 3,
-          "npr_base": 90,
-          "pod_mon": null,
-          "d_mon": null,
-          "d_proj": null,
-          "npr_proj": null
-        },
-        {
-          "component_id": "fusivel_ac",
-          "d_campo": 2,
-          "npr_base": 30,
-          "pod_mon": null,
-          "d_mon": null,
-          "d_proj": null,
-          "npr_proj": null
-        }
-      ]
+        "Contator AC",
+        "IGBT",
+        "Fusível AC"
+      ],
+      "source_pdf": "literatura/inversores-pv/torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf",
+      "pdf_page": 35,
+      "printed_page": 34,
+      "source_table": "Tabela 3.3"
     }
   },
   "distribution_models": {
@@ -114,7 +100,7 @@
       ]
     },
     "weibull_2p": {
-      "status": "blocked_missing_lifetime_evidence",
+      "status": "blocked_no_traceable_igbt_parameters_in_current_corpus",
       "parameters": {
         "beta": null,
         "eta_hours": null
@@ -124,7 +110,20 @@
         "indicador e tempo de censura por ativo",
         "exposicao observada e identificacao da populacao"
       ],
-      "outputs": []
+      "outputs": [],
+      "corpus_audit": {
+        "date": "2026-09-01",
+        "igbt_chunks_reviewed": 22,
+        "weibull_chunks_found": 74,
+        "joint_sources": [
+          "literatura/inversores-pv/torres_aplicacao-da-metodologia-reliability-centred-maintenance-a-s_2024.pdf"
+        ],
+        "joint_source_pages_reviewed": [
+          35,
+          48
+        ],
+        "finding": "A fonte comum discute IGBT e Weibull em contextos separados, sem fornecer beta ou eta para IGBT."
+      }
     },
     "normal": {
       "status": "blocked_missing_lifetime_evidence",
@@ -167,10 +166,10 @@
     }
   },
   "physical_weibull": {
-    "status": "not_estimable_from_available_evidence",
+    "status": "blocked_no_traceable_igbt_parameters_in_current_corpus",
     "beta": null,
     "eta": null,
-    "reason": "Ausência de tempos individuais de falha, exposição e censura por ativo"
+    "reason": "O corpus não fornece beta/eta de IGBT nem tempos individuais de falha, exposição e censura por ativo."
   },
   "scenarios": [
     {
@@ -193,7 +192,8 @@
       "reciprocal_time_years": 5.435964340073929,
       "time_model": "exponential_constant_hazard",
       "time_unit_primary": "hour",
-      "hours_per_year": 8760.0
+      "hours_per_year": 8760.0,
+      "scientific_role": "historical_tcc_reliability_sensitivity"
     },
     {
       "scenario_id": "igbt_derived",
@@ -215,7 +215,8 @@
       "reciprocal_time_years": 10.871928680147859,
       "time_model": "exponential_constant_hazard",
       "time_unit_primary": "hour",
-      "hours_per_year": 8760.0
+      "hours_per_year": 8760.0,
+      "scientific_role": "historical_tcc_reliability_sensitivity"
     },
     {
       "scenario_id": "fusivel_ac_derived",
@@ -237,7 +238,8 @@
       "reciprocal_time_years": 16.30789302022179,
       "time_model": "exponential_constant_hazard",
       "time_unit_primary": "hour",
-      "hours_per_year": 8760.0
+      "hours_per_year": 8760.0,
+      "scientific_role": "historical_tcc_reliability_sensitivity"
     },
     {
       "scenario_id": "fusivel_ac_direct",
@@ -259,7 +261,8 @@
       "reciprocal_time_years": 52.60610651684448,
       "time_model": "exponential_constant_hazard",
       "time_unit_primary": "hour",
-      "hours_per_year": 8760.0
+      "hours_per_year": 8760.0,
+      "scientific_role": "historical_tcc_reliability_sensitivity"
     }
   ],
   "source": {
