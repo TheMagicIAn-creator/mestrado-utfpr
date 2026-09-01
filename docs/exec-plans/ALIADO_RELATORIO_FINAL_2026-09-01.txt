@@ -1,0 +1,202 @@
+RELATORIO FINAL DA CAMPANHA DE ALINHAMENTO DO ALIADO
+Data de fechamento: 01/09/2026
+Repositorio: TheMagicIAn-creator/mestrado-utfpr
+Main no fechamento: f231d9d92c46ae94c65f64c44cf63b04baa6050c
+
+1. RESUMO EXECUTIVO
+
+A campanha foi concluida, validada e mesclada no main. Foram tratadas as
+pendencias levantadas na avaliacao tecnica do Claude, com foco no nucleo
+cientifico da dissertacao. O trabalho nao fabricou parametros, distribuicoes,
+curvas ou resultados ausentes.
+
+Pull requests mesclados:
+
+- PR #168: ablacao temporal do AE-LSTM.
+  Commit da etapa: df571cb
+  Merge: 31533238b4b2d76f8ee2fd20bd75478fe90f104e
+
+- PR #169: sensibilidade de escore top-k e limiar.
+  Commit da etapa: 0a48dc4
+  Merge: 289441392b713cff90e2e5d6dc18ea1ddc86adbf
+
+- PR #170: auditoria semantica das PRs #99 e #102.
+  Commit da etapa: 993bad4
+  Merge: e1b9c6252f1e6d6fd3b82dae2326a3d25955ee58
+
+- PR #171: alinhamento cientifico, contratos C5/C6 e documentacao final.
+  Commit da etapa: 2f4e08a
+  Merge: f231d9d92c46ae94c65f64c44cf63b04baa6050c
+
+2. RESULTADO DA COMPARACAO DOS AUTOENCODERS
+
+O GPVS-Faults permanece como unico dataset experimental ativo. F0L e F0M sao
+usados em blocos temporais separados para treino, validacao, calibracao e teste
+saudavel. F1L a F7M compoem 14 ensaios experimentais de falha usados somente na
+avaliacao E3 de bancada.
+
+Os modelos comparados sao:
+
+- Autoencoder Denso 24-16-8-16-24;
+- AE-LSTM com sequencia 8, camada oculta 32 e latente 8.
+
+Recall, F1 e Precision sao as metricas principais. ROC-AUC e PR-AUC sao
+complementares. As matrizes de confusao absolutas e normalizadas continuam
+publicadas.
+
+A ablacao temporal separou:
+
+- primeiras sete janelas apos a fronteira de falha;
+- falha sustentada;
+- contexto AE-LSTM reiniciado na fronteira de falha;
+- contexto corrente usado pela publicacao canonica.
+
+Treino, modelos, scalers, escores e limiares permaneceram congelados. Os
+intervalos de confianca das diferencas de Recall, F1 e Precision cruzaram zero.
+Por isso, o resultado pre-especificado foi INCONCLUSIVO. Nao existe base para
+declarar o AE-LSTM superior ao Autoencoder Denso.
+
+3. ESCORE TOP-K E LIMIAR
+
+O escore usa a media dos cinco maiores erros quadraticos por feature. O valor
+k=5 e uma configuracao de trabalho, nao uma constante cientifica universal.
+
+O limiar solicitado e p99,9, calculado apenas na calibracao saudavel pelo
+metodo higher. A calibracao atual possui 210 observacoes. Com esse tamanho de
+amostra, p99,9 seleciona a observacao de ordem 210/210, equivalente ao p100
+empirico. A resolucao e de aproximadamente 0,476 ponto percentual.
+
+Foi publicada uma grade descritiva com:
+
+- k = 1, 3, 5, 8, 12 e 24;
+- percentis = 95, 97,5, 99, 99,5 e 99,9;
+- dois modelos;
+- cinco sementes.
+
+As falhas nao foram usadas para escolher uma configuracao. A analise evidencia
+o equilibrio entre Recall e falsos alarmes, mas nao promove uma alternativa.
+
+4. PONTE ENTRE GPVS E FMECA
+
+Os ensaios F1L a F7M preservam suas categorias nativas. Eles nao sao
+relabelados como Contator AC, IGBT ou Fusivel AC, e o pipeline atual nao injeta
+assinaturas sinteticas desses componentes.
+
+Assim, a evidencia E3 sustenta o desempenho binario dos detectores no catalogo
+experimental GPVS. Ela nao sustenta uma probabilidade de deteccao individual
+para cada componente da FMECA.
+
+A FMECA permanece uma camada separada de priorizacao da manutencao:
+
+- Contator AC: NPR base 315;
+- IGBT: NPR base 90;
+- Fusivel AC: NPR base 30.
+
+Esses valores nao foram alterados pelos Autoencoders.
+
+5. POD_MON, D_MON, D_PROJ E NPR_PROJ
+
+Foi criado um contrato anulavel para a extensao de monitoramento. Os campos
+POD_mon, D_mon, D_proj e NPR_proj permanecem nulos e a publicacao de NPR
+projetado esta bloqueada.
+
+Para habilitar essa extensao ainda sao necessarios:
+
+- definicao estatistica de POD_mon por componente e modo de falha;
+- unidade inferencial e denominador;
+- intervalo de confianca;
+- mapeamento bibliograficamente validado de POD_mon para a escala D_mon;
+- fonte e versao da regra de mapeamento.
+
+A formula candidata D_proj = min(D_campo, D_mon) nao sera aplicada antes dessa
+validacao.
+
+6. CONFIABILIDADE FISICA
+
+O resultado publicado permanece um cenario bibliografico exponencial de taxa
+constante, independente do GPVS:
+
+R(t) = exp(-lambda*t)
+F(t) = 1 - R(t)
+f(t) = lambda*exp(-lambda*t)
+h(t) = lambda
+
+As curvas usam tempo em horas e anos, em eixos lineares. As taxas derivadas de
+participacoes de chamados continuam identificadas como cenarios, nao medicoes.
+A taxa direta do fusivel permanece separada e rastreavel a fonte.
+
+Foram adicionados contratos explicitos para modelos ainda indisponiveis:
+
+- Weibull 2P: exige beta e eta, alem de vidas, exposicao e censura;
+- Normal: exige media e desvio padrao de tempos de vida, com verificacao do
+  problema de suporte negativo;
+- Lognormal: exige media e desvio no dominio logaritmico;
+- Histograma: exige amostra real de tempos individuais de vida.
+
+Nenhum desses parametros foi inventado. As curvas permanecem bloqueadas.
+
+7. AUDITORIA DAS PRS #99 E #102
+
+A PR #99 consolidou normalizacao de texto e logging. A PR #102 modularizou
+agente, ferramentas e integracao com Obsidian. Os contratos publicos ativos
+foram verificados e protegidos por testes de compatibilidade.
+
+Nao foi encontrada regressao semantica ativa atribuivel a essas duas PRs. O
+alerta historico que dizia que elas ainda nao estavam auditadas foi encerrado.
+Codigo antigo de Streamlit, Weibull e pipelines E2 removidos nao foi restaurado.
+
+8. ARQUITETURA DO AGENTE
+
+A documentacao foi corrigida para refletir o Provider Gateway e o Router comuns
+a OpenAI e Gemini. Retry, fallback e aliases logicos pertencem ao Router. Os
+calculos cientificos deterministicos continuam locais e nao sao delegados aos
+LLMs.
+
+O arquivo CLAUDE.md nao declara mais equipe 100% Gemini, limiar p99 ou AUC-PR
+como metrica principal.
+
+9. TESTES E VERIFICACOES
+
+- Suite nao pesada: 585 aprovados, 3 ignorados e 17 pesados nao selecionados.
+- PyTorch real: 6 testes aprovados.
+- Dataset GPVS: 4 testes aprovados com os 16 CSVs locais.
+- Avaliacao do agente: 15 de 15 casos aprovados.
+- Verificacao do projeto: aprovada, sem aviso ou erro.
+- Auditoria de resultados: 9 manifestos e 37 artefatos integros.
+- Ruff F821/F822/F823: aprovado.
+- Compileall: aprovado.
+- Checks GitHub dos PRs #168, #169, #170 e #171: aprovados.
+
+10. RISCOS E LIMITACOES
+
+- A superioridade arquitetural do AE-LSTM nao foi demonstrada.
+- O Recall macro permanece proximo de 0,39 e varia entre os ensaios.
+- A evidencia e E3 de bancada, nao validacao industrial ou de campo.
+- O GPVS nao valida POD especifica de Contator AC, IGBT e Fusivel AC.
+- O ponto de falha e nominalmente o meio do registro, pois os CSVs nao possuem
+  canal instrumentado de disparo.
+- As taxas derivadas sao cenarios de sensibilidade, nao medicoes de campo.
+- Weibull, Normal, Lognormal e NPR projetado dependem de dados e fundamentacao
+  ainda ausentes.
+
+11. PROXIMAS ACOES RECOMENDADAS
+
+1. Escrever a dissertacao sem declarar o AE-LSTM vencedor e apresentar o
+   equilibrio entre deteccao e falsos alarmes.
+2. Buscar dados de vida componentizados, com exposicao e censura, ou parametros
+   bibliograficos equivalentes antes de incluir Weibull ou Lognormal.
+3. Definir com a orientadora se sera adotada uma metodologia validavel de
+   POD_mon para D_mon. Sem ela, manter somente o NPR base.
+
+12. AVISO SOBRE O CHECKOUT LOCAL ORIGINAL
+
+O GitHub e a worktree limpa estao atualizados. O checkout original em
+C:\Users\RODOLFO TORRES\Documents\mestrado-utfpr permanece na branch
+codex/aliado-evidence-rag-r2-schema-v2, com alteracoes locais e conflito em
+artefatos/literatura_indexada.jsonl.gz que ja existiam fora desta campanha.
+
+Essas alteracoes foram preservadas e nao foram revertidas. Nao executar pull,
+switch ou reset nesse checkout ate o conflito ser tratado em uma etapa segura e
+separada.
+
+FIM DO RELATORIO
