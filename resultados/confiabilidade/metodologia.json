@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "status": "bibliographic_component_sensitivity",
   "evidence_scope": "bibliographic_reliability_only",
   "time_unit_primary": "hour",
@@ -48,7 +48,123 @@
         "detection_meaning": "dificuldade de detecção no processo de manutenção"
       }
     ],
-    "boundary": "D_campo mede dificuldade de detecção na manutenção e não é uma métrica dos Autoencoders."
+    "boundary": "D_campo mede dificuldade de detecção na manutenção e não é uma métrica dos Autoencoders.",
+    "monitoring_extension": {
+      "status": "blocked_pending_pod_to_detection_mapping",
+      "publication_allowed": false,
+      "baseline_formula": "NPR_base = S * O * D_campo",
+      "candidate_projection_formula": "D_proj = min(D_campo, D_mon)",
+      "candidate_npr_formula": "NPR_proj = S * O * D_proj",
+      "mapping": {
+        "pod_mon_to_d_mon": null,
+        "source": null,
+        "validation_status": "not_defined"
+      },
+      "required_methodological_inputs": [
+        "definicao estatistica de POD_mon por componente e modo de falha",
+        "unidade inferencial, denominador e intervalo de confianca de POD_mon",
+        "mapeamento validado de POD_mon para a escala ordinal D_mon",
+        "fonte e regra de versionamento do mapeamento"
+      ],
+      "components": [
+        {
+          "component_id": "contator_ac",
+          "d_campo": 9,
+          "npr_base": 315,
+          "pod_mon": null,
+          "d_mon": null,
+          "d_proj": null,
+          "npr_proj": null
+        },
+        {
+          "component_id": "igbt",
+          "d_campo": 3,
+          "npr_base": 90,
+          "pod_mon": null,
+          "d_mon": null,
+          "d_proj": null,
+          "npr_proj": null
+        },
+        {
+          "component_id": "fusivel_ac",
+          "d_campo": 2,
+          "npr_base": 30,
+          "pod_mon": null,
+          "d_mon": null,
+          "d_proj": null,
+          "npr_proj": null
+        }
+      ]
+    }
+  },
+  "distribution_models": {
+    "exponential": {
+      "status": "published_bibliographic_sensitivity",
+      "parameters": {
+        "lambda_per_hour": "available_by_scenario"
+      },
+      "required_evidence": [
+        "taxa bibliografica rastreada"
+      ],
+      "outputs": [
+        "R(t)",
+        "F(t)",
+        "f(t)",
+        "h(t)"
+      ]
+    },
+    "weibull_2p": {
+      "status": "blocked_missing_lifetime_evidence",
+      "parameters": {
+        "beta": null,
+        "eta_hours": null
+      },
+      "required_evidence": [
+        "tempos individuais ate falha por ativo",
+        "indicador e tempo de censura por ativo",
+        "exposicao observada e identificacao da populacao"
+      ],
+      "outputs": []
+    },
+    "normal": {
+      "status": "blocked_missing_lifetime_evidence",
+      "parameters": {
+        "mean_hours": null,
+        "std_hours": null
+      },
+      "required_evidence": [
+        "tempos individuais ate falha por ativo",
+        "indicador e tempo de censura por ativo",
+        "exposicao observada e identificacao da populacao"
+      ],
+      "outputs": [],
+      "additional_check": "suporte negativo e adequacao empirica devem ser avaliados"
+    },
+    "lognormal": {
+      "status": "blocked_missing_lifetime_evidence",
+      "parameters": {
+        "mu_log_hours": null,
+        "sigma_log_hours": null
+      },
+      "required_evidence": [
+        "tempos individuais ate falha por ativo",
+        "indicador e tempo de censura por ativo",
+        "exposicao observada e identificacao da populacao"
+      ],
+      "outputs": []
+    },
+    "lifetime_histogram": {
+      "status": "blocked_missing_lifetime_sample",
+      "parameters": {
+        "observed_lifetimes_hours": null
+      },
+      "required_evidence": [
+        "tempos individuais ate falha por ativo",
+        "indicador e tempo de censura por ativo",
+        "exposicao observada e identificacao da populacao"
+      ],
+      "outputs": []
+    }
   },
   "physical_weibull": {
     "status": "not_estimable_from_available_evidence",

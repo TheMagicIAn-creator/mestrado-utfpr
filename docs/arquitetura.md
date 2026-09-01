@@ -7,7 +7,7 @@ em segundo plano apenas para o chat.
 ```text
 src/
 |-- core/                 configuração, segurança, tempo, logs e formatação
-|-- conhecimento/         Gemini, RAG híbrido, memória, Obsidian e ferramentas
+|-- conhecimento/         Router OpenAI/Gemini, RAG, memória e ferramentas
 |-- ml/                   GPVS, Denso/AE-LSTM E3 e confiabilidade física
 |-- webapp/               Starlette, contratos HTTP e frontend responsivo
 `-- orquestrador.py       coordenação explícita das operações
@@ -24,12 +24,17 @@ scripts/
 1. `src.webapp` entrega HTML/CSS/JavaScript imediatamente.
 2. `/api/status` informa `iniciando`, `pronto` ou `degradado` sem inicializar o
    agente.
-3. `agent_adapter` aquece índice lexical, ChromaDB, embeddings e papéis Gemini
-   em thread de fundo.
+3. `agent_adapter` aquece índice lexical, ChromaDB, embeddings e papéis lógicos
+   do Router em thread de fundo.
 4. Saudações são respondidas localmente; perguntas acadêmicas usam eventos SSE
    `status`, `delta`, `done` e `error`.
 5. O Router LLM decide entre resposta, RAG e ferramenta; figuras e resultados
    aparecem na própria conversa somente quando solicitados.
+
+O Provider Gateway registra adapters OpenAI e Gemini sob um contrato comum de
+texto, JSON estruturado, multimodalidade e streaming. O Router usa aliases
+lógicos, retry transitório, fallback no mesmo provedor e fallback cruzado. A
+lógica de negócio não importa SDKs de provedor diretamente.
 
 A navegação visual contém apenas Conversa e Referências. Histórico, busca,
 renomeação, arquivamento, restauração, exclusão não destrutiva e exportação são

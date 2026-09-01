@@ -34,3 +34,29 @@ A FMECA deve ser lida junto às curvas `R(t)`, `F(t)`, `f(t)` e `h(t)` para
 discutir prioridade, inspeção e ressalvas da evidência. Ela não transforma
 taxas bibliográficas em observações de campo, não cria distribuição normal e
 não altera limiares ou métricas da comparação Denso versus AE-LSTM.
+
+## Ponte com a evidência GPVS
+
+Os 14 ensaios F1L-F7M permanecem com as categorias nativas do GPVS-Faults. O
+pipeline os trata como condições experimentais de falha para comparar os dois
+detectores; não os relabela como Contator AC, IGBT ou Fusível AC e não injeta
+assinaturas sintéticas desses componentes.
+
+Consequentemente, a E3 sustenta a detecção de anomalias no conjunto de bancada
+avaliado, mas não uma probabilidade de detecção individual para cada componente
+da FMECA. Contator AC, IGBT e Fusível AC entram na dissertação pela priorização
+de manutenção e pelos cenários bibliográficos, em uma família separada.
+
+## Extensão de monitoramento
+
+O contrato versionado preserva `D_campo` e `NPR_base` e expõe como nulos:
+
+- `POD_mon`;
+- `D_mon`;
+- `D_proj`;
+- `NPR_proj`.
+
+A regra candidata `D_proj=min(D_campo,D_mon)` só poderá ser ativada depois de
+definir POD por componente, unidade inferencial, denominador, IC e um mapeamento
+bibliograficamente validado para a escala ordinal `D_mon`. Até lá, a publicação
+bloqueia NPR projetado e mantém os valores 315, 90 e 30 imutáveis.

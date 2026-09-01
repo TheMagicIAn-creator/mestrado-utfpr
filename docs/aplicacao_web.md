@@ -68,9 +68,10 @@ publicadas. Os contratos HTTP continuam disponíveis para auditoria e automaçã
 
 ## Agente
 
-`src/webapp/agent_adapter.py` reutiliza o pipeline completo: Gemini, recuperação
-híbrida semântica/BM25, ChromaDB, sessões, Obsidian, auditoria multiagente,
-anexos e memória. Saudações são respondidas localmente antes do aquecimento.
+`src/webapp/agent_adapter.py` reutiliza o pipeline completo: Router
+OpenAI/Gemini, recuperação híbrida semântica/BM25, ChromaDB, sessões, Obsidian,
+auditoria multiagente, anexos e memória. Saudações são respondidas localmente
+antes do aquecimento.
 Perguntas acadêmicas recebem o contexto autoritativo produzido pelos mesmos
 contratos científicos internos.
 

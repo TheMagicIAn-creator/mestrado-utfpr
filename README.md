@@ -36,8 +36,8 @@ src/
 ```
 
 - **core** — central configuration and shared utilities
-- **conhecimento** — PDF indexing, semantic + BM25 RAG, fixed-role all-Gemini team (Pro/Flash/Flash-Lite),
-  memory consolidation
+- **conhecimento** — PDF indexing, semantic + BM25 RAG, provider-neutral
+  OpenAI/Gemini routing, evidence guards and memory consolidation
 - **ml** — canonical GPVS ingestion, Denso versus AE-LSTM comparison,
   FMECA maintenance context and bibliographic physical reliability
 - **webapp** — modern conversation workspace, managed chat history, editable
@@ -53,7 +53,7 @@ src/
 - Matplotlib — academic PNG 300 dpi and vector PDF figures loaded on demand
 - ChromaDB — local vector database restored from a portable cloud snapshot
 - sentence-transformers — multilingual embeddings
-- LLM provider — Google Gemini (Pro for chat, Flash for auditing, Flash-Lite for background)
+- LLM providers — OpenAI and Google Gemini through one auditable Gateway/Router
 - PyTorch + scikit-learn — Denso and AE-LSTM anomaly detectors
 
 ## How to run
@@ -67,9 +67,10 @@ uvicorn src.webapp.app:app --reload
 Open `http://127.0.0.1:8000`. Root `app.py` is the ASGI bridge used by hosts
 that import `app:app`.
 
-A single Google Gemini API key must be set in a local `.env` file —
-see `.env.example` for the template. The `.env` file is never
-committed to the repository.
+Configure at least one supported provider in a local `.env` file. Set both
+`OPENAI_API_KEY` and `GOOGLE_API_KEY` to enable cross-provider fallback; model
+aliases remain configurable as shown in `.env.example`. The `.env` file is
+never committed to the repository.
 
 ### Data and artifact policy
 

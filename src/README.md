@@ -99,7 +99,7 @@ cenário bibliográfico separado e não deriva taxas de falha do GPVS.
 
 `python -m src.webapp` inicia a aplicação ASGI. `contracts.py` valida os
 resultados sem recalcular; `chart_data.py` prepara séries visuais compactas;
-`agent_adapter.py` preserva Gemini, RAG híbrido, memória e auditoria; os
+`agent_adapter.py` preserva o Router OpenAI/Gemini, RAG híbrido, memória e auditoria; os
 contratos científicos são consultados pelo agente sob demanda. A interface
 mantém apenas conversa, histórico gerenciável e Referências.
 

@@ -24,9 +24,16 @@ O NPR permanece independente do detector: Contator AC 315, IGBT 90 e Fusível
 AC 30. Adota-se NPR=S x O x D_campo; D_campo é a dificuldade de detecção no
 processo de manutenção e não uma métrica dos Autoencoders.
 
+A extensão POD_mon/D_mon/D_proj/NPR_proj permanece bloqueada. Ainda não existe
+um mapeamento bibliograficamente validado de POD_mon para a escala ordinal
+D_mon; por isso os quatro campos projetados são publicados como nulos e o NPR
+base não é sobrescrito.
+
 ## Modelo
 
 Adota-se o cenário exponencial de taxa constante: R(t)=exp(-lambda*t),
 F(t)=1-R(t), f(t)=lambda*exp(-lambda*t) e h(t)=lambda. A conversão usa
 1 ano=8.760 horas. As figuras usam escalas lineares. Não são estimados beta,
-eta, distribuição normal, curva de banheira ou RUL físico.
+eta, distribuição normal, Lognormal, histograma de vidas, curva de banheira ou
+RUL físico. O contrato metodológico informa os parâmetros e as evidências que
+faltam para habilitar cada família no futuro.

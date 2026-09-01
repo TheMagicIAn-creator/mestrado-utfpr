@@ -24,11 +24,17 @@ uma família autônoma de “resultados GPVS”.
 | Matrizes de confusão | `e3_matrizes_confusao.{csv,png,pdf}` |
 | Estabilidade em cinco sementes | `e3_estabilidade_sementes.csv` |
 | Diferenças pareadas | `e3_diferencas_pareadas.csv` |
+| Ablação do contexto temporal | `e3_ablacao_temporal.csv`, `e3_ablacao_temporal_por_ensaio.csv` e `e3_ablacao_temporal.{png,pdf}` |
+| Sensibilidade de top-k e percentil | `e3_sensibilidade_escore_limiar.csv` e `e3_sensibilidade_escore_limiar.{png,pdf}` |
 
 Recall, F1 e Precision são as métricas principais; ROC-AUC e PR-AUC são
 complementares. O bootstrap usa o ensaio como unidade de reamostragem. Cada
 modelo mantém seu próprio limiar p99,9 solicitado, aprendido antes dos ensaios
 de falha, com ordem estatística, percentil efetivo e resolução registrados.
+Com 210 observações de calibração, o ponto vigente é a ordem 210/210, p100
+efetivo. A ablação temporal foi inconclusiva e não sustenta superioridade
+inequívoca do AE-LSTM. A grade de sensibilidade não seleciona configuração com
+os ensaios de falha.
 
 ## Confiabilidade e manutenção
 
@@ -48,6 +54,11 @@ mantém eixos lineares:
 `h(t)=lambda`. As taxas derivadas são cenários, não medições. Sem uma amostra
 de tempos individuais de falha e censura, não há base para histograma normal,
 Weibull físico, curva de banheira ou RUL.
+
+`metodologia.json` também publica contratos nulos para Weibull 2P, Normal,
+Lognormal, histograma de vidas e para a extensão `POD_mon/D_mon/D_proj/NPR_proj`.
+Esses contratos documentam o que falta e impedem que ausência seja exibida como
+zero ou como resultado calculado.
 
 ## Proveniência
 

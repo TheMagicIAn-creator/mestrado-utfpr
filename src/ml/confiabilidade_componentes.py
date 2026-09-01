@@ -237,6 +237,84 @@ def hazard_rate(time_hours, lambda_per_hour: float) -> np.ndarray:
     return np.full_like(time, rate, dtype=float)
 
 
+def monitoring_extension_contract() -> dict:
+    """Contrato anulável da extensão FMECA, sem fabricar detectabilidade."""
+
+    return {
+        "status": "blocked_pending_pod_to_detection_mapping",
+        "publication_allowed": False,
+        "baseline_formula": "NPR_base = S * O * D_campo",
+        "candidate_projection_formula": "D_proj = min(D_campo, D_mon)",
+        "candidate_npr_formula": "NPR_proj = S * O * D_proj",
+        "mapping": {
+            "pod_mon_to_d_mon": None,
+            "source": None,
+            "validation_status": "not_defined",
+        },
+        "required_methodological_inputs": [
+            "definicao estatistica de POD_mon por componente e modo de falha",
+            "unidade inferencial, denominador e intervalo de confianca de POD_mon",
+            "mapeamento validado de POD_mon para a escala ordinal D_mon",
+            "fonte e regra de versionamento do mapeamento",
+        ],
+        "components": [
+            {
+                "component_id": component.component_id,
+                "d_campo": component.field_detection,
+                "npr_base": component.npr,
+                "pod_mon": None,
+                "d_mon": None,
+                "d_proj": None,
+                "npr_proj": None,
+            }
+            for component in FMECA_COMPONENTS
+        ],
+    }
+
+
+def distribution_model_contracts() -> dict:
+    """Disponibilidade e parâmetros mínimos dos modelos físicos discutidos."""
+
+    missing_lifetime_evidence = [
+        "tempos individuais ate falha por ativo",
+        "indicador e tempo de censura por ativo",
+        "exposicao observada e identificacao da populacao",
+    ]
+    return {
+        "exponential": {
+            "status": "published_bibliographic_sensitivity",
+            "parameters": {"lambda_per_hour": "available_by_scenario"},
+            "required_evidence": ["taxa bibliografica rastreada"],
+            "outputs": ["R(t)", "F(t)", "f(t)", "h(t)"],
+        },
+        "weibull_2p": {
+            "status": "blocked_missing_lifetime_evidence",
+            "parameters": {"beta": None, "eta_hours": None},
+            "required_evidence": missing_lifetime_evidence,
+            "outputs": [],
+        },
+        "normal": {
+            "status": "blocked_missing_lifetime_evidence",
+            "parameters": {"mean_hours": None, "std_hours": None},
+            "required_evidence": missing_lifetime_evidence,
+            "outputs": [],
+            "additional_check": "suporte negativo e adequacao empirica devem ser avaliados",
+        },
+        "lognormal": {
+            "status": "blocked_missing_lifetime_evidence",
+            "parameters": {"mu_log_hours": None, "sigma_log_hours": None},
+            "required_evidence": missing_lifetime_evidence,
+            "outputs": [],
+        },
+        "lifetime_histogram": {
+            "status": "blocked_missing_lifetime_sample",
+            "parameters": {"observed_lifetimes_hours": None},
+            "required_evidence": missing_lifetime_evidence,
+            "outputs": [],
+        },
+    }
+
+
 def scenario_table() -> pd.DataFrame:
     return pd.DataFrame([scenario.as_record() for scenario in SCENARIOS])
 
@@ -280,7 +358,7 @@ def component_curves(
 
 def methodology() -> dict:
     return {
-        "schema_version": 4,
+        "schema_version": 5,
         "status": "bibliographic_component_sensitivity",
         "evidence_scope": "bibliographic_reliability_only",
         "time_unit_primary": "hour",
@@ -302,7 +380,9 @@ def methodology() -> dict:
                 "D_campo mede dificuldade de detecção na manutenção e não é uma "
                 "métrica dos Autoencoders."
             ),
+            "monitoring_extension": monitoring_extension_contract(),
         },
+        "distribution_models": distribution_model_contracts(),
         "physical_weibull": {
             "status": "not_estimable_from_available_evidence",
             "beta": None,
@@ -328,6 +408,8 @@ __all__ = [
     "failure_density",
     "hazard_rate",
     "methodology",
+    "monitoring_extension_contract",
     "reliability",
     "scenario_table",
+    "distribution_model_contracts",
 ]

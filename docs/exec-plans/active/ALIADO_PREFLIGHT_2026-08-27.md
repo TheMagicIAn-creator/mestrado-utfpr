@@ -1,5 +1,9 @@
 # Preflight da reconstrução executiva do ALIAdo
 
+> **Registro histórico de baseline.** Os estados abaixo descrevem o commit de
+> origem em 27/08/2026 e não devem ser lidos como estado atual. O fechamento da
+> campanha está em `docs/exec-plans/ALIADO_RELATORIO_FINAL_2026-09-01.md`.
+
 Data: 2026-08-27  
 Especificação: `ALIADO_ALINHAMENTO_ARQUITETURA_METODOLOGIA.md`
 
@@ -32,6 +36,21 @@ Especificação: `ALIADO_ALINHAMENTO_ARQUITETURA_METODOLOGIA.md`
 - C5 confirmada: não há contrato anulável para `POD_mon`, `D_mon`, `D_proj` e `NPR_proj`.
 - C6 parcialmente resolvida: o modelo exponencial está matematicamente correto, mas não há contrato extensível para distribuições parametrizadas.
 - Escore localizado top-k ausente; o baseline usa MSE médio nas 24 features.
+
+## Estado após a campanha
+
+- C1 corrigida: Provider Gateway e Router comuns para OpenAI/Gemini.
+- C2 corrigida: Recall, F1 e Precision são principais; AUCs são complementares.
+- C3 corrigida no contrato: top-k e percentil configuráveis; `k=5` e p99,9 são
+  configurações de trabalho, com p100 efetivo para `n=210`.
+- C4 preservada: matrizes absolutas e normalizadas continuam publicadas.
+- C5 corrigida estruturalmente: contrato anulável presente e publicação de NPR
+  projetado bloqueada até existir mapeamento `POD_mon -> D_mon` validado.
+- C6 corrigida estruturalmente: contratos de parâmetros existem; somente o
+  exponencial é publicado, e Weibull/Normal/Lognormal permanecem bloqueados por
+  ausência de vidas, exposição e censura.
+- A ablação temporal do AE-LSTM foi inconclusiva; nenhuma superioridade
+  arquitetural é declarada.
 
 ## Verificações baseline
 

@@ -1,16 +1,16 @@
 {
   "manifest_version": 2,
   "stage": "confiabilidade_componentes",
-  "created_at": "2026-08-23T23:50:50.166100-03:00",
-  "git_commit": "de5dbf4a3c4799c6f3743c8534fd713f152325d3",
+  "created_at": "2026-08-31T18:12:17.280864-03:00",
+  "git_commit": "e1b9c6252f1e6d6fd3b82dae2326a3d25955ee58",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
-  "code_sha256": "3ce4656c069a95550eade96db79823db8039cf7acc3331e5b3aaaf95e1598515",
+  "code_sha256": "543e713ae0211be8783e1353f7f72c5858b2fc3f2059b407a2d025ef69c5d4e6",
   "code_dependencies": {
-    "reliability": "3e5dfab708f1b06101e17abdc936d545fba982249f39d74e37848580818d6180",
+    "reliability": "b21da8686505600d9d0f7ec7f97e59923c697be02027a95d7c51d511a6dc01a4",
     "plots": "739066232edf50ebfc37f9752980d5b07688c875bde25a8cbb2867720f302971",
-    "style": "e3f60c369af332ae8aecc94728345aa9926b607789bc4cb0a1f0b3c00f37ac49"
+    "style": "e551f826ec6c4cb8d25542cb9f88c355446b7ede8796ff1337f71acdcbec90f2"
   },
   "parameters": {
     "model": "exponential_constant_hazard",
@@ -56,8 +56,8 @@
     "resultados/confiabilidade/curva_taxa_falha.pdf": "34f4d8d5abad6bde214ab7f6ff3ad9306785decb3b936e834d2f4e64b21c3542",
     "resultados/confiabilidade/taxas_componentes.png": "e19f5c4b1cfcecb4bd9fa54e02aade3c67c29f7b7685548f89eebbf1d7864827",
     "resultados/confiabilidade/taxas_componentes.pdf": "3c750c4eeeb9268263e83b624c0676af317c50f04c26dfa3f43cbf6f014bc015",
-    "resultados/confiabilidade/metodologia.json": "a24561d777594221bdc0fbd74b9a94f6a1f65da0cd27a404eea4d2833dabef30",
-    "resultados/confiabilidade/relatorio.md": "c540499c63ec30864a58c41f4f3dc888e8028fa4fd69b175be6e1672f9f6bf4b"
+    "resultados/confiabilidade/metodologia.json": "1bc2d901616b23acacfdbe2a971a5093a1c77fa3683e79b3aa7ebb85a459f304",
+    "resultados/confiabilidade/relatorio.md": "2d7341ac5362a3ffdca15a7556d44618fadb366daa598bc6464272c006efd127"
   },
   "evidence_level": "bibliographic_sensitivity"
 }
