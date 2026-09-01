@@ -16,7 +16,8 @@ import pytest
 RAIZ = Path(__file__).resolve().parent.parent
 CLAUDE = (RAIZ / "CLAUDE.md").read_text(encoding="utf-8")
 ENV_EXAMPLE = (RAIZ / ".env.example").read_text(encoding="utf-8")
-PROVEDORES = (RAIZ / "src/conhecimento/provedores/gemini.py").read_text(encoding="utf-8")
+GATEWAY = (RAIZ / "src/conhecimento/provedores/gateway.py").read_text(encoding="utf-8")
+ROTEADOR = (RAIZ / "src/conhecimento/roteador_llm.py").read_text(encoding="utf-8")
 INDEXADOR = (RAIZ / "src/conhecimento/indexador.py").read_text(encoding="utf-8")
 README_SRC = (RAIZ / "src/README.md").read_text(encoding="utf-8")
 
@@ -43,21 +44,22 @@ def test_env_example_cobre_variaveis_lidas_pelo_codigo():
     assert not faltando, f"variáveis lidas no código sem doc no .env.example: {faltando}"
 
 
-def test_modelos_citados_existem_no_codigo():
-    """Modelos nomeados no CLAUDE.md/.env.example existem em provedores.py.
-
-    A equipe agora é 100% Gemini (Groq/LLaMA foram removidos): os modelos
-    da família LLaMA e o próprio Groq não podem reaparecer nos docs.
-    """
+def test_documentacao_reflete_gateway_openai_gemini():
+    """A documentação deve descrever os provedores pelo contrato vigente."""
     proibidos = ("3.1 8B", "LLaMA 3.1", "llama-3.1", "llama-3.3",
                  "Gemma", "gemma")
     for texto, nome in ((CLAUDE, "CLAUDE.md"), (ENV_EXAMPLE, ".env.example")):
         for p in proibidos:
             assert p not in texto, f"{nome} cita modelo inexistente no código: {p!r}"
-    # Modelos GA explicitos verificados na API; Pro continua opt-in.
-    for modelo in ("gemini-pro-latest", "gemini-3.6-flash", "gemini-3.5-flash-lite"):
-        assert modelo in PROVEDORES, f"provedores.py não define {modelo}"
-        assert modelo in CLAUDE, f"CLAUDE.md não documenta o modelo real {modelo}"
+    assert 'register_provider("openai"' in GATEWAY
+    assert 'register_provider("google"' in GATEWAY
+    for alias in ("luna", "terra", "sol", "flash_lite", "flash"):
+        assert alias in GATEWAY or alias in ROTEADOR
+    for marca in ("OpenAI", "Gemini", "Provider Gateway", "Router"):
+        assert marca in CLAUDE, f"CLAUDE.md não documenta {marca}"
+    assert "OPENAI_API_KEY=" in ENV_EXAMPLE
+    assert "GOOGLE_API_KEY=" in ENV_EXAMPLE
+    assert "100% Gemini" not in CLAUDE
 
 
 def test_chunk_de_literatura_documentado_bate_com_o_codigo():

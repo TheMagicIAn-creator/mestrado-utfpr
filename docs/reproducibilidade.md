@@ -26,12 +26,22 @@ cada papel, sem cruzar fronteiras.
 A execução de referência usa semente 42; a estabilidade usa cinco sementes
 pré-definidas. Seleção de modelo não consulta os rótulos de falha E3.
 
+A ablação temporal reutiliza exatamente os modelos e limiares congelados. A
+sensibilidade de escore/limiar recalcula escores a partir dos erros por feature,
+mas cada limiar continua vindo exclusivamente da calibração saudável. Nenhuma
+das duas análises promove uma configuração olhando as falhas.
+
 ## Artefatos
 
 Somente tabelas-fonte, JSON metodológico, Markdown, PNG 300 dpi e PDF vetorial
 são versionados. Dados brutos, caches, pesos, scalers, logs e estado local do
 Obsidian ficam fora do Git. Os manifestos podem registrar seus hashes locais
 sem publicar os arquivos.
+
+Campos metodologicamente indisponíveis são publicados como `null`, nunca zero.
+Isso vale para `POD_mon`, `D_mon`, `D_proj`, `NPR_proj` e para parâmetros de
+Weibull 2P, Normal e Lognormal. O contrato informa o bloqueio e os dados
+necessários antes de qualquer curva ou índice projetado.
 
 ## Regeneração e validação
 

@@ -25,9 +25,17 @@ solicitado, todos congelados antes
 de avaliar F1L-F7M na E3 de bancada. Não há publicação autônoma de métricas do
 dataset: toda métrica experimental compara os dois modelos.
 
+Com 210 observações de calibração, o p99,9 solicitado seleciona a ordem 210/210
+e corresponde a p100 empírico, com resolução de 0,476 ponto percentual.
+
 Cada ensaio de falha usa a primeira metade pré-falha para normalização de
 comissionamento e reserva a segunda metade pré-falha para especificidade. Não
 há retreino nem recalibração do limiar por ensaio.
+
+Os rótulos F1-F7 não são convertidos em classes Contator AC, IGBT e Fusível AC.
+A FMECA permanece uma camada de priorização de manutenção separada. Portanto,
+as métricas E3 não devem ser apresentadas como POD específica desses três
+componentes.
 
 ## Qualidade de amostragem
 

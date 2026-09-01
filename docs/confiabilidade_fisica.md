@@ -35,3 +35,24 @@ figuras.
 
 Não se produzem beta, eta, Weibull físico, distribuição normal, curva de
 banheira ou RUL sem vidas individuais, censura e exposição adequadas por ativo.
+
+## Contratos de modelos ainda indisponíveis
+
+O arquivo `metodologia.json` distingue capacidade futura de resultado atual:
+
+| Modelo | Parâmetros mínimos | Estado atual |
+|---|---|---|
+| Exponencial | `lambda_per_hour` rastreada | publicado como sensibilidade bibliográfica |
+| Weibull 2P | `beta`, `eta_hours` | bloqueado |
+| Normal | `mean_hours`, `std_hours` | bloqueado |
+| Lognormal | `mu_log_hours`, `sigma_log_hours` | bloqueado |
+| Histograma de vidas | tempos observados por ativo | bloqueado |
+
+Para desbloquear os quatro últimos também são necessários tempos individuais,
+exposição, censura e identificação da população. No caso Normal, deve-se ainda
+avaliar a inadequação potencial do suporte negativo. Quatro taxas heterogêneas
+de cenário não constituem uma amostra de vidas e não justificam uma curva em
+sino.
+
+O mesmo contrato mantém a extensão FMECA de monitoramento bloqueada: sem uma
+regra validada `POD_mon -> D_mon`, `D_proj` e `NPR_proj` permanecem nulos.

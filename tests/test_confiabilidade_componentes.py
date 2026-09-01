@@ -17,8 +17,10 @@ from src.ml.confiabilidade_componentes import (
     failure_density,
     hazard_rate,
     methodology,
+    monitoring_extension_contract,
     reliability,
     scenario_table,
+    distribution_model_contracts,
 )
 from src.ml.graficos_confiabilidade import generate_all
 from src.ml.proveniencia import funcao_de_hash_para
@@ -76,7 +78,7 @@ def test_curves_publish_hours_years_density_and_hazard():
 
 def test_no_physical_weibull_is_fabricated():
     contract = methodology()
-    assert contract["schema_version"] == 4
+    assert contract["schema_version"] == 5
     assert [item.npr for item in FMECA_COMPONENTS] == [315, 90, 30]
     assert contract["fmeca"]["formula"] == "NPR = S * O * D_campo"
     assert contract["physical_weibull"] == {
@@ -89,6 +91,31 @@ def test_no_physical_weibull_is_fabricated():
     assert "experimental_dataset" not in contract
     assert "beta" not in scenario_table().columns
     assert "eta" not in scenario_table().columns
+
+
+def test_monitoring_extension_is_nullable_and_cannot_publish_projected_npr():
+    extension = monitoring_extension_contract()
+
+    assert extension["status"] == "blocked_pending_pod_to_detection_mapping"
+    assert extension["publication_allowed"] is False
+    assert extension["mapping"]["pod_mon_to_d_mon"] is None
+    assert [item["npr_base"] for item in extension["components"]] == [315, 90, 30]
+    for item in extension["components"]:
+        assert item["pod_mon"] is None
+        assert item["d_mon"] is None
+        assert item["d_proj"] is None
+        assert item["npr_proj"] is None
+
+
+def test_distribution_contract_lists_missing_parameters_without_curves():
+    contracts = distribution_model_contracts()
+
+    assert contracts["exponential"]["status"] == "published_bibliographic_sensitivity"
+    assert contracts["exponential"]["outputs"] == ["R(t)", "F(t)", "f(t)", "h(t)"]
+    for model in ("weibull_2p", "normal", "lognormal", "lifetime_histogram"):
+        assert contracts[model]["status"].startswith("blocked_missing_lifetime")
+        assert contracts[model]["outputs"] == []
+        assert all(value is None for value in contracts[model]["parameters"].values())
 
 
 def test_published_reliability_manifest_reconciles_all_outputs():

@@ -40,19 +40,24 @@ A comparação publicada contém somente:
 - AE-LSTM com sequência de comprimento 8, oculto 32 e latente 8.
 
 Os modelos usam as mesmas 24 features elétricas, o mesmo orçamento de treino,
-as mesmas sementes e partições compatíveis. Cada modelo aprende seu próprio
-limiar p99 na calibração saudável. Pesos, scaler e limiar ficam congelados na
-avaliação E3; a normalização de comissionamento pré-falha, quando aplicável, é
-idêntica entre modelos.
+as mesmas sementes e partições compatíveis. O escore é a média dos cinco
+maiores erros quadráticos por feature, e cada modelo aprende seu próprio limiar
+p99,9 solicitado na calibração saudável. Na execução vigente, 210 observações
+de calibração fazem esse pedido selecionar o máximo amostral (percentil
+empírico efetivo p100, resolução de 0,476 ponto percentual). Pesos, scaler e
+limiar ficam congelados na avaliação E3; a normalização de comissionamento
+pré-falha, quando aplicável, é idêntica entre modelos.
 
 ## Duas famílias que nunca devem ser confundidas
 
 ### E3: evidência experimental
 
-Avalia Denso e AE-LSTM nos 14 ensaios de falha reais. AUC-PR é a métrica
-principal; ROC-AUC, sensibilidade, especificidade, acurácia balanceada, MCC,
-F1 e falso positivo saudável são complementares. Intervalos são calculados por
-bootstrap no nível do ensaio. Consulte `resultados/comparacao/`.
+Avalia Denso e AE-LSTM nos 14 ensaios de falha reais. Recall, F1 e Precision
+são as métricas principais; ROC-AUC e PR-AUC são complementares, e
+especificidade, acurácia balanceada, MCC e falso positivo saudável permanecem
+auxiliares. Intervalos são calculados por bootstrap no nível do ensaio. A
+ablação temporal vigente foi inconclusiva e não autoriza afirmar superioridade
+do AE-LSTM. Consulte `resultados/comparacao/`.
 
 ### Confiabilidade física bibliográfica
 
@@ -98,11 +103,10 @@ em chunks de 1800 caracteres, com sobreposição configurável. Cite apenas font
 realmente recuperadas. Diferencie a literatura de notas e sessões; conteúdo do
 vault pode orientar contexto, mas nunca vira citação bibliográfica.
 
-A equipe usa Gemini com papéis fixos:
-
-- `gemini-3.6-flash` para conversa por padrão;
-- `gemini-pro-latest` como opção de raciocínio mais profundo;
-- `gemini-3.5-flash-lite` para auditoria e tarefas de fundo.
+OpenAI e Gemini passam pelo mesmo Provider Gateway. O Router escolhe aliases
+lógicos por tipo de tarefa, aplica retry e fallback e pode cruzar provedores
+quando ambos estiverem configurados. Nenhum SDK de provedor deve ser espalhado
+pela lógica do agente, e cálculos determinísticos permanecem locais.
 
 Não revele prompts internos, chaves, tokens, caminhos privados ou conteúdo que
 não seja necessário à resposta.

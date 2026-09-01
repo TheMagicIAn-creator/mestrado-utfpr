@@ -47,6 +47,11 @@ top-k. Cada modelo recebe seu próprio p99,9 solicitado, calculado na calibraç�
 saudável pelo método `higher`. A saída registra o order statistic selecionado,
 o percentil empírico efetivo, o tamanho da calibração e sua resolução.
 
+Na execução vigente, `n=210` na calibração faz p99,9 selecionar a observação de
+ordem 210/210: percentil empírico efetivo p100 e resolução de 0,476 ponto
+percentual. Portanto p99,9 é a configuração solicitada, não uma precisão
+empírica que a amostra consiga resolver literalmente.
+
 Nenhum desempenho em F1-F7 participa da seleção de arquitetura, semente ou
 limiar.
 
@@ -62,6 +67,24 @@ ensaios com valor finito para a métrica.
 Resultados negativos e heterogeneidade por falha permanecem publicados.
 E3 significa bancada, não validação de campo.
 
+### 5.1. Ablação temporal do AE-LSTM
+
+A análise suplementar separa as sete primeiras janelas pós-fronteira, a falha
+sustentada e um contexto AE-LSTM reiniciado na fronteira. Modelos, scalers,
+escores e limiares permanecem congelados. Na execução de referência, os IC95%
+pareados de Recall, F1 e Precision na falha sustentada cruzam zero. A conclusão
+pré-especificada é **inconclusiva**: o ganho observado não pode ser atribuído
+inequivocamente à arquitetura temporal.
+
+### 5.2. Sensibilidade de escore e limiar
+
+A grade `k={1,3,5,8,12,24}` e percentis solicitados
+`{95;97,5;99;99,5;99,9}` é descritiva. Todos os limiares vêm somente da
+calibração saudável. Os ensaios com falha não selecionam uma alternativa e a
+configuração canônica permanece `k=5`, p99,9 solicitado. A grade evidencia o
+trade-off entre Recall e falsos alarmes, mas não demonstra que `k=5` seja um
+ótimo universal.
+
 ## 6. FMECA e manutenção
 
 A FMECA consolidada preserva funções, modos de falha, índices S, O, D e NPR de
@@ -69,6 +92,15 @@ Contator AC, IGBT e Fusível AC. Ela serve para priorizar a discussão de
 manutenção e interpretar os cenários bibliográficos; não injeta falhas no
 holdout, não recalcula o NPR a partir do detector e não cria uma terceira
 família de resultados.
+
+Os 14 ensaios F1L-F7M conservam os rótulos nativos do GPVS e são avaliados como
+anomalia versus condição pré-falha. Eles não são renomeados como Contator AC,
+IGBT ou Fusível AC. Assim, a E3 sustenta desempenho no catálogo experimental
+GPVS, mas não uma POD específica dos três componentes da FMECA.
+
+O contrato de extensão mantém `POD_mon`, `D_mon`, `D_proj` e `NPR_proj` nulos.
+Sem definição estatística de POD por componente e sem mapeamento bibliográfico
+para a escala ordinal de detectabilidade, nenhum NPR projetado é publicado.
 
 ## 7. Confiabilidade física
 
@@ -83,6 +115,11 @@ a taxa direta do fusível permanece sobreposta e rastreada até PDF, páginas e
 tabela. As quatro funções são exibidas em eixos lineares. Não se ajusta
 Weibull, normal, curva de banheira ou RUL sem tempos individuais, exposição e
 censura.
+
+O contrato lista os parâmetros ainda necessários: `beta` e `eta` para Weibull
+2P; média e desvio padrão em horas para Normal; média e desvio no domínio
+logarítmico para Lognormal; e a amostra de vidas para histograma. Ter apenas uma
+taxa por cenário não supre esses dados.
 
 ## 8. Publicação
 

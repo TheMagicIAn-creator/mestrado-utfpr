@@ -28,7 +28,8 @@ ensaio. Os nomes dos ensaios vêm do dataset e não significam frequência.
   AE-LSTM, calculada no último passo temporal.
 - **Limiar p99,9:** percentil solicitado próprio de cada modelo na calibração
   saudável; o contrato também informa o percentil empírico efetivamente
-  realizável.
+  realizável. Na execução vigente, `n=210` implica ordem 210/210, p100 efetivo
+  e resolução de 0,476 ponto percentual.
 - **E3 de bancada:** avaliação dos modelos congelados nos 14 ensaios F1L-F7M.
 - **Recall, F1 e Precision:** métricas principais da comparação.
 - **ROC-AUC e PR-AUC:** métricas complementares de discriminação.
@@ -42,10 +43,14 @@ ensaio. Os nomes dos ensaios vêm do dataset e não significam frequência.
 - **`h(t)`:** taxa instantânea de falha.
 - **Cenário derivado:** taxa calculada por hipótese de alocação; não é medição.
 - **Taxa direta:** valor transcrito de fonte bibliográfica identificada.
+- **POD_mon:** probabilidade de detecção do monitoramento, ainda sem definição
+  estatística componentizada no projeto.
+- **D_mon, D_proj e NPR_proj:** extensão anulável da FMECA; permanecem nulos
+  enquanto não houver mapeamento validado de POD_mon para D_mon.
 
-O contrato atual usa modelo exponencial de taxa constante. Uma curva normal ou
-Weibull exigiria tempos individuais de falha, exposição e censura que não estão
-disponíveis.
+O contrato atual usa modelo exponencial de taxa constante. Curvas Normal,
+Lognormal ou Weibull exigiriam tempos individuais de falha, exposição e censura
+que não estão disponíveis.
 
 ## Agente e publicação
 
