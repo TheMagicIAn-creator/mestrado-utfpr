@@ -60,6 +60,10 @@ sino.
 ## Relação com a FMECA vigente
 
 O escopo atual da FMECA é IGBT, sistema de sensor/realimentação e
-sistema/circuito de controle do inversor. S, O, D e NPR permanecem nulos com
-estado `awaiting_user_fmeca`. As taxas históricas acima não preenchem esses
-campos e as métricas dos detectores não recalculam criticidade de manutenção.
+sistema/circuito de controle do inversor. Os valores definidos pelo pesquisador
+são, respectivamente, S/O/D/NPR 5/6/5/150, 5/8/7/280 e 5/6/8/240, com estado
+`validated`. As escalas têm base no TCC e em outras referências, mas os valores
+adotados resultam do critério do pesquisador. Permanece pendente apenas a
+catalogação precisa das fontes e critérios das escalas. As taxas históricas
+acima não preenchem esses campos e as métricas dos detectores não recalculam
+criticidade de manutenção.

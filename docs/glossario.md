@@ -19,8 +19,15 @@ ensaio. Os nomes dos ensaios vêm do dataset e não significam frequência.
   somente quando os três valores pertencem ao mesmo escopo documentado.
 - **Escopo FMECA vigente:** IGBT, sistema de sensor/realimentação e
   sistema/circuito de controle do inversor.
-- **`awaiting_user_fmeca`:** S, O, D e NPR aguardam valores e fontes aprovados
-  pelo pesquisador; `null` não significa zero.
+- **`validated`:** S, O, D e NPR foram definidos pelo pesquisador e a identidade
+  `NPR = S * O * D` foi validada.
+- **Base das escalas FMECA:** as escalas numéricas são fundamentadas no TCC e em
+  outras referências; os valores adotados para os itens são critério do
+  pesquisador.
+- **`pending_source_documentation`:** os escores estão vigentes, mas as fontes,
+  páginas, tabelas e critérios das escalas ainda precisam ser catalogados.
+- **`awaiting_user_fmeca`:** estado histórico anterior a 2026-09-01, quando S,
+  O, D e NPR ainda eram `null`; não descreve o contrato atual.
 
 ## Detectores e evidência E3
 

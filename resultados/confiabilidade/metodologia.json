@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "status": "bibliographic_component_sensitivity",
   "evidence_scope": "bibliographic_reliability_only",
   "time_unit_primary": "hour",
@@ -11,9 +11,10 @@
     "hazard": "h(t) = lambda"
   },
   "fmeca": {
-    "status": "awaiting_user_fmeca",
+    "status": "validated",
+    "calculation_enabled": true,
     "formula": "NPR = S * O * D",
-    "calculation_enabled": false,
+    "traceability_status": "pending_source_documentation",
     "source_pdf": null,
     "source_page": null,
     "source_table": null,
@@ -27,12 +28,12 @@
           "F1L",
           "F1M"
         ],
-        "severity": null,
-        "occurrence": null,
-        "detectability": null,
-        "npr": null,
-        "status": "awaiting_user_fmeca",
-        "calculation_enabled": false
+        "severity": 5,
+        "occurrence": 6,
+        "detectability": 5,
+        "npr": 150,
+        "status": "validated",
+        "calculation_enabled": true
       },
       {
         "component_id": "sensor_feedback_system",
@@ -43,12 +44,12 @@
           "F2L",
           "F2M"
         ],
-        "severity": null,
-        "occurrence": null,
-        "detectability": null,
-        "npr": null,
-        "status": "awaiting_user_fmeca",
-        "calculation_enabled": false
+        "severity": 5,
+        "occurrence": 8,
+        "detectability": 7,
+        "npr": 280,
+        "status": "validated",
+        "calculation_enabled": true
       },
       {
         "component_id": "inverter_control_system",
@@ -61,13 +62,18 @@
           "F7L",
           "F7M"
         ],
-        "severity": null,
-        "occurrence": null,
-        "detectability": null,
-        "npr": null,
-        "status": "awaiting_user_fmeca",
-        "calculation_enabled": false
+        "severity": 5,
+        "occurrence": 6,
+        "detectability": 8,
+        "npr": 240,
+        "status": "validated",
+        "calculation_enabled": true
       }
+    ],
+    "priority_order": [
+      "sensor_feedback_system",
+      "inverter_control_system",
+      "igbt"
     ],
     "boundary": "A validação E3 mede detecção de anomalias e não fornece valores ordinais S/O/D nem recalcula NPR.",
     "legacy_tcc_scope": {

@@ -1,14 +1,14 @@
 {
   "manifest_version": 2,
   "stage": "confiabilidade_componentes",
-  "created_at": "2026-09-01T15:47:01.429884-03:00",
-  "git_commit": "94c70fdb8ee3ee98a07364a64aec5be9cc26e7c5",
+  "created_at": "2026-09-01T20:57:34.681301-03:00",
+  "git_commit": "92d5d6819d12abe310b312f1218e20426362170e",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
-  "code_sha256": "261fadeeeb1f32086209d11e3b8d7cbd767d4f8151edf2796161bfd2282d47fe",
+  "code_sha256": "dcae2f07905672b8b66d18a36c16a55c881732903449e8164fe55c1d556da0e0",
   "code_dependencies": {
-    "reliability": "c7049f45175ad42fe906d0865c06169d187aff6ed496352e4dfcc76dda9341b0",
+    "reliability": "38b98d1c702ef3624cbbf3a6c34fdee1081a14320e01b5e623241e27421ab8de",
     "plots": "597e580bba970f92e9045d62a18c4d84a27b865082d2cfe41fbda4c943ea9945",
     "style": "d6f5e719be9852c44f016f566e984e28e29ce804b1b31e63d43b415d93ed3914"
   },
@@ -23,7 +23,32 @@
       "fusivel_ac_derived",
       "fusivel_ac_direct"
     ],
-    "fmeca_status": "awaiting_user_fmeca",
+    "fmeca_status": "validated",
+    "fmeca_calculation_enabled": true,
+    "fmeca_score_origin": "researcher_defined",
+    "fmeca_scale_basis": "tcc_and_bibliographic_references",
+    "fmeca_traceability_status": "pending_source_documentation",
+    "fmeca_traceability_pending_scope": "exact_source_location_and_scale_criteria",
+    "fmeca_scores": {
+      "igbt": {
+        "severity": 5,
+        "occurrence": 6,
+        "detectability": 5,
+        "npr": 150
+      },
+      "sensor_feedback_system": {
+        "severity": 5,
+        "occurrence": 8,
+        "detectability": 7,
+        "npr": 280
+      },
+      "inverter_control_system": {
+        "severity": 5,
+        "occurrence": 6,
+        "detectability": 8,
+        "npr": 240
+      }
+    },
     "weibull_2p_status": "blocked_no_traceable_igbt_parameters_in_current_corpus"
   },
   "input_artifacts": {
@@ -58,8 +83,8 @@
     "resultados/confiabilidade/curva_taxa_falha.pdf": "263c46965e97a1d50a0edc40c5e861e23639abe8a3e8eda7ca75a44acdc95095",
     "resultados/confiabilidade/taxas_componentes.png": "f5df4350dd46d2d63637efb84d62c1d80f1b9f212bbaac2777468bdf2c942fc8",
     "resultados/confiabilidade/taxas_componentes.pdf": "58768a46a15952fa111711ab882c979f2e19f35fec8570b7c38e43bf236c4a1f",
-    "resultados/confiabilidade/metodologia.json": "e0145670d1f194b3493e581e14363c1ec28763ddb1ed7371d00bbf0a3c24530a",
-    "resultados/confiabilidade/relatorio.md": "4c1178d9c2df530e310089fe21f8646e488aed1ba90d20adfba701811bf26903"
+    "resultados/confiabilidade/metodologia.json": "57b11c0377f518449c74789b830530fbc961c23a24699e24780f21e42694d6ba",
+    "resultados/confiabilidade/relatorio.md": "627f787a9d61964b7f50749e84dba11e3a3ec85c0161ffe9ad5107c338b55b29"
   },
   "evidence_level": "bibliographic_sensitivity"
 }

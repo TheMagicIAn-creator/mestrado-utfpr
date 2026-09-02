@@ -56,9 +56,19 @@ A ausência de taxas diretas equivalentes para Contator AC e IGBT é preservada.
 ## FMECA vigente
 
 O escopo atual é formado por IGBT, sistema de sensor/realimentação e
-sistema/circuito de controle do inversor. Os campos S, O, D e NPR permanecem
-nulos com status `awaiting_user_fmeca`; os valores históricos de Contator AC,
-IGBT e Fusível AC não são transferidos para esse novo escopo.
+sistema/circuito de controle do inversor. Em 2026-09-01, o pesquisador definiu
+explicitamente os seguintes valores canônicos:
+
+- IGBT: S=5, O=6, D=5 e NPR=150.
+- Sistema de sensor/realimentação: S=5, O=8, D=7 e NPR=280.
+- Sistema/circuito de controle do inversor: S=5, O=6, D=8 e NPR=240.
+
+O estado é `validated`, com `NPR = S * O * D` verificado. A origem dos escores
+adotados é uma decisão explícita do pesquisador. As escalas numéricas possuem
+base no TCC e em outras referências; `pending_source_documentation` indica que
+a localização exata dessas fontes e os critérios das escalas ainda precisam ser
+catalogados. Os valores históricos de Contator AC, IGBT e Fusível AC não são
+transferidos para esse novo escopo.
 
 A validação E3 mede detecção de anomalias. Ela não produz escalas ordinais da
 FMECA e não recalcula NPR.
@@ -81,6 +91,8 @@ def generate() -> dict:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     scenarios = scenario_table()
     curves = component_curves(HORIZON_YEARS, N_POINTS)
+    methodology_payload = methodology()
+    fmeca_contract = methodology_payload["fmeca"]
     outputs: list[Path] = []
 
     scenarios_path = OUTPUT_DIR / "cenarios.csv"
@@ -92,7 +104,7 @@ def generate() -> dict:
 
     source_path = ROOT / SOURCE_PDF
     payload = {
-        **methodology(),
+        **methodology_payload,
         "source": {
             "artifact": SOURCE_PDF,
             "sha256": sha256_arquivo(source_path),
@@ -119,7 +131,23 @@ def generate() -> dict:
             "horizon_years": HORIZON_YEARS,
             "n_points": N_POINTS,
             "scenarios": [scenario.scenario_id for scenario in SCENARIOS],
-            "fmeca_status": "awaiting_user_fmeca",
+            "fmeca_status": fmeca_contract["status"],
+            "fmeca_calculation_enabled": fmeca_contract["calculation_enabled"],
+            "fmeca_score_origin": "researcher_defined",
+            "fmeca_scale_basis": "tcc_and_bibliographic_references",
+            "fmeca_traceability_status": fmeca_contract["traceability_status"],
+            "fmeca_traceability_pending_scope": (
+                "exact_source_location_and_scale_criteria"
+            ),
+            "fmeca_scores": {
+                component["component_id"]: {
+                    "severity": component["severity"],
+                    "occurrence": component["occurrence"],
+                    "detectability": component["detectability"],
+                    "npr": component["npr"],
+                }
+                for component in fmeca_contract["components"]
+            },
             "weibull_2p_status": (
                 "blocked_no_traceable_igbt_parameters_in_current_corpus"
             ),
