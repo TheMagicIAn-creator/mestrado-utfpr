@@ -188,10 +188,10 @@ def test_biblioteca_expoe_todos_os_pdfs_e_trechos_sem_contar_manifesto(client):
     assert response.status_code == 200
     data = response.json()
 
-    assert data["summary"]["documents"] == 45
-    assert data["summary"]["indexed_chunks"] == 12556
-    assert data["summary"]["portable_index_records"] == 12557
-    assert len(data["documents"]) == 45
+    assert data["summary"]["documents"] == len(data["documents"])
+    assert data["summary"]["documents"] >= 45
+    assert data["summary"]["indexed_chunks"] >= 12556
+    assert data["summary"]["portable_index_records"] >= data["summary"]["indexed_chunks"]
     assert all(item["url"].startswith("/library-files/") for item in data["documents"])
     assert data["write_policy"]["git_automation"] is False
 
@@ -241,6 +241,58 @@ def _web_pdf():
     stream = BytesIO()
     writer.write(stream)
     return stream.getvalue()
+
+
+def test_chat_importa_pdf_pela_ferramenta_da_biblioteca_local(tmp_path):
+    library = _web_library(tmp_path)
+
+    def fail_answerer(*_args):
+        raise AssertionError("RAG não deveria processar uma importação explícita")
+
+    app = create_app(
+        AgentAdapter(answerer=fail_answerer),
+        warm_on_startup=False,
+        library_service=library,
+    )
+    with TestClient(app, base_url="http://127.0.0.1") as local:
+        response = local.post(
+            "/api/chat/stream",
+            data={
+                "message": "adicione este arquivo à biblioteca",
+                "history": "[]",
+                "session_id": "sessao_importacao_web",
+            },
+            files={"files": ("fonte.pdf", _web_pdf(), "application/pdf")},
+        )
+
+    done = _sse_events(response.text)[-1]
+    assert done[0] == "done"
+    assert done[1]["route"] == "tool"
+    assert done[1]["library_jobs"][0]["state"] == "queued"
+
+
+def test_chat_nao_importa_pdf_fora_de_loopback(tmp_path):
+    library = _web_library(tmp_path)
+    app = create_app(
+        AgentAdapter(answerer=lambda *_args: "não deveria chegar ao RAG"),
+        warm_on_startup=False,
+        library_service=library,
+    )
+    with TestClient(app, base_url="https://example.com") as public:
+        response = public.post(
+            "/api/chat/stream",
+            data={
+                "message": "adicione este arquivo à biblioteca",
+                "history": "[]",
+                "session_id": "sessao_importacao_bloqueada",
+            },
+            files={"files": ("fonte.pdf", _web_pdf(), "application/pdf")},
+        )
+
+    done = _sse_events(response.text)[-1][1]
+    assert done["route"] == "tool"
+    assert done["library_jobs"] == []
+    assert "localhost" in done["answer"]
 
 
 def test_biblioteca_permite_escrita_apenas_em_loopback(tmp_path):

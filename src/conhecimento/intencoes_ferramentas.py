@@ -42,6 +42,53 @@ def _deve_forcar(pergunta: str) -> bool:
     return any(term in text for term in _TERMOS_PIPELINE_IMPLICITO + ("do zero", "force"))
 
 
+def _quer_adicionar_anexo_biblioteca(
+    pergunta: str,
+    *,
+    tem_anexos: bool = False,
+) -> bool:
+    text = _text(pergunta)
+    action = any(
+        term in text
+        for term in (
+            "adicione",
+            "adicionar",
+            "importe",
+            "importar",
+            "indexe",
+            "indexar",
+            "inclua",
+            "incluir",
+            "salve",
+            "persistir",
+        )
+    )
+    target = any(
+        term in text
+        for term in ("anexo", "arquivo", "pdf", "biblioteca", "literatura", "fonte")
+    )
+    return action and (target or tem_anexos)
+
+
+def _quer_leitura_efemera_anexo(pergunta: str) -> bool:
+    text = _text(pergunta)
+    action = any(
+        term in text
+        for term in (
+            "leia",
+            "ler",
+            "resuma",
+            "resumir",
+            "analise",
+            "analisar",
+            "explique",
+            "o que diz",
+        )
+    )
+    target = any(term in text for term in ("anexo", "arquivo", "pdf", "documento", "texto"))
+    return action and target
+
+
 def _quer_status(pergunta: str) -> bool:
     text = _text(pergunta)
     return "status" in text and any(
@@ -93,6 +140,11 @@ def _quer_registrar_no_cerebro(pergunta: str) -> bool:
 
 def _quer_limpar(pergunta: str) -> bool:
     text = _text(pergunta)
+    if any(
+        term in text
+        for term in ("painel", "interface", "layout", "aba", "menu", "codigo", "função", "funcao")
+    ):
+        return False
     return any(
         term in text
         for term in ("limpar", "limpe", "apagar", "apague", "remover", "remova", "excluir", "exclua")
@@ -128,6 +180,14 @@ def _parece_pedido_de_ferramenta(pergunta: str) -> bool:
             "mostre os resultados",
             "status do pipeline",
             "buscar na web",
+            "adicione",
+            "importe",
+            "indexe",
+            "apague",
+            "exclua",
+            "limpe",
+            "confirmar",
+            "cancelar",
         )
     )
 

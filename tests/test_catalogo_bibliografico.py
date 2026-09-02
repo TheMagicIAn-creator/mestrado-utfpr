@@ -107,9 +107,13 @@ def test_catalogo_rejeita_titulo_interno_de_template(tmp_path):
 def test_catalogo_versionado_cobre_corpus_real_sem_confundir_manifesto_com_chunk():
     catalog = carregar_catalogo(ROOT / "literatura" / "catalogo.json")
 
-    assert catalog["summary"]["documents"] == 45
-    assert catalog["summary"]["indexed_chunks"] == 12556
-    assert catalog["summary"]["portable_index_records"] == 12557
+    assert catalog["summary"]["documents"] == len(catalog["documents"])
+    assert catalog["summary"]["documents"] >= 45
+    assert catalog["summary"]["indexed_chunks"] >= 12556
+    assert (
+        catalog["summary"]["portable_index_records"]
+        >= catalog["summary"]["indexed_chunks"]
+    )
     assert catalog["summary"]["metadata_warnings"] == 4
     assert all(len(item["source_id"]) == 64 for item in catalog["documents"])
     assert all("\ufffd" not in item["title"] for item in catalog["documents"])

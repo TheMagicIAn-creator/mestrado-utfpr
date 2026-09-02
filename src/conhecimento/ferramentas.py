@@ -15,6 +15,8 @@ from src.conhecimento.ferramentas_academicas import (
 )
 from src.conhecimento.contratos_llm import texto_resultado_llm
 from src.conhecimento.intencoes_ferramentas import (
+    _deve_forcar,
+    _quer_catalogo,
     _quer_registrar_no_cerebro,
     _quer_resposta_autoral,
 )
@@ -81,8 +83,15 @@ ESPEC_FERRAMENTAS = [
     {
         "name": "limpar_resultados_ml",
         "description": (
-            "Remove, após confirmação literal, somente a publicação de comparação "
-            "ou de confiabilidade escolhida."
+            "Remove, após confirmação conversacional, a publicação de comparação, "
+            "de confiabilidade ou ambas."
+        ),
+    },
+    {
+        "name": "adicionar_anexo_biblioteca",
+        "description": (
+            "Persiste e indexa PDFs anexados na biblioteca local. Use somente quando "
+            "o pesquisador pedir explicitamente para adicionar, importar ou indexar."
         ),
     },
     {
@@ -152,10 +161,7 @@ def consultar_resultados(progresso=None, pergunta: str = "") -> dict:
 
 
 def _run_stage(stage: str, progresso=None, pergunta: str = "") -> dict:
-    force = any(
-        term in normalizar_sem_acentos(pergunta).lower()
-        for term in ("force", "forcar", "recalcular", "refazer", "do zero")
-    )
+    force = _deve_forcar(pergunta)
     result = executar_etapa(stage, force=force, progresso=progresso)
     if not result["ok"]:
         return {
@@ -166,7 +172,8 @@ def _run_stage(stage: str, progresso=None, pergunta: str = "") -> dict:
             "resposta_pronta": True,
         }
     summary = resumir_resultados(
-        "e3 denso lstm" if stage == "comparacao" else "confiabilidade"
+        "e3 denso lstm" if stage == "comparacao" else "confiabilidade",
+        operacao="recalculado" if force else "executado",
     )
     return {
         "ok": True,
@@ -187,10 +194,13 @@ def gerar_confiabilidade(progresso=None, pergunta: str = "") -> dict:
 
 
 def executar_pipeline_cientifico(progresso=None, pergunta: str = "") -> dict:
-    force = "recal" in normalizar_sem_acentos(pergunta).lower()
+    force = _deve_forcar(pergunta)
     results = executar_pipeline_ml("comparacao", force=force, progresso=progresso)
     ok = all(not item.startswith("ERRO") for item in results)
-    summary = resumir_resultados(pergunta)
+    summary = resumir_resultados(
+        pergunta,
+        operacao="recalculado" if force else "executado",
+    )
     message = "## Execução do pipeline científico\n\n" + "\n".join(
         f"- {item}" for item in results
     )
@@ -206,49 +216,139 @@ def executar_pipeline_cientifico(progresso=None, pergunta: str = "") -> dict:
     }
 
 
-def _selected_stage(question: str) -> str | None:
+def _selected_stages(question: str) -> tuple[str, ...]:
     text = normalizar_sem_acentos(question).lower()
-    if any(term in text for term in ("confiabilidade", "taxa de falha", "r(t)", "h(t)")):
-        return "confiabilidade"
+    selected = []
     if any(term in text for term in ("comparacao", "autoencoder", "denso", "lstm", "e3")):
-        return "comparacao"
-    return None
+        selected.append("comparacao")
+    if any(term in text for term in ("confiabilidade", "taxa de falha", "r(t)", "h(t)")):
+        selected.append("confiabilidade")
+    return tuple(selected)
 
 
-def limpar_resultados_ml(progresso=None, pergunta: str = "") -> dict:
-    stage = _selected_stage(pergunta)
-    if stage is None:
+def _selected_stage(question: str) -> str | None:
+    """Compatibilidade com consumidores antigos que aceitam uma única etapa."""
+
+    selected = _selected_stages(question)
+    return selected[0] if selected else None
+
+
+def limpar_resultados_ml(
+    progresso=None,
+    pergunta: str = "",
+    *,
+    etapas: tuple[str, ...] | list[str] | None = None,
+    confirmado: bool = False,
+) -> dict:
+    stages = tuple(dict.fromkeys(etapas or _selected_stages(pergunta)))
+    if not stages or any(stage not in NOMES_ETAPAS for stage in stages):
         return {
             "ok": False,
             "etapa": "Limpeza de resultados",
-            "mensagem": "Indique `comparacao` ou `confiabilidade`.",
+            "mensagem": "Indique `comparação`, `confiabilidade` ou ambas.",
             "imagens": [],
             "resposta_pronta": True,
         }
-    token = f"CONFIRMAR LIMPEZA {stage.upper()}"
-    if normalizar_sem_acentos(token).lower() not in normalizar_sem_acentos(pergunta).lower():
-        existing = [path for path in artefatos_a_partir(stage) if path.is_file()]
+    tokens = [f"CONFIRMAR LIMPEZA {stage.upper()}" for stage in stages]
+    normalized_question = normalizar_sem_acentos(pergunta).lower()
+    legacy_confirmation = all(
+        normalizar_sem_acentos(token).lower() in normalized_question
+        for token in tokens
+    )
+    if not confirmado and not legacy_confirmation:
+        existing = {
+            path.resolve()
+            for stage in stages
+            for path in artefatos_a_partir(stage)
+            if path.is_file()
+        }
+        labels = " e ".join(NOMES_ETAPAS[stage] for stage in stages)
         return {
             "ok": True,
             "etapa": "Limpeza de resultados",
             "mensagem": (
                 f"A operação removerá {len(existing)} arquivo(s) de "
-                f"**{NOMES_ETAPAS[stage]}**. A ação é irreversível. "
-                f"Para confirmar, escreva `{token}`."
+                f"**{labels}**. A ação é irreversível. Confirma excluir "
+                f"{'ambas as publicações' if len(stages) == 2 else 'essa publicação'}? "
+                f"Responda `confirmar` ou, para compatibilidade, `{tokens[0]}`."
             ),
             "imagens": [],
             "resposta_pronta": True,
         }
-    if progresso:
-        progresso(f"Removendo {NOMES_ETAPAS[stage]}...")
-    removed = limpar_artefatos(stage)
+    removed = []
+    for stage in stages:
+        if progresso:
+            progresso(f"Removendo {NOMES_ETAPAS[stage]}...")
+        removed.extend(limpar_artefatos(stage))
+    labels = " e ".join(NOMES_ETAPAS[stage] for stage in stages)
     return {
         "ok": True,
         "etapa": "Limpeza de resultados",
-        "mensagem": f"Foram removidos {len(removed)} arquivo(s) de {NOMES_ETAPAS[stage]}.",
+        "mensagem": f"Foram removidos {len(removed)} arquivo(s) de {labels}.",
         "imagens": [],
         "resposta_pronta": True,
         "acao_executada": True,
+    }
+
+
+def adicionar_anexo_biblioteca(
+    progresso=None,
+    pergunta: str = "",
+    *,
+    anexos: list[tuple[str, bytes]] | None = None,
+    library_service=None,
+    library_write_allowed: bool = False,
+    library_write_reason: str | None = None,
+) -> dict:
+    del pergunta
+    if library_service is None:
+        return {
+            "ok": False,
+            "etapa": "Biblioteca",
+            "mensagem": "A biblioteca não está disponível nesta execução.",
+            "imagens": [],
+            "resposta_pronta": True,
+        }
+    if not library_write_allowed:
+        return {
+            "ok": False,
+            "etapa": "Biblioteca",
+            "mensagem": library_write_reason or "A biblioteca é somente leitura neste ambiente.",
+            "imagens": [],
+            "resposta_pronta": True,
+        }
+    pdfs = [item for item in (anexos or []) if item[0].lower().endswith(".pdf")]
+    if not pdfs:
+        return {
+            "ok": False,
+            "etapa": "Biblioteca",
+            "mensagem": "Anexe pelo menos um PDF para adicioná-lo à biblioteca.",
+            "imagens": [],
+            "resposta_pronta": True,
+        }
+    jobs = []
+    errors = []
+    for filename, data in pdfs:
+        try:
+            if progresso:
+                progresso(f"Enfileirando {filename} para indexação...")
+            jobs.append((filename, library_service.queue_pdf(filename, data)))
+        except Exception as exc:
+            errors.append(f"{filename}: {mascarar_segredos(str(exc))}")
+    lines = ["## Importação para a biblioteca", ""]
+    lines.extend(
+        f"- **{filename}**: indexação enfileirada (job `{job.get('job_id', 'sem-id')}`)."
+        for filename, job in jobs
+    )
+    lines.extend(f"- **Não importado:** {error}" for error in errors)
+    return {
+        "ok": bool(jobs) and not errors,
+        "etapa": "Biblioteca",
+        "mensagem": "\n".join(lines),
+        "imagens": [],
+        "resposta_pronta": True,
+        "acao_executada": bool(jobs),
+        "jobs": [job for _filename, job in jobs],
     }
 
 
@@ -342,6 +442,7 @@ _DESPACHO = {
     "consultar_comparacao_autoencoders": consultar_comparacao_autoencoders,
     "consultar_status_pipeline": consultar_status_pipeline,
     "limpar_resultados_ml": limpar_resultados_ml,
+    "adicionar_anexo_biblioteca": adicionar_anexo_biblioteca,
     "registrar_no_cerebro": registrar_no_cerebro,
     "buscar_web": buscar_na_web,
     "listar_base_bibliografica": listar_base_bibliografica,
@@ -356,6 +457,10 @@ def executar_ferramenta(
     pergunta: str = "",
     llm=None,
     contexto: str = "",
+    anexos: list[tuple[str, bytes]] | None = None,
+    library_service=None,
+    library_write_allowed: bool = False,
+    library_write_reason: str | None = None,
 ) -> dict:
     function = _DESPACHO.get(nome)
     if function is None:
@@ -372,6 +477,14 @@ def executar_ferramenta(
         extras["llm"] = llm
     if "contexto" in parameters:
         extras["contexto"] = contexto
+    if "anexos" in parameters:
+        extras["anexos"] = anexos
+    if "library_service" in parameters:
+        extras["library_service"] = library_service
+    if "library_write_allowed" in parameters:
+        extras["library_write_allowed"] = library_write_allowed
+    if "library_write_reason" in parameters:
+        extras["library_write_reason"] = library_write_reason
     return function(progresso=progresso, pergunta=pergunta, **extras)
 
 
@@ -395,6 +508,7 @@ __all__ = [
     "comentar_resultado",
     "consultar_resultados",
     "consultar_status_pipeline",
+    "adicionar_anexo_biblioteca",
     "decidir_acao",
     "executar_ferramenta",
     "processar_com_ferramentas",

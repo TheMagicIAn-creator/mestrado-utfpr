@@ -270,6 +270,31 @@ def estado_etapa_completo(key: str) -> dict:
     return {"estado": "stale" if reasons else "ready", "motivos": reasons}
 
 
+def estado_publicacao(key: str) -> dict:
+    """Estado rápido dos artefatos publicados, sem re-hashear o dataset bruto."""
+
+    stage = get_stage(key)
+    if not stage.is_complete():
+        return {
+            "estado": "pending",
+            "motivos": ["artefato(s) ausente(s)"],
+            "escopo_verificacao": "published_outputs",
+        }
+    saved = carregar_manifesto(stage.manifest_name)
+    if not saved:
+        return {
+            "estado": "pending",
+            "motivos": ["sem manifesto v2"],
+            "escopo_verificacao": "published_outputs",
+        }
+    reasons = _output_hash_reasons(saved)
+    return {
+        "estado": "stale" if reasons else "ready",
+        "motivos": reasons,
+        "escopo_verificacao": "published_outputs",
+    }
+
+
 def estado_pipeline() -> dict[str, dict]:
     return {key: estado_etapa_completo(key) for key in ORDEM_ETAPAS_ML}
 

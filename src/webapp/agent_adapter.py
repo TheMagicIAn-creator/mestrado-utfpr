@@ -42,6 +42,14 @@ class _Componentes:
     modo_consulta: bool
 
 
+@dataclass(frozen=True)
+class _PendingAction:
+    action: str
+    phase: str
+    stages: tuple[str, ...]
+    created_at: float
+
+
 def _historico_normalizado(historico) -> list[dict[str, str]]:
     if historico is None:
         return []
@@ -80,12 +88,16 @@ class AgentAdapter:
         self,
         answerer: Callable | None = None,
         session_journal: SessionJournal | None = None,
+        library_service=None,
     ):
         self._answerer = answerer
         self._session_journal = session_journal or SessionJournal()
         self._lock = threading.RLock()
         self._initialization_lock = threading.Lock()
         self._maintenance_lock = threading.Lock()
+        self._pending_lock = threading.RLock()
+        self._pending_actions: dict[str, _PendingAction] = {}
+        self._library_service = library_service
         self._warm_thread: threading.Thread | None = None
         self._last_obsidian_sync: float | None = None
         self._components: _Componentes | None = None
@@ -97,6 +109,168 @@ class AgentAdapter:
         """Catálogo persistente compartilhado pelas APIs de conversa."""
 
         return self._session_journal
+
+    def configure_library_service(self, library_service) -> None:
+        """Liga o adaptador ao mesmo serviço protegido usado pela API da biblioteca."""
+
+        self._library_service = library_service
+
+    @staticmethod
+    def _local_action_response(answer: str, *, route: str = "local") -> dict:
+        return {
+            "answer": answer,
+            "images": [],
+            "route": route,
+            "memories_saved": 0,
+        }
+
+    def _set_pending(self, session_id: str, pending: _PendingAction) -> None:
+        with self._pending_lock:
+            if len(self._pending_actions) >= 256 and session_id not in self._pending_actions:
+                oldest = min(
+                    self._pending_actions,
+                    key=lambda key: self._pending_actions[key].created_at,
+                )
+                self._pending_actions.pop(oldest, None)
+            self._pending_actions[session_id] = pending
+
+    def _get_pending(self, session_id: str | None) -> _PendingAction | None:
+        if not session_id:
+            return None
+        with self._pending_lock:
+            pending = self._pending_actions.get(session_id)
+            if pending and monotonic() - pending.created_at > 1800:
+                self._pending_actions.pop(session_id, None)
+                return None
+            return pending
+
+    def _handle_pending_action(
+        self,
+        mensagem: str,
+        session_id: str | None,
+    ) -> dict | None:
+        from src.conhecimento.ferramentas import _selected_stages, limpar_resultados_ml
+        from src.conhecimento.intencoes_ferramentas import _quer_limpar
+        from src.core.texto import normalizar_sem_acentos
+
+        text = " ".join(normalizar_sem_acentos(mensagem).lower().split())
+        cancellation = text in {"cancelar", "cancele", "nao", "não"} or text.startswith(
+            ("cancelar ", "cancele ")
+        )
+        confirmation = text in {
+            "confirmar",
+            "confirmo",
+            "sim",
+            "pode excluir",
+            "pode apagar",
+            "confirmar exclusao",
+        }
+        pending = self._get_pending(session_id)
+
+        if pending is None:
+            if cancellation or confirmation:
+                return self._local_action_response(
+                    "Não há uma exclusão pendente nesta conversa."
+                )
+            if not _quer_limpar(mensagem):
+                return None
+            if not session_id:
+                return self._local_action_response(
+                    "Para excluir resultados com segurança, use uma conversa com `session_id` ativo."
+                )
+            stages = _selected_stages(mensagem)
+            if not stages:
+                self._set_pending(
+                    session_id,
+                    _PendingAction("delete_results", "select_stages", (), monotonic()),
+                )
+                return self._local_action_response(
+                    "Quais resultados deseja excluir: **comparação**, **confiabilidade** ou ambos?"
+                )
+            self._set_pending(
+                session_id,
+                _PendingAction("delete_results", "confirm", stages, monotonic()),
+            )
+            result = limpar_resultados_ml(pergunta=mensagem, etapas=stages)
+            return self._local_action_response(result["mensagem"], route="tool")
+
+        if cancellation:
+            with self._pending_lock:
+                self._pending_actions.pop(session_id, None)
+            return self._local_action_response("A exclusão pendente foi cancelada.")
+
+        stages = _selected_stages(mensagem)
+        if not stages and any(term in text.split() for term in ("ambos", "ambas")):
+            stages = ("comparacao", "confiabilidade")
+
+        if pending.phase == "select_stages":
+            if not stages:
+                return self._local_action_response(
+                    "Ainda preciso saber quais resultados: **comparação**, **confiabilidade** ou ambos."
+                )
+            self._set_pending(
+                session_id,
+                _PendingAction("delete_results", "confirm", stages, monotonic()),
+            )
+            result = limpar_resultados_ml(pergunta=mensagem, etapas=stages)
+            return self._local_action_response(result["mensagem"], route="tool")
+
+        if stages and not confirmation:
+            self._set_pending(
+                session_id,
+                _PendingAction("delete_results", "confirm", stages, monotonic()),
+            )
+            result = limpar_resultados_ml(pergunta=mensagem, etapas=stages)
+            return self._local_action_response(result["mensagem"], route="tool")
+
+        if not confirmation:
+            return self._local_action_response(
+                "A exclusão ainda não foi executada. Responda **confirmar** ou **cancelar**."
+            )
+
+        with self._pending_lock:
+            current = self._pending_actions.get(session_id)
+            if current != pending:
+                return self._local_action_response(
+                    "A ação pendente mudou; revise a seleção antes de confirmar."
+                )
+            self._pending_actions.pop(session_id, None)
+        result = limpar_resultados_ml(
+            pergunta=mensagem,
+            etapas=pending.stages,
+            confirmado=True,
+        )
+        return self._local_action_response(result["mensagem"], route="tool")
+
+    def _handle_library_action(
+        self,
+        mensagem: str,
+        anexos: list[tuple[str, bytes]],
+        *,
+        library_write_allowed: bool,
+        library_write_reason: str | None,
+    ) -> dict | None:
+        from src.conhecimento.intencoes_ferramentas import (
+            _quer_adicionar_anexo_biblioteca,
+        )
+
+        if not _quer_adicionar_anexo_biblioteca(
+            mensagem,
+            tem_anexos=bool(anexos),
+        ):
+            return None
+        from src.conhecimento.ferramentas import adicionar_anexo_biblioteca
+
+        result = adicionar_anexo_biblioteca(
+            pergunta=mensagem,
+            anexos=anexos,
+            library_service=self._library_service,
+            library_write_allowed=library_write_allowed,
+            library_write_reason=library_write_reason,
+        )
+        response = self._local_action_response(result["mensagem"], route="tool")
+        response["library_jobs"] = result.get("jobs", [])
+        return response
 
     def status(self) -> dict:
         with self._lock:
@@ -252,63 +426,89 @@ class AgentAdapter:
         historico: list[dict[str, str]],
         anexos_bytes: list[tuple[str, bytes]],
         on_chunk: Callable[[str], None] | None = None,
+        library_write_allowed: bool = False,
+        library_write_reason: str | None = None,
     ) -> dict:
         componentes = self._initialize()
         contexto_cientifico = scientific_context_for(mensagem)
+        try:
+            from src.conhecimento.ferramentas import (
+                decidir_acao,
+                processar_com_ferramentas,
+            )
+
+            decisao = (
+                decidir_acao(mensagem, componentes.llm, tem_anexos=True)
+                if anexos_bytes
+                else decidir_acao(mensagem, componentes.llm)
+            )
+            if decisao.get("esclarecimento"):
+                return self._local_action_response(str(decisao["esclarecimento"]))
+            if decisao.get("usar_ferramenta"):
+                saida = processar_com_ferramentas(
+                    pergunta=mensagem,
+                    perfil=componentes.perfil,
+                    llm=componentes.llm,
+                    progresso=None,
+                    decisao=decisao,
+                    contexto="\n\n".join(
+                        item
+                        for item in (
+                            self._contexto(historico),
+                            contexto_cientifico,
+                        )
+                        if item
+                    ),
+                    anexos=anexos_bytes,
+                    library_service=self._library_service,
+                    library_write_allowed=library_write_allowed,
+                    library_write_reason=library_write_reason,
+                )
+                imagens = []
+                if saida.get("resultado"):
+                    for item in saida["resultado"].get("imagens", []):
+                        publica = self._imagem_publica(item)
+                        if publica:
+                            imagens.append(publica)
+                resposta_ferramenta = saida.get("resposta") or "Sem resposta."
+                if decisao.get("ferramenta") in {
+                    "consultar_resultados",
+                    "consultar_comparacao_autoencoders",
+                    "executar_comparacao_autoencoders",
+                    "gerar_confiabilidade",
+                    "executar_pipeline_cientifico",
+                } and "Verificação de citações" not in resposta_ferramenta:
+                    from src.core.citacao_guarda import alerta_citacao_infundada
+
+                    aviso = alerta_citacao_infundada(resposta_ferramenta, {})
+                    if aviso:
+                        resposta_ferramenta = aviso.strip() + "\n\n" + resposta_ferramenta
+                return {
+                    "answer": resposta_ferramenta,
+                    "images": imagens,
+                    "route": "tool",
+                    "scientific_contract": "canonical" if contexto_cientifico else None,
+                    "library_jobs": (saida.get("resultado") or {}).get("jobs", []),
+                }
+        except AgenteIndisponivel:
+            raise
+        except Exception as exc:
+            from src.conhecimento.intencoes_ferramentas import (
+                _parece_pedido_de_ferramenta,
+            )
+
+            _logger.warning("roteamento por ferramenta indisponivel: %s", exc)
+            if _parece_pedido_de_ferramenta(mensagem):
+                return self._local_action_response(
+                    "Não consegui concluir a operação. Especifique se deseja consultar, "
+                    "executar, recalcular, importar ou excluir."
+                )
+
         anexos = []
         if anexos_bytes:
             from src.conhecimento.leitor_anexos import ler_anexos
 
             anexos = ler_anexos(anexos_bytes)
-
-        if not anexos:
-            try:
-                from src.conhecimento.ferramentas import (
-                    decidir_acao,
-                    processar_com_ferramentas,
-                )
-
-                decisao = decidir_acao(mensagem, componentes.llm)
-                if decisao.get("usar_ferramenta"):
-                    saida = processar_com_ferramentas(
-                        pergunta=mensagem,
-                        perfil=componentes.perfil,
-                        llm=componentes.llm,
-                        progresso=None,
-                        decisao=decisao,
-                        contexto="\n\n".join(
-                            item
-                            for item in (
-                                self._contexto(historico),
-                                contexto_cientifico,
-                            )
-                            if item
-                        ),
-                    )
-                    imagens = []
-                    if saida.get("resultado"):
-                        for item in saida["resultado"].get("imagens", []):
-                            publica = self._imagem_publica(item)
-                            if publica:
-                                imagens.append(publica)
-                    resposta_ferramenta = saida.get("resposta") or "Sem resposta."
-                    if "Verificação de citações" not in resposta_ferramenta:
-                        from src.core.citacao_guarda import alerta_citacao_infundada
-
-                        aviso = alerta_citacao_infundada(resposta_ferramenta, {})
-                        if aviso:
-                            resposta_ferramenta = aviso.strip() + "\n\n" + resposta_ferramenta
-                    return {
-                        "answer": resposta_ferramenta,
-                        "images": imagens,
-                        "route": "tool",
-                        "scientific_contract": "canonical" if contexto_cientifico else None,
-                    }
-            except AgenteIndisponivel:
-                raise
-            except Exception as exc:
-                # O RAG permanece disponível quando o classificador de ferramenta falha.
-                _logger.warning("roteamento por ferramenta indisponivel; usando RAG: %s", exc)
 
         from src.conhecimento.agente import perguntar
 
@@ -421,6 +621,8 @@ class AgentAdapter:
         attachments=None,
         session_id: str | None = None,
         on_chunk: Callable[[str], None] | None = None,
+        library_write_allowed: bool = False,
+        library_write_reason: str | None = None,
     ) -> dict:
         mensagem = str(message or "").strip()
         if not mensagem:
@@ -430,6 +632,19 @@ class AgentAdapter:
         historico = _historico_normalizado(history)
         anexos = _validar_anexos(attachments)
         session_id = self._session_journal.validar_session_id(session_id)
+
+        pending_response = self._handle_pending_action(mensagem, session_id)
+        if pending_response is not None:
+            return pending_response
+
+        library_response = self._handle_library_action(
+            mensagem,
+            anexos,
+            library_write_allowed=library_write_allowed,
+            library_write_reason=library_write_reason,
+        )
+        if library_response is not None:
+            return library_response
 
         if self._answerer is None and not anexos:
             from src.conhecimento.agente_interacao import resposta_interacao_simples
@@ -452,6 +667,8 @@ class AgentAdapter:
                     historico,
                     anexos,
                     on_chunk=on_chunk,
+                    library_write_allowed=library_write_allowed,
+                    library_write_reason=library_write_reason,
                 )
         except (ValueError, AgenteIndisponivel):
             raise
