@@ -32,19 +32,36 @@ def test_native_gpvs_mapping_preserves_functional_control_scope():
     assert FAULT_CONTRACTS[7]["physical_component_failure"] is False
 
 
-def test_current_fmeca_has_no_fabricated_scores_or_legacy_components():
-    component_ids = {component.component_id for component in FMECA_COMPONENTS}
-    assert component_ids == {
-        "igbt",
-        "sensor_feedback_system",
-        "inverter_control_system",
+def test_current_fmeca_preserves_researcher_defined_scores():
+    expected = {
+        "igbt": (5, 6, 5, 150),
+        "sensor_feedback_system": (5, 8, 7, 280),
+        "inverter_control_system": (5, 6, 8, 240),
     }
-    for component in FMECA_COMPONENTS:
-        assert component.status == "awaiting_user_fmeca"
-        assert component.severity is None
-        assert component.occurrence is None
-        assert component.detectability is None
-        assert component.npr is None
+    components = {
+        component.component_id: component
+        for component in FMECA_COMPONENTS
+    }
+    assert set(components) == set(expected)
+    for component_id, scores in expected.items():
+        component = components[component_id]
+        assert component.status == "validated"
+        assert (
+            component.severity,
+            component.occurrence,
+            component.detectability,
+            component.npr,
+        ) == scores
+        assert component.npr == (
+            component.severity
+            * component.occurrence
+            * component.detectability
+        )
+
+    fmeca = methodology()["fmeca"]
+    assert fmeca["status"] == "validated"
+    assert fmeca["calculation_enabled"] is True
+    assert fmeca["traceability_status"] == "pending_source_documentation"
 
 
 def test_current_publication_does_not_depend_on_revoked_projection_fields():

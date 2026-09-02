@@ -77,7 +77,7 @@ def test_curves_publish_hours_years_density_and_hazard():
 
 def test_no_physical_weibull_is_fabricated():
     contract = methodology()
-    assert contract["schema_version"] == 6
+    assert contract["schema_version"] == 7
     assert contract["fmeca"]["formula"] == "NPR = S * O * D"
     assert contract["physical_weibull"] == {
         "status": "blocked_no_traceable_igbt_parameters_in_current_corpus",
@@ -94,11 +94,12 @@ def test_no_physical_weibull_is_fabricated():
     assert "eta" not in scenario_table().columns
 
 
-def test_current_fmeca_scope_is_nullable_and_does_not_inherit_legacy_npr():
+def test_current_fmeca_scope_uses_researcher_defined_scores_only():
     contract = methodology()["fmeca"]
 
-    assert contract["status"] == "awaiting_user_fmeca"
-    assert contract["calculation_enabled"] is False
+    assert contract["status"] == "validated"
+    assert contract["calculation_enabled"] is True
+    assert contract["traceability_status"] == "pending_source_documentation"
     assert {item.component_id for item in FMECA_COMPONENTS} == {
         "igbt",
         "sensor_feedback_system",
@@ -106,12 +107,26 @@ def test_current_fmeca_scope_is_nullable_and_does_not_inherit_legacy_npr():
     }
     assert "contator_ac" not in {item.component_id for item in FMECA_COMPONENTS}
     assert "fusivel_ac" not in {item.component_id for item in FMECA_COMPONENTS}
+    expected = {
+        "igbt": (5, 6, 5, 150),
+        "sensor_feedback_system": (5, 8, 7, 280),
+        "inverter_control_system": (5, 6, 8, 240),
+    }
     for item in contract["components"]:
-        assert item["status"] == "awaiting_user_fmeca"
-        assert item["severity"] is None
-        assert item["occurrence"] is None
-        assert item["detectability"] is None
-        assert item["npr"] is None
+        scores = (
+            item["severity"],
+            item["occurrence"],
+            item["detectability"],
+            item["npr"],
+        )
+        assert item["status"] == "validated"
+        assert item["calculation_enabled"] is True
+        assert scores == expected[item["component_id"]]
+        assert item["npr"] == (
+            item["severity"]
+            * item["occurrence"]
+            * item["detectability"]
+        )
 
 
 def test_distribution_contract_lists_missing_parameters_without_curves():

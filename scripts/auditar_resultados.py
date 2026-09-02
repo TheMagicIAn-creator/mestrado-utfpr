@@ -456,26 +456,48 @@ def _audit_scientific_contracts(results: Path, errors: list[str]) -> None:
     if "dataset_role" in reliability or "experimental_dataset" in reliability:
         errors.append("a confiabilidade física ainda depende de metadados experimentais")
     physical_weibull = reliability.get("physical_weibull", {})
+    if physical_weibull.get("status") != (
+        "blocked_no_traceable_igbt_parameters_in_current_corpus"
+    ):
+        errors.append("a publicação não mantém o bloqueio científico da Weibull 2P")
     if physical_weibull.get("beta") is not None or physical_weibull.get("eta") is not None:
         errors.append("a publicação fabricou parâmetros Weibull físicos")
     fmeca = reliability.get("fmeca", {})
-    if fmeca.get("status") != "awaiting_user_fmeca":
-        errors.append("a FMECA não declara que aguarda os valores do pesquisador")
-    component_ids = {
-        item.get("component_id") for item in fmeca.get("components", [])
+    if fmeca.get("status") != "validated":
+        errors.append("a FMECA vigente não está marcada como validated")
+    if fmeca.get("calculation_enabled") is not True:
+        errors.append("o cálculo NPR da FMECA vigente não está habilitado")
+    if fmeca.get("traceability_status") != "pending_source_documentation":
+        errors.append("a pendência documental dos escores FMECA não está explícita")
+    expected_fmeca = {
+        "igbt": (5, 6, 5, 150),
+        "sensor_feedback_system": (5, 8, 7, 280),
+        "inverter_control_system": (5, 6, 8, 240),
     }
-    if component_ids != {
-        "igbt",
-        "sensor_feedback_system",
-        "inverter_control_system",
-    }:
+    components = fmeca.get("components", [])
+    component_ids = {item.get("component_id") for item in components}
+    if component_ids != set(expected_fmeca) or len(components) != len(expected_fmeca):
         errors.append("a FMECA publicada não usa o trio metodológico vigente")
-    if any(
-        item.get(field) is not None
-        for item in fmeca.get("components", [])
-        for field in ("severity", "occurrence", "detectability", "npr")
-    ):
-        errors.append("a FMECA publicou S/O/D/NPR sem dados aprovados")
+    for item in components:
+        component_id = item.get("component_id")
+        if component_id not in expected_fmeca:
+            continue
+        scores = tuple(
+            item.get(field)
+            for field in ("severity", "occurrence", "detectability", "npr")
+        )
+        if scores != expected_fmeca[component_id]:
+            errors.append(
+                f"escores FMECA divergentes para {component_id}: {scores}"
+            )
+        severity, occurrence, detectability, npr = scores
+        if not all(
+            isinstance(value, int) and not isinstance(value, bool)
+            for value in scores
+        ):
+            errors.append(f"escores FMECA não inteiros para {component_id}")
+        elif npr != severity * occurrence * detectability:
+            errors.append(f"NPR não corresponde a S*O*D para {component_id}")
     serialized = json.dumps(reliability, ensure_ascii=False).lower()
     if any(field in serialized for field in ("pod_mon", "d_mon", "d_proj", "npr_proj")):
         errors.append("a publicação ainda contém campos de projeção revogados")

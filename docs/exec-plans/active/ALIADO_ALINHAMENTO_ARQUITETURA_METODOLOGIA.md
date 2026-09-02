@@ -751,8 +751,23 @@ Preservar os campos:
 - Detectabilidade `D`;
 - NPR conforme escala/metodologia adotada.
 
-Enquanto o pesquisador não fornecer valores e fontes compatíveis com os três
-itens atuais, todos permanecem `null`, com estado `awaiting_user_fmeca`.
+Em decisão explícita de 2026-09-01, o pesquisador definiu os valores canônicos:
+
+- IGBT: S=5, O=6, D=5 e NPR=150;
+- sistema de sensor/realimentação: S=5, O=8, D=7 e NPR=280;
+- sistema/circuito de controle do inversor: S=5, O=6, D=8 e NPR=240.
+
+O contrato vigente usa `status=validated`, `calculation_enabled=true`,
+`schema_version=7` e valida `NPR = S * O * D`. Esses valores foram definidos
+pelo pesquisador e não podem ser alterados, reinterpretados ou substituídos por
+métricas dos detectores. As escalas numéricas têm base no TCC e em outras
+referências; os valores aplicados aos três itens resultam do critério técnico do
+pesquisador. `pending_source_documentation` permanece até que fonte, página,
+tabela e critérios das escalas sejam catalogados com precisão.
+
+Antes dessa decisão, os campos permaneciam `null`, com estado
+`awaiting_user_fmeca`. Documentos históricos datados podem preservar esse estado
+anterior, mas ele não descreve a FMECA vigente.
 
 Não confundir `D` com NPR.
 
@@ -978,7 +993,10 @@ Validar:
 - monotonicidade de `R(t)` quando aplicável;
 - `F(t)` entre 0 e 1;
 - consistência de fonte;
-- S/O/D/NPR nulos enquanto faltar decisão do pesquisador;
+- S/O/D/NPR exatamente iguais aos valores definidos pelo pesquisador em
+  2026-09-01, com validação de `NPR = S * O * D`;
+- `traceability_status=pending_source_documentation` enquanto faltar a
+  localização documental específica dos escores;
 - ausência de qualquer conversão de métrica do detector em criticidade FMECA.
 
 ---
@@ -1103,7 +1121,8 @@ Restaurar/garantir:
 - funções de confiabilidade;
 - gráficos;
 - FMECA atual com IGBT, sensor/realimentação e sistema de controle;
-- S/O/D/NPR anuláveis, sem herança do recorte histórico;
+- S/O/D/NPR validados conforme decisão do pesquisador de 2026-09-01, sem
+  herança do recorte histórico e sem vínculo com métricas dos detectores;
 - bloqueios científicos quando faltarem dados.
 
 ## Fase 6 — Frontend
@@ -1178,7 +1197,9 @@ Estado antigo:
 - detector não recalcula NPR.
 
 Estado desejado:
-- novo escopo FMECA com campos nulos até decisão do pesquisador;
+- novo escopo FMECA com os três conjuntos S/O/D/NPR definidos pelo pesquisador
+  em 2026-09-01 e validados aritmeticamente;
+- rastreabilidade documental dos escores explicitamente pendente;
 - nenhuma transformação de desempenho do detector em NPR;
 - recorte antigo preservado somente como histórico.
 
@@ -1247,7 +1268,8 @@ A tarefa só pode ser considerada concluída quando:
 - grade 3×3 estiver rastreável e calibrada apenas no saudável;
 - R(t), F(t), f(t) e h(t) estiverem matematicamente corretos;
 - Weibull/Normal/Lognormal não forem fabricados;
-- FMECA vigente estiver com o novo escopo e campos nulos sem fonte;
+- FMECA vigente estiver com o novo escopo, os escores definidos pelo
+  pesquisador, `status=validated` e rastreabilidade documental pendente;
 - métricas do detector não recalcularem NPR;
 - frontend não recalcular ciência;
 - documentação refletir a mesma arquitetura;
