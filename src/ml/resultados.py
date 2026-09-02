@@ -16,6 +16,7 @@ COMPARISON_DIR = ROOT / "resultados" / "comparacao"
 RELIABILITY_DIR = ROOT / "resultados" / "confiabilidade"
 COMPARISON_JSON = COMPARISON_DIR / "comparacao_autoencoders.json"
 RELIABILITY_JSON = RELIABILITY_DIR / "metodologia.json"
+MANIFEST_DIR = ROOT / "resultados" / "manifestos"
 
 MODEL_LABELS = {"ae_denso": "Autoencoder Denso", "ae_lstm": "AE-LSTM"}
 def _json(path: Path) -> dict:
@@ -54,7 +55,10 @@ def _quer_imagens(pergunta: str) -> bool:
 def _focus(pergunta: str) -> set[str]:
     text = normalizar_sem_acentos(pergunta).lower()
     selected: set[str] = set()
-    if any(term in text for term in ("e3", "auc", "roc", "lstm", "denso", "experimental")):
+    if any(
+        term in text
+        for term in ("e3", "auc", "roc", "lstm", "denso", "experimental", "comparacao")
+    ):
         selected.add("e3")
     if any(
         term in text
@@ -187,7 +191,60 @@ def _images(focus: set[str], *, inline: bool) -> list[dict]:
     return images
 
 
-def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> dict:
+def _provenance_summary(focus: set[str], operation: str) -> str:
+    from src.ml.pipeline import estado_publicacao
+
+    stages = {
+        "e3": ("comparacao", "comparacao_autoencoders", "Comparação Denso versus AE-LSTM"),
+        "reliability": (
+            "confiabilidade",
+            "confiabilidade_componentes",
+            "Confiabilidade física",
+        ),
+    }
+    labels = {"ready": "ready", "stale": "stale", "pending": "pending"}
+    lines = ["## Proveniência da resposta", "", f"Operação: **{operation}**."]
+    for section in ("e3", "reliability"):
+        if section not in focus:
+            continue
+        key, manifest_name, label = stages[section]
+        state = estado_publicacao(key)
+        path = MANIFEST_DIR / f"{manifest_name}.json"
+        manifest = _json(path)
+        parameters = manifest.get("parameters") or {}
+        generated = manifest.get("created_at") or "não disponível"
+        relative = path.relative_to(ROOT).as_posix()
+        if section == "e3":
+            configuration = (
+                f"seed de referência={parameters.get('reference_seed', 'não disponível')}; "
+                f"top-k={parameters.get('score_top_k', 'não disponível')}; "
+                f"percentil={parameters.get('threshold_percentile', 'não disponível')}"
+            )
+        else:
+            configuration = (
+                f"modelo={parameters.get('model', 'não disponível')}; "
+                f"horizonte={parameters.get('horizon_years', 'não disponível')} anos; "
+                f"FMECA={parameters.get('fmeca_status', 'não disponível')}"
+            )
+        reasons = "; ".join(state.get("motivos", []))
+        suffix = f"; motivos: {reasons}" if reasons else ""
+        lines.append(
+            f"- **{label}:** {labels.get(state['estado'], state['estado'])}{suffix}; "
+            f"manifesto `{relative}`; gerado em `{generated}`; {configuration}."
+        )
+    lines.append(
+        "O estado acima valida os artefatos publicados contra seus hashes; "
+        "a auditoria profunda de código e entradas permanece no status do pipeline."
+    )
+    return "\n".join(lines)
+
+
+def resumir_resultados(
+    pergunta: str = "",
+    *,
+    incluir_imagens: bool = True,
+    operacao: str = "consultado",
+) -> dict:
     focus = _focus(pergunta)
     comparison = _json(COMPARISON_JSON)
     reliability = _json(RELIABILITY_JSON)
@@ -196,6 +253,7 @@ def resumir_resultados(pergunta: str = "", *, incluir_imagens: bool = True) -> d
         sections.append(_e3_summary(comparison))
     if "reliability" in focus:
         sections.append(_reliability_summary(reliability))
+    sections.append(_provenance_summary(focus, operacao))
 
     inline = _quer_imagens(pergunta)
     images = _images(focus, inline=inline) if incluir_imagens else []

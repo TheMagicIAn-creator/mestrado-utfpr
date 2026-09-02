@@ -23,7 +23,8 @@ def _normalizar_texto(texto: str) -> str:
         c for c in unicodedata.normalize("NFD", texto)
         if unicodedata.category(c) != "Mn"
     )
-    return re.sub(r"[^a-z0-9\s]", " ", texto)
+    texto = re.sub(r"[^a-z0-9\s]", " ", texto)
+    return re.sub(r"\s+", " ", texto).strip()
 
 
 def pedido_sem_literatura(pergunta: str) -> bool:
@@ -107,8 +108,13 @@ def resposta_interacao_simples(pergunta: str, historico=None) -> str | None:
         "boa noite",
         "tudo bem aliado",
         "como voce esta",
+        "quanto tempo",
     }
-    eh_pergunta_social = txt in perguntas_sociais
+    saudacao_oi = re.fullmatch(
+        r"oi+(?: aliado)?(?: quanto tempo)?",
+        txt,
+    )
+    eh_pergunta_social = txt in perguntas_sociais or bool(saudacao_oi)
 
     # Perguntas sociais como "tudo bem?" nao justificam inicializar RAG/LLM.
     if "?" in pergunta_original and not eh_pergunta_social:
@@ -166,6 +172,7 @@ def resposta_interacao_simples(pergunta: str, historico=None) -> str | None:
         "olá", "fala", "fala ai", "fala cara", "tudo bem", "tudo certo",
         "como vai", "como esta", "hi", "hello", "hola", "buenas",
         "bonjour", "salut",
+        "quanto tempo",
     }
     agradecimentos = {
         "obrigado", "obrigada", "valeu", "thanks", "grato", "grata",
@@ -188,7 +195,7 @@ def resposta_interacao_simples(pergunta: str, historico=None) -> str | None:
     def contem_frase(frases: set[str]) -> bool:
         return any(txt == frase or txt.startswith(f"{frase} ") for frase in frases)
 
-    tem_saudacao_gen = contem_frase(saudacoes_genericas)
+    tem_saudacao_gen = bool(saudacao_oi) or contem_frase(saudacoes_genericas)
     tem_agradecimento = contem_frase(agradecimentos)
     tem_despedida = contem_frase(despedidas) or txt.startswith("ate ")
     tem_reacao = contem_frase(reacoes_curtas)

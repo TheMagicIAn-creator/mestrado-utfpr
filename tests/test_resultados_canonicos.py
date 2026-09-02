@@ -25,6 +25,14 @@ def test_e3_focus_returns_only_comparison_figures():
     assert all("e3_" in item["path"] for item in response["imagens"])
 
 
+def test_comparison_word_alone_does_not_mix_reliability_results():
+    response = resultados.resumir_resultados("mostre os resultados da comparação")
+
+    assert len(response["imagens"]) == 3
+    assert "Confiabilidade física: cenários" not in response["mensagem"]
+    assert "confiabilidade_componentes.json" not in response["mensagem"]
+
+
 def test_reliability_focus_does_not_mix_detectability_figures():
     response = resultados.resumir_resultados("mostre a confiabilidade física e h(t)")
     assert len(response["imagens"]) == 5

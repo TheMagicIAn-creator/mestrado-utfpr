@@ -272,9 +272,10 @@ def create_app(
     warm_on_startup: bool = True,
     library_service: LibraryService | None = None,
 ) -> Starlette:
-    adapter = agent_adapter or AgentAdapter()
-    conversations = adapter.session_journal
     library = library_service or LibraryService()
+    adapter = agent_adapter or AgentAdapter(library_service=library)
+    adapter.configure_library_service(library)
+    conversations = adapter.session_journal
     started_at = perf_counter()
 
     @asynccontextmanager
@@ -322,6 +323,7 @@ def create_app(
             )
 
         request_id = uuid4().hex[:12]
+        library_write_allowed, library_write_reason = _library_write_access(request)
 
         async def event_stream():
             started = perf_counter()
@@ -357,6 +359,8 @@ def create_app(
                         attachments,
                         session_id,
                         on_chunk=publish_chunk,
+                        library_write_allowed=library_write_allowed,
+                        library_write_reason=library_write_reason,
                     )
                 )
                 streamed = False

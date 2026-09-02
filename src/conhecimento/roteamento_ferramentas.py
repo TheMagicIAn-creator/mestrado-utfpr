@@ -7,6 +7,7 @@ import re
 
 from src.conhecimento.intencoes_ferramentas import (
     _parece_pedido_de_ferramenta,
+    _quer_adicionar_anexo_biblioteca,
     _quer_catalogo,
     _quer_comparar_abordagens,
     _quer_consultar_datasets,
@@ -15,6 +16,7 @@ from src.conhecimento.intencoes_ferramentas import (
     _quer_registrar_no_cerebro,
     _quer_resposta_autoral,
     _quer_status,
+    _quer_leitura_efemera_anexo,
 )
 from src.conhecimento.contratos_llm import texto_resultado_llm
 from src.core.logs import get_logger
@@ -116,8 +118,12 @@ def _asks_results(text: str) -> bool:
     return result_term and request_term
 
 
-def _decisao_rapida(pergunta: str) -> dict | None:
+def _decisao_rapida(pergunta: str, *, tem_anexos: bool = False) -> dict | None:
     text = _text(pergunta)
+    if _quer_adicionar_anexo_biblioteca(pergunta, tem_anexos=tem_anexos):
+        return {"usar_ferramenta": True, "ferramenta": "adicionar_anexo_biblioteca"}
+    if tem_anexos and _quer_leitura_efemera_anexo(pergunta):
+        return {"usar_ferramenta": False, "ferramenta": None}
     if _quer_codigo_snippet(pergunta) or _quer_literatura_tematica(pergunta):
         return {"usar_ferramenta": False, "ferramenta": None}
     if text.startswith(("lembre-se", "lembre se", "lembre que")):
@@ -218,17 +224,36 @@ def _rotear_por_llm(pergunta: str, llm) -> dict | None:
     return {"usar_ferramenta": bool(decision.get("usar_ferramenta")), "ferramenta": tool}
 
 
-def decidir_acao(pergunta: str, llm=None) -> dict:
+def decidir_acao(pergunta: str, llm=None, *, tem_anexos: bool = False) -> dict:
     if _confirma_limpeza(pergunta):
         return {"usar_ferramenta": True, "ferramenta": "limpar_resultados_ml"}
 
+    deterministic = _decisao_rapida(pergunta, tem_anexos=tem_anexos)
+    if deterministic is not None and (
+        deterministic["usar_ferramenta"]
+        or (tem_anexos and _quer_leitura_efemera_anexo(pergunta))
+    ):
+        return _guardas_criticas(pergunta, deterministic) or deterministic
+
     decision = _rotear_por_llm(pergunta, llm)
     if decision is not None:
-        return _guardas_criticas(pergunta, decision) or decision
+        guarded = _guardas_criticas(pergunta, decision) or decision
+        if guarded.get("usar_ferramenta"):
+            return guarded
 
-    fallback = _decisao_rapida(pergunta)
+    fallback = deterministic or _decisao_rapida(pergunta, tem_anexos=tem_anexos)
     if fallback is not None:
         return _guardas_criticas(pergunta, fallback) or fallback
+    if _parece_pedido_de_ferramenta(pergunta):
+        return {
+            "usar_ferramenta": False,
+            "ferramenta": None,
+            "esclarecimento": (
+                "Não consegui identificar com segurança a operação. Diga se deseja "
+                "consultar resultados, consultar o status, executar o pipeline, "
+                "recalculá-lo, importar um PDF ou excluir uma publicação."
+            ),
+        }
     return _guardas_criticas(pergunta, decision) or {
         "usar_ferramenta": False,
         "ferramenta": None,
@@ -327,8 +352,12 @@ def processar_com_ferramentas(
     progresso=None,
     decisao: dict | None = None,
     contexto: str = "",
+    anexos: list[tuple[str, bytes]] | None = None,
+    library_service=None,
+    library_write_allowed: bool = False,
+    library_write_reason: str | None = None,
 ) -> dict:
-    decision = decisao or decidir_acao(pergunta, llm)
+    decision = decisao or decidir_acao(pergunta, llm, tem_anexos=bool(anexos))
     if not decision["usar_ferramenta"]:
         return {
             "usou_ferramenta": False,
@@ -346,6 +375,10 @@ def processar_com_ferramentas(
         pergunta=pergunta,
         llm=llm,
         contexto=contexto,
+        anexos=anexos,
+        library_service=library_service,
+        library_write_allowed=library_write_allowed,
+        library_write_reason=library_write_reason,
     )
     return {
         "usou_ferramenta": True,

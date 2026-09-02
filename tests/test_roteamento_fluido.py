@@ -43,11 +43,11 @@ def test_pedido_de_codigo_chega_ao_llm_mas_nao_executa_pipeline():
     assert llm.chamadas == 1
 
 
-def test_pedido_de_limpeza_e_decidido_semanticamente_pelo_llm():
+def test_pedido_de_limpeza_e_deterministico_e_nao_depende_do_llm():
     llm = LLMFalso("limpar_resultados_ml")
     d = fr.decidir_acao("apague os resultados a partir do autoencoder", llm)
     assert d == {"usar_ferramenta": True, "ferramenta": "limpar_resultados_ml"}
-    assert llm.chamadas == 1
+    assert llm.chamadas == 0
 
 
 def test_confirmacao_literal_de_limpeza_nao_depende_do_llm():
@@ -66,11 +66,11 @@ def test_mudar_painel_nao_e_confundido_com_apagar_resultados():
 
 # ── 2. o LLM roteia o resto (fluidez) ────────────────────────────────────────
 
-def test_llm_decide_quando_nao_ha_guarda():
+def test_status_operacional_e_deterministico():
     llm = LLMFalso("consultar_status_pipeline")
-    d = fr.decidir_acao("me diz aí como andam as etapas", llm)
+    d = fr.decidir_acao("status do pipeline", llm)
     assert d == {"usar_ferramenta": True, "ferramenta": "consultar_status_pipeline"}
-    assert llm.chamadas == 1
+    assert llm.chamadas == 0
 
 
 def test_llm_pode_decidir_que_nao_usa_ferramenta():
