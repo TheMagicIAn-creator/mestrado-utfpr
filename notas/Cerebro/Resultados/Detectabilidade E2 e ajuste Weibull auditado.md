@@ -2,12 +2,21 @@
 al_iado: true
 titulo: "Detectabilidade E2 e ajuste Weibull auditado"
 tipo: resultado
-status: ativo
+status: superado
+superado_em: 2026-09-03
 confianca: media
 nivel_evidencia: E2
 registrado_em: 2026-08-09
 tags: [cerebro, detectabilidade, weibull, evidencia-e2, autoencoder, resultado]
 ---
+
+> [!warning] Nota superada em 2026-09-03
+> Os números desta nota vieram do pipeline de macro-códigos e do recorte de
+> componentes **Contator AC / IGBT / Fusível AC**, que não é a FMECA vigente.
+> A FMECA canônica hoje é **IGBT / sensor-realimentação / controle**
+> (`docs/fmeca.md`), e a detectabilidade `a_det` está sendo reimplementada
+> sobre o pipeline novo. Use esta nota como registro histórico, nunca como
+> resultado corrente.
 
 # Detectabilidade E2 e ajuste Weibull auditado
 

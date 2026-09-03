@@ -20,6 +20,22 @@ from src.conhecimento.obsidian import (
     re,
 )
 
+# Status que marcam uma nota como NÃO vigente.
+#
+# `superseded` está aqui porque o vocabulário do vault derivou: três notas de
+# `notas/Cerebro/Resultados/` foram marcadas em inglês e, como o código só
+# reconhecia o termo em português, elas passaram a ser tratadas como ativas —
+# sem penalidade de ranking e sem aviso. Aceitar os dois termos é mais seguro
+# do que reescrever as notas e torcer para ninguém repetir.
+STATUS_NAO_VIGENTES = frozenset(
+    {"superado", "superseded", "rascunho", "draft", "obsoleto", "historico"}
+)
+
+
+def status_normalizado(meta: dict) -> str:
+    return str(meta.get("status", "ativo")).strip().lower() or "ativo"
+
+
 def _termos_busca(texto: str) -> list[str]:
     return sorted(
         (token for token in _tokens_nota(texto) if token not in _STOPWORDS_BUSCA),
@@ -406,7 +422,9 @@ def buscar_notas_obsidian(
             "sessao_atual": 0.24 if historica else -0.08,
             "sessao_arquivada": 0.24 if historica else -0.10,
         }.get(classe, 0.0)
-        status_penalidade = -0.18 if str(meta.get("status", "ativo")) in {"rascunho", "superado"} else 0.0
+        status_penalidade = (
+            -0.18 if status_normalizado(meta) in STATUS_NAO_VIGENTES else 0.0
+        )
         score = float(item["score"]) + 0.08 * sobreposicao + confianca + classe_bonus + status_penalidade
         pontuados.append((score, -ordem, doc, meta))
     pontuados.sort(reverse=True)
@@ -433,11 +451,23 @@ def buscar_notas_obsidian(
         if por_nota.get(caminho, 0) >= limite_por_nota:
             continue
         classe = str(meta.get("classe_fonte", "nota_vault"))
+        status = status_normalizado(meta)
+        # A penalidade de ranking sozinha não bastava: uma nota superada perdia
+        # posição mas, quando recuperada, chegava ao LLM sem marca alguma — com
+        # a mesma aparência de uma nota vigente. As notas de RUL e Weibull
+        # descrevem resultados de um recorte de componentes que já não é o
+        # vigente; sem esta linha, o agente podia citá-las como estado atual.
+        aviso = (
+            " | ⚠ SUPERADA: descreve estado anterior do projeto, NÃO o vigente"
+            if status in STATUS_NAO_VIGENTES
+            else ""
+        )
         cabecalho = (
             f"\n[Registro Obsidian: {meta.get('titulo', '?')} > {meta.get('secao', '?')} | "
             f"origem={classe} | tipo={meta.get('tipo', '?')} | "
             f"confiança={meta.get('confianca', '?')} | "
             f"evidência={str(meta.get('nivel_evidencia', '?')).upper()} | "
+            f"status={status}{aviso} | "
             f"data={meta.get('data_registro', '') or '?'} | arquivo={caminho}]\n"
         )
         restante = max_chars - usados - len(cabecalho)

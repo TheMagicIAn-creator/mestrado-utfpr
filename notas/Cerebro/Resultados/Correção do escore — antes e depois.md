@@ -1,12 +1,20 @@
 ---
 titulo: Correção do escore — antes e depois
 tipo: resultado
-status: ativo
+status: superado
+superado_em: 2026-09-03
 confianca: alta
 nivel_evidencia: E2
 al_iado: true
 tags: [cerebro, resultado, escore, weibull, weibull-rul, escore-localizado, igbt, fmeca, paderborn, fusivel-ac]
 ---
+
+> [!warning] Nota superada em 2026-09-03
+> Medida no conjunto **Paderborn/Stender**, que saiu da cadeia canônica em
+> 09/08/2026 — o único dataset experimental ativo é o GPVS-Faults. O escore
+> vigente é a média dos `k=5` maiores erros quadráticos por feature
+> (`src/ml/modelos_autoencoder.py`), não o escore localizado discutido aqui.
+> Registro histórico.
 
 # Correção do escore — antes e depois
 
