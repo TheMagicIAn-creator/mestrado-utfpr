@@ -26,11 +26,13 @@ from src.ml.sensibilidade_escore import (
     SENSITIVITY_TOP_K,
 )
 from src.ml.treino_comparacao import (
+    HISTORICAL_THRESHOLD_PERCENTILE,
     MODEL_IDS,
     MODEL_NAMES,
     MODEL_ROOT,
     REFERENCE_SEED,
     STABILITY_SEEDS,
+    THRESHOLD_PERCENTILE,
     ModelRun,
 )
 
@@ -190,8 +192,15 @@ def results_payload(
                 ),
                 "historical_reference_configuration": {
                     "score_top_k": 5,
-                    "threshold_requested_percentile": 99.9,
+                    "threshold_requested_percentile": (
+                        HISTORICAL_THRESHOLD_PERCENTILE
+                    ),
                     "role": "reproducibility_reference_not_universal_optimum",
+                },
+                "canonical_configuration": {
+                    "score_top_k": 5,
+                    "threshold_requested_percentile": THRESHOLD_PERCENTILE,
+                    "role": "published_operating_point",
                 },
                 "calibration_source": "healthy_calibration_only",
                 "uses_fault_data_for_selection": False,
@@ -283,8 +292,8 @@ def _write_report(payload: dict, output: Path) -> Path:
             "",
             "## Ponto operacional",
             "",
-            "| Modelo | Top-k | Limiar | Percentil solicitado | Percentil efetivo | Ordem | Resolução | FP no teste saudável |",
-            "|---|---:|---:|---:|---:|---:|---:|---:|",
+            "| Modelo | Top-k | Limiar | Percentil solicitado | Percentil efetivo | Ordem | Resolução | FP no teste saudável | É o máximo amostral |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---|",
             *(
                 f"| {model['name']} | {model['score_top_k']} | "
                 f"{model['score_threshold']:.6f} | "
@@ -292,7 +301,8 @@ def _write_report(payload: dict, output: Path) -> Path:
                 f"p{model['threshold_effective_percentile']:.3f} | "
                 f"{model['threshold_selected_rank']}/{model['calibration_n']} | "
                 f"{model['threshold_percentile_resolution']:.3f} p.p. | "
-                f"{model['healthy_test_false_positive_rate']:.3%} |"
+                f"{model['healthy_test_false_positive_rate']:.3%} | "
+                f"{'sim' if model.get('threshold_is_sample_maximum') else 'não'} |"
                 for model in payload["models"].values()
             ),
             "",
@@ -303,11 +313,21 @@ def _write_report(payload: dict, output: Path) -> Path:
             "A fronteira de falha é nominalmente 50% do registro porque os CSVs ",
             "não contêm canal instrumentado de disparo.",
             "",
-            "O ponto operacional reproduzido usa a média dos cinco maiores erros "
-            "quadráticos por feature e p99,9 solicitado. Ele é uma referência "
-            "histórica pré-fixada, não um ótimo universal. Cada modelo calibra seu "
-            "próprio limiar somente no bloco saudável; o contrato registra o order "
-            "statistic e o percentil empírico efetivamente alcançável.",
+            "O ponto operacional canônico usa a média dos cinco maiores erros "
+            "quadráticos por feature e o percentil saudável solicitado da tabela "
+            "acima. Ele é pré-fixado, não um ótimo universal. Cada modelo calibra "
+            "seu próprio limiar somente no bloco saudável; o contrato registra o "
+            "order statistic, o percentil empírico efetivamente alcançável e se o "
+            "limiar coincide com o máximo da calibração.",
+            "",
+            "A última coluna existe porque um percentil só é representável quando "
+            "a calibração é grande o bastante. Pedir p99,9 exigiria n >= 1001; a "
+            "calibração saudável do GPVS tem 210 janelas, e o pedido caía na ordem "
+            "210/210 — o limiar era o MAIOR escore visto, com a variância de um "
+            "máximo amostral e não a de um quantil. Por decisão do pesquisador em "
+            "2026-09-03 o ponto canônico passou a p99, que 210 observações "
+            "sustentam (ordem 208/210). O ponto histórico p99,9 permanece na grade "
+            "de sensibilidade, marcado como tal.",
             "",
             "## Ablação temporal do AE-LSTM",
             "",

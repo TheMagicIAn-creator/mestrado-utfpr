@@ -69,10 +69,19 @@ def test_contrato_publicado_e_canonico():
     for model in payload["models"].values():
         assert model["score_top_k"] == 5
         assert model["score_dimension"] == "feature"
-        assert model["threshold_requested_percentile"] == 99.9
-        assert model["threshold_effective_percentile"] == 100.0
-        assert model["threshold_selected_rank"] == model["calibration_n"] == 210
+        # Ponto operacional canônico desde 2026-09-03. Era p99,9, que com
+        # n=210 selecionava a ordem 210/210 — o limiar virava o máximo da
+        # calibração e o percentil declarado, ficção. p99 é o maior percentil
+        # que 210 observações sustentam.
+        assert model["threshold_requested_percentile"] == 99.0
+        assert model["threshold_effective_percentile"] == pytest.approx(
+            100 * 208 / 210
+        )
+        assert model["threshold_selected_rank"] == 208
+        assert model["calibration_n"] == 210
         assert model["threshold_percentile_resolution"] == pytest.approx(100 / 210)
+        assert model["threshold_is_sample_maximum"] is False
+        assert model["threshold_minimum_n_for_request"] == 101
 
 
 @pytest.mark.integracao
@@ -193,7 +202,7 @@ def test_manifesto_reconcilia_os_23_outputs():
 
     assert manifest["manifest_version"] == 2
     assert manifest["parameters"]["stability_seeds"] == SEEDS
-    assert manifest["parameters"]["threshold_percentile"] == 99.9
+    assert manifest["parameters"]["threshold_percentile"] == 99.0
     assert manifest["parameters"]["score_top_k"] == 5
     assert "e2_steps" not in manifest["parameters"]
     assert manifest["evidence_level"] == "E3_bench"

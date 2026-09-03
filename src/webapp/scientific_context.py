@@ -89,8 +89,10 @@ def _comparison_context() -> str:
             f"AE-LSTM: {_metric(lstm, 'auc_pr')}.",
             f"Especificidade do Denso: {_metric(dense, 'specificity')}; "
             f"AE-LSTM: {_metric(lstm, 'specificity')}.",
-            "Referência histórica: média dos cinco maiores erros quadráticos por "
-            "feature e p99,9 solicitado; não é ótimo universal. A sensibilidade "
+            "Ponto operacional canônico: média dos cinco maiores erros "
+            "quadráticos por feature e p99 solicitado; não é ótimo universal. "
+            "p99,9 é referência histórica apenas: com as 210 janelas de "
+            "calibração ele caía no máximo amostral. A sensibilidade "
             "usa k={5,10,20} por p={99;99,5;99,9}. No AE-LSTM, a decisão em W_t "
             "usa contexto causal contínuo.",
             "Não apresente métricas como resultados autônomos do dataset. "

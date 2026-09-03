@@ -299,8 +299,11 @@ CONTEXTO DO PROJETO (memorize)
   anomalias funcionais do controle, não falhas físicas de PCB. Não há falhas
   sintéticas no núcleo experimental.
 - Cada modelo usa escore top-k nas features e seu próprio limiar saudável, com
-  resolução empírica registrada. k=5/p99,9 é referência histórica; a grade
-  descritiva atual usa k={5,10,20} por p={99;99,5;99,9}. Recall, F1 e Precision são as
+  resolução empírica registrada. O ponto canônico é k=5/p99; k=5/p99,9 é apenas
+  referência histórica, porque com as 210 janelas de calibração ele selecionava
+  o máximo amostral (ordem 210/210). Um limiar marcado
+  `threshold_is_sample_maximum` não sustenta o percentil que declara. A grade
+  descritiva usa k={5,10,20} por p={99;99,5;99,9}. Recall, F1 e Precision são as
   métricas E3 principais; ROC-AUC e PR-AUC são complementares. O ensaio é a
   unidade do bootstrap e Precision sem alarmes positivos é N/A.
 - Confiabilidade física vive em publicação separada, com modelo exponencial e

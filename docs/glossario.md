@@ -37,10 +37,19 @@ ensaio. Os nomes dos ensaios vêm do dataset e não significam frequência.
   AE-LSTM, calculada em `W_t` após contexto causal `[W_(t-7), ..., W_t]`.
 - **Grade de sensibilidade:** nove combinações de `k={5,10,20}` com percentis
   `{99;99,5;99,9}` por modelo e semente, sem seleção pelas falhas.
-- **Limiar p99,9:** percentil solicitado próprio de cada modelo na calibração
+- **Limiar p99:** percentil solicitado próprio de cada modelo na calibração
   saudável; o contrato também informa o percentil empírico efetivamente
-  realizável. Na execução vigente, `n=210` implica ordem 210/210, p100 efetivo
-  e resolução de 0,476 ponto percentual.
+  realizável. Com `n=210`, p99 cai na ordem 208/210, p99,05 efetivo e
+  resolução de 0,476 ponto percentual.
+- **Máximo amostral (`threshold_is_sample_maximum`):** marca que o limiar
+  coincide com o maior escore da calibração. Nesse caso o percentil declarado
+  não é representável e o limiar tem a variância de um máximo, não a de um
+  quantil. Um percentil `p` só é representável com `n >= (p/100 − 2)/(p/100 − 1)`:
+  p99 exige 101 observações, p99,5 exige 201 e p99,9 exige 1001.
+- **p99,9 (histórico):** ponto operacional publicado até 2026-09-03. Com as 210
+  janelas de calibração ele selecionava a ordem 210/210 — era o máximo amostral.
+  Permanece na grade de sensibilidade como referência de reprodutibilidade,
+  marcado por `is_historical_reference_configuration`.
 - **E3 de bancada:** avaliação dos modelos congelados nos 14 ensaios F1L-F7M.
 - **Recall, F1 e Precision:** métricas principais da comparação.
 - **ROC-AUC e PR-AUC:** métricas complementares de discriminação.

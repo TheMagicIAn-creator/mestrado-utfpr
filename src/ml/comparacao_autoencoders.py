@@ -13,6 +13,7 @@ from src.ml.modelos_autoencoder import SCORE_TOP_K
 from src.ml.publicacao_comparacao import RESULTS_DIR, save_results
 from src.ml.sensibilidade_escore import evaluate_score_threshold_sensitivity
 from src.ml.treino_comparacao import (
+    HISTORICAL_THRESHOLD_PERCENTILE,
     REFERENCE_SEED,
     STABILITY_SEEDS,
     THRESHOLD_PERCENTILE,
@@ -29,8 +30,14 @@ def run(
     seeds: tuple[int, ...] = STABILITY_SEEDS,
     threshold_percentile: float = THRESHOLD_PERCENTILE,
     score_top_k: int = SCORE_TOP_K,
+    strict_threshold: bool = True,
 ) -> dict:
-    """Executa treino saudável, validação E3 e publicação rastreável."""
+    """Executa treino saudável, validação E3 e publicação rastreável.
+
+    ``strict_threshold`` recusa publicar quando o percentil pedido degenera no
+    máximo da calibração. Passe ``False`` apenas para reproduzir o ponto
+    operacional histórico p99,9, que com n=210 é exatamente esse caso.
+    """
 
     normalized_seeds = tuple(int(seed) for seed in seeds)
     if REFERENCE_SEED not in normalized_seeds:
@@ -47,6 +54,7 @@ def run(
         seeds=normalized_seeds,
         threshold_percentile=threshold_percentile,
         score_top_k=score_top_k,
+        strict_threshold=strict_threshold,
     )
     LOGGER.info("Executando E3 nos 14 ensaios reais com modelos congelados")
     e3 = evaluate_e3(prepared, runs, faults)
@@ -90,13 +98,24 @@ def main() -> None:
         "--threshold-percentile",
         type=float,
         default=THRESHOLD_PERCENTILE,
-        help="Percentil saudável solicitado para o limiar (padrão: 99.9)",
+        help=(
+            f"Percentil saudável solicitado para o limiar "
+            f"(padrão: {THRESHOLD_PERCENTILE:g})"
+        ),
     )
     parser.add_argument(
         "--score-top-k",
         type=int,
         default=SCORE_TOP_K,
         help="Quantidade de maiores erros por feature usados no escore (padrão: 5)",
+    )
+    parser.add_argument(
+        "--sem-limiar-estrito",
+        action="store_true",
+        help=(
+            "Aceita percentil que degenere no máximo da calibração. Use apenas "
+            f"para reproduzir o ponto histórico p{HISTORICAL_THRESHOLD_PERCENTILE:g}"
+        ),
     )
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -105,6 +124,7 @@ def main() -> None:
         seeds=tuple(args.seeds),
         threshold_percentile=args.threshold_percentile,
         score_top_k=args.score_top_k,
+        strict_threshold=not args.sem_limiar_estrito,
     )
     print(json.dumps({key: value for key, value in result.items() if key != "payload"}, indent=2))
 

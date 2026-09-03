@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import pickle
 from dataclasses import dataclass
 from pathlib import Path
@@ -44,7 +45,52 @@ MODEL_IDS = ("ae_denso", "ae_lstm")
 MODEL_NAMES = {"ae_denso": "Autoencoder Denso", "ae_lstm": "AE-LSTM"}
 REFERENCE_SEED = 42
 STABILITY_SEEDS = (13, 29, 42, 71, 101)
-THRESHOLD_PERCENTILE = 99.9
+
+# Percentil canônico do limiar saudável, decidido pelo pesquisador em
+# 2026-09-03. Era 99,9 até essa data.
+#
+# MOTIVO: a calibração saudável do GPVS tem 210 janelas. Pedir p99,9 com
+# n=210 seleciona a ordem 210/210 — o limiar passa a ser o MÁXIMO da
+# calibração, e o percentil declarado vira ficção (ver
+# `minimum_n_for_percentile`: p99,9 exigiria n >= 1001). p99 é o maior
+# percentil que 210 observações sustentam: ordem 208/210, p99,05 efetivo.
+#
+# O ponto histórico p99,9 continua reproduzível por `strict_threshold=False`
+# e permanece na grade de sensibilidade, agora marcado como degenerado.
+THRESHOLD_PERCENTILE = 99.0
+HISTORICAL_THRESHOLD_PERCENTILE = 99.9
+
+
+class DegenerateThresholdError(ValueError):
+    """O percentil pedido não é distinguível do máximo amostral.
+
+    Erro separado de `ValueError` genérico porque a saída é acionável: o
+    chamador escolhe entre baixar o percentil ou aumentar a calibração, e a
+    mensagem carrega os dois números necessários para decidir.
+    """
+
+
+def minimum_n_for_percentile(percentile: float) -> int | None:
+    """Menor calibração em que `percentile` deixa de cair no máximo amostral.
+
+    `calibrate_threshold` seleciona ``ceil((n-1) * p/100)``. Esse índice é o
+    último (``n-1``) — isto é, o limiar É o maior escore visto — sempre que
+    ``(n-1)*p/100 > n-2``. Resolvendo em ``n`` com ``q = p/100 < 1``::
+
+        n >= (q - 2) / (q - 1)
+
+    Para p99,9 isso dá 1001; para p99, dá 101. Com a calibração de 210 janelas
+    do GPVS, portanto, p99 é representável e p99,9 não é.
+
+    Devolve ``None`` para p100, que é o máximo amostral por definição e não
+    tem tamanho de calibração que o conserte.
+    """
+
+    q = float(percentile) / 100.0
+    if q >= 1.0:
+        return None
+    # O arredondamento evita que 1001,0000000000002 vire 1002 no teto.
+    return int(math.ceil(round((q - 2.0) / (q - 1.0), 9)))
 
 
 @dataclass(frozen=True)
@@ -57,7 +103,23 @@ class ThresholdCalibration:
     calibration_n: int
     percentile_resolution: float
 
-    def as_dict(self) -> dict[str, float | int | str]:
+    @property
+    def is_sample_maximum(self) -> bool:
+        """O limiar é o maior escore da calibração, não um percentil interior.
+
+        Quando verdadeiro, `requested_percentile` é ficção: o valor publicado
+        não separa a cauda saudável, ele a delimita. O ponto operacional fica
+        no extremo conservador possível e sua variância é a variância de um
+        máximo amostral, não a de um quantil.
+        """
+
+        return self.selected_order_index >= self.calibration_n - 1
+
+    @property
+    def minimum_n_for_request(self) -> int | None:
+        return minimum_n_for_percentile(self.requested_percentile)
+
+    def as_dict(self) -> dict[str, float | int | str | bool | None]:
         return {
             "threshold_method": "healthy_percentile_higher",
             "score_threshold": self.value,
@@ -67,6 +129,8 @@ class ThresholdCalibration:
             "threshold_selected_order_index": self.selected_order_index,
             "calibration_n": self.calibration_n,
             "threshold_percentile_resolution": self.percentile_resolution,
+            "threshold_is_sample_maximum": self.is_sample_maximum,
+            "threshold_minimum_n_for_request": self.minimum_n_for_request,
         }
 
 
@@ -90,8 +154,16 @@ class ModelRun:
 def calibrate_threshold(
     values: np.ndarray,
     percentile: float = THRESHOLD_PERCENTILE,
+    *,
+    strict: bool = False,
 ) -> ThresholdCalibration:
-    """Seleciona um order statistic e explicita a resolução empírica disponível."""
+    """Seleciona um order statistic e explicita a resolução empírica disponível.
+
+    Com ``strict``, recusa um percentil que degenere no máximo amostral. A
+    varredura de sensibilidade percorre percentis degenerados de propósito e
+    por isso não usa ``strict``; a publicação canônica usa, porque um limiar
+    que é o máximo da calibração não sustenta o percentil que ela declara.
+    """
 
     scores = np.asarray(values, dtype=float)
     requested = float(percentile)
@@ -102,7 +174,7 @@ def calibrate_threshold(
     selected_index = int(np.ceil((len(scores) - 1) * requested / 100.0))
     selected_rank = selected_index + 1
     ordered = np.sort(scores)
-    return ThresholdCalibration(
+    calibration = ThresholdCalibration(
         value=float(ordered[selected_index]),
         requested_percentile=requested,
         effective_percentile=100.0 * selected_rank / len(scores),
@@ -111,6 +183,21 @@ def calibrate_threshold(
         calibration_n=len(scores),
         percentile_resolution=100.0 / len(scores),
     )
+    if strict and calibration.is_sample_maximum:
+        minimo = calibration.minimum_n_for_request
+        saida = (
+            f"aumente a calibração para n >= {minimo}"
+            if minimo is not None
+            else "peça um percentil menor que 100"
+        )
+        raise DegenerateThresholdError(
+            f"p{requested:g} com n={len(scores)} seleciona a ordem "
+            f"{selected_rank}/{len(scores)}: o limiar seria o MÁXIMO da "
+            f"calibração, não o percentil pedido. Publicar assim declararia "
+            f"um percentil que os dados não sustentam. Para corrigir, "
+            f"{saida}, ou baixe o percentil pedido."
+        )
+    return calibration
 
 
 def empirical_threshold(
@@ -227,6 +314,7 @@ def train_models(
     seeds: tuple[int, ...] = STABILITY_SEEDS,
     threshold_percentile: float = THRESHOLD_PERCENTILE,
     score_top_k: int = SCORE_TOP_K,
+    strict_threshold: bool = True,
 ) -> dict[str, list[ModelRun]]:
     import torch
 
@@ -261,7 +349,7 @@ def train_models(
                 seed=seed,
                 model=dense,
                 threshold_calibration=calibrate_threshold(
-                    dense_calibration, threshold_percentile
+                    dense_calibration, threshold_percentile, strict=strict_threshold
                 ),
                 score_top_k=int(score_top_k),
                 calibration_scores=dense_calibration,
@@ -289,7 +377,7 @@ def train_models(
                 seed=seed,
                 model=lstm,
                 threshold_calibration=calibrate_threshold(
-                    lstm_calibration, threshold_percentile
+                    lstm_calibration, threshold_percentile, strict=strict_threshold
                 ),
                 score_top_k=int(score_top_k),
                 calibration_scores=lstm_calibration,
@@ -308,13 +396,16 @@ __all__ = [
     "MODEL_IDS",
     "MODEL_NAMES",
     "MODEL_ROOT",
+    "DegenerateThresholdError",
     "ModelRun",
     "REFERENCE_SEED",
     "STABILITY_SEEDS",
+    "HISTORICAL_THRESHOLD_PERCENTILE",
     "THRESHOLD_PERCENTILE",
     "ThresholdCalibration",
     "calibrate_threshold",
     "empirical_threshold",
+    "minimum_n_for_percentile",
     "save_reference_run",
     "score_role",
     "train_models",

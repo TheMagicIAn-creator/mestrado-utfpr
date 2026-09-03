@@ -32,6 +32,11 @@ contexto causal contínuo, sem cruzar papel ou ensaio. A sensibilidade 3×3 usa
 exclusivamente da calibração saudável. Nenhuma das duas análises promove uma
 configuração olhando as falhas.
 
+O ponto operacional canônico é `k=5` com p99. A execução falha de propósito se
+o percentil pedido degenerar no máximo da calibração — é o caso de p99,9 com as
+210 janelas disponíveis, que exigiria `n >= 1001`. Para reproduzir o ponto
+histórico p99,9, passe `--sem-limiar-estrito`.
+
 ## Artefatos
 
 Somente tabelas-fonte, JSON metodológico, Markdown, PNG 300 dpi e PDF vetorial
