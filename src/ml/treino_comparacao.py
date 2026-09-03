@@ -13,8 +13,10 @@ import numpy as np
 import pandas as pd
 
 from src.core.config import RAIZ_PROJETO
+from src.core.seguranca import carregar_pickle_verificado, gravar_sidecar_sha256
 from src.ml.dados_gpvs import (
     FEATURE_COLUMNS,
+    NORMALIZATION_FILENAME,
     PreparedData,
     role_blocks,
     save_baseline_normalization,
@@ -262,6 +264,11 @@ def save_reference_run(run: ModelRun, prepared: PreparedData) -> list[Path]:
     )
     with scaler_path.open("wb") as stream:
         pickle.dump(prepared.scaler, stream)
+    # O scaler e um PICKLE: desserializa-lo executa codigo. `src/core/seguranca`
+    # ja tinha a verificacao por hash, e este caminho -- o unico que grava o
+    # artefato congelado -- nao a usava. Sem o sidecar, quem carregasse o
+    # scaler depois nao teria contra o que conferir.
+    sidecar_scaler = gravar_sidecar_sha256(scaler_path)
     normalization_path = save_baseline_normalization(
         prepared.baseline_normalization, model_dir
     )
@@ -310,7 +317,99 @@ def save_reference_run(run: ModelRun, prepared: PreparedData) -> list[Path]:
             },
         },
     )
-    return [checkpoint, scaler_path, normalization_path, history_path, contract_path]
+    return [
+        checkpoint,
+        scaler_path,
+        sidecar_scaler,
+        normalization_path,
+        history_path,
+        contract_path,
+    ]
+
+
+def carregar_execucao_congelada(model_id: str, *, raiz: Path = MODEL_ROOT) -> dict:
+    """Lê o modelo congelado da etapa `comparacao`, sem treinar nem recalibrar.
+
+    É por aqui que a etapa `detectabilidade` obtém pesos, scaler, normalização
+    de comissionamento e limiar. Nada é reajustado: reajustar aqui faria a
+    varredura medir um detector diferente do que a E3 avaliou.
+
+    O scaler passa por `carregar_pickle_verificado`: pickle executa código ao
+    desserializar, e o sidecar gravado no treino é o que dá contra o que
+    conferir. Sem sidecar, esta função RECUSA — diferente de
+    `carregar_pickle_com_sidecar`, que avisa e segue. Aqui o artefato é sempre
+    gerado pelo próprio pipeline, então sidecar ausente significa artefato
+    velho ou mexido, e nos dois casos o certo é parar.
+    """
+    import torch
+
+    pasta = Path(raiz) / str(model_id)
+    checkpoint_path = pasta / "modelo.pt"
+    scaler_path = pasta / "scaler.pkl"
+    contrato_path = pasta / "contrato.json"
+    faltando = [
+        caminho.name
+        for caminho in (checkpoint_path, scaler_path, contrato_path)
+        if not caminho.is_file()
+    ]
+    if faltando:
+        raise FileNotFoundError(
+            f"Modelo congelado `{model_id}` incompleto em {pasta}: faltam "
+            f"{faltando}. Rode `python -m src.ml.comparacao_autoencoders` antes "
+            f"da varredura de detectabilidade."
+        )
+
+    sidecar = scaler_path.with_name(scaler_path.name + ".sha256")
+    if not sidecar.is_file():
+        raise FileNotFoundError(
+            f"{scaler_path.name} sem sidecar .sha256. O scaler é um pickle e "
+            f"desserializá-lo executa código; sem o hash gravado no treino não "
+            f"há contra o que conferir. Regere os artefatos com "
+            f"`python -m src.ml.comparacao_autoencoders`."
+        )
+    scaler = carregar_pickle_verificado(
+        scaler_path, sidecar.read_text(encoding="utf-8").strip()
+    )
+
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+    contrato = json.loads(contrato_path.read_text(encoding="utf-8"))
+    if checkpoint.get("model_id") != model_id:
+        raise ValueError(
+            f"{checkpoint_path} declara model_id "
+            f"{checkpoint.get('model_id')!r}, esperado {model_id!r}"
+        )
+    if list(checkpoint.get("feature_columns", ())) != list(FEATURE_COLUMNS):
+        raise ValueError(
+            f"As features do checkpoint `{model_id}` divergem das do código. "
+            "Pontuar assim alimentaria o modelo com features na ordem errada, "
+            "que é erro silencioso: regere os artefatos."
+        )
+
+    modelo = _instanciar_do_checkpoint(checkpoint)
+    modelo.load_state_dict(checkpoint["state_dict"])
+    modelo.eval()
+    return {
+        "model_id": model_id,
+        "modelo": modelo,
+        "scaler": scaler,
+        "contrato": contrato,
+        "limiar": float(contrato["score_threshold"]),
+        "score_top_k": int(contrato["score_top_k"]),
+        "normalizacao": pasta / NORMALIZATION_FILENAME,
+    }
+
+
+def _instanciar_do_checkpoint(checkpoint: dict):
+    from src.ml.modelos_autoencoder import AutoencoderDenso, AutoencoderLSTM
+
+    n_features = int(checkpoint["n_features"])
+    if checkpoint["model_id"] == "ae_denso":
+        return AutoencoderDenso(n_features)
+    return AutoencoderLSTM(
+        n_features,
+        hidden_size=int(checkpoint["lstm_hidden"]),
+        latent_dim=int(checkpoint["latent_dim"]),
+    )
 
 
 def train_models(
@@ -409,6 +508,7 @@ __all__ = [
     "THRESHOLD_PERCENTILE",
     "ThresholdCalibration",
     "calibrate_threshold",
+    "carregar_execucao_congelada",
     "empirical_threshold",
     "minimum_n_for_percentile",
     "save_reference_run",
