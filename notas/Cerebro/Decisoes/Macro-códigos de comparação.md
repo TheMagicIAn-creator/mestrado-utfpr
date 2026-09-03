@@ -1,12 +1,20 @@
 ---
 titulo: Macro-códigos de comparação
 tipo: decisao
-status: ativo
+status: superado
+superado_em: 2026-09-03
 confianca: alta
 nivel_evidencia: projeto
 al_iado: true
 tags: [cerebro, decisao, comparacao, arquitetura, autoencoder, machine-learning, fmeca, sinais-eletricos, escore-localizado]
 ---
+
+> [!warning] Decisão superada em 2026-09-03
+> Os macro-códigos (`macro_proposto`, `macro_ibrahim`, `macro_comparar`,
+> `macro_weibull`) foram removidos do repositório. A comparação canônica
+> Denso × AE-LSTM vive hoje em `src/ml/treino_comparacao.py` +
+> `avaliacao_comparativa.py`, publicada em `resultados/comparacao/`.
+> A decisão de arquitetura registrada abaixo é histórica.
 
 # Macro-códigos de comparação
 

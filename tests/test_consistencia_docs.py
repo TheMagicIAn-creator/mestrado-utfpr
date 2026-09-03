@@ -206,16 +206,29 @@ def test_contrato_gpvs_congela_selecao_antes_da_e3():
     assert "congelados" in protocolo["e3"]
 
 
-def test_mapa_de_resultados_publica_somente_comparacao_e_confiabilidade():
+def test_mapa_de_resultados_separa_as_familias_publicadas():
+    """O mapa cobre as três famílias e mantém `a` e `t` separados.
+
+    A guarda original proibia `a_det` no mapa — regra correta enquanto a
+    detectabilidade estava fora do escopo. Com E2 restaurada em 2026-09-03 a
+    menção passa a ser legítima, mas o RISCO que a proibição atacava continua
+    de pé: `a` é fração adimensional da assinatura e `t` é tempo, as duas
+    famílias usam ajuste de distribuição e saem no mesmo formato de gráfico.
+    Então `a_det` só pode aparecer acompanhado do aviso de colisão.
+    """
     mapa = RAIZ / "docs/mapa_de_resultados.md"
     assert mapa.exists(), "docs/mapa_de_resultados.md sumiu"
     texto = mapa.read_text(encoding="utf-8")
 
     for marca in ("Autoencoder Denso", "AE-LSTM", "R(t)", "F(t)", "f(t)", "h(t)"):
         assert marca in texto, f"o mapa perdeu a marca {marca!r}"
-    assert "S_D(a)" not in texto
-    assert "a_det" not in texto
     assert "anos" in texto
+
+    if "a_det" in texto:
+        assert "colisão de símbolos" in texto, (
+            "o mapa cita a_det sem avisar que ele não vive na escala do tempo"
+        )
+        assert "nunca é vida útil" in texto
 
     # O mapa não pode virar tabela de métricas: valor citado em documento
     # envelhece em silêncio, e a regra do projeto é ler o artefato vigente.

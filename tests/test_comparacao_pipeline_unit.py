@@ -189,7 +189,15 @@ def test_orchestrator_forwards_scientific_configuration(monkeypatch):
 
     assert captured["training"] == (
         "prepared",
-        {"seeds": (42,), "threshold_percentile": 99.0, "score_top_k": 3},
+        {
+            "seeds": (42,),
+            "threshold_percentile": 99.0,
+            "score_top_k": 3,
+            # O orquestrador tem de PROPAGAR a recusa a percentil degenerado;
+            # se ela ficasse só no treino, a CLI passaria a mandar sempre o
+            # padrão e `--sem-limiar-estrito` não teria efeito.
+            "strict_threshold": True,
+        },
     )
     assert captured["publication"][-1] == (42,)
     assert captured["publication"][3]["score_threshold_sensitivity"] == "sensitivity"

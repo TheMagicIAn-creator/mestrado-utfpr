@@ -51,6 +51,7 @@ if nn is not None:
         def __init__(self, n_features: int, dropout: float = DROPOUT):
             super().__init__()
             self.n_features = int(n_features)
+            self.dropout_p = float(dropout)
             self.encoder = nn.Sequential(
                 nn.Linear(self.n_features, DENSE_HIDDEN),
                 nn.ReLU(),
@@ -69,36 +70,53 @@ if nn is not None:
 
 
     class AutoencoderLSTM(nn.Module):
-        """Autoencoder recorrente que reconstrói sequências no eixo temporal."""
+        """Autoencoder recorrente que reconstrói sequências no eixo temporal.
+
+        O dropout entra nas duas travessias do gargalo, espelhando o denso, que
+        regulariza antes da camada latente e antes da saída. Até 2026-09-03
+        este braço não tinha regularização NENHUMA: `nn.LSTM` de camada única
+        ignora o argumento `dropout`, então declará-lo ali não teria efeito.
+
+        A assimetria importava: com ~17 mil parâmetros contra ~1,1 mil do
+        denso, um autoencoder sem regularização treinado para reconstruir
+        tende a reconstruir bem demais — inclusive o que deveria destoar. Era
+        uma explicação concorrente para o braço temporal não converter
+        capacidade em detecção, e ela precisava ser eliminada antes de atribuir
+        o resultado à arquitetura.
+        """
 
         def __init__(
             self,
             n_features: int,
             hidden_size: int = LSTM_HIDDEN,
             latent_dim: int = LATENT_DIM,
+            dropout: float = DROPOUT,
         ):
             super().__init__()
             self.n_features = int(n_features)
             self.hidden_size = int(hidden_size)
             self.latent_dim = int(latent_dim)
+            self.dropout_p = float(dropout)
             self.encoder = nn.LSTM(
                 self.n_features, self.hidden_size, batch_first=True
             )
+            self.encoder_dropout = nn.Dropout(self.dropout_p)
             self.to_latent = nn.Linear(self.hidden_size, self.latent_dim)
             self.from_latent = nn.Linear(self.latent_dim, self.hidden_size)
             self.decoder = nn.LSTM(
                 self.hidden_size, self.hidden_size, batch_first=True
             )
+            self.decoder_dropout = nn.Dropout(self.dropout_p)
             self.output = nn.Linear(self.hidden_size, self.n_features)
 
         def forward(self, x):
             _, (hidden, _) = self.encoder(x)
-            latent = self.to_latent(hidden[-1])
+            latent = self.to_latent(self.encoder_dropout(hidden[-1]))
             decoder_input = self.from_latent(latent).unsqueeze(1).repeat(
                 1, x.size(1), 1
             )
             decoded, _ = self.decoder(decoder_input)
-            return self.output(decoded)
+            return self.output(self.decoder_dropout(decoded))
 
 else:
 

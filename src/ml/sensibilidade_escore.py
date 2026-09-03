@@ -29,6 +29,7 @@ from src.ml.treino_comparacao import (
     MODEL_IDS,
     MODEL_NAMES,
     REFERENCE_SEED,
+    HISTORICAL_THRESHOLD_PERCENTILE,
     THRESHOLD_PERCENTILE,
     ModelRun,
     calibrate_threshold,
@@ -166,7 +167,16 @@ def evaluate_score_threshold_sensitivity(
                         "calibration_role": "healthy_calibration_only",
                         "fault_evaluation_role": "post_freeze_descriptive_only",
                         "uses_fault_data_for_selection": False,
+                        # Duas marcas distintas: a histórica fica presa a
+                        # k=5/p99,9 para sempre, porque é o que reproduz os
+                        # artefatos anteriores a 2026-09-03; a canônica segue
+                        # o percentil vigente. Antes elas eram a mesma linha, e
+                        # trocar a constante movia o "histórico" junto.
                         "is_historical_reference_configuration": (
+                            top_k == SCORE_TOP_K
+                            and percentile == HISTORICAL_THRESHOLD_PERCENTILE
+                        ),
+                        "is_canonical_configuration": (
                             top_k == SCORE_TOP_K
                             and percentile == THRESHOLD_PERCENTILE
                         ),
