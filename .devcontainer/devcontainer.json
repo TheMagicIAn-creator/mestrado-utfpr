@@ -1,33 +1,41 @@
 {
-  "name": "Python 3",
-  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "name": "ALIAdo",
+  // O projeto usa Python 3.13 (pyproject.toml) e a aplicacao e ASGI,
+  // servida por uvicorn via `python -m src.webapp` na porta 8000.
+  // Ate 2026-09-03 este arquivo instalava Streamlit e rodava
+  // `streamlit run app.py` na 8501 em Python 3.11 -- nada disso existe mais:
+  // a interface Streamlit foi removida e app.py hoje e so a ponte ASGI.
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.13-bookworm",
   "customizations": {
     "codespaces": {
       "openFiles": [
         "README.md",
-        "app.py"
+        "CLAUDE.md"
       ]
     },
     "vscode": {
       "settings": {},
       "extensions": [
         "ms-python.python",
-        "ms-python.vscode-pylance"
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff"
       ]
     }
   },
-  "updateContentCommand": "[ -f packages.txt ] && sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y <packages.txt; [ -f requirements.txt ] && pip3 install --user -r requirements.txt; pip3 install --user streamlit; echo '✅ Packages installed and Requirements met'",
+  // Sem dataset bruto e sem torch: o Codespace serve para ler codigo, rodar
+  // a suite leve e abrir a interface sobre os artefatos ja publicados.
+  // O pipeline pesado roda no PC (ver docs/comandos.md).
+  "updateContentCommand": "pip3 install --user -r requirements-dev.txt && echo 'Dependencias de dev instaladas. Pipeline pesado nao roda aqui.'",
   "postAttachCommand": {
-    "server": "streamlit run app.py --server.enableCORS false --server.enableXsrfProtection false"
+    "server": "python -m src.webapp"
   },
   "portsAttributes": {
-    "8501": {
-      "label": "Application",
+    "8000": {
+      "label": "ALIAdo (ASGI)",
       "onAutoForward": "openPreview"
     }
   },
   "forwardPorts": [
-    8501
+    8000
   ]
 }

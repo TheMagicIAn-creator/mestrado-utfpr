@@ -2,7 +2,7 @@
 REM ============================================================
 REM  Al IAdo PV - Atualizar vault (baixa do GitHub para o PC)
 REM ------------------------------------------------------------
-REM  O app na web (Streamlit Cloud) commita sessoes, memorias
+REM  O app na web commita sessoes, memorias
 REM  consolidadas e trechos salvos no GitHub. Este script traz
 REM  esses commits para o seu PC, para o Obsidian mostrar tudo.
 REM  Basta dar dois cliques neste arquivo antes de abrir o vault.
