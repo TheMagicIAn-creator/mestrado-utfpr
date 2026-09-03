@@ -64,9 +64,20 @@ jobs:
             }
           done
 
-      - name: Testes unitarios nao pesados
+      # O piso de 60% foi medido, nao arbitrado: a selecao "not pesado" SEM
+      # torch cobria 65% de src/ em 2026-09-03. O piso existe para impedir
+      # regressao, nao para premiar cobertura -- suba-o quando a folga crescer.
+      - name: Testes unitarios nao pesados (com cobertura)
         run: |
-          python -m pytest -p no:cacheprovider -q -W ignore -m "not pesado"
+          python -m pytest -p no:cacheprovider -q -W ignore -m "not pesado" \
+            --cov=src --cov-report=term --cov-report=xml --cov-fail-under=60
+
+      # Confere que cada artefato publicado bate com o hash gravado no seu
+      # manifesto. Nao treina nem le dados brutos, entao roda no job leve.
+      # Sem isto, divergencia entre manifesto e artefato chegava ao main sem
+      # ninguem ver -- so era detectada quando alguem rodava o script no PC.
+      - name: Auditoria dos artefatos publicados
+        run: python scripts/auditar_resultados.py
 
       # BLOQUEANTE e deliberadamente estreito: so nomes que nao existem.
       # F821 undefined name / F822 undefined em __all__ / F823 uso antes da
