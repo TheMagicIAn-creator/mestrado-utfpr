@@ -76,7 +76,15 @@ jobs:
       # manifesto. Nao treina nem le dados brutos, entao roda no job leve.
       # Sem isto, divergencia entre manifesto e artefato chegava ao main sem
       # ninguem ver -- so era detectada quando alguem rodava o script no PC.
+      #
+      # Roda mesmo com a suite vermelha porque a auditoria e INDEPENDENTE dos
+      # testes e vale justamente quando eles falham: uma suite vermelha por
+      # divergencia entre codigo e artefato publicado e o caso em que saber se
+      # os artefatos estao integros ENTRE SI decide o diagnostico. Sem isto o
+      # passo era pulado exatamente na hora em que respondia a pergunta.
+      # `!cancelled()` e nao `always()`: um job cancelado nao deve continuar.
       - name: Auditoria dos artefatos publicados
+        if: ${{ !cancelled() }}
         run: python scripts/auditar_resultados.py
 
       # BLOQUEANTE e deliberadamente estreito: so nomes que nao existem.
@@ -85,7 +93,10 @@ jobs:
       #
       # Mantem erros de nome em runtime fora do main mesmo quando o lint geral
       # permanece informativo.
+      # Tambem independente da suite: um NameError latente e informacao util
+      # enquanto os testes estao vermelhos, e nao custa nada descobrir junto.
       - name: Nomes indefinidos (bloqueante)
+        if: ${{ !cancelled() }}
         run: ruff check --select F821,F822,F823 src tests scripts
 
       - name: Lint geral (ruff, nao bloqueante)
