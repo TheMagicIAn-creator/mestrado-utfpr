@@ -19,7 +19,7 @@ from src.ml.dados_gpvs import (
 )
 from src.ml.estatistica_comparacao import BOOTSTRAP_RESAMPLES
 from src.ml.graficos_comparacao import generate_all
-from src.ml.modelos_autoencoder import SEQUENCE_LENGTH
+from src.ml.modelos_autoencoder import DROPOUT, SEQUENCE_LENGTH
 from src.ml.proveniencia import gerar_manifesto, salvar_manifesto
 from src.ml.sensibilidade_escore import (
     SENSITIVITY_PERCENTILES,
@@ -105,6 +105,7 @@ def results_payload(
                 else "AE-LSTM temporal: L=8, hidden=32, latent=8"
             ),
             "n_parameters": reference.n_parameters,
+            "dropout": float(getattr(reference.model, "dropout_p", DROPOUT)),
             "score_method": "mean_of_top_k_feature_squared_reconstruction_errors",
             "score_top_k": reference.score_top_k,
             "score_dimension": "feature",
@@ -247,6 +248,30 @@ def _write_report(payload: dict, output: Path) -> Path:
         "O GPVS-Faults é a única fonte experimental. F0L/F0M fornecem treino, ",
         "validação, calibração e teste saudável em blocos temporais disjuntos. ",
         "F1L-F7M permanecem fora do ajuste e formam a evidência E3 de bancada.",
+        "",
+        "### Capacidade e regularização dos dois braços",
+        "",
+        "| Modelo | Arquitetura | Parâmetros | Dropout |",
+        "|---|---|---:|---:|",
+        *(
+            f"| {model['name']} | {model['architecture']} | "
+            f"{model['n_parameters']} | {model.get('dropout', 0.0):.2f} |"
+            for model in payload["models"].values()
+        ),
+        "",
+        "Os dois braços recebem o mesmo orçamento de treino — otimizador, taxa "
+        "de aprendizado, épocas máximas, paciência e lote —, as mesmas 24 "
+        "features e as mesmas sementes. Isso NÃO é a mesma capacidade: a "
+        "contagem de parâmetros acima difere por cerca de uma ordem de "
+        "grandeza, e a diferença é inerente às duas arquiteturas, não uma "
+        "escolha de ajuste. A tabela existe para que essa assimetria seja lida "
+        "junto com o resultado, e não descoberta depois dele.",
+        "",
+        "Desde 2026-09-03 o dropout é igual nos dois. Antes disso o braço "
+        "temporal não tinha regularização alguma — `nn.LSTM` de camada única "
+        "ignora o argumento `dropout` —, o que abria uma explicação concorrente "
+        "para o seu desempenho: um autoencoder grande e não regularizado tende "
+        "a reconstruir bem demais, inclusive o que deveria destoar.",
         "",
         "## Resultado experimental E3",
         "",

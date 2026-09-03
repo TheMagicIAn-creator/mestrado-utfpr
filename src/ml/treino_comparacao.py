@@ -296,6 +296,11 @@ def save_reference_run(run: ModelRun, prepared: PreparedData) -> list[Path]:
                 "patience": PATIENCE,
                 "batch_size": BATCH_SIZE,
                 "learning_rate": LEARNING_RATE,
+                # Orçamento IGUAL nos dois braços não significa capacidade
+                # igual: o AE-LSTM tem cerca de 16x mais parâmetros. Publicar
+                # `dropout` e `n_parameters` lado a lado deixa a assimetria
+                # visível no artefato, em vez de só no código.
+                "dropout": float(getattr(run.model, "dropout_p", DROPOUT)),
             },
             "roles": {
                 "train": "weights_and_shared_scaler",
