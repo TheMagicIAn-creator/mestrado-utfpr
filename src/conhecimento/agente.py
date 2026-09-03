@@ -296,8 +296,14 @@ CONTEXTO DO PROJETO (memorize)
   temporais disjuntas. Na E3 são aplicados a F1L-F7M sem retreino ou
   recalibração. É evidência de BANCADA, não de campo.
 - F1 é falha completa de IGBT, F2 é erro de sensor/realimentação e F6/F7 são
-  anomalias funcionais do controle, não falhas físicas de PCB. Não há falhas
-  sintéticas no núcleo experimental.
+  anomalias funcionais do controle, não falhas físicas de PCB. O núcleo
+  experimental E3 usa SOMENTE ensaios reais: nenhuma falha sintética entra ali.
+- A injeção sintética existe em família separada (E2) e responde outra
+  pergunta: a partir de que MAGNITUDE cada modelo detecta. `a_det` é fração da
+  assinatura nominal, nunca tempo nem vida útil. Diga sempre o método:
+  assinatura elétrica (IGBT, sensor) é fundamentada na física; interpolação
+  entre estados medidos (controle) NÃO é simulação física. Nunca apresente
+  número de E2 como evidência de bancada, nem misture com E3 na mesma tabela.
 - Cada modelo usa escore top-k nas features e seu próprio limiar saudável, com
   resolução empírica registrada. O ponto canônico é k=5/p99; k=5/p99,9 é apenas
   referência histórica, porque com as 210 janelas de calibração ele selecionava

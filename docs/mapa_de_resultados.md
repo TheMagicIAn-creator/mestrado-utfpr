@@ -1,14 +1,21 @@
 # Mapa canônico de resultados
 
-Há somente duas famílias publicadas. Elas respondem a perguntas diferentes e
-não podem ser combinadas estatisticamente.
+Há três famílias publicadas. Elas respondem a perguntas diferentes e não podem
+ser combinadas estatisticamente.
 O mapa não repete valores numéricos: cada resultado deve ser lido do artefato
 vigente indicado na tabela.
 
 | Família | Pasta | Pergunta | Evidência |
 |---|---|---|---|
 | Comparação dos modelos | `resultados/comparacao/` | Quantas falhas reais cada modelo detecta sem falsos alarmes operacionalmente inadequados? | E3 de bancada |
+| Detectabilidade por magnitude | `resultados/detectabilidade/` | A partir de que fração da assinatura nominal cada modelo passa a detectar? | E2 sintética |
 | Confiabilidade e manutenção | `resultados/confiabilidade/` | Como evoluem `R(t)`, `F(t)`, `f(t)` e `h(t)` nos cenários bibliográficos? | sensibilidade bibliográfica |
+
+**A colisão de símbolos é o risco permanente deste mapa.** A detectabilidade
+produz curvas em `a` — fração da assinatura nominal, adimensional, em `[0,1]`.
+A confiabilidade produz curvas em `t` — tempo, em horas ou anos. As duas usam
+ajuste de distribuição e podem sair no mesmo formato de gráfico. Nenhum número
+de uma pode ser lido na escala da outra, e `a_det` nunca é vida útil.
 
 O nome GPVS-Faults identifica a proveniência da base experimental. Não existe
 uma família autônoma de “resultados GPVS”.

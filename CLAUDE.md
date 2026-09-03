@@ -51,7 +51,7 @@ empírico efetivo p100, resolução de 0,476 ponto percentual). Pesos, scaler e
 limiar ficam congelados na avaliação E3; a normalização de comissionamento
 pré-falha, quando aplicável, é idêntica entre modelos.
 
-## Duas famílias que nunca devem ser confundidas
+## Três famílias que nunca devem ser confundidas
 
 ### E3: evidência experimental
 
@@ -62,6 +62,37 @@ auxiliares. Intervalos são calculados por bootstrap no nível do ensaio. A
 análise temporal causal vigente separa transição e falha sustentada, foi
 inconclusiva e não autoriza afirmar superioridade do AE-LSTM. Consulte
 `resultados/comparacao/`.
+
+### E2: detectabilidade por magnitude
+
+Restaurada por decisão do pesquisador em 2026-09-03. Responde o que a E3 não
+responde: **a partir de que magnitude** cada modelo passa a detectar. A E3 é
+binária — o ensaio tem falha ou não tem —, e o eixo de severidade não existe
+no GPVS, porque cada ensaio foi gravado numa condição fixa.
+
+`a_det` é a fração da assinatura nominal em que a detecção se confirma, em
+`[0, 1]`. **Não é tempo, ciclo nem vida consumida.** A Weibull ajustada aqui
+descreve a dispersão da MAGNITUDE entre trajetórias — nunca confiabilidade,
+taxa de falha ou RUL. Os símbolos coincidem com os da confiabilidade física e
+as grandezas não.
+
+A injeção cobre os três itens da FMECA vigente por **dois métodos distintos**,
+e a distinção é obrigatória em qualquer citação:
+
+- `electrical_signature` — IGBT e sensor/realimentação. A falha tem assinatura
+  elétrica direta e a física diz como escrevê-la no sinal.
+- `measured_state_interpolation` — sistema de controle. Ganho e constante de
+  tempo do PI mudam a dinâmica de malha fechada, e nenhuma manipulação de um
+  sinal já gravado reproduz isso. Aqui `a` percorre o caminho entre dois
+  estados medidos, e **não é simulação física**.
+
+Toda injeção é ancorada: em `a=1` a distância entre a janela injetada e o
+ensaio real correspondente é publicada em unidades do IQR saudável. Distância
+grande significa que a assinatura é caricatura, e isso se diz.
+
+Percentil paramétrico de ajuste Weibull rejeitado **não se publica**. O
+percentil empírico vem primeiro e sempre; trajetória que não cruza até `a=1` é
+censurada, não é `a_det = 1`.
 
 ### Confiabilidade física bibliográfica
 
@@ -85,10 +116,15 @@ físico.
 
 A FMECA vigente em `docs/fmeca.md` cobre IGBT, sistema de
 sensor/realimentação e sistema/circuito de controle do inversor. S, O, D e NPR
-permanecem nulos até decisão documentada do pesquisador. O recorte Contator AC,
-IGBT e Fusível AC é apenas histórico e não fornece valores ao novo escopo. A
-FMECA não produz injeções sintéticas, não altera o limiar e não deve ser
-apresentada como uma terceira família de resultados.
+foram definidos pelo pesquisador em 2026-09-01 e são validados por
+`NPR = S * O * D`. O recorte Contator AC, IGBT e Fusível AC é apenas histórico
+e não fornece valores ao novo escopo.
+
+A FMECA **fundamenta o escopo** da injeção E2 — são os três itens dela que a
+injeção cobre —, mas não recebe nada de volta: ela não altera o limiar, e
+métricas de detector não recalculam S, O, D nem NPR. A ponte
+`POD_mon -> D_mon -> NPR_proj` permanece bloqueada por contrato anulável; se um
+dia for reativada, sai em tabela separada e nunca reescreve a FMECA oficial.
 
 ## Evidência e linguagem
 
@@ -96,8 +132,14 @@ Use os níveis definidos em `docs/evidence_levels.md`:
 
 - E0: hipótese ou proposta ainda não testada;
 - E1: demonstração computacional preliminar;
+- E2: varredura de severidade sobre falha sintética injetada em sinal saudável;
 - E3: validação experimental de bancada;
 - E4: validação de campo, ainda ausente neste projeto.
+
+E2 não é degrau intermediário entre E1 e E3: é outra pergunta. E3 mede
+detecção em falha real e binária; E2 mede a magnitude em que a detecção
+começa, sobre falha construída. Nunca apresente número de E2 como se fosse
+evidência de bancada.
 
 Prefira "indica", "é compatível com" e "no conjunto avaliado" a afirmações
 causais. Não extrapole resultado do detector para vida útil do componente.
@@ -150,11 +192,16 @@ APIs canônicas:
 - `/api/reliability`;
 - `/api/sources`.
 
-O pipeline científico tem duas etapas: `comparacao` e `confiabilidade`. Os
-únicos resultados versionados ficam em `resultados/comparacao/`,
+O pipeline científico tem três etapas: `comparacao`, `detectabilidade` e
+`confiabilidade`. Os únicos resultados versionados ficam em
+`resultados/comparacao/`, `resultados/detectabilidade/`,
 `resultados/confiabilidade/` e `resultados/manifestos/`. Pesos e scalers ficam
 locais em `artefatos/modelos/`; dados brutos e estado local do Obsidian nunca
 são publicados.
+
+A etapa `detectabilidade` reutiliza os modelos e limiares **congelados** pela
+etapa `comparacao`. Ela nunca treina, nunca recalibra e nunca escolhe
+configuração olhando o resultado da varredura.
 
 ## Conduta com ferramentas
 
