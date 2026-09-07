@@ -118,6 +118,81 @@ if nn is not None:
             decoded, _ = self.decoder(decoder_input)
             return self.output(self.decoder_dropout(decoded))
 
+
+    class AutoencoderLSTMAtencao(nn.Module):
+        """AE-LSTM cujo DECODER atende aos estados do encoder (atenção de Luong).
+
+        POR QUE EXISTE (nível E0, exploratório)
+        =======================================
+        O AE-LSTM tem cerca de 16x mais parâmetros que o denso e mesmo assim NÃO
+        converte essa capacidade em detecção — a ablação temporal deu
+        inconclusiva. A hipótese aqui é que o gargalo está no decoder: ele
+        reconstrói a sequência inteira a partir de UM único vetor latente
+        repetido, sem poder olhar de volta para os passos do encoder. A atenção
+        dá ao decoder acesso seletivo aos estados por passo do encoder.
+
+        Esta arquitetura NÃO entra na comparação canônica Denso vs AE-LSTM
+        enquanto o pesquisador não decidir promovê-la; se um dia entrar, sai em
+        contrato próprio e nunca reescreve o vigente.
+
+        O QUE MUDA EM RELAÇÃO AO AE-LSTM
+        ================================
+        O gargalo latente é o MESMO (`latent_dim`), para a comparação ser
+        honesta: só se acrescenta a atenção do decoder sobre as saídas do
+        encoder e a projeção que funde contexto e estado decodificado. O dropout
+        espelha o do AE-LSTM. O escore continua no ÚLTIMO passo, como na E3, então
+        `score_lstm` e `lstm_feature_squared_errors` servem sem mudança.
+        """
+
+        def __init__(
+            self,
+            n_features: int,
+            hidden_size: int = LSTM_HIDDEN,
+            latent_dim: int = LATENT_DIM,
+            dropout: float = DROPOUT,
+        ):
+            super().__init__()
+            self.n_features = int(n_features)
+            self.hidden_size = int(hidden_size)
+            self.latent_dim = int(latent_dim)
+            self.dropout_p = float(dropout)
+            self.encoder = nn.LSTM(
+                self.n_features, self.hidden_size, batch_first=True
+            )
+            self.encoder_dropout = nn.Dropout(self.dropout_p)
+            self.to_latent = nn.Linear(self.hidden_size, self.latent_dim)
+            self.from_latent = nn.Linear(self.latent_dim, self.hidden_size)
+            self.decoder = nn.LSTM(
+                self.hidden_size, self.hidden_size, batch_first=True
+            )
+            # Atenção de Luong "general": score(dec_t, enc_s) = dec_t . (W_a enc_s).
+            self.attention = nn.Linear(
+                self.hidden_size, self.hidden_size, bias=False
+            )
+            # Funde o estado decodificado e o vetor de contexto num só estado.
+            self.combine = nn.Linear(2 * self.hidden_size, self.hidden_size)
+            self.decoder_dropout = nn.Dropout(self.dropout_p)
+            self.output = nn.Linear(self.hidden_size, self.n_features)
+
+        def forward(self, x):
+            # x: (B, T, F)
+            encoder_outputs, (hidden, _) = self.encoder(x)  # (B, T, H), (1, B, H)
+            latent = self.to_latent(self.encoder_dropout(hidden[-1]))  # (B, L)
+            decoder_input = self.from_latent(latent).unsqueeze(1).repeat(
+                1, x.size(1), 1
+            )  # (B, T, H)
+            decoded, _ = self.decoder(decoder_input)  # (B, T, H)
+            # scores[b, t, s] = decoded[b, t] . (W_a encoder_outputs[b, s])
+            scores = torch.bmm(
+                decoded, self.attention(encoder_outputs).transpose(1, 2)
+            )  # (B, T, T)
+            weights = torch.softmax(scores, dim=-1)  # (B, T, T)
+            context = torch.bmm(weights, encoder_outputs)  # (B, T, H)
+            combined = torch.tanh(
+                self.combine(torch.cat([decoded, context], dim=-1))
+            )  # (B, T, H)
+            return self.output(self.decoder_dropout(combined))  # (B, T, F)
+
 else:
 
     class AutoencoderDenso:  # pragma: no cover - mensagem exercitada no runtime
@@ -126,6 +201,11 @@ else:
 
 
     class AutoencoderLSTM:  # pragma: no cover - mensagem exercitada no runtime
+        def __init__(self, *_args, **_kwargs):
+            _require_torch()
+
+
+    class AutoencoderLSTMAtencao:  # pragma: no cover - mensagem exercitada no runtime
         def __init__(self, *_args, **_kwargs):
             _require_torch()
 
@@ -262,6 +342,24 @@ def train_lstm(
     _require_torch()
     set_deterministic_seed(seed)
     model = AutoencoderLSTM(int(np.asarray(train_sequences).shape[2]))
+    history = _train_autoencoder(
+        model, train_sequences, validation_sequences, seed=seed, **kwargs
+    )
+    return model, history
+
+
+def train_lstm_atencao(
+    train_sequences: np.ndarray,
+    validation_sequences: np.ndarray,
+    *,
+    seed: int,
+    **kwargs,
+):
+    """Treina o AE-LSTM com decoder de atenção (arquitetura exploratória E0)."""
+
+    _require_torch()
+    set_deterministic_seed(seed)
+    model = AutoencoderLSTMAtencao(int(np.asarray(train_sequences).shape[2]))
     history = _train_autoencoder(
         model, train_sequences, validation_sequences, seed=seed, **kwargs
     )
@@ -433,6 +531,7 @@ def parameter_count(model) -> int:
 __all__ = [
     "AutoencoderDenso",
     "AutoencoderLSTM",
+    "AutoencoderLSTMAtencao",
     "BATCH_SIZE",
     "DENSE_HIDDEN",
     "DROPOUT",
@@ -455,4 +554,5 @@ __all__ = [
     "top_k_scores_from_feature_errors",
     "train_dense",
     "train_lstm",
+    "train_lstm_atencao",
 ]
