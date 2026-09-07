@@ -6,13 +6,17 @@ import pytest
 torch = pytest.importorskip("torch")
 
 from src.ml.modelos_autoencoder import (  # noqa: E402
+    LATENT_DIM,
     AutoencoderDenso,
     AutoencoderLSTM,
+    AutoencoderLSTMAtencao,
+    parameter_count,
     score_dense,
     score_lstm,
     sequences_for_blocks,
     train_dense,
     train_lstm,
+    train_lstm_atencao,
 )
 
 
@@ -66,3 +70,42 @@ def test_real_torch_training_scoring_and_serialization(tmp_path):
     torch.save({"dense": dense.state_dict(), "lstm": lstm.state_dict()}, checkpoint)
     restored = torch.load(checkpoint, weights_only=True)
     assert set(restored) == {"dense", "lstm"}
+
+
+# ── AE-LSTM com decoder de atenção (arquitetura exploratória E0) ────────────
+
+@pytest.mark.integracao
+def test_atencao_reconstroi_a_sequencia_e_pontua():
+    """Reconstrói (B, T, F) e pontua pelo último passo, como o AE-LSTM."""
+    modelo = AutoencoderLSTMAtencao(24)
+    modelo.eval()
+    entrada = torch.randn(5, 8, 24)
+    saida = modelo(entrada)
+    assert tuple(saida.shape) == (5, 8, 24)
+    assert bool(torch.isfinite(saida).all())
+    escores = score_lstm(modelo, entrada.numpy())
+    assert escores.shape == (5,)
+    assert np.isfinite(escores).all()
+
+
+@pytest.mark.integracao
+def test_atencao_mantem_gargalo_e_acrescenta_parametros():
+    """Mesmo latente do AE-LSTM (comparação honesta), porém com mais parâmetros."""
+    base = AutoencoderLSTM(24)
+    atencao = AutoencoderLSTMAtencao(24)
+    assert atencao.latent_dim == LATENT_DIM == base.latent_dim
+    assert parameter_count(atencao) > parameter_count(base)
+
+
+@pytest.mark.integracao
+def test_atencao_treina_e_reduz_a_perda():
+    """O treino determinístico reduz a perda de validação em poucas épocas."""
+    rng = np.random.default_rng(0)
+    treino = rng.normal(size=(40, 8, 24)).astype("float32")
+    validacao = rng.normal(size=(12, 8, 24)).astype("float32")
+    modelo, historico = train_lstm_atencao(
+        treino, validacao, seed=42, max_epochs=8, patience=8, batch_size=8
+    )
+    assert historico.best_epoch >= 1
+    assert historico.best_validation_loss <= historico.validation_loss[0]
+    assert np.isfinite(score_lstm(modelo, validacao)).all()
