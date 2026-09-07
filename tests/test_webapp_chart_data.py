@@ -40,17 +40,14 @@ def test_curvas_e3_compactas_preservam_areas_publicadas():
 
 
 def test_curvas_fisicas_sao_limitadas_sem_perder_extremos():
-    scenarios = {
-        "contator_ac_derived": "Contator AC",
-        "igbt_derived": "IGBT",
-        "fusivel_ac_derived": "Fusível derivado",
-        "fusivel_ac_direct": "Fusível direto",
-    }
+    from src.ml.confiabilidade_componentes import SCENARIOS
+
+    scenarios = {item.scenario_id: item.plot_label for item in SCENARIOS}
     series = reliability_curve_series(
         RELIABILITY / "curvas.csv", scenarios, maximum_points=121
     )
 
-    assert len(series) == 4
+    assert len(series) == len(SCENARIOS)
     assert all(len(item["points"]) == 121 for item in series)
     assert all(item["points"][0]["time_years"] == 0 for item in series)
     assert all(item["points"][-1]["time_years"] == 20 for item in series)

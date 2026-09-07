@@ -470,14 +470,17 @@ def _audit_scientific_contracts(results: Path, errors: list[str]) -> None:
     if fmeca.get("traceability_status") != "pending_source_documentation":
         errors.append("a pendência documental dos escores FMECA não está explícita")
     expected_fmeca = {
-        "igbt": (5, 6, 5, 150),
+        "igbt": (3, 3, 7, 63),
         "sensor_feedback_system": (5, 8, 7, 280),
-        "inverter_control_system": (5, 6, 8, 240),
+        "inverter_control_system": (6, 7, 3, 126),
+        "pcb": (7, 4, 6, 168),
+        "ac_dc_contactors": (6, 5, 5, 150),
+        "cooling_fans": (4, 3, 4, 48),
     }
     components = fmeca.get("components", [])
     component_ids = {item.get("component_id") for item in components}
     if component_ids != set(expected_fmeca) or len(components) != len(expected_fmeca):
-        errors.append("a FMECA publicada não usa o trio metodológico vigente")
+        errors.append("a FMECA publicada não usa o escopo de 6 itens vigente")
     for item in components:
         component_id = item.get("component_id")
         if component_id not in expected_fmeca:

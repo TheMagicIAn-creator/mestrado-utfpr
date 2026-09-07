@@ -5,10 +5,11 @@ cenários históricos de sensibilidade exponenciais rastreáveis ao TCC de Torre
 (2024), sem estimar parâmetros físicos a partir dos detectores ou da validação
 E3.
 
-A FMECA atual possui escopo próprio. Os valores S/O/D foram definidos pelo
-pesquisador para IGBT, sistema de sensor/realimentação e sistema/circuito de
-controle do inversor. A rastreabilidade documental específica desses valores
-deve ser registrada separadamente.
+A FMECA atual tem escopo de 6 itens (IGBT, sensor/realimentação, controle,
+PCB, contatores CA/CC e ventiladores). Os escores S/O/D dos itens de survey de
+campo vêm de Cristaldi et al. (2017), Tabela 6; o sensor/realimentação mantém o
+valor definido pelo pesquisador, a ser revisado. Só IGBT, sensor e controle têm
+contrapartida de ensaio no GPVS — são esses que a injeção E2 cobre.
 """
 
 from __future__ import annotations
@@ -18,7 +19,6 @@ from dataclasses import asdict, dataclass
 
 import numpy as np
 import pandas as pd
-
 
 HOURS_PER_YEAR = 8_760.0
 INVERTER_RATE_PER_HOUR = 1.75e-4
@@ -37,14 +37,23 @@ class ReliabilityScenario:
     plot_label: str
     evidence_type: str
     lambda_per_hour: float
-    source_pdf: str
-    pdf_page: int
-    printed_page: int
-    source_table: str
     original_expression: str
     conversion_formula: str
-    ticket_share: float | None
     caveat: str
+    # Fonte no PDF do TCC (cenários históricos). Ficam None nos cenários
+    # bibliográficos externos, que citam por `source_citation`/`source_url`.
+    source_pdf: str | None = None
+    pdf_page: int | None = None
+    printed_page: int | None = None
+    source_table: str | None = None
+    ticket_share: float | None = None
+    # Fonte externa (datasheet/norma/artigo) dos λ bibliográficos.
+    source_citation: str | None = None
+    source_url: str | None = None
+    # `point`, `lower` ou `upper`: faixas entram como par de limites, sem
+    # ponto fabricado.
+    bound: str = "point"
+    scientific_role: str = "historical_tcc_reliability_sensitivity"
 
     @property
     def lambda_per_year(self) -> float:
@@ -67,7 +76,7 @@ class ReliabilityScenario:
             "time_model": "exponential_constant_hazard",
             "time_unit_primary": "hour",
             "hours_per_year": HOURS_PER_YEAR,
-            "scientific_role": "historical_tcc_reliability_sensitivity",
+            "scientific_role": self.scientific_role,
         }
 
 
@@ -83,6 +92,17 @@ class FmecaComponent:
     detectability: int | None = None
     npr: int | None = None
     status: str = "awaiting_user_fmeca"
+    # Origem dos escores S/O/D. Os itens do survey de campo levam
+    # `bibliographic_cristaldi_2017`; o sensor/realimentação mantém o valor
+    # definido pelo pesquisador. A distinção viaja no artefato para que a
+    # tabela não pareça uma escala única.
+    provenance: str = "researcher_defined"
+    source: str | None = None
+
+    @property
+    def has_native_experiment(self) -> bool:
+        """O item tem contrapartida de injeção no GPVS (entra no E2)?"""
+        return bool(self.native_experiments)
 
     def __post_init__(self) -> None:
         """Valida a consistência interna dos valores da FMECA."""
@@ -162,7 +182,15 @@ class FmecaComponent:
             **asdict(self),
             "native_experiments": list(self.native_experiments),
             "calculation_enabled": self.calculation_enabled,
+            "has_native_experiment": self.has_native_experiment,
         }
+
+
+# Fonte bibliográfica dos escores S/O/D dos itens de survey de campo.
+CRISTALDI_SOURCE = (
+    "Cristaldi, Khalil & Soulatiantork (2017), Acta IMEKO 6(4):113-120, "
+    "Tabela 6 (escala ordinal S/O/D 1-10, critério IEC 60812)"
+)
 
 
 FMECA_COMPONENTS = (
@@ -172,11 +200,13 @@ FMECA_COMPONENTS = (
         function="Realizar o chaveamento da conversão CC-CA",
         failure_mode="Falha completa de um IGBT",
         native_experiments=("F1L", "F1M"),
-        severity=5,
-        occurrence=6,
-        detectability=5,
-        npr=150,
+        severity=3,
+        occurrence=3,
+        detectability=7,
+        npr=63,
         status="validated",
+        provenance="bibliographic_cristaldi_2017",
+        source=CRISTALDI_SOURCE,
     ),
     FmecaComponent(
         component_id="sensor_feedback_system",
@@ -189,6 +219,7 @@ FMECA_COMPONENTS = (
         detectability=7,
         npr=280,
         status="validated",
+        provenance="researcher_defined",
     ),
     FmecaComponent(
         component_id="inverter_control_system",
@@ -199,12 +230,98 @@ FMECA_COMPONENTS = (
             "do controlador PI"
         ),
         native_experiments=("F6L", "F6M", "F7L", "F7M"),
-        severity=5,
-        occurrence=6,
-        detectability=8,
-        npr=240,
+        severity=6,
+        occurrence=7,
+        detectability=3,
+        npr=126,
         status="validated",
+        provenance="bibliographic_cristaldi_2017",
+        source=CRISTALDI_SOURCE,
     ),
+    FmecaComponent(
+        component_id="pcb",
+        component_name="PCB",
+        function="Interconexão e suporte físico dos circuitos do inversor",
+        failure_mode="Falha de placa de circuito impresso (trilha/solda)",
+        native_experiments=(),
+        severity=7,
+        occurrence=4,
+        detectability=6,
+        npr=168,
+        status="validated",
+        provenance="bibliographic_cristaldi_2017",
+        source=CRISTALDI_SOURCE,
+    ),
+    FmecaComponent(
+        component_id="ac_dc_contactors",
+        component_name="Contatores CA/CC",
+        function="Comutação e isolação dos circuitos CA e CC do inversor",
+        failure_mode="Falha de contator CA/CC",
+        native_experiments=(),
+        severity=6,
+        occurrence=5,
+        detectability=5,
+        npr=150,
+        status="validated",
+        provenance="bibliographic_cristaldi_2017",
+        source=CRISTALDI_SOURCE,
+    ),
+    FmecaComponent(
+        component_id="cooling_fans",
+        component_name="Ventiladores de refrigeração",
+        function="Refrigeração forçada do inversor",
+        failure_mode="Falha de ventilador de refrigeração",
+        native_experiments=(),
+        severity=4,
+        occurrence=3,
+        detectability=4,
+        npr=48,
+        status="validated",
+        provenance="bibliographic_cristaldi_2017",
+        source=CRISTALDI_SOURCE,
+    ),
+)
+
+
+# Fontes bibliográficas externas dos λ (não são o PDF do TCC). FIT = falhas por
+# 1e9 h, então X FIT = X * 1e-9 /h. Faixas entram como par (lower, upper).
+MITSUBISHI_SOURCE = "Mitsubishi Electric (2019), Power Module Reliability (application note)"
+MITSUBISHI_URL = (
+    "https://www.mitsubishielectric.com/semiconductors/powerdevices/"
+    "application_notes/powermodule_reliability_e.pdf"
+)
+ABUNIMA_TEH_SOURCE = (
+    "Abunima & Teh (2020), IEEE Access 8:14367-14376, "
+    "DOI 10.1109/ACCESS.2020.2966922 (modelo FIDES, perfil de missão solar)"
+)
+ABB_SOURCE = "ABB, doc. 2CMT2016-005511, Tabela 2 (contatores: 100 FIT)"
+ABB_URL_MIRROR = (
+    "https://www.klibo.de/fileadmin/klibo/pdf/technische_daten/abb/b7/"
+    "b7_b10_werte.pdf"
+)
+SANYO_SOURCE = (
+    "Sanyo Denki, série 9RA (datasheet; MTBF 50.000-70.000 h a 60 °C, cálculo L10)"
+)
+
+# Componentes cujo λ NÃO foi encontrado na literatura do projeto. Decisão do
+# pesquisador: não usar zero, não estimar, não usar proxy sem nova decisão.
+LAMBDA_NOT_FOUND = (
+    {
+        "component_id": "pcb",
+        "component_name": "PCB",
+        "reason": (
+            "Nenhuma fonte decompõe λ por componente dentro do inversor; a "
+            "literatura trata o inversor como bloco único."
+        ),
+    },
+    {
+        "component_id": "inverter_control_system",
+        "component_name": "Control Software",
+        "reason": (
+            "Não há módulo padrão de taxa de falha para firmware/software; "
+            "fontes fechadas (FIDES/SN 29500) não são acessíveis."
+        ),
+    },
 )
 
 
@@ -284,6 +401,129 @@ SCENARIOS = (
             "Taxa transcrita para o subcomponente genérico fusível, adaptada de "
             "Colli (2015); não representa uma medição de campo desta pesquisa."
         ),
+    ),
+    # ── λ bibliográficos externos do escopo de 5 itens ─────────────────────
+    ReliabilityScenario(
+        scenario_id="igbt_datasheet_lower",
+        component_id="igbt",
+        component_name="IGBT",
+        plot_label="IGBT - datasheet (10 FIT)",
+        evidence_type="external_datasheet",
+        lambda_per_hour=1.0e-8,
+        original_expression="10 FIT (projeto/datasheet)",
+        conversion_formula="lambda_h = 10 * 1e-9",
+        caveat=(
+            "Taxa de projeto/datasheet do fabricante, não medição de campo. "
+            "Limite inferior da faixa Mitsubishi."
+        ),
+        source_citation=MITSUBISHI_SOURCE,
+        source_url=MITSUBISHI_URL,
+        bound="lower",
+        scientific_role="external_bibliographic_component_rate",
+    ),
+    ReliabilityScenario(
+        scenario_id="igbt_datasheet_upper",
+        component_id="igbt",
+        component_name="IGBT",
+        plot_label="IGBT - datasheet (100 FIT)",
+        evidence_type="external_datasheet",
+        lambda_per_hour=1.0e-7,
+        original_expression="100 FIT (projeto/datasheet)",
+        conversion_formula="lambda_h = 100 * 1e-9",
+        caveat=(
+            "Taxa de projeto/datasheet do fabricante, não medição de campo. "
+            "Limite superior da faixa Mitsubishi."
+        ),
+        source_citation=MITSUBISHI_SOURCE,
+        source_url=MITSUBISHI_URL,
+        bound="upper",
+        scientific_role="external_bibliographic_component_rate",
+    ),
+    ReliabilityScenario(
+        scenario_id="igbt_field_lower",
+        component_id="igbt",
+        component_name="IGBT",
+        plot_label="IGBT - campo FIDES (685 FIT)",
+        evidence_type="external_field_model",
+        lambda_per_hour=6.85e-7,
+        original_expression="685 FIT (FIDES, perfil solar)",
+        conversion_formula="lambda_h = 685 * 1e-9",
+        caveat=(
+            "Modelado via FIDES com perfil de missão solar (Aceh, tropical); "
+            "valor lido de gráfico. Limite inferior anual."
+        ),
+        source_citation=ABUNIMA_TEH_SOURCE,
+        bound="lower",
+        scientific_role="external_bibliographic_component_rate",
+    ),
+    ReliabilityScenario(
+        scenario_id="igbt_field_upper",
+        component_id="igbt",
+        component_name="IGBT",
+        plot_label="IGBT - campo FIDES (2740 FIT)",
+        evidence_type="external_field_model",
+        lambda_per_hour=2.74e-6,
+        original_expression="2740 FIT (FIDES, perfil solar)",
+        conversion_formula="lambda_h = 2740 * 1e-9",
+        caveat=(
+            "Modelado via FIDES com perfil de missão solar (Aceh, tropical); "
+            "valor lido de gráfico. Limite superior anual."
+        ),
+        source_citation=ABUNIMA_TEH_SOURCE,
+        bound="upper",
+        scientific_role="external_bibliographic_component_rate",
+    ),
+    ReliabilityScenario(
+        scenario_id="contactors_norm",
+        component_id="ac_dc_contactors",
+        component_name="Contatores CA/CC",
+        plot_label="Contatores - norma ABB (100 FIT)",
+        evidence_type="external_norm",
+        lambda_per_hour=1.0e-7,
+        original_expression="100 FIT (ABB, Tabela 2)",
+        conversion_formula="lambda_h = 100 * 1e-9",
+        caveat=(
+            "Taxa de norma do fabricante. A fonte foi consultada em cópia NÃO "
+            "oficial (klibo.de), não no domínio abb.com; verificar."
+        ),
+        source_citation=ABB_SOURCE,
+        source_url=ABB_URL_MIRROR,
+        bound="point",
+        scientific_role="external_bibliographic_component_rate",
+    ),
+    ReliabilityScenario(
+        scenario_id="cooling_fans_lower",
+        component_id="cooling_fans",
+        component_name="Ventiladores de refrigeração",
+        plot_label="Ventiladores - Sanyo 9RA (1,4e-5/h)",
+        evidence_type="external_datasheet",
+        lambda_per_hour=1.4e-5,
+        original_expression="1,4e-5 falha/h (Sanyo 9RA)",
+        conversion_formula="valor de datasheet em falhas/h",
+        caveat=(
+            "Taxa de produto específico (Sanyo 9RA), não valor genérico de "
+            "categoria. Limite inferior."
+        ),
+        source_citation=SANYO_SOURCE,
+        bound="lower",
+        scientific_role="external_bibliographic_component_rate",
+    ),
+    ReliabilityScenario(
+        scenario_id="cooling_fans_upper",
+        component_id="cooling_fans",
+        component_name="Ventiladores de refrigeração",
+        plot_label="Ventiladores - Sanyo 9RA (2,0e-5/h)",
+        evidence_type="external_datasheet",
+        lambda_per_hour=2.0e-5,
+        original_expression="2,0e-5 falha/h (Sanyo 9RA)",
+        conversion_formula="valor de datasheet em falhas/h",
+        caveat=(
+            "Taxa de produto específico (Sanyo 9RA), não valor genérico de "
+            "categoria. Limite superior."
+        ),
+        source_citation=SANYO_SOURCE,
+        bound="upper",
+        scientific_role="external_bibliographic_component_rate",
     ),
 )
 
@@ -530,7 +770,7 @@ def methodology() -> dict:
     )
 
     return {
-        "schema_version": 7,
+        "schema_version": 8,
         "status": "bibliographic_component_sensitivity",
         "evidence_scope": "bibliographic_reliability_only",
         "time_unit_primary": "hour",
@@ -560,11 +800,33 @@ def methodology() -> dict:
                 for component in FMECA_COMPONENTS
             ],
 
+            "scope_item_count": len(FMECA_COMPONENTS),
+
+            # Ordem por NPR decrescente entre os 6 itens do escopo vigente.
             "priority_order": [
                 "sensor_feedback_system",
+                "pcb",
+                "ac_dc_contactors",
                 "inverter_control_system",
                 "igbt",
+                "cooling_fans",
             ],
+
+            # Itens com contrapartida de injeção no GPVS (os que o E2 cobre).
+            # Os demais entram na FMECA como criticidade/manutenção, sem injeção.
+            "injection_covered_items": [
+                component.component_id
+                for component in FMECA_COMPONENTS
+                if component.has_native_experiment
+            ],
+
+            # A tabela mistura proveniências: os itens de survey levam os
+            # escores de Cristaldi (2017); o sensor/realimentação mantém o
+            # valor definido pelo pesquisador, a ser revisado.
+            "score_provenance": {
+                component.component_id: component.provenance
+                for component in FMECA_COMPONENTS
+            },
 
             "boundary": (
                 "A validação E3 mede detecção de anomalias e não fornece "
@@ -599,6 +861,9 @@ def methodology() -> dict:
             ),
         },
 
+        # Itens do escopo sem λ rastreável: registrados, não estimados.
+        "lambda_not_found": [dict(item) for item in LAMBDA_NOT_FOUND],
+
         "scenarios": [
             scenario.as_record()
             for scenario in SCENARIOS
@@ -607,9 +872,11 @@ def methodology() -> dict:
 
 
 __all__ = [
+    "CRISTALDI_SOURCE",
     "FMECA_COMPONENTS",
     "FmecaComponent",
     "HOURS_PER_YEAR",
+    "LAMBDA_NOT_FOUND",
     "INVERTER_RATE_PER_HOUR",
     "ReliabilityScenario",
     "SCENARIOS",

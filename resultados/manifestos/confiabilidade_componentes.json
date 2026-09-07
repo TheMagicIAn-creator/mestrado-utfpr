@@ -1,15 +1,15 @@
 {
   "manifest_version": 2,
   "stage": "confiabilidade_componentes",
-  "created_at": "2026-09-01T20:57:34.681301-03:00",
-  "git_commit": "92d5d6819d12abe310b312f1218e20426362170e",
+  "created_at": "2026-09-07T17:52:17.231301-03:00",
+  "git_commit": "9564fc0efa4a31fddfe9bdb4e86cbd2b99e4c335",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
-  "code_sha256": "dcae2f07905672b8b66d18a36c16a55c881732903449e8164fe55c1d556da0e0",
+  "code_sha256": "cacc9f139ce70f59408149a31d4874b233eef33e783db1a40cd89fef8574e9d1",
   "code_dependencies": {
-    "reliability": "38b98d1c702ef3624cbbf3a6c34fdee1081a14320e01b5e623241e27421ab8de",
-    "plots": "597e580bba970f92e9045d62a18c4d84a27b865082d2cfe41fbda4c943ea9945",
+    "reliability": "99c2151e90b793df7e3c9d024ee513d85fd4456af5b43cc8557fc084f46c94c0",
+    "plots": "573eef16646a0b22fbedd5b25be198d2c8197808d4ff6708b0c0e21367fc6ffc",
     "style": "d6f5e719be9852c44f016f566e984e28e29ce804b1b31e63d43b415d93ed3914"
   },
   "parameters": {
@@ -21,20 +21,28 @@
       "contator_ac_derived",
       "igbt_derived",
       "fusivel_ac_derived",
-      "fusivel_ac_direct"
+      "fusivel_ac_direct",
+      "igbt_datasheet_lower",
+      "igbt_datasheet_upper",
+      "igbt_field_lower",
+      "igbt_field_upper",
+      "contactors_norm",
+      "cooling_fans_lower",
+      "cooling_fans_upper"
     ],
     "fmeca_status": "validated",
     "fmeca_calculation_enabled": true,
-    "fmeca_score_origin": "researcher_defined",
-    "fmeca_scale_basis": "tcc_and_bibliographic_references",
+    "fmeca_score_origin": "mixed_cristaldi_2017_and_researcher",
+    "fmeca_scale_basis": "cristaldi_2017_table_6_and_researcher_sensor",
+    "fmeca_scope_item_count": 6,
     "fmeca_traceability_status": "pending_source_documentation",
     "fmeca_traceability_pending_scope": "exact_source_location_and_scale_criteria",
     "fmeca_scores": {
       "igbt": {
-        "severity": 5,
-        "occurrence": 6,
-        "detectability": 5,
-        "npr": 150
+        "severity": 3,
+        "occurrence": 3,
+        "detectability": 7,
+        "npr": 63
       },
       "sensor_feedback_system": {
         "severity": 5,
@@ -43,10 +51,28 @@
         "npr": 280
       },
       "inverter_control_system": {
-        "severity": 5,
-        "occurrence": 6,
-        "detectability": 8,
-        "npr": 240
+        "severity": 6,
+        "occurrence": 7,
+        "detectability": 3,
+        "npr": 126
+      },
+      "pcb": {
+        "severity": 7,
+        "occurrence": 4,
+        "detectability": 6,
+        "npr": 168
+      },
+      "ac_dc_contactors": {
+        "severity": 6,
+        "occurrence": 5,
+        "detectability": 5,
+        "npr": 150
+      },
+      "cooling_fans": {
+        "severity": 4,
+        "occurrence": 3,
+        "detectability": 4,
+        "npr": 48
       }
     },
     "weibull_2p_status": "blocked_no_traceable_igbt_parameters_in_current_corpus"
@@ -71,20 +97,20 @@
     "resultados/confiabilidade/relatorio.md"
   ],
   "output_artifacts": {
-    "resultados/confiabilidade/cenarios.csv": "98937853c636cd58c40d3ca138844ef3b2aa898311cd7dd3b2af9203dc83a62e",
-    "resultados/confiabilidade/curvas.csv": "1672af0446e33ce933b40b043b29ea870abacfa9b3eea4ecb562b4cf2dffe68b",
-    "resultados/confiabilidade/curva_confiabilidade.png": "e27a371e4a6c29407bc58c054b7f07cf05086392e26fce41520f8d7a3afc1c61",
-    "resultados/confiabilidade/curva_confiabilidade.pdf": "2e568e5ab1d23fdf45636d729c82bcf89a72a29541ce97b0457f2910d51c7e37",
-    "resultados/confiabilidade/curva_probabilidade_falha.png": "7418990773cf3ae0bce82e0adb7db74dd795c17bb33863c499765bc2c75e286e",
-    "resultados/confiabilidade/curva_probabilidade_falha.pdf": "0110b982a6874c85325f9cb1fa8a784dfe2d62d2d278ca4467c60897db05bb9a",
-    "resultados/confiabilidade/curva_densidade_falha.png": "a5c97b653d8e172e6f6712b83e74ba50dd7a9b025e27e1153197d1f81d86c741",
-    "resultados/confiabilidade/curva_densidade_falha.pdf": "77d769d0476dda21da54f25d57adbac596d166397ac9a444e2b3d8bbe8325c5d",
-    "resultados/confiabilidade/curva_taxa_falha.png": "e62eafbae098961b5e81c0f691b8f924a58744c609d8a3388d1e1935ffdd4999",
-    "resultados/confiabilidade/curva_taxa_falha.pdf": "263c46965e97a1d50a0edc40c5e861e23639abe8a3e8eda7ca75a44acdc95095",
-    "resultados/confiabilidade/taxas_componentes.png": "f5df4350dd46d2d63637efb84d62c1d80f1b9f212bbaac2777468bdf2c942fc8",
-    "resultados/confiabilidade/taxas_componentes.pdf": "58768a46a15952fa111711ab882c979f2e19f35fec8570b7c38e43bf236c4a1f",
-    "resultados/confiabilidade/metodologia.json": "57b11c0377f518449c74789b830530fbc961c23a24699e24780f21e42694d6ba",
-    "resultados/confiabilidade/relatorio.md": "627f787a9d61964b7f50749e84dba11e3a3ec85c0161ffe9ad5107c338b55b29"
+    "resultados/confiabilidade/cenarios.csv": "28a4a9ef8512a094cc7b040212efda27c0531c69b0a2d2ee91b4872b58becb9f",
+    "resultados/confiabilidade/curvas.csv": "222ba6c15942a13f5cd7e4a0dbf19c19a663b849a9cad59c1868896f81aa895d",
+    "resultados/confiabilidade/curva_confiabilidade.png": "2fba9b9d8e03bde7428cecdf1342d6d7788b81e0e210279310133aa56d9ed9b1",
+    "resultados/confiabilidade/curva_confiabilidade.pdf": "a0da590ff21970de08f0a4aacc35ba3dcc5c9668ab38dbe5504b06f33a4807ec",
+    "resultados/confiabilidade/curva_probabilidade_falha.png": "0a18ee42aeeed09ead08b95a3571eeed557624ee89353d1819a1274e560ffe05",
+    "resultados/confiabilidade/curva_probabilidade_falha.pdf": "ca09625d606c57d4b0f19fe30c409ab30055a0dc2d418c662ab997f02a2f66f1",
+    "resultados/confiabilidade/curva_densidade_falha.png": "8df11a3e19b3f2778e726c4c0d46f86ab9ae404525390f0077ce9be594de5458",
+    "resultados/confiabilidade/curva_densidade_falha.pdf": "9c755356933a9c5110bc321e395f77027becf958c29dc1d341473adccd839fef",
+    "resultados/confiabilidade/curva_taxa_falha.png": "6ea39a4d2a34f6a81b15db57da369585beb991dc63313764cea9ed3359c04f28",
+    "resultados/confiabilidade/curva_taxa_falha.pdf": "39ead8026cf20cadebee09d6ed23a1718a35f7b0f75a810077b15665c30031d2",
+    "resultados/confiabilidade/taxas_componentes.png": "4280a6dd004e9f6c62136064b7c8eac65be3ff5755bfec2eb40a565f841efe9d",
+    "resultados/confiabilidade/taxas_componentes.pdf": "57532991a884f98bd6f2e663d0f7e898cb914fd01cd4c190f42e020c773d8132",
+    "resultados/confiabilidade/metodologia.json": "e6905bfbd47701f1bb0cadccadddc13c65a6fa6d6751fa86053e4258834e74f2",
+    "resultados/confiabilidade/relatorio.md": "ddb37f30379a347b7bc05cfb8c01fede3f5e180ab042b1437fb1fcc217e25812"
   },
   "evidence_level": "bibliographic_sensitivity"
 }
