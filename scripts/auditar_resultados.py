@@ -13,10 +13,11 @@ if __package__ in (None, ""):
 from src.core.config import RAIZ_PROJETO
 from src.ml.proveniencia import funcao_de_hash_para
 
-RESULT_DIRS = {"comparacao", "confiabilidade", "manifestos"}
+RESULT_DIRS = {"comparacao", "confiabilidade", "detectabilidade", "manifestos"}
 SCIENTIFIC_MANIFEST_NAMES = {
     "comparacao_autoencoders.json",
     "confiabilidade_componentes.json",
+    "detectabilidade.json",
 }
 EVALUATION_MANIFESTS = {
     "evidence_rag_baseline_v1.json": ("R0-R1", "baseline_current", 1),

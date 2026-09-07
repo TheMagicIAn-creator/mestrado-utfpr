@@ -18,6 +18,7 @@ MANIFESTOS = RESULTADOS / "manifestos"
 MANIFESTOS_CANONICOS = (
     MANIFESTOS / "comparacao_autoencoders.json",
     MANIFESTOS / "confiabilidade_componentes.json",
+    MANIFESTOS / "detectabilidade.json",
 )
 
 
@@ -34,15 +35,21 @@ def test_manifesto_canonico_protege_todos_os_outputs(manifesto_path: Path):
         assert funcao_de_hash_para(caminho)(caminho) == esperado
 
 
-def test_resultados_contem_somente_as_tres_pastas_canonicas():
+def test_resultados_contem_somente_as_quatro_pastas_canonicas():
     entradas = {item.name for item in RESULTADOS.iterdir()}
-    assert entradas == {"comparacao", "confiabilidade", "manifestos"}
+    assert entradas == {
+        "comparacao",
+        "confiabilidade",
+        "detectabilidade",
+        "manifestos",
+    }
 
 
 def test_manifestos_contem_execucoes_cientificas_e_evidence_rag():
     assert {item.name for item in MANIFESTOS.iterdir()} == {
         "comparacao_autoencoders.json",
         "confiabilidade_componentes.json",
+        "detectabilidade.json",
         "evidence_rag_baseline_v1.json",
         "evidence_rag_contextual_r3.json",
         "evidence_rag_hybrid_r4.json",
@@ -56,5 +63,5 @@ def test_manifestos_contem_execucoes_cientificas_e_evidence_rag():
 def test_auditoria_canonica_aprova_publicacao():
     relatorio = auditar_publicacao(RAIZ)
     assert relatorio["ok"], "\n".join(relatorio["errors"])
-    assert relatorio["manifests"] == 9
-    assert relatorio["artifacts"] == 37
+    assert relatorio["manifests"] == 10
+    assert relatorio["artifacts"] == 42
