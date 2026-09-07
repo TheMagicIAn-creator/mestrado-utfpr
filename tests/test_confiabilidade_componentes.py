@@ -43,8 +43,19 @@ def test_rates_are_traceable_and_component_scenarios_are_explicit():
         INVERTER_RATE_PER_HOUR * 0.04
     )
     assert _scenario("fusivel_ac_direct").lambda_per_hour == pytest.approx(2.17e-6)
-    assert {item.pdf_page for item in SCENARIOS} == {35}
-    assert {item.printed_page for item in SCENARIOS} == {34}
+    # Cenários históricos do TCC citam página do PDF; os bibliográficos externos
+    # citam fonte própria e não têm página no PDF.
+    tcc = [item for item in SCENARIOS if item.source_pdf is not None]
+    external = [item for item in SCENARIOS if item.source_citation is not None]
+    assert {item.pdf_page for item in tcc} == {35}
+    assert {item.printed_page for item in tcc} == {34}
+    assert all(item.pdf_page is None for item in external)
+    assert len(external) == 7
+    # λ externos com faixa entram como par (lower/upper), nunca ponto fabricado.
+    assert _scenario("igbt_field_lower").lambda_per_hour == pytest.approx(6.85e-7)
+    assert _scenario("igbt_field_upper").lambda_per_hour == pytest.approx(2.74e-6)
+    assert _scenario("contactors_norm").lambda_per_hour == pytest.approx(1.0e-7)
+    assert {item.bound for item in external} == {"lower", "upper", "point"}
 
 
 def test_exponential_functions_are_dimensionally_consistent():
@@ -77,7 +88,7 @@ def test_curves_publish_hours_years_density_and_hazard():
 
 def test_no_physical_weibull_is_fabricated():
     contract = methodology()
-    assert contract["schema_version"] == 7
+    assert contract["schema_version"] == 8
     assert contract["fmeca"]["formula"] == "NPR = S * O * D"
     assert contract["physical_weibull"] == {
         "status": "blocked_no_traceable_igbt_parameters_in_current_corpus",
@@ -94,25 +105,45 @@ def test_no_physical_weibull_is_fabricated():
     assert "eta" not in scenario_table().columns
 
 
-def test_current_fmeca_scope_uses_researcher_defined_scores_only():
+def test_current_fmeca_scope_has_six_items_with_mixed_provenance():
     contract = methodology()["fmeca"]
 
     assert contract["status"] == "validated"
     assert contract["calculation_enabled"] is True
-    assert contract["traceability_status"] == "pending_source_documentation"
+    assert contract["scope_item_count"] == 6
     assert {item.component_id for item in FMECA_COMPONENTS} == {
         "igbt",
         "sensor_feedback_system",
         "inverter_control_system",
+        "pcb",
+        "ac_dc_contactors",
+        "cooling_fans",
     }
-    assert "contator_ac" not in {item.component_id for item in FMECA_COMPONENTS}
-    assert "fusivel_ac" not in {item.component_id for item in FMECA_COMPONENTS}
+    # Só os itens com ensaio no GPVS entram na injeção E2.
+    assert contract["injection_covered_items"] == [
+        "igbt",
+        "sensor_feedback_system",
+        "inverter_control_system",
+    ]
+    # Valores bibliográficos de Cristaldi (2017); o sensor mantém o do pesquisador.
     expected = {
-        "igbt": (5, 6, 5, 150),
+        "igbt": (3, 3, 7, 63),
         "sensor_feedback_system": (5, 8, 7, 280),
-        "inverter_control_system": (5, 6, 8, 240),
+        "inverter_control_system": (6, 7, 3, 126),
+        "pcb": (7, 4, 6, 168),
+        "ac_dc_contactors": (6, 5, 5, 150),
+        "cooling_fans": (4, 3, 4, 48),
+    }
+    expected_provenance = {
+        "igbt": "bibliographic_cristaldi_2017",
+        "sensor_feedback_system": "researcher_defined",
+        "inverter_control_system": "bibliographic_cristaldi_2017",
+        "pcb": "bibliographic_cristaldi_2017",
+        "ac_dc_contactors": "bibliographic_cristaldi_2017",
+        "cooling_fans": "bibliographic_cristaldi_2017",
     }
     for item in contract["components"]:
+        cid = item["component_id"]
         scores = (
             item["severity"],
             item["occurrence"],
@@ -121,12 +152,26 @@ def test_current_fmeca_scope_uses_researcher_defined_scores_only():
         )
         assert item["status"] == "validated"
         assert item["calculation_enabled"] is True
-        assert scores == expected[item["component_id"]]
+        assert scores == expected[cid]
+        assert item["provenance"] == expected_provenance[cid]
         assert item["npr"] == (
-            item["severity"]
-            * item["occurrence"]
-            * item["detectability"]
+            item["severity"] * item["occurrence"] * item["detectability"]
         )
+    # Itens sem contrapartida no GPVS não têm ensaio nativo.
+    non_native = {"pcb", "ac_dc_contactors", "cooling_fans"}
+    for item in contract["components"]:
+        if item["component_id"] in non_native:
+            assert item["has_native_experiment"] is False
+            assert item["native_experiments"] == []
+
+
+def test_lambda_not_found_is_recorded_not_estimated():
+    contract = methodology()
+    absent = {item["component_id"] for item in contract["lambda_not_found"]}
+    assert absent == {"pcb", "inverter_control_system"}
+    # Nenhum cenário de λ para os itens sem taxa rastreável.
+    scenario_components = {item["component_id"] for item in contract["scenarios"]}
+    assert "pcb" not in scenario_components
 
 
 def test_distribution_contract_lists_missing_parameters_without_curves():

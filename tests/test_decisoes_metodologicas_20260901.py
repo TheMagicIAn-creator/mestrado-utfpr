@@ -33,10 +33,15 @@ def test_native_gpvs_mapping_preserves_functional_control_scope():
 
 
 def test_current_fmeca_preserves_researcher_defined_scores():
+    # Escopo de 6 itens: valores bibliográficos de Cristaldi (2017), exceto o
+    # sensor/realimentação, que mantém o valor definido pelo pesquisador.
     expected = {
-        "igbt": (5, 6, 5, 150),
+        "igbt": (3, 3, 7, 63),
         "sensor_feedback_system": (5, 8, 7, 280),
-        "inverter_control_system": (5, 6, 8, 240),
+        "inverter_control_system": (6, 7, 3, 126),
+        "pcb": (7, 4, 6, 168),
+        "ac_dc_contactors": (6, 5, 5, 150),
+        "cooling_fans": (4, 3, 4, 48),
     }
     components = {
         component.component_id: component

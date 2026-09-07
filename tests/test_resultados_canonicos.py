@@ -44,7 +44,7 @@ def test_published_json_contracts_are_strict_json():
     comparison = json.loads(resultados.COMPARISON_JSON.read_text(encoding="utf-8"))
     reliability = json.loads(resultados.RELIABILITY_JSON.read_text(encoding="utf-8"))
     assert comparison["schema_version"] == 2
-    assert reliability["schema_version"] == 7
+    assert reliability["schema_version"] == 8
     assert set(comparison["models"]) == {"ae_denso", "ae_lstm"}
     assert reliability["evidence_scope"] == "bibliographic_reliability_only"
     fmeca = reliability["fmeca"]
@@ -52,9 +52,12 @@ def test_published_json_contracts_are_strict_json():
     assert fmeca["calculation_enabled"] is True
     assert fmeca["traceability_status"] == "pending_source_documentation"
     expected = {
-        "igbt": (5, 6, 5, 150),
+        "igbt": (3, 3, 7, 63),
         "sensor_feedback_system": (5, 8, 7, 280),
-        "inverter_control_system": (5, 6, 8, 240),
+        "inverter_control_system": (6, 7, 3, 126),
+        "pcb": (7, 4, 6, 168),
+        "ac_dc_contactors": (6, 5, 5, 150),
+        "cooling_fans": (4, 3, 4, 48),
     }
     assert {
         item["component_id"]: (

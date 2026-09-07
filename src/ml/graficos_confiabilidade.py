@@ -16,7 +16,6 @@ import matplotlib.pyplot as plt
 from src.ml.confiabilidade_componentes import SCENARIOS
 from src.ml.estilo_graficos import PALETA, TAM, adicionar_nota, aplicar_estilo
 
-
 aplicar_estilo()
 
 COLORS = {
@@ -35,6 +34,28 @@ LEGEND_LABELS = {
     "fusivel_ac_derived": "Fusível AC (derivada)",
     "fusivel_ac_direct": "Fusível (direta, Tab. 3.4)",
 }
+
+# Cores estáveis para todos os cenários: os históricos mantêm a paleta fixa; os
+# bibliográficos externos recebem cor de um mapa de reserva, por ordem.
+_FALLBACK = plt.get_cmap("tab20")
+_SCENARIO_COLORS = {
+    scenario.scenario_id: COLORS.get(
+        scenario.scenario_id, _FALLBACK(index % 20)
+    )
+    for index, scenario in enumerate(SCENARIOS)
+}
+
+
+def _color(scenario_id: str):
+    return _SCENARIO_COLORS.get(scenario_id, "#555555")
+
+
+def _linestyle(evidence_type: str) -> str:
+    return LINESTYLES.get(evidence_type, ":")
+
+
+def _label(scenario) -> str:
+    return LEGEND_LABELS.get(scenario.scenario_id, scenario.plot_label)
 
 
 def _save_pair(fig, base_path: Path, note: str) -> tuple[Path, Path]:
@@ -74,9 +95,9 @@ def _plot_time_function(
     fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
     for scenario, block in _iter_curves(curves):
         style = {
-            "color": COLORS[scenario.scenario_id],
-            "linestyle": LINESTYLES[scenario.evidence_type],
-            "label": LEGEND_LABELS[scenario.scenario_id],
+            "color": _color(scenario.scenario_id),
+            "linestyle": _linestyle(scenario.evidence_type),
+            "label": _label(scenario),
         }
         ax.plot(block["time_years"], block[column], **style)
     ax.set_xlim(0, float(curves["time_years"].max()))
@@ -151,11 +172,18 @@ def plot_rates(scenarios: pd.DataFrame, output: Path) -> tuple[Path, Path]:
     fig, ax = plt.subplots(figsize=TAM["unico"], layout="constrained")
     y = np.arange(len(frame))
     for index, row in frame.iterrows():
+        evidence = str(row["evidence_type"])
+        if evidence == "direct_bibliographic":
+            marker = "D"
+        elif evidence.startswith("external"):
+            marker = "s"
+        else:
+            marker = "o"
         ax.scatter(
             row["lambda_per_hour"],
             index,
-            color=COLORS[row["scenario_id"]],
-            marker="D" if row["evidence_type"] == "direct_bibliographic" else "o",
+            color=_color(row["scenario_id"]),
+            marker=marker,
             s=62,
         )
     ax.set_xlim(0, float(frame["lambda_per_hour"].max()) * 1.08)
@@ -166,10 +194,13 @@ def plot_rates(scenarios: pd.DataFrame, output: Path) -> tuple[Path, Path]:
     ax.legend(
         handles=[
             Line2D(
-                [], [], marker="o", linestyle="none", color="#555555", label="Derivada"
+                [], [], marker="o", linestyle="none", color="#555555", label="Derivada (TCC)"
             ),
             Line2D(
-                [], [], marker="D", linestyle="none", color="#555555", label="Direta"
+                [], [], marker="D", linestyle="none", color="#555555", label="Direta (TCC)"
+            ),
+            Line2D(
+                [], [], marker="s", linestyle="none", color="#555555", label="Externa (bibliográfica)"
             ),
         ],
         loc="lower right",
@@ -177,7 +208,8 @@ def plot_rates(scenarios: pd.DataFrame, output: Path) -> tuple[Path, Path]:
     return _save_pair(
         fig,
         output,
-        "Contator e IGBT não possuem taxa direta equivalente na fonte; a ausência permanece explícita.",
+        "λ com faixa entram como par lower/upper; datasheet/norma/campo não são "
+        "medição desta pesquisa. PCB e software ficam sem λ (registrado, não estimado).",
     )
 
 

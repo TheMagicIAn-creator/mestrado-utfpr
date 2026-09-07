@@ -99,15 +99,17 @@ Recall e falsos alarmes sem promover um ótimo pelo desempenho em F1-F7.
 
 ## 6. FMECA e manutenção
 
-A FMECA vigente cobre IGBT, sistema de sensor/realimentação e sistema/circuito
-de controle do inversor. As contrapartidas nativas são F1, F2 e F6/F7,
-respectivamente. Em decisão explícita de 2026-09-01, o pesquisador definiu IGBT
-com S=5, O=6, D=5 e NPR=150; sensor/realimentação com S=5, O=8, D=7 e NPR=280;
-e controle do inversor com S=5, O=6, D=8 e NPR=240. O estado é `validated`, com
-`NPR = S * O * D` e cálculo habilitado. As escalas numéricas são fundamentadas
-no TCC e em outras referências, enquanto os valores aplicados foram escolhidos
-pelo critério do pesquisador. `pending_source_documentation` registra somente a
-necessidade de catalogar as localizações e os critérios dessas escalas.
+A FMECA vigente tem escopo de 6 itens: IGBT, sensor/realimentação, controle,
+PCB, contatores CA/CC e ventiladores, todos com `NPR = S * O * D` validado. Só
+IGBT (F1), sensor/realimentação (F2) e controle (F6/F7) têm contrapartida no
+GPVS e entram na injeção E2; os demais são criticidade/manutenção. A proveniência
+é mista: os cinco itens de survey de campo levam os escores de Cristaldi et al.
+(2017), Tabela 6 — IGBT (3,3,7; NPR 63), controle (6,7,3; NPR 126), PCB (7,4,6;
+NPR 168), contatores (6,5,5; NPR 150), ventiladores (4,3,4; NPR 48); o
+sensor/realimentação mantém o valor definido pelo pesquisador em 2026-09-01
+(5,8,7; NPR 280), a ser revisado. Os λ físicos por componente ficam em
+`resultados/confiabilidade/`, rotulados por fonte; PCB e software ficam sem λ,
+registrado sem estimativa.
 
 O recorte Contator AC, IGBT e Fusível AC permanece apenas como histórico do
 TCC. Nenhum valor é herdado dele. As métricas dos detectores não são convertidas

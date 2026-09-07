@@ -136,18 +136,24 @@ def test_confiabilidade_publica_quatro_cenarios_fisicos_rastreaveis(client):
         "igbt",
         "sensor_feedback_system",
         "inverter_control_system",
+        "pcb",
+        "ac_dc_contactors",
+        "cooling_fans",
     }
     assert {
         item["component_id"]: item["npr"]
         for item in data["fmeca"]["components"]
     } == {
-        "igbt": 150,
+        "igbt": 63,
         "sensor_feedback_system": 280,
-        "inverter_control_system": 240,
+        "inverter_control_system": 126,
+        "pcb": 168,
+        "ac_dc_contactors": 150,
+        "cooling_fans": 48,
     }
     assert data["fmeca"]["boundary"].startswith("A validação E3")
-    assert len(data["scenarios"]) == 4
-    assert len(data["curve_series"]) == 4
+    assert len(data["scenarios"]) == 11
+    assert len(data["curve_series"]) == 11
     assert all(len(series["points"]) <= 121 for series in data["curve_series"])
     assert data["failure_rate_distribution"]["status"] == "not_estimable"
     assert data["failure_rate_distribution"]["chart_available"] is False
@@ -158,7 +164,10 @@ def test_confiabilidade_publica_quatro_cenarios_fisicos_rastreaveis(client):
         "Curva da densidade de probabilidade de falha f(t)",
         "Curva da taxa de falha h(t)",
     ]
-    assert data["scenarios"][-1]["lambda_per_hour"] == pytest.approx(2.17e-6)
+    fusivel_direto = next(
+        item for item in data["scenarios"] if item["scenario_id"] == "fusivel_ac_direct"
+    )
+    assert fusivel_direto["lambda_per_hour"] == pytest.approx(2.17e-6)
     assert data["formulas"]["hazard"] == "h(t) = lambda"
 
 

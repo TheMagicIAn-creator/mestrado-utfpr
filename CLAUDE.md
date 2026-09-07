@@ -114,17 +114,21 @@ físico.
 
 ### FMECA e manutenção
 
-A FMECA vigente em `docs/fmeca.md` cobre IGBT, sistema de
-sensor/realimentação e sistema/circuito de controle do inversor. S, O, D e NPR
-foram definidos pelo pesquisador em 2026-09-01 e são validados por
-`NPR = S * O * D`. O recorte Contator AC, IGBT e Fusível AC é apenas histórico
-e não fornece valores ao novo escopo.
+A FMECA vigente em `docs/fmeca.md` tem escopo de **6 itens**: IGBT,
+sensor/realimentação, controle, PCB, contatores CA/CC e ventiladores. Todos
+validados por `NPR = S * O * D`. A proveniência é mista e viaja no artefato: os
+cinco itens de survey de campo levam os escores ordinais de Cristaldi et al.
+(2017), Tabela 6; o **sensor/realimentação** mantém o valor definido pelo
+pesquisador em 2026-09-01, a ser revisado. O recorte Contator AC, IGBT e Fusível
+AC é apenas histórico e não fornece valores ao escopo vigente.
 
-A FMECA **fundamenta o escopo** da injeção E2 — são os três itens dela que a
-injeção cobre —, mas não recebe nada de volta: ela não altera o limiar, e
-métricas de detector não recalculam S, O, D nem NPR. A ponte
-`POD_mon -> D_mon -> NPR_proj` permanece bloqueada por contrato anulável; se um
-dia for reativada, sai em tabela separada e nunca reescreve a FMECA oficial.
+Só IGBT, sensor/realimentação e controle têm contrapartida de ensaio no GPVS;
+são esses os **três** que a injeção E2 cobre. PCB, contatores e ventiladores
+entram na FMECA como criticidade/manutenção, sem injeção. A FMECA não recebe
+nada de volta: não altera o limiar, e métricas de detector não recalculam S, O,
+D nem NPR. A ponte `POD_mon -> D_mon -> NPR_proj` permanece bloqueada por
+contrato anulável; se um dia for reativada, sai em tabela separada e nunca
+reescreve a FMECA oficial.
 
 ## Evidência e linguagem
 
