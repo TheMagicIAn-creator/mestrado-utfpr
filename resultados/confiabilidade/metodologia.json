@@ -34,7 +34,7 @@
         "npr": 63,
         "status": "validated",
         "provenance": "bibliographic_cristaldi_2017",
-        "source": "Cristaldi, Khalil & Soulatiantork (2017), Acta IMEKO 6(4):113-120, Tabela 6 (escala ordinal S/O/D 1-10)",
+        "source": "Cristaldi, Khalil & Soulatiantork (2017), Acta IMEKO 6(4):113-120, Tabela 6 (escala ordinal S/O/D 1-10, critério IEC 60812)",
         "calculation_enabled": true,
         "has_native_experiment": true
       },
@@ -74,7 +74,7 @@
         "npr": 126,
         "status": "validated",
         "provenance": "bibliographic_cristaldi_2017",
-        "source": "Cristaldi, Khalil & Soulatiantork (2017), Acta IMEKO 6(4):113-120, Tabela 6 (escala ordinal S/O/D 1-10)",
+        "source": "Cristaldi, Khalil & Soulatiantork (2017), Acta IMEKO 6(4):113-120, Tabela 6 (escala ordinal S/O/D 1-10, critério IEC 60812)",
         "calculation_enabled": true,
         "has_native_experiment": true
       },
@@ -90,7 +90,7 @@
         "npr": 168,
         "status": "validated",
         "provenance": "bibliographic_cristaldi_2017",
-        "source": "Cristaldi, Khalil & Soulatiantork (2017), Acta IMEKO 6(4):113-120, Tabela 6 (escala ordinal S/O/D 1-10)",
+        "source": "Cristaldi, Khalil & Soulatiantork (2017), Acta IMEKO 6(4):113-120, Tabela 6 (escala ordinal S/O/D 1-10, critério IEC 60812)",
         "calculation_enabled": true,
         "has_native_experiment": false
       },
@@ -106,7 +106,7 @@
         "npr": 150,
         "status": "validated",
         "provenance": "bibliographic_cristaldi_2017",
-        "source": "Cristaldi, Khalil & Soulatiantork (2017), Acta IMEKO 6(4):113-120, Tabela 6 (escala ordinal S/O/D 1-10)",
+        "source": "Cristaldi, Khalil & Soulatiantork (2017), Acta IMEKO 6(4):113-120, Tabela 6 (escala ordinal S/O/D 1-10, critério IEC 60812)",
         "calculation_enabled": true,
         "has_native_experiment": false
       },
@@ -122,7 +122,7 @@
         "npr": 48,
         "status": "validated",
         "provenance": "bibliographic_cristaldi_2017",
-        "source": "Cristaldi, Khalil & Soulatiantork (2017), Acta IMEKO 6(4):113-120, Tabela 6 (escala ordinal S/O/D 1-10)",
+        "source": "Cristaldi, Khalil & Soulatiantork (2017), Acta IMEKO 6(4):113-120, Tabela 6 (escala ordinal S/O/D 1-10, critério IEC 60812)",
         "calculation_enabled": true,
         "has_native_experiment": false
       }

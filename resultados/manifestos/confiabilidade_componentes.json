@@ -1,14 +1,14 @@
 {
   "manifest_version": 2,
   "stage": "confiabilidade_componentes",
-  "created_at": "2026-09-07T17:37:55.087976-03:00",
-  "git_commit": "636c062728460303355ebaa5d4229f57c4355e83",
+  "created_at": "2026-09-07T17:52:17.231301-03:00",
+  "git_commit": "9564fc0efa4a31fddfe9bdb4e86cbd2b99e4c335",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "code_sha256": "cacc9f139ce70f59408149a31d4874b233eef33e783db1a40cd89fef8574e9d1",
   "code_dependencies": {
-    "reliability": "c5e596045e988df629dfcdd46aadc8da9ae5834c20408c283a1aab4f4c1e5c05",
+    "reliability": "99c2151e90b793df7e3c9d024ee513d85fd4456af5b43cc8557fc084f46c94c0",
     "plots": "573eef16646a0b22fbedd5b25be198d2c8197808d4ff6708b0c0e21367fc6ffc",
     "style": "d6f5e719be9852c44f016f566e984e28e29ce804b1b31e63d43b415d93ed3914"
   },
@@ -109,7 +109,7 @@
     "resultados/confiabilidade/curva_taxa_falha.pdf": "39ead8026cf20cadebee09d6ed23a1718a35f7b0f75a810077b15665c30031d2",
     "resultados/confiabilidade/taxas_componentes.png": "4280a6dd004e9f6c62136064b7c8eac65be3ff5755bfec2eb40a565f841efe9d",
     "resultados/confiabilidade/taxas_componentes.pdf": "57532991a884f98bd6f2e663d0f7e898cb914fd01cd4c190f42e020c773d8132",
-    "resultados/confiabilidade/metodologia.json": "aa056ce8cd0bc3e950be920f5dc8b71cdc099c047cfe911c159ab110fb958ccb",
+    "resultados/confiabilidade/metodologia.json": "e6905bfbd47701f1bb0cadccadddc13c65a6fa6d6751fa86053e4258834e74f2",
     "resultados/confiabilidade/relatorio.md": "ddb37f30379a347b7bc05cfb8c01fede3f5e180ab042b1437fb1fcc217e25812"
   },
   "evidence_level": "bibliographic_sensitivity"

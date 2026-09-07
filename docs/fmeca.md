@@ -56,8 +56,8 @@ fornece valores S/O/D.
 O recorte histórico do TCC (Contator AC, IGBT e Fusível AC, com valores 315, 90
 e 30) permanece apenas como registro e não fornece valores ao escopo vigente.
 
-## Verificação pendente
+## Norma do critério ordinal
 
-O critério ordinal S/O/D atribuído à Cristaldi (2017) é citado no material de
-origem como "IEC-60182"; a norma de FMEA/FMECA é a **IEC 60812**. A citação da
-norma deve ser conferida na fonte antes de entrar no texto final da dissertação.
+O critério ordinal S/O/D adotado por Cristaldi (2017) segue a **IEC 60812**
+(Análise dos modos de falha e efeitos — FMEA/FMECA). O material de origem
+grafava "IEC-60182" por transposição de dígitos; a norma correta é a IEC 60812.

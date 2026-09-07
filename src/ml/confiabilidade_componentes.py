@@ -189,7 +189,7 @@ class FmecaComponent:
 # Fonte bibliográfica dos escores S/O/D dos itens de survey de campo.
 CRISTALDI_SOURCE = (
     "Cristaldi, Khalil & Soulatiantork (2017), Acta IMEKO 6(4):113-120, "
-    "Tabela 6 (escala ordinal S/O/D 1-10)"
+    "Tabela 6 (escala ordinal S/O/D 1-10, critério IEC 60812)"
 )
 
 
