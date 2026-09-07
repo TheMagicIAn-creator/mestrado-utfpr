@@ -1,0 +1,4 @@
+injection_id,injection_method,fmeca_scope,reference_experiments,physical_simulation,distancia_euclidiana_iqr,distancia_mediana_iqr,distancia_maxima_iqr,feature_mais_distante,n_injetadas,n_reais,unidade
+igbt,electrical_signature,igbt,F1L;F1M,True,34.63494742719153,0.5549647734976562,19.412321765197632,ib_thd,281,669,IQR do bloco saudável de treino
+sensor_realimentacao,electrical_signature,sensor_feedback_system,F2L;F2M,True,15.060238443183142,0.4720414385167887,10.853852394084122,i_rms_unbalance,281,713,IQR do bloco saudável de treino
+controle,measured_state_interpolation,inverter_control_system,F6L;F6M;F7L;F7M,False,2.222967861250021,0.24324842565844573,1.155085441502076,ic_thd,281,1436,IQR do bloco saudável de treino
