@@ -42,14 +42,20 @@ A comparação publicada contém somente:
 - AE-LSTM com sequência de comprimento 8, oculto 32 e latente 8.
 
 Os modelos usam as mesmas 24 features elétricas, o mesmo orçamento de treino,
-as mesmas sementes e partições compatíveis. A referência histórica usa a média
-dos cinco maiores erros quadráticos por feature e p99,9 solicitado. A análise
-de sensibilidade usa `k={5,10,20}` por `{p99,p99,5,p99,9}` e não escolhe uma
-configuração pelas falhas. Na execução vigente, 210 observações
-de calibração fazem esse pedido selecionar o máximo amostral (percentil
-empírico efetivo p100, resolução de 0,476 ponto percentual). Pesos, scaler e
-limiar ficam congelados na avaliação E3; a normalização de comissionamento
-pré-falha, quando aplicável, é idêntica entre modelos.
+as mesmas sementes, partições compatíveis e a mesma regularização: o dropout do
+AE-LSTM espelha o do Denso desde 2026-09-03, porque `nn.LSTM` de camada única
+ignora o argumento `dropout` e o braço temporal treinava sem nenhuma.
+
+O ponto canônico usa a média dos cinco maiores erros quadráticos por feature com
+p99 solicitado, decidido pelo pesquisador em 2026-09-03. Com 210 janelas de
+calibração, p99 é o maior percentil sustentável: ordem 208/210, percentil
+empírico efetivo p99,05. O pedido de p99,9 cairia na ordem 210/210 — o máximo
+amostral, não um quantil — e exigiria `n >= 1001`; por isso permanece apenas
+como referência histórica, reproduzível com `strict_threshold=False` e marcado
+como degenerado na grade de sensibilidade. A análise de sensibilidade usa
+`k={5,10,20}` por `{p99,p99,5,p99,9}` e não escolhe uma configuração pelas
+falhas. Pesos, scaler e limiar ficam congelados na avaliação E3; a normalização
+de comissionamento pré-falha, quando aplicável, é idêntica entre modelos.
 
 ## Três famílias que nunca devem ser confundidas
 
