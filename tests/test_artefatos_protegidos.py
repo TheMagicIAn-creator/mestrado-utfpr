@@ -64,4 +64,6 @@ def test_auditoria_canonica_aprova_publicacao():
     relatorio = auditar_publicacao(RAIZ)
     assert relatorio["ok"], "\n".join(relatorio["errors"])
     assert relatorio["manifests"] == 10
+    # Sobe para 43 quando `python -m src.ml.campanha_detectabilidade` rodar e
+    # publicar `fidelidade_injecao.csv`: contador e artefato andam juntos.
     assert relatorio["artifacts"] == 42

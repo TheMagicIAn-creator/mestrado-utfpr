@@ -38,11 +38,36 @@ Recall, F1 e Precision são as métricas principais; ROC-AUC e PR-AUC são
 complementares. O bootstrap usa o ensaio como unidade de reamostragem. Cada
 modelo mantém seu próprio limiar saudável, aprendido antes dos ensaios de
 falha, com ordem estatística, percentil efetivo e resolução registrados. A
-referência histórica usa `k=5` e p99,9; com 210 observações de calibração, esse
-ponto é a ordem 210/210 e p100 efetivo. A grade descritiva usa
-`k={5,10,20}` por `{p99,p99,5,p99,9}`, sem selecionar configuração com F1-F7.
+ponto canônico usa `k=5` e p99: com 210 observações de calibração, a ordem
+208/210 e p99,05 efetivo. A referência histórica `k=5` com p99,9 cairia na ordem
+210/210 — o máximo amostral — e permanece apenas como reprodutibilidade, marcada
+como degenerada. A grade descritiva usa `k={5,10,20}` por `{p99,p99,5,p99,9}`,
+sem selecionar configuração com F1-F7.
 A análise causal de transição e falha sustentada foi inconclusiva e não sustenta
 superioridade inequívoca do AE-LSTM.
+
+## Detectabilidade por magnitude
+
+| Afirmação | Fonte |
+|---|---|
+| `a_det` empírico, censura e ajuste Weibull por item e modelo | `detectabilidade_resumo.csv` |
+| Curvas POD sobre a grade de severidade | `pod_curvas.csv` |
+| Distância entre a janela injetada em `a=1` e o ensaio real | `ancoras.csv` |
+| Confronto POD(a=1) versus recall da E3 | `fidelidade_injecao.csv` |
+| Contrato, metodologia e portão de adoção da Weibull | `detectabilidade.json` |
+
+`a` é fração da assinatura nominal, em `[0,1]`. O percentil empírico vem primeiro
+e sempre; o paramétrico só acompanha quando o ajuste é adotado, e o portão recusa
+também o ajuste cujo percentil publicável escape de `[0,1]`. Trajetória que não
+cruza até `a=1` é censurada, não `a_det=1`.
+
+**POD e recall da E3 não vivem na mesma escala.** A POD sai de janelas F0
+normalizadas pela baseline saudável — a escala em que o limiar foi calibrado — e o
+recall da E3 sai dos ensaios reais normalizados por comissionamento. Em `a=1` a
+injeção representa a assinatura nominal completa, então as duas deveriam
+conversar; onde não conversam, quem está em questão é a fidelidade da injeção. É
+isso que `fidelidade_injecao.csv` publica, e a divergência não é erro de nenhuma
+das duas etapas nem substitui a E3.
 
 ## Confiabilidade e manutenção
 
@@ -65,13 +90,15 @@ Weibull físico, curva de banheira ou RUL.
 
 `metodologia.json` também publica contratos nulos para Weibull 2P, Normal,
 Lognormal e histograma de vidas. A busca no corpus não encontrou `beta` e `eta`
-rastreáveis para IGBT. A FMECA vigente cobre IGBT, sensor/realimentação e
-sistema/circuito de controle; seus campos S/O/D/NPR permanecem nulos, em vez de
-serem inferidos das métricas dos detectores.
+rastreáveis para IGBT. A FMECA vigente cobre seis itens — IGBT,
+sensor/realimentação, controle, PCB, contatores CA/CC e ventiladores — com
+`NPR = S * O * D` validado e proveniência mista registrada no artefato. Nenhum
+desses escores é inferido das métricas dos detectores.
 
 ## Proveniência
 
 - `resultados/manifestos/comparacao_autoencoders.json` protege a comparação.
+- `resultados/manifestos/detectabilidade.json` protege a detectabilidade.
 - `resultados/manifestos/confiabilidade_componentes.json` protege a confiabilidade.
 - Os manifestos registram código, entradas, parâmetros, saídas e hashes.
 - A aplicação apenas lê os contratos; nunca recalcula ao abrir um painel.
@@ -79,5 +106,6 @@ serem inferidos das métricas dos detectores.
 ```powershell
 python scripts/auditar_resultados.py
 python -m src.ml.comparacao_autoencoders
+python -m src.ml.campanha_detectabilidade
 python -m src.ml.publicacao_confiabilidade
 ```

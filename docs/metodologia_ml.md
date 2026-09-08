@@ -42,6 +42,17 @@ Nos ensaios F1-F7, a primeira metade pré-falha fornece normalização de
 comissionamento e a segunda metade pré-falha permanece para especificidade.
 Pesos, scaler e limiar não são reajustados.
 
+A etapa E2 usa o **outro** caminho, e isso é deliberado. A janela injetada nasce
+saudável, do holdout F0: ela é normalizada pela baseline F0 do seu ensaio de
+origem e depois pelo scaler congelado — exatamente o percurso de uma janela
+saudável no treino, que é a escala em que o limiar foi calibrado. Normalizá-la
+por comissionamento seria impossível sem inventar um recorte pré-falha que uma
+janela saudável não tem, e poria os escores numa escala para a qual o limiar
+congelado nunca foi calibrado, medindo outro detector com o mesmo número. A
+consequência a carregar em qualquer leitura: **POD e recall não são a mesma
+grandeza**, e a divergência entre elas mede fidelidade da injeção, não erro de
+alguma das duas etapas.
+
 ## 4. Modelos e treino
 
 - Denso: `24-16-8-16-24`.

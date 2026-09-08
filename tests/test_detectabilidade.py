@@ -27,7 +27,11 @@ import numpy as np
 import pytest
 
 from src.ml.detectabilidade import (
+    MAXIMO_A_PUBLICAVEL,
+    MINIMO_DETECTADAS,
     MINIMO_R2_PAPEL,
+    MINIMO_VALORES_DISTINTOS,
+    _quantil_weibull,
     ajustar_weibull_2p,
     curva_pod,
     detectabilidade_do_modelo,
@@ -242,6 +246,51 @@ def test_amostra_boa_e_adotada_e_ai_o_parametrico_aparece():
     assert ajuste["adotado"] is True, ajuste["motivo_da_rejeicao"]
     assert ajuste["r2_papel"] >= MINIMO_R2_PAPEL
     assert percentil_parametrico(ajuste, 0.10) > 0.0
+
+
+@pytest.mark.leve
+def test_percentil_fora_do_dominio_de_a_reprova_mesmo_com_r2_bom():
+    """Reproduz `sensor/ae_lstm`: ajuste adotado publicava a50 = 10,28.
+
+    Poucas detecções sob censura pesada ajustam bem uma quase-exponencial, e o
+    R² aprova — ele mede aderência dos poucos pontos observados, não
+    credibilidade da extrapolação. Os três portões antigos passam aqui; só o
+    domínio de `a` reprova. Sem esta guarda, a linha publicada anunciaria uma
+    magnitude de detecção dez vezes além da maior severidade injetável.
+    """
+    rng = np.random.default_rng(5)
+    detectadas = np.clip(rng.exponential(0.35, size=17), 0.04, 0.96).round(2)
+    gatilhos = detectadas.tolist() + [5.0] * 264
+
+    ajuste = ajustar_weibull_2p(_varrer(gatilhos))
+
+    # Os três critérios antigos aprovam — a reprovação é só do domínio.
+    assert ajuste["convergiu"] is True
+    assert ajuste["n_detectadas"] >= MINIMO_DETECTADAS
+    assert ajuste["valores_distintos"] >= MINIMO_VALORES_DISTINTOS
+    assert ajuste["r2_papel"] >= MINIMO_R2_PAPEL
+
+    assert ajuste["adotado"] is False
+    assert "fora do domínio" in ajuste["motivo_da_rejeicao"]
+    assert "R²" not in ajuste["motivo_da_rejeicao"]
+    assert _quantil_weibull(ajuste["beta"], ajuste["eta"], 0.50) > MAXIMO_A_PUBLICAVEL
+
+
+@pytest.mark.leve
+def test_a_linha_publicada_nao_traz_percentil_fora_do_dominio():
+    """Guarda sobre a LINHA publicada: nenhum `*_parametrico` acima de 1."""
+    rng = np.random.default_rng(5)
+    detectadas = np.clip(rng.exponential(0.35, size=17), 0.04, 0.96).round(2)
+
+    linha = resumo(_varrer(detectadas.tolist() + [5.0] * 264))
+
+    assert linha["weibull_2p_adotada"] is False
+    assert linha["a10_parametrico"] is None
+    assert linha["a50_parametrico"] is None
+    assert linha["weibull_2p_motivo_da_rejeicao"]
+    for coluna, valor in linha.items():
+        if coluna.endswith("_parametrico") and valor is not None:
+            assert 0.0 <= valor <= MAXIMO_A_PUBLICAVEL, coluna
 
 
 @pytest.mark.leve
