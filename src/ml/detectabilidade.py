@@ -35,6 +35,15 @@ Percentil paramétrico de ajuste rejeitado. Uma execução anterior publicou o
 `a10` da Weibull 2P na coluna vizinha a "2P adotada: não" — o número existia,
 o ajuste que o produziu tinha sido reprovado. Aqui o percentil empírico vem
 primeiro e sempre; o paramétrico só acompanha quando o ajuste é adotado.
+
+Percentil fora do domínio de `a`. Uma execução publicou `a50 = 10,28` com
+`eta = 14,65` para `sensor/ae_lstm`: um ajuste ADOTADO cujos percentis caem
+dez vezes além de `a=1`. O portão de R² não pega esse caso — com 94% de
+censura, 17 detecções concentradas ajustam bem uma quase-exponencial, e o R²
+mede aderência dos poucos pontos observados, não credibilidade da
+extrapolação. A leitura honesta dessa célula é "não detectado dentro da faixa
+observável", e não um número. Por isso o portão recusa também o ajuste cujo
+percentil publicável escape de `[0, 1]`.
 """
 
 from __future__ import annotations
@@ -47,10 +56,18 @@ import numpy as np
 # Pontos consecutivos acima do limiar para a detecção contar.
 CONFIRMACOES_PADRAO = 3
 
-# Critérios de adoção do resumo paramétrico. Os três precisam valer.
+# Critérios de adoção do resumo paramétrico. Os quatro precisam valer.
 MINIMO_DETECTADAS = 10
 MINIMO_R2_PAPEL = 0.90
 MINIMO_VALORES_DISTINTOS = 4
+
+# `a` é fração da assinatura nominal e vive em [0, 1]. Percentil paramétrico
+# fora disso não é magnitude de detecção: é extrapolação além da maior
+# severidade que a varredura consegue injetar.
+MAXIMO_A_PUBLICAVEL = 1.0
+
+# Quantis que `resumo` publica — são estes que o portão precisa validar.
+QUANTIS_PUBLICADOS = (0.10, 0.50)
 
 
 @dataclass(frozen=True)
@@ -277,6 +294,24 @@ def ajustar_weibull_2p(resultado: Detectabilidade) -> dict:
             f"R² do papel de Weibull {r2 if r2 is None else round(r2, 4)} "
             f"abaixo de {MINIMO_R2_PAPEL}"
         )
+    publicaveis = {
+        quantil: _quantil_weibull(beta, eta, quantil)
+        for quantil in QUANTIS_PUBLICADOS
+    }
+    fora = {
+        quantil: valor
+        for quantil, valor in publicaveis.items()
+        if not 0.0 <= valor <= MAXIMO_A_PUBLICAVEL
+    }
+    if fora:
+        detalhe = ", ".join(
+            f"a{round(quantil * 100)}={valor:.4g}" for quantil, valor in fora.items()
+        )
+        motivos.append(
+            f"percentil paramétrico fora do domínio de a ([0, "
+            f"{MAXIMO_A_PUBLICAVEL:g}]): {detalhe}. O ajuste extrapola além da "
+            f"maior severidade injetável, então não é magnitude de detecção"
+        )
     if motivos:
         base["motivo_da_rejeicao"] = "; ".join(motivos)
         return base
@@ -334,6 +369,16 @@ def _r2_papel_weibull(detectados: np.ndarray, censurados: np.ndarray) -> float |
     return float(1.0 - float(np.sum(residuos**2)) / total)
 
 
+def _quantil_weibull(beta: float, eta: float, quantil: float) -> float:
+    """Quantil bruto da Weibull 2P, sem passar por portão nenhum.
+
+    Existe separado porque o portão de adoção precisa avaliar o número ANTES de
+    decidir se ele é publicável — e `percentil_parametrico` só devolve valor
+    depois que essa decisão já foi tomada.
+    """
+    return float(eta * (-math.log(1.0 - quantil)) ** (1.0 / beta))
+
+
 def percentil_parametrico(ajuste: dict, quantil: float) -> float | None:
     """Percentil da Weibull ajustada — ``None`` enquanto o ajuste não for adotado.
 
@@ -342,8 +387,7 @@ def percentil_parametrico(ajuste: dict, quantil: float) -> float | None:
     """
     if not ajuste.get("adotado"):
         return None
-    beta, eta = ajuste["beta"], ajuste["eta"]
-    return float(eta * (-math.log(1.0 - quantil)) ** (1.0 / beta))
+    return _quantil_weibull(ajuste["beta"], ajuste["eta"], quantil)
 
 
 def resumo(resultado: Detectabilidade) -> dict:
@@ -365,8 +409,14 @@ def resumo(resultado: Detectabilidade) -> dict:
         "weibull_2p_eta": ajuste["eta"],
         "weibull_2p_r2_papel": ajuste["r2_papel"],
         "weibull_2p_motivo_da_rejeicao": ajuste["motivo_da_rejeicao"],
-        "a10_parametrico": percentil_parametrico(ajuste, 0.10),
-        "a50_parametrico": percentil_parametrico(ajuste, 0.50),
+        # Derivado de QUANTIS_PUBLICADOS para não divergir do que o portão
+        # valida: gate e publicação têm de olhar o mesmo conjunto de quantis.
+        **{
+            f"a{round(quantil * 100)}_parametrico": percentil_parametrico(
+                ajuste, quantil
+            )
+            for quantil in QUANTIS_PUBLICADOS
+        },
     }
     return linha
 
@@ -374,9 +424,11 @@ def resumo(resultado: Detectabilidade) -> dict:
 __all__ = [
     "CONFIRMACOES_PADRAO",
     "Detectabilidade",
+    "MAXIMO_A_PUBLICAVEL",
     "MINIMO_DETECTADAS",
     "MINIMO_R2_PAPEL",
     "MINIMO_VALORES_DISTINTOS",
+    "QUANTIS_PUBLICADOS",
     "ajustar_weibull_2p",
     "curva_pod",
     "detectabilidade_do_modelo",

@@ -16,9 +16,11 @@ import pandas as pd
 
 from src.core.config import RAIZ_PROJETO
 from src.ml.detectabilidade import (
+    MAXIMO_A_PUBLICAVEL,
     MINIMO_DETECTADAS,
     MINIMO_R2_PAPEL,
     MINIMO_VALORES_DISTINTOS,
+    QUANTIS_PUBLICADOS,
     curva_pod,
     resumo,
 )
@@ -30,6 +32,21 @@ ROOT = Path(RAIZ_PROJETO)
 RESULTS_DIR = ROOT / "resultados" / "detectabilidade"
 STAGE = "detectabilidade"
 CODE_PATH = ROOT / "src" / "ml" / "campanha_detectabilidade.py"
+
+# Métricas por ensaio da E3, lidas só para publicar a fidelidade da injeção.
+# É leitura de artefato já publicado: nada aqui escolhe modelo, limiar ou
+# configuração olhando o resultado da E3 — isso continua proibido.
+E3_METRICAS_PATH = ROOT / "resultados" / "comparacao" / "e3_metricas_por_ensaio.csv"
+
+# A ressalva que precisa viajar junto de qualquer confronto E2×E3.
+RESSALVA_DE_ESCALA = (
+    "POD e recall não vivem na mesma escala. A POD sai de janelas F0 "
+    "normalizadas pela baseline saudável — a escala em que o limiar foi "
+    "calibrado — e o recall da E3 sai dos ensaios reais normalizados por "
+    "comissionamento. Divergência grande sinaliza que a injeção não reproduz o "
+    "defeito medido; não é erro de nenhuma das duas etapas, e este confronto "
+    "não substitui a E3."
+)
 
 # Colunas do contrato de injeção que descem ao CSV; a fundamentação longa fica
 # só no JSON e no relatório.
@@ -122,6 +139,81 @@ def _linhas_ancora(resultados) -> pd.DataFrame:
     return pd.DataFrame(linhas)
 
 
+def _recall_e3_por_ensaio(path: Path) -> tuple[dict, str | None]:
+    """Recall da E3 por `(modelo, ensaio)` na semente de referência.
+
+    Devolve `({}, motivo)` quando o artefato da E3 não está disponível: a E2
+    continua publicável sozinha e a ausência viaja como status na linha, em vez
+    de derrubar a etapa.
+    """
+    if not path.is_file():
+        return {}, "sem_artefato_e3"
+    tabela = pd.read_csv(path)
+    exigidas = {"model", "experiment", "recall", "is_reference"}
+    if not exigidas <= set(tabela.columns):
+        return {}, "artefato_e3_sem_as_colunas_esperadas"
+    referencia = tabela[
+        tabela["is_reference"].astype(str).str.lower().isin(("true", "1"))
+    ]
+    dados = {
+        (str(linha["model"]), str(linha["experiment"])): float(linha["recall"])
+        for _, linha in referencia.iterrows()
+        if pd.notna(linha["recall"])
+    }
+    return (dados, None) if dados else ({}, "artefato_e3_sem_semente_de_referencia")
+
+
+def _linhas_fidelidade(resultados, *, e3_path: Path = E3_METRICAS_PATH) -> pd.DataFrame:
+    """Confronta POD(a=1) com o recall da E3 nos ensaios de referência.
+
+    Em `a=1` a injeção representa a assinatura nominal completa — o mesmo
+    defeito do ensaio real — então as duas grandezas deveriam conversar. Quando
+    não conversam, o problema está na fidelidade da injeção, e é isso que esta
+    tabela expõe. Leia sempre com `RESSALVA_DE_ESCALA`.
+    """
+    recalls, indisponivel = _recall_e3_por_ensaio(e3_path)
+    linhas = []
+    for resultado in resultados:
+        contrato = contrato_da_especificacao(resultado.especificacao)
+        ensaios = list(contrato["reference_experiments"])
+        for model_id in MODEL_IDS:
+            # POD(a=1) é, por construção, a fração detectada da varredura.
+            pod_a1 = float(resumo(resultado.por_modelo[model_id])["fracao_detectada"])
+            observados = [
+                recalls[(model_id, ensaio)]
+                for ensaio in ensaios
+                if (model_id, ensaio) in recalls
+            ]
+            if indisponivel:
+                status, menor, maior, divergencia = indisponivel, None, None, None
+            elif not observados:
+                status = "sem_ensaio_correspondente_na_e3"
+                menor = maior = divergencia = None
+            else:
+                status = "comparado"
+                menor, maior = min(observados), max(observados)
+                # Distância até o intervalo observado na E3; zero se cair dentro.
+                divergencia = float(max(0.0, menor - pod_a1, pod_a1 - maior))
+            linhas.append(
+                {
+                    "injection_id": resultado.especificacao.id,
+                    "fmeca_scope": contrato["fmeca_scope"],
+                    "injection_method": contrato["injection_method"],
+                    "reference_experiments": ";".join(ensaios),
+                    "model": model_id,
+                    "model_name": MODEL_NAMES[model_id],
+                    "pod_a1": pod_a1,
+                    "e3_recall_min": menor,
+                    "e3_recall_max": maior,
+                    "n_ensaios_e3": len(observados),
+                    "divergencia_ate_faixa_e3": divergencia,
+                    "escalas_de_normalizacao_distintas": True,
+                    "status": status,
+                }
+            )
+    return pd.DataFrame(linhas)
+
+
 def _metodologia() -> dict:
     return {
         "a_axis": "fraction_of_nominal_signature_not_time",
@@ -132,12 +224,14 @@ def _metodologia() -> dict:
             "min_detected": MINIMO_DETECTADAS,
             "min_paper_r2": MINIMO_R2_PAPEL,
             "min_distinct_values": MINIMO_VALORES_DISTINTOS,
+            "max_publishable_a": MAXIMO_A_PUBLICAVEL,
+            "gated_quantiles": list(QUANTIS_PUBLICADOS),
         },
         "weibull_meaning": "dispersion_of_detection_magnitude_not_physical_reliability",
     }
 
 
-def _relatorio(resultados, parametros: dict) -> str:
+def _relatorio(resultados, parametros: dict, fidelidade: pd.DataFrame) -> str:
     linhas = [
         "# Detectabilidade por magnitude (E2)",
         "",
@@ -192,6 +286,35 @@ def _relatorio(resultados, parametros: dict) -> str:
             )
     linhas += [
         "",
+        "## Fidelidade da injeção",
+        "",
+        "Em `a=1` a injeção representa a assinatura nominal completa — o mesmo "
+        "defeito do ensaio real — então POD e recall da E3 deveriam conversar. "
+        "Onde não conversam, quem está em questão é a injeção.",
+        "",
+        "| Item | Modelo | POD(a=1) | Recall E3 | Divergência | Status |",
+        "|---|---|---:|---:|---:|---|",
+    ]
+    for _, linha in fidelidade.iterrows():
+        faixa = (
+            "—"
+            if pd.isna(linha["e3_recall_min"])
+            else f"{float(linha['e3_recall_min']):.3f}–{float(linha['e3_recall_max']):.3f}"
+        )
+        linhas.append(
+            "| {item} | {modelo} | {pod:.3f} | {faixa} | {div} | {status} |".format(
+                item=linha["injection_id"],
+                modelo=linha["model"],
+                pod=float(linha["pod_a1"]),
+                faixa=faixa,
+                div=_fmt(linha["divergencia_ate_faixa_e3"]),
+                status=linha["status"],
+            )
+        )
+    linhas += [
+        "",
+        RESSALVA_DE_ESCALA,
+        "",
         "## Leitura da âncora",
         "",
         "Em `a=1` a distância entre a janela injetada e o ensaio real sai em "
@@ -209,10 +332,20 @@ def _relatorio(resultados, parametros: dict) -> str:
 
 
 def _fmt(valor) -> str:
-    return "—" if valor is None else f"{float(valor):.3f}"
+    """Célula de tabela: `—` para ausente, inclusive o NaN vindo do DataFrame."""
+    if valor is None:
+        return "—"
+    numero = float(valor)
+    return "—" if not math.isfinite(numero) else f"{numero:.3f}"
 
 
-def _payload(resultados, *, holdout_meta: dict, parametros: dict) -> dict:
+def _payload(
+    resultados,
+    *,
+    holdout_meta: dict,
+    parametros: dict,
+    fidelidade: pd.DataFrame,
+) -> dict:
     injecoes = []
     for resultado in resultados:
         contrato = contrato_da_especificacao(resultado.especificacao)
@@ -240,6 +373,14 @@ def _payload(resultados, *, holdout_meta: dict, parametros: dict) -> dict:
         "methodology": _metodologia(),
         "holdout": holdout_resumo,
         "injections": injecoes,
+        "injection_fidelity": {
+            "method": (
+                "pod_at_a1_versus_e3_recall_on_reference_experiments_reference_seed"
+            ),
+            "e3_source": str(E3_METRICAS_PATH.relative_to(ROOT).as_posix()),
+            "scale_caveat": RESSALVA_DE_ESCALA,
+            "comparisons": fidelidade.to_dict(orient="records"),
+        },
     }
 
 
@@ -250,25 +391,39 @@ def salvar_resultados(
     holdout_meta: dict,
     parametros: dict,
     results_dir: Path = RESULTS_DIR,
+    e3_metricas_path: Path = E3_METRICAS_PATH,
 ) -> dict:
     """Escreve dados-fonte, contrato, relatório e manifesto da etapa E2."""
     results_dir = Path(results_dir)
     results_dir.mkdir(parents=True, exist_ok=True)
     outputs: list[Path] = []
 
+    # Calculado uma vez e reusado nos três destinos, para o CSV, o contrato e o
+    # relatório não poderem divergir entre si.
+    fidelidade = _linhas_fidelidade(resultados, e3_path=Path(e3_metricas_path))
+
     resumo_path = results_dir / "detectabilidade_resumo.csv"
     pod_path = results_dir / "pod_curvas.csv"
     ancora_path = results_dir / "ancoras.csv"
+    fidelidade_path = results_dir / "fidelidade_injecao.csv"
     _linhas_resumo(resultados).to_csv(resumo_path, index=False, lineterminator="\n")
     _linhas_pod(resultados).to_csv(pod_path, index=False, lineterminator="\n")
     _linhas_ancora(resultados).to_csv(ancora_path, index=False, lineterminator="\n")
-    outputs.extend([resumo_path, pod_path, ancora_path])
+    fidelidade.to_csv(fidelidade_path, index=False, lineterminator="\n")
+    outputs.extend([resumo_path, pod_path, ancora_path, fidelidade_path])
 
-    payload = _payload(resultados, holdout_meta=holdout_meta, parametros=parametros)
+    payload = _payload(
+        resultados,
+        holdout_meta=holdout_meta,
+        parametros=parametros,
+        fidelidade=fidelidade,
+    )
     outputs.append(_write_json(results_dir / "detectabilidade.json", payload))
 
     report_path = results_dir / "relatorio.md"
-    report_path.write_text(_relatorio(resultados, parametros), encoding="utf-8", newline="\n")
+    report_path.write_text(
+        _relatorio(resultados, parametros, fidelidade), encoding="utf-8", newline="\n"
+    )
     outputs.append(report_path)
 
     manifest = gerar_manifesto(
@@ -302,4 +457,11 @@ def salvar_resultados(
     return {"outputs": outputs, "manifest": manifest_path, "payload": payload}
 
 
-__all__ = ["CODE_PATH", "RESULTS_DIR", "STAGE", "salvar_resultados"]
+__all__ = [
+    "CODE_PATH",
+    "E3_METRICAS_PATH",
+    "RESSALVA_DE_ESCALA",
+    "RESULTS_DIR",
+    "STAGE",
+    "salvar_resultados",
+]
