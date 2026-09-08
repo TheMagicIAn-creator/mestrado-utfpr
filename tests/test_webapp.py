@@ -103,7 +103,7 @@ def test_e3_publica_apenas_denso_e_lstm_no_gpvs(client):
         0.8618504150911235
     )
     assert data["metrics"]["ae_lstm"]["auc_pr"]["estimate"] == pytest.approx(
-        0.8411642809389649
+        0.8474991625681527
     )
     assert len(data["trials"]) == 28
     assert len(data["confusion_matrices"]) == 2
@@ -884,10 +884,10 @@ def test_contexto_cientifico_reconcilia_comparacao_e_confiabilidade():
         "Compare o autoencoder denso com o AE-LSTM e explique a taxa de falha"
     )
     assert context is not None
-    assert "0.384146" in context
-    assert "0.386702" in context
+    assert "0.407294" in context
+    assert "0.387299" in context
     assert "0.861850" in context
-    assert "0.841164" in context
+    assert "0.847499" in context
     assert "2.170e-06 h^-1" in context
     assert "SMD95" not in context
     assert "a_det" not in context

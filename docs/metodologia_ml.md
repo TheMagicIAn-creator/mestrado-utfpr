@@ -48,19 +48,34 @@ Pesos, scaler e limiar não são reajustados.
 - AE-LSTM: sequência 8, oculto 32 e latente 8.
 
 Os dois recebem o mesmo orçamento de épocas, early stopping, sementes e
-pré-processamento compatível. A semente 42 é a execução de referência e cinco
-sementes medem estabilidade. Na referência histórica, o escore é a média dos
-cinco maiores erros quadráticos por feature; no AE-LSTM, somente o último passo
-temporal recebe o top-k. Cada modelo recebe seu próprio p99,9 solicitado,
-calculado na calibração saudável pelo método `higher`. A saída registra o order
-statistic selecionado, o percentil empírico efetivo, o tamanho da calibração e
-sua resolução.
+pré-processamento compatível. Desde 2026-09-03 recebem também a mesma
+regularização: o `Dropout(0,2)` do Denso, nas duas travessias do gargalo, passou
+a ter contrapartida explícita no AE-LSTM. `nn.LSTM` de camada única ignora
+silenciosamente o argumento `dropout`, de modo que o braço temporal treinava sem
+regularização alguma — uma explicação concorrente para ele não converter
+capacidade em detecção. A assimetria que resta é de capacidade, inerente às duas
+arquiteturas, e é publicada com arquitetura, contagem de parâmetros e dropout
+lado a lado.
 
-Na execução vigente, `n=210` na calibração faz p99,9 selecionar a observação de
-ordem 210/210: percentil empírico efetivo p100 e resolução de 0,476 ponto
-percentual. Portanto p99,9 é a configuração histórica solicitada, não uma
-precisão empírica que a amostra consiga resolver literalmente nem um ótimo
-universal.
+A semente 42 é a execução de referência e cinco sementes medem estabilidade. O
+escore é a média dos cinco maiores erros quadráticos por feature; no AE-LSTM,
+somente o último passo temporal recebe o top-k. Cada modelo recebe seu próprio
+p99 solicitado, calculado na calibração saudável pelo método `higher`. A saída
+registra o order statistic selecionado, o percentil empírico efetivo, o tamanho
+da calibração e sua resolução.
+
+O ponto canônico é p99 por decisão do pesquisador em 2026-09-03. Com `n=210` na
+calibração, p99 seleciona a observação de ordem 208/210: percentil empírico
+efetivo p99,05. O pedido anterior de p99,9 caía na ordem 210/210 — o limiar era
+literalmente o maior escore visto na calibração, com a variância de um máximo
+amostral e não a de um quantil. Um percentil só é distinguível do máximo quando
+`n >= (q-2)/(q-1)`, com `q = p/100`: 101 para p99, 201 para p99,5 e 1001 para
+p99,9. `minimum_n_for_percentile` publica esse número e `calibrate_threshold`
+aceita `strict`, que a publicação canônica usa — um percentil degenerado
+interrompe a publicação em vez de sair no artefato.
+
+O ponto histórico p99,9 continua reproduzível com `strict_threshold=False` e
+permanece na grade de sensibilidade, agora marcado como degenerado.
 
 Nenhum desempenho em F1-F7 participa da seleção de arquitetura, semente ou
 limiar.
@@ -93,8 +108,10 @@ inequivocamente à arquitetura temporal.
 A grade `k={5,10,20}` e percentis solicitados `{99;99,5;99,9}` contém nove
 configurações por modelo e semente. Todos os limiares vêm somente da calibração
 saudável. Os ensaios com falha não selecionam arquitetura, semente, scaler,
-`k`, percentil, limiar ou hiperparâmetro. `k=5` com p99,9 permanece apenas como
-referência histórica de reprodutibilidade. A grade evidencia o trade-off entre
+`k`, percentil, limiar ou hiperparâmetro. `k=5` com p99 é a configuração
+canônica; `k=5` com p99,9 permanece apenas como referência histórica de
+reprodutibilidade e sai marcado como degenerado, porque com `n=210` esse pedido
+não é distinguível do máximo amostral. A grade evidencia o trade-off entre
 Recall e falsos alarmes sem promover um ótimo pelo desempenho em F1-F7.
 
 ## 6. FMECA e manutenção
@@ -144,6 +161,7 @@ taxa por cenário não supre esses dados.
 Os resultados vigentes ficam apenas em:
 
 - `resultados/comparacao/`;
+- `resultados/detectabilidade/`;
 - `resultados/confiabilidade/`;
 - `resultados/manifestos/`.
 
