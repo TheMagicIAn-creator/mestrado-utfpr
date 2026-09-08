@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 
@@ -9,11 +10,13 @@ import pytest
 
 from scripts.auditar_resultados import auditar_publicacao
 from src.core.config import RAIZ_PROJETO
+from src.ml.detectabilidade import MAXIMO_A_PUBLICAVEL
 from src.ml.proveniencia import funcao_de_hash_para
 
 RAIZ = Path(RAIZ_PROJETO)
 RESULTADOS = RAIZ / "resultados"
 MANIFESTOS = RESULTADOS / "manifestos"
+DETECTABILIDADE = RESULTADOS / "detectabilidade"
 
 MANIFESTOS_CANONICOS = (
     MANIFESTOS / "comparacao_autoencoders.json",
@@ -67,3 +70,70 @@ def test_auditoria_canonica_aprova_publicacao():
     # Sobe para 43 quando `python -m src.ml.campanha_detectabilidade` rodar e
     # publicar `fidelidade_injecao.csv`: contador e artefato andam juntos.
     assert relatorio["artifacts"] == 42
+
+
+def _artefato_e2_predata_o_codigo() -> bool:
+    """O contrato E2 publicado ainda desconhece a guarda de domínio?
+
+    Em 2026-09-08 o portão de adoção da Weibull ganhou um quarto critério, que
+    recusa ajuste cujo percentil publicável escape de `[0,1]`. O código entrou
+    no `main` sem a regeneração, então `resultados/detectabilidade/` seguiu
+    publicando `a50_parametrico = 10,28` — um número que o próprio código já
+    declara impublicável. Só
+
+        python -m src.ml.campanha_detectabilidade
+
+    fecha essa divergência.
+
+    A condição é lida do próprio artefato, some sozinha quando ele for
+    regenerado, e `strict=True` faz o CI reprovar se a guarda passar enquanto a
+    condição ainda vale — ninguém "conserta" isso mexendo no teste.
+    """
+    contrato = DETECTABILIDADE / "detectabilidade.json"
+    if not contrato.is_file():
+        return False
+    portao = (
+        json.loads(contrato.read_text(encoding="utf-8"))
+        .get("methodology", {})
+        .get("weibull_adoption_gate", {})
+    )
+    return portao.get("max_publishable_a") != MAXIMO_A_PUBLICAVEL
+
+
+PENDENTE_DE_REGENERACAO_E2 = pytest.mark.xfail(
+    _artefato_e2_predata_o_codigo(),
+    strict=True,
+    reason=(
+        "resultados/detectabilidade/ foi gerado antes da guarda de domínio da "
+        "Weibull; rode `python -m src.ml.campanha_detectabilidade` e commite "
+        "resultados/ para reativar esta guarda"
+    ),
+)
+
+
+@PENDENTE_DE_REGENERACAO_E2
+def test_e2_publicada_nao_traz_percentil_fora_do_dominio():
+    """Guarda sobre o ARTEFATO publicado, não sobre a função que o gera.
+
+    `a` é fração da assinatura nominal e vive em `[0,1]`; percentil paramétrico
+    fora disso não é magnitude de detecção, é extrapolação além da maior
+    severidade injetável. O teste unitário cobre o portão; este cobre o que
+    efetivamente foi para o repositório.
+    """
+    caminho = DETECTABILIDADE / "detectabilidade_resumo.csv"
+    assert caminho.is_file(), "resumo da E2 ausente"
+    with caminho.open("r", encoding="utf-8", newline="") as stream:
+        linhas = list(csv.DictReader(stream))
+    assert linhas, "resumo da E2 vazio"
+
+    fora = [
+        f"{linha['injection_id']}/{linha['model']}: {coluna}={valor}"
+        for linha in linhas
+        for coluna, valor in linha.items()
+        if coluna.endswith("_parametrico")
+        and valor
+        and not 0.0 <= float(valor) <= MAXIMO_A_PUBLICAVEL
+    ]
+    assert not fora, (
+        f"percentil paramétrico publicado fora de [0, {MAXIMO_A_PUBLICAVEL:g}]: {fora}"
+    )
