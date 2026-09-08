@@ -1,0 +1,116 @@
+{
+  "manifest_version": 2,
+  "stage": "detectabilidade",
+  "created_at": "2026-09-07T18:22:05.288010-03:00",
+  "git_commit": "f7dfc5f0c2fa304eae0dff481b10af6a46d6cd10",
+  "code_hash_mode": "text_lf_utf8",
+  "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
+  "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
+  "code_sha256": "0764163d3c1b30c4c4c2098493abbc89e40703f04672f1a7d22d8f15ba1ef298",
+  "code_dependencies": {
+    "detectabilidade": "1715858db32ce619466820f85b2b5e7fd7d9e20e1bacc3b001fbf8ed52db19f6",
+    "injection": "d2a44162b9dc1c26e79c3c57362752caa6df017be31c2d9a37d15deca6008c69",
+    "models": "fe418de106f1c7429e20f3056150a0b8cd5d924a6b121dd078ad2c1569329220",
+    "dataset": "cd4390349e9b13b2d7e2f1c931ba0aec72ff75059ed0bf809b8ebf1559ce72e4",
+    "training": "b956050ec30ff07116670e0606e814c07e0e5b1747fe226040e2dc7bf41edfd7",
+    "orchestration": "0764163d3c1b30c4c4c2098493abbc89e40703f04672f1a7d22d8f15ba1ef298"
+  },
+  "parameters": {
+    "grade_severidade": [
+      0.02,
+      0.04,
+      0.06,
+      0.08,
+      0.1,
+      0.12,
+      0.14,
+      0.16,
+      0.18,
+      0.2,
+      0.22,
+      0.24,
+      0.26,
+      0.28,
+      0.3,
+      0.32,
+      0.34,
+      0.36,
+      0.38,
+      0.4,
+      0.42,
+      0.44,
+      0.46,
+      0.48,
+      0.5,
+      0.52,
+      0.54,
+      0.56,
+      0.58,
+      0.6,
+      0.62,
+      0.64,
+      0.66,
+      0.68,
+      0.7,
+      0.72,
+      0.74,
+      0.76,
+      0.78,
+      0.8,
+      0.82,
+      0.84,
+      0.86,
+      0.88,
+      0.9,
+      0.92,
+      0.94,
+      0.96,
+      0.98,
+      1.0
+    ],
+    "confirmacoes": 3,
+    "n_trajetorias": 281,
+    "holdout_experiments": [
+      "F0L",
+      "F0M"
+    ],
+    "sequence_policy": "sustained_severity_repeated_frame",
+    "normalization_policy": "f0_baseline_of_source_experiment_then_frozen_scaler",
+    "threshold_source": "frozen_from_comparacao",
+    "a_axis": "fraction_of_nominal_signature_not_time",
+    "weibull_adoption_gate": {
+      "min_detected": 10,
+      "min_paper_r2": 0.9,
+      "min_distinct_values": 4
+    },
+    "injections": [
+      "igbt",
+      "sensor_realimentacao",
+      "controle"
+    ],
+    "models": [
+      "ae_denso",
+      "ae_lstm"
+    ],
+    "dataset_windows": null
+  },
+  "input_artifacts": {
+    "ae_denso_contract": "79c7a3e17f305186f58e04f5858b9526cdbc50f66a059e73976a8f518b207654",
+    "ae_lstm_contract": "4f3909eaee8b9f3e232f639a890bb814d07261ce55ed6955190576fdb9bf3f59"
+  },
+  "outputs": [
+    "resultados/detectabilidade/detectabilidade_resumo.csv",
+    "resultados/detectabilidade/pod_curvas.csv",
+    "resultados/detectabilidade/ancoras.csv",
+    "resultados/detectabilidade/detectabilidade.json",
+    "resultados/detectabilidade/relatorio.md"
+  ],
+  "output_artifacts": {
+    "resultados/detectabilidade/detectabilidade_resumo.csv": "670f8eaeeee704b17ceb373a2f2280235489f47d87cc5c5fa7ac05ac55cbd8b8",
+    "resultados/detectabilidade/pod_curvas.csv": "6f4f901b85b1e29d16c996b6e56a0884bed21e61ca92993d5d10c022c54b81d4",
+    "resultados/detectabilidade/ancoras.csv": "940650d4a6fac7441c124ead8671826d98de4acb35cf1c102cea515f34bb5ee3",
+    "resultados/detectabilidade/detectabilidade.json": "6226b672698c021ac6e9b23989eb1efea3ec9f40736c44e99760b73fb39226f1",
+    "resultados/detectabilidade/relatorio.md": "692f066cf4dd0b75468f1786f8c660adb3cf638e039b65e1e9475063f70328cc"
+  },
+  "evidence_level": "E2"
+}
