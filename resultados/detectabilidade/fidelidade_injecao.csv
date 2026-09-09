@@ -1,0 +1,7 @@
+injection_id,fmeca_scope,injection_method,reference_experiments,model,model_name,pod_a1,e3_recall_min,e3_recall_max,n_ensaios_e3,divergencia_ate_faixa_e3,escalas_de_normalizacao_distintas,status
+igbt,igbt,electrical_signature,F1L;F1M,ae_denso,Autoencoder Denso,1.0,0.6677018633540373,0.7838616714697406,2,0.21613832853025938,True,comparado
+igbt,igbt,electrical_signature,F1L;F1M,ae_lstm,AE-LSTM,1.0,0.6863354037267081,0.7838616714697406,2,0.21613832853025938,True,comparado
+sensor_realimentacao,sensor_feedback_system,electrical_signature,F2L;F2M,ae_denso,Autoencoder Denso,0.9145907473309609,0.788135593220339,0.7966573816155988,2,0.11793336571536206,True,comparado
+sensor_realimentacao,sensor_feedback_system,electrical_signature,F2L;F2M,ae_lstm,AE-LSTM,0.060498220640569395,0.751412429378531,0.7938718662952646,2,0.6909142087379616,True,comparado
+controle,inverter_control_system,measured_state_interpolation,F6L;F6M;F7L;F7M,ae_denso,Autoencoder Denso,0.99644128113879,0.0278551532033426,0.1949860724233983,4,0.8014552087153918,True,comparado
+controle,inverter_control_system,measured_state_interpolation,F6L;F6M;F7L;F7M,ae_lstm,AE-LSTM,0.597864768683274,0.0,0.0724233983286908,4,0.5254413703545832,True,comparado
