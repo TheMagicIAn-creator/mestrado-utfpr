@@ -221,6 +221,8 @@ def _selected_stages(question: str) -> tuple[str, ...]:
     selected = []
     if any(term in text for term in ("comparacao", "autoencoder", "denso", "lstm", "e3")):
         selected.append("comparacao")
+    if any(term in text for term in ("detectabilidade", "magnitude", "a_det", "e2")):
+        selected.append("detectabilidade")
     if any(term in text for term in ("confiabilidade", "taxa de falha", "r(t)", "h(t)")):
         selected.append("confiabilidade")
     return tuple(selected)
@@ -245,7 +247,10 @@ def limpar_resultados_ml(
         return {
             "ok": False,
             "etapa": "Limpeza de resultados",
-            "mensagem": "Indique `comparação`, `confiabilidade` ou ambas.",
+            "mensagem": (
+                "Indique `comparação`, `detectabilidade`, `confiabilidade` "
+                "ou uma combinação delas."
+            ),
             "imagens": [],
             "resposta_pronta": True,
         }
@@ -269,7 +274,7 @@ def limpar_resultados_ml(
             "mensagem": (
                 f"A operação removerá {len(existing)} arquivo(s) de "
                 f"**{labels}**. A ação é irreversível. Confirma excluir "
-                f"{'ambas as publicações' if len(stages) == 2 else 'essa publicação'}? "
+                f"{'essas publicações' if len(stages) > 1 else 'essa publicação'}? "
                 f"Responda `confirmar` ou, para compatibilidade, `{tokens[0]}`."
             ),
             "imagens": [],

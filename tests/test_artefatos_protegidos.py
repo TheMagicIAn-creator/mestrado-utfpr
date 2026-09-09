@@ -98,6 +98,64 @@ def _artefato_e2_predata_o_codigo() -> bool:
     return portao.get("max_publishable_a") != MAXIMO_A_PUBLICAVEL
 
 
+FIGURAS_E2 = (
+    "e2_pod_curvas.png",
+    "e2_pod_curvas.pdf",
+    "e2_fidelidade.png",
+    "e2_fidelidade.pdf",
+)
+
+
+def _manifesto_e2_ainda_nao_conhece_as_figuras() -> bool:
+    """O manifesto da E2 publicado ainda ignora o módulo que desenha as figuras?
+
+    Em 2026-09-09 a etapa passou a publicar quatro figuras. Enquanto a campanha
+    não for reexecutada, os arquivos existem em `resultados/detectabilidade/`
+    mas não estão no manifesto — presentes e NÃO hasheados. A auditoria conta o
+    que o manifesto lista, então essa defasagem passaria em silêncio, que é
+    exatamente o modo de falha fechado pela guarda acima.
+
+    Só
+
+        python -m src.ml.campanha_detectabilidade
+
+    fecha a divergência. A condição vem do próprio manifesto e some sozinha.
+    """
+    manifesto = MANIFESTOS / "detectabilidade.json"
+    if not manifesto.is_file():
+        return False
+    dependencias = json.loads(manifesto.read_text(encoding="utf-8")).get(
+        "code_dependencies", {}
+    )
+    return "plots" not in dependencias
+
+
+PENDENTE_DE_FIGURAS_E2 = pytest.mark.xfail(
+    _manifesto_e2_ainda_nao_conhece_as_figuras(),
+    strict=True,
+    reason=(
+        "resultados/detectabilidade/ foi gerado antes das figuras da E2; rode "
+        "`python -m src.ml.campanha_detectabilidade` e commite resultados/ para "
+        "reativar esta guarda"
+    ),
+)
+
+
+@PENDENTE_DE_FIGURAS_E2
+def test_figuras_da_e2_estao_no_manifesto_e_hasheadas():
+    """Figura publicada sem hash é figura que ninguém consegue auditar."""
+    manifesto = json.loads(
+        (MANIFESTOS / "detectabilidade.json").read_text(encoding="utf-8")
+    )
+    listados = set(manifesto["output_artifacts"])
+    faltando = [
+        nome
+        for nome in FIGURAS_E2
+        if f"resultados/detectabilidade/{nome}" not in listados
+    ]
+    assert not faltando, f"figuras da E2 fora do manifesto: {faltando}"
+
+
 PENDENTE_DE_REGENERACAO_E2 = pytest.mark.xfail(
     _artefato_e2_predata_o_codigo(),
     strict=True,

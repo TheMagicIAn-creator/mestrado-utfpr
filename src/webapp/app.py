@@ -38,11 +38,13 @@ from src.webapp.agent_adapter import (
 )
 from src.webapp.contracts import (
     COMPARISON,
+    DETECTABILITY,
     LITERATURE,
     MANIFESTS,
     RELIABILITY,
     ContratoWebInvalido,
     contracts_status,
+    e2_contract,
     e3_contract,
     reliability_contract,
     sources_contract,
@@ -112,6 +114,10 @@ async def _contract_response(loader) -> JSONResponse:
 
 async def e3_api(_request: Request) -> JSONResponse:
     return await _contract_response(e3_contract)
+
+
+async def e2_api(_request: Request) -> JSONResponse:
+    return await _contract_response(e2_contract)
 
 
 async def reliability_api(_request: Request) -> JSONResponse:
@@ -698,6 +704,7 @@ def create_app(
         Route("/api/status", status_api, methods=["GET"]),
         Route("/api/health", status_api, methods=["GET"]),
         Route("/api/results/e3", e3_api, methods=["GET"]),
+        Route("/api/results/e2", e2_api, methods=["GET"]),
         Route("/api/reliability", reliability_api, methods=["GET"]),
         Route("/api/library", library_api, methods=["GET"]),
         Route("/api/library", library_add_api, methods=["POST"]),
@@ -719,6 +726,11 @@ def create_app(
             "/artifacts/comparison",
             app=StaticFiles(directory=COMPARISON),
             name="artifacts-comparison",
+        ),
+        Mount(
+            "/artifacts/detectability",
+            app=StaticFiles(directory=DETECTABILITY),
+            name="artifacts-detectability",
         ),
         Mount(
             "/artifacts/reliability",

@@ -91,6 +91,7 @@ cenário bibliográfico separado e não deriva taxas de falha do GPVS.
 | `detectabilidade.py` | `a_det`, POD e Weibull 2P com censura à direita; eixo é magnitude, não tempo. |
 | `campanha_detectabilidade.py` | Orquestra a campanha E2 com os modelos congelados; sem treino nem recalibração. |
 | `publicacao_detectabilidade.py` | Resumo, curvas POD, âncoras, contrato e manifesto da etapa E2. |
+| `graficos_detectabilidade.py` | Figuras da E2 em PNG e PDF; o eixo é `a`, fração da assinatura, não tempo. |
 | `confiabilidade_componentes.py` | FMECA anulável vigente e cenários exponenciais históricos. |
 | `graficos_confiabilidade.py` | Figuras de R(t), F(t), f(t), h(t) e taxas. |
 | `publicacao_confiabilidade.py` | Publicação física e manifesto v2. |

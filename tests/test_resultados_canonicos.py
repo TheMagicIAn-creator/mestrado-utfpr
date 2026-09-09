@@ -33,6 +33,37 @@ def test_comparison_word_alone_does_not_mix_reliability_results():
     assert "confiabilidade_componentes.json" not in response["mensagem"]
 
 
+def test_detectability_focus_stays_inside_its_own_family():
+    """Simétrico das guardas acima: a E2 responde sozinha e se declara E2."""
+    response = resultados.resumir_resultados("mostre as curvas pod da detectabilidade")
+    text = response["mensagem"]
+
+    assert len(response["imagens"]) == 2
+    assert all(
+        ("resultados", "detectabilidade") == Path(item["path"]).parts[-3:-1]
+        for item in response["imagens"]
+    )
+    assert "Detectabilidade por magnitude (E2)" in text
+    assert "não é tempo, ciclo, vida consumida nem RUL" in text
+    assert "Nenhum número desta seção é evidência de bancada" in text
+    # Nada da E3 nem da confiabilidade física atravessa.
+    assert "14 ensaios experimentais" not in text
+    assert "R(t)=exp(-λt)" not in text
+    assert "λ (falha/h)" not in text
+
+
+def test_default_summary_now_covers_the_three_families():
+    """Pergunta genérica traz as três, cada uma rotulada com seu nível."""
+    text = resultados.resumir_resultados("resuma os resultados", incluir_imagens=False)[
+        "mensagem"
+    ]
+    assert "14 ensaios experimentais" in text
+    assert "Detectabilidade por magnitude (E2)" in text
+    assert "Confiabilidade física: cenários" in text
+    # E2 e confiabilidade coexistem sem que uma empreste escala à outra.
+    assert "E2 não é degrau entre E1 e E3" in text
+
+
 def test_reliability_focus_does_not_mix_detectability_figures():
     response = resultados.resumir_resultados("mostre a confiabilidade física e h(t)")
     assert len(response["imagens"]) == 5

@@ -179,3 +179,10 @@ Os resultados vigentes ficam apenas em:
 Cada figura tem dados-fonte tabulares, JSON metodológico, PNG 300 dpi e PDF
 vetorial. Manifestos v2 registram código, dependências, entradas, parâmetros,
 saídas e hashes. A leitura de resultados nunca recalcula o pipeline.
+
+A E2 é a **segunda das três etapas** do pipeline canônico, entre `comparacao` e
+`confiabilidade`, porque consome os pesos, o scaler e o limiar congelados pela
+comparação — ela exige os dados brutos para reextrair as features, mas nunca
+treina nem recalibra. Suas figuras trazem o eixo `a` no rótulo e a ressalva de
+escala no rodapé, para não serem lidas ao lado das curvas em `t` da
+confiabilidade física.

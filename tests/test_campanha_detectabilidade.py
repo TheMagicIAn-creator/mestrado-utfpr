@@ -244,7 +244,7 @@ def test_run_sem_publicar_percorre_os_tres_itens(monkeypatch):
 
     monkeypatch.setattr(
         campanha, "load_or_extract_features",
-        lambda directory=None: (healthy, pd.DataFrame(), {"windows": 320}),
+        lambda force=False, directory=None: (healthy, pd.DataFrame(), {"windows": 320}),
     )
     monkeypatch.setattr(campanha, "prepare_healthy_data", lambda healthy: prepared)
     monkeypatch.setattr(

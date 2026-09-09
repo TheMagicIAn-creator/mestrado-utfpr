@@ -199,6 +199,7 @@ APIs canônicas:
 - `/api/chat/stream`;
 - `/api/status`;
 - `/api/results/e3`;
+- `/api/results/e2`;
 - `/api/reliability`;
 - `/api/sources`.
 

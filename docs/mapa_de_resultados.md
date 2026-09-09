@@ -54,6 +54,8 @@ superioridade inequívoca do AE-LSTM.
 | Curvas POD sobre a grade de severidade | `pod_curvas.csv` |
 | Distância entre a janela injetada em `a=1` e o ensaio real | `ancoras.csv` |
 | Confronto POD(a=1) versus recall da E3 | `fidelidade_injecao.csv` |
+| Curvas POD por item da FMECA | `e2_pod_curvas.{png,pdf}` |
+| Fidelidade da injeção em `a=1` | `e2_fidelidade.{png,pdf}` |
 | Contrato, metodologia e portão de adoção da Weibull | `detectabilidade.json` |
 
 `a` é fração da assinatura nominal, em `[0,1]`. O percentil empírico vem primeiro
