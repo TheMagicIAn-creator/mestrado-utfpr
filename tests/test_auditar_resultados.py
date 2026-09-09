@@ -30,7 +30,7 @@ def test_auditor_executa_fora_da_raiz(tmp_path):
 
     assert processo.returncode == 0, processo.stdout + processo.stderr
     assert "APROVADO" in processo.stdout
-    assert "42 artefatos" in processo.stdout
+    assert "43 artefatos" in processo.stdout
 
 
 def test_auditor_rejeita_contrato_retrieval_divergente(tmp_path):

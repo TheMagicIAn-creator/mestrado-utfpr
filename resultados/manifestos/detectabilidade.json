@@ -1,14 +1,14 @@
 {
   "manifest_version": 2,
   "stage": "detectabilidade",
-  "created_at": "2026-09-07T18:22:05.288010-03:00",
-  "git_commit": "f7dfc5f0c2fa304eae0dff481b10af6a46d6cd10",
+  "created_at": "2026-09-08T23:21:32.541093-03:00",
+  "git_commit": "6f1c78dcc936e2fa8754b8a3f8678ba691072194",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "code_sha256": "0764163d3c1b30c4c4c2098493abbc89e40703f04672f1a7d22d8f15ba1ef298",
   "code_dependencies": {
-    "detectabilidade": "1715858db32ce619466820f85b2b5e7fd7d9e20e1bacc3b001fbf8ed52db19f6",
+    "detectabilidade": "9b2e46c3382adcbea60ed930ff5ee30612576b7fa596129b35912ca23bcd5a0f",
     "injection": "d2a44162b9dc1c26e79c3c57362752caa6df017be31c2d9a37d15deca6008c69",
     "models": "fe418de106f1c7429e20f3056150a0b8cd5d924a6b121dd078ad2c1569329220",
     "dataset": "cd4390349e9b13b2d7e2f1c931ba0aec72ff75059ed0bf809b8ebf1559ce72e4",
@@ -81,7 +81,12 @@
     "weibull_adoption_gate": {
       "min_detected": 10,
       "min_paper_r2": 0.9,
-      "min_distinct_values": 4
+      "min_distinct_values": 4,
+      "max_publishable_a": 1.0,
+      "gated_quantiles": [
+        0.1,
+        0.5
+      ]
     },
     "injections": [
       "igbt",
@@ -102,15 +107,17 @@
     "resultados/detectabilidade/detectabilidade_resumo.csv",
     "resultados/detectabilidade/pod_curvas.csv",
     "resultados/detectabilidade/ancoras.csv",
+    "resultados/detectabilidade/fidelidade_injecao.csv",
     "resultados/detectabilidade/detectabilidade.json",
     "resultados/detectabilidade/relatorio.md"
   ],
   "output_artifacts": {
-    "resultados/detectabilidade/detectabilidade_resumo.csv": "670f8eaeeee704b17ceb373a2f2280235489f47d87cc5c5fa7ac05ac55cbd8b8",
+    "resultados/detectabilidade/detectabilidade_resumo.csv": "f37f0819ed386929b6279bec3bcce74bb0792166acf6c5e0161ddc19566384b3",
     "resultados/detectabilidade/pod_curvas.csv": "6f4f901b85b1e29d16c996b6e56a0884bed21e61ca92993d5d10c022c54b81d4",
     "resultados/detectabilidade/ancoras.csv": "940650d4a6fac7441c124ead8671826d98de4acb35cf1c102cea515f34bb5ee3",
-    "resultados/detectabilidade/detectabilidade.json": "6226b672698c021ac6e9b23989eb1efea3ec9f40736c44e99760b73fb39226f1",
-    "resultados/detectabilidade/relatorio.md": "692f066cf4dd0b75468f1786f8c660adb3cf638e039b65e1e9475063f70328cc"
+    "resultados/detectabilidade/fidelidade_injecao.csv": "0a186467892596a1f664677ba60c1605b6406cb36a7f7ca5fb9beca4ec098808",
+    "resultados/detectabilidade/detectabilidade.json": "03761fe7cb91a153622e6e00de15f8cfdab8568a05e4bffae4e82b9baf295534",
+    "resultados/detectabilidade/relatorio.md": "d2a1cc2731b35b6d360ad005398ca51defc00352ac3f8c149dfa6aa36952e0f9"
   },
   "evidence_level": "E2"
 }

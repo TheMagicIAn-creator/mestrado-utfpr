@@ -80,7 +80,12 @@
     "weibull_adoption_gate": {
       "min_detected": 10,
       "min_paper_r2": 0.9,
-      "min_distinct_values": 4
+      "min_distinct_values": 4,
+      "max_publishable_a": 1.0,
+      "gated_quantiles": [
+        0.1,
+        0.5
+      ]
     },
     "weibull_meaning": "dispersion_of_detection_magnitude_not_physical_reliability"
   },
@@ -5749,14 +5754,14 @@
           "a10_empirico": null,
           "a50_empirico": null,
           "a90_empirico": null,
-          "weibull_2p_adotada": true,
+          "weibull_2p_adotada": false,
           "weibull_2p_convergiu": true,
           "weibull_2p_beta": 1.0348252034714516,
           "weibull_2p_eta": 14.652426260790298,
           "weibull_2p_r2_papel": 0.9278109738441715,
-          "weibull_2p_motivo_da_rejeicao": null,
-          "a10_parametrico": 1.6652424414224714,
-          "a50_parametrico": 10.282334825438303
+          "weibull_2p_motivo_da_rejeicao": "percentil paramétrico fora do domínio de a ([0, 1]): a10=1.665, a50=10.28. O ajuste extrapola além da maior severidade injetável, então não é magnitude de detecção",
+          "a10_parametrico": null,
+          "a50_parametrico": null
         }
       }
     },
@@ -11576,5 +11581,102 @@
         }
       }
     }
-  ]
+  ],
+  "injection_fidelity": {
+    "method": "pod_at_a1_versus_e3_recall_on_reference_experiments_reference_seed",
+    "e3_source": "resultados/comparacao/e3_metricas_por_ensaio.csv",
+    "scale_caveat": "POD e recall não vivem na mesma escala. A POD sai de janelas F0 normalizadas pela baseline saudável — a escala em que o limiar foi calibrado — e o recall da E3 sai dos ensaios reais normalizados por comissionamento. Divergência grande sinaliza que a injeção não reproduz o defeito medido; não é erro de nenhuma das duas etapas, e este confronto não substitui a E3.",
+    "comparisons": [
+      {
+        "injection_id": "igbt",
+        "fmeca_scope": "igbt",
+        "injection_method": "electrical_signature",
+        "reference_experiments": "F1L;F1M",
+        "model": "ae_denso",
+        "model_name": "Autoencoder Denso",
+        "pod_a1": 1.0,
+        "e3_recall_min": 0.6677018633540373,
+        "e3_recall_max": 0.7838616714697406,
+        "n_ensaios_e3": 2,
+        "divergencia_ate_faixa_e3": 0.21613832853025938,
+        "escalas_de_normalizacao_distintas": true,
+        "status": "comparado"
+      },
+      {
+        "injection_id": "igbt",
+        "fmeca_scope": "igbt",
+        "injection_method": "electrical_signature",
+        "reference_experiments": "F1L;F1M",
+        "model": "ae_lstm",
+        "model_name": "AE-LSTM",
+        "pod_a1": 1.0,
+        "e3_recall_min": 0.6863354037267081,
+        "e3_recall_max": 0.7838616714697406,
+        "n_ensaios_e3": 2,
+        "divergencia_ate_faixa_e3": 0.21613832853025938,
+        "escalas_de_normalizacao_distintas": true,
+        "status": "comparado"
+      },
+      {
+        "injection_id": "sensor_realimentacao",
+        "fmeca_scope": "sensor_feedback_system",
+        "injection_method": "electrical_signature",
+        "reference_experiments": "F2L;F2M",
+        "model": "ae_denso",
+        "model_name": "Autoencoder Denso",
+        "pod_a1": 0.9145907473309609,
+        "e3_recall_min": 0.788135593220339,
+        "e3_recall_max": 0.7966573816155988,
+        "n_ensaios_e3": 2,
+        "divergencia_ate_faixa_e3": 0.11793336571536206,
+        "escalas_de_normalizacao_distintas": true,
+        "status": "comparado"
+      },
+      {
+        "injection_id": "sensor_realimentacao",
+        "fmeca_scope": "sensor_feedback_system",
+        "injection_method": "electrical_signature",
+        "reference_experiments": "F2L;F2M",
+        "model": "ae_lstm",
+        "model_name": "AE-LSTM",
+        "pod_a1": 0.060498220640569395,
+        "e3_recall_min": 0.751412429378531,
+        "e3_recall_max": 0.7938718662952646,
+        "n_ensaios_e3": 2,
+        "divergencia_ate_faixa_e3": 0.6909142087379616,
+        "escalas_de_normalizacao_distintas": true,
+        "status": "comparado"
+      },
+      {
+        "injection_id": "controle",
+        "fmeca_scope": "inverter_control_system",
+        "injection_method": "measured_state_interpolation",
+        "reference_experiments": "F6L;F6M;F7L;F7M",
+        "model": "ae_denso",
+        "model_name": "Autoencoder Denso",
+        "pod_a1": 0.99644128113879,
+        "e3_recall_min": 0.0278551532033426,
+        "e3_recall_max": 0.1949860724233983,
+        "n_ensaios_e3": 4,
+        "divergencia_ate_faixa_e3": 0.8014552087153918,
+        "escalas_de_normalizacao_distintas": true,
+        "status": "comparado"
+      },
+      {
+        "injection_id": "controle",
+        "fmeca_scope": "inverter_control_system",
+        "injection_method": "measured_state_interpolation",
+        "reference_experiments": "F6L;F6M;F7L;F7M",
+        "model": "ae_lstm",
+        "model_name": "AE-LSTM",
+        "pod_a1": 0.597864768683274,
+        "e3_recall_min": 0.0,
+        "e3_recall_max": 0.0724233983286908,
+        "n_ensaios_e3": 4,
+        "divergencia_ate_faixa_e3": 0.5254413703545832,
+        "escalas_de_normalizacao_distintas": true,
+        "status": "comparado"
+      }
+    ]
+  }
 }
