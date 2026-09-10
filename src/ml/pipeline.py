@@ -68,6 +68,21 @@ STAGES: dict[str, PipelineStage] = {
         ),
         requires_gpvs=True,
     ),
+    # Entre comparação e confiabilidade porque é essa a ordem de dependência: a
+    # E2 consome os pesos, o scaler e o limiar CONGELADOS pela comparação, e não
+    # treina nem recalibra nada.
+    "detectabilidade": PipelineStage(
+        key="detectabilidade",
+        label="Detectabilidade por magnitude (E2)",
+        manifest_name="detectabilidade",
+        runner_module="src.ml.campanha_detectabilidade",
+        runner_function="run",
+        required_outputs=(
+            "resultados/detectabilidade/detectabilidade.json",
+            "resultados/detectabilidade/relatorio.md",
+        ),
+        requires_gpvs=True,
+    ),
     "confiabilidade": PipelineStage(
         key="confiabilidade",
         label="Confiabilidade física bibliográfica",
@@ -126,9 +141,13 @@ def capacidade_recalculo_pipeline() -> dict:
     expected = _gpvs_paths()
     missing = [str(path) for path in expected.values() if not path.is_file()]
     available = not missing
-    executable = ["confiabilidade"]
-    if available:
-        executable.insert(0, "comparacao")
+    # Derivado de STAGES, na ordem do pipeline: uma etapa nova não pode ficar
+    # fora desta lista por esquecimento de editar um literal.
+    executable = [
+        key
+        for key, stage in STAGES.items()
+        if available or not stage.requires_gpvs
+    ]
     return {
         "disponivel": available,
         "modo": "calculo_local" if available else "consulta_publicada",

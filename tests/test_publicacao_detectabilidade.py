@@ -112,9 +112,13 @@ def test_escreve_todos_os_dados_fonte(_publicado):
         "fidelidade_injecao.csv",
         "detectabilidade.json",
         "relatorio.md",
+        "e2_pod_curvas.png",
+        "e2_pod_curvas.pdf",
+        "e2_fidelidade.png",
+        "e2_fidelidade.pdf",
     ):
         assert (destino / nome).is_file(), nome
-    assert len(saved["outputs"]) == 6
+    assert len(saved["outputs"]) == 10
 
 
 def test_contrato_json_declara_e2_e_os_tres_itens(_publicado):
@@ -189,7 +193,7 @@ def test_sem_artefato_da_e3_a_fidelidade_degrada_sem_derrubar_a_etapa(
         e3_metricas_path=tmp_path / "nao_existe" / "e3_metricas_por_ensaio.csv",
     )
 
-    assert len(saved["outputs"]) == 6
+    assert len(saved["outputs"]) == 10
     fidelidade = pd.read_csv(tmp_path / "detectabilidade" / "fidelidade_injecao.csv")
     assert fidelidade["status"].eq("sem_artefato_e3").all()
     assert fidelidade["e3_recall_min"].isna().all()
@@ -203,5 +207,9 @@ def test_manifesto_registra_a_etapa_e_as_saidas(_publicado):
     manifest = json.loads(saved["manifest"].read_text(encoding="utf-8"))
     assert manifest["stage"] == "detectabilidade"
     assert manifest["evidence_level"] == "E2"
-    assert len(manifest["outputs"]) == 6
+    assert len(manifest["outputs"]) == 10
+    # As figuras entram no manifesto com o módulo que as desenha: mudar o estilo
+    # sem regenerar passa a ser divergência de hash, não silêncio.
+    assert "plots" in manifest["code_dependencies"]
+    assert "plot_style" in manifest["code_dependencies"]
     assert manifest["parameters"]["sequence_policy"] == "sustained_severity_repeated_frame"

@@ -284,10 +284,19 @@ def run(
     grade=GRADE_SEVERIDADE,
     confirmacoes: int = CONFIRMACOES_PADRAO,
     publicar: bool = True,
+    force_features: bool = False,
 ) -> dict:
-    """Executa a campanha E2 completa e, por padrão, publica os artefatos."""
+    """Executa a campanha E2 completa e, por padrão, publica os artefatos.
+
+    `force_features` só reextrai as features do GPVS; ele não retreina nem
+    recalibra nada — os pesos, o scaler e o limiar continuam vindo congelados da
+    etapa `comparacao`. O argumento existe porque `pipeline.executar_etapa`
+    chama todo runner que exige GPVS com essa assinatura.
+    """
     LOGGER.info("Carregando features e ensaios GPVS-Faults")
-    healthy, faults, dataset_manifest = load_or_extract_features(directory=directory)
+    healthy, faults, dataset_manifest = load_or_extract_features(
+        force=force_features, directory=directory
+    )
     prepared = prepare_healthy_data(healthy)
     LOGGER.info("Carregando janelas saudáveis de holdout para injeção")
     holdout, holdout_meta = load_holdout_windows(prepared, directory=directory)

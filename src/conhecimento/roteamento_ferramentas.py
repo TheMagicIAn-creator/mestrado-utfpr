@@ -109,6 +109,9 @@ def _asks_results(text: str) -> bool:
             "curva",
             "taxa de falha",
             "confiabilidade",
+            "detectabilidade",
+            "magnitude",
+            "a_det",
         )
     )
     request_term = any(

@@ -21,11 +21,13 @@ from src.webapp.chart_data import (
 
 ROOT = Path(RAIZ_PROJETO)
 COMPARISON = ROOT / "resultados" / "comparacao"
+DETECTABILITY = ROOT / "resultados" / "detectabilidade"
 RELIABILITY = ROOT / "resultados" / "confiabilidade"
 MANIFESTS = ROOT / "resultados" / "manifestos"
 LITERATURE = ROOT / "literatura" / "inversores-pv"
 
 COMPARISON_JSON = COMPARISON / "comparacao_autoencoders.json"
+DETECTABILITY_JSON = DETECTABILITY / "detectabilidade.json"
 RELIABILITY_JSON = RELIABILITY / "metodologia.json"
 COMPARISON_MANIFEST = MANIFESTS / "comparacao_autoencoders.json"
 RELIABILITY_MANIFEST = MANIFESTS / "confiabilidade_componentes.json"
@@ -104,6 +106,25 @@ def _comparison_payload(_signature_value) -> dict:
 
 
 @lru_cache(maxsize=8)
+def _detectability_payload(_signature_value) -> dict:
+    """Recusa servir como E2 qualquer artefato que não seja E2.
+
+    A separação de famílias vira estrutura aqui: o eixo `a` é fração da
+    assinatura nominal, e um artefato cujo eixo seja tempo não pode entrar por
+    esta porta nem por engano.
+    """
+    payload = _json(DETECTABILITY_JSON)
+    if payload.get("evidence_level") != "E2":
+        raise ContratoWebInvalido("A detectabilidade publicada deve ser de nível E2")
+    axis = payload.get("methodology", {}).get("a_axis")
+    if axis != "fraction_of_nominal_signature_not_time":
+        raise ContratoWebInvalido(
+            f"O eixo da detectabilidade publicada não é fração de assinatura: {axis}"
+        )
+    return payload
+
+
+@lru_cache(maxsize=8)
 def _reliability_payload(_signature_value) -> dict:
     payload = _json(RELIABILITY_JSON)
     if payload.get("evidence_scope") != "bibliographic_reliability_only":
@@ -114,6 +135,7 @@ def _reliability_payload(_signature_value) -> dict:
 def _artifact(area: str, filename: str, title: str, note: str = "") -> dict:
     folder = {
         "comparison": COMPARISON,
+        "detectability": DETECTABILITY,
         "reliability": RELIABILITY,
         "manifests": MANIFESTS,
     }[area]
@@ -321,6 +343,105 @@ def e3_contract() -> dict:
     return _e3_contract_cached(_signature(paths))
 
 
+def _pod_curves() -> list[dict]:
+    """Curvas POD por item e modelo, na grade de severidade publicada."""
+    curvas: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for row in _csv(DETECTABILITY / "pod_curvas.csv"):
+        curvas[(row["injection_id"], row["model"])].append(
+            {"a": float(row["a"]), "pod": float(row["pod"])}
+        )
+    return [
+        {"injection_id": injection_id, "model": model, "points": points}
+        for (injection_id, model), points in sorted(curvas.items())
+    ]
+
+
+@lru_cache(maxsize=8)
+def _e2_contract_cached(signature_value) -> dict:
+    payload = _detectability_payload((signature_value[0],))
+    methodology = payload["methodology"]
+    contract = {
+        "contract_version": 1,
+        "evidence_level": payload["evidence_level"],
+        "stage": payload["stage"],
+        "generated_at": payload.get("created_at"),
+        "question": (
+            "A partir de que magnitude cada modelo congelado passa a detectar. "
+            "Não é evidência de bancada e não é degrau entre E1 e E3."
+        ),
+        "axis": {
+            "symbol": "a",
+            "meaning": methodology["a_axis"],
+            "domain": [0.0, 1.0],
+            "is_not": methodology["a_det_is_not"],
+        },
+        "dataset": {
+            "name": payload["holdout"].get("dataset"),
+            "doi": payload["holdout"].get("doi"),
+            "protocol": payload["holdout"].get("protocol"),
+            "n_windows": payload["holdout"].get("n_windows"),
+        },
+        # Derivado do artefato, não de `src.ml`: o pacote web não importa torch.
+        "models": sorted(
+            {
+                model
+                for injection in payload["injections"]
+                for model in injection["models"]
+            }
+        ),
+        "parameters": payload["parameters"],
+        "methodology": methodology,
+        "injections": payload["injections"],
+        "pod_curves": _pod_curves(),
+        "injection_fidelity": payload["injection_fidelity"],
+        "separation": {
+            "e2_is_bench_evidence": False,
+            "a_det_is_time": False,
+            "pod_is_recall": False,
+            "weibull_is_physical_reliability": False,
+            "caveat": payload["injection_fidelity"]["scale_caveat"],
+        },
+        "figures": [
+            _figure(
+                "detectability",
+                "e2_pod_curvas",
+                "Curvas POD por item da FMECA",
+                "POD contra `a`, fração da assinatura nominal; o eixo não é tempo.",
+            ),
+            _figure(
+                "detectability",
+                "e2_fidelidade",
+                "Fidelidade da injeção contra os ensaios reais",
+                "POD em a=1 diante da faixa de recall da E3; escalas de "
+                "normalização distintas.",
+            ),
+        ],
+        "tables": [
+            _artifact(
+                "detectability", "detectabilidade_resumo.csv", "Resumo de a_det"
+            ),
+            _artifact("detectability", "pod_curvas.csv", "Curvas POD"),
+            _artifact("detectability", "ancoras.csv", "Âncoras em unidades de IQR"),
+            _artifact(
+                "detectability", "fidelidade_injecao.csv", "Fidelidade da injeção"
+            ),
+        ],
+    }
+    _set_contract_status("pronto")
+    return contract
+
+
+def e2_contract() -> dict:
+    paths = (
+        DETECTABILITY_JSON,
+        DETECTABILITY / "pod_curvas.csv",
+        DETECTABILITY / "fidelidade_injecao.csv",
+        DETECTABILITY / "e2_pod_curvas.png",
+        DETECTABILITY / "e2_fidelidade.png",
+    )
+    return _e2_contract_cached(_signature(paths))
+
+
 @lru_cache(maxsize=8)
 def _reliability_contract_cached(signature_value) -> dict:
     payload = _reliability_payload((signature_value[0],))
@@ -485,6 +606,7 @@ def warm_contracts() -> dict:
     _set_contract_status("iniciando")
     try:
         e3_contract()
+        e2_contract()
         reliability_contract()
         sources_contract()
     except ContratoWebInvalido as exc:
@@ -504,11 +626,13 @@ def warm_contracts_background() -> threading.Thread:
 
 __all__ = [
     "COMPARISON",
+    "DETECTABILITY",
     "LITERATURE",
     "MANIFESTS",
     "RELIABILITY",
     "ContratoWebInvalido",
     "contracts_status",
+    "e2_contract",
     "e3_contract",
     "reliability_contract",
     "sources_contract",

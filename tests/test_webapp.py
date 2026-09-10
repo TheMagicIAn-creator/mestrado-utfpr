@@ -22,6 +22,7 @@ from src.webapp.agent_adapter import (
 )
 from src.webapp.app import create_app
 from src.webapp.contracts import (
+    e2_contract,
     e3_contract,
     reliability_contract,
     sources_contract,
@@ -117,8 +118,58 @@ def test_e3_publica_apenas_denso_e_lstm_no_gpvs(client):
     assert all(item["url"].startswith("/artifacts/comparison/") for item in data["figures"])
 
 
-def test_endpoint_sintetico_e2_nao_e_mais_publicado(client):
-    assert client.get("/api/results/e2").status_code == 404
+def test_e2_publica_detectabilidade_por_magnitude_sem_virar_bancada(client):
+    """A E2 tem endpoint próprio — e ele precisa dizer que não é E3.
+
+    O 404 anterior guardava o pipeline `resultados/v2`, aposentado junto com o
+    `autoencoder_v2`; essa guarda continua em
+    `test_pacote_web_nao_conserva_identificadores_legados`. O que volta aqui é
+    outra coisa: a campanha E2 canônica, sobre `resultados/detectabilidade/`.
+    """
+    response = client.get("/api/results/e2")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["contract_version"] == 1
+    assert data["evidence_level"] == "E2"
+    assert data["dataset"]["name"] == "GPVS-Faults"
+    assert data["models"] == ["ae_denso", "ae_lstm"]
+    assert data["axis"]["meaning"] == "fraction_of_nominal_signature_not_time"
+    assert data["axis"]["domain"] == [0.0, 1.0]
+    assert {"time", "cycle", "consumed_life", "RUL"} <= set(data["axis"]["is_not"])
+
+    # As três famílias não se misturam, e o contrato diz isso explicitamente.
+    assert data["separation"]["e2_is_bench_evidence"] is False
+    assert data["separation"]["a_det_is_time"] is False
+    assert data["separation"]["pod_is_recall"] is False
+    assert data["separation"]["weibull_is_physical_reliability"] is False
+    assert "POD e recall não vivem na mesma escala" in data["separation"]["caveat"]
+
+    assert {item["injection_id"] for item in data["injections"]} == {
+        "igbt",
+        "sensor_realimentacao",
+        "controle",
+    }
+    assert {item["injection_method"] for item in data["injections"]} == {
+        "electrical_signature",
+        "measured_state_interpolation",
+    }
+    # Percentil paramétrico só sai quando o ajuste foi adotado.
+    for injection in data["injections"]:
+        for resumo in injection["models"].values():
+            if not resumo["weibull_2p_adotada"]:
+                assert resumo["a50_parametrico"] is None
+                assert resumo["weibull_2p_motivo_da_rejeicao"]
+    assert len(data["pod_curves"]) == 6
+    assert all(
+        0.0 <= ponto["a"] <= 1.0 and 0.0 <= ponto["pod"] <= 1.0
+        for curva in data["pod_curves"]
+        for ponto in curva["points"]
+    )
+    assert len(data["figures"]) == 2
+    assert all(
+        item["url"].startswith("/artifacts/detectability/") for item in data["figures"]
+    )
+    assert client.get(data["figures"][0]["url"]).status_code == 200
 
 
 def test_confiabilidade_publica_quatro_cenarios_fisicos_rastreaveis(client):
@@ -892,10 +943,28 @@ def test_contexto_cientifico_reconcilia_comparacao_e_confiabilidade():
     assert "SMD95" not in context
     assert "a_det" not in context
     assert "PCA" not in context
+    # A frase falsa que este bloco servia como autoritativa até a #181.
+    assert "S/O/D/NPR nulos" not in context
+    assert "Escopo vigente da FMECA (validated, 6 itens" in context
+
+
+def test_contexto_de_detectabilidade_nao_vaza_para_outras_familias():
+    """E2 é outra pergunta: entra quando perguntada, e nunca por acidente."""
+    e2 = scientific_context_for("qual a detectabilidade por magnitude?")
+    assert e2 is not None
+    assert "DETECTABILIDADE POR MAGNITUDE (E2)" in e2
+    assert "não é evidência de bancada" in e2.replace("NÃO", "não")
+    assert "fração da assinatura nominal em [0, 1]" in e2
+    assert "não é tempo, ciclo, vida consumida, taxa de falha nem RUL" in e2
+    assert "CONFIABILIDADE E MANUTENCAO" not in e2
+
+    # "pode", "podem", "poderia" contêm "pod": o bloco E2 não pode disparar aí.
+    assert scientific_context_for("você pode me ajudar com isso?") is None
 
 
 def test_contratos_diretos_sao_coerentes_e_cacheaveis():
     assert e3_contract()["dataset"]["name"] == "GPVS-Faults"
+    assert e2_contract()["evidence_level"] == "E2"
     assert reliability_contract()["hours_per_year"] == 8760.0
     assert sources_contract()["dataset"]["experiments"] == 16
 

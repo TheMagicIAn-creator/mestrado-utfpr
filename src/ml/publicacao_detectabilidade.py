@@ -24,6 +24,7 @@ from src.ml.detectabilidade import (
     curva_pod,
     resumo,
 )
+from src.ml.graficos_detectabilidade import generate_all
 from src.ml.injecao_e2 import contrato_da_especificacao
 from src.ml.proveniencia import gerar_manifesto, salvar_manifesto
 from src.ml.treino_comparacao import MODEL_IDS, MODEL_NAMES, MODEL_ROOT
@@ -402,12 +403,16 @@ def salvar_resultados(
     # relatório não poderem divergir entre si.
     fidelidade = _linhas_fidelidade(resultados, e3_path=Path(e3_metricas_path))
 
+    # A curva POD vai para o CSV e para a figura a partir da MESMA tabela, pelo
+    # mesmo motivo da fidelidade: dado-fonte e figura não podem divergir.
+    pod = _linhas_pod(resultados)
+
     resumo_path = results_dir / "detectabilidade_resumo.csv"
     pod_path = results_dir / "pod_curvas.csv"
     ancora_path = results_dir / "ancoras.csv"
     fidelidade_path = results_dir / "fidelidade_injecao.csv"
     _linhas_resumo(resultados).to_csv(resumo_path, index=False, lineterminator="\n")
-    _linhas_pod(resultados).to_csv(pod_path, index=False, lineterminator="\n")
+    pod.to_csv(pod_path, index=False, lineterminator="\n")
     _linhas_ancora(resultados).to_csv(ancora_path, index=False, lineterminator="\n")
     fidelidade.to_csv(fidelidade_path, index=False, lineterminator="\n")
     outputs.extend([resumo_path, pod_path, ancora_path, fidelidade_path])
@@ -425,6 +430,8 @@ def salvar_resultados(
         _relatorio(resultados, parametros, fidelidade), encoding="utf-8", newline="\n"
     )
     outputs.append(report_path)
+
+    outputs.extend(generate_all(results_dir, pod=pod, fidelidade=fidelidade))
 
     manifest = gerar_manifesto(
         stage=STAGE,
@@ -450,6 +457,9 @@ def salvar_resultados(
             "dataset": ROOT / "src" / "ml" / "dados_gpvs.py",
             "training": ROOT / "src" / "ml" / "treino_comparacao.py",
             "orchestration": CODE_PATH,
+            "plots": ROOT / "src" / "ml" / "graficos_detectabilidade.py",
+            "plot_style": ROOT / "src" / "ml" / "estilo_graficos.py",
+            "publication": Path(__file__),
         },
         evidence_level="E2",
     )

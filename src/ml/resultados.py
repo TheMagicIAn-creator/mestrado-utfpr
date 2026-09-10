@@ -13,8 +13,10 @@ from src.core.texto import normalizar_sem_acentos
 
 ROOT = Path(RAIZ_PROJETO)
 COMPARISON_DIR = ROOT / "resultados" / "comparacao"
+DETECTABILITY_DIR = ROOT / "resultados" / "detectabilidade"
 RELIABILITY_DIR = ROOT / "resultados" / "confiabilidade"
 COMPARISON_JSON = COMPARISON_DIR / "comparacao_autoencoders.json"
+DETECTABILITY_JSON = DETECTABILITY_DIR / "detectabilidade.json"
 RELIABILITY_JSON = RELIABILITY_DIR / "metodologia.json"
 MANIFEST_DIR = ROOT / "resultados" / "manifestos"
 
@@ -60,6 +62,21 @@ def _focus(pergunta: str) -> set[str]:
         for term in ("e3", "auc", "roc", "lstm", "denso", "experimental", "comparacao")
     ):
         selected.add("e3")
+    # Sem "pod" isolado: casaria dentro de "pode", "podem", "poderia".
+    if any(
+        term in text
+        for term in (
+            "detectabilidade",
+            "magnitude",
+            "severidade",
+            "a_det",
+            "curva pod",
+            "curvas pod",
+            "injecao",
+            "e2",
+        )
+    ):
+        selected.add("detectability")
     if any(
         term in text
         for term in (
@@ -75,7 +92,7 @@ def _focus(pergunta: str) -> set[str]:
         )
     ):
         selected.add("reliability")
-    return selected or {"e3", "reliability"}
+    return selected or {"e3", "detectability", "reliability"}
 
 
 def _metric_rows(payload: dict) -> dict[tuple[str, str], dict]:
@@ -136,6 +153,57 @@ def _e3_summary(payload: dict) -> str:
     return "\n".join(lines)
 
 
+def _e2_summary(payload: dict) -> str:
+    """Resumo da E2 com as ressalvas coladas ao número, nunca depois dele."""
+    injections = payload.get("injections", [])
+    if not injections:
+        return "## Detectabilidade por magnitude (E2)\n\nVarredura não publicada."
+    fidelidade = {
+        (item["injection_id"], item["model"]): item
+        for item in payload.get("injection_fidelity", {}).get("comparisons", [])
+    }
+    lines = [
+        "## Detectabilidade por magnitude (E2)",
+        "",
+        "A partir de que magnitude cada modelo congelado passa a detectar. `a` é "
+        "fração da assinatura nominal em [0, 1] — não é tempo, ciclo, vida "
+        "consumida nem RUL.",
+        "",
+        "| Item | Método | Modelo | Fração detectada | a10 | a50 | POD(a=1) vs recall E3 |",
+        "|---|---|---|---:|---:|---:|---|",
+    ]
+    for injection in injections:
+        for model_id, resumo in injection["models"].items():
+            comparacao = fidelidade.get((injection["injection_id"], model_id), {})
+            menor, maior = comparacao.get("e3_recall_min"), comparacao.get("e3_recall_max")
+            confronto = (
+                "não disponível"
+                if menor is None or maior is None
+                else f"{_fmt(comparacao.get('pod_a1'))} vs {_fmt(menor)}-{_fmt(maior)}"
+            )
+            lines.append(
+                f"| {injection['injection_id']} | {injection['injection_method']} | "
+                f"{MODEL_LABELS.get(model_id, model_id)} | "
+                f"{_fmt(resumo.get('fracao_detectada'))} | "
+                f"{_fmt(resumo.get('a10_empirico'))} | "
+                f"{_fmt(resumo.get('a50_empirico'))} | {confronto} |"
+            )
+    caveat = payload.get("injection_fidelity", {}).get("scale_caveat", "")
+    lines.extend(
+        [
+            "",
+            "E2 não é degrau entre E1 e E3: a E3 mede detecção em falha real e "
+            "binária, a E2 mede a magnitude em que a detecção começa, sobre falha "
+            "construída. Nenhum número desta seção é evidência de bancada.",
+            caveat,
+            "O percentil empírico vem primeiro; ajuste Weibull rejeitado não "
+            "publica percentil paramétrico, e trajetória que não cruza até `a=1` "
+            "é censurada.",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def _reliability_summary(payload: dict) -> str:
     scenarios = payload.get("scenarios", [])
     if not scenarios:
@@ -168,6 +236,16 @@ def _reliability_summary(payload: dict) -> str:
 
 def _images(focus: set[str], *, inline: bool) -> list[dict]:
     candidates = {
+        "detectability": (
+            (
+                DETECTABILITY_DIR / "e2_pod_curvas.png",
+                "Curvas POD por item da FMECA (E2)",
+            ),
+            (
+                DETECTABILITY_DIR / "e2_fidelidade.png",
+                "Fidelidade da injeção contra os ensaios reais (E2)",
+            ),
+        ),
         "e3": (
             (COMPARISON_DIR / "e3_metricas_macro.png", "Métricas macro E3"),
             (COMPARISON_DIR / "e3_curvas_discriminacao.png", "Curvas ROC e precisão-revocação E3"),
@@ -182,7 +260,7 @@ def _images(focus: set[str], *, inline: bool) -> list[dict]:
         ),
     }
     images = []
-    for section in ("e3", "reliability"):
+    for section in ("e3", "detectability", "reliability"):
         if section not in focus:
             continue
         for path, caption in candidates[section]:
@@ -196,6 +274,11 @@ def _provenance_summary(focus: set[str], operation: str) -> str:
 
     stages = {
         "e3": ("comparacao", "comparacao_autoencoders", "Comparação Denso versus AE-LSTM"),
+        "detectability": (
+            "detectabilidade",
+            "detectabilidade",
+            "Detectabilidade por magnitude (E2)",
+        ),
         "reliability": (
             "confiabilidade",
             "confiabilidade_componentes",
@@ -204,7 +287,7 @@ def _provenance_summary(focus: set[str], operation: str) -> str:
     }
     labels = {"ready": "ready", "stale": "stale", "pending": "pending"}
     lines = ["## Proveniência da resposta", "", f"Operação: **{operation}**."]
-    for section in ("e3", "reliability"):
+    for section in ("e3", "detectability", "reliability"):
         if section not in focus:
             continue
         key, manifest_name, label = stages[section]
@@ -219,6 +302,12 @@ def _provenance_summary(focus: set[str], operation: str) -> str:
                 f"seed de referência={parameters.get('reference_seed', 'não disponível')}; "
                 f"top-k={parameters.get('score_top_k', 'não disponível')}; "
                 f"percentil={parameters.get('threshold_percentile', 'não disponível')}"
+            )
+        elif section == "detectability":
+            configuration = (
+                f"trajetórias={parameters.get('n_trajetorias', 'não disponível')}; "
+                f"confirmações={parameters.get('confirmacoes', 'não disponível')}; "
+                f"limiar={parameters.get('threshold_source', 'não disponível')}"
             )
         else:
             configuration = (
@@ -251,6 +340,8 @@ def resumir_resultados(
     sections = []
     if "e3" in focus:
         sections.append(_e3_summary(comparison))
+    if "detectability" in focus:
+        sections.append(_e2_summary(_json(DETECTABILITY_JSON)))
     if "reliability" in focus:
         sections.append(_reliability_summary(reliability))
     sections.append(_provenance_summary(focus, operacao))
