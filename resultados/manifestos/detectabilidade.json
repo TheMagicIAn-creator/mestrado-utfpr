@@ -1,19 +1,22 @@
 {
   "manifest_version": 2,
   "stage": "detectabilidade",
-  "created_at": "2026-09-08T23:21:32.541093-03:00",
-  "git_commit": "6f1c78dcc936e2fa8754b8a3f8678ba691072194",
+  "created_at": "2026-09-10T07:09:24.053953-03:00",
+  "git_commit": "0a92f6c658f7344cae8bc19e0c6c6bee7ee71f64",
   "code_hash_mode": "text_lf_utf8",
   "input_hash_mode": "text_lf_utf8_by_suffix_else_binary",
   "output_hash_mode": "text_lf_utf8_by_suffix_else_binary",
-  "code_sha256": "0764163d3c1b30c4c4c2098493abbc89e40703f04672f1a7d22d8f15ba1ef298",
+  "code_sha256": "8b0e0295146c1df5867c4f2fe3bfb8733ffeb5448e5a83aaf752150dda00f6b4",
   "code_dependencies": {
     "detectabilidade": "9b2e46c3382adcbea60ed930ff5ee30612576b7fa596129b35912ca23bcd5a0f",
     "injection": "d2a44162b9dc1c26e79c3c57362752caa6df017be31c2d9a37d15deca6008c69",
     "models": "fe418de106f1c7429e20f3056150a0b8cd5d924a6b121dd078ad2c1569329220",
     "dataset": "cd4390349e9b13b2d7e2f1c931ba0aec72ff75059ed0bf809b8ebf1559ce72e4",
     "training": "b956050ec30ff07116670e0606e814c07e0e5b1747fe226040e2dc7bf41edfd7",
-    "orchestration": "0764163d3c1b30c4c4c2098493abbc89e40703f04672f1a7d22d8f15ba1ef298"
+    "orchestration": "8b0e0295146c1df5867c4f2fe3bfb8733ffeb5448e5a83aaf752150dda00f6b4",
+    "plots": "f160c859a31bbb4eb976aa84e272a5b5dba637a969cee591feae14b4b713d675",
+    "plot_style": "d6f5e719be9852c44f016f566e984e28e29ce804b1b31e63d43b415d93ed3914",
+    "publication": "47542eeef83391752668ef95d49a7eb5a6dec720990a7a9f193163e2efc569a1"
   },
   "parameters": {
     "grade_severidade": [
@@ -109,7 +112,11 @@
     "resultados/detectabilidade/ancoras.csv",
     "resultados/detectabilidade/fidelidade_injecao.csv",
     "resultados/detectabilidade/detectabilidade.json",
-    "resultados/detectabilidade/relatorio.md"
+    "resultados/detectabilidade/relatorio.md",
+    "resultados/detectabilidade/e2_pod_curvas.png",
+    "resultados/detectabilidade/e2_pod_curvas.pdf",
+    "resultados/detectabilidade/e2_fidelidade.png",
+    "resultados/detectabilidade/e2_fidelidade.pdf"
   ],
   "output_artifacts": {
     "resultados/detectabilidade/detectabilidade_resumo.csv": "f37f0819ed386929b6279bec3bcce74bb0792166acf6c5e0161ddc19566384b3",
@@ -117,7 +124,11 @@
     "resultados/detectabilidade/ancoras.csv": "940650d4a6fac7441c124ead8671826d98de4acb35cf1c102cea515f34bb5ee3",
     "resultados/detectabilidade/fidelidade_injecao.csv": "0a186467892596a1f664677ba60c1605b6406cb36a7f7ca5fb9beca4ec098808",
     "resultados/detectabilidade/detectabilidade.json": "03761fe7cb91a153622e6e00de15f8cfdab8568a05e4bffae4e82b9baf295534",
-    "resultados/detectabilidade/relatorio.md": "d2a1cc2731b35b6d360ad005398ca51defc00352ac3f8c149dfa6aa36952e0f9"
+    "resultados/detectabilidade/relatorio.md": "d2a1cc2731b35b6d360ad005398ca51defc00352ac3f8c149dfa6aa36952e0f9",
+    "resultados/detectabilidade/e2_pod_curvas.png": "657bf519a43d15b0faafa44908e36da5e6b26858ce504668cf5f1408117c9062",
+    "resultados/detectabilidade/e2_pod_curvas.pdf": "7ac1e62dd402f3a84efe2d2500e9ed2590d6bc9ccb2afca23ae7d890e27958a5",
+    "resultados/detectabilidade/e2_fidelidade.png": "b21778dec363716956934508dd19a9dc7facd64e46026186184a533644c78a0c",
+    "resultados/detectabilidade/e2_fidelidade.pdf": "762c9ba71d38d68118edfae21609b59c119a9555ba115ee62f97761a7ebce9ad"
   },
   "evidence_level": "E2"
 }
