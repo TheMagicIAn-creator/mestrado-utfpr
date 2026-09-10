@@ -20,8 +20,8 @@ survey de campo levam os escores ordinais de Cristaldi, Khalil & Soulatiantork
 (2017), Acta IMEKO, Tabela 6; o **sistema de sensor/realimentação** mantém o
 valor definido pelo pesquisador em 2026-09-01, a ser revisado quando houver
 fonte bibliográfica própria. O item DC-link Capacitor consta na Tabela 6
-original (NPR 30) mas está **fora** do escopo de 5 itens fechado pelo
-pesquisador.
+original (NPR 30) mas está **fora** dos cinco itens de survey adotados aqui —
+o escopo vigente continua sendo o de 6 itens da tabela acima.
 
 ## FMECA versus injeção E2
 
