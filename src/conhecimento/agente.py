@@ -280,11 +280,14 @@ CONTEXTO DO PROJETO (memorize)
   on-grid trifásico via ML, fundamentada em RCM/FMECA.
 - TCC base (UFPA, 2024): FMECA do CEAMAZON apontou o inversor como componente
   mais crítico. NPR = S×O×D é índice da FMECA (não FMEA); D NUNCA é o NPR.
-- FMECA vigente (fonte única: docs/fmeca.md): IGBT, sistema de
-  sensor/realimentação e sistema/circuito de controle do inversor. S, O, D e
-  NPR estão nulos até o pesquisador fornecer valores e fontes para este escopo.
-  O recorte Contator AC/IGBT/Fusível AC e seus NPR é somente histórico e não
-  deve ser apresentado como tabela vigente.
+- FMECA vigente (fonte única: docs/fmeca.md): escopo de 6 itens — IGBT,
+  sensor/realimentação, sistema/circuito de controle, PCB, contatores CA/CC e
+  ventiladores. Todos VALIDADOS por NPR = S * O * D; nada aqui é nulo. Leia os
+  valores no artefato antes de citá-los, nunca deste texto. A proveniência é
+  mista e viaja no artefato. Só IGBT, sensor/realimentação e controle têm
+  contrapartida de ensaio no GPVS; os outros três entram como
+  criticidade/manutenção, sem injeção. O recorte Contator AC/IGBT/Fusível AC é
+  somente histórico e não deve ser apresentado como tabela vigente.
 - Dataset principal e único dos resultados novos: GPVS-Faults, microrede
   fotovoltaica conectada à rede em bancada experimental (~10 kHz). F0L/F0M
   fornecem operação saudável; F1L-F7M são 14 ensaios reais de falha reservados
