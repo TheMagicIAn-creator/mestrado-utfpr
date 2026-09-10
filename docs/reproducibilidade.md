@@ -2,8 +2,9 @@
 
 ## Manifestos v2
 
-As publicações `comparacao` e `confiabilidade` possuem manifesto v2 em
-`resultados/manifestos/`. Cada manifesto registra:
+As três publicações canônicas — `comparacao`, `detectabilidade` e
+`confiabilidade` — possuem manifesto v2 em `resultados/manifestos/`. Cada
+manifesto registra:
 
 - hash SHA-256 do código com texto normalizado para LF;
 - dependências científicas por etapa;
@@ -44,19 +45,39 @@ são versionados. Dados brutos, caches, pesos, scalers, logs e estado local do
 Obsidian ficam fora do Git. Os manifestos podem registrar seus hashes locais
 sem publicar os arquivos.
 
+**O hash não significa a mesma coisa para dado-fonte e para figura.** Em CSV,
+JSON e Markdown ele prova duas coisas: que o arquivo não foi alterado depois de
+gerado e que outra execução, com os mesmos dados, produz exatamente aqueles
+bytes. Em PNG e PDF prova só a primeira: a rasterização depende da versão do
+matplotlib, do freetype e das fontes instaladas, então o mesmo desenho, dos
+mesmos dados-fonte, sai com bytes diferentes em máquinas diferentes. Para
+figura, portanto, o hash é verificação de INTEGRIDADE, não de reprodutibilidade
+independente — quem quiser reproduzir a figura reproduz o dado-fonte que a
+origina, e esse é determinístico.
+
 Campos metodologicamente indisponíveis são publicados como `null`, nunca zero.
-Isso vale para S/O/D/NPR da FMECA vigente e para parâmetros de Weibull 2P,
-Normal e Lognormal. O contrato informa o bloqueio e os dados necessários antes
-de qualquer cálculo.
+Isso vale para os parâmetros de Weibull 2P, Normal e Lognormal, todos bloqueados
+por falta de tempos individuais de falha e censura. O contrato informa o bloqueio
+e os dados necessários antes de qualquer cálculo.
+
+A FMECA **não** está nesse caso: o escopo vigente tem 6 itens com S, O e D
+preenchidos e `NPR = S * O * D` calculado, e o contrato traz
+`status: validated`. A proveniência dos escores é mista e viaja no artefato.
 
 ## Regeneração e validação
 
 ```powershell
 python -m src.ml.comparacao_autoencoders
+python -m src.ml.campanha_detectabilidade
 python -m src.ml.publicacao_confiabilidade
 python scripts/auditar_resultados.py
 python scripts/verificar_projeto.py
 ```
+
+A ordem é a de dependência: a campanha E2 consome os pesos, o scaler e o limiar
+congelados pela `comparacao`, e não treina nem recalibra. Rodá-la contra um clone
+desatualizado publica menos saídas do que a versão vigente da etapa — confira o
+`output_count` antes de commitar.
 
 Depois, execute:
 
