@@ -67,7 +67,7 @@ def test_auditoria_canonica_aprova_publicacao():
     relatorio = auditar_publicacao(RAIZ)
     assert relatorio["ok"], "\n".join(relatorio["errors"])
     assert relatorio["manifests"] == 10
-    assert relatorio["artifacts"] == 43
+    assert relatorio["artifacts"] == 47
 
 
 def _artefato_e2_predata_o_codigo() -> bool:

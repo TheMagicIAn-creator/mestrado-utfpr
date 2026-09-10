@@ -4,10 +4,9 @@ from pathlib import Path
 
 import src.ml.pipeline as pipeline
 
-# Saídas listadas no manifesto da E2, mais o próprio manifesto. Sobe para 11 na
-# regeneração que publica as quatro figuras; ver a guarda em
-# tests/test_artefatos_protegidos.py.
-DETECTABILIDADE_ESPERADOS = 7
+# Saídas listadas no manifesto da E2, mais o próprio manifesto: seis dados-fonte
+# e relatório, mais as quatro figuras publicadas pela etapa.
+DETECTABILIDADE_ESPERADOS = 11
 
 
 def test_pipeline_exposes_only_three_canonical_publications():
