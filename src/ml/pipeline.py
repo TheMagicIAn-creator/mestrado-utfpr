@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Callable
 
 from src.core.config import RAIZ_PROJETO
+from src.core.versao_repositorio import CloneDefasado, exigir_clone_atualizado
 from src.ml.dados_gpvs import ALL_EXPERIMENTS, DATASET_DIR
 from src.ml.proveniencia import (
     carregar_manifesto,
@@ -366,6 +367,7 @@ def executar_etapa(
     *,
     force: bool = False,
     progresso=None,
+    ignorar_versao: bool = False,
 ) -> dict:
     stage = get_stage(etapa)
     if stage.requires_gpvs and not capacidade_recalculo_pipeline()["disponivel"]:
@@ -374,6 +376,13 @@ def executar_etapa(
             "etapa": stage.label,
             "mensagem": "Os 16 CSVs GPVS-Faults não estão disponíveis neste ambiente.",
         }
+    # Antes de carregar o GPVS: clone atrás do remoto publica artefato que não
+    # corresponde à etapa vigente, e o sintoma só apareceria no fim.
+    if not ignorar_versao:
+        try:
+            exigir_clone_atualizado(progresso=progresso)
+        except CloneDefasado as erro:
+            return {"ok": False, "etapa": stage.label, "mensagem": str(erro)}
     if progresso:
         progresso(f"Executando {stage.label}...")
     try:

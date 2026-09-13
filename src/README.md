@@ -25,6 +25,7 @@ webapp/ -> conhecimento/ -> ml/
 | `tempo.py` | Relógio com fuso explícito. |
 | `texto.py` | Normalização lexical. |
 | `utils.py` | Caminhos portáveis e utilitários. |
+| `versao_repositorio.py` | Detecta clone atrás do remoto antes de execução cara publicar código velho. |
 
 ## `conhecimento/`
 

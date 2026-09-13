@@ -40,6 +40,7 @@ import numpy as np
 import pandas as pd
 
 from src.core.tempo import agora_local
+from src.core.versao_repositorio import CloneDefasado, exigir_clone_atualizado
 from src.ml.dados_gpvs import (
     DATASET_DIR,
     FEATURE_COLUMNS,
@@ -386,8 +387,22 @@ def main() -> int:
             f"(padrão: {CONFIRMACOES_PADRAO})"
         ),
     )
+    parser.add_argument(
+        "--ignorar-versao",
+        action="store_true",
+        help=(
+            "Executa mesmo com o clone atrás do remoto. Use apenas para "
+            "reproduzir deliberadamente um commit anterior."
+        ),
+    )
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    if not args.ignorar_versao:
+        try:
+            exigir_clone_atualizado(progresso=LOGGER.warning)
+        except CloneDefasado as erro:
+            LOGGER.error("%s", erro)
+            return 1
     resultado = run(confirmacoes=args.confirmacoes)
     print(json.dumps(resultado, ensure_ascii=False, indent=2))
     return 0
